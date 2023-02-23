@@ -1,4 +1,4 @@
-# besu-tracing-plugin
+# Besu Tracing Plugin
 
 Tracing plugin for Besu
 
@@ -17,6 +17,11 @@ Tracing plugin for Besu
 - **Stop**
     * Disconnect from the Besu events
 
+## Build Instructions
+
+### Install Prerequisites
+
+* Java 17
 
 ## To Execute the Demo
 
@@ -36,9 +41,3 @@ Run the Besu node
 ```
 $BESU_HOME/bin/besu 
 ```
-
-## Build Instructions
-
-### Install Prerequisites
-
-* Java 17
