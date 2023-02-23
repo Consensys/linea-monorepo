@@ -25,10 +25,8 @@ plugins {
   id "maven-publish"
 }
 
-
-
 if (!JavaVersion.current().java11Compatible) {
-  throw new GradleException("Java 11 or later is required.\n" +
+  throw new GradleException("Java 17 or later is required.\n" +
   "  Detected version ${JavaVersion.current()}")
 }
 
@@ -75,19 +73,23 @@ allprojects {
     from javadoc.destinationDir
   }
 
-  sourceCompatibility = 11
-  targetCompatibility = 11
+  sourceCompatibility = 17
+  targetCompatibility = 17
 
   repositories {
     mavenCentral()
     mavenLocal()
     maven { url "https://hyperledger.jfrog.io/hyperledger/besu-maven" }
     maven { url "https://artifacts.consensys.net/public/maven/maven/" }
-    maven { url  "https://dl.bintray.com/tuweni/tuweni/" }
+    maven { url "https://dl.bintray.com/tuweni/tuweni/" }
   }
 
   dependencies {
-    errorprone("com.google.errorprone:error_prone_core") }
+    implementation 'com.google.auto.service:auto-service'
+    implementation 'com.google.auto.service:auto-service-annotations'
+    errorprone("com.google.errorprone:error_prone_core")
+    compileOnly 'org.hyperledger.besu:plugin-api'
+  }
 
   apply plugin: 'com.diffplug.spotless'
   spotless {

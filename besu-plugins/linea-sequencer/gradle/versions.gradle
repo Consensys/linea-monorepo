@@ -34,5 +34,14 @@ dependencyManagement {
         dependency 'com.google.errorprone:error_prone_core:2.8.0'
         dependency 'com.google.errorprone:error_prone_test_helpers:2.8.0'
         dependency 'com.google.errorprone:javac:9+181-r4173-1'
+
+        // Besu dependencies
+        dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
+
+        // Logging dependencies
+        dependency 'org.slf4j:slf4j-api:1.7.36'
+
+        // auto service
+        dependency 'com.google.auto.service:auto-service:1.0.1'
     }
 }
