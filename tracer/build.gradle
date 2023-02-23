@@ -1,0 +1,429 @@
+/*
+ * Copyright ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+plugins {
+  id 'com.diffplug.spotless' version '6.15.0'
+  id 'com.github.ben-manes.versions' version '0.26.0'
+  id 'com.github.hierynomus.license' version '0.16.1'
+  id 'io.spring.dependency-management' version '1.1.0'
+  id 'net.ltgt.errorprone' version '2.0.2'
+  id "de.undercouch.download" version '5.3.1'
+  id "maven-publish"
+}
+
+if (!JavaVersion.current().java11Compatible) {
+  throw new GradleException("Java 17 or later is required.\n" +
+  "  Detected version ${JavaVersion.current()}")
+}
+
+allprojects {
+  apply plugin: 'java-library'
+  apply plugin: 'net.ltgt.errorprone'
+  apply plugin: 'jacoco'
+  apply plugin: 'io.spring.dependency-management'
+  apply from: "${rootDir}/gradle/versions.gradle"
+  apply from: "${rootDir}/gradle/check-licenses.gradle"
+
+  //////
+  // Default tasks and build aliases
+
+  defaultTasks 'build', 'checkLicenses', 'javadoc'
+
+  def buildAliases = ['dev': [
+      'spotlessApply',
+      'build',
+      'checkLicenses',
+      'javadoc'
+    ]]
+
+  def expandedTaskList = []
+  gradle.startParameter.taskNames.each {
+    expandedTaskList << (buildAliases[it] ? buildAliases[it] : it)
+  }
+  gradle.startParameter.taskNames = expandedTaskList.flatten()
+
+  group = 'net.consensys.besu.tracing.plugin'
+  version = rootProject.version
+
+  jacoco {
+    toolVersion = '0.8.8'
+  }
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+  }
+
+  sourceCompatibility = 17
+  targetCompatibility = 17
+
+  repositories {
+    mavenCentral()
+    mavenLocal()
+    maven { url "https://hyperledger.jfrog.io/hyperledger/besu-maven" }
+    maven { url "https://artifacts.consensys.net/public/maven/maven/" }
+    maven { url "https://dl.bintray.com/tuweni/tuweni/" }
+  }
+
+  dependencies {
+    implementation 'com.google.auto.service:auto-service'
+    implementation 'com.google.auto.service:auto-service-annotations'
+    errorprone("com.google.errorprone:error_prone_core")
+    compileOnly 'org.hyperledger.besu:plugin-api'
+  }
+
+  apply plugin: 'com.diffplug.spotless'
+  spotless {
+    java {
+      // This path needs to be relative to each project
+      target fileTree('.') {
+        include '**/*.java'
+        exclude '**/.gradle/**'
+      }
+      removeUnusedImports()
+      googleJavaFormat('1.7')
+      importOrder 'net.consensys', 'java', ''
+      trimTrailingWhitespace()
+      endWithNewline()
+      licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
+    }
+    groovyGradle {
+      target '*.gradle'
+      greclipse().configFile(rootProject.file('gradle/formatter.properties'))
+      endWithNewline()
+    }
+
+    // Below this line are currently only license header tasks
+    format 'groovy', {
+      target '**/*.groovy'
+      licenseHeaderFile "${rootDir}/gradle/spotless.java.license", 'import|class'
+    }
+  }
+
+  tasks.withType(JavaCompile) {
+    options.compilerArgs += [
+      '-Xlint:unchecked',
+      '-Xlint:cast',
+      '-Xlint:rawtypes',
+      '-Xlint:overloads',
+      '-Xlint:divzero',
+      '-Xlint:finally',
+      '-Xlint:static',
+      '-Werror',
+    ]
+
+    options.errorprone {
+      excludedPaths = '.*/(generated/*.*|.*ReferenceTest_.*)'
+
+      // Our equals need to be symmetric, this checker doesn't respect that.
+      check('EqualsGetClass', CheckSeverity.OFF)
+      // We like to use futures with no return values.
+      check('FutureReturnValueIgnored', CheckSeverity.OFF)
+      // We use the JSR-305 annotations instead of the Google annotations.
+      check('ImmutableEnumChecker', CheckSeverity.OFF)
+      // This is a style check instead of an error-prone pattern.
+      check('UnnecessaryParentheses', CheckSeverity.OFF)
+      // Lazy impl causes excess CPU usage O(n) of non-final field when it should be O(1).
+      check('FieldCanBeFinal', CheckSeverity.OFF)
+
+      // This check is broken in Java 12.  See https://github.com/google/error-prone/issues/1257
+      if (JavaVersion.current() == JavaVersion.VERSION_12) {
+        check('Finally', CheckSeverity.OFF)
+      }
+      // This check is broken after Java 12.  See https://github.com/google/error-prone/issues/1352
+      if (JavaVersion.current() > JavaVersion.VERSION_12) {
+        check('TypeParameterUnusedInFormals', CheckSeverity.OFF)
+      }
+
+      check('InsecureCryptoUsage', CheckSeverity.WARN)
+      check('WildcardImport', CheckSeverity.WARN)
+    }
+
+    options.encoding = 'UTF-8'
+  }
+
+  /*
+   * Pass some system properties provided on the gradle command line to test executions for
+   * convenience.
+   *
+   * The properties passed are:
+   * - 'test.ethereum.include': allows to run a single Ethereum reference tests. For instance,
+   *   running a single general state test can be done with:
+   *    ./gradlew :ethereum:tech.pegasys.ethsigner.ethereum.vm:test -Dtest.single=GeneralStateTest -Dtest.ethereum.include=callcodecallcallcode_101-Frontier
+   *   The meaning being that will be run only the tests for which the value passed as "include"
+   *   (which can be a java pattern) matches parts of the test name. Knowing that tests names for
+   *   reference tests are of the form:
+   *     <name>(-<milestone>([<variant>])?)?
+   *   where <name> is the test name as defined in the json file (usually the name of the json file
+   *   as well), <milestone> is the Ethereum milestone tested (not all test use it) and <variant>
+   *   is only use in some general state tests where for the same json file and same milestone,
+   *   multiple variant of that test are run. The variant is a simple number.
+   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
+   */
+  test {
+    jvmArgs = [
+      '-Xmx4g',
+      '-XX:-UseGCOverheadLimit',
+      // Mockito and jackson-databind do some strange reflection during tests.
+      // This suppresses an illegal access warning.
+      '--add-opens',
+      'java.base/java.util=ALL-UNNAMED',
+      '--add-opens',
+      'java.base/java.util.concurrent=ALL-UNNAMED'
+    ]
+    Set toImport = [
+      'root.log.level',
+      'evm.log.level'
+    ]
+    for (String name : toImport) {
+      if (System.getProperty(name) != null) {
+        systemProperty name, System.getProperty(name)
+      }
+    }
+
+    useJUnitPlatform()
+  }
+
+  javadoc {
+    options.addStringOption('Xdoclint:all', '-quiet')
+    options.addStringOption('Xwerror', '-html5')
+    options.encoding = 'UTF-8'
+  }
+
+}
+
+test {
+  jvmArgs = [
+    '-Xmx4g',
+    '-XX:-UseGCOverheadLimit',
+    // Mockito and jackson-databind do some strange reflection during tests.
+    // This suppresses an illegal access warning.
+    '--add-opens',
+    'java.base/java.util=ALL-UNNAMED',
+    '--add-opens',
+    'java.base/java.util.concurrent=ALL-UNNAMED'
+  ]
+  useJUnitPlatform()
+}
+
+// Normalise Xdoclint behaviour across JDKs (OpenJDK 8 is more lenient than Oracle JDK by default).
+javadoc {
+  options.addStringOption('Xdoclint:all', '-quiet')
+  options.addStringOption('Xwerror', '-html5')
+  options.encoding = 'UTF-8'
+}
+
+configurations { installedJars{ transitive = false } }
+
+task downloadLatestBesu(type: Download) {
+  ext.besuIdentifier = "besu-" + besuVersion
+  def besuFilename = besuIdentifier + ".tar.gz"
+  def besuUrl = distributionBaseUrl + besuVersion+"/"+besuFilename;
+
+  src besuUrl
+  dest new File(buildDir, besuFilename)
+  onlyIfModified true
+}
+
+ext.besuPluginsIdentifier = distributionIdentifier + "-" + version
+
+task distTar(type: Tar) {
+  dependsOn jar
+  dependsOn downloadLatestBesu
+
+  from(tarTree(downloadLatestBesu.dest), {
+    eachFile { path = path.replaceFirst(downloadLatestBesu.besuIdentifier, '') }
+    includeEmptyDirs = false
+    exclude "**/LICENSE"
+  })
+
+  from(configurations.installedJars) {
+    into "plugins"
+    exclude "**/common*.jar"
+  }
+  into besuPluginsIdentifier
+  archiveBaseName = distributionIdentifier
+  compression = Compression.GZIP
+  archiveExtension = 'tar.gz'
+}
+
+
+task checkSpdxHeader(type: CheckSpdxHeader) {
+  apply plugin: 'groovy'
+
+  rootPath = "${projectDir}"
+  spdxHeader = "* SPDX-License-Identifier: Apache-2.0"
+  filesRegex = "(.*.java)|(.*.groovy)"
+  excludeRegex = [
+    "(.*/.gradle/.*)",
+    "(.*/.idea/.*)",
+    "(.*/out/.*)",
+    "(.*/build/.*)",
+    "(.*/src/[^/]+/generated/.*)",
+  ].join("|")
+
+}
+task installDist(type: Copy) {
+  dependsOn distTar
+
+  from(tarTree(distTar.outputs.getFiles().getSingleFile()), {
+    eachFile { path = path.replaceFirst(besuPluginsIdentifier, distributionIdentifier) }
+    includeEmptyDirs = false
+  })
+  into "$buildDir/distributions/install"
+}
+
+task distZip(type: Zip) {
+  dependsOn installDist
+
+  archiveBaseName = distributionIdentifier
+  from installDist.outputs.getFiles()
+  archiveBaseName
+  extension 'zip'
+}
+
+
+task deployPlugins(type: Copy) {
+  dependsOn jar
+
+  from(configurations.installedJars) {
+    into new File(distributionIdentifier, "plugins")
+    exclude "**/common*.jar"
+  }
+
+  into tasks.getByName("installDist").destinationDir
+}
+
+// Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
+// with the git commit version.
+def calculateVersion() {
+  String version = rootProject.version
+  if (version.endsWith("-SNAPSHOT")) {
+    version = version.replace("-SNAPSHOT", "-dev-" + getCheckedOutGitCommitHash())
+  }
+  return version
+}
+
+def getCheckedOutGitCommitHash() {
+  def gitFolder = "$projectDir/.git/"
+  if (!file(gitFolder).isDirectory()) {
+    // We are in a submodule.  The file's contents are `gitdir: <gitFolder>\n`.
+    // Read the file, cut off the front, and trim the whitespace.
+    gitFolder = file(gitFolder).text.substring(8).trim() + "/"
+  }
+  def takeFromHash = 8
+  /*
+   * '.git/HEAD' contains either
+   *      in case of detached head: the currently checked out commit hash
+   *      otherwise: a reference to a file containing the current commit hash
+   */
+  def head = new File(gitFolder + "HEAD").text.split(":") // .git/HEAD
+  def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+
+  if(isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+  def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
+  refHead.text.trim().take takeFromHash
+}
+
+def cloudsmithUser = project.hasProperty('cloudsmithUser') ? project.property('cloudsmithUser') : System.getenv('CLOUDSMITH_USER')
+def cloudsmithKey = project.hasProperty('cloudsmithApiKey') ? project.property('cloudsmithApiKey') : System.getenv('CLOUDSMITH_API_KEY')
+
+publishing {
+  repositories {
+    maven {
+      name = "cloudsmith"
+      url = "https://api-g.cloudsmith.io/maven/consensys/besu-tracing-plugin/"
+      credentials {
+        username = cloudsmithUser
+        password = cloudsmithKey
+      }
+    }
+  }
+  publications {
+    mavenJava(MavenPublication) {
+      groupId "net.consensys.besu.tracing.plugin"
+      version "${project.version}"
+      from components.java
+      artifact sourcesJar
+
+      versionMapping {
+        usage('java-api') { fromResolutionOf('runtimeClasspath') }
+        usage('java-runtime') { fromResolutionResult() }
+      }
+      suppressPomMetadataWarningsFor('testFixturesApiElements')
+      suppressPomMetadataWarningsFor('testFixturesRuntimeElements')
+      pom {
+        name = "Besu plugins - ${project.name}"
+        url = 'https://github.com/ConsenSys/besu-tracing-plugin'
+        licenses {
+          license {
+            name = 'The Apache License, Version 2.0'
+            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+        scm {
+          connection = 'scm:git:git://github.com/ConsenSys/besu-tracing-plugin.git'
+          developerConnection = 'https://github.com/ConsenSys/besu-tracing-plugin.git'
+          url = 'https://github.com/ConsenSys/besu-tracing-plugin'
+        }
+      }
+    }
+  }
+}
+
+artifacts {
+  archives tasks.distTar
+  archives tasks.distZip
+}
+
+task cloudsmithUpload {
+  dependsOn([distTar, distZip])
+  doLast {
+    exec {
+      executable project.file("scripts/cloudsmith-upload.sh")
+      args rootProject.version, distTar.archiveFile.get(), distZip.archiveFile.get()
+    }
+  }
+}
+
+tasks.register("verifyDistributions") {
+  dependsOn distTar
+  dependsOn distZip
+  def distTarFile = distTar.outputs.files.singleFile
+  def distZipFile = distZip.outputs.files.singleFile
+  def minDistributionSize = 20000000
+
+  // Sanity check the distributions by checking they are at least a reasonable size
+  doFirst {
+    if (distTarFile.length() < minDistributionSize) {
+      throw new GradleException("Distribution tar is suspiciously small: " + distTarFile.length() + " bytes")
+    }
+    if (distZipFile.length() < minDistributionSize) {
+      throw new GradleException("Distribution zip is suspiciously small: " + distZipFile.length() + " bytes")
+    }
+  }
+}
+
+
+check.dependsOn checkSpdxHeader
+apply plugin: 'groovy'
