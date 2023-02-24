@@ -28,6 +28,9 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 @AutoService(BesuPlugin.class)
 public class TestRpcEndpointServicePlugin implements BesuPlugin {
 
+  /** namespace for custom trace RPC methods */
+  public static final String NAMESPACE = "tests";
+
   private final AtomicReference<String> stringStorage = new AtomicReference<>("InitialValue");
   private final AtomicReference<Object[]> arrayStorage = new AtomicReference<>();
 
@@ -61,12 +64,12 @@ public class TestRpcEndpointServicePlugin implements BesuPlugin {
         .ifPresent(
             rpcEndpointService -> {
               System.out.println("Registering RPC plugin endpoints");
-              rpcEndpointService.registerRPCEndpoint("tests", "getValue", this::getValue);
-              rpcEndpointService.registerRPCEndpoint("tests", "setValue", this::setValue);
+              rpcEndpointService.registerRPCEndpoint(NAMESPACE, "getValue", this::getValue);
+              rpcEndpointService.registerRPCEndpoint(NAMESPACE, "setValue", this::setValue);
               rpcEndpointService.registerRPCEndpoint(
-                  "tests", "replaceValueList", this::replaceValueList);
+                  NAMESPACE, "replaceValueList", this::replaceValueList);
               rpcEndpointService.registerRPCEndpoint(
-                  "tests", "throwException", this::throwException);
+                  NAMESPACE, "throwException", this::throwException);
               rpcEndpointService.registerRPCEndpoint("notEnabled", "getValue", this::getValue);
             });
   }
