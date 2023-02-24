@@ -41,7 +41,7 @@ allprojects {
   //////
   // Default tasks and build aliases
 
-  defaultTasks 'build', 'checkLicenses', 'javadoc'
+  defaultTasks 'build', 'checkLicenses', 'javadoc', 'jar'
 
   def buildAliases = ['dev': [
       'spotlessApply',
@@ -85,9 +85,10 @@ allprojects {
   }
 
   dependencies {
+    annotationProcessor 'com.google.auto.service:auto-service'
     implementation 'com.google.auto.service:auto-service'
     implementation 'com.google.auto.service:auto-service-annotations'
-    errorprone("com.google.errorprone:error_prone_core")
+    errorprone 'com.google.errorprone:error_prone_core'
     compileOnly 'org.hyperledger.besu:plugin-api'
   }
 
@@ -260,10 +261,33 @@ task distTar(type: Tar) {
     into "plugins"
     exclude "**/common*.jar"
   }
+
   into besuPluginsIdentifier
   archiveBaseName = distributionIdentifier
   compression = Compression.GZIP
   archiveExtension = 'tar.gz'
+
+  exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+}
+
+jar {
+  dependsOn downloadLatestBesu
+
+  archiveBaseName = distributionIdentifier
+
+  manifest {
+    attributes(
+      'Specification-Title': archiveBaseName.get(),
+      'Specification-Version': rootProject.version,
+      'Implementation-Title': archiveBaseName.get(),
+      'Implementation-Version': calculateVersion()
+      )
+  }
+
+  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
 
@@ -290,6 +314,7 @@ task installDist(type: Copy) {
     includeEmptyDirs = false
   })
   into "$buildDir/distributions/install"
+  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
 task distZip(type: Zip) {
@@ -299,6 +324,7 @@ task distZip(type: Zip) {
   from installDist.outputs.getFiles()
   archiveBaseName
   extension 'zip'
+  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
 
