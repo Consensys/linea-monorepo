@@ -24,11 +24,17 @@ import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
+/** Test plugin with RPC endpoint */
 @AutoService(BesuPlugin.class)
 public class TestRpcEndpointServicePlugin implements BesuPlugin {
 
   private final AtomicReference<String> stringStorage = new AtomicReference<>("InitialValue");
   private final AtomicReference<Object[]> arrayStorage = new AtomicReference<>();
+
+  /** Test plugin with RPC endpoint */
+  public TestRpcEndpointServicePlugin() {
+    System.out.println("made a new plugin with string storage. value=" + stringStorage.get());
+  }
 
   private String setValue(final PluginRpcRequest request) {
     checkArgument(request.getParams().length == 1, "Only one parameter accepted");
@@ -49,10 +55,12 @@ public class TestRpcEndpointServicePlugin implements BesuPlugin {
 
   @Override
   public void register(final BesuContext context) {
+    System.out.println("Registering RPC plugin");
     context
         .getService(RpcEndpointService.class)
         .ifPresent(
             rpcEndpointService -> {
+              System.out.println("Registering RPC plugin endpoints");
               rpcEndpointService.registerRPCEndpoint("tests", "getValue", this::getValue);
               rpcEndpointService.registerRPCEndpoint("tests", "setValue", this::setValue);
               rpcEndpointService.registerRPCEndpoint(
@@ -64,8 +72,12 @@ public class TestRpcEndpointServicePlugin implements BesuPlugin {
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    System.out.println("started TestRpcEndpointServicePlugin plugin");
+  }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    System.out.println("stopped TestRpcEndpointServicePlugin plugin");
+  }
 }
