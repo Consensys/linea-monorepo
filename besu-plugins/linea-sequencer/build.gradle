@@ -85,7 +85,9 @@ allprojects {
   }
 
   dependencies {
+    // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
     annotationProcessor 'com.google.auto.service:auto-service'
+
     implementation 'com.google.auto.service:auto-service'
     implementation 'com.google.auto.service:auto-service-annotations'
     errorprone 'com.google.errorprone:error_prone_core'
