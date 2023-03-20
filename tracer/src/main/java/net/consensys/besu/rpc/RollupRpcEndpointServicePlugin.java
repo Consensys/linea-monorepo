@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.besu.tracing.rpc;
+package net.consensys.besu.rpc;
 
 import com.google.auto.service.AutoService;
 import org.hyperledger.besu.plugin.BesuContext;

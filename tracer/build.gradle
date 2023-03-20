@@ -16,14 +16,15 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
 
 plugins {
-  id 'com.diffplug.spotless' version '6.15.0'
+  id 'com.diffplug.spotless' version '6.16.0'
+  id("net.ltgt.errorprone") version "3.0.1"
   id 'com.github.ben-manes.versions' version '0.26.0'
   id 'com.github.hierynomus.license' version '0.16.1'
   id 'io.spring.dependency-management' version '1.1.0'
-  id 'net.ltgt.errorprone' version '2.0.2'
   id "de.undercouch.download" version '5.3.1'
   id "maven-publish"
 }
+
 
 if (!JavaVersion.current().java11Compatible) {
   throw new GradleException("Java 17 or later is required.\n" +
@@ -76,56 +77,61 @@ allprojects {
   sourceCompatibility = 17
   targetCompatibility = 17
 
+  group 'net.consensys'
+  version '1.0.0-SNAPSHOT'
+
   repositories {
+    maven {
+      url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
+      content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
+    maven {
+      url 'https://artifacts.consensys.net/public/maven/maven/'
+      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
+    }
     mavenCentral()
-    mavenLocal()
-    maven { url "https://hyperledger.jfrog.io/hyperledger/besu-maven" }
-    maven { url "https://artifacts.consensys.net/public/maven/maven/" }
-    maven { url "https://dl.bintray.com/tuweni/tuweni/" }
   }
 
   dependencies {
+    api 'org.slf4j:slf4j-api'
+    api 'org.apache.logging.log4j:log4j-api'
+
     // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
     annotationProcessor 'com.google.auto.service:auto-service'
-    implementation 'org.apache.tuweni:tuweni-bytes'
-    implementation 'org.hyperledger.besu:evm:23.1.0'
-    implementation 'com.google.auto.service:auto-service'
-    implementation 'com.google.auto.service:auto-service-annotations'
-    errorprone 'com.google.errorprone:error_prone_core'
+    compileOnly 'org.hyperledger.besu:evm:23.1.0'
+    compileOnly 'com.google.auto.service:auto-service'
+    compileOnly 'com.google.auto.service:auto-service-annotations'
 
     // Add the besu reference here
     compileOnly files('/Users/gtrintinalia/Development/besu/plugin-api/build/libs/plugin-api-23.1.2-SNAPSHOT.jar')
-    // Add the ZkTrace Jar here
-    compileOnly files('/Users/gtrintinalia/Development/zktrace/zk-besu-tracer/build/libs/zkBesu-tracer-1.0-SNAPSHOT.jar')
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-  }
 
-  apply plugin: 'com.diffplug.spotless'
-  spotless {
-    java {
-      // This path needs to be relative to each project
-      target fileTree('.') {
-        include '**/*.java'
-        exclude '**/.gradle/**'
-      }
-      removeUnusedImports()
-      googleJavaFormat('1.7')
-      importOrder 'net.consensys', 'java', ''
-      trimTrailingWhitespace()
-      endWithNewline()
-      licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
-    }
-    groovyGradle {
-      target '*.gradle'
-      greclipse().configFile(rootProject.file('gradle/formatter.properties'))
-      endWithNewline()
-    }
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
 
-    // Below this line are currently only license header tasks
-    format 'groovy', {
-      target '**/*.groovy'
-      licenseHeaderFile "${rootDir}/gradle/spotless.java.license", 'import|class'
-    }
+    errorprone("com.google.errorprone:error_prone_core")
+
+    compileOnly 'io.vertx:vertx-core:4.3.8'
+
+    implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
+
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+
+    implementation 'org.apache.tuweni:tuweni-bytes:2.3.1'
+    implementation 'org.apache.tuweni:tuweni-units:2.3.1'
+
+    testImplementation 'org.hyperledger.besu:besu-datatypes:23.1.0'
+    testImplementation 'org.hyperledger.besu:evm:23.1.0'
+    testImplementation 'org.hyperledger.besu.internal:core:23.1.0'
+
+    testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testImplementation'org.junit.jupiter:junit-jupiter-params:5.9.2'
+
+    testImplementation 'org.mockito:mockito-core:5.1.1'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.1.1'
   }
 
   tasks.withType(JavaCompile) {

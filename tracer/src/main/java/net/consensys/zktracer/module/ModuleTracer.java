@@ -12,28 +12,16 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package tracing;
+package net.consensys.zktracer.module;
 
 import java.util.List;
+import net.consensys.zktracer.OpCode;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+public interface ModuleTracer {
+  String jsonKey();
 
-public class FileTrace {
-  private final String tracesEngineVersion;
-  private final List<String> tracesFileName;
+  List<OpCode> supportedOpCodes();
 
-  public FileTrace(final String tracesEngineVersion, final List<String> tracesFileName) {
-    this.tracesEngineVersion = tracesEngineVersion;
-    this.tracesFileName = tracesFileName;
-  }
-
-  @JsonProperty("tracesEngineVersion")
-  public String getTracesEngineVersion() {
-    return tracesEngineVersion;
-  }
-
-  @JsonProperty("tracesFileName")
-  public List<String> getTracesFileName() {
-    return tracesFileName;
-  }
+  Object trace(MessageFrame frame);
 }
