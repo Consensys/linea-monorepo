@@ -16,9 +16,8 @@ package net.consensys.besu.rpc;
 
 import static net.consensys.besu.tracing.TraceRequestParams.createTraceParams;
 
-import net.consensys.besu.tracers.TracerFactory;
-import net.consensys.besu.tracers.ZkTracerFactory;
 import net.consensys.besu.tracing.FileTrace;
+import net.consensys.besu.tracing.OperationTracerPluginWrapper;
 import net.consensys.besu.tracing.TraceRequestParams;
 
 import java.io.File;
@@ -36,6 +35,9 @@ import java.util.zip.GZIPOutputStream;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import net.consensys.zktracer.ZkTraceBuilder;
+import net.consensys.zktracer.ZkTracer;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -48,7 +50,6 @@ public class RollupGenerateConflatedTracesToFileV0 {
   private final BesuContext context;
   private final JsonFactory jsonFactory = new JsonFactory();
   private final boolean isGZIPEnabled = true;
-  private final TracerFactory tracerFactory = new ZkTracerFactory();
 
   public RollupGenerateConflatedTracesToFileV0(final BesuContext context) {
     this.context = context;
@@ -84,10 +85,15 @@ public class RollupGenerateConflatedTracesToFileV0 {
     try (JsonGenerator jsonGenerator =
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
-      jsonGenerator.writeStartArray();
+
+      ZkTraceBuilder builder =  new ZkTraceBuilder();
+      OperationTracer tracer = new ZkTracer(builder);
+
       traceService.traceBlock(
-          block.getBlockHeader().getNumber(), tracerFactory.create(jsonGenerator));
-      jsonGenerator.writeEndArray();
+          block.getBlockHeader().getNumber(), OperationTracerPluginWrapper.create(tracer));
+
+      jsonGenerator.writeObject(builder.build().toJson());
+
       return file.getAbsolutePath();
     } catch (IOException e) {
       throw new RuntimeException(e);

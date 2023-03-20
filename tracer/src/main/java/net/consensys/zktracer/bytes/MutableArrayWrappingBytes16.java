@@ -12,11 +12,26 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.besu.tracers;
+package net.consensys.zktracer.bytes;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import org.hyperledger.besu.plugin.data.OperationTracerWrapper;
+final class MutableArrayWrappingBytes16 extends MutableArrayWrappingBytes
+    implements net.consensys.zktracer.bytes.MutableBytes16 {
 
-public interface TracerFactory {
-  OperationTracerWrapper create(final JsonGenerator jsonGenerator);
+  MutableArrayWrappingBytes16(byte[] bytes) {
+    this(bytes, 0);
+  }
+
+  MutableArrayWrappingBytes16(byte[] bytes, int offset) {
+    super(bytes, offset, SIZE);
+  }
+
+  @Override
+  public Bytes16 copy() {
+    return new net.consensys.zktracer.bytes.ArrayWrappingBytes16(toArray());
+  }
+
+  @Override
+  public MutableBytes16 mutableCopy() {
+    return new MutableArrayWrappingBytes16(toArray());
+  }
 }
