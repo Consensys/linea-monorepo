@@ -16,6 +16,11 @@ package net.consensys.besu.rpc;
 
 import static net.consensys.besu.tracing.TraceRequestParams.createTraceParams;
 
+import net.consensys.besu.tracers.TracerFactory;
+import net.consensys.besu.tracers.ZkTracerFactory;
+import net.consensys.besu.tracing.FileTrace;
+import net.consensys.besu.tracing.TraceRequestParams;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -37,10 +42,6 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
-import net.consensys.besu.tracers.TracerFactory;
-import net.consensys.besu.tracers.ZkTracerFactory;
-import net.consensys.besu.tracing.FileTrace;
-import net.consensys.besu.tracing.TraceRequestParams;
 
 public class RollupGenerateConflatedTracesToFileV0 {
 

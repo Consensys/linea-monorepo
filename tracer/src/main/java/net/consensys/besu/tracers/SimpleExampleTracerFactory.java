@@ -14,6 +14,8 @@
  */
 package net.consensys.besu.tracers;
 
+import net.consensys.besu.tracing.OperationTracerPluginWrapper;
+
 import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -21,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.plugin.data.OperationTracerWrapper;
-import net.consensys.besu.tracing.OperationTracerPluginWrapper;
 
 public class SimpleExampleTracerFactory implements TracerFactory {
 
