@@ -12,34 +12,34 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package tracers;
-
-import net.consensys.zktracer.ZkTracer;
-import net.consensys.zktracer.ZkTracerBuilder;
+package net.consensys.besu.tracers;
 
 import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.plugin.data.OperationTracerWrapper;
-import tracing.OperationTracerPluginWrapper;
+import net.consensys.besu.tracing.OperationTracerPluginWrapper;
 
-public class ZkTracerFactory implements TracerFactory {
+public class SimpleExampleTracerFactory implements TracerFactory {
 
   @Override
   public OperationTracerWrapper create(final JsonGenerator jsonGenerator) {
     final ObjectMapper mapper = new ObjectMapper();
 
-    // This extends the ZkTracerBuilder interface
-    ZkTracerBuilder zkTracerBuilder =
-        (s, o) -> {
-          try {
-            mapper.writeValue(jsonGenerator, o);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
+    OperationTracer tracer =
+        new OperationTracer() {
+          @Override
+          public void tracePreExecution(final MessageFrame frame) {
+            try {
+              mapper.writeValue(jsonGenerator, frame.getCurrentOperation().getName());
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
           }
         };
-    ZkTracer tracer = new ZkTracer(zkTracerBuilder);
     return OperationTracerPluginWrapper.create(tracer);
   }
 }

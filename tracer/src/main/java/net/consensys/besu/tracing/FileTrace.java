@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package tracing;
+package net.consensys.besu.tracing;
 
 import java.util.List;
 
