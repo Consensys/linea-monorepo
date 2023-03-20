@@ -12,9 +12,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.besu.tracing.rpc;
+package net.consensys.besu.rpc;
 
-import static tracing.TraceRequestParams.createTraceParams;
+import static net.consensys.besu.tracing.TraceRequestParams.createTraceParams;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,10 +37,10 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
-import tracers.TracerFactory;
-import tracers.ZkTracerFactory;
-import tracing.FileTrace;
-import tracing.TraceRequestParams;
+import net.consensys.besu.tracers.TracerFactory;
+import net.consensys.besu.tracers.ZkTracerFactory;
+import net.consensys.besu.tracing.FileTrace;
+import net.consensys.besu.tracing.TraceRequestParams;
 
 public class RollupGenerateConflatedTracesToFileV0 {
 

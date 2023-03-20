@@ -96,7 +96,7 @@ allprojects {
     // Add the besu reference here
     compileOnly files('/Users/gtrintinalia/Development/besu/plugin-api/build/libs/plugin-api-23.1.2-SNAPSHOT.jar')
     // Add the ZkTrace Jar here
-    compileOnly files('/Users/gtrintinalia/Development/zktrace/zk-besu-tracer/build/libs/zkBesu-tracer-1.0-SNAPSHOT.jar')
+    compileOnly files('/Users/gtrintinalia/Development/zktrace/zk-besu-tracer/build/libs/zkBesu-tracer-1.0.0-SNAPSHOT.jar')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
   }
 

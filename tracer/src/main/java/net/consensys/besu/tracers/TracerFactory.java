@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package tracers;
+package net.consensys.besu.tracers;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import org.hyperledger.besu.plugin.data.OperationTracerWrapper;
