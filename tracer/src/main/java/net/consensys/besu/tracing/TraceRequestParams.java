@@ -65,10 +65,6 @@ public class TraceRequestParams {
   }
 
   private static String getTracerRuntime() {
-    String version = ZkTracer.class.getPackage().getSpecificationTitle();
-    if (version == null || version.isEmpty()) {
-      version = ZkTracer.class.getPackage().getImplementationVersion();
-    }
-    return version;
+    return ZkTracer.class.getPackage().getSpecificationVersion();
   }
 }
