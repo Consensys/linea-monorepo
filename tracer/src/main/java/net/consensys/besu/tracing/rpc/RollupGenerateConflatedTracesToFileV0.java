@@ -37,8 +37,8 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
-import tracers.SimpleExampleTracerFactory;
 import tracers.TracerFactory;
+import tracers.ZkTracerFactory;
 import tracing.FileTrace;
 import tracing.TraceRequestParams;
 
@@ -46,8 +46,8 @@ public class RollupGenerateConflatedTracesToFileV0 {
 
   private final BesuContext context;
   private final JsonFactory jsonFactory = new JsonFactory();
-  private final boolean isGZIPEnabled = false;
-  private final TracerFactory tracerFactory = new SimpleExampleTracerFactory();
+  private final boolean isGZIPEnabled = true;
+  private final TracerFactory tracerFactory = new ZkTracerFactory();
 
   public RollupGenerateConflatedTracesToFileV0(final BesuContext context) {
     this.context = context;
@@ -82,8 +82,11 @@ public class RollupGenerateConflatedTracesToFileV0 {
     final OutputStream outputStream = createOutputStream(file);
     try (JsonGenerator jsonGenerator =
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
+      jsonGenerator.useDefaultPrettyPrinter();
+      jsonGenerator.writeStartArray();
       traceService.traceBlock(
           block.getBlockHeader().getNumber(), tracerFactory.create(jsonGenerator));
+      jsonGenerator.writeEndArray();
       return file.getAbsolutePath();
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -118,7 +121,8 @@ public class RollupGenerateConflatedTracesToFileV0 {
     Path path = Paths.get(traceDir);
     if (!Files.isDirectory(path) && !path.toFile().mkdirs()) {
       throw new RuntimeException(
-          String.format("Trace directory '%s' does not exist and could not be made.", traceDir));
+          String.format(
+              "Trace directory '%s' does not exist and could not be made.", path.toAbsolutePath()));
     }
 
     return path.resolve(
