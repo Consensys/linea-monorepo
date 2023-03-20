@@ -12,7 +12,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package tracing;
+package net.consensys.besu.tracing;
+
+import net.consensys.zktracer.ZkTracer;
 
 import java.security.InvalidParameterException;
 
@@ -63,6 +65,6 @@ public class TraceRequestParams {
   }
 
   private static String getTracerRuntime() {
-    return "1.0";
+    return ZkTracer.class.getPackage().getSpecificationVersion();
   }
 }

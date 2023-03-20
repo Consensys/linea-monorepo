@@ -1,55 +1,48 @@
-# Besu Tracing Plugin
+# Besu zkBesu-tracer Plugin
 
-Tracing plugin for Besu
+A zk-evm tracing implementation for [Hyperledger Besu](https://github.com/hyperledger/besu) based on an [existing implementation in Go](https://github.com/ConsenSys/zk-evm/).
 
-* Hyperledger Besu Docs https://besu.hyperledger.org
-* Hyperledger Besu repo https://github.com/hyperledger/besu/
-
-### Services Used
-- **RpcEndpointService**
-    * To add a custom RPC endpoint
-
-### Plugin Lifecycle
-- **Register**
-    * Add the RPC method
-- **Start**
-    * Connect to the Besu events
-- **Stop**
-    * Disconnect from the Besu events
-
-## Build Instructions
-
-### Install Prerequisites
+## Prerequisites
 
 * Java 17
-
-## To Execute the Demo
-
-Build the plugin jar
 ```
-./gradlew build
+brew install openjdk@17
+```
+* Install Go
+```
+brew install go
+```
+* Install Rust
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Use local git executable to fetch from repos (needed for private repos)
+echo "net.git-fetch-with-cli=true" >> .cargo/config.toml
+```
+* Install Corset
+```
+```cargo install --git ssh://git@github.com/ConsenSys/corset
+
+* Clone zk-geth & compile zkevm.bin
+```
+git clone git@github.com:ConsenSys/zk-geth.git --recursive
+
+cd zk-geth/zk-evm
+make zkevm.bin 
+```
+* Set environment with path to zkevm.bin
+```
+export ZK_EVM_BIN=PATH_TO_ZK_GETH/zk-evm/zkevm.bin
 ```
 
-Install the plugin into `$BESU_HOME`
-
+## Run tests
 ```
-mkdir $BESU_HOME/plugins
-cp build/libs/*.jar $BESU_HOME/plugins
+./gradlew test
 ```
 
-Enable the additional RPC API group (unless using an existing one)
-eg if namespace = "tests", add "TESTS" to the rpc-http-api group:
+## Debugging traces
 
-`rpc-http-api=["ADMIN","ETH","NET","WEB3","PERM","DEBUG","MINER","EEA","PRIV","TXPOOL","TRACE","TESTS"]`
-
-Run the Besu node 
+JSON files can be debugged with the following command:
 ```
-$BESU_HOME/bin/besu 
+corset check -T JSON_FILE -v $ZK_EVM_BIN
 ```
-
-Test with curl commands eg
-
-`curl -X POST -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"tests_setValue","params":["bob"],"id":53}' http://localhost:8545`
-
-`curl -X POST -H 'Content-Type: application/json' --data '{"jsonrpc":"2.0","method":"tests_getValue","params":[],"id":53}' http://localhost:8545`
-
