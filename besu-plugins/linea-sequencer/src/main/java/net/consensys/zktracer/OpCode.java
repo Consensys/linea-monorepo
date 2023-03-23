@@ -22,7 +22,10 @@ public enum OpCode {
   // shf
   SAR(0x1d),
   SHL(0x1b),
-  SHR(0x1c);
+  SHR(0x1c),
+  // add
+  ADD(0x01),
+  ADDMOD(0x08);
 
   public final long value;
 
