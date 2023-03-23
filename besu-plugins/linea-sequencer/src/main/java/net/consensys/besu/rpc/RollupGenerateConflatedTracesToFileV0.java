@@ -17,7 +17,6 @@ package net.consensys.besu.rpc;
 import static net.consensys.besu.tracing.TraceRequestParams.createTraceParams;
 
 import net.consensys.besu.tracing.FileTrace;
-import net.consensys.besu.tracing.OperationTracerPluginWrapper;
 import net.consensys.besu.tracing.TraceRequestParams;
 
 import java.io.File;
@@ -90,7 +89,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
       OperationTracer tracer = new ZkTracer(builder);
 
       traceService.traceBlock(
-          block.getBlockHeader().getNumber(), OperationTracerPluginWrapper.create(tracer));
+          block.getBlockHeader().getNumber(), tracer);
 
       jsonGenerator.writeObject(builder.build().toJson());
 
