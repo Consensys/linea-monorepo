@@ -70,7 +70,7 @@ public class CorsetValidator {
     }
 
     if (whichCorsetProcess.exitValue() != 0) {
-      LOG.error("Can't find corset executable");
+      LOG.error("Can't run corset executable with path: " + whichCorsetProcessOutput);
       throw new RuntimeException();
     }
 
