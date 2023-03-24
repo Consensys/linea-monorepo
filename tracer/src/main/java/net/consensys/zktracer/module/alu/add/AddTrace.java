@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
+@SuppressWarnings("unused")
 public record AddTrace (@JsonProperty("Trace") AddTrace.Trace trace, @JsonProperty("Stamp") int stamp) {
     @JsonPropertyOrder({
             "ACC_1",
@@ -24,8 +25,9 @@ public record AddTrace (@JsonProperty("Trace") AddTrace.Trace trace, @JsonProper
             "OVERFLOW",
             "RES_HI",
             "RES_LO",
-            "STAMP" // SHIFT_STAMP - SHOULD THIS BE ADD_STAMP
+            "ADD_STAMP"
             })
+    @SuppressWarnings("unused")
     public record Trace(
             @JsonProperty("ACC_1") List<BigInteger> ACC_1,
             @JsonProperty("ACC_2") List<BigInteger> ACC_2,
@@ -40,7 +42,7 @@ public record AddTrace (@JsonProperty("Trace") AddTrace.Trace trace, @JsonProper
             @JsonProperty("OVERFLOW") List<Boolean> OVERFLOW,
             @JsonProperty("RES_HI") List<BigInteger> RES_HI,
             @JsonProperty("RES_LO") List<BigInteger> RES_LO,
-            @JsonProperty("STAMP") List<Integer> STAMP) {
+            @JsonProperty("ADD_STAMP") List<Integer> ADD_STAMP) {
 
         public static class Builder {
             private final List<BigInteger> acc1 = new ArrayList<>();
