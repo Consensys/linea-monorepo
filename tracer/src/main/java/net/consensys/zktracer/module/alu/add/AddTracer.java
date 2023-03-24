@@ -1,10 +1,9 @@
 package net.consensys.zktracer.module.alu.add;
 
 import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.bytes.Bytes16;
 import net.consensys.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.plugin.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 import java.util.List;
 
@@ -20,8 +19,9 @@ public class AddTracer implements ModuleTracer {
          return List.of(OpCode.ADD, OpCode.ADDMOD);
     }
 
+    @SuppressWarnings({"UnusedVariable"})
     @Override
-    public Object trace(final MessageFrame frame) {
+    public Object trace(MessageFrame frame) {
         final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
         final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
