@@ -26,6 +26,7 @@ public class Shifter {
       case SHR -> value.shiftRight(shiftAmount);
       case SHL -> value.shiftLeft(shiftAmount);
       case SAR -> sarOperation(value, shiftAmount);
+      case ADD,ADDMOD -> Bytes32.ZERO;
     };
   }
 
