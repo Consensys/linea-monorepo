@@ -1,11 +1,15 @@
 package net.consensys.zktracer.module.alu.add;
 
+import com.google.common.math.BigIntegerMath;
 import net.consensys.zktracer.OpCode;
 import net.consensys.zktracer.bytes.Bytes16;
+import net.consensys.zktracer.bytes.UnsignedByte;
 import net.consensys.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
+import java.math.BigInteger;
 import java.util.List;
 
 public class AddTracer implements ModuleTracer {
@@ -19,7 +23,7 @@ public class AddTracer implements ModuleTracer {
 
     @Override
     public List<OpCode> supportedOpCodes() {
-         return List.of(OpCode.ADD, OpCode.ADDMOD);
+         return List.of(OpCode.ADD, OpCode.SUB);
     }
 
     @SuppressWarnings({"UnusedVariable"})
@@ -35,14 +39,82 @@ public class AddTracer implements ModuleTracer {
         final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
         final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-        final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+        boolean overflowHi = false;
+        boolean overflowLo;
 
+        final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
 
         final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
         stamp++;
+        for (int i = 0; i < 16; i++) {
 
+            UInt256 res = UInt256.ZERO;
+            UInt256 arg1Int = UInt256.fromBytes(arg1);
+            UInt256 arg2Int = UInt256.fromBytes(arg2);
+            BigInteger arg1BigInt = arg1Int.toBigInteger();
+            BigInteger arg2BigInt = arg2Int.toBigInteger();
+            BigInteger resultBigInt;
+
+            if (opCode == OpCode.ADD) {
+                resultBigInt = arg1BigInt.add(arg2BigInt);
+                if (resultBigInt.compareTo(UInt256.MAX_VALUE.toBigInteger()) > 0) {
+                    overflowHi = true;
+                }
+            } else if (opCode == OpCode.SUB) {
+                resultBigInt = arg1BigInt.subtract(arg2BigInt); // TODO this isn't doing anything
+                if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(BigInteger.ZERO) < 0) {
+                    overflowHi = true;
+                }
+            }
+
+            final Bytes16 resHi = Bytes16.wrap(res.slice(0, 16));
+            final Bytes16 resLo = Bytes16.wrap(res.slice(16));
+
+            // check if the result is greater than 2^128
+            final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
+            if (opCode == OpCode.ADD) {
+                BigInteger addResult = arg1Lo.toBigInteger().add(arg2Lo.toBigInteger());
+                overflowLo = (addResult.compareTo(twoToThe128) >= 0);
+            } else {
+                BigInteger addResult = resLo.toBigInteger().add(arg2Lo.toBigInteger());
+                overflowLo = (addResult.compareTo(twoToThe128) >= 0);
+            }
+
+
+            builder
+                    .appendAcc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
+                    .appendAcc2(resLo.slice(0, 1 + i).toUnsignedBigInteger())
+                    .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
+                    .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
+                    .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
+                    .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
+
+            builder
+                    .appendByte1(UnsignedByte.of(resHi.get(i)))
+                    .appendByte2(UnsignedByte.of(resLo.get(i)));
+
+
+            builder.appendCounter(i); // TODO not sure about this one - shifter has it a bit different but it also has `bits` which ADD doesn't have
+
+            builder
+                    .appendInst(UnsignedByte.of(opCode.value));
+
+            boolean overflow = overflowBit(i, overflowHi, overflowLo);
+            builder.appendOverflow(overflow);
+
+            // res HiLo
+            builder
+                    .appendResHi(resHi.toUnsignedBigInteger())
+                    .appendResLo(resLo.toUnsignedBigInteger());
+        }
         builder.setStamp(stamp);
         return builder.build();
+    }
+
+    private boolean overflowBit(final int counter, final boolean overflowHi, final boolean overflowLo) {
+        if (counter == 14) return overflowHi;
+        if (counter == 15) return overflowLo;
+        return false;
     }
 }

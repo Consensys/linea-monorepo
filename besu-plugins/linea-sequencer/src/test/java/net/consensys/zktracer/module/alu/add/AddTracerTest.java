@@ -90,6 +90,6 @@ class AddTracerTest {
     public static Stream<Arguments> provideAddOperators() {
     return Stream.of(
         Arguments.of(Named.of("ADD", (int) OpCode.ADD.value)),
-        Arguments.of(Named.of("ADDMOD", (int) OpCode.ADDMOD.value)));
+        Arguments.of(Named.of("SUB", (int) OpCode.SUB.value)));
   }
 }
