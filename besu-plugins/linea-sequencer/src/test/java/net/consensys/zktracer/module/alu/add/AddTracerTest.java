@@ -42,10 +42,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AddTracerTest {
-//  private static final Logger LOG = LoggerFactory.getLogger(AddTracerTest.class);
-//
-//  private static final Random rand = new Random();
-//  private static final int TEST_REPETITIONS = 4;
+  private static final Logger LOG = LoggerFactory.getLogger(AddTracerTest.class);
+
+  private static final Random rand = new Random();
+  private static final int TEST_REPETITIONS = 4;
 
   private ZkTracer zkTracer;
   private ZkTraceBuilder zkTraceBuilder;
@@ -74,6 +74,21 @@ class AddTracerTest {
     assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("provideRandomAddArguments")
+  void testRandomAdd(final Bytes32[] payload) {
+    LOG.info(
+            "addArg1: " + payload[0].toShortHexString() + ", addArg2: " + payload[1].toShortHexString());
+    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
+
+    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
+    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
+
+    zkTracer.tracePreExecution(mockFrame);
+
+    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  }
+
   @Test
   void testTmp() {
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
@@ -91,5 +106,33 @@ class AddTracerTest {
     return Stream.of(
         Arguments.of(Named.of("ADD", (int) OpCode.ADD.value)),
         Arguments.of(Named.of("SUB", (int) OpCode.SUB.value)));
+  }
+
+
+  public static Stream<Arguments> provideRandomAddArguments() {
+    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
+
+    for (int i = 0; i < TEST_REPETITIONS; i++) {
+
+      final byte[] randomBytes1 = new byte[32];
+      rand.nextBytes(randomBytes1);
+      final byte[] randomBytes2 = new byte[32];
+      rand.nextBytes(randomBytes2);
+
+      Bytes32[] payload = new Bytes32[2];
+      payload[0] = Bytes32.wrap(randomBytes1);
+      payload[1] = Bytes32.wrap(randomBytes2);
+
+      arguments[i] =
+              Arguments.of(
+                      Named.of(
+                              "addArg1: "
+                                      + payload[0].toHexString()
+                                      + ", addArg2: "
+                                      + payload[1].toHexString(),
+                              payload));
+    }
+
+    return Stream.of(arguments);
   }
 }
