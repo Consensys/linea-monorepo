@@ -30,4 +30,28 @@ class AdderTest {
         Bytes32 actual = Adder.addSub(OpCode.ADD, randomBytes, Bytes32.ZERO);
         assertThat(actual).isEqualTo(randomBytes);
     }
+    @Test
+    void maxSubMax_isZero() {
+        byte b;
+        b = 'f';
+        Bytes32 max = Bytes32.repeat(b);
+        Bytes32 actual = Adder.addSub(OpCode.SUB, max, max);
+        assertThat(actual).isEqualTo(Bytes32.ZERO);
+    }
+    @Test
+    void maxSubZero_isMax() {
+        byte b;
+        b = 'f';
+        Bytes32 max = Bytes32.repeat(b);
+        Bytes32 actual = Adder.addSub(OpCode.SUB, max, Bytes32.ZERO);
+        assertThat(actual).isEqualTo(max);
+    }
+    @Test
+    void overflowDoesNotError() {
+        byte b;
+        b = '9';
+        Bytes32 max = Bytes32.repeat(b);
+        Bytes32 actual = Adder.addSub(OpCode.ADD, max, max);
+        assertThat(actual).isEqualTo(max);
+    }
 }
