@@ -26,11 +26,23 @@ public class Adder {
 
   public static Bytes32 addSub(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
     LOG.info("adding " + value + " " + opCode.name() + " " + value2);
-    return switch (opCode) {
-      case ADD -> Bytes32.leftPad(Bytes.of(value.toBigInteger().add(value2.toBigInteger()).toByteArray()));
-      case SUB -> Bytes32.leftPad(Bytes.of(value.toBigInteger().subtract(value2.toBigInteger()).toByteArray()));
-      default -> Bytes32.ZERO; // TODO what should happen here
-    };
+    final BigInteger res = x(opCode, value, value2);
+    // ensure result is correct length
+    final Bytes resBytes = Bytes.of(res.toByteArray());
+    if (resBytes.size() > 32 ) {
+      return Bytes32.wrap(resBytes, resBytes.size() - 32);
+    }
+    return Bytes32.leftPad(Bytes.of(res.toByteArray()));
+  }
+
+  private static BigInteger x(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
+    {
+      return switch (opCode) {
+        case ADD -> value.toBigInteger().add(value2.toBigInteger());
+        case SUB -> value.toBigInteger().subtract(value2.toBigInteger());
+        default -> BigInteger.ZERO; // TODO what should happen here
+      };
+    }
   }
 
 }
