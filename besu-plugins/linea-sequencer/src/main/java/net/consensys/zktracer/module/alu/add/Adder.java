@@ -14,15 +14,22 @@ package net.consensys.zktracer.module.alu.add;
  * SPDX-License-Identifier: Apache-2.0
  */
 import net.consensys.zktracer.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.math.BigInteger;
 
 public class Adder {
+  private static final Logger LOG = LoggerFactory.getLogger(Adder.class);
 
   public static Bytes32 addSub(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
+    LOG.info("adding " + value + " " + opCode.name() + " " + value2);
     return switch (opCode) {
-      case ADD -> Bytes32.wrap(value.toBigInteger().add(value2.toBigInteger()).toByteArray());
-      case SUB -> Bytes32.wrap(value.toBigInteger().subtract(value2.toBigInteger()).toByteArray());
-      default -> Bytes32.ZERO;
+      case ADD -> Bytes32.leftPad(Bytes.of(value.toBigInteger().add(value2.toBigInteger()).toByteArray()));
+      case SUB -> Bytes32.leftPad(Bytes.of(value.toBigInteger().subtract(value2.toBigInteger()).toByteArray()));
+      default -> Bytes32.ZERO; // TODO what should happen here
     };
   }
 
