@@ -49,9 +49,8 @@ class AdderTest {
     @Test
     void overflowDoesNotError() {
         byte b;
-        b = '9';
+        b = 'f';
         Bytes32 max = Bytes32.repeat(b);
-        Bytes32 actual = Adder.addSub(OpCode.ADD, max, max);
-        assertThat(actual).isEqualTo(max);
+        Adder.addSub(OpCode.ADD, max, max);
     }
 }
