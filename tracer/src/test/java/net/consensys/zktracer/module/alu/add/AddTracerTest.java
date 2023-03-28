@@ -20,6 +20,7 @@ import net.consensys.zktracer.ZkTraceBuilder;
 import net.consensys.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
@@ -89,6 +90,21 @@ class AddTracerTest {
     assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("provideNonRandomAddArguments")
+  void testNonRandomAdd(final Bytes32[] payload) {
+    LOG.info(
+            "addArg1: " + payload[0].toShortHexString() + ", addArg2: " + payload[1].toShortHexString());
+    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
+
+    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
+    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
+
+    zkTracer.tracePreExecution(mockFrame);
+
+    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  }
+
   @Test
   void testTmp() {
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
@@ -108,6 +124,25 @@ class AddTracerTest {
         Arguments.of(Named.of("SUB", (int) OpCode.SUB.value)));
   }
 
+  public static Stream<Arguments> provideNonRandomAddArguments() {
+    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
+
+    for (int i = 0; i < TEST_REPETITIONS; i++) {
+      Bytes32[] payload = new Bytes32[2];
+      payload[0] = Bytes32.leftPad(Bytes.of(i));
+      payload[1] = Bytes32.leftPad(Bytes.of(i+1));
+      arguments[i] =
+              Arguments.of(
+                      Named.of(
+                              "addArg1: "
+                                      + payload[0]
+                                      + ", addArg2: "
+                                      + payload[1],
+                              payload));
+    }
+
+    return Stream.of(arguments);
+  }
 
   public static Stream<Arguments> provideRandomAddArguments() {
     final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
