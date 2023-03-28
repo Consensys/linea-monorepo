@@ -58,6 +58,9 @@ public class AddTracer implements ModuleTracer {
         final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
         final Res res = Res.create(opCode, arg1, arg2);
 
+        final Bytes16 resHi = res.getResHi();
+        final Bytes16 resLo = res.getResLo();
+
         final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
         stamp++;
@@ -79,9 +82,6 @@ public class AddTracer implements ModuleTracer {
                     overflowHi = true;
                 }
             }
-
-            final Bytes16 resHi = res.resHi;
-            final Bytes16 resLo = res.resLo;
 
             // check if the result is greater than 2^128
             final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
@@ -107,7 +107,7 @@ public class AddTracer implements ModuleTracer {
                     .appendByte2(UnsignedByte.of(resLo.get(i)));
 
 
-            builder.appendCounter(i); // TODO not sure about this one - shifter has it a bit different but it also has `bits` which ADD doesn't have
+            builder.appendCounter(i);
 
             builder
                     .appendInst(UnsignedByte.of(opCode.value));
@@ -127,6 +127,6 @@ public class AddTracer implements ModuleTracer {
     private boolean overflowBit(final int counter, final boolean overflowHi, final boolean overflowLo) {
         if (counter == 14) return overflowHi;
         if (counter == 15) return overflowLo;
-        return false;
+        return false; // default bool value in go
     }
 }
