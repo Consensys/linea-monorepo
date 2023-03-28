@@ -36,7 +36,7 @@ public class Res {
   }
 
   public static Res create(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
-    final Bytes32 result = Adder.addSub(opCode, arg2, arg1);
+    final Bytes32 result = Adder.addSub(opCode, arg1, arg2);
 
     return new Res(Bytes16.wrap(result.slice(0, 16)), Bytes16.wrap(result.slice(16)));
   }
