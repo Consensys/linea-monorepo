@@ -119,6 +119,7 @@ public class AddTracer implements ModuleTracer {
             builder
                     .appendResHi(resHi.toUnsignedBigInteger())
                     .appendResLo(resLo.toUnsignedBigInteger());
+            builder.appendStamp(stamp);
         }
         builder.setStamp(stamp);
         return builder.build();
