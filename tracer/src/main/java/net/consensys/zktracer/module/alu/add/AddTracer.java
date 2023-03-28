@@ -68,8 +68,8 @@ public class AddTracer implements ModuleTracer {
 
             UInt256 arg1Int = UInt256.fromBytes(arg1);
             UInt256 arg2Int = UInt256.fromBytes(arg2);
-            BigInteger arg1BigInt = arg1Int.toBigInteger();
-            BigInteger arg2BigInt = arg2Int.toBigInteger();
+            BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
+            BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
             BigInteger resultBigInt;
 
             if (opCode == OpCode.ADD) {
@@ -86,10 +86,10 @@ public class AddTracer implements ModuleTracer {
             // check if the result is greater than 2^128
             final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
             if (opCode == OpCode.ADD) {
-                BigInteger addResult = arg1Lo.toBigInteger().add(arg2Lo.toBigInteger());
+                BigInteger addResult = arg1Lo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
                 overflowLo = (addResult.compareTo(twoToThe128) >= 0);
             } else {
-                BigInteger addResult = resLo.toBigInteger().add(arg2Lo.toBigInteger());
+                BigInteger addResult = resLo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
                 overflowLo = (addResult.compareTo(twoToThe128) >= 0);
             }
 

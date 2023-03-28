@@ -67,8 +67,8 @@ class AddTracerTest {
   void testFailingBlockchainBlock(final int opCodeValue) {
     when(mockOperation.getOpcode()).thenReturn(opCodeValue);
 
-    when(mockFrame.getStackItem(0)).thenReturn(Bytes32.rightPad(Bytes.fromHexString("0x08")));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexString("0x01"));
+    when(mockFrame.getStackItem(0)).thenReturn(Bytes32.rightPad(Bytes.fromHexString("0x80")));
+    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.leftPad(Bytes.fromHexString("0x01")));
 
     zkTracer.tracePreExecution(mockFrame);
 
