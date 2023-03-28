@@ -24,9 +24,9 @@ import java.math.BigInteger;
 public class Adder {
   private static final Logger LOG = LoggerFactory.getLogger(Adder.class);
 
-  public static Bytes32 addSub(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
-    LOG.info("adding " + value + " " + opCode.name() + " " + value2);
-    final BigInteger res = x(opCode, value, value2);
+  public static Bytes32 addSub(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
+    LOG.info("adding " + arg1 + " " + opCode.name() + " " + arg2);
+    final BigInteger res = x(opCode, arg1, arg2);
     // ensure result is correct length
     final Bytes resBytes = Bytes.of(res.toByteArray());
     if (resBytes.size() > 32 ) {
