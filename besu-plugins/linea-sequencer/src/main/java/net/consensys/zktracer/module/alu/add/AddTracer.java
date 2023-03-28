@@ -48,7 +48,7 @@ public class AddTracer implements ModuleTracer {
 
         // TODO duplicated code
         final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
-        Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
+        final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
         final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
         final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
