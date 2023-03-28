@@ -25,8 +25,7 @@ public enum OpCode {
   SHR(0x1c),
   // add
   ADD(0x01),
-  SUB(0x03),
-  ADDMOD(0x08);
+  SUB(0x03);
 
   public final long value;
 
