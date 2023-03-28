@@ -48,7 +48,7 @@ public class AddTracer implements ModuleTracer {
 
         // TODO duplicated code
         final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
-        final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
+        Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
         final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
         final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
@@ -56,13 +56,13 @@ public class AddTracer implements ModuleTracer {
         boolean overflowLo;
 
         final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+        final Res res = Res.create(opCode, arg1, arg2);
 
         final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
         stamp++;
         for (int i = 0; i < 16; i++) {
 
-            UInt256 res = UInt256.ZERO;
             UInt256 arg1Int = UInt256.fromBytes(arg1);
             UInt256 arg2Int = UInt256.fromBytes(arg2);
             BigInteger arg1BigInt = arg1Int.toBigInteger();
@@ -75,14 +75,13 @@ public class AddTracer implements ModuleTracer {
                     overflowHi = true;
                 }
             } else if (opCode == OpCode.SUB) {
-                resultBigInt = arg1BigInt.subtract(arg2BigInt); // TODO this isn't doing anything
-                if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(BigInteger.ZERO) < 0) {
+                if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(UInt256.MAX_VALUE.toBigInteger()) > 0) {
                     overflowHi = true;
                 }
             }
 
-            final Bytes16 resHi = Bytes16.wrap(res.slice(0, 16));
-            final Bytes16 resLo = Bytes16.wrap(res.slice(16));
+            final Bytes16 resHi = res.resHi;
+            final Bytes16 resLo = res.resLo;
 
             // check if the result is greater than 2^128
             final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
