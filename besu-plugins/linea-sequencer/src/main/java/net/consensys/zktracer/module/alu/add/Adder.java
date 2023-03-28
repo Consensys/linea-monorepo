@@ -38,8 +38,8 @@ public class Adder {
   private static BigInteger x(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
     {
       return switch (opCode) {
-        case ADD -> value.toBigInteger().add(value2.toBigInteger());
-        case SUB -> value.toBigInteger().subtract(value2.toBigInteger());
+        case ADD -> value.toUnsignedBigInteger().add(value2.toUnsignedBigInteger());
+        case SUB -> value.toUnsignedBigInteger().subtract(value2.toUnsignedBigInteger());
         default -> BigInteger.ZERO; // TODO what should happen here
       };
     }
