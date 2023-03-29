@@ -13,6 +13,8 @@ package net.consensys.zktracer.module.shf;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+import java.security.InvalidParameterException;
+
 import net.consensys.zktracer.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -26,6 +28,7 @@ public class Shifter {
       case SHR -> value.shiftRight(shiftAmount);
       case SHL -> value.shiftLeft(shiftAmount);
       case SAR -> sarOperation(value, shiftAmount);
+      default -> throw new InvalidParameterException("Invalid shift opcode");
     };
   }
 
