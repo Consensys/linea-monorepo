@@ -26,124 +26,136 @@ import java.util.List;
 @SuppressWarnings("unused")
 public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp") int stamp) {
   @JsonPropertyOrder({
-          "MUL_STAMP",
-          "COUNTER",
-          "OLI", // "ONE_LINE_INSTRUCTION",
-          "TINY_BASE",
-          "TINY_EXPONENT",
-          "RESULT_VANISHES",
-          "INST", // INSTRUCTION
+          "ACC_A_0",
+          "ACC_A_1",
+          "ACC_A_2",
+          "ACC_A_3",
+
+          "ACC_B_0",
+          "ACC_B_1",
+          "ACC_B_2",
+          "ACC_B_3",
+
+          "ACC_C_0",
+          "ACC_C_1",
+          "ACC_C_2",
+          "ACC_C_3",
+
+          "ACC_H_0",
+          "ACC_H_1",
+          "ACC_H_2",
+          "ACC_H_3",
+
           "ARG_1_HI",
           "ARG_1_LO",
           "ARG_2_HI",
           "ARG_2_LO",
+
+          "BITS",
+          "BIT_NUM",
+
+          "BYTE_A_0",
+          "BYTE_A_1",
+          "BYTE_A_2",
+          "BYTE_A_3",
+
+          "BYTE_B_0",
+          "BYTE_B_1",
+          "BYTE_B_2",
+          "BYTE_B_3",
+
+          "BYTE_C_0",
+          "BYTE_C_1",
+          "BYTE_C_2",
+          "BYTE_C_3",
+
+          "BYTE_H_0",
+          "BYTE_H_1",
+          "BYTE_H_2",
+          "BYTE_H_3",
+
+          "COUNTER",
+
+          "EXPONENT_BIT",
+          "EXPONENT_BIT_ACCUMULATOR",
+          "EXPONENT_BIT_SOURCE",
+
+          "INST", // INSTRUCTION
+          "MUL_STAMP",
+          "OLI", // "ONE_LINE_INSTRUCTION",
+          "RESULT_VANISHES",
+
           "RES_HI",
           "RES_LO",
-    "BITS",
-          "BYTE_A_3",
-          "BYTE_A_2",
-          "BYTE_A_1",
-          "BYTE_A_0",
 
-          "ACC_A_A_3",
-          "ACC_A_2",
-          "ACC_A_1",
-          "ACC_A_0",
-
-          "BYTE_B_3",
-          "BYTE_B_2",
-          "BYTE_B_1",
-          "BYTE_B_0",
-
-          "ACC_B_3",
-          "ACC_B_2",
-          "ACC_B_1",
-          "ACC_B_0",
-
-          "BYTE_C_3",
-          "BYTE_C_2",
-          "BYTE_C_1",
-          "BYTE_C_0",
-
-          "ACC_C_3",
-          "ACC_C_2",
-          "ACC_C_1",
-          "ACC_C_0",
-
-          "BYTE_H_3",
-          "BYTE_H_2",
-          "BYTE_H_1",
-          "BYTE_H_0",
-
-          "ACC_H_3",
-          "ACC_H_2",
-          "ACC_H_1",
-          "ACC_H_0",
-
-
-    "EXPONENT_BIT",
-    "EXPONENT_BIT_ACCUMULATOR",
-    "EXPONENT_BIT_SOURCE",
-    "SQUARE_AND_MULTIPLY",
-    "BIT_NUM",
+          "SQUARE_AND_MULTIPLY",
+          "TINY_BASE",
+          "TINY_EXPONENT",
   })
   @SuppressWarnings("unused")
   public record Trace(
-          @JsonProperty("MUL_STAMP") List<Integer> MUL_STAMP,
-          @JsonProperty("COUNTER") List<Integer> COUNTER,
-          @JsonProperty("ONE_LINE_INSTRUCTION") List<Boolean> ONE_LINE_INSTRUCTION,
-          @JsonProperty("TINY_BASE") List<Boolean> TINY_BASE,
-          @JsonProperty("TINY_EXPONENT") List<Boolean> TINY_EXPONENT,
-          @JsonProperty("RESULT_VANISHES") List<Boolean> RESULT_VANISHES,
+          @JsonProperty("ACC_A_0") List<BigInteger> ACC_A_0,
+          @JsonProperty("ACC_A_1") List<BigInteger> ACC_A_1,
+          @JsonProperty("ACC_A_2") List<BigInteger> ACC_A_2,
+          @JsonProperty("ACC_A_3") List<BigInteger> ACC_A_3,
+          @JsonProperty("ACC_B_0") List<BigInteger> ACC_B_0,
+          @JsonProperty("ACC_B_1") List<BigInteger> ACC_B_1,
+          @JsonProperty("ACC_B_2") List<BigInteger> ACC_B_2,
+          @JsonProperty("ACC_B_3") List<BigInteger> ACC_B_3,
+          @JsonProperty("ACC_C_0") List<BigInteger> ACC_C_0,
+          @JsonProperty("ACC_C_1") List<BigInteger> ACC_C_1,
+          @JsonProperty("ACC_C_2") List<BigInteger> ACC_C_2,
+          @JsonProperty("ACC_C_3") List<BigInteger> ACC_C_3,
+          @JsonProperty("ACC_H_0") List<BigInteger> ACC_H_0,
+          @JsonProperty("ACC_H_1") List<BigInteger> ACC_H_1,
+          @JsonProperty("ACC_H_2") List<BigInteger> ACC_H_2,
+          @JsonProperty("ACC_H_3") List<BigInteger> ACC_H_3,
 
-          @JsonProperty("INST") List<UnsignedByte> INST,
           @JsonProperty("ARG_1_HI") List<BigInteger> ARG_1_HI,
           @JsonProperty("ARG_1_LO") List<BigInteger> ARG_1_LO,
           @JsonProperty("ARG_2_HI") List<BigInteger> ARG_2_HI,
           @JsonProperty("ARG_2_LO") List<BigInteger> ARG_2_LO,
+          @JsonProperty("BITS") List<Boolean> BITS,
+          @JsonProperty("BIT_NUM") List<Integer> BIT_NUM,
+
+          @JsonProperty("BYTE_A_0") List<UnsignedByte> BYTE_A_0,
+          @JsonProperty("BYTE_A_1") List<UnsignedByte> BYTE_A_1,
+          @JsonProperty("BYTE_A_2") List<UnsignedByte> BYTE_A_2,
+          @JsonProperty("BYTE_A_3") List<UnsignedByte> BYTE_A_3,
+
+          @JsonProperty("BYTE_B_0") List<UnsignedByte> BYTE_B_0,
+          @JsonProperty("BYTE_B_1") List<UnsignedByte> BYTE_B_1,
+          @JsonProperty("BYTE_B_2") List<UnsignedByte> BYTE_B_2,
+          @JsonProperty("BYTE_B_3") List<UnsignedByte> BYTE_B_3,
+
+          @JsonProperty("BYTE_C_0") List<UnsignedByte> BYTE_C_0,
+          @JsonProperty("BYTE_C_1") List<UnsignedByte> BYTE_C_1,
+          @JsonProperty("BYTE_C_2") List<UnsignedByte> BYTE_C_2,
+          @JsonProperty("BYTE_C_3") List<UnsignedByte> BYTE_C_3,
+
+          @JsonProperty("BYTE_H_0") List<UnsignedByte> BYTE_H_0,
+          @JsonProperty("BYTE_H_1") List<UnsignedByte> BYTE_H_1,
+          @JsonProperty("BYTE_H_2") List<UnsignedByte> BYTE_H_2,
+          @JsonProperty("BYTE_H_3") List<UnsignedByte> BYTE_H_3,
+
+          @JsonProperty("COUNTER") List<Integer> COUNTER,
+          @JsonProperty("EXPONENT_BIT") List<Boolean> EXPONENT_BIT,
+          @JsonProperty("EXPONENT_BIT_ACCUMULATOR") List<UnsignedByte> EXPONENT_BIT_ACCUMULATOR,
+          @JsonProperty("EXPONENT_BIT_SOURCE") List<Boolean> EXPONENT_BIT_SOURCE,
+
+          @JsonProperty("INST") List<UnsignedByte> INST,
+
+          @JsonProperty("MUL_STAMP") List<Integer> MUL_STAMP,
+          @JsonProperty("ONE_LINE_INSTRUCTION") List<Boolean> ONE_LINE_INSTRUCTION,
+          @JsonProperty("RESULT_VANISHES") List<Boolean> RESULT_VANISHES,
           @JsonProperty("RES_HI") List<BigInteger> RES_HI,
           @JsonProperty("RES_LO") List<BigInteger> RES_LO,
-          @JsonProperty("BITS") List<Boolean> BITS,
-          @JsonProperty("BYTE_A_3") List<UnsignedByte> BYTE_A_3,
-          @JsonProperty("BYTE_A_2") List<UnsignedByte> BYTE_A_2,
-          @JsonProperty("BYTE_A_1") List<UnsignedByte> BYTE_A_1,
-          @JsonProperty("BYTE_A_0") List<UnsignedByte> BYTE_A_0,
-          @JsonProperty("ACC_A_3") List<BigInteger> ACC_A_3,
-      @JsonProperty("ACC_A_2") List<BigInteger> ACC_A_2,
-          @JsonProperty("ACC_A_1") List<BigInteger> ACC_A_1,
-      @JsonProperty("ACC_A_4") List<BigInteger> ACC_A_0,
-          @JsonProperty("BYTE_B_3") List<UnsignedByte> BYTE_B_3,
-          @JsonProperty("BYTE_B_2") List<UnsignedByte> BYTE_B_2,
-          @JsonProperty("BYTE_B_1") List<UnsignedByte> BYTE_B_1,
-          @JsonProperty("BYTE_B_0") List<UnsignedByte> BYTE_B_0,
-          @JsonProperty("ACC_B_3") List<BigInteger> ACC_B_3,
-          @JsonProperty("ACC_B_2") List<BigInteger> ACC_B_2,
-          @JsonProperty("ACC_B_1") List<BigInteger> ACC_B_1,
-          @JsonProperty("ACC_B_4") List<BigInteger> ACC_B_0,
-          @JsonProperty("BYTE_C_3") List<UnsignedByte> BYTE_C_3,
-          @JsonProperty("BYTE_C_2") List<UnsignedByte> BYTE_C_2,
-          @JsonProperty("BYTE_C_1") List<UnsignedByte> BYTE_C_1,
-          @JsonProperty("BYTE_C_0") List<UnsignedByte> BYTE_C_0,
-          @JsonProperty("ACC_C_3") List<BigInteger> ACC_C_3,
-          @JsonProperty("ACC_C_2") List<BigInteger> ACC_C_2,
-          @JsonProperty("ACC_C_1") List<BigInteger> ACC_C_1,
-          @JsonProperty("ACC_C_4") List<BigInteger> ACC_C_0,
-          @JsonProperty("BYTE_H_3") List<UnsignedByte> BYTE_H_3,
-          @JsonProperty("BYTE_H_2") List<UnsignedByte> BYTE_H_2,
-          @JsonProperty("BYTE_H_1") List<UnsignedByte> BYTE_H_1,
-          @JsonProperty("BYTE_H_0") List<UnsignedByte> BYTE_H_0,
-          @JsonProperty("ACC_H_3") List<BigInteger> ACC_H_3,
-          @JsonProperty("ACC_H_2") List<BigInteger> ACC_H_2,
-          @JsonProperty("ACC_H_1") List<BigInteger> ACC_H_1,
-          @JsonProperty("ACC_H_4") List<BigInteger> ACC_H_0,
-          @JsonProperty("EXPONENT_BIT") List<Boolean> EXPONENT_BIT,
-          @JsonProperty("EXPONENT_BIT_ACCUMULATOR") List<Boolean> EXPONENT_BIT_ACCUMULATOR,
-          @JsonProperty("EXPONENT_BIT_SOURCE") List<Boolean> EXPONENT_BIT_SOURCE,
           @JsonProperty("SQUARE_AND_MULTIPLY") List<Boolean> SQUARE_AND_MULTIPLY,
-          @JsonProperty("BIT_NUM") List<Integer> BIT_NUM) {
+          @JsonProperty("TINY_BASE") List<Boolean> TINY_BASE,
+          @JsonProperty("TINY_EXPONENT") List<Boolean> TINY_EXPONENT) {
 
     public static class Builder {
-      private final List<Integer> shiftStamp = new ArrayList<>();
+      private final List<Integer> mulStamp = new ArrayList<>();
       private final List<Integer> counter = new ArrayList<>();
       private final List<Boolean> oneLineInstruction = new ArrayList<>();
       private final List<Boolean> tinyBase = new ArrayList<>();
@@ -196,7 +208,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
 
       private final List<Boolean> exponentBit = new ArrayList<>();
       //	mul.Trace.PushLoBytes(EXPONENT_BIT_ACCUMULATOR.Name(), md.expAcc) // TODO: true ? risky :D
-      private final List<Boolean> exponentBitAccumulator = new ArrayList<>(); // PushLoBytes
+      private final List<UnsignedByte> exponentBitAccumulator = new ArrayList<>();
       private final List<Boolean> exponentBitSource = new ArrayList<>();
       private final List<Boolean> squareAndMultiply = new ArrayList<>();
       private final List<Integer> bitNum = new ArrayList<>();
@@ -429,8 +441,8 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendShiftStamp(final Integer b) {
-        shiftStamp.add(b);
+      public Builder appendStamp(final Integer b) {
+        mulStamp.add(b);
         return this;
       }
 
@@ -442,62 +454,65 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       public MulTrace build() {
         return new MulTrace(
             new Trace(
-                    shiftStamp,
-                counter,
-                oneLineInstruction,
-                tinyBase,
-                tinyExponent,
-                resultVanishes,
-                inst,
+                    accA0,
+                    accA1,
+                    accA2,
+                    accA3,
+                    accB0,
+                    accB1,
+                    accB2,
+                    accB3,
+                    accC0,
+                    accC1,
+                    accC2,
+                    accC3,
+                    accH0,
+                    accH1,
+                    accH2,
+                    accH3,
+
                     arg1Hi,
                     arg1Lo,
                     arg2Hi,
                     arg2Lo,
-                    resHi,
-                    resLo,
+
                     bits,
+                    bitNum,
 
-                    byteA3,
-                    byteA2,
-                    byteA1,
                     byteA0,
-                    accA3,
-                    accA2,
-                    accA1,
-                    accA0,
+                    byteA1,
+                    byteA2,
+                    byteA3,
 
-                    byteB3,
-                    byteB2,
-                    byteB1,
                     byteB0,
-                    accB3,
-                    accB2,
-                    accB1,
-                    accB0,
+                    byteB1,
+                    byteB2,
+                    byteB3,
 
-                    byteC3,
-                    byteC2,
-                    byteC1,
                     byteC0,
-                    accC3,
-                    accC2,
-                    accC1,
-                    accC0,
+                    byteC1,
+                    byteC2,
+                    byteC3,
 
-                    byteH3,
-                    byteH2,
-                    byteH1,
                     byteH0,
-                    accH3,
-                    accH2,
-                    accH1,
-                    accH0,
-                    
+                    byteH1,
+                    byteH2,
+                    byteH3,
+
+                    counter,
                     exponentBit,
                     exponentBitAccumulator,
                     exponentBitSource,
+
+                    inst,
+                    mulStamp,
+                    oneLineInstruction,
+                    resultVanishes,
+                    resHi,
+                    resLo,
                     squareAndMultiply,
-                    bitNum
+                    tinyBase,
+                    tinyExponent
                 ),
             stamp);
       }

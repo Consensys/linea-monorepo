@@ -20,12 +20,13 @@ import java.util.Map;
 import net.consensys.zktracer.OpCode;
 import net.consensys.zktracer.ZkTraceBuilder;
 import net.consensys.zktracer.module.ModuleTracer;
+import net.consensys.zktracer.module.alu.mul.MulTracer;
 import net.consensys.zktracer.module.shf.ShfTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 
 public class ZkTracer implements OperationTracer {
-  private final List<ModuleTracer> tracers = List.of(new ShfTracer());
+  private final List<ModuleTracer> tracers = List.of(new MulTracer(), new ShfTracer());
   private final Map<OpCode, List<ModuleTracer>> opCodeTracerMap = new HashMap<>();
 
   private final ZkTraceBuilder zkTraceBuilder;
