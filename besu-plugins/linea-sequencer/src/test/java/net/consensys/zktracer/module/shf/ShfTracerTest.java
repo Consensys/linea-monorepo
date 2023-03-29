@@ -17,16 +17,19 @@ package net.consensys.zktracer.module.shf;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.when;
 
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
+
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
+
 import net.consensys.zktracer.CorsetValidator;
 import net.consensys.zktracer.OpCode;
 import net.consensys.zktracer.ZkTraceBuilder;
 import net.consensys.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
@@ -55,7 +58,7 @@ class ShfTracerTest {
   @BeforeEach
   void setUp() {
     zkTraceBuilder = new ZkTraceBuilder();
-    zkTracer = new ZkTracer(zkTraceBuilder);
+    zkTracer = new ZkTracer(zkTraceBuilder, List.of(new ShfTracer()));
 
     when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
