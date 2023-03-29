@@ -19,6 +19,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum OpCode {
+  // mul
+  MUL(0x02),
+  EXP(0x0a),
   // shf
   SAR(0x1d),
   SHL(0x1b),
