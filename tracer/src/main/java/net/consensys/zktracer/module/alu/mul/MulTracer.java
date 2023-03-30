@@ -164,4 +164,18 @@ public class MulTracer implements ModuleTracer {
     }
     return Regime.IOTA;
   }
+
+  public int lineCount(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+
+
+    final UInt256 arg1Int = UInt256.fromBytes(arg1);
+    final UInt256 arg2Int = UInt256.fromBytes(arg2);
+    final BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
+    final BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
+
+    final boolean tinyBase = isTiny(arg1BigInt);
+    final boolean tinyExponent = isTiny(arg2BigInt);
+
+    return maxCt(isOneLineInstruction(tinyBase, tinyExponent));
+  }
 }
