@@ -76,7 +76,7 @@ class WcpTracerTest {
     traceOperation(SGT, arg1, arg2);
   }
 
-  public static Stream<Arguments> provideNonRandomAddArguments() {
+  public static Stream<Arguments> provideNonRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : new WcpTracer().supportedOpCodes()) {
       for (int i = 0; i <= TEST_REPETITIONS; i++) {
