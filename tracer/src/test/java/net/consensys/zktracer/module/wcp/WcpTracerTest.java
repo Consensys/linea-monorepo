@@ -58,7 +58,7 @@ class WcpTracerTest {
   }
 
   @ParameterizedTest()
-  @MethodSource("provideNonRandomAddArguments")
+  @MethodSource("provideNonRandomArguments")
   void testRandomWcp(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
     when(mockFrame.getStackItem(0)).thenReturn(arg1);
