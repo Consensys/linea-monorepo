@@ -34,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigInteger;
 import java.util.Random;
 import java.util.stream.Stream;
 
@@ -91,8 +90,23 @@ class MulTracerTest {
   }
 
   @ParameterizedTest(name = "{0}")
-  @MethodSource("provideNonRandomArguments")
-  void testNonRandomMul(final Bytes32[] payload) {
+  @MethodSource("provideNonRandomTinyArguments")
+  void testNonRandomTinyMul(final Bytes32[] payload) {
+    LOG.info(
+            "arg1: " + payload[0].toShortHexString() + ", arg2: " + payload[1].toShortHexString());
+    when(mockOperation.getOpcode()).thenReturn((int) OpCode.EXP.value);
+
+    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
+    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
+
+    zkTracer.tracePreExecution(mockFrame);
+
+    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("provideNonRandomNonTinyArguments")
+  void testNonRandomNonTinyMul(final Bytes32[] payload) {
     LOG.info(
             "arg1: " + payload[0].toShortHexString() + ", arg2: " + payload[1].toShortHexString());
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.EXP.value);
@@ -118,8 +132,27 @@ class MulTracerTest {
     assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
 
+  public static Stream<Arguments> provideNonRandomNonTinyArguments() {
+//    these values are used in Go module test
+//    0x8a, 0x48, 0xaa, 0x20, 0xe2, 0x00, 0xce, 0x3f, 0xee, 0x16, 0xb5, 0xdc, 0xde, 0xc5, 0xc4, 0xfa,
+//            0xff, 0x61, 0x3b, 0xc9, 0x14, 0xd4, 0x7c, 0xd6, 0xca, 0x69, 0x55, 0x3f, 0x8e, 0xb2, 0xb3, 0x77,
+//		byte(vm.PUSH32),
+//            0x59, 0xb6, 0x35, 0xfe, 0xc8, 0x94, 0xca, 0xa3, 0xed, 0x68, 0x17, 0xb1, 0xe6, 0x7b, 0x3c, 0xba,
+//            0xeb, 0x87, 0x57, 0xfd, 0x6c, 0x7b, 0x03, 0x11, 0x9b, 0x79, 0x53, 0x03, 0xb7, 0xcd, 0x72, 0xc1,
+    final Bytes32[] payload = new Bytes32[2];
+    payload[0] = Bytes32.fromHexString("0x8a48aa20e200ce3fee16b5dcdec5c4faff613bc914d47cd6ca69553f8eb2b377");
+    payload[1] = Bytes32.fromHexString("0x59b635fec894caa3ed6817b1e67b3cbaeb8757fd6c7b03119b795303b7cd72c1");
+    return Stream.of(
+              Arguments.of(
+                      Named.of(
+                              "arg1: "
+                                      + payload[0]
+                                      + ", arg2: "
+                                      + payload[1],
+                              payload)));
+  }
 
-  public static Stream<Arguments> provideNonRandomArguments() {
+  public static Stream<Arguments> provideNonRandomTinyArguments() {
     final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
 
     for (int i = 0; i < TEST_REPETITIONS; i++) {
