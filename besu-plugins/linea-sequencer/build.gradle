@@ -57,7 +57,7 @@ allprojects {
   }
   gradle.startParameter.taskNames = expandedTaskList.flatten()
 
-  group = 'net.consensys.besu.tracing.plugin'
+  group = 'net.consensys.linea.besu.plugin'
   version = rootProject.version
 
   jacoco {
@@ -77,7 +77,7 @@ allprojects {
   sourceCompatibility = 17
   targetCompatibility = 17
 
-  group 'net.consensys'
+  group 'net.consensys.linea'
   version '1.0.0-SNAPSHOT'
 
   repositories {
