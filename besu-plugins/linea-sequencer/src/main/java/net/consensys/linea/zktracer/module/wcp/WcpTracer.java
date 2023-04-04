@@ -12,15 +12,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.wcp;
+package net.consensys.linea.zktracer.module.wcp;
 
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 import java.util.List;
 
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.bytes.UnsignedByte;
-import net.consensys.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
 
 public class WcpTracer implements ModuleTracer {
