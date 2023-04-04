@@ -1,4 +1,4 @@
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.alu.add;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.module.module.alu.add.Adder;
