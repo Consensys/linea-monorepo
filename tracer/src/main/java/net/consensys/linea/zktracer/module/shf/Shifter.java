@@ -28,8 +28,7 @@ public class Shifter {
       case SHR -> value.shiftRight(shiftAmount);
       case SHL -> value.shiftLeft(shiftAmount);
       case SAR -> sarOperation(value, shiftAmount);
-      default -> throw new InvalidParameterException("Invalid shift opcode");
-    };
+      default -> Bytes32.ZERO;	    };
   }
 
   private static Bytes32 sarOperation(final Bytes32 value, final int shiftAmountInt) {
