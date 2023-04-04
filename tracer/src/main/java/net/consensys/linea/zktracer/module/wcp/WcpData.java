@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.wcp;
+package net.consensys.linea.zktracer.module.wcp;
 
 import java.math.BigInteger;
 import java.security.InvalidParameterException;
@@ -20,9 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.bytes.Bytes16;
-import net.consensys.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 

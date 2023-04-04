@@ -23,7 +23,7 @@ import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.module.alu.add.AddTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
-import net.consensys.zktracer.module.wcp.WcpTracer;
+import net.consensys.linea.zktracer.module.wcp.WcpTracer;
 
 public class ZkTracer implements OperationTracer {
   private final List<ModuleTracer> tracers;
