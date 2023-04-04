@@ -59,7 +59,7 @@ class WcpTracerTest {
   }
 
   @ParameterizedTest()
-  @MethodSource("provideNonRandomAddArguments")
+  @MethodSource("provideNonRandomArguments")
   void testRandomWcp(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
     when(mockFrame.getStackItem(0)).thenReturn(arg1);
@@ -77,7 +77,7 @@ class WcpTracerTest {
     traceOperation(SGT, arg1, arg2);
   }
 
-  public static Stream<Arguments> provideNonRandomAddArguments() {
+  public static Stream<Arguments> provideNonRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : new WcpTracer().supportedOpCodes()) {
       for (int i = 0; i <= TEST_REPETITIONS; i++) {
