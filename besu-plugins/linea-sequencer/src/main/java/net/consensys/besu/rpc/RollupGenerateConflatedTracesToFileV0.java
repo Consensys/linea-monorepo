@@ -16,6 +16,7 @@ package net.consensys.besu.rpc;
 
 import static net.consensys.besu.tracing.TraceRequestParams.createTraceParams;
 
+import java.util.HashSet;
 import net.consensys.besu.tracing.FileTrace;
 import net.consensys.besu.tracing.TraceRequestParams;
 
@@ -135,7 +136,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
             String.format(
                 "%d-%s-%.10s-%s.traces.%s",
                 block.getBlockHeader().getNumber(),
-                block.getBlockHeader().getBlockHash(),
+                "hash",
                 System.currentTimeMillis(),
                 tracesEngineVersion,
                 getFileFormat()))
