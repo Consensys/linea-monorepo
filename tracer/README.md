@@ -21,7 +21,8 @@ echo "net.git-fetch-with-cli=true" >> .cargo/config.toml
 ```
 * Install Corset
 ```
-```cargo install --git ssh://git@github.com/ConsenSys/corset
+cargo install --git ssh://git@github.com/ConsenSys/corset
+```
 
 * Clone zk-geth & compile zkevm.bin
 ```
