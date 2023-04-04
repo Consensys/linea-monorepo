@@ -1,4 +1,4 @@
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.module.alu.add;
 /*
  * Copyright ConsenSys AG.
  *
@@ -13,7 +13,7 @@ package net.consensys.zktracer.module.alu.add;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import net.consensys.zktracer.OpCode;
+import net.consensys.linea.zktracer.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.slf4j.Logger;

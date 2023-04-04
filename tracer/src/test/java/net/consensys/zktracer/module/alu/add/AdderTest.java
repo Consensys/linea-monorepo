@@ -1,6 +1,7 @@
 package net.consensys.zktracer.module.alu.add;
 
-import net.consensys.zktracer.OpCode;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.module.module.alu.add.Adder;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Test;
 
