@@ -12,10 +12,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.module.alu.add;
 
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes32;
 
 public class Res {
