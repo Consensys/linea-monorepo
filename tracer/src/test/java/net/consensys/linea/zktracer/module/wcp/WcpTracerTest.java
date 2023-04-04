@@ -12,12 +12,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.wcp;
+package net.consensys.linea.zktracer.module.wcp;
 
-import static net.consensys.zktracer.OpCode.SGT;
+
+import static net.consensys.linea.zktracer.OpCode.SGT;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.when;
 
+import net.consensys.linea.CorsetValidator;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.ZkTraceBuilder;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 
@@ -26,10 +31,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import net.consensys.zktracer.CorsetValidator;
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.ZkTraceBuilder;
-import net.consensys.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

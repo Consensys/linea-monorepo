@@ -30,9 +30,9 @@ public enum OpCode {
   EQ(0x14),
   ISZERO(0x15),
   // shf
-  SAR(0x1d),
   SHL(0x1b),
-  SHR(0x1c);
+  SHR(0x1c),
+  SAR(0x1d);
 
   public final long value;
 
