@@ -20,6 +20,12 @@ import java.util.Map;
 
 public enum OpCode {
   // shf
+
+  DIV(0x04),
+  SDIV(0x05),
+  MOD(0x06),
+  SMOD(0x07),
+
   SAR(0x1d),
   SHL(0x1b),
   SHR(0x1c);
