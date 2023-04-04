@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer;
+package net.consensys.linea;
 
 import static java.nio.file.StandardOpenOption.WRITE;
 
