@@ -39,7 +39,6 @@ public class AddTracer implements ModuleTracer {
          return List.of(OpCode.ADD, OpCode.SUB);
     }
 
-    @SuppressWarnings({"UnusedVariable"})
     @Override
     public Object trace(MessageFrame frame) {
         // TODO duplicated code
