@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.alu.add;
 
 import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
