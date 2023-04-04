@@ -57,7 +57,7 @@ allprojects {
   }
   gradle.startParameter.taskNames = expandedTaskList.flatten()
 
-  group = 'net.consensys.besu.tracing.plugin'
+  group = 'net.consensys.linea.besu.plugin'
   version = rootProject.version
 
   jacoco {
@@ -77,7 +77,7 @@ allprojects {
   sourceCompatibility = 17
   targetCompatibility = 17
 
-  group 'net.consensys'
+  group 'net.consensys.linea'
   version '1.0.0-SNAPSHOT'
 
   repositories {
@@ -98,12 +98,11 @@ allprojects {
 
     // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
     annotationProcessor 'com.google.auto.service:auto-service'
-    compileOnly 'org.hyperledger.besu:evm:23.1.0'
+    compileOnly "org.hyperledger.besu:evm:$besuVersion"
     compileOnly 'com.google.auto.service:auto-service'
     compileOnly 'com.google.auto.service:auto-service-annotations'
 
-    // Add the besu reference here
-    compileOnly files('/Users/gtrintinalia/Development/besu/plugin-api/build/libs/plugin-api-23.1.2-SNAPSHOT.jar')
+    implementation "org.hyperledger.besu:plugin-api:$besuVersion"
 
     compileOnly 'com.fasterxml.jackson.core:jackson-databind'
 
@@ -119,9 +118,9 @@ allprojects {
     implementation 'org.apache.tuweni:tuweni-bytes:2.3.1'
     implementation 'org.apache.tuweni:tuweni-units:2.3.1'
 
-    testImplementation 'org.hyperledger.besu:besu-datatypes:23.1.0'
-    testImplementation 'org.hyperledger.besu:evm:23.1.0'
-    testImplementation 'org.hyperledger.besu.internal:core:23.1.0'
+    testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+    testImplementation "org.hyperledger.besu:evm:$besuVersion"
+    testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
 
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'org.assertj:assertj-core:3.24.2'
@@ -392,7 +391,7 @@ publishing {
   repositories {
     maven {
       name = "cloudsmith"
-      url = "https://api-g.cloudsmith.io/maven/consensys/besu-tracing-plugin/"
+      url = "https://api-g.cloudsmith.io/maven/consensys/linea-besu-plugin/"
       credentials {
         username = cloudsmithUser
         password = cloudsmithKey
@@ -401,7 +400,7 @@ publishing {
   }
   publications {
     mavenJava(MavenPublication) {
-      groupId "net.consensys.besu.tracing.plugin"
+      groupId "net.consensys.linea.besu.plugin"
       version "${project.version}"
       from components.java
       artifact sourcesJar
@@ -414,7 +413,7 @@ publishing {
       suppressPomMetadataWarningsFor('testFixturesRuntimeElements')
       pom {
         name = "Besu plugins - ${project.name}"
-        url = 'https://github.com/ConsenSys/besu-tracing-plugin'
+        url = 'https://github.com/ConsenSys/linea-besu-plugin'
         licenses {
           license {
             name = 'The Apache License, Version 2.0'
@@ -422,9 +421,9 @@ publishing {
           }
         }
         scm {
-          connection = 'scm:git:git://github.com/ConsenSys/besu-tracing-plugin.git'
-          developerConnection = 'https://github.com/ConsenSys/besu-tracing-plugin.git'
-          url = 'https://github.com/ConsenSys/besu-tracing-plugin'
+          connection = 'scm:git:git://github.com/ConsenSys/linea-besu-plugin.git'
+          developerConnection = 'https://github.com/ConsenSys/linea-besu-plugin.git'
+          url = 'https://github.com/ConsenSys/linea-besu-plugin'
         }
       }
     }
