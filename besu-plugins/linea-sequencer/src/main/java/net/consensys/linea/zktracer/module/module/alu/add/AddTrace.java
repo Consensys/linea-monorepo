@@ -12,15 +12,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.module.alu.add;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import net.consensys.zktracer.bytes.UnsignedByte;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
 @SuppressWarnings("unused")

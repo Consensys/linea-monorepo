@@ -12,12 +12,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.module.module.alu.add;
 
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.bytes.Bytes16;
-import net.consensys.zktracer.bytes.UnsignedByte;
-import net.consensys.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.module.ModuleTracer;
+
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -26,7 +27,6 @@ import java.math.BigInteger;
 import java.util.List;
 
 public class AddTracer implements ModuleTracer {
-
 
     private int stamp = 0;
     @Override

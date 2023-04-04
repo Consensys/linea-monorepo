@@ -14,13 +14,12 @@
  */
 package net.consensys.zktracer.module.alu.add;
 
-import net.consensys.zktracer.CorsetValidator;
-import net.consensys.zktracer.OpCode;
-import net.consensys.zktracer.ZkTraceBuilder;
-import net.consensys.zktracer.ZkTracer;
+import net.consensys.linea.CorsetValidator;
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.ZkTraceBuilder;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
