@@ -14,8 +14,6 @@ package net.consensys.linea.zktracer.module.shf;
  * SPDX-License-Identifier: Apache-2.0
  */
 import net.consensys.linea.zktracer.OpCode;
-import java.security.InvalidParameterException;
-
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
