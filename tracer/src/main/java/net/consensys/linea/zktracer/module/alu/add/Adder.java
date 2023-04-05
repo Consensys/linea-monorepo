@@ -1,4 +1,4 @@
-package net.consensys.linea.zktracer.module.module.alu.add;
+package net.consensys.linea.zktracer.module.alu.add;
 /*
  * Copyright ConsenSys AG.
  *
