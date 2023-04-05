@@ -19,13 +19,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 public enum OpCode {
-  // shf
-  SAR(0x1d),
-  SHL(0x1b),
-  SHR(0x1c),
   // add
   ADD(0x01),
-  SUB(0x03);
+  SUB(0x03),
+  //wcp
+  LT(0x10),
+  GT(0x11),
+  SLT(0x12),
+  SGT(0x13),
+  EQ(0x14),
+  ISZERO(0x15),
+  // shf
+  SHL(0x1b),
+  SHR(0x1c),
+  SAR(0x1d);
 
   public final long value;
 
