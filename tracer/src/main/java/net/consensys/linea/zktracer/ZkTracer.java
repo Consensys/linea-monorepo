@@ -23,17 +23,22 @@ import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.module.alu.add.AddTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
+import net.consensys.linea.zktracer.module.wcp.WcpTracer;
 
 public class ZkTracer implements OperationTracer {
-  private final List<ModuleTracer> tracers = List.of(new ShfTracer(), new AddTracer());
+  private final List<ModuleTracer> tracers;
   private final Map<OpCode, List<ModuleTracer>> opCodeTracerMap = new HashMap<>();
 
   private final ZkTraceBuilder zkTraceBuilder;
 
-  public ZkTracer(final ZkTraceBuilder zkTraceBuilder) {
+  public ZkTracer(final ZkTraceBuilder zkTraceBuilder, final List<ModuleTracer> tracers) {
+    this.tracers = tracers;
     this.zkTraceBuilder = zkTraceBuilder;
-
     setupTracers();
+  }
+
+  public ZkTracer(final ZkTraceBuilder zkTraceBuilder) {
+    this(zkTraceBuilder, List.of(new ShfTracer(), new WcpTracer(), new AddTracer()));
   }
 
   @Override
