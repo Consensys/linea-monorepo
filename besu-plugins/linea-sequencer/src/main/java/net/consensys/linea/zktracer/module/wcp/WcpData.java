@@ -82,14 +82,14 @@ class WcpData {
     }
 
     // Set bit 3 and AdjHi
-    BigInteger firstHi = arg1Hi.toUnsignedBigInteger();
-    BigInteger secondHi = arg2Hi.toUnsignedBigInteger();
+    final BigInteger firstHi = arg1Hi.toUnsignedBigInteger();
+    final BigInteger secondHi = arg2Hi.toUnsignedBigInteger();
     bit3 = firstHi.compareTo(secondHi) > 0;
     this.adjHi = calculateAdj(bit3, firstHi, secondHi);
 
     // Set bit 4 and AdjLo
-    BigInteger firstLo = arg1Lo.toUnsignedBigInteger();
-    BigInteger secondLo = arg2Lo.toUnsignedBigInteger();
+    final BigInteger firstLo = arg1Lo.toUnsignedBigInteger();
+    final BigInteger secondLo = arg2Lo.toUnsignedBigInteger();
     bit4 = firstLo.compareTo(secondLo) > 0;
     this.adjLo = calculateAdj(bit4, firstLo, secondLo);
   }
