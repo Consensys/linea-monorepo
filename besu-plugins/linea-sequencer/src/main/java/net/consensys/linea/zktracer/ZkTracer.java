@@ -20,7 +20,7 @@ import java.util.Map;
 
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.shf.ShfTracer;
-import net.consensys.linea.zktracer.module.module.alu.add.AddTracer;
+import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import net.consensys.linea.zktracer.module.wcp.WcpTracer;
