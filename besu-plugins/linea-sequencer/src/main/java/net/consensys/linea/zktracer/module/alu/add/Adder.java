@@ -13,13 +13,13 @@ package net.consensys.linea.zktracer.module.alu.add;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+import java.math.BigInteger;
+
 import net.consensys.linea.zktracer.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.math.BigInteger;
 
 public class Adder {
   private static final Logger LOG = LoggerFactory.getLogger(Adder.class);
@@ -29,7 +29,7 @@ public class Adder {
     final BigInteger res = x(opCode, arg1, arg2);
     // ensure result is correct length
     final Bytes resBytes = Bytes.of(res.toByteArray());
-    if (resBytes.size() > 32 ) {
+    if (resBytes.size() > 32) {
       return Bytes32.wrap(resBytes, resBytes.size() - 32);
     }
     return Bytes32.leftPad(Bytes.of(res.toByteArray()));
@@ -44,5 +44,4 @@ public class Adder {
       };
     }
   }
-
 }
