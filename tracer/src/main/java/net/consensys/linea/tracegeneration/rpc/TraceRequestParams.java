@@ -14,9 +14,9 @@
  */
 package net.consensys.linea.tracegeneration.rpc;
 
-import net.consensys.linea.zktracer.ZkTracer;
-
 import java.security.InvalidParameterException;
+
+import net.consensys.linea.zktracer.ZkTracer;
 
 public class TraceRequestParams {
 

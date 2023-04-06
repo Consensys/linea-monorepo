@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.bytes;
 
 import java.security.SecureRandom;
 import java.util.Random;
+
 import org.apache.tuweni.bytes.Bytes;
 
 /** A {@link Bytes} value that is guaranteed to contain exactly 16 bytes. */
@@ -120,7 +121,8 @@ public interface Bytes16 extends Bytes {
     if (value instanceof Bytes16) {
       return (Bytes16) value;
     }
-    Checks.checkArgument(value.size() <= SIZE, "Expected at most %s bytes but got %s", SIZE, value.size());
+    Checks.checkArgument(
+        value.size() <= SIZE, "Expected at most %s bytes but got %s", SIZE, value.size());
     MutableBytes16 result = MutableBytes16.create();
     value.copyTo(result, SIZE - value.size());
     return result;
@@ -138,7 +140,8 @@ public interface Bytes16 extends Bytes {
     if (value instanceof Bytes16) {
       return (Bytes16) value;
     }
-    Checks.checkArgument(value.size() <= SIZE, "Expected at most %s bytes but got %s", SIZE, value.size());
+    Checks.checkArgument(
+        value.size() <= SIZE, "Expected at most %s bytes but got %s", SIZE, value.size());
     MutableBytes16 result = MutableBytes16.create();
     value.copyTo(result, 0);
     return result;
