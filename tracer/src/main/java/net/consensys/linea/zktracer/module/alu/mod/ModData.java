@@ -1,63 +1,58 @@
 package net.consensys.linea.zktracer.module.alu.mod;
 
+import static net.consensys.linea.zktracer.module.Util.byteBits;
+
 import java.math.BigInteger;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.units.bigints.UInt64;
 
 public class ModData {
   private final OpCode opCode;
   private final boolean oli;
-  private final Bytes32 arg1;
-  private final Bytes32 arg2;
-  private final Bytes16 arg1Hi;
-  private final Bytes16 arg1Lo;
-  private final Bytes16 arg2Hi;
-  private final Bytes16 arg2Lo;
-
-/*  private final Bytes32 arg1Bytes;
-  private final Bytes32  arg2Bytes;*/
-  private final Bytes32 resBytes;
-  private final Bytes16 resHi;
-  private final Bytes16 resLo;
-
-/////////
-  //
+  private final BaseBytes arg1;
+  private final BaseBytes arg2;
+  private final BaseBytes result;
   private BaseTheta A_Bytes;
   private  BaseTheta B_Bytes;
   private  BaseTheta Q_Bytes;
   private  BaseTheta R_Bytes;
-
-  private final boolean[] cmp1 = new boolean[4];
-  private final boolean[]cmp2 = new boolean[4];
+  private  BaseTheta H_Bytes;
+  BaseTheta D_Bytes ;
+  private final boolean[] cmp1 = new boolean[8];
+  private final boolean[]cmp2 = new boolean[8];
+  private Boolean[]msb1 = new Boolean[8];
+  private Boolean[]msb2 = new Boolean[8];
 
   public ModData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;
     this.oli = arg2.isZero();
-    this.resBytes = getRes(opCode, arg1,arg2);
+    this.result = getRes(opCode, arg1,arg2);
 
-    this.resHi = Bytes16.wrap(resBytes.slice(0,16));
-    this.resLo = Bytes16.wrap(resBytes.slice(16));
-
-    this.arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
-    this.arg1Lo = Bytes16.wrap(arg1.slice(16));
-    this.arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
-    this.arg2Lo = Bytes16.wrap(arg2.slice(16));
-
-    this.arg1 = arg1;
-    this.arg2 = arg2;
+    this.arg1 = BaseBytes.fromBytes32(arg1);
+    this.arg2 =  BaseBytes.fromBytes32(arg2);
 
     if(!this.oli){
-      BigInteger a = absoluteValueIfSignedInst(arg1);
-      BigInteger b = absoluteValueIfSignedInst(arg2);
-      BigInteger q = a.divide(b);
-      BigInteger r = a.mod(b);
-      this.A_Bytes = new BaseTheta(a);
-      this.B_Bytes = new BaseTheta(b);
-      this.Q_Bytes = new BaseTheta(q);
-      this.R_Bytes = new BaseTheta(r);;
+      UInt256 a = absoluteValueIfSignedInst(arg1);
+      UInt256 b = absoluteValueIfSignedInst(arg2);
+      UInt256 q = a.divide(b);
+      UInt256 r = a.mod(b);
+      this.A_Bytes = BaseTheta.fromBytes32(arg1);
+      this.B_Bytes = BaseTheta.fromBytes32(arg2);
+      this.Q_Bytes = BaseTheta.fromBytes32(q);
+      this.R_Bytes = BaseTheta.fromBytes32(r);
+      this.D_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
       this.setCmp12();
+      this.setDeltas();
+      this.setAlphaBetasH012();
+
+      UnsignedByte msb_1 = UnsignedByte.of(this.arg1.getHigh().get(0));
+      UnsignedByte msb_2 = UnsignedByte.of(this.arg2.getHigh().get(0));
+      this.msb1 = byteBits(msb_1);
+      this.msb2 = byteBits(msb_2);
     }
   }
 
@@ -66,25 +61,27 @@ public class ModData {
     return new BigInteger(A_Bytes.getBytes()[k]);
   }*/
 
-  private BigInteger b(int k) {
+  private UInt256 b(int k) {
     checkElementIndex(k, 4);
-    return new BigInteger(B_Bytes.get(k).toArray());
+    return UInt256.fromBytes(B_Bytes.getBytes(k));
   }
 
-/*  private BigInteger q(int k) {
+  @SuppressWarnings("UnusedMethod")
+  private UInt256 q(int k) {
     checkElementIndex(k, 4);
-    return new BigInteger(Q_Bytes.getBytes()[k]);
-  }*/
-
-  private BigInteger r(int k) {
-    checkElementIndex(k, 4);
-    return new BigInteger(R_Bytes.get(k).toArray());
+    return UInt256.fromBytes(Q_Bytes.getBytes(k));
   }
 
-/*  private BigInteger h(int k) {
+  private UInt256 r(int k) {
+    checkElementIndex(k, 4);
+    return UInt256.fromBytes(R_Bytes.getBytes(k));
+  }
+
+  @SuppressWarnings("UnusedMethod")
+  private UInt256 h(int k) {
     checkElementIndex(k, 3);
-    return new BigInteger(H_Bytes.getBytes()[k]);
-  }*/
+    return UInt256.fromBytes(H_Bytes.getBytes(k));
+  }
 
   private void setCmp12() {
     for (int k = 0; k < 4; k++) {
@@ -93,27 +90,104 @@ public class ModData {
     }
   }
 
-
-  private BigInteger absoluteValueIfSignedInst (Bytes32 arg){
-    if (isSigned()) {
-      return arg.toUnsignedBigInteger().abs();
+  private void setDeltas() {
+    for (int k = 0; k < 4; k++) {
+      UInt256 delta;
+      if (this.cmp1[k]) {
+        delta =  b(k).subtract(r(k)).subtract(UInt256.ONE);
+      } else {
+        delta = r(k).subtract(b(k));
+      }
+      D_Bytes.setBytes(k*8, delta.slice(24, 8));
     }
-    return arg.toUnsignedBigInteger();
   }
 
-  public static Bytes32 getRes(OpCode op, Bytes32 arg1, Bytes32 arg2) {
+
+  private UInt256 absoluteValueIfSignedInst (Bytes32 arg){
+    if (isSigned()) {
+      return UInt256.valueOf(arg.toBigInteger().abs());
+    }
+    return UInt256.fromBytes(arg);
+  }
+
+  private static BaseBytes getRes(OpCode op, Bytes32 arg1, Bytes32 arg2) {
     BigInteger res;
     switch (op) {
       case DIV -> res = arg1.toUnsignedBigInteger().divide(arg2.toUnsignedBigInteger());
       case SDIV ->res = arg1.toBigInteger().divide(arg2.toBigInteger());
       case MOD -> res =arg1.toUnsignedBigInteger().mod(arg2.toUnsignedBigInteger());
-      case SMOD -> res = arg1.toBigInteger().mod(arg2.toBigInteger());
+      case SMOD -> res = arg1.toBigInteger().abs()
+          .mod(arg2.toBigInteger().abs());
       default ->
         throw new RuntimeException("Modular arithmetic was given wrong opcode");
     };
-    return Bytes32.leftPad(Bytes.of(res.toByteArray()));
+    return BaseBytes.fromBytes32(Bytes32.leftPad(Bytes.of(res.toByteArray())));
   }
 
+
+  @SuppressWarnings("UnusedVariable")
+  private void setAlphaBetasH012(){
+    UInt256 theta = UInt256.ONE;
+    UInt256 thetaSquared = UInt256.ONE;
+    UInt256 twoThetaSquared = UInt256.valueOf(2);
+
+    theta =theta.shiftLeft(64);
+    thetaSquared =  thetaSquared.shiftLeft(128);
+
+    twoThetaSquared = twoThetaSquared.shiftLeft(128);
+
+    UInt256 sum = b(0).multiply(q(1)).add(b(1).multiply(q(0)));
+
+    // This set H_Bytes = [H_0, H_1, alpha, 0]
+    // beta will be overwritten later
+    this.H_Bytes = BaseTheta.fromBytes32(sum);
+
+    //self.h(0).SetBytes(self.H_Bytes[0][:])
+    //self.h(1).SetBytes(self.H_Bytes[1][:])
+
+    // alpha
+    cmp2[4] = sum.compareTo(thetaSquared) >= 0;
+
+    sum = b(0).multiply(q(3))
+            .add(b(1).multiply(q(2)))
+            .add(b(2).multiply(q(1)))
+            .add(b(3).multiply(q(0)));
+
+    if (sum.bitLength() > 64) {
+      throw new RuntimeException("b[0]q[3] + b[1]q[2] + b[2]q[1] + b[3]q[0] >= (1 << 64)");
+    }
+
+    // H_2
+    H_Bytes.setBytes(2*8 , sum.slice(24, 8));
+    //self.h(2).SetBytes(self.H_Bytes[2][:])
+
+    sum = q(0).multiply(b(0));
+    sum = sum.add(h(0).multiply(theta));
+    sum = sum.add(h(0).multiply(theta));
+    sum = sum.add(q(0).multiply(b(0)));
+
+    sum = sum.add(UInt256.fromBytes(R_Bytes.getLow()));
+
+    // beta_0, beta_1
+    UInt256 beta = sum.divide(thetaSquared);
+    if (beta.compareTo(UInt256.valueOf(2)) > 0) {
+      throw new RuntimeException("b[0]q[0] + theta.h[0] + rLo = [beta|...] with beta > 2");
+    }
+
+    UInt64 betaUint64 = UInt64.valueOf(beta.toUnsignedBigInteger());
+    cmp2[5] = betaUint64.mod(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_0
+    cmp2[6] = betaUint64.divide(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_1
+
+    // verify A_LO
+   /* _, aLo := self.aHiLo()
+    if !sum.Mod(sum, thetaSquared).Eq(aLo) {
+      fmt.Printf("op   = %v\n", self.op.String())
+      fmt.Printf("arg1 = %x\n", self.arg1Bytes)
+      fmt.Printf("arg2 = %x\n", self.arg2Bytes)
+      fmt.Printf("res  = %x\n", self.resBytes)
+      panic("b[0]q[0] + theta.h[0] + rLo = [beta|xxx] and xxx != aLo")
+    }*/
+  }
 
 
   public OpCode getOpCode() {
@@ -124,41 +198,16 @@ public class ModData {
     return oli;
   }
 
-  public Bytes32 getArg1() {
+  public BaseBytes getArg1() {
     return arg1;
   }
 
-  public Bytes32 getArg2() {
+  public BaseBytes getArg2() {
     return arg2;
   }
 
-  public Bytes16 getArg1Hi() {
-    return arg1Hi;
-  }
-
-  public Bytes16 getArg1Lo() {
-    return arg1Lo;
-  }
-
-  public Bytes16 getArg2Hi() {
-    return arg2Hi;
-  }
-
-  public Bytes16 getArg2Lo() {
-    return arg2Lo;
-  }
-
-
-  public Bytes32 getResBytes() {
-    return resBytes;
-  }
-
-  public Bytes16 getResHi() {
-    return resHi;
-  }
-
-  public Bytes16 getResLo() {
-    return resLo;
+  public BaseBytes getResult() {
+    return result;
   }
 
   public BaseTheta getA_Bytes() {
@@ -177,21 +226,21 @@ public class ModData {
     return R_Bytes;
   }
 
-/*  public BaseTheta getH_Bytes() {
+  public BaseTheta getH_Bytes() {
     return H_Bytes;
-  }*/
-
-/*  public BaseTheta getDELTA_Bytes() {
-    return DELTA_Bytes;
   }
 
-  public boolean[] getMsb1() {
+  public BaseTheta getDeltaBytes() {
+    return D_Bytes;
+  }
+
+  public Boolean[] getMsb1() {
     return msb1;
   }
 
-  public boolean[] getMsb2() {
+  public Boolean[] getMsb2() {
     return msb2;
-  }*/
+  }
 
   public boolean[] getCmp1() {
     return cmp1;
