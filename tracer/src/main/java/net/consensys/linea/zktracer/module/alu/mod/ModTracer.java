@@ -1,5 +1,7 @@
 package net.consensys.linea.zktracer.module.alu.mod;
 
+import static net.consensys.linea.zktracer.module.alu.mod.ModBuilderMapper.ACC_B;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -124,31 +126,23 @@ public class ModTracer implements ModuleTracer {
 
           .appendMsb1(data.getMsb1()[ct])
           .appendMsb2(data.getMsb2()[ct]);
+
+      ModBuilderMapper mapper =  new ModBuilderMapper(builder);
+      appendAcc(mapper, ACC_B, data.getB_Bytes().getBytes32(), ct);
     }
     return builder.build();
   }
 
-  private void appendAcc(Builder builder, String accName, Bytes32 data, int ct){
+  private void appendAcc(ModBuilderMapper mapper, String accName, Bytes32 data, int ct){
     Function<Integer, BigInteger> function =
         index -> data.slice( index *  8, + ct + 1)
             .toUnsignedBigInteger();
 
-     getAccs(builder).get(accName)
+    mapper.get(accName)
          .forEach((integer, consumer) -> consumer.accept(
              function.apply(integer)
          )
   );
-  }
-
-  private HashMap<String, HashMap<Integer, Consumer<BigInteger>>> getAccs(Builder builder){
-    HashMap<String, HashMap<Integer, Consumer<BigInteger>>> accs = new HashMap<>();
-    HashMap<Integer, Consumer<BigInteger>> accB =  new HashMap<>();
-    accB.put(0, builder::appendAcc_B_0);
-    accB.put(1, builder::appendAcc_B_1);
-    accB.put(2, builder::appendAcc_B_2);
-    accB.put(3, builder::appendAcc_B_3);
-    accs.put("B", accB);
-    return accs;
   }
 
   private int maxCounter(ModData data) {
