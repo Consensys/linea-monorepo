@@ -463,6 +463,29 @@ tasks.register("verifyDistributions") {
   }
 }
 
+apply plugin: 'com.diffplug.spotless'
+spotless {
+  java {
+    // This path needs to be relative to each project
+    target 'src/**/*.java'
+    targetExclude '**/src/reference-test/**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
+    removeUnusedImports()
+    googleJavaFormat('1.15.0')
+    importOrder 'org.hyperledger', 'java', ''
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+  groovyGradle {
+    target '*.gradle'
+    greclipse('4.21.0').configFile(rootProject.file('gradle/formatter.properties'))
+    endWithNewline()
+  }
+  // Below this line are currently only license header tasks
+  format 'groovy', { target '**/src/*/grovy/**/*.groovy' }
+  format 'bash', { target '**/*.sh' }
+  format 'sol', { target '**/*.sol' }
+}
+
 
 check.dependsOn checkSpdxHeader
 apply plugin: 'groovy'

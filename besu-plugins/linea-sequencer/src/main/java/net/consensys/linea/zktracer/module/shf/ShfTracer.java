@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.zktracer.module.shf;
 
+import org.hyperledger.besu.evm.frame.MessageFrame;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,7 +25,6 @@ import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ShfTracer implements ModuleTracer {
   private static final int LIMB_SIZE = 16;

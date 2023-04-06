@@ -14,12 +14,12 @@
  */
 package net.consensys.linea.zktracer.module.shf;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
