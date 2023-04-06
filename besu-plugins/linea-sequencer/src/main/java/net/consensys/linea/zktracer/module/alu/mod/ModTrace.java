@@ -141,14 +141,14 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("BYTE_R_1") List<UnsignedByte> BYTE_R_1,
       @JsonProperty("BYTE_R_2") List<UnsignedByte> BYTE_R_2,
       @JsonProperty("BYTE_R_3") List<UnsignedByte> BYTE_R_3,
-      @JsonProperty("CMP_1") List<BigInteger> CMP_1,
-      @JsonProperty("CMP_2") List<BigInteger> CMP_2,
+      @JsonProperty("CMP_1") List<Boolean> CMP_1,
+      @JsonProperty("CMP_2") List<Boolean> CMP_2,
       @JsonProperty("CT") List<Integer> CT,
       @JsonProperty("DEC_OUTPUT") List<Boolean> DEC_OUTPUT,
       @JsonProperty("DEC_SIGNED") List<Boolean> DEC_SIGNED,
       @JsonProperty("INST") List<UnsignedByte> INST,
-      @JsonProperty("MSB_1") List<BigInteger> MSB_1,
-      @JsonProperty("MSB_2") List<BigInteger> MSB_2,
+      @JsonProperty("MSB_1") List<Boolean> MSB_1,
+      @JsonProperty("MSB_2") List<Boolean> MSB_2,
       @JsonProperty("OLI") List<Boolean> OLI,
       @JsonProperty("RES_HI") List<BigInteger> RES_HI,
       @JsonProperty("RES_LO") List<BigInteger> RES_LO,
@@ -206,14 +206,14 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<UnsignedByte> byte_R_1 = new ArrayList<>();
       private final List<UnsignedByte> byte_R_2 = new ArrayList<>();
       private final List<UnsignedByte> byte_R_3 = new ArrayList<>();
-      private final List<BigInteger> cmp1 = new ArrayList<>();
-      private final List<BigInteger> cmp2 = new ArrayList<>();
+      private final List<Boolean> cmp1 = new ArrayList<>();
+      private final List<Boolean> cmp2 = new ArrayList<>();
       private final List<Integer> ct = new ArrayList<>();
       private final List<Boolean> decOutput = new ArrayList<>();
       private final List<Boolean> decSigned = new ArrayList<>();
       private final List<UnsignedByte> inst = new ArrayList<>();
-      private final List<BigInteger> msb1 = new ArrayList<>();
-      private final List<BigInteger> msb2 = new ArrayList<>();
+      private final List<Boolean> msb1 = new ArrayList<>();
+      private final List<Boolean> msb2 = new ArrayList<>();
       private final List<Boolean> oli = new ArrayList<>();
       private final List<BigInteger> resHi = new ArrayList<>();
       private final List<BigInteger> resLo = new ArrayList<>();
@@ -477,12 +477,12 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendCmp1(final BigInteger b) {
+      public Builder appendCmp1(final Boolean b) {
         cmp1.add(b);
         return this;
       }
 
-      public Builder appendCmp2(final BigInteger b) {
+      public Builder appendCmp2(final Boolean b) {
         cmp2.add(b);
         return this;
       }
@@ -527,12 +527,12 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendMsb1(final BigInteger b) {
+      public Builder appendMsb1(final Boolean b) {
         msb1.add(b);
         return this;
       }
 
-      public Builder appendMsb2(final BigInteger b) {
+      public Builder appendMsb2(final Boolean b) {
         msb2.add(b);
         return this;
       }

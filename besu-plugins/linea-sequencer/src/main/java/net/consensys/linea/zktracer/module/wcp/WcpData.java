@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.zktracer.module.wcp;
 
+import static net.consensys.linea.zktracer.module.Util.byteBits;
+
 import java.math.BigInteger;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
@@ -108,15 +110,6 @@ class WcpData {
       case ISZERO -> arg1.isZero();
       default -> throw new InvalidParameterException("Invalid opcode");
     };
-  }
-
-  private Boolean[] byteBits(final UnsignedByte b) {
-    final Boolean[] bits = new Boolean[8];
-
-    for (int i = 0; i < 8; i++) {
-      bits[7 - i] = b.shiftRight(i).mod(2).toInteger() == 1;
-    }
-    return bits;
   }
 
   private Bytes16 calculateAdj(boolean cmp, BigInteger arg1, BigInteger arg2) {

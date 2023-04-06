@@ -1,19 +1,29 @@
 package net.consensys.linea.zktracer.module.alu.mod;
 
-import java.math.BigInteger;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-public class BaseTheta {
-  final private Bytes[] bytes  = new Bytes[4];
-  BaseTheta(final BigInteger arg) {
-    Bytes32 t = Bytes32.leftPad(Bytes.wrap(arg .toByteArray()));
+public class BaseTheta  extends BaseBytes{
+
+  private BaseTheta(final Bytes32 arg) {
+    super(arg);
+    bytes32 = arg.mutableCopy();
     for (int k = 0; k < 4; k++) {
-      bytes[3-k] = t.slice(8*k, 8);
+      Bytes bytes = arg.slice(OFFSET * k, OFFSET);
+      setBytes( OFFSET * (3-k) , bytes);
     }
   }
 
-  public Bytes get(int index) {
-    return bytes[index];
+  static BaseTheta fromBytes32(Bytes32 arg){
+    return new BaseTheta(arg);
+  }
+  public void setBytes(int index, Bytes bytes){
+    bytes32.set(index, bytes);
+  }
+  public Bytes getBytes(int index) {
+    return bytes32.slice(OFFSET * index, OFFSET);
+  }
+  public Bytes slice (int i, int length){
+    return bytes32.slice(i, length);
   }
 }
