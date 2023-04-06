@@ -14,6 +14,14 @@
  */
 package net.consensys.linea.tracegeneration.rpc;
 
+import org.hyperledger.besu.evm.tracing.OperationTracer;
+import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.data.BlockContext;
+import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.TraceService;
+import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,13 +39,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
-import org.hyperledger.besu.evm.tracing.OperationTracer;
-import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.TraceService;
-import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
-import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 public class RollupGenerateConflatedTracesToFileV0 {
 
@@ -80,11 +81,10 @@ public class RollupGenerateConflatedTracesToFileV0 {
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
 
-      ZkTraceBuilder builder =  new ZkTraceBuilder();
+      ZkTraceBuilder builder = new ZkTraceBuilder();
       OperationTracer tracer = new ZkTracer(builder);
 
-      traceService.traceBlock(
-          block.getBlockHeader().getNumber(), tracer);
+      traceService.traceBlock(block.getBlockHeader().getNumber(), tracer);
 
       jsonGenerator.writeObject(builder.build().toJson());
 

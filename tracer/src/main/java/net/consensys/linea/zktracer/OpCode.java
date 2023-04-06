@@ -22,7 +22,7 @@ public enum OpCode {
   // add
   ADD(0x01),
   SUB(0x03),
-  //wcp
+  // wcp
   LT(0x10),
   GT(0x11),
   SLT(0x12),

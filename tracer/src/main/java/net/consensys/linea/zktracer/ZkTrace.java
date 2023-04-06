@@ -14,6 +14,9 @@
  */
 package net.consensys.linea.zktracer;
 
+import java.math.BigInteger;
+import java.util.Map;
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -22,8 +25,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import java.math.BigInteger;
-import java.util.Map;
 import net.consensys.linea.zktracer.serializer.BigIntegerSerializer;
 import net.consensys.linea.zktracer.serializer.NumericBooleanSerializer;
 import org.apache.tuweni.bytes.Bytes;
