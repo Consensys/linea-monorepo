@@ -14,119 +14,115 @@
  */
 package net.consensys.linea.zktracer.module.alu.add;
 
-import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.bytes.Bytes16;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
-import net.consensys.linea.zktracer.module.ModuleTracer;
-
-import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 import java.math.BigInteger;
 import java.util.List;
 
+import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.module.ModuleTracer;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
+
 public class AddTracer implements ModuleTracer {
 
-    private int stamp = 0;
-    @Override
-    public String jsonKey() {
-        return "add";
-    }
+  private int stamp = 0;
 
-    @Override
-    public List<OpCode> supportedOpCodes() {
-         return List.of(OpCode.ADD, OpCode.SUB);
-    }
+  @Override
+  public String jsonKey() {
+    return "add";
+  }
 
-    @Override
-    public Object trace(MessageFrame frame) {
-        // TODO duplicated code
-        final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
-        final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
+  @Override
+  public List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.ADD, OpCode.SUB);
+  }
 
-        // TODO duplicated code
-        final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
-        final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
-        final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
-        final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
+  @Override
+  public Object trace(MessageFrame frame) {
+    // TODO duplicated code
+    final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
-        boolean overflowHi = false;
-        boolean overflowLo;
+    // TODO duplicated code
+    final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
+    final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
+    final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
+    final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-        final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-        final Res res = Res.create(opCode, arg1, arg2);
+    boolean overflowHi = false;
+    boolean overflowLo;
 
-        final Bytes16 resHi = res.getResHi();
-        final Bytes16 resLo = res.getResLo();
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final Res res = Res.create(opCode, arg1, arg2);
 
-        final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
+    final Bytes16 resHi = res.getResHi();
+    final Bytes16 resLo = res.getResLo();
 
-        stamp++;
-        for (int i = 0; i < 16; i++) {
+    final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
-            UInt256 arg1Int = UInt256.fromBytes(arg1);
-            UInt256 arg2Int = UInt256.fromBytes(arg2);
-            BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
-            BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
-            BigInteger resultBigInt;
+    stamp++;
+    for (int i = 0; i < 16; i++) {
 
-            if (opCode == OpCode.ADD) {
-                resultBigInt = arg1BigInt.add(arg2BigInt);
-                if (resultBigInt.compareTo(UInt256.MAX_VALUE.toBigInteger()) > 0) {
-                    overflowHi = true;
-                }
-            } else if (opCode == OpCode.SUB) {
-                if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(UInt256.MAX_VALUE.toBigInteger()) > 0) {
-                    overflowHi = true;
-                }
-            }
+      UInt256 arg1Int = UInt256.fromBytes(arg1);
+      UInt256 arg2Int = UInt256.fromBytes(arg2);
+      BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
+      BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
+      BigInteger resultBigInt;
 
-            // check if the result is greater than 2^128
-            final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
-            if (opCode == OpCode.ADD) {
-                BigInteger addResult = arg1Lo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
-                overflowLo = (addResult.compareTo(twoToThe128) >= 0);
-            } else {
-                BigInteger addResult = resLo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
-                overflowLo = (addResult.compareTo(twoToThe128) >= 0);
-            }
-
-
-            builder
-                    .appendAcc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
-                    .appendAcc2(resLo.slice(0, 1 + i).toUnsignedBigInteger())
-                    .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
-                    .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
-                    .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
-                    .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
-
-            builder
-                    .appendByte1(UnsignedByte.of(resHi.get(i)))
-                    .appendByte2(UnsignedByte.of(resLo.get(i)));
-
-
-            builder.appendCounter(i);
-
-            builder
-                    .appendInst(UnsignedByte.of(opCode.value));
-
-            boolean overflow = overflowBit(i, overflowHi, overflowLo);
-            builder.appendOverflow(overflow);
-
-            // res HiLo
-            builder
-                    .appendResHi(resHi.toUnsignedBigInteger())
-                    .appendResLo(resLo.toUnsignedBigInteger());
-            builder.appendStamp(stamp);
+      if (opCode == OpCode.ADD) {
+        resultBigInt = arg1BigInt.add(arg2BigInt);
+        if (resultBigInt.compareTo(UInt256.MAX_VALUE.toBigInteger()) > 0) {
+          overflowHi = true;
         }
-        builder.setStamp(stamp);
-        return builder.build();
-    }
+      } else if (opCode == OpCode.SUB) {
+        if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(UInt256.MAX_VALUE.toBigInteger())
+            > 0) {
+          overflowHi = true;
+        }
+      }
 
-    private boolean overflowBit(final int counter, final boolean overflowHi, final boolean overflowLo) {
-        if (counter == 14) return overflowHi;
-        if (counter == 15) return overflowLo;
-        return false; // default bool value in go
+      // check if the result is greater than 2^128
+      final BigInteger twoToThe128 = BigInteger.ONE.shiftLeft(128);
+      if (opCode == OpCode.ADD) {
+        BigInteger addResult = arg1Lo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
+        overflowLo = (addResult.compareTo(twoToThe128) >= 0);
+      } else {
+        BigInteger addResult = resLo.toUnsignedBigInteger().add(arg2Lo.toUnsignedBigInteger());
+        overflowLo = (addResult.compareTo(twoToThe128) >= 0);
+      }
+
+      builder
+          .appendAcc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
+          .appendAcc2(resLo.slice(0, 1 + i).toUnsignedBigInteger())
+          .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
+          .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
+          .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
+          .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
+
+      builder.appendByte1(UnsignedByte.of(resHi.get(i))).appendByte2(UnsignedByte.of(resLo.get(i)));
+
+      builder.appendCounter(i);
+
+      builder.appendInst(UnsignedByte.of(opCode.value));
+
+      boolean overflow = overflowBit(i, overflowHi, overflowLo);
+      builder.appendOverflow(overflow);
+
+      // res HiLo
+      builder.appendResHi(resHi.toUnsignedBigInteger()).appendResLo(resLo.toUnsignedBigInteger());
+      builder.appendStamp(stamp);
     }
+    builder.setStamp(stamp);
+    return builder.build();
+  }
+
+  private boolean overflowBit(
+      final int counter, final boolean overflowHi, final boolean overflowLo) {
+    if (counter == 14) return overflowHi;
+    if (counter == 15) return overflowLo;
+    return false; // default bool value in go
+  }
 }

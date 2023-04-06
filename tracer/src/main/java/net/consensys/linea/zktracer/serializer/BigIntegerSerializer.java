@@ -14,11 +14,12 @@
  */
 package net.consensys.linea.zktracer.serializer;
 
+import java.io.IOException;
+import java.math.BigInteger;
+
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import java.io.IOException;
-import java.math.BigInteger;
 
 public class BigIntegerSerializer extends StdSerializer<BigInteger> {
   private static final BigInteger INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);

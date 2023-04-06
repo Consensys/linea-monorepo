@@ -14,10 +14,11 @@
  */
 package net.consensys.linea.zktracer.module;
 
+import org.hyperledger.besu.evm.frame.MessageFrame;
+
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public interface ModuleTracer {
   String jsonKey();
