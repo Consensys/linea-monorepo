@@ -1,8 +1,23 @@
+/*
+ * Copyright ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package net.consensys.linea.zktracer.module.alu.mod;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
 
 import java.math.BigInteger;
+import javax.print.attribute.standard.DateTimeAtCompleted;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -40,8 +55,8 @@ public class ModData {
       UInt256 b = absoluteValueIfSignedInst(arg2);
       UInt256 q = a.divide(b);
       UInt256 r = a.mod(b);
-      this.A_Bytes = BaseTheta.fromBytes32(arg1);
-      this.B_Bytes = BaseTheta.fromBytes32(arg2);
+      this.A_Bytes = BaseTheta.fromBytes32(a);
+      this.B_Bytes = BaseTheta.fromBytes32(b);
       this.Q_Bytes = BaseTheta.fromBytes32(q);
       this.R_Bytes = BaseTheta.fromBytes32(r);
       this.D_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
@@ -63,24 +78,24 @@ public class ModData {
 
   private UInt256 b(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(B_Bytes.getBytes(k));
+    return UInt256.fromBytes(B_Bytes.get(k));
   }
 
   @SuppressWarnings("UnusedMethod")
   private UInt256 q(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(Q_Bytes.getBytes(k));
+    return UInt256.fromBytes(Q_Bytes.get(k));
   }
 
   private UInt256 r(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(R_Bytes.getBytes(k));
+    return UInt256.fromBytes(R_Bytes.get(k));
   }
 
   @SuppressWarnings("UnusedMethod")
   private UInt256 h(int k) {
     checkElementIndex(k, 3);
-    return UInt256.fromBytes(H_Bytes.getBytes(k));
+    return UInt256.fromBytes(H_Bytes.get(k));
   }
 
   private void setCmp12() {
@@ -124,17 +139,15 @@ public class ModData {
     return BaseBytes.fromBytes32(Bytes32.leftPad(Bytes.of(res.toByteArray())));
   }
 
-
-  @SuppressWarnings("UnusedVariable")
   private void setAlphaBetasH012(){
     UInt256 theta = UInt256.ONE;
     UInt256 thetaSquared = UInt256.ONE;
-    UInt256 twoThetaSquared = UInt256.valueOf(2);
+    //UInt256 twoThetaSquared = UInt256.valueOf(2);
 
     theta =theta.shiftLeft(64);
     thetaSquared =  thetaSquared.shiftLeft(128);
 
-    twoThetaSquared = twoThetaSquared.shiftLeft(128);
+    //twoThetaSquared = twoThetaSquared.shiftLeft(128);
 
     UInt256 sum = b(0).multiply(q(1)).add(b(1).multiply(q(0)));
 
@@ -163,8 +176,6 @@ public class ModData {
 
     sum = q(0).multiply(b(0));
     sum = sum.add(h(0).multiply(theta));
-    sum = sum.add(h(0).multiply(theta));
-    sum = sum.add(q(0).multiply(b(0)));
 
     sum = sum.add(UInt256.fromBytes(R_Bytes.getLow()));
 
@@ -178,15 +189,17 @@ public class ModData {
     cmp2[5] = betaUint64.mod(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_0
     cmp2[6] = betaUint64.divide(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_1
 
+
+    BigInteger sumInt =  sum.mod(thetaSquared).toUnsignedBigInteger();
+    BigInteger aLo =  this.A_Bytes.getLow().toUnsignedBigInteger();
     // verify A_LO
-   /* _, aLo := self.aHiLo()
-    if !sum.Mod(sum, thetaSquared).Eq(aLo) {
-      fmt.Printf("op   = %v\n", self.op.String())
+    if (sumInt.compareTo(aLo) != 0) {
+/*      fmt.Printf("op   = %v\n", self.op.String())
       fmt.Printf("arg1 = %x\n", self.arg1Bytes)
       fmt.Printf("arg2 = %x\n", self.arg2Bytes)
-      fmt.Printf("res  = %x\n", self.resBytes)
-      panic("b[0]q[0] + theta.h[0] + rLo = [beta|xxx] and xxx != aLo")
-    }*/
+      fmt.Printf("res  = %x\n", self.resBytes)*/
+      throw new RuntimeException("b[0]q[0] + theta.h[0] + rLo = [beta|xxx] and xxx != aLo");
+    }
   }
 
 
