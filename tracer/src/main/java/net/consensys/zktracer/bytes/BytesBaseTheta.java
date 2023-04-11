@@ -1,5 +1,6 @@
 package net.consensys.zktracer.bytes;
 
+import net.consensys.zktracer.module.alu.mul.Res;
 import org.apache.tuweni.bytes.Bytes32;
 
 import java.math.BigInteger;
@@ -20,6 +21,20 @@ public class BytesBaseTheta {
             }
         }
 
+    public BytesBaseTheta(final Res res) {
+        bytes = new byte[4][8];
+        byte[] argBytesHi = res.getResHi().toArray();
+        byte[] argBytesLo = res.getResLo().toArray();
+
+        for (int k = 0; k < 2; k++) {
+            System.arraycopy(argBytesHi, 8 * k, bytes[3 - k], 0, 8);
+        }
+        for (int k = 2; k < 4; k++) {
+            System.arraycopy(argBytesLo, 8 * k, bytes[3 - k], 0, 8);
+        }
+    }
+
+    // TODO can Res become Pair<Bytes16, Bytes16> as below
         public Pair<byte[], byte[]> getHiLo() {
             byte[] hiBytes = new byte[16];
             byte[] loBytes = new byte[16];
