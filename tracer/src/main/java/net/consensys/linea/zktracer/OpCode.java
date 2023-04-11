@@ -27,7 +27,7 @@ public enum OpCode {
   SDIV(0x05),
   MOD(0x06),
   SMOD(0x07),
-  //wcp
+  // wcp
   LT(0x10),
   GT(0x11),
   SLT(0x12),

@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.alu.mod;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
 
 import java.math.BigInteger;
-import javax.print.attribute.standard.DateTimeAtCompleted;
+
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -32,25 +32,25 @@ public class ModData {
   private final BaseBytes arg2;
   private final BaseBytes result;
   private BaseTheta A_Bytes;
-  private  BaseTheta B_Bytes;
-  private  BaseTheta Q_Bytes;
-  private  BaseTheta R_Bytes;
-  private  BaseTheta H_Bytes;
-  BaseTheta D_Bytes ;
+  private BaseTheta B_Bytes;
+  private BaseTheta Q_Bytes;
+  private BaseTheta R_Bytes;
+  private BaseTheta H_Bytes;
+  BaseTheta D_Bytes;
   private final boolean[] cmp1 = new boolean[8];
-  private final boolean[]cmp2 = new boolean[8];
-  private Boolean[]msb1 = new Boolean[8];
-  private Boolean[]msb2 = new Boolean[8];
+  private final boolean[] cmp2 = new boolean[8];
+  private Boolean[] msb1 = new Boolean[8];
+  private Boolean[] msb2 = new Boolean[8];
 
   public ModData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;
     this.oli = arg2.isZero();
-    this.result = getRes(opCode, arg1,arg2);
+    this.result = getRes(opCode, arg1, arg2);
 
     this.arg1 = BaseBytes.fromBytes32(arg1);
-    this.arg2 =  BaseBytes.fromBytes32(arg2);
+    this.arg2 = BaseBytes.fromBytes32(arg2);
 
-    if(!this.oli){
+    if (!this.oli) {
       UInt256 a = absoluteValueIfSignedInst(arg1);
       UInt256 b = absoluteValueIfSignedInst(arg2);
       UInt256 q = a.divide(b);
@@ -71,7 +71,7 @@ public class ModData {
     }
   }
 
-/*  private BigInteger a(int k) {
+  /*  private BigInteger a(int k) {
     checkElementIndex(k, 4);
     return new BigInteger(A_Bytes.getBytes()[k]);
   }*/
@@ -109,16 +109,15 @@ public class ModData {
     for (int k = 0; k < 4; k++) {
       UInt256 delta;
       if (this.cmp1[k]) {
-        delta =  b(k).subtract(r(k)).subtract(UInt256.ONE);
+        delta = b(k).subtract(r(k)).subtract(UInt256.ONE);
       } else {
         delta = r(k).subtract(b(k));
       }
-      D_Bytes.setBytes(k*8, delta.slice(24, 8));
+      D_Bytes.setBytes(k * 8, delta.slice(24, 8));
     }
   }
 
-
-  private UInt256 absoluteValueIfSignedInst (Bytes32 arg){
+  private UInt256 absoluteValueIfSignedInst(Bytes32 arg) {
     if (isSigned()) {
       return UInt256.valueOf(arg.toBigInteger().abs());
     }
@@ -129,25 +128,24 @@ public class ModData {
     BigInteger res;
     switch (op) {
       case DIV -> res = arg1.toUnsignedBigInteger().divide(arg2.toUnsignedBigInteger());
-      case SDIV ->res = arg1.toBigInteger().divide(arg2.toBigInteger());
-      case MOD -> res =arg1.toUnsignedBigInteger().mod(arg2.toUnsignedBigInteger());
-      case SMOD -> res = arg1.toBigInteger().abs()
-          .mod(arg2.toBigInteger().abs());
-      default ->
-        throw new RuntimeException("Modular arithmetic was given wrong opcode");
-    };
+      case SDIV -> res = arg1.toBigInteger().divide(arg2.toBigInteger());
+      case MOD -> res = arg1.toUnsignedBigInteger().mod(arg2.toUnsignedBigInteger());
+      case SMOD -> res = arg1.toBigInteger().abs().mod(arg2.toBigInteger().abs());
+      default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
+    }
+    ;
     return BaseBytes.fromBytes32(Bytes32.leftPad(Bytes.of(res.toByteArray())));
   }
 
-  private void setAlphaBetasH012(){
+  private void setAlphaBetasH012() {
     UInt256 theta = UInt256.ONE;
     UInt256 thetaSquared = UInt256.ONE;
-    //UInt256 twoThetaSquared = UInt256.valueOf(2);
+    // UInt256 twoThetaSquared = UInt256.valueOf(2);
 
-    theta =theta.shiftLeft(64);
-    thetaSquared =  thetaSquared.shiftLeft(128);
+    theta = theta.shiftLeft(64);
+    thetaSquared = thetaSquared.shiftLeft(128);
 
-    //twoThetaSquared = twoThetaSquared.shiftLeft(128);
+    // twoThetaSquared = twoThetaSquared.shiftLeft(128);
 
     UInt256 sum = b(0).multiply(q(1)).add(b(1).multiply(q(0)));
 
@@ -155,13 +153,14 @@ public class ModData {
     // beta will be overwritten later
     this.H_Bytes = BaseTheta.fromBytes32(sum);
 
-    //self.h(0).SetBytes(self.H_Bytes[0][:])
-    //self.h(1).SetBytes(self.H_Bytes[1][:])
+    // self.h(0).SetBytes(self.H_Bytes[0][:])
+    // self.h(1).SetBytes(self.H_Bytes[1][:])
 
     // alpha
     cmp2[4] = sum.compareTo(thetaSquared) >= 0;
 
-    sum = b(0).multiply(q(3))
+    sum =
+        b(0).multiply(q(3))
             .add(b(1).multiply(q(2)))
             .add(b(2).multiply(q(1)))
             .add(b(3).multiply(q(0)));
@@ -171,8 +170,8 @@ public class ModData {
     }
 
     // H_2
-    H_Bytes.setBytes(2*8 , sum.slice(24, 8));
-    //self.h(2).SetBytes(self.H_Bytes[2][:])
+    H_Bytes.setBytes(2 * 8, sum.slice(24, 8));
+    // self.h(2).SetBytes(self.H_Bytes[2][:])
 
     sum = q(0).multiply(b(0));
     sum = sum.add(h(0).multiply(theta));
@@ -189,19 +188,17 @@ public class ModData {
     cmp2[5] = betaUint64.mod(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_0
     cmp2[6] = betaUint64.divide(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_1
 
-
-    BigInteger sumInt =  sum.mod(thetaSquared).toUnsignedBigInteger();
-    BigInteger aLo =  this.A_Bytes.getLow().toUnsignedBigInteger();
+    BigInteger sumInt = sum.mod(thetaSquared).toUnsignedBigInteger();
+    BigInteger aLo = this.A_Bytes.getLow().toUnsignedBigInteger();
     // verify A_LO
     if (sumInt.compareTo(aLo) != 0) {
-/*      fmt.Printf("op   = %v\n", self.op.String())
+      /*      fmt.Printf("op   = %v\n", self.op.String())
       fmt.Printf("arg1 = %x\n", self.arg1Bytes)
       fmt.Printf("arg2 = %x\n", self.arg2Bytes)
       fmt.Printf("res  = %x\n", self.resBytes)*/
       throw new RuntimeException("b[0]q[0] + theta.h[0] + rLo = [beta|xxx] and xxx != aLo");
     }
   }
-
 
   public OpCode getOpCode() {
     return opCode;

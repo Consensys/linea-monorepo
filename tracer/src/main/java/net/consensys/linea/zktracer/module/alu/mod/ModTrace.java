@@ -14,11 +14,12 @@
  */
 package net.consensys.linea.zktracer.module.alu.mod;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
@@ -26,68 +27,68 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp") int stamp) {
 
   @JsonPropertyOrder({
-      "ACC_1_2",
-      "ACC_1_3",
-      "ACC_2_2",
-      "ACC_2_3",
-      "ACC_B_0",
-      "ACC_B_1",
-      "ACC_B_2",
-      "ACC_B_3",
-      "ACC_DELTA_0",
-      "ACC_DELTA_1",
-      "ACC_DELTA_2",
-      "ACC_DELTA_3",
-      "ACC_H_0",
-      "ACC_H_1",
-      "ACC_H_2",
-      "ACC_Q_0",
-      "ACC_Q_1",
-      "ACC_Q_2",
-      "ACC_Q_3",
-      "ACC_R_0",
-      "ACC_R_1",
-      "ACC_R_2",
-      "ACC_R_3",
-      "ARG_1_HI",
-      "ARG_1_LO",
-      "ARG_2_HI",
-      "ARG_2_LO",
-      "BYTE_1_2",
-      "BYTE_1_3",
-      "BYTE_2_2",
-      "BYTE_2_3",
-      "BYTE_B_0",
-      "BYTE_B_1",
-      "BYTE_B_2",
-      "BYTE_B_3",
-      "BYTE_DELTA_0",
-      "BYTE_DELTA_1",
-      "BYTE_DELTA_2",
-      "BYTE_DELTA_3",
-      "BYTE_H_0",
-      "BYTE_H_1",
-      "BYTE_H_2",
-      "BYTE_Q_0",
-      "BYTE_Q_1",
-      "BYTE_Q_2",
-      "BYTE_Q_3",
-      "BYTE_R_0",
-      "BYTE_R_1",
-      "BYTE_R_2",
-      "BYTE_R_3",
-      "CMP_1",
-      "CMP_2",
-      "CT",
-      "DEC_OUTPUT",
-      "DEC_SIGNED",
-      "INST",
-      "MSB_1",
-      "MSB_2",
-      "OLI",
-      "RES_HI",
-      "RES_LO",
-      "STAMP",
+    "ACC_1_2",
+    "ACC_1_3",
+    "ACC_2_2",
+    "ACC_2_3",
+    "ACC_B_0",
+    "ACC_B_1",
+    "ACC_B_2",
+    "ACC_B_3",
+    "ACC_DELTA_0",
+    "ACC_DELTA_1",
+    "ACC_DELTA_2",
+    "ACC_DELTA_3",
+    "ACC_H_0",
+    "ACC_H_1",
+    "ACC_H_2",
+    "ACC_Q_0",
+    "ACC_Q_1",
+    "ACC_Q_2",
+    "ACC_Q_3",
+    "ACC_R_0",
+    "ACC_R_1",
+    "ACC_R_2",
+    "ACC_R_3",
+    "ARG_1_HI",
+    "ARG_1_LO",
+    "ARG_2_HI",
+    "ARG_2_LO",
+    "BYTE_1_2",
+    "BYTE_1_3",
+    "BYTE_2_2",
+    "BYTE_2_3",
+    "BYTE_B_0",
+    "BYTE_B_1",
+    "BYTE_B_2",
+    "BYTE_B_3",
+    "BYTE_DELTA_0",
+    "BYTE_DELTA_1",
+    "BYTE_DELTA_2",
+    "BYTE_DELTA_3",
+    "BYTE_H_0",
+    "BYTE_H_1",
+    "BYTE_H_2",
+    "BYTE_Q_0",
+    "BYTE_Q_1",
+    "BYTE_Q_2",
+    "BYTE_Q_3",
+    "BYTE_R_0",
+    "BYTE_R_1",
+    "BYTE_R_2",
+    "BYTE_R_3",
+    "CMP_1",
+    "CMP_2",
+    "CT",
+    "DEC_OUTPUT",
+    "DEC_SIGNED",
+    "INST",
+    "MSB_1",
+    "MSB_2",
+    "OLI",
+    "RES_HI",
+    "RES_LO",
+    "STAMP",
   })
   @SuppressWarnings("unused")
   public record Trace(
@@ -220,8 +221,7 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<Integer> modStamp = new ArrayList<>();
       private int stamp = 0;
 
-      private Builder() {
-      }
+      private Builder() {}
 
       public static Builder newInstance() {
         return new Builder();
@@ -556,7 +556,6 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         modStamp.add(b);
         return this;
       }
-
 
       public ModTrace build() {
         return new ModTrace(
