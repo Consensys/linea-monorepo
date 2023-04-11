@@ -1,17 +1,18 @@
 package net.consensys.linea.zktracer.module.alu.mod;
 
-import java.util.List;
-import net.consensys.linea.zktracer.OpCode;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
+import java.util.List;
+
+import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ModTracer implements ModuleTracer {
   private int stamp = 0;
-  private final int	MMEDIUM = 8;
+  private final int MMEDIUM = 8;
 
   @Override
   public String jsonKey() {
@@ -34,7 +35,7 @@ public class ModTracer implements ModuleTracer {
     final ModTrace.Trace.Builder builder = ModTrace.Trace.Builder.newInstance();
     stamp++;
     for (int ct = 0; ct < maxCounter(data); ct++) {
-      final int accLength = ct+1;
+      final int accLength = ct + 1;
       builder
           .appendModStamp(stamp)
           .appendOli(data.isOli())
@@ -42,81 +43,65 @@ public class ModTracer implements ModuleTracer {
           .appendInst(UnsignedByte.of(opCode.value))
           .appendDecSigned(data.isSigned())
           .appendDecOutput(data.isDiv())
-
           .appendArg1Hi(data.getArg1().getHigh().toUnsignedBigInteger())
           .appendArg1Lo(data.getArg1().getLow().toUnsignedBigInteger())
           .appendArg2Hi(data.getArg2().getHigh().toUnsignedBigInteger())
           .appendArg2Lo(data.getArg2().getLow().toUnsignedBigInteger())
-
           .appendResHi(data.getResult().getHigh().toUnsignedBigInteger())
           .appendResLo(data.getResult().getLow().toUnsignedBigInteger())
-
-          .appendAcc_1_2(data.getArg1().getBytes32().slice(8, ct+1).toUnsignedBigInteger())
-          .appendAcc_1_3(data.getArg1().getBytes32().slice(0, ct+1).toUnsignedBigInteger())
-          .appendAcc_2_2(data.getArg2().getBytes32().slice(8, ct+1).toUnsignedBigInteger())
-          .appendAcc_2_3(data.getArg2().getBytes32().slice(0, ct+1).toUnsignedBigInteger())
-
+          .appendAcc_1_2(data.getArg1().getBytes32().slice(8, ct + 1).toUnsignedBigInteger())
+          .appendAcc_1_3(data.getArg1().getBytes32().slice(0, ct + 1).toUnsignedBigInteger())
+          .appendAcc_2_2(data.getArg2().getBytes32().slice(8, ct + 1).toUnsignedBigInteger())
+          .appendAcc_2_3(data.getArg2().getBytes32().slice(0, ct + 1).toUnsignedBigInteger())
           .appendAcc_B_0(data.getB_Bytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAcc_B_1(data.getB_Bytes().get(1).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_B_2(data.getB_Bytes().get(2).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_B_3(data.getB_Bytes().get(3).slice(0,accLength).toUnsignedBigInteger())
-
-          .appendAcc_R_0(data.getR_Bytes().get(0).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_R_1(data.getR_Bytes().get(1).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_R_2(data.getR_Bytes().get(2).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_R_3(data.getR_Bytes().get(3).slice(0,accLength).toUnsignedBigInteger())
-
-          .appendAcc_Q_0(data.getQ_Bytes().get(0).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_Q_1(data.getQ_Bytes().get(1).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_Q_2(data.getQ_Bytes().get(2).slice(0,accLength).toUnsignedBigInteger())
-          .appendAcc_Q_3(data.getQ_Bytes().get(3).slice(0,accLength).toUnsignedBigInteger())
-
-          .appendAccDelta_0(data.getDeltaBytes().get(0).slice(0,accLength).toUnsignedBigInteger())
-          .appendAccDelta_1(data.getDeltaBytes().get(1).slice(0,accLength).toUnsignedBigInteger())
-          .appendAccDelta_2(data.getDeltaBytes().get(2).slice(0,accLength).toUnsignedBigInteger())
-          .appendAccDelta_3(data.getDeltaBytes().get(3).slice(0,accLength).toUnsignedBigInteger())
-
+          .appendAcc_B_1(data.getB_Bytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_B_2(data.getB_Bytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_B_3(data.getB_Bytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_R_0(data.getR_Bytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_R_1(data.getR_Bytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_R_2(data.getR_Bytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_R_3(data.getR_Bytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_Q_0(data.getQ_Bytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_Q_1(data.getQ_Bytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_Q_2(data.getQ_Bytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .appendAcc_Q_3(data.getQ_Bytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .appendAccDelta_0(data.getDeltaBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .appendAccDelta_1(data.getDeltaBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .appendAccDelta_2(data.getDeltaBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .appendAccDelta_3(data.getDeltaBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           .appendByte_2_2(UnsignedByte.of(data.getArg2().getByte(ct + 8)))
           .appendByte_2_3(UnsignedByte.of(data.getArg2().getByte(ct)))
-
           .appendByte_1_2(UnsignedByte.of(data.getArg1().getByte(ct + 8)))
           .appendByte_1_3(UnsignedByte.of(data.getArg1().getByte(ct)))
-
           .appendByte_B_0(UnsignedByte.of(data.getB_Bytes().get(0).get(ct)))
           .appendByte_B_1(UnsignedByte.of(data.getB_Bytes().get(1).get(ct)))
           .appendByte_B_2(UnsignedByte.of(data.getB_Bytes().get(2).get(ct)))
           .appendByte_B_3(UnsignedByte.of(data.getB_Bytes().get(3).get(ct)))
-
           .appendByte_R_0(UnsignedByte.of(data.getR_Bytes().get(0).get(ct)))
           .appendByte_R_1(UnsignedByte.of(data.getR_Bytes().get(1).get(ct)))
           .appendByte_R_2(UnsignedByte.of(data.getR_Bytes().get(2).get(ct)))
           .appendByte_R_3(UnsignedByte.of(data.getR_Bytes().get(3).get(ct)))
-
           .appendByte_Q_0(UnsignedByte.of(data.getQ_Bytes().get(0).get(ct)))
           .appendByte_Q_1(UnsignedByte.of(data.getQ_Bytes().get(1).get(ct)))
           .appendByte_Q_2(UnsignedByte.of(data.getQ_Bytes().get(2).get(ct)))
           .appendByte_Q_3(UnsignedByte.of(data.getQ_Bytes().get(3).get(ct)))
-
           .appendByteDelta_0(UnsignedByte.of(data.getDeltaBytes().get(0).get(ct)))
           .appendByteDelta_1(UnsignedByte.of(data.getDeltaBytes().get(1).get(ct)))
           .appendByteDelta_2(UnsignedByte.of(data.getDeltaBytes().get(2).get(ct)))
           .appendByteDelta_3(UnsignedByte.of(data.getDeltaBytes().get(3).get(ct)))
-
-
           .appendByte_H_0(UnsignedByte.of(data.getH_Bytes().get(0).get(ct)))
           .appendByte_H_1(UnsignedByte.of(data.getH_Bytes().get(1).get(ct)))
-          .appendByte_H_2 (UnsignedByte.of(data.getH_Bytes().get(2).get(ct)))
-
-          .appendAcc_H_0(Bytes.wrap(data.getH_Bytes().get(0)).slice(0, ct + 1).toUnsignedBigInteger())
-          .appendAcc_H_1(Bytes.wrap(data.getH_Bytes().get(1)).slice(0, ct + 1).toUnsignedBigInteger())
-          .appendAcc_H_2(Bytes.wrap(data.getH_Bytes().get(2)).slice(0, ct + 1).toUnsignedBigInteger())
-
+          .appendByte_H_2(UnsignedByte.of(data.getH_Bytes().get(2).get(ct)))
+          .appendAcc_H_0(
+              Bytes.wrap(data.getH_Bytes().get(0)).slice(0, ct + 1).toUnsignedBigInteger())
+          .appendAcc_H_1(
+              Bytes.wrap(data.getH_Bytes().get(1)).slice(0, ct + 1).toUnsignedBigInteger())
+          .appendAcc_H_2(
+              Bytes.wrap(data.getH_Bytes().get(2)).slice(0, ct + 1).toUnsignedBigInteger())
           .appendCmp1(data.getCmp1()[ct])
           .appendCmp2(data.getCmp2()[ct])
-
           .appendMsb1(data.getMsb1()[ct])
           .appendMsb2(data.getMsb2()[ct]);
-
     }
     return builder.build();
   }

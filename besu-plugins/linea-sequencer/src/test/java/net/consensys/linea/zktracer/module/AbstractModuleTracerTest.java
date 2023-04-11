@@ -17,6 +17,9 @@ package net.consensys.linea.zktracer.module;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -26,10 +29,7 @@ import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -45,10 +45,8 @@ public abstract class AbstractModuleTracerTest {
 
   private ZkTracer zkTracer;
   private ZkTraceBuilder zkTraceBuilder;
-  @Mock
-  MessageFrame mockFrame;
-  @Mock
-  Operation mockOperation;
+  @Mock MessageFrame mockFrame;
+  @Mock Operation mockOperation;
   static ModuleTracer moduleTracer;
 
   @ParameterizedTest()
@@ -74,13 +72,12 @@ public abstract class AbstractModuleTracerTest {
   @BeforeEach
   void setUp() {
     zkTraceBuilder = new ZkTraceBuilder();
-    moduleTracer =  getModuleTracer();
+    moduleTracer = getModuleTracer();
     zkTracer = new ZkTracer(zkTraceBuilder, List.of(moduleTracer));
     when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
 
-
-   protected abstract Stream<Arguments> provideNonRandomArguments();
+  protected abstract Stream<Arguments> provideNonRandomArguments();
 
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
@@ -95,17 +92,17 @@ public abstract class AbstractModuleTracerTest {
     return arguments.stream();
   }
 
-  private static Bytes32 getFirstArgument(){
+  private static Bytes32 getFirstArgument() {
     return Bytes32.random(rand);
   }
 
-  private static Bytes32 getSecondArgument(){
+  private static Bytes32 getSecondArgument() {
     return Bytes32.random(rand);
   }
 
-  private static int getTestRepetitionsCount(){
-      return TEST_REPETITIONS;
+  private static int getTestRepetitionsCount() {
+    return TEST_REPETITIONS;
   }
 
-  protected abstract ModuleTracer getModuleTracer() ;
+  protected abstract ModuleTracer getModuleTracer();
 }
