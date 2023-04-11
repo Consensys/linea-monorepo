@@ -40,5 +40,4 @@ public class Res {
 
     return new Res(Bytes16.wrap(result.slice(0, 16)), Bytes16.wrap(result.slice(16)));
   }
-
 }
