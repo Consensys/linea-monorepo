@@ -65,13 +65,27 @@ public class MulTracer implements ModuleTracer {
     final boolean isOneLineInstruction = isOneLineInstruction(tinyBase, tinyExponent);
     final Res res = Res.create(opCode, arg1, arg2);
 
-    final Regime regime = getRegime(opCode, tinyBase, tinyExponent, res);
-    System.out.println(regime);
-
     final MulTrace.Trace.Builder builder = MulTrace.Trace.Builder.newInstance();
 
     final BytesBaseTheta aBytes = new BytesBaseTheta(arg1);
     final BytesBaseTheta bBytes = new BytesBaseTheta(arg2);
+    BytesBaseTheta cBytes ;
+    BytesBaseTheta hBytes ;
+    boolean snm = false;
+
+    final Regime regime = getRegime(opCode, tinyBase, tinyExponent, res);
+    System.out.println(regime);
+    switch (regime) {
+      case TRIVIAL_MUL: break;
+      case NON_TRIVIAL_MUL:
+        cBytes = new BytesBaseTheta(res);
+      case EXPONENT_ZERO_RESULT:
+        setArraysForZeroResultCase();
+      case EXPONENT_NON_ZERO_RESULT:
+        setExponentBit();
+        snm = false;
+      case IOTA: throw new RuntimeException("alu/mul regime was never set");
+    }
 
 
     stamp++;
@@ -120,11 +134,25 @@ public class MulTracer implements ModuleTracer {
               .appendAccB2(Bytes.of(bBytes.getRange(2, 0, i+1)).toUnsignedBigInteger())
               .appendAccB1(Bytes.of(bBytes.getRange(1, 0, i+1)).toUnsignedBigInteger())
               .appendAccB0(Bytes.of(bBytes.getRange(0, 0, i+1)).toUnsignedBigInteger());
+      builder
+              .appendByteC3(UnsignedByte.of(cBytes.get(3, i)))
+              .appendByteC2(UnsignedByte.of(cBytes.get(2, i)))
+              .appendByteC1(UnsignedByte.of(cBytes.get(1, i)))
+              .appendByteC0(UnsignedByte.of(cBytes.get(0, i)));
 
     }
     builder.setStamp(stamp);
 
     return builder.build();
+  }
+
+  private void setArraysForZeroResultCase() {
+    // TODO
+  }
+  private boolean setExponentBit()  {
+    // TODO
+    return false;
+//    return string(exponentBits[md.index]) == "1";
   }
 
   public static boolean isTiny(BigInteger arg) {
