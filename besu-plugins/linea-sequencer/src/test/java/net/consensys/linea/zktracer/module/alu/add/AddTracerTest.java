@@ -14,14 +14,21 @@
  */
 package net.consensys.linea.zktracer.module.alu.add;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.mockito.Mockito.when;
+
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
+
+import java.util.Random;
+import java.util.stream.Stream;
+
 import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
@@ -33,12 +40,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Random;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AddTracerTest {
@@ -78,7 +79,10 @@ class AddTracerTest {
   @MethodSource("provideRandomAddArguments")
   void testRandomAdd(final Bytes32[] payload) {
     LOG.info(
-            "addArg1: " + payload[0].toShortHexString() + ", addArg2: " + payload[1].toShortHexString());
+        "addArg1: "
+            + payload[0].toShortHexString()
+            + ", addArg2: "
+            + payload[1].toShortHexString());
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
 
     when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
@@ -93,7 +97,10 @@ class AddTracerTest {
   @MethodSource("provideNonRandomAddArguments")
   void testNonRandomAdd(final Bytes32[] payload) {
     LOG.info(
-            "addArg1: " + payload[0].toShortHexString() + ", addArg2: " + payload[1].toShortHexString());
+        "addArg1: "
+            + payload[0].toShortHexString()
+            + ", addArg2: "
+            + payload[1].toShortHexString());
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
 
     when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
@@ -117,7 +124,7 @@ class AddTracerTest {
     assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
 
-    public static Stream<Arguments> provideAddOperators() {
+  public static Stream<Arguments> provideAddOperators() {
     return Stream.of(
         Arguments.of(Named.of("ADD", (int) OpCode.ADD.value)),
         Arguments.of(Named.of("SUB", (int) OpCode.SUB.value)));
@@ -129,15 +136,9 @@ class AddTracerTest {
     for (int i = 0; i < TEST_REPETITIONS; i++) {
       Bytes32[] payload = new Bytes32[2];
       payload[0] = Bytes32.leftPad(Bytes.of(i));
-      payload[1] = Bytes32.leftPad(Bytes.of(i+1));
+      payload[1] = Bytes32.leftPad(Bytes.of(i + 1));
       arguments[i] =
-              Arguments.of(
-                      Named.of(
-                              "addArg1: "
-                                      + payload[0]
-                                      + ", addArg2: "
-                                      + payload[1],
-                              payload));
+          Arguments.of(Named.of("addArg1: " + payload[0] + ", addArg2: " + payload[1], payload));
     }
 
     return Stream.of(arguments);
@@ -158,13 +159,10 @@ class AddTracerTest {
       payload[1] = Bytes32.wrap(randomBytes2);
 
       arguments[i] =
-              Arguments.of(
-                      Named.of(
-                              "addArg1: "
-                                      + payload[0].toHexString()
-                                      + ", addArg2: "
-                                      + payload[1].toHexString(),
-                              payload));
+          Arguments.of(
+              Named.of(
+                  "addArg1: " + payload[0].toHexString() + ", addArg2: " + payload[1].toHexString(),
+                  payload));
     }
 
     return Stream.of(arguments);

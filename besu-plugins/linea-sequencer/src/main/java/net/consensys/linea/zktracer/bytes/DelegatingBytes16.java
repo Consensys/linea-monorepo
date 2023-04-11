@@ -17,8 +17,7 @@ package net.consensys.linea.zktracer.bytes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.DelegatingBytes;
 
-public class DelegatingBytes16 extends DelegatingBytes implements
-    Bytes16 {
+public class DelegatingBytes16 extends DelegatingBytes implements Bytes16 {
 
   protected DelegatingBytes16(Bytes delegate) {
     super(delegate);

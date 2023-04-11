@@ -14,8 +14,9 @@
  */
 package net.consensys.linea.zktracer.bytes;
 
-import com.google.errorprone.annotations.FormatMethod;
 import javax.annotation.Nullable;
+
+import com.google.errorprone.annotations.FormatMethod;
 
 class Checks {
 
