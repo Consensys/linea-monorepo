@@ -69,7 +69,7 @@ public class MulTracer implements ModuleTracer {
 
     final BytesBaseTheta aBytes = new BytesBaseTheta(arg1);
     final BytesBaseTheta bBytes = new BytesBaseTheta(arg2);
-    BytesBaseTheta cBytes ;
+    BytesBaseTheta cBytes = null;
     BytesBaseTheta hBytes ;
     boolean snm = false;
 
