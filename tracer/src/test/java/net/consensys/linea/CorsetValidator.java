@@ -42,7 +42,7 @@ public class CorsetValidator {
     ZK_EVM_BIN = System.getenv(ZK_EVM_BIN_ENV);
     if (ZK_EVM_BIN == null) {
       LOG.error("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
-      throw new RuntimeException();
+      throw new RuntimeException("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
     }
 
     final Process whichCorsetProcess;
