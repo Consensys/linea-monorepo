@@ -29,7 +29,7 @@ public class BytesBaseTheta {
       System.arraycopy(argBytesHi, 8 * k, bytes[3 - k], 0, 8);
     }
     for (int k = 2; k < 4; k++) {
-      System.arraycopy(argBytesLo, 8 * k, bytes[3 - k], 0, 8);
+      System.arraycopy(argBytesLo, 8 * (k-2), bytes[3 - k], 0, 8);
     }
   }
 
