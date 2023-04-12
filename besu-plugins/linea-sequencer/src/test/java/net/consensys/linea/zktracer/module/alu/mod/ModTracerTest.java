@@ -46,19 +46,19 @@ class ModTracerTest extends AbstractModuleTracerTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomDivisionsByZeroArguments")
-  void randomDivisionsByZeroTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModRandomDivisionsByZeroTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
   @ParameterizedTest()
   @MethodSource("provideDivisibleArguments")
-  void divisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNegativeDivisibleArguments")
-  void negativeDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModNegativeDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
@@ -71,7 +71,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
   }
 
   @Override
-  protected Stream<Arguments> provideNonRandomArguments() {
+  public Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
@@ -83,7 +83,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     return arguments.stream();
   }
 
-  protected Stream<Arguments> provideDivisibleArguments() {
+  private Stream<Arguments> provideDivisibleArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
       long b = rand.nextInt(Integer.MAX_VALUE);
@@ -95,8 +95,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     return arguments.stream();
   }
 
-  @SuppressWarnings("UnusedVariable")
-  protected Stream<Arguments> provideNegativeDivisibleArguments() {
+  private Stream<Arguments> provideNegativeDivisibleArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
       long b = rand.nextInt(Integer.MAX_VALUE) + 1L;
@@ -121,7 +120,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     return Bytes32.leftPad(resultBytes, bigInteger.signum() < 0 ? (byte) 0xFF : 0x00);
   }
 
-  protected Stream<Arguments> provideRandomDivisionsByZeroArguments() {
+  private Stream<Arguments> provideRandomDivisionsByZeroArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
       int a = rand.nextInt(256) + 1;
