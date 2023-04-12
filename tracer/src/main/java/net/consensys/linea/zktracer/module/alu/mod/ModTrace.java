@@ -341,27 +341,6 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         accR3.add(b);
         return this;
       }
-
-      public Builder appendArg_1_HI(final BigInteger b) {
-        arg1Hi.add(b);
-        return this;
-      }
-
-      public Builder appendArg_1_LO(final BigInteger b) {
-        arg1Lo.add(b);
-        return this;
-      }
-
-      public Builder appendArg_2_HI(final BigInteger b) {
-        arg2Hi.add(b);
-        return this;
-      }
-
-      public Builder appendArg_2_LO(final BigInteger b) {
-        arg2Lo.add(b);
-        return this;
-      }
-
       public Builder appendByte1_2(final UnsignedByte b) {
         byte1_2.add(b);
         return this;
