@@ -21,7 +21,6 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
-import net.consensys.linea.zktracer.bytes.BytesBaseTheta;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
@@ -54,45 +53,11 @@ public class MulTracer implements ModuleTracer {
     final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    final UInt256 arg1Int = UInt256.fromBytes(arg1);
-    final UInt256 arg2Int = UInt256.fromBytes(arg2);
-    final BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
-    final BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
-
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
 
-    final boolean tinyBase = isTiny(arg1BigInt);
-    final boolean tinyExponent = isTiny(arg2BigInt);
-
-    final boolean isOneLineInstruction = isOneLineInstruction(tinyBase, tinyExponent);
-    final Res res = Res.create(opCode, arg1, arg2);
-
+    final MulData data = new MulData(opCode, arg1, arg2);
     final MulTrace.Trace.Builder builder = MulTrace.Trace.Builder.newInstance();
-
-    final BytesBaseTheta aBytes = new BytesBaseTheta(arg1);
-    final BytesBaseTheta bBytes = new BytesBaseTheta(arg2);
-    BytesBaseTheta cBytes = null;
-    BytesBaseTheta hBytes;
-    boolean snm = false;
-
-    final Regime regime = getRegime(opCode, tinyBase, tinyExponent, res);
-    System.out.println(regime);
-    switch (regime) {
-      case TRIVIAL_MUL:
-        break;
-      case NON_TRIVIAL_MUL:
-        cBytes = new BytesBaseTheta(res);
-        break;
-      case EXPONENT_ZERO_RESULT:
-        setArraysForZeroResultCase();
-        break;
-      case EXPONENT_NON_ZERO_RESULT:
-        setExponentBit();
-        snm = false;
-        break;
-      case IOTA:
-        throw new RuntimeException("alu/mul regime was never set");
-    }
+    final boolean isOneLineInstruction = data.isOneLineInstruction();
 
     stamp++;
     for (int i = 0; i < maxCt(isOneLineInstruction); i++) {
@@ -101,9 +66,9 @@ public class MulTracer implements ModuleTracer {
 
       builder
           .appendOneLineInstruction(isOneLineInstruction)
-          .appendTinyBase(tinyBase)
-          .appendTinyExponent(tinyExponent)
-          .appendResultVanishes(res.isZero());
+          .appendTinyBase(data.tinyBase)
+          .appendTinyExponent(data.tinyExponent)
+          .appendResultVanishes(data.res.isZero());
 
       builder
           .appendInst(UnsignedByte.of(opCode.value))
@@ -113,102 +78,45 @@ public class MulTracer implements ModuleTracer {
           .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
 
       builder
-          .appendResHi(res.getResHi().toUnsignedBigInteger())
-          .appendResLo(res.getResLo().toUnsignedBigInteger());
+          .appendResHi(data.res.getResHi().toUnsignedBigInteger())
+          .appendResLo(data.res.getResLo().toUnsignedBigInteger());
 
       //      builder.appendBits(bits.get(i)).appendCounter(i); // TODO
 
       builder
-          .appendByteA3(UnsignedByte.of(aBytes.get(3, i)))
-          .appendByteA2(UnsignedByte.of(aBytes.get(2, i)))
-          .appendByteA1(UnsignedByte.of(aBytes.get(1, i)))
-          .appendByteA0(UnsignedByte.of(aBytes.get(0, i)));
+          .appendByteA3(UnsignedByte.of(data.aBytes.get(3, i)))
+          .appendByteA2(UnsignedByte.of(data.aBytes.get(2, i)))
+          .appendByteA1(UnsignedByte.of(data.aBytes.get(1, i)))
+          .appendByteA0(UnsignedByte.of(data.aBytes.get(0, i)));
       builder
-          .appendAccA3(Bytes.of(aBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccA2(Bytes.of(aBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccA1(Bytes.of(aBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccA0(Bytes.of(aBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+          .appendAccA3(Bytes.of(data.aBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccA2(Bytes.of(data.aBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccA1(Bytes.of(data.aBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccA0(Bytes.of(data.aBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
 
       builder
-          .appendByteB3(UnsignedByte.of(bBytes.get(3, i)))
-          .appendByteB2(UnsignedByte.of(bBytes.get(2, i)))
-          .appendByteB1(UnsignedByte.of(bBytes.get(1, i)))
-          .appendByteB0(UnsignedByte.of(bBytes.get(0, i)));
+          .appendByteB3(UnsignedByte.of(data.bBytes.get(3, i)))
+          .appendByteB2(UnsignedByte.of(data.bBytes.get(2, i)))
+          .appendByteB1(UnsignedByte.of(data.bBytes.get(1, i)))
+          .appendByteB0(UnsignedByte.of(data.bBytes.get(0, i)));
       builder
-          .appendAccB3(Bytes.of(bBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccB2(Bytes.of(bBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccB1(Bytes.of(bBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-          .appendAccB0(Bytes.of(bBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+          .appendAccB3(Bytes.of(data.bBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB2(Bytes.of(data.bBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB1(Bytes.of(data.bBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB0(Bytes.of(data.bBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
       builder
-          .appendByteC3(UnsignedByte.of(cBytes.get(3, i)))
-          .appendByteC2(UnsignedByte.of(cBytes.get(2, i)))
-          .appendByteC1(UnsignedByte.of(cBytes.get(1, i)))
-          .appendByteC0(UnsignedByte.of(cBytes.get(0, i)));
+          .appendByteC3(UnsignedByte.of(data.cBytes.get(3, i)))
+          .appendByteC2(UnsignedByte.of(data.cBytes.get(2, i)))
+          .appendByteC1(UnsignedByte.of(data.cBytes.get(1, i)))
+          .appendByteC0(UnsignedByte.of(data.cBytes.get(0, i)));
     }
     builder.setStamp(stamp);
 
     return builder.build();
   }
 
-  private void setArraysForZeroResultCase() {
-    // TODO
-  }
-
-  private boolean setExponentBit() {
-    // TODO
-    return false;
-    //    return string(exponentBits[md.index]) == "1";
-  }
-
-  public static boolean isTiny(BigInteger arg) {
-    return arg.compareTo(BigInteger.valueOf(1)) <= 0;
-  }
 
   private int maxCt(final boolean isOneLineInstruction) {
     return isOneLineInstruction ? 1 : MMEDIUM;
-  }
-
-  private boolean isOneLineInstruction(final boolean tinyBase, final boolean tinyExponent) {
-    return tinyBase || tinyExponent;
-  }
-
-  private enum Regime {
-    IOTA,
-    TRIVIAL_MUL,
-    NON_TRIVIAL_MUL,
-    EXPONENT_ZERO_RESULT,
-    EXPONENT_NON_ZERO_RESULT
-  }
-
-  private Regime getRegime(
-      final OpCode opCode, final boolean tinyBase, final boolean tinyExponent, final Res res) {
-
-    if (isOneLineInstruction(tinyBase, tinyExponent)) return Regime.TRIVIAL_MUL;
-
-    if (OpCode.MUL.equals(opCode)) {
-      return Regime.NON_TRIVIAL_MUL;
-    }
-
-    if (OpCode.EXP.equals(opCode)) {
-      if (res.isZero()) {
-        return Regime.EXPONENT_ZERO_RESULT;
-      } else {
-        return Regime.EXPONENT_NON_ZERO_RESULT;
-      }
-    }
-    return Regime.IOTA;
-  }
-
-  public int lineCount(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
-
-    final UInt256 arg1Int = UInt256.fromBytes(arg1);
-    final UInt256 arg2Int = UInt256.fromBytes(arg2);
-    final BigInteger arg1BigInt = arg1Int.toUnsignedBigInteger();
-    final BigInteger arg2BigInt = arg2Int.toUnsignedBigInteger();
-
-    final boolean tinyBase = isTiny(arg1BigInt);
-    final boolean tinyExponent = isTiny(arg2BigInt);
-
-    return maxCt(isOneLineInstruction(tinyBase, tinyExponent));
   }
 }
