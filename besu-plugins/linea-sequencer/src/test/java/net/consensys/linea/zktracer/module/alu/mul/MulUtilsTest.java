@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 public class MulUtilsTest {
   @Test
   public void isTiny() {
-    assertThat(MulTracer.isTiny(BigInteger.ZERO)).isTrue();
-    assertThat(MulTracer.isTiny(BigInteger.ONE)).isTrue();
-    assertThat(MulTracer.isTiny(BigInteger.TWO)).isFalse();
-    assertThat(MulTracer.isTiny(BigInteger.TEN)).isFalse();
+    assertThat(MulData.isTiny(BigInteger.ZERO)).isTrue();
+    assertThat(MulData.isTiny(BigInteger.ONE)).isTrue();
+    assertThat(MulData.isTiny(BigInteger.TWO)).isFalse();
+    assertThat(MulData.isTiny(BigInteger.TEN)).isFalse();
   }
 }
