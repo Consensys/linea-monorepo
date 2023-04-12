@@ -120,7 +120,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("BYTE_H_3") List<UnsignedByte> BYTE_H_3,
       @JsonProperty("COUNTER") List<Integer> COUNTER,
       @JsonProperty("EXPONENT_BIT") List<Boolean> EXPONENT_BIT,
-      @JsonProperty("EXPONENT_BIT_ACCUMULATOR") List<UnsignedByte> EXPONENT_BIT_ACCUMULATOR,
+      @JsonProperty("EXPONENT_BIT_ACCUMULATOR") List<BigInteger> EXPONENT_BIT_ACCUMULATOR,
       @JsonProperty("EXPONENT_BIT_SOURCE") List<Boolean> EXPONENT_BIT_SOURCE,
       @JsonProperty("INST") List<UnsignedByte> INST,
       @JsonProperty("MUL_STAMP") List<Integer> MUL_STAMP,

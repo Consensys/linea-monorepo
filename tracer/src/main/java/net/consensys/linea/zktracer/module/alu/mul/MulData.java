@@ -83,9 +83,29 @@ public class MulData {
     return this.index + 128 >= exponentBits.length();
   }
 
-  private boolean largeExponent() {
-    return exponentBits.length() > 128;
+  public static int twoAdicity(final UInt256 x) {
+
+    if (x.isZero()) {
+      // panic("twoAdicity was called on zero")
+      return 256;
+    }
+
+    String baseStringBase2 = x.toBigInteger().toString(2);
+
+    for (int i = 0; i < baseStringBase2.length(); i++) {
+      int j = baseStringBase2.length() - i - 1;
+      char zeroAscii = '0';
+      if (baseStringBase2.charAt(j) != zeroAscii) {
+        return i;
+      }
+    }
+
+    return 0;
   }
+  //
+  //  private boolean largeExponent() {
+  //    return exponentBits.length() > 128;
+  //  }
 
   private enum Regime {
     IOTA,
