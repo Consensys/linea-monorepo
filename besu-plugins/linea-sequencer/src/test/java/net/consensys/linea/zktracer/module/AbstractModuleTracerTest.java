@@ -82,26 +82,14 @@ public abstract class AbstractModuleTracerTest {
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
-      for (int i = 0; i <= getTestRepetitionsCount(); i++) {
+      for (int i = 0; i <= TEST_REPETITIONS; i++) {
         Bytes32[] payload = new Bytes32[2];
-        payload[0] = getFirstArgument();
-        payload[1] = getSecondArgument();
+        payload[0] = Bytes32.random(rand);
+        payload[1] = Bytes32.random(rand);
         arguments.add(Arguments.of(opCode, payload[0], payload[1]));
       }
     }
     return arguments.stream();
-  }
-
-  private static Bytes32 getFirstArgument() {
-    return Bytes32.random(rand);
-  }
-
-  private static Bytes32 getSecondArgument() {
-    return Bytes32.random(rand);
-  }
-
-  public static int getTestRepetitionsCount() {
-    return TEST_REPETITIONS;
   }
 
   protected abstract ModuleTracer getModuleTracer();
