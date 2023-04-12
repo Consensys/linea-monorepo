@@ -1,5 +1,6 @@
 package net.consensys.linea.zktracer.bytes;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -33,6 +34,23 @@ public class BytesBaseTheta {
     }
   }
 
+  public void set(final BigInteger bigInteger) {
+    // TODO how to get from BigInteger to bytes
+    bigInteger.toByteArray();
+
+  }
+  public void set(final int i, final BigInteger bigInteger) {
+    // TODO handle underflow
+    byte[] bigIntByteArray = bigInteger.toByteArray();
+    System.arraycopy(bigIntByteArray, 0, bytes[i], 0, 8);
+
+  }
+  public void set(final int i, final byte[] chunk) {
+    // TODO handle underflow
+    System.arraycopy(chunk, 0, bytes[i], 0, 8);
+
+  }
+
   // TODO can Res become Pair<Bytes16, Bytes16> as below
   public Pair<byte[], byte[]> getHiLo() {
     byte[] hiBytes = new byte[16];
@@ -45,6 +63,10 @@ public class BytesBaseTheta {
     System.arraycopy(bytes[0], 0, loBytes, 8, 8);
 
     return new Pair<>(hiBytes, loBytes);
+  }
+
+  public byte[] getChunk(final int i) {
+    return bytes[i];
   }
 
   public byte get(final int i, final int j) {
