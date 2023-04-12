@@ -41,7 +41,7 @@ import org.mockito.Mock;
 @TestInstance(Lifecycle.PER_CLASS)
 public abstract class AbstractModuleTracerTest {
   static final Random rand = new Random();
-  private static final int TEST_REPETITIONS = 4;
+  private static final int TEST_REPETITIONS = 8;
 
   private ZkTracer zkTracer;
   private ZkTraceBuilder zkTraceBuilder;
@@ -51,13 +51,13 @@ public abstract class AbstractModuleTracerTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomArguments")
-  void testRandomArguments(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void randomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNonRandomArguments")
-  void testNonRandomArguments(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void nonRandomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
@@ -100,9 +100,15 @@ public abstract class AbstractModuleTracerTest {
     return Bytes32.random(rand);
   }
 
-  private static int getTestRepetitionsCount() {
+  public static int getTestRepetitionsCount() {
     return TEST_REPETITIONS;
   }
 
   protected abstract ModuleTracer getModuleTracer();
+
+  protected OpCode getRandomSupportedOpcode() {
+    var supportedOpCodes = getModuleTracer().supportedOpCodes();
+    int index = rand.nextInt(supportedOpCodes.size());
+    return supportedOpCodes.get(index);
+  }
 }
