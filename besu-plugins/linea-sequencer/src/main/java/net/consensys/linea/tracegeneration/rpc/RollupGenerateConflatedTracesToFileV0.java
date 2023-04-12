@@ -130,7 +130,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
             String.format(
                 "%d-%s-%.10s-%s.traces.%s",
                 block.getBlockHeader().getNumber(),
-                "hash",
+                block.getBlockHeader().getBlockHash(),
                 System.currentTimeMillis(),
                 tracesEngineVersion,
                 getFileFormat()))
