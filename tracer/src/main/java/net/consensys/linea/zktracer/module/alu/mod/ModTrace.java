@@ -155,7 +155,7 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("OLI") List<Boolean> OLI,
       @JsonProperty("RES_HI") List<BigInteger> RES_HI,
       @JsonProperty("RES_LO") List<BigInteger> RES_LO,
-      @JsonProperty("STAMP") List<Integer> STAMP) {
+      @JsonProperty("STAMP") List<Integer> MOD_STAMP) {
 
     public static class Builder {
 
