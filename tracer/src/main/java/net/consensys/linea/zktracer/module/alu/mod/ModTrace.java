@@ -21,8 +21,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
-import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace;
-import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace.Builder;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
 @SuppressWarnings("unused")
@@ -163,52 +161,52 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<BigInteger> acc_1_3 = new ArrayList<>();
       private final List<BigInteger> acc_2_2 = new ArrayList<>();
       private final List<BigInteger> acc_2_3 = new ArrayList<>();
-      private final List<BigInteger> acc_B_0 = new ArrayList<>();
-      private final List<BigInteger> acc_B_1 = new ArrayList<>();
-      private final List<BigInteger> acc_B_2 = new ArrayList<>();
-      private final List<BigInteger> acc_B_3 = new ArrayList<>();
-      private final List<BigInteger> accDelta_0 = new ArrayList<>();
-      private final List<BigInteger> accDelta_1 = new ArrayList<>();
-      private final List<BigInteger> accDelta_2 = new ArrayList<>();
-      private final List<BigInteger> accDelta_3 = new ArrayList<>();
-      private final List<BigInteger> acc_H_0 = new ArrayList<>();
-      private final List<BigInteger> acc_H_1 = new ArrayList<>();
-      private final List<BigInteger> acc_H_2 = new ArrayList<>();
-      private final List<BigInteger> acc_Q_0 = new ArrayList<>();
-      private final List<BigInteger> acc_Q_1 = new ArrayList<>();
-      private final List<BigInteger> acc_Q_2 = new ArrayList<>();
-      private final List<BigInteger> acc_Q_3 = new ArrayList<>();
-      private final List<BigInteger> acc_R_0 = new ArrayList<>();
-      private final List<BigInteger> acc_R_1 = new ArrayList<>();
-      private final List<BigInteger> acc_R_2 = new ArrayList<>();
-      private final List<BigInteger> acc_R_3 = new ArrayList<>();
-      private final List<BigInteger> arg_1_HI = new ArrayList<>();
-      private final List<BigInteger> arg_1_LO = new ArrayList<>();
-      private final List<BigInteger> arg_2_HI = new ArrayList<>();
-      private final List<BigInteger> arg_2_LO = new ArrayList<>();
-      private final List<UnsignedByte> byte_1_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_1_3 = new ArrayList<>();
-      private final List<UnsignedByte> byte_2_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_2_3 = new ArrayList<>();
-      private final List<UnsignedByte> byte_B_0 = new ArrayList<>();
-      private final List<UnsignedByte> byte_B_1 = new ArrayList<>();
-      private final List<UnsignedByte> byte_B_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_B_3 = new ArrayList<>();
-      private final List<UnsignedByte> byteDelta_0 = new ArrayList<>();
-      private final List<UnsignedByte> byteDelta_1 = new ArrayList<>();
-      private final List<UnsignedByte> byteDelta_2 = new ArrayList<>();
-      private final List<UnsignedByte> byteDelta_3 = new ArrayList<>();
-      private final List<UnsignedByte> byte_H_0 = new ArrayList<>();
-      private final List<UnsignedByte> byte_H_1 = new ArrayList<>();
-      private final List<UnsignedByte> byte_H_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_Q_0 = new ArrayList<>();
-      private final List<UnsignedByte> byte_Q_1 = new ArrayList<>();
-      private final List<UnsignedByte> byte_Q_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_Q_3 = new ArrayList<>();
-      private final List<UnsignedByte> byte_R_0 = new ArrayList<>();
-      private final List<UnsignedByte> byte_R_1 = new ArrayList<>();
-      private final List<UnsignedByte> byte_R_2 = new ArrayList<>();
-      private final List<UnsignedByte> byte_R_3 = new ArrayList<>();
+      private final List<BigInteger> accB0 = new ArrayList<>();
+      private final List<BigInteger> accB1 = new ArrayList<>();
+      private final List<BigInteger> accB2 = new ArrayList<>();
+      private final List<BigInteger> accB3 = new ArrayList<>();
+      private final List<BigInteger> accDelta0 = new ArrayList<>();
+      private final List<BigInteger> accDelta1 = new ArrayList<>();
+      private final List<BigInteger> accDelta2 = new ArrayList<>();
+      private final List<BigInteger> accDelta3 = new ArrayList<>();
+      private final List<BigInteger> accH0 = new ArrayList<>();
+      private final List<BigInteger> accH1 = new ArrayList<>();
+      private final List<BigInteger> accH2 = new ArrayList<>();
+      private final List<BigInteger> accQ0 = new ArrayList<>();
+      private final List<BigInteger> accQ1 = new ArrayList<>();
+      private final List<BigInteger> accQ2 = new ArrayList<>();
+      private final List<BigInteger> accQ3 = new ArrayList<>();
+      private final List<BigInteger> accR0 = new ArrayList<>();
+      private final List<BigInteger> accR1 = new ArrayList<>();
+      private final List<BigInteger> accR2 = new ArrayList<>();
+      private final List<BigInteger> accR3 = new ArrayList<>();
+      private final List<BigInteger> arg1Hi = new ArrayList<>();
+      private final List<BigInteger> arg1Lo = new ArrayList<>();
+      private final List<BigInteger> arg2Hi = new ArrayList<>();
+      private final List<BigInteger> arg2Lo = new ArrayList<>();
+      private final List<UnsignedByte> byte1_2 = new ArrayList<>();
+      private final List<UnsignedByte> byte1_3 = new ArrayList<>();
+      private final List<UnsignedByte> byte2_2 = new ArrayList<>();
+      private final List<UnsignedByte> byte2_3 = new ArrayList<>();
+      private final List<UnsignedByte> byteB0 = new ArrayList<>();
+      private final List<UnsignedByte> byteB1 = new ArrayList<>();
+      private final List<UnsignedByte> byteB2 = new ArrayList<>();
+      private final List<UnsignedByte> byteB3 = new ArrayList<>();
+      private final List<UnsignedByte> byteDelta0 = new ArrayList<>();
+      private final List<UnsignedByte> byteDelta1 = new ArrayList<>();
+      private final List<UnsignedByte> byteDelta2 = new ArrayList<>();
+      private final List<UnsignedByte> byteDelta3 = new ArrayList<>();
+      private final List<UnsignedByte> byteH0 = new ArrayList<>();
+      private final List<UnsignedByte> byteH1 = new ArrayList<>();
+      private final List<UnsignedByte> byteH2 = new ArrayList<>();
+      private final List<UnsignedByte> byteQ0 = new ArrayList<>();
+      private final List<UnsignedByte> byteQ1 = new ArrayList<>();
+      private final List<UnsignedByte> byteQ2 = new ArrayList<>();
+      private final List<UnsignedByte> byteQ3 = new ArrayList<>();
+      private final List<UnsignedByte> byteR0 = new ArrayList<>();
+      private final List<UnsignedByte> byteR1 = new ArrayList<>();
+      private final List<UnsignedByte> byteR2 = new ArrayList<>();
+      private final List<UnsignedByte> byteR3 = new ArrayList<>();
       private final List<Boolean> cmp1 = new ArrayList<>();
       private final List<Boolean> cmp2 = new ArrayList<>();
       private final List<Integer> ct = new ArrayList<>();
@@ -249,233 +247,233 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendAcc_B_0(final BigInteger b) {
-        acc_B_0.add(b);
+      public Builder appendAccB0(final BigInteger b) {
+        accB0.add(b);
         return this;
       }
 
-      public Builder appendAcc_B_1(final BigInteger b) {
-        acc_B_1.add(b);
+      public Builder appendAccB1(final BigInteger b) {
+        accB1.add(b);
         return this;
       }
 
-      public Builder appendAcc_B_2(final BigInteger b) {
-        acc_B_2.add(b);
+      public Builder appendAccB2(final BigInteger b) {
+        accB2.add(b);
         return this;
       }
 
-      public Builder appendAcc_B_3(final BigInteger b) {
-        acc_B_3.add(b);
+      public Builder appendAccB3(final BigInteger b) {
+        accB3.add(b);
         return this;
       }
 
-      public Builder appendAccDelta_0(final BigInteger b) {
-        accDelta_0.add(b);
+      public Builder appendAccDelta0(final BigInteger b) {
+        accDelta0.add(b);
         return this;
       }
 
-      public Builder appendAccDelta_1(final BigInteger b) {
-        accDelta_1.add(b);
+      public Builder appendAccDelta1(final BigInteger b) {
+        accDelta1.add(b);
         return this;
       }
 
-      public Builder appendAccDelta_2(final BigInteger b) {
-        accDelta_2.add(b);
+      public Builder appendAccDelta2(final BigInteger b) {
+        accDelta2.add(b);
         return this;
       }
 
-      public Builder appendAccDelta_3(final BigInteger b) {
-        accDelta_3.add(b);
+      public Builder appendAccDelta3(final BigInteger b) {
+        accDelta3.add(b);
         return this;
       }
 
-      public Builder appendAcc_H_0(final BigInteger b) {
-        acc_H_0.add(b);
+      public Builder appendAccH0(final BigInteger b) {
+        accH0.add(b);
         return this;
       }
 
-      public Builder appendAcc_H_1(final BigInteger b) {
-        acc_H_1.add(b);
+      public Builder appendAccH1(final BigInteger b) {
+        accH1.add(b);
         return this;
       }
 
-      public Builder appendAcc_H_2(final BigInteger b) {
-        acc_H_2.add(b);
+      public Builder appendAccH2(final BigInteger b) {
+        accH2.add(b);
         return this;
       }
 
-      public Builder appendAcc_Q_0(final BigInteger b) {
-        acc_Q_0.add(b);
+      public Builder appendAccQ0(final BigInteger b) {
+        accQ0.add(b);
         return this;
       }
 
-      public Builder appendAcc_Q_1(final BigInteger b) {
-        acc_Q_1.add(b);
+      public Builder appendAccQ1(final BigInteger b) {
+        accQ1.add(b);
         return this;
       }
 
-      public Builder appendAcc_Q_2(final BigInteger b) {
-        acc_Q_2.add(b);
+      public Builder appendAccQ2(final BigInteger b) {
+        accQ2.add(b);
         return this;
       }
 
-      public Builder appendAcc_Q_3(final BigInteger b) {
-        acc_Q_3.add(b);
+      public Builder appendAccQ3(final BigInteger b) {
+        accQ3.add(b);
         return this;
       }
 
-      public Builder appendAcc_R_0(final BigInteger b) {
-        acc_R_0.add(b);
+      public Builder appendAccR0(final BigInteger b) {
+        accR0.add(b);
         return this;
       }
 
-      public Builder appendAcc_R_1(final BigInteger b) {
-        acc_R_1.add(b);
+      public Builder appendAccR1(final BigInteger b) {
+        accR1.add(b);
         return this;
       }
 
-      public Builder appendAcc_R_2(final BigInteger b) {
-        acc_R_2.add(b);
+      public Builder appendAccR2(final BigInteger b) {
+        accR2.add(b);
         return this;
       }
 
-      public Builder appendAcc_R_3(final BigInteger b) {
-        acc_R_3.add(b);
+      public Builder appendAccR3(final BigInteger b) {
+        accR3.add(b);
         return this;
       }
 
       public Builder appendArg_1_HI(final BigInteger b) {
-        arg_1_HI.add(b);
+        arg1Hi.add(b);
         return this;
       }
 
       public Builder appendArg_1_LO(final BigInteger b) {
-        arg_1_LO.add(b);
+        arg1Lo.add(b);
         return this;
       }
 
       public Builder appendArg_2_HI(final BigInteger b) {
-        arg_2_HI.add(b);
+        arg2Hi.add(b);
         return this;
       }
 
       public Builder appendArg_2_LO(final BigInteger b) {
-        arg_2_LO.add(b);
+        arg2Lo.add(b);
         return this;
       }
 
-      public Builder appendByte_1_2(final UnsignedByte b) {
-        byte_1_2.add(b);
+      public Builder appendByte1_2(final UnsignedByte b) {
+        byte1_2.add(b);
         return this;
       }
 
-      public Builder appendByte_1_3(final UnsignedByte b) {
-        byte_1_3.add(b);
+      public Builder appendByte1_3(final UnsignedByte b) {
+        byte1_3.add(b);
         return this;
       }
 
-      public Builder appendByte_2_2(final UnsignedByte b) {
-        byte_2_2.add(b);
+      public Builder appendByte2_2(final UnsignedByte b) {
+        byte2_2.add(b);
         return this;
       }
 
-      public Builder appendByte_2_3(final UnsignedByte b) {
-        byte_2_3.add(b);
+      public Builder appendByte2_3(final UnsignedByte b) {
+        byte2_3.add(b);
         return this;
       }
 
-      public Builder appendByte_B_0(final UnsignedByte b) {
-        byte_B_0.add(b);
+      public Builder appendByteB0(final UnsignedByte b) {
+        byteB0.add(b);
         return this;
       }
 
-      public Builder appendByte_B_1(final UnsignedByte b) {
-        byte_B_1.add(b);
+      public Builder appendByteB1(final UnsignedByte b) {
+        byteB1.add(b);
         return this;
       }
 
-      public Builder appendByte_B_2(final UnsignedByte b) {
-        byte_B_2.add(b);
+      public Builder appendByteB2(final UnsignedByte b) {
+        byteB2.add(b);
         return this;
       }
 
-      public Builder appendByte_B_3(final UnsignedByte b) {
-        byte_B_3.add(b);
+      public Builder appendByteB3(final UnsignedByte b) {
+        byteB3.add(b);
         return this;
       }
 
-      public Builder appendByteDelta_0(final UnsignedByte b) {
-        byteDelta_0.add(b);
+      public Builder appendByteDelta0(final UnsignedByte b) {
+        byteDelta0.add(b);
         return this;
       }
 
-      public Builder appendByteDelta_1(final UnsignedByte b) {
-        byteDelta_1.add(b);
+      public Builder appendByteDelta1(final UnsignedByte b) {
+        byteDelta1.add(b);
         return this;
       }
 
-      public Builder appendByteDelta_2(final UnsignedByte b) {
-        byteDelta_2.add(b);
+      public Builder appendByteDelta2(final UnsignedByte b) {
+        byteDelta2.add(b);
         return this;
       }
 
-      public Builder appendByteDelta_3(final UnsignedByte b) {
-        byteDelta_3.add(b);
+      public Builder appendByteDelta3(final UnsignedByte b) {
+        byteDelta3.add(b);
         return this;
       }
 
-      public Builder appendByte_H_0(final UnsignedByte b) {
-        byte_H_0.add(b);
+      public Builder appendByteH0(final UnsignedByte b) {
+        byteH0.add(b);
         return this;
       }
 
-      public Builder appendByte_H_1(final UnsignedByte b) {
-        byte_H_1.add(b);
+      public Builder appendByteH1(final UnsignedByte b) {
+        byteH1.add(b);
         return this;
       }
 
-      public Builder appendByte_H_2(final UnsignedByte b) {
-        byte_H_2.add(b);
+      public Builder appendByteH2(final UnsignedByte b) {
+        byteH2.add(b);
         return this;
       }
 
-      public Builder appendByte_Q_0(final UnsignedByte b) {
-        byte_Q_0.add(b);
+      public Builder appendByteQ0(final UnsignedByte b) {
+        byteQ0.add(b);
         return this;
       }
 
-      public Builder appendByte_Q_1(final UnsignedByte b) {
-        byte_Q_1.add(b);
+      public Builder appendByteQ1(final UnsignedByte b) {
+        byteQ1.add(b);
         return this;
       }
 
-      public Builder appendByte_Q_2(final UnsignedByte b) {
-        byte_Q_2.add(b);
+      public Builder appendByteQ2(final UnsignedByte b) {
+        byteQ2.add(b);
         return this;
       }
 
-      public Builder appendByte_Q_3(final UnsignedByte b) {
-        byte_Q_3.add(b);
+      public Builder appendByteQ3(final UnsignedByte b) {
+        byteQ3.add(b);
         return this;
       }
 
-      public Builder appendByte_R_0(final UnsignedByte b) {
-        byte_R_0.add(b);
+      public Builder appendByteR0(final UnsignedByte b) {
+        byteR0.add(b);
         return this;
       }
 
-      public Builder appendByte_R_1(final UnsignedByte b) {
-        byte_R_1.add(b);
+      public Builder appendByteR1(final UnsignedByte b) {
+        byteR1.add(b);
         return this;
       }
 
-      public Builder appendByte_R_2(final UnsignedByte b) {
-        byte_R_2.add(b);
+      public Builder appendByteR2(final UnsignedByte b) {
+        byteR2.add(b);
         return this;
       }
 
-      public Builder appendByte_R_3(final UnsignedByte b) {
-        byte_R_3.add(b);
+      public Builder appendByteR3(final UnsignedByte b) {
+        byteR3.add(b);
         return this;
       }
 
@@ -500,22 +498,22 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       }
 
       public Builder appendArg1Hi(final BigInteger b) {
-        arg_1_HI.add(b);
+        arg1Hi.add(b);
         return this;
       }
 
       public Builder appendArg1Lo(final BigInteger b) {
-        arg_1_LO.add(b);
+        arg1Lo.add(b);
         return this;
       }
 
       public Builder appendArg2Hi(final BigInteger b) {
-        arg_2_HI.add(b);
+        arg2Hi.add(b);
         return this;
       }
 
       public Builder appendArg2Lo(final BigInteger b) {
-        arg_2_LO.add(b);
+        arg2Lo.add(b);
         return this;
       }
 
@@ -571,52 +569,52 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
                 acc_1_3,
                 acc_2_2,
                 acc_2_3,
-                acc_B_0,
-                acc_B_1,
-                acc_B_2,
-                acc_B_3,
-                accDelta_0,
-                accDelta_1,
-                accDelta_2,
-                accDelta_3,
-                acc_H_0,
-                acc_H_1,
-                acc_H_2,
-                acc_Q_0,
-                acc_Q_1,
-                acc_Q_2,
-                acc_Q_3,
-                acc_R_0,
-                acc_R_1,
-                acc_R_2,
-                acc_R_3,
-                arg_1_HI,
-                arg_1_LO,
-                arg_2_HI,
-                arg_2_LO,
-                byte_1_2,
-                byte_1_3,
-                byte_2_2,
-                byte_2_3,
-                byte_B_0,
-                byte_B_1,
-                byte_B_2,
-                byte_B_3,
-                byteDelta_0,
-                byteDelta_1,
-                byteDelta_2,
-                byteDelta_3,
-                byte_H_0,
-                byte_H_1,
-                byte_H_2,
-                byte_Q_0,
-                byte_Q_1,
-                byte_Q_2,
-                byte_Q_3,
-                byte_R_0,
-                byte_R_1,
-                byte_R_2,
-                byte_R_3,
+                accB0,
+                accB1,
+                accB2,
+                accB3,
+                accDelta0,
+                accDelta1,
+                accDelta2,
+                accDelta3,
+                accH0,
+                accH1,
+                accH2,
+                accQ0,
+                accQ1,
+                accQ2,
+                accQ3,
+                accR0,
+                accR1,
+                accR2,
+                accR3,
+                arg1Hi,
+                arg1Lo,
+                arg2Hi,
+                arg2Lo,
+                byte1_2,
+                byte1_3,
+                byte2_2,
+                byte2_3,
+                byteB0,
+                byteB1,
+                byteB2,
+                byteB3,
+                byteDelta0,
+                byteDelta1,
+                byteDelta2,
+                byteDelta3,
+                byteH0,
+                byteH1,
+                byteH2,
+                byteQ0,
+                byteQ1,
+                byteQ2,
+                byteQ3,
+                byteR0,
+                byteR1,
+                byteR2,
+                byteR3,
                 cmp1,
                 cmp2,
                 ct,
