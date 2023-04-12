@@ -108,32 +108,32 @@ public class MulTracer implements ModuleTracer {
           .appendByteC1(UnsignedByte.of(data.cBytes.get(1, i)))
           .appendByteC0(UnsignedByte.of(data.cBytes.get(0, i)));
       builder
-              .appendAccB3(Bytes.of(data.cBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB2(Bytes.of(data.cBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB1(Bytes.of(data.cBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB0(Bytes.of(data.cBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+          .appendAccB3(Bytes.of(data.cBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB2(Bytes.of(data.cBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB1(Bytes.of(data.cBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB0(Bytes.of(data.cBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
 
       builder
-              .appendByteH3(UnsignedByte.of(data.hBytes.get(3, i)))
-              .appendByteH2(UnsignedByte.of(data.hBytes.get(2, i)))
-              .appendByteH1(UnsignedByte.of(data.hBytes.get(1, i)))
-              .appendByteH0(UnsignedByte.of(data.hBytes.get(0, i)));
+          .appendByteH3(UnsignedByte.of(data.hBytes.get(3, i)))
+          .appendByteH2(UnsignedByte.of(data.hBytes.get(2, i)))
+          .appendByteH1(UnsignedByte.of(data.hBytes.get(1, i)))
+          .appendByteH0(UnsignedByte.of(data.hBytes.get(0, i)));
       builder
-              .appendAccB3(Bytes.of(data.hBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB2(Bytes.of(data.hBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB1(Bytes.of(data.hBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-              .appendAccB0(Bytes.of(data.hBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
-      builder.appendExponentBit(data.exponentBit())
-      .appendExponentBitAcc(data.expAcc)
-      .appendExponentBitSource(data.exponentSource())
-              .appendSquareAndMultiply(data.snm)
-      .appendBitNum(data.getBitNum());
+          .appendAccB3(Bytes.of(data.hBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB2(Bytes.of(data.hBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB1(Bytes.of(data.hBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+          .appendAccB0(Bytes.of(data.hBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+      builder
+          .appendExponentBit(data.exponentBit())
+          .appendExponentBitAcc(data.expAcc.toUnsignedBigInteger())
+          .appendExponentBitSource(data.exponentSource())
+          .appendSquareAndMultiply(data.snm)
+          .appendBitNum(data.getBitNum());
     }
     builder.setStamp(stamp);
 
     return builder.build();
   }
-
 
   private int maxCt(final boolean isOneLineInstruction) {
     return isOneLineInstruction ? 1 : MMEDIUM;
