@@ -16,7 +16,6 @@ package net.consensys.linea.zktracer.module.alu.mul;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-import java.math.BigInteger;
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
@@ -25,7 +24,6 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt256;
 
 public class MulTracer implements ModuleTracer {
   private static final int MMEDIUM = 8;
@@ -109,6 +107,27 @@ public class MulTracer implements ModuleTracer {
           .appendByteC2(UnsignedByte.of(data.cBytes.get(2, i)))
           .appendByteC1(UnsignedByte.of(data.cBytes.get(1, i)))
           .appendByteC0(UnsignedByte.of(data.cBytes.get(0, i)));
+      builder
+              .appendAccB3(Bytes.of(data.cBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB2(Bytes.of(data.cBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB1(Bytes.of(data.cBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB0(Bytes.of(data.cBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+
+      builder
+              .appendByteH3(UnsignedByte.of(data.hBytes.get(3, i)))
+              .appendByteH2(UnsignedByte.of(data.hBytes.get(2, i)))
+              .appendByteH1(UnsignedByte.of(data.hBytes.get(1, i)))
+              .appendByteH0(UnsignedByte.of(data.hBytes.get(0, i)));
+      builder
+              .appendAccB3(Bytes.of(data.hBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB2(Bytes.of(data.hBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB1(Bytes.of(data.hBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
+              .appendAccB0(Bytes.of(data.hBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+      builder.appendExponentBit(data.exponentBit())
+      .appendExponentBitAcc(data.expAcc)
+      .appendExponentBitSource(data.exponentSource())
+              .appendSquareAndMultiply(data.snm)
+      .appendBitNum(data.getBitNum());
     }
     builder.setStamp(stamp);
 
