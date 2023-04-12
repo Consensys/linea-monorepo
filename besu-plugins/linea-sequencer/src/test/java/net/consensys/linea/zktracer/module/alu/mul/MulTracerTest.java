@@ -119,7 +119,7 @@ class MulTracerTest {
   }
 
   @Test
-  void testTmp() {
+  void testSimpleMul() {
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.MUL.value);
 
     when(mockFrame.getStackItem(0))
