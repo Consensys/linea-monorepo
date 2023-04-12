@@ -26,7 +26,6 @@ import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -53,7 +52,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
 
   @ParameterizedTest()
   @MethodSource("provideDivisibleArguments")
-   void divisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void divisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
@@ -84,7 +83,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     return arguments.stream();
   }
 
-  protected Stream<Arguments> provideDivisibleArguments () {
+  protected Stream<Arguments> provideDivisibleArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
       long b = rand.nextInt(Integer.MAX_VALUE);
@@ -100,25 +99,26 @@ class ModTracerTest extends AbstractModuleTracerTest {
   protected Stream<Arguments> provideNegativeDivisibleArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
-      long b = rand.nextInt(Integer.MAX_VALUE ) + 1L;
-      long q = rand.nextInt(Integer.MAX_VALUE ) + 1L;
+      long b = rand.nextInt(Integer.MAX_VALUE) + 1L;
+      long q = rand.nextInt(Integer.MAX_VALUE) + 1L;
       long a = b * q;
       OpCode opCode = getRandomSupportedOpcode();
-      arguments.add(Arguments.of(opCode, convertToComplementBytes32(a), convertToComplementBytes32(b)));
-      }
+      arguments.add(
+          Arguments.of(opCode, convertToComplementBytes32(a), convertToComplementBytes32(b)));
+    }
     return arguments.stream();
   }
 
-  private Bytes32 convertToComplementBytes32(long number){
-    BigInteger bigInteger =  BigInteger.valueOf(number);
-    if (Math.random() >= 0.5){
+  private Bytes32 convertToComplementBytes32(long number) {
+    BigInteger bigInteger = BigInteger.valueOf(number);
+    if (Math.random() >= 0.5) {
       bigInteger = bigInteger.negate();
     }
     Bytes resultBytes = Bytes.wrap(bigInteger.toByteArray());
     if (resultBytes.size() > 32) {
       resultBytes = resultBytes.slice(resultBytes.size() - 32, 32);
     }
-    return  Bytes32.leftPad(resultBytes, bigInteger.signum() < 0 ? (byte) 0xFF : 0x00);
+    return Bytes32.leftPad(resultBytes, bigInteger.signum() < 0 ? (byte) 0xFF : 0x00);
   }
 
   protected Stream<Arguments> provideRandomDivisionsByZeroArguments() {

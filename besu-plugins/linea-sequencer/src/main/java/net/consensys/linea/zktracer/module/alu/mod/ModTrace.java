@@ -21,7 +21,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
-import net.consensys.linea.zktracer.module.shf.ShfTrace;
 import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace;
 import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace.Builder;
 
