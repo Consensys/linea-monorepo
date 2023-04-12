@@ -185,8 +185,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<BigInteger> accH0 = new ArrayList<>();
 
       private final List<Boolean> exponentBit = new ArrayList<>();
-      //	mul.Trace.PushLoBytes(EXPONENT_BIT_ACCUMULATOR.Name(), md.expAcc) // TODO: true ? risky :D
-      private final List<UnsignedByte> exponentBitAccumulator = new ArrayList<>();
+      private final List<BigInteger> exponentBitAccumulator = new ArrayList<>();
       private final List<Boolean> exponentBitSource = new ArrayList<>();
       private final List<Boolean> squareAndMultiply = new ArrayList<>();
       private final List<Integer> bitNum = new ArrayList<>();
@@ -430,7 +429,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendExponentBitAcc(final UnsignedByte b) {
+      public Builder appendExponentBitAcc(final BigInteger b) {
         exponentBitAccumulator.add(b);
         return this;
       }
@@ -445,7 +444,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendExponentBitNum(final Integer b) {
+      public Builder appendBitNum(final Integer b) {
         bitNum.add(b);
         return this;
       }
