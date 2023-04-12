@@ -341,6 +341,7 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         accR3.add(b);
         return this;
       }
+
       public Builder appendByte1_2(final UnsignedByte b) {
         byte1_2.add(b);
         return this;
