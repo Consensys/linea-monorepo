@@ -423,6 +423,33 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
+      //
+
+      public Builder appendExponentBit(final Boolean b) {
+        exponentBit.add(b);
+        return this;
+      }
+
+      public Builder appendExponentBitAcc(final UnsignedByte b) {
+        exponentBitAccumulator.add(b);
+        return this;
+      }
+
+      public Builder appendExponentBitSource(final Boolean b) {
+        exponentBitSource.add(b);
+        return this;
+      }
+
+      public Builder appendSquareAndMultiply(final Boolean b) {
+        squareAndMultiply.add(b);
+        return this;
+      }
+
+      public Builder appendExponentBitNum(final Integer b) {
+        bitNum.add(b);
+        return this;
+      }
+
       public Builder appendStamp(final Integer b) {
         mulStamp.add(b);
         return this;

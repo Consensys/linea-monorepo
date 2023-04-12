@@ -13,20 +13,31 @@ public class MulData {
     final boolean tinyBase;
     final boolean tinyExponent;
 
+    final UInt256 resAcc; // accumulator which converges in a series of "square and multiply"'s
+    final UInt256 expAcc; // accumulator for the doubles and adds of the exponent, resets at some point
+
     final BytesBaseTheta aBytes;
     final BytesBaseTheta bBytes;
     BytesBaseTheta cBytes;
     BytesBaseTheta hBytes;
     boolean snm = false;
+    int index;
+    boolean[] bits;
+    String exponentBits;
+
     Res res;
     public MulData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
 
         this.opCode = opCode;
         this.aBytes = new BytesBaseTheta(arg1);
         this.bBytes = new BytesBaseTheta(arg2);
+
+        // TODO what should these be initialized to
         this.cBytes = null;
         this.hBytes = null;
         boolean snm = false;
+        this.resAcc = UInt256.MIN_VALUE;
+        this.expAcc = UInt256.MIN_VALUE;
 
         this.res = Res.create(opCode, arg1, arg2); // TODO can we get this from the EVM
 
@@ -51,7 +62,7 @@ public class MulData {
                 setArraysForZeroResultCase();
                 break;
             case EXPONENT_NON_ZERO_RESULT:
-                setExponentBit();
+                this.exponentBits = arg2.toBigInteger().toString();
                 snm = false;
                 break;
             case IOTA:
@@ -63,10 +74,16 @@ public class MulData {
         // TODO
     }
 
-    private boolean setExponentBit() {
-        // TODO
-        return false;
-        //    return string(exponentBits[md.index]) == "1";
+    public boolean exponentBit() {
+        return '1' == exponentBits.charAt(index);
+    }
+
+    public boolean exponentSource() {
+        return this.index + 128 >= exponentBits.length();
+    }
+
+    private boolean largeExponent() {
+        return exponentBits.length() > 128;
     }
 
     private enum Regime {
@@ -101,5 +118,21 @@ public class MulData {
     }
     public static boolean isTiny(BigInteger arg) {
         return arg.compareTo(BigInteger.valueOf(1)) <= 0;
+    }
+
+    public int getBitNum() {
+        return bitNum(index, exponentBits.length());
+    }
+
+    private int bitNum(int i, int length)  {
+        if (length <= 128) {
+            return i;
+        } else {
+            if (i+128 < length) {
+                return i;
+            } else {
+                return i + 128 - length;
+            }
+        }
     }
 }
