@@ -157,10 +157,10 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
 
     public static class Builder {
 
-      private final List<BigInteger> acc_1_2 = new ArrayList<>();
-      private final List<BigInteger> acc_1_3 = new ArrayList<>();
-      private final List<BigInteger> acc_2_2 = new ArrayList<>();
-      private final List<BigInteger> acc_2_3 = new ArrayList<>();
+      private final List<BigInteger> acc1_2 = new ArrayList<>();
+      private final List<BigInteger> acc1_3 = new ArrayList<>();
+      private final List<BigInteger> acc2_2 = new ArrayList<>();
+      private final List<BigInteger> acc2_3 = new ArrayList<>();
       private final List<BigInteger> accB0 = new ArrayList<>();
       private final List<BigInteger> accB1 = new ArrayList<>();
       private final List<BigInteger> accB2 = new ArrayList<>();
@@ -227,23 +227,23 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return new Builder();
       }
 
-      public Builder appendAcc_1_2(final BigInteger b) {
-        acc_1_2.add(b);
+      public Builder appendAcc1_2(final BigInteger b) {
+        acc1_2.add(b);
         return this;
       }
 
-      public Builder appendAcc_1_3(final BigInteger b) {
-        acc_1_3.add(b);
+      public Builder appendAcc1_3(final BigInteger b) {
+        acc1_3.add(b);
         return this;
       }
 
-      public Builder appendAcc_2_2(final BigInteger b) {
-        acc_2_2.add(b);
+      public Builder appendAcc2_2(final BigInteger b) {
+        acc2_2.add(b);
         return this;
       }
 
-      public Builder appendAcc_2_3(final BigInteger b) {
-        acc_2_3.add(b);
+      public Builder appendAcc2_3(final BigInteger b) {
+        acc2_3.add(b);
         return this;
       }
 
@@ -565,10 +565,10 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       public ModTrace build() {
         return new ModTrace(
             new Trace(
-                acc_1_2,
-                acc_1_3,
-                acc_2_2,
-                acc_2_3,
+                acc1_2,
+                acc1_3,
+                acc2_2,
+                acc2_3,
                 accB0,
                 accB1,
                 accB2,
