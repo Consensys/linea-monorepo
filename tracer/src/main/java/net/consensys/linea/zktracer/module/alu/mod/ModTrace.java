@@ -21,6 +21,9 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.module.shf.ShfTrace;
+import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace;
+import net.consensys.linea.zktracer.module.shf.ShfTrace.Trace.Builder;
 
 @JsonPropertyOrder({"Trace", "Stamp"})
 @SuppressWarnings("unused")
@@ -554,6 +557,11 @@ public record ModTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
 
       public Builder appendModStamp(final Integer b) {
         modStamp.add(b);
+        return this;
+      }
+
+      public Builder setStamp(final int stamp) {
+        this.stamp = stamp;
         return this;
       }
 

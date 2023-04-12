@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 public class BaseThetaTest {
 
   @Test
-  public void shouldCreateBaseThetaCorrectly() {
+  public void baseThetaTest() {
     Bytes firstByte = Bytes.fromHexString("0x000000000000000a");
     Bytes secondByte = Bytes.fromHexString("0x000000000000000b");
     Bytes thirdByte = Bytes.fromHexString("0x000000000000000c");
@@ -37,11 +37,12 @@ public class BaseThetaTest {
 
     assertThat(baseTheta.getBytes32()).isEqualTo(expectedBytes32);
 
-    Bytes16 expectedLow = Bytes16.wrap(Bytes.concatenate(secondByte, firstByte));
-    Bytes16 expectedHigh = Bytes16.wrap(Bytes.concatenate(fourthByte, thirdByte));
+    Bytes16 expectedLow = Bytes16.wrap(Bytes.concatenate(thirdByte, fourthByte));
+    Bytes16 expectedHigh = Bytes16.wrap(Bytes.concatenate(firstByte, secondByte));
 
     assertThat(baseTheta.getLow()).isEqualTo(expectedLow);
     assertThat(baseTheta.getHigh()).isEqualTo(expectedHigh);
+
     assertThat(baseTheta.get(0)).isEqualTo(fourthByte);
     assertThat(baseTheta.get(1)).isEqualTo(thirdByte);
     assertThat(baseTheta.get(2)).isEqualTo(secondByte);
@@ -49,7 +50,7 @@ public class BaseThetaTest {
   }
 
   @Test
-  public void shouldCreateBaseBytesCorrectly() {
+  public void baseBytesTest() {
     Bytes32 bytes32 =
         Bytes32.fromHexString("0x000000000000000a000000000000000b000000000000000c000000000000000d");
     BaseBytes baseBytes = BaseBytes.fromBytes32(bytes32);
