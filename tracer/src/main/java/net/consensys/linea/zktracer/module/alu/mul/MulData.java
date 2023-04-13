@@ -1,15 +1,20 @@
 package net.consensys.linea.zktracer.module.alu.mul;
 
+import static net.consensys.linea.zktracer.module.Util.boolToByte;
+import static net.consensys.linea.zktracer.module.Util.byteBits;
+import static net.consensys.linea.zktracer.module.Util.getBit;
+import static net.consensys.linea.zktracer.module.Util.getOverflow;
+
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.BytesBaseTheta;
+import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.apache.tuweni.units.bigints.UInt64;
 
 @SuppressWarnings("UnusedVariable")
 public class MulData {
@@ -35,7 +40,7 @@ public class MulData {
   BytesBaseTheta hBytes;
   boolean snm = false;
   int index;
-  boolean[] bits;
+  Boolean[] bits;
   String exponentBits;
 
   Res res;
@@ -115,21 +120,57 @@ public class MulData {
       hBytes.set(2, i, callFunc(i, 7 - nuRem));
       hBytes.set(3, i, callFunc(i, 7 - nuQuo));
     }
-    // TODO the rest
+
+    bits = byteBits(UnsignedByte.of(pivotByte));
+
+    int lowerBoundOnTwoAdicity = 8 * (int) (hBytes.get(3, 7)) + (int) (hBytes.get(2, 7));
+
+    if (nu >= 64) {
+      lowerBoundOnTwoAdicity += 64;
+    }
+
+    // our lower bound should coincide with the 2-adicity
+    if (lowerBoundOnTwoAdicity != nu) {
+      String s =
+          String.format(
+              "2-adicity nu = %v != %v = lower bound on 2-adicity", nu, lowerBoundOnTwoAdicity);
+      throw new RuntimeException(s);
+    }
+    if (lowerBoundOnTwoAdicity == 0) {
+      throw new RuntimeException("lower bound on 2 adicity == 0 in the zero result case");
+    }
+
+    UInt256 twoFiftySix = UInt256.valueOf(256);
+    if (arg2.compareTo(twoFiftySix) >= 0) {
+      // arg2 = exponent >= 256
+      hBytes.set(1, 6, (byte) ((lowerBoundOnTwoAdicity - 1) / 256));
+      hBytes.set(1, 7, (byte) ((lowerBoundOnTwoAdicity - 1) % 256));
+    } else {
+      // exponent < 256
+      int exponent = arg2.toUnsignedBigInteger().intValue();
+      int target = exponent * lowerBoundOnTwoAdicity - 256;
+
+      if (target < 0) {
+        throw new RuntimeException("lower bound on 2-adicity is wrong");
+      }
+
+      if (target > 255 * (8 * 7 + 7 + 64)) {
+        throw new RuntimeException("something went awfully wrong ...");
+      }
+
+      final BytesBaseTheta thing =
+          new BytesBaseTheta(Bytes32.wrap(BigInteger.valueOf(target).toByteArray()));
+      hBytes.set(1, thing.getChunk(0));
+    }
+
+    return;
   }
 
-  private byte callFunc(final int x, final int k) {
+  public static byte callFunc(final int x, final int k) {
     if (x < k) {
       return 0;
     }
     return (byte) (x - k);
-  }
-
-  private byte boolToByte(boolean b) {
-    if (b) {
-      return 1;
-    }
-    return 0;
   }
 
   public boolean exponentBit() {
@@ -344,23 +385,6 @@ public class MulData {
         }
       }
     }
-  }
-
-  public static int getOverflow(final BigInteger arg, final int maxVal, final String err) {
-    BigInteger shiftRight = arg.shiftRight(128);
-    if (shiftRight.compareTo(UInt64.MAX_VALUE.toBigInteger()) > 0) {
-      throw new RuntimeException("getOverflow expects a small high part");
-    }
-    int overflow = shiftRight.intValue();
-    if (overflow > maxVal) {
-      throw new RuntimeException(err);
-    }
-    return overflow;
-  }
-
-  // GetBit returns true iff the k'th bit of x is 1
-  private boolean getBit(int x, int k) {
-    return (x >> k) % 2 == 1;
   }
 
   public int maxCt() {
