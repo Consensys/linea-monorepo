@@ -53,13 +53,14 @@ public class MulTracer implements ModuleTracer {
     stamp++;
 
     switch (data.getRegime()) {
-      case EXPONENT_ZERO_RESULT:
+      case EXPONENT_ZERO_RESULT -> {
         for (int ct = 0; ct < maxCt; ct++) {
           trace(builder, data, ct);
         }
         return builder.build();
+      }
 
-      case EXPONENT_NON_ZERO_RESULT:
+      case EXPONENT_NON_ZERO_RESULT -> {
         if (data.carryOn()) {
           data.update();
           for (int ct = 0; ct < maxCt; ct++) {
@@ -67,15 +68,17 @@ public class MulTracer implements ModuleTracer {
           }
         }
         return builder.build();
+      }
 
-      case TRIVIAL_MUL, NON_TRIVIAL_MUL:
+      case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
         data.setHsAndBits(arg1.toBigInteger(), arg2.toBigInteger());
         for (int ct = 0; ct < maxCt; ct++) {
           trace(builder, data, ct);
         }
         return builder.build();
+      }
 
-      default:
+      default ->
         throw new RuntimeException("regime not supported");
     }
   }
