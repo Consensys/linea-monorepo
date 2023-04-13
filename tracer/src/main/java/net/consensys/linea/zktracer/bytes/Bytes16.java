@@ -132,7 +132,7 @@ public interface Bytes16 extends Bytes {
    * Right pad a {@link Bytes} value with zero bytes to create a {@link Bytes16}.
    *
    * @param value The bytes value pad.
-   * @return A {@link Bytes16} that exposes the rightw-padded bytes of {@code value}.
+   * @return A {@link Bytes16} that exposes the right-padded bytes of {@code value}.
    * @throws IllegalArgumentException if {@code value.size() > 16}.
    */
   static Bytes16 rightPad(Bytes value) {
