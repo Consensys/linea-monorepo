@@ -30,25 +30,24 @@ public class BytesBaseTheta {
       System.arraycopy(argBytesHi, 8 * k, bytes[3 - k], 0, 8);
     }
     for (int k = 2; k < 4; k++) {
-      System.arraycopy(argBytesLo, 8 * (k-2), bytes[3 - k], 0, 8);
+      System.arraycopy(argBytesLo, 8 * (k - 2), bytes[3 - k], 0, 8);
     }
   }
 
   public void set(final BigInteger bigInteger) {
     // TODO how to get from BigInteger to bytes
     bigInteger.toByteArray();
-
   }
+
   public void set(final int i, final BigInteger bigInteger) {
     // TODO handle underflow
     byte[] bigIntByteArray = bigInteger.toByteArray();
     System.arraycopy(bigIntByteArray, 0, bytes[i], 0, 8);
-
   }
+
   public void set(final int i, final byte[] chunk) {
     // TODO handle underflow
     System.arraycopy(chunk, 0, bytes[i], 0, 8);
-
   }
 
   // TODO can Res become Pair<Bytes16, Bytes16> as below
@@ -75,6 +74,10 @@ public class BytesBaseTheta {
 
   public byte[] getRange(final int i, final int start, final int end) {
     return Arrays.copyOfRange(bytes[i], start, end);
+  }
+
+  public void set(int i, int j, byte b) {
+    bytes[i][j] = b;
   }
 }
 

@@ -4,16 +4,25 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.BytesBaseTheta;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
 @SuppressWarnings("UnusedVariable")
 public class MulData {
+  private static final int MMEDIUM = 8;
   final OpCode opCode;
   final Bytes32 arg1;
   final Bytes32 arg2;
+
+  final Bytes16 arg1Hi;
+  final Bytes16 arg1Lo;
+  final Bytes16 arg2Hi;
+  final Bytes16 arg2Lo;
+
   final boolean tinyBase;
   final boolean tinyExponent;
 
@@ -39,6 +48,11 @@ public class MulData {
     this.aBytes = new BytesBaseTheta(arg1);
     this.bBytes = new BytesBaseTheta(arg2);
 
+    arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
+    arg1Lo = Bytes16.wrap(arg1.slice(16));
+    arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
+    arg2Lo = Bytes16.wrap(arg2.slice(16));
+
     // TODO what should these be initialized to (or is this not needed)
     this.cBytes = null;
     this.hBytes = null;
@@ -52,7 +66,7 @@ public class MulData {
     this.tinyBase = isTiny(arg1BigInt);
     this.tinyExponent = isTiny(arg2BigInt);
 
-    final Regime regime = getRegime(opCode);
+    final Regime regime = getRegime();
     System.out.println(regime);
     switch (regime) {
       case TRIVIAL_MUL:
@@ -73,7 +87,49 @@ public class MulData {
   }
 
   private void setArraysForZeroResultCase() {
-    // TODO
+    int nu = twoAdicity(arg1);
+
+    if (nu >= 128) {
+      return;
+    }
+
+    byte[] ones = Bytes.repeat((byte) 1, 8).toArray();
+    byte[] bytes;
+
+    if (128 > nu && nu >= 64) {
+      bytes = aBytes.getChunk(1);
+    } else {
+      for (int i = 0; i < 8; i++) {
+        cBytes.set(0, ones);
+      }
+      bytes = aBytes.getChunk(0);
+    }
+    int nuQuo = (nu / 8) % 8;
+    int nuRem = nu % 8;
+    byte pivotByte = bytes[7 - nuQuo];
+
+    for (int i = 0; i < 8; i++) {
+      cBytes.set(1, i, pivotByte);
+      cBytes.set(2, i, boolToByte(i > 7 - nuRem));
+      cBytes.set(3, i, boolToByte(i > 7 - nuQuo));
+      hBytes.set(2, i, callFunc(i, 7 - nuRem));
+      hBytes.set(3, i, callFunc(i, 7 - nuQuo));
+    }
+    // TODO the rest
+  }
+
+  private byte callFunc(final int x, final int k) {
+    if (x < k) {
+      return 0;
+    }
+    return (byte) (x - k);
+  }
+
+  private byte boolToByte(boolean b) {
+    if (b) {
+      return 1;
+    }
+    return 0;
   }
 
   public boolean exponentBit() {
@@ -84,7 +140,7 @@ public class MulData {
     return this.index + 128 >= exponentBits.length();
   }
 
-  public static int twoAdicity(final UInt256 x) {
+  public static int twoAdicity(final Bytes32 x) {
 
     if (x.isZero()) {
       // panic("twoAdicity was called on zero")
@@ -108,7 +164,7 @@ public class MulData {
   //    return exponentBits.length() > 128;
   //  }
 
-  private enum Regime {
+  public enum Regime {
     IOTA,
     TRIVIAL_MUL,
     NON_TRIVIAL_MUL,
@@ -120,7 +176,7 @@ public class MulData {
     return tinyBase || tinyExponent;
   }
 
-  private Regime getRegime(final OpCode opCode) {
+  public Regime getRegime() {
 
     if (isOneLineInstruction()) return Regime.TRIVIAL_MUL;
 
@@ -142,6 +198,29 @@ public class MulData {
     return arg.compareTo(BigInteger.valueOf(1)) <= 0;
   }
 
+  public boolean carryOn() {
+
+    // first round is special
+    if (index == 0 && !snm) {
+      snm = true;
+      resAcc = BigInteger.ONE; // TODO assuming this is what SetOne() does
+      cBytes.set(arg1.toBigInteger());
+      return true;
+    }
+
+    if (snm == exponentBit()) {
+      hiToLoExponentBitAccumulatorReset();
+      index++;
+      snm = false;
+      if (index == exponentBits.length()) {
+        return false;
+      }
+    } else {
+      snm = true;
+    }
+    return true;
+  }
+
   public int getBitNum() {
     return bitNum(index, exponentBits.length());
   }
@@ -158,7 +237,7 @@ public class MulData {
     }
   }
 
-  private void update() {
+  public void update() {
 
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
     final BigInteger arg2BigInt = UInt256.fromBytes(arg2).toUnsignedBigInteger();
@@ -173,40 +252,39 @@ public class MulData {
       expAcc = expAcc.add(UInt256.ONE);
       resAcc = arg1BigInt.multiply(resAcc);
     }
-    cBytes.set(resAcc); // TODO how to get from BigInteger to Bytes32
+    cBytes.set(resAcc);
   }
 
-  private void setHsAndBits(BigInteger a, BigInteger b) {
+  public void setHsAndBits(BigInteger a, BigInteger b) {
 
-    // TODO set hBytes and bits[]
-    BytesBaseTheta aBaseTheta, bBaseTheta, sumBaseTheta ;
+    BytesBaseTheta aBaseTheta, bBaseTheta, sumBaseTheta;
+    aBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
+    bBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
+    sumBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
 
     aBaseTheta.set(a);
     bBaseTheta.set(b);
 
-    UInt256[] aBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
-    UInt256[] bBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
+    BigInteger[] aBaseThetaInts = (BigInteger[]) Array.newInstance(UInt256.class, 4);
+    BigInteger[] bBaseThetaInts = (BigInteger[]) Array.newInstance(UInt256.class, 4);
 
     for (int i = 0; i < 4; i++) {
-      aBaseThetaInts[i] = UInt256.ZERO;
-              bBaseThetaInts[i] = UInt256.ZERO;
-              aBaseThetaInts[i].setBytes(aBaseTheta.getChunk(i));
-      bBaseThetaInts[i].setBytes(bBaseTheta.getChunk(i));
+      aBaseThetaInts[i] = Bytes.of(aBaseTheta.getChunk(i)).toBigInteger();
+      bBaseThetaInts[i] = Bytes.of(bBaseTheta.getChunk(i)).toBigInteger();
     }
 
-    UInt256 sum, prod;
+    BigInteger sum, prod;
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[0]);
-    sum = UInt256.MIN_VALUE.add(prod); // sum := a1 * b0
+    sum = prod; // sum := a1 * b0
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a0 * b1
 
-    sumBaseTheta.set(sum.toBigInteger());
+    sumBaseTheta.set(sum);
     hBytes.set(0, sumBaseTheta.getChunk(0));
     hBytes.set(1, sumBaseTheta.getChunk(1));
     int alpha = getOverflow(sum, 1, "alpha OOB");
 
-    prod = aBaseThetaInts[3].multiply(bBaseThetaInts[0]);
-    sum = UInt256.MIN_VALUE.add(prod); // sum := a3 * b0
+    sum = aBaseThetaInts[3].multiply(bBaseThetaInts[0]); // sum := a3 * b0
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a2 * b1
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[2]);
@@ -214,29 +292,26 @@ public class MulData {
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[3]);
     sum = sum.add(prod); // sum += a0 * b3
 
-    sumBaseTheta.set(sum.toBigInteger());
+    sumBaseTheta.set(sum);
     hBytes.set(2, sumBaseTheta.getChunk(0));
     hBytes.set(3, sumBaseTheta.getChunk(1));
     int beta = getOverflow(sum, 3, "beta OOB");
 
-    prod = aBaseThetaInts[0].multiply(bBaseThetaInts[0]);
-    sum = UInt256.MIN_VALUE.add(prod); // sum := a0 * b0
-    prod = hBytes.getChunk(0).shiftLeft(64);
-    sum = sum.add(prod);// sum += (h0 << 64)
-//    sum.Add(sum, prod.Lsh(prod.SetBytes(hs[0][:]), 64))          // sum += (h0 << 64)
+    sum = aBaseThetaInts[0].multiply(bBaseThetaInts[0]); // sum := a0 * b0
+    sum = sum.add(shiftLeft64(hBytes.getChunk(0))); // sum += (h0 << 64)
 
     int eta = getOverflow(sum, 1, "eta OOB");
 
-    sum = UInt256.valueOf(eta);                                          // sum := eta
-    sum.Add(sum, prod.SetBytes(hs[1][:]))                        // sum += h1
-    sum.Add(sum, prod.Lsh(prod.SetUint64(alpha), 64)) ;           // sum += (alpha << 64)
+    sum = BigInteger.valueOf(eta); // sum := eta
+    sum = sum.add(Bytes16.wrap(hBytes.getChunk(1)).toUnsignedBigInteger()); // sum += h1
+    sum = sum.add(BigInteger.valueOf(alpha).shiftLeft(64)); // sum += (alpha << 64)
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[0]);
     sum = sum.add(prod); // sum += a2 * b0
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a1 * b1
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[2]);
     sum = sum.add(prod); // sum += a0 * b2
-    sum.Add(sum, prod.Lsh(prod.SetBytes(hs[2][:]), 64))          // sum += (h2 << 64)
+    sum = sum.add(shiftLeft64(hBytes.getChunk(2))); // sum += (h2 << 64)
 
     int mu = getOverflow(sum, 3, "mu OOB");
 
@@ -250,19 +325,45 @@ public class MulData {
     return;
   }
 
-  public static int getOverflow(final UInt256 arg, final int maxVal, final String err) {
-    UInt256 shiftRight = arg.shiftRight( 128);
-    if (shiftRight.toBigInteger().compareTo (UInt64.MAX_VALUE.toBigInteger()) > 0) {
+  private BigInteger shiftLeft64(byte[] b16) {
+    final Bytes16 copy = Bytes16.wrap(b16).copy();
+    return copy.shiftLeft(64).toUnsignedBigInteger();
+  }
+
+  // hiToLoExponentBitAccumulatorReset resets the exponent bit accumulator
+  // under the following conditions:
+  //   - we are dealing with the high part of the exponent bits, i.e. md.exponentBit() = 0
+  //   - SQUARE_AND_MULTIPLY == EXPONENT_BIT
+  //   - the exponent bit accumulator coincides with the high part of the exponent
+  private void hiToLoExponentBitAccumulatorReset() {
+    if (!exponentSource()) {
+      if (snm == exponentBit()) { // note: when called this is already assumed
+        Bytes32 arg2Copy = arg2.copy();
+        if (arg2Copy.shiftRight(128).equals(expAcc)) {
+          expAcc = UInt256.MIN_VALUE;
+        }
+      }
+    }
+  }
+
+  public static int getOverflow(final BigInteger arg, final int maxVal, final String err) {
+    BigInteger shiftRight = arg.shiftRight(128);
+    if (shiftRight.compareTo(UInt64.MAX_VALUE.toBigInteger()) > 0) {
       throw new RuntimeException("getOverflow expects a small high part");
     }
-    int overflow = shiftRight.toInt();
+    int overflow = shiftRight.intValue();
     if (overflow > maxVal) {
       throw new RuntimeException(err);
     }
     return overflow;
   }
+
   // GetBit returns true iff the k'th bit of x is 1
   private boolean getBit(int x, int k) {
-    return (x>>k)%2 == 1;
+    return (x >> k) % 2 == 1;
+  }
+
+  public int maxCt() {
+    return isOneLineInstruction() ? 1 : MMEDIUM;
   }
 }
