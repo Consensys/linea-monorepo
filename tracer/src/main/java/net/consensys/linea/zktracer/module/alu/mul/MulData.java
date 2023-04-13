@@ -58,11 +58,6 @@ public class MulData {
     arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    // TODO what should these be initialized to (or is this not needed)
-    this.cBytes = null;
-    this.hBytes = null;
-    this.expAcc = UInt256.MIN_VALUE;
-
     this.res = Res.create(opCode, arg1, arg2); // TODO can we get this from the EVM
 
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
@@ -74,20 +69,17 @@ public class MulData {
     final Regime regime = getRegime();
     System.out.println(regime);
     switch (regime) {
-      case TRIVIAL_MUL:
-        break;
-      case NON_TRIVIAL_MUL:
-        cBytes = new BytesBaseTheta(res);
-        break;
-      case EXPONENT_ZERO_RESULT:
-        setArraysForZeroResultCase();
-        break;
-      case EXPONENT_NON_ZERO_RESULT:
+      case TRIVIAL_MUL -> {}
+      case NON_TRIVIAL_MUL ->
+              cBytes = new BytesBaseTheta(res);
+      case EXPONENT_ZERO_RESULT ->
+              setArraysForZeroResultCase();
+      case EXPONENT_NON_ZERO_RESULT -> {
         this.exponentBits = arg2.toBigInteger().toString();
         snm = false;
-        break;
-      case IOTA:
-        throw new RuntimeException("alu/mul regime was never set");
+      }
+      case IOTA ->
+              throw new RuntimeException("alu/mul regime was never set");
     }
   }
 
@@ -133,7 +125,7 @@ public class MulData {
     if (lowerBoundOnTwoAdicity != nu) {
       String s =
           String.format(
-              "2-adicity nu = %v != %v = lower bound on 2-adicity", nu, lowerBoundOnTwoAdicity);
+              "2-adicity nu = %d != %d = lower bound on 2-adicity", nu, lowerBoundOnTwoAdicity);
       throw new RuntimeException(s);
     }
     if (lowerBoundOnTwoAdicity == 0) {
