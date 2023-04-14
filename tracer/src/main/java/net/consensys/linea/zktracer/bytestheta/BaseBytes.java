@@ -1,4 +1,4 @@
-package net.consensys.linea.zktracer.bytes;
+package net.consensys.linea.zktracer.bytestheta;
 
 /*
  * Copyright ConsenSys AG.
@@ -15,6 +15,7 @@ package net.consensys.linea.zktracer.bytes;
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.bytes.MutableBytes32;
 
