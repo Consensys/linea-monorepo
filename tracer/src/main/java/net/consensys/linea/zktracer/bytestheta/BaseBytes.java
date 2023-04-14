@@ -24,7 +24,7 @@ public class BaseBytes {
   private final int LOW_HIGH_SIZE = 16;
   protected MutableBytes32 bytes32;
 
-  static BaseBytes fromBytes32(Bytes32 arg) {
+  public static BaseBytes fromBytes32(Bytes32 arg) {
     return new BaseBytes(arg);
   }
 
@@ -46,5 +46,9 @@ public class BaseBytes {
 
   public Bytes32 getBytes32() {
     return bytes32;
+  }
+
+  public boolean isZero() {
+    return bytes32.isZero();
   }
 }

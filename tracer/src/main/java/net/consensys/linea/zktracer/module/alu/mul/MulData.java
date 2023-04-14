@@ -10,8 +10,9 @@ import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
-import net.consensys.linea.zktracer.bytes.BytesBaseTheta;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.bytestheta.BaseBytes;
+import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -31,34 +32,36 @@ public class MulData {
   final boolean tinyBase;
   final boolean tinyExponent;
 
-  BigInteger resAcc; // accumulator which converges in a series of "square and multiply"'s
-  UInt256 expAcc; // accumulator for doubles and adds of the exponent, resets at some point
+  UInt256 resAcc =
+      UInt256.ZERO; // accumulator which converges in a series of "square and multiply"'s
+  UInt256 expAcc =
+      UInt256.ZERO; // accumulator for doubles and adds of the exponent, resets at some point
 
-  final BytesBaseTheta aBytes;
-  final BytesBaseTheta bBytes;
-  BytesBaseTheta cBytes;
-  BytesBaseTheta hBytes;
+  final BaseTheta aBytes;
+  final BaseTheta bBytes;
+  BaseTheta cBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  BaseTheta hBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
   boolean snm = false;
   int index;
-  Boolean[] bits;
-  String exponentBits;
+  Boolean[] bits = new Boolean[8];
+  String exponentBits = "0";
 
-  Res res;
+  BaseBytes res;
 
   public MulData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
 
     this.opCode = opCode;
     this.arg1 = arg1;
     this.arg2 = arg2;
-    this.aBytes = new BytesBaseTheta(arg1);
-    this.bBytes = new BytesBaseTheta(arg2);
+    this.aBytes = BaseTheta.fromBytes32(arg1);
+    this.bBytes = BaseTheta.fromBytes32(arg2);
 
     arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
     arg1Lo = Bytes16.wrap(arg1.slice(16));
     arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    this.res = Res.create(opCode, arg1, arg2); // TODO can we get this from the EVM
+    this.res = getRes(opCode, arg1, arg2); // TODO can we get this from the EVM
 
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
     final BigInteger arg2BigInt = UInt256.fromBytes(arg2).toUnsignedBigInteger();
@@ -67,10 +70,9 @@ public class MulData {
     this.tinyExponent = isTiny(arg2BigInt);
 
     final Regime regime = getRegime();
-    System.out.println(regime);
     switch (regime) {
       case TRIVIAL_MUL -> {}
-      case NON_TRIVIAL_MUL -> cBytes = new BytesBaseTheta(res);
+      case NON_TRIVIAL_MUL -> cBytes = BaseTheta.fromBytes32(res.getBytes32());
       case EXPONENT_ZERO_RESULT -> setArraysForZeroResultCase();
       case EXPONENT_NON_ZERO_RESULT -> {
         this.exponentBits = arg2.toBigInteger().toString();
@@ -80,6 +82,15 @@ public class MulData {
     }
   }
 
+  private static BaseBytes getRes(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+
+    return switch (opCode) {
+      case MUL -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).multiply(UInt256.fromBytes(arg2)));
+      case EXP -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).pow(UInt256.fromBytes(arg2)));
+      default -> BaseBytes.fromBytes32(UInt256.ZERO);
+    };
+  }
+
   private void setArraysForZeroResultCase() {
     int nu = twoAdicity(arg1);
 
@@ -87,20 +98,20 @@ public class MulData {
       return;
     }
 
-    byte[] ones = Bytes.repeat((byte) 1, 8).toArray();
-    byte[] bytes;
+    Bytes ones = Bytes.repeat((byte) 1, 8);
+    Bytes bytes;
 
     if (128 > nu && nu >= 64) {
-      bytes = aBytes.getChunk(1);
+      bytes = aBytes.get(1);
     } else {
       for (int i = 0; i < 8; i++) {
-        cBytes.set(0, ones);
+        cBytes.setBytes(0, ones);
       }
-      bytes = aBytes.getChunk(0);
+      bytes = aBytes.get(0);
     }
     int nuQuo = (nu / 8) % 8;
     int nuRem = nu % 8;
-    byte pivotByte = bytes[7 - nuQuo];
+    byte pivotByte = bytes.get(7 - nuQuo);
 
     for (int i = 0; i < 8; i++) {
       cBytes.set(1, i, pivotByte);
@@ -129,7 +140,7 @@ public class MulData {
       throw new RuntimeException("lower bound on 2 adicity == 0 in the zero result case");
     }
 
-    UInt256 twoFiftySix = UInt256.valueOf(256);
+    final UInt256 twoFiftySix = UInt256.valueOf(256);
     if (arg2.compareTo(twoFiftySix) >= 0) {
       // arg2 = exponent >= 256
       hBytes.set(1, 6, (byte) ((lowerBoundOnTwoAdicity - 1) / 256));
@@ -147,9 +158,8 @@ public class MulData {
         throw new RuntimeException("something went awfully wrong ...");
       }
 
-      final BytesBaseTheta thing =
-          new BytesBaseTheta(Bytes32.wrap(BigInteger.valueOf(target).toByteArray()));
-      hBytes.set(1, thing.getChunk(0));
+      final BaseTheta thing = BaseTheta.fromBytes32(UInt256.valueOf(target));
+      hBytes.setBytes(1, thing.get(0));
     }
 
     return;
@@ -233,8 +243,8 @@ public class MulData {
     // first round is special
     if (index == 0 && !snm) {
       snm = true;
-      resAcc = BigInteger.ONE; // TODO assuming this is what SetOne() does
-      cBytes.set(arg1.toBigInteger());
+      resAcc = UInt256.valueOf(1); // TODO assuming this is what SetOne() does
+      cBytes = BaseTheta.fromBytes32(arg1);
       return true;
     }
 
@@ -278,40 +288,36 @@ public class MulData {
       resAcc = resAcc.multiply(resAcc);
     } else {
       // multiplying by base
-      setHsAndBits(arg1BigInt, resAcc);
+      setHsAndBits(UInt256.valueOf(arg1BigInt), resAcc);
       expAcc = expAcc.add(UInt256.ONE);
-      resAcc = arg1BigInt.multiply(resAcc);
+      resAcc = UInt256.valueOf(arg1BigInt).multiply(resAcc);
     }
-    cBytes.set(resAcc);
+    cBytes = BaseTheta.fromBytes32(resAcc);
   }
 
-  public void setHsAndBits(BigInteger a, BigInteger b) {
+  public void setHsAndBits(UInt256 a, UInt256 b) {
 
-    BytesBaseTheta aBaseTheta, bBaseTheta, sumBaseTheta;
-    aBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
-    bBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
-    sumBaseTheta = new BytesBaseTheta(Bytes32.ZERO);
+    BaseTheta aBaseTheta = BaseTheta.fromBytes32(a);
+    BaseTheta bBaseTheta = BaseTheta.fromBytes32(b);
+    BaseTheta sumBaseTheta;
 
-    aBaseTheta.set(a);
-    bBaseTheta.set(b);
-
-    BigInteger[] aBaseThetaInts = (BigInteger[]) Array.newInstance(UInt256.class, 4);
-    BigInteger[] bBaseThetaInts = (BigInteger[]) Array.newInstance(UInt256.class, 4);
+    UInt256[] aBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
+    UInt256[] bBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
 
     for (int i = 0; i < 4; i++) {
-      aBaseThetaInts[i] = Bytes.of(aBaseTheta.getChunk(i)).toBigInteger();
-      bBaseThetaInts[i] = Bytes.of(bBaseTheta.getChunk(i)).toBigInteger();
+      aBaseThetaInts[i] = UInt256.fromBytes(aBaseTheta.get(i));
+      bBaseThetaInts[i] = UInt256.fromBytes(bBaseTheta.get(i));
     }
 
-    BigInteger sum, prod;
+    UInt256 sum, prod;
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[0]);
     sum = prod; // sum := a1 * b0
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a0 * b1
 
-    sumBaseTheta.set(sum);
-    hBytes.set(0, sumBaseTheta.getChunk(0));
-    hBytes.set(1, sumBaseTheta.getChunk(1));
+    sumBaseTheta = BaseTheta.fromBytes32(sum);
+    hBytes.setBytes(0, sumBaseTheta.get(0));
+    hBytes.setBytes(1, sumBaseTheta.get(1));
     int alpha = getOverflow(sum, 1, "alpha OOB");
 
     sum = aBaseThetaInts[3].multiply(bBaseThetaInts[0]); // sum := a3 * b0
@@ -322,26 +328,26 @@ public class MulData {
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[3]);
     sum = sum.add(prod); // sum += a0 * b3
 
-    sumBaseTheta.set(sum);
-    hBytes.set(2, sumBaseTheta.getChunk(0));
-    hBytes.set(3, sumBaseTheta.getChunk(1));
+    sumBaseTheta = BaseTheta.fromBytes32(sum);
+    hBytes.setBytes(2, sumBaseTheta.get(0));
+    hBytes.setBytes(3, sumBaseTheta.get(1));
     int beta = getOverflow(sum, 3, "beta OOB");
 
     sum = aBaseThetaInts[0].multiply(bBaseThetaInts[0]); // sum := a0 * b0
-    sum = sum.add(shiftLeft64(hBytes.getChunk(0))); // sum += (h0 << 64)
+    sum = sum.add(UInt256.fromBytes(hBytes.get(0).shiftLeft(64))); // sum += (h0 << 64)
 
     int eta = getOverflow(sum, 1, "eta OOB");
 
-    sum = BigInteger.valueOf(eta); // sum := eta
-    sum = sum.add(Bytes16.wrap(hBytes.getChunk(1)).toUnsignedBigInteger()); // sum += h1
-    sum = sum.add(BigInteger.valueOf(alpha).shiftLeft(64)); // sum += (alpha << 64)
+    sum = UInt256.valueOf(eta); // sum := eta
+    sum = sum.add(UInt256.fromBytes(hBytes.get(1))); // sum += h1
+    sum = sum.add(UInt256.valueOf(alpha).shiftLeft(64)); // sum += (alpha << 64)
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[0]);
     sum = sum.add(prod); // sum += a2 * b0
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a1 * b1
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[2]);
     sum = sum.add(prod); // sum += a0 * b2
-    sum = sum.add(shiftLeft64(hBytes.getChunk(2))); // sum += (h2 << 64)
+    sum = sum.add(UInt256.fromBytes(hBytes.get(2).shiftLeft(64))); // sum += (h2 << 64)
 
     int mu = getOverflow(sum, 3, "mu OOB");
 
@@ -353,11 +359,6 @@ public class MulData {
     bits[7] = getBit(mu, 1);
 
     return;
-  }
-
-  private BigInteger shiftLeft64(byte[] b16) {
-    final Bytes16 copy = Bytes16.wrap(b16).copy();
-    return copy.shiftLeft(64).toUnsignedBigInteger();
   }
 
   // hiToLoExponentBitAccumulatorReset resets the exponent bit accumulator
