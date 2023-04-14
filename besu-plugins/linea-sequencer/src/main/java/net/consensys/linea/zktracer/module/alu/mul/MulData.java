@@ -70,16 +70,13 @@ public class MulData {
     System.out.println(regime);
     switch (regime) {
       case TRIVIAL_MUL -> {}
-      case NON_TRIVIAL_MUL ->
-              cBytes = new BytesBaseTheta(res);
-      case EXPONENT_ZERO_RESULT ->
-              setArraysForZeroResultCase();
+      case NON_TRIVIAL_MUL -> cBytes = new BytesBaseTheta(res);
+      case EXPONENT_ZERO_RESULT -> setArraysForZeroResultCase();
       case EXPONENT_NON_ZERO_RESULT -> {
         this.exponentBits = arg2.toBigInteger().toString();
         snm = false;
       }
-      case IOTA ->
-              throw new RuntimeException("alu/mul regime was never set");
+      case IOTA -> throw new RuntimeException("alu/mul regime was never set");
     }
   }
 

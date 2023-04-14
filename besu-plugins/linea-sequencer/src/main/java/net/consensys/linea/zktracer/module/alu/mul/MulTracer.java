@@ -78,8 +78,7 @@ public class MulTracer implements ModuleTracer {
         return builder.build();
       }
 
-      default ->
-        throw new RuntimeException("regime not supported");
+      default -> throw new RuntimeException("regime not supported");
     }
   }
 
