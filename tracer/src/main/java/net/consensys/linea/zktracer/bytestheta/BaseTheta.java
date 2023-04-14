@@ -29,7 +29,7 @@ public class BaseTheta extends BaseBytes {
     }
   }
 
-  static BaseTheta fromBytes32(Bytes32 arg) {
+  public static BaseTheta fromBytes32(Bytes32 arg) {
     return new BaseTheta(arg);
   }
 
