@@ -21,8 +21,8 @@ import java.util.List;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 
 public class MulTracer implements ModuleTracer {
 
@@ -71,7 +71,7 @@ public class MulTracer implements ModuleTracer {
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
-        data.setHsAndBits(arg1.toBigInteger(), arg2.toBigInteger());
+        data.setHsAndBits(UInt256.fromBytes(arg1), UInt256.fromBytes(arg2));
         for (int ct = 0; ct < maxCt; ct++) {
           trace(builder, data, ct);
         }
@@ -100,8 +100,8 @@ public class MulTracer implements ModuleTracer {
         .appendArg2Lo(data.arg2Lo.toUnsignedBigInteger());
 
     builder
-        .appendResHi(data.res.getResHi().toUnsignedBigInteger())
-        .appendResLo(data.res.getResLo().toUnsignedBigInteger());
+        .appendResHi(data.res.getHigh().toUnsignedBigInteger())
+        .appendResLo(data.res.getLow().toUnsignedBigInteger());
 
     builder.appendBits(data.bits[i]);
 
@@ -111,10 +111,10 @@ public class MulTracer implements ModuleTracer {
         .appendByteA1(UnsignedByte.of(data.aBytes.get(1, i)))
         .appendByteA0(UnsignedByte.of(data.aBytes.get(0, i)));
     builder
-        .appendAccA3(Bytes.of(data.aBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccA2(Bytes.of(data.aBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccA1(Bytes.of(data.aBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccA0(Bytes.of(data.aBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+        .appendAccA3(data.aBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .appendAccA2(data.aBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .appendAccA1(data.aBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .appendAccA0(data.aBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
 
     builder
         .appendByteB3(UnsignedByte.of(data.bBytes.get(3, i)))
@@ -122,20 +122,20 @@ public class MulTracer implements ModuleTracer {
         .appendByteB1(UnsignedByte.of(data.bBytes.get(1, i)))
         .appendByteB0(UnsignedByte.of(data.bBytes.get(0, i)));
     builder
-        .appendAccB3(Bytes.of(data.bBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB2(Bytes.of(data.bBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB1(Bytes.of(data.bBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB0(Bytes.of(data.bBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+        .appendAccB3(data.bBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB2(data.bBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB1(data.bBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB0(data.bBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
     builder
         .appendByteC3(UnsignedByte.of(data.cBytes.get(3, i)))
         .appendByteC2(UnsignedByte.of(data.cBytes.get(2, i)))
         .appendByteC1(UnsignedByte.of(data.cBytes.get(1, i)))
         .appendByteC0(UnsignedByte.of(data.cBytes.get(0, i)));
     builder
-        .appendAccB3(Bytes.of(data.cBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB2(Bytes.of(data.cBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB1(Bytes.of(data.cBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB0(Bytes.of(data.cBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+        .appendAccB3(data.cBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB2(data.cBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB1(data.cBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB0(data.cBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
 
     builder
         .appendByteH3(UnsignedByte.of(data.hBytes.get(3, i)))
@@ -143,10 +143,10 @@ public class MulTracer implements ModuleTracer {
         .appendByteH1(UnsignedByte.of(data.hBytes.get(1, i)))
         .appendByteH0(UnsignedByte.of(data.hBytes.get(0, i)));
     builder
-        .appendAccB3(Bytes.of(data.hBytes.getRange(3, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB2(Bytes.of(data.hBytes.getRange(2, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB1(Bytes.of(data.hBytes.getRange(1, 0, i + 1)).toUnsignedBigInteger())
-        .appendAccB0(Bytes.of(data.hBytes.getRange(0, 0, i + 1)).toUnsignedBigInteger());
+        .appendAccB3(data.hBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB2(data.hBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB1(data.hBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .appendAccB0(data.hBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
     builder
         .appendExponentBit(data.exponentBit())
         .appendExponentBitAcc(data.expAcc.toUnsignedBigInteger())
