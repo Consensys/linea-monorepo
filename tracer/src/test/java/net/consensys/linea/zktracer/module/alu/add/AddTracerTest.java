@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
@@ -57,7 +58,7 @@ class AddTracerTest {
   @BeforeEach
   void setUp() {
     zkTraceBuilder = new ZkTraceBuilder();
-    zkTracer = new ZkTracer(zkTraceBuilder);
+    zkTracer = new ZkTracer(zkTraceBuilder, List.of(new AddTracer()));
 
     when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
@@ -112,8 +113,8 @@ class AddTracerTest {
   }
 
   @Test
-  void testTmp() {
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
+  void testSimpleAdd() {
+    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
 
     when(mockFrame.getStackItem(0))
         .thenReturn(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"));
