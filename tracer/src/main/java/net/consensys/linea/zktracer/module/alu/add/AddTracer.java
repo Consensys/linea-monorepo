@@ -77,7 +77,7 @@ public class AddTracer implements ModuleTracer {
       }
     } else if (opCode == OpCode.SUB) {
       if (UInt256.ZERO.toBigInteger().add(arg2BigInt).compareTo(UInt256.MAX_VALUE.toBigInteger())
-              > 0) {
+          > 0) {
         overflowHi = true;
       }
     }
@@ -103,16 +103,15 @@ public class AddTracer implements ModuleTracer {
           .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
           .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
           .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
-          .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
-
-      builder.appendByte1(UnsignedByte.of(resHi.get(i)))
-              .appendByte2(UnsignedByte.of(resLo.get(i)))
-              .appendCounter(i)
-              .appendInst(UnsignedByte.of(opCode.value))
-              .appendOverflow(overflow)
-              .appendResHi(resHi.toUnsignedBigInteger())
-              .appendResLo(resLo.toUnsignedBigInteger())
-              .appendStamp(stamp);
+          .appendArg2Lo(arg2Lo.toUnsignedBigInteger())
+          .appendByte1(UnsignedByte.of(resHi.get(i)))
+          .appendByte2(UnsignedByte.of(resLo.get(i)))
+          .appendCounter(i)
+          .appendInst(UnsignedByte.of(opCode.value))
+          .appendOverflow(overflow)
+          .appendResHi(resHi.toUnsignedBigInteger())
+          .appendResLo(resLo.toUnsignedBigInteger())
+          .appendStamp(stamp);
     }
     builder.setStamp(stamp);
     return builder.build();
