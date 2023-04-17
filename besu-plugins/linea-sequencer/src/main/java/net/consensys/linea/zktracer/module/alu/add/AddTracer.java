@@ -61,9 +61,6 @@ public class AddTracer implements ModuleTracer {
 
     final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
-    stamp++;
-    for (int i = 0; i < 16; i++) {
-
       UInt256 arg1Int = UInt256.fromBytes(arg1);
       UInt256 arg2Int = UInt256.fromBytes(arg2);
       UInt256 resultBytes;
@@ -79,8 +76,11 @@ public class AddTracer implements ModuleTracer {
         }
       }
 
-      // check if the result is greater than 2^128
-      final UInt256 twoToThe128 = UInt256.ONE.shiftLeft(128);
+    // check if the result is greater than 2^128
+    final UInt256 twoToThe128 = UInt256.ONE.shiftLeft(128);
+
+    stamp++;
+    for (int i = 0; i < 16; i++) {
       if (opCode == OpCode.ADD) {
         Bytes32 addRes = Bytes32.wrap((UInt256.fromBytes(arg1Lo)).add(UInt256.fromBytes(arg2Lo)));
         overflowLo = (addRes.compareTo(twoToThe128) >= 0);
@@ -95,19 +95,15 @@ public class AddTracer implements ModuleTracer {
           .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
           .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
           .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
-          .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
-
-      builder.appendByte1(UnsignedByte.of(resHi.get(i))).appendByte2(UnsignedByte.of(resLo.get(i)));
-
-      builder.appendCounter(i);
-
-      builder.appendInst(UnsignedByte.of(opCode.value));
-
-      builder.appendOverflow(overflowBit(i, overflowHi, overflowLo));
-
-      // res HiLo
-      builder.appendResHi(resHi.toUnsignedBigInteger()).appendResLo(resLo.toUnsignedBigInteger());
-      builder.appendStamp(stamp);
+          .appendArg2Lo(arg2Lo.toUnsignedBigInteger())
+          .appendByte1(UnsignedByte.of(resHi.get(i)))
+          .appendByte2(UnsignedByte.of(resLo.get(i)))
+          .appendCounter(i)
+          .appendInst(UnsignedByte.of(opCode.value))
+          .appendOverflow(overflowBit(i, overflowHi, overflowLo))
+          .appendResHi(resHi.toUnsignedBigInteger())
+          .appendResLo(resLo.toUnsignedBigInteger())
+          .appendStamp(stamp);
     }
     builder.setStamp(stamp);
     return builder.build();
