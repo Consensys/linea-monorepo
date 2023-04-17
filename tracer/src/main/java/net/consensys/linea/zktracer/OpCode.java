@@ -22,6 +22,11 @@ public enum OpCode {
   // add
   ADD(0x01),
   SUB(0x03),
+  // mod
+  DIV(0x04),
+  SDIV(0x05),
+  MOD(0x06),
+  SMOD(0x07),
   // wcp
   LT(0x10),
   GT(0x11),
