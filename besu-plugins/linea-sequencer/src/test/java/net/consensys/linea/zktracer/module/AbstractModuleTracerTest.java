@@ -51,20 +51,29 @@ public abstract class AbstractModuleTracerTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomArguments")
-  void randomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void randomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
+    runTest(opCode, arg1, arg2, arg3);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNonRandomArguments")
-  void nonRandomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void nonRandomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
+    runTest(opCode, arg1, arg2, arg3);
   }
 
   protected void runTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
     when(mockFrame.getStackItem(0)).thenReturn(arg1);
     when(mockFrame.getStackItem(1)).thenReturn(arg2);
+    zkTracer.tracePreExecution(mockFrame);
+    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  }
+
+  protected void runTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
+    when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
+    when(mockFrame.getStackItem(0)).thenReturn(arg1);
+    when(mockFrame.getStackItem(1)).thenReturn(arg2);
+    when(mockFrame.getStackItem(2)).thenReturn(arg3);
     zkTracer.tracePreExecution(mockFrame);
     assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
