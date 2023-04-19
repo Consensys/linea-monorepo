@@ -14,124 +14,85 @@
  */
 package net.consensys.linea.zktracer.module.alu.mul;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.when;
-
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.ZkTraceBuilder;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
+import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Named;
-import org.junit.jupiter.api.Test;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
-class MulTracerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(MulTracerTest.class);
-
+class MulTracerTest extends AbstractModuleTracerTest {
   private static final Random rand = new Random();
-  private static final int TEST_REPETITIONS = 4;
 
-  private ZkTracer zkTracer;
-  private ZkTraceBuilder zkTraceBuilder;
+  private static final int TEST_MUL_REPETITIONS = 16;
 
-  @Mock MessageFrame mockFrame;
-  @Mock Operation mockOperation;
-
-  @BeforeEach
-  void setUp() {
-    zkTraceBuilder = new ZkTraceBuilder();
-    zkTracer = new ZkTracer(zkTraceBuilder, List.of(new MulTracer()));
-
-    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
+  @ParameterizedTest()
+  @MethodSource("provideRandomAluMulArguments")
+  void aluMulTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideMulOperators")
-  void testFailingBlockchainBlock(final int opCodeValue) {
-    when(mockOperation.getOpcode()).thenReturn(opCodeValue);
-
-    when(mockFrame.getStackItem(0)).thenReturn(Bytes32.rightPad(Bytes.fromHexString("0x08")));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexString("0x0128"));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  @ParameterizedTest()
+  @MethodSource("provideSimpleAluMulArguments")
+  void simpleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideRandomArguments")
-  void testRandomExp(final Bytes32[] payload) {
-    LOG.info("arg1: " + payload[0].toShortHexString() + ", arg2: " + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.EXP.value);
-
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  @ParameterizedTest()
+  @MethodSource("provideTinyArguments")
+  void tinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideNonRandomTinyArguments")
-  void testNonRandomTinyMul(final Bytes32[] payload) {
-    LOG.info("arg1: " + payload[0].toShortHexString() + ", arg2: " + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.EXP.value);
-
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  @ParameterizedTest()
+  @MethodSource("provideSpecificNonTinyArguments")
+  void nonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideNonRandomNonTinyArguments")
-  void testNonRandomNonTinyMul(final Bytes32[] payload) {
-    LOG.info("arg1: " + payload[0].toShortHexString() + ", arg2: " + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.EXP.value);
-
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  @ParameterizedTest()
+  @MethodSource("provideRandomNonTinyArguments")
+  void randomNonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @Test
-  void testSimpleMul() {
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.MUL.value);
+  public Stream<Arguments> provideSimpleAluMulArguments() {
+    List<Arguments> arguments = new ArrayList<>();
 
-    when(mockFrame.getStackItem(0))
-        .thenReturn(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexStringLenient("0xb5"));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+    Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
+    Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
+    arguments.add(Arguments.of(getRandomSupportedOpcode(), bytes1, bytes2));
+    return arguments.stream();
   }
 
-  public static Stream<Arguments> provideNonRandomNonTinyArguments() {
+  public Stream<Arguments> provideRandomAluMulArguments() {
+    List<Arguments> arguments = new ArrayList<>();
+
+    for (int i = 0; i < TEST_MUL_REPETITIONS; i++) {
+      arguments.add(getRandomAluMulInstruction(rand.nextInt(32) + 1, rand.nextInt(32) + 1));
+    }
+    return arguments.stream();
+  }
+
+  private Arguments getRandomAluMulInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
+    Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
+    Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
+    OpCode opCode = getRandomSupportedOpcode();
+    return Arguments.of(opCode, bytes1, bytes2);
+  }
+
+  public Stream<Arguments> provideSpecificNonTinyArguments() {
     //    these values are used in Go module test
     //    0x8a, 0x48, 0xaa, 0x20, 0xe2, 0x00, 0xce, 0x3f, 0xee, 0x16, 0xb5, 0xdc, 0xde, 0xc5, 0xc4,
     // 0xfa,
@@ -147,51 +108,43 @@ class MulTracerTest {
         Bytes32.fromHexString("0x8a48aa20e200ce3fee16b5dcdec5c4faff613bc914d47cd6ca69553f8eb2b377");
     payload[1] =
         Bytes32.fromHexString("0x59b635fec894caa3ed6817b1e67b3cbaeb8757fd6c7b03119b795303b7cd72c1");
-    return Stream.of(
-        Arguments.of(Named.of("arg1: " + payload[0] + ", arg2: " + payload[1], payload)));
+    return Stream.of(Arguments.of(getRandomSupportedOpcode(), payload[0], payload[1]));
   }
 
-  public static Stream<Arguments> provideNonRandomTinyArguments() {
-    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
+  public Stream<Arguments> provideRandomNonTinyArguments() {
+    List<Arguments> arguments = new ArrayList<>();
 
-    for (int i = 0; i < TEST_REPETITIONS; i++) {
-      Bytes32[] payload = new Bytes32[2];
-      payload[0] = Bytes32.leftPad(Bytes.of(1 + i));
-      payload[1] = Bytes32.leftPad(Bytes.of(i));
-      arguments[i] =
-          Arguments.of(Named.of("arg1: " + payload[0] + ", arg2: " + payload[1], payload));
+    for (int i = 0; i < TEST_MUL_REPETITIONS; i++) {
+      arguments.add(getRandomAluMulInstruction(rand.nextInt(32) + 1, rand.nextInt(32) + 1));
+    }
+    return arguments.stream();
+  }
+
+  public Stream<Arguments> provideTinyArguments() {
+    List<Arguments> arguments = new ArrayList<>();
+
+    for (int i = 0; i < 4; i++) {
+      arguments.add(getRandomAluMulInstruction(i, i + 1));
     }
 
-    return Stream.of(arguments);
+    return arguments.stream();
   }
 
-  public static Stream<Arguments> provideRandomArguments() {
-    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
-
-    for (int i = 0; i < TEST_REPETITIONS; i++) {
-
-      final byte[] randomBytes1 = new byte[32];
-      rand.nextBytes(randomBytes1);
-      final byte[] randomBytes2 = new byte[32];
-      rand.nextBytes(randomBytes2);
-
-      Bytes32[] payload = new Bytes32[2];
-      payload[0] = Bytes32.wrap(randomBytes1);
-      payload[1] = Bytes32.wrap(randomBytes2);
-
-      arguments[i] =
-          Arguments.of(
-              Named.of(
-                  "arg1: " + payload[0].toHexString() + ", arg2: " + payload[1].toHexString(),
-                  payload));
+  @Override
+  protected Stream<Arguments> provideNonRandomArguments() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+      for (int k = 1; k <= 4; k++) {
+        for (int i = 1; i <= 4; i++) {
+          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+        }
+      }
     }
-
-    return Stream.of(arguments);
+    return arguments.stream();
   }
 
-  public static Stream<Arguments> provideMulOperators() {
-    return Stream.of(
-        Arguments.of(Named.of("MUL", (int) OpCode.MUL.value)),
-        Arguments.of(Named.of("EXP", (int) OpCode.EXP.value)));
+  @Override
+  protected ModuleTracer getModuleTracer() {
+    return new MulTracer();
   }
 }
