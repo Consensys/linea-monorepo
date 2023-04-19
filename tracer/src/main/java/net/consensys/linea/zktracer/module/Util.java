@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 public class Util {
   public static Boolean[] byteBits(final UnsignedByte b) {
@@ -23,5 +24,22 @@ public class Util {
       bits[7 - i] = b.shiftRight(i).mod(2).toInteger() == 1;
     }
     return bits;
+  }
+
+  public static long getOverflow(UInt256 arg, long maxVal, String err) {
+    UInt256 shiftedArg = arg.shiftRight(128);
+    if (!shiftedArg.fitsLong()) {
+      throw new RuntimeException("getOverflow expects a small high part");
+    }
+    long overflow = arg.toUnsignedBigInteger().longValue();
+    if (overflow > maxVal) {
+      throw new RuntimeException(err);
+    }
+    return overflow;
+  }
+
+  // GetBit returns true if the k'th bit of x is 1
+  public static boolean getBit(long x, int k) {
+    return (x >> k) % 2 == 1;
   }
 }
