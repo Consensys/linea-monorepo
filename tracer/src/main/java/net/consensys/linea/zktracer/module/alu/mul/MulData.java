@@ -356,6 +356,8 @@ public class MulData {
 
     int mu = getOverflow(sum, 3, "mu OOB");
 
+    bits[0] = false;
+    bits[1] = false;
     bits[2] = getBit(alpha, 0);
     bits[3] = getBit(beta, 0);
     bits[4] = getBit(beta, 1);
