@@ -57,8 +57,10 @@ public class ExtData {
     this.bBytes = BaseTheta.fromBytes32(arg2);
     this.cBytes = BaseTheta.fromBytes32(arg3);
     this.iBytes = new BytesArray(7);
+    this.jBytes = new BytesArray(8);
+    this.qBytes = new BytesArray(8);
     this.deltaBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-    this.hBytes = new BytesArray(8);
+    this.hBytes = new BytesArray(6);
 
     AbstractExtCalculator computer = AbstractExtCalculator.create(opCode);
     UInt256 result = computer.computeResult(arg1, arg2, arg3);

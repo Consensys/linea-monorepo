@@ -33,6 +33,7 @@ public class Util {
 
   public static long getOverflow(UInt256 arg, long maxVal, String err) {
     UInt256 shiftedArg = arg.shiftRight(128);
+
     if (!shiftedArg.fitsLong()) {
       throw new RuntimeException("getOverflow expects a small high part");
     }
