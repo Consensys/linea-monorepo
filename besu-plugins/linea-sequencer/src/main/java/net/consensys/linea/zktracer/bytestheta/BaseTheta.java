@@ -156,5 +156,4 @@ public class BaseTheta extends BaseBytes {
     }
     return bytes;
   }
-
 }

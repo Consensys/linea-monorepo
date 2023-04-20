@@ -157,16 +157,20 @@ public class ExtTracer implements ModuleTracer {
           .appendResLo(data.getResult().getLow().toUnsignedBigInteger())
           .appendCmp(data.getCmp()[ct])
           .appendOfH(data.getOverflowH()[ct])
+          .appendOfJ(data.getOverflowJ()[ct])
+          .appendOfI(data.getOverflowI()[ct])
+          .appendOfRes(data.getOverflowRes()[ct])
 
           /*
-          self.Trace.PushBool(OF_H.Name(), ed.overflowH[ct])
-          self.Trace.PushBool(OF_I.Name(), ed.overflowI[ct])
-          self.Trace.PushBool(OF_J.Name(), ed.overflowJ[ct])
           self.Trace.PushBool(OF_RES.Name(), ed.overflowRes[ct])
           */
           .appendCt(ct)
           .appendInst(UnsignedByte.of(opCode.value))
-          .appendOli(data.isOli());
+          .appendOli(data.isOli())
+          .appendBit1(data.getBit1())
+          .appendBit2(data.getBit2())
+          .appendBit3(data.getBit3());
+
       /*
       self.Trace.PushBool(BIT_1.Name(), ed.bit1())
       self.Trace.PushBool(BIT_2.Name(), ed.bit2())
