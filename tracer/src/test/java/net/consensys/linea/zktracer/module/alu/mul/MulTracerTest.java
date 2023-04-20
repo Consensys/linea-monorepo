@@ -44,8 +44,8 @@ class MulTracerTest extends AbstractModuleTracerTest {
   }
 
   @ParameterizedTest()
-  @MethodSource("provideSimpleAluMulArguments")
-  void simpleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  @MethodSource("singleTinyExponentiation")
+  void testSingleTinyExponentiation(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, arg1, arg2);
   }
 
@@ -67,12 +67,18 @@ class MulTracerTest extends AbstractModuleTracerTest {
     runTest(opCode, arg1, arg2);
   }
 
-  public Stream<Arguments> provideSimpleAluMulArguments() {
+  @ParameterizedTest()
+  @MethodSource("multiplyByZero")
+  void zerosArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
+  }
+
+  public Stream<Arguments> singleTinyExponentiation() {
     List<Arguments> arguments = new ArrayList<>();
 
-    Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
-    Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
-    arguments.add(Arguments.of(getRandomSupportedOpcode(), bytes1, bytes2));
+    Bytes32 bytes1 = Bytes32.leftPad(Bytes.fromHexString("0x13"));
+    Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x02"));
+    arguments.add(Arguments.of(OpCode.EXP, bytes1, bytes2));
     return arguments.stream();
   }
 
@@ -122,11 +128,9 @@ class MulTracerTest extends AbstractModuleTracerTest {
 
   public Stream<Arguments> provideTinyArguments() {
     List<Arguments> arguments = new ArrayList<>();
-
     for (int i = 0; i < 4; i++) {
       arguments.add(getRandomAluMulInstruction(i, i + 1));
     }
-
     return arguments.stream();
   }
 
@@ -134,11 +138,22 @@ class MulTracerTest extends AbstractModuleTracerTest {
   protected Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
-      for (int k = 1; k <= 4; k++) {
-        for (int i = 1; i <= 4; i++) {
+      for (int k = 0; k <= 3; k++) {
+        for (int i = 0; i <= 3; i++) {
           arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
         }
       }
+    }
+    return arguments.stream();
+  }
+
+  protected Stream<Arguments> multiplyByZero() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      Bytes32 bytes1 = Bytes32.ZERO;
+      Bytes32 bytes2 = UInt256.valueOf(i);
+      arguments.add(Arguments.of(OpCode.MUL, bytes1, bytes2));
+      arguments.add(Arguments.of(OpCode.MUL, bytes2, bytes1));
     }
     return arguments.stream();
   }
