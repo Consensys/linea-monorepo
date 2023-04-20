@@ -203,9 +203,9 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("ARG_2_LO") List<BigInteger> ARG_2_LO,
       @JsonProperty("ARG_3_HI") List<BigInteger> ARG_3_HI,
       @JsonProperty("ARG_3_LO") List<BigInteger> ARG_3_LO,
-      @JsonProperty("BIT_1") List<BigInteger> BIT_1,
-      @JsonProperty("BIT_2") List<BigInteger> BIT_2,
-      @JsonProperty("BIT_3") List<BigInteger> BIT_3,
+      @JsonProperty("BIT_1") List<Boolean> BIT_1,
+      @JsonProperty("BIT_2") List<Boolean> BIT_2,
+      @JsonProperty("BIT_3") List<Boolean> BIT_3,
       @JsonProperty("BYTE_A_0") List<UnsignedByte> BYTE_A_0,
       @JsonProperty("BYTE_A_1") List<UnsignedByte> BYTE_A_1,
       @JsonProperty("BYTE_A_2") List<UnsignedByte> BYTE_A_2,
@@ -261,7 +261,7 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("OF_H") List<Boolean> OF_H,
       @JsonProperty("OF_I") List<Boolean> OF_I,
       @JsonProperty("OF_J") List<Boolean> OF_J,
-      @JsonProperty("OF_RES") List<BigInteger> OF_RES,
+      @JsonProperty("OF_RES") List<Boolean> OF_RES,
       @JsonProperty("OLI") List<Boolean> OLI,
       @JsonProperty("RES_HI") List<BigInteger> RES_HI,
       @JsonProperty("RES_LO") List<BigInteger> RES_LO,
@@ -323,9 +323,9 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<BigInteger> arg2Lo = new ArrayList<>();
       private final List<BigInteger> arg3Hi = new ArrayList<>();
       private final List<BigInteger> arg3Lo = new ArrayList<>();
-      private final List<BigInteger> bit1 = new ArrayList<>();
-      private final List<BigInteger> bit2 = new ArrayList<>();
-      private final List<BigInteger> bit3 = new ArrayList<>();
+      private final List<Boolean> bit1 = new ArrayList<>();
+      private final List<Boolean> bit2 = new ArrayList<>();
+      private final List<Boolean> bit3 = new ArrayList<>();
       private final List<UnsignedByte> byteA0 = new ArrayList<>();
       private final List<UnsignedByte> byteA1 = new ArrayList<>();
       private final List<UnsignedByte> byteA2 = new ArrayList<>();
@@ -381,7 +381,7 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       private final List<Boolean> ofH = new ArrayList<>();
       private final List<Boolean> ofI = new ArrayList<>();
       private final List<Boolean> ofJ = new ArrayList<>();
-      private final List<BigInteger> ofRes = new ArrayList<>();
+      private final List<Boolean> ofRes = new ArrayList<>();
       private final List<Boolean> oli = new ArrayList<>();
       private final List<BigInteger> resHi = new ArrayList<>();
       private final List<BigInteger> resLo = new ArrayList<>();
@@ -671,17 +671,17 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendBit1(final BigInteger b) {
+      public Builder appendBit1(final Boolean b) {
         bit1.add(b);
         return this;
       }
 
-      public Builder appendBit2(final BigInteger b) {
+      public Builder appendBit2(final Boolean b) {
         bit2.add(b);
         return this;
       }
 
-      public Builder appendBit3(final BigInteger b) {
+      public Builder appendBit3(final Boolean b) {
         bit3.add(b);
         return this;
       }
@@ -961,7 +961,7 @@ public record ExtTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
         return this;
       }
 
-      public Builder appendOfRes(final BigInteger b) {
+      public Builder appendOfRes(final Boolean b) {
         ofRes.add(b);
         return this;
       }
