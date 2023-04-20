@@ -46,39 +46,42 @@ public class MulTracer implements ModuleTracer {
 
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
 
-    final MulData data = new MulData(opCode, arg1, arg2);
+    // argument order is reversed ??
+    final MulData data = new MulData(opCode, arg2, arg1);
     final MulTrace.Trace.Builder builder = MulTrace.Trace.Builder.newInstance();
-    final int maxCt = data.maxCt();
-
-    stamp++;
 
     switch (data.getRegime()) {
       case EXPONENT_ZERO_RESULT -> {
-        for (int ct = 0; ct < maxCt; ct++) {
-          trace(builder, data, ct);
-        }
-        return builder.build();
+        trace(builder, data);
       }
 
       case EXPONENT_NON_ZERO_RESULT -> {
         if (data.carryOn()) {
           data.update();
-          for (int ct = 0; ct < maxCt; ct++) {
-            trace(builder, data, ct);
-          }
+          trace(builder, data);
         }
-        return builder.build();
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
         data.setHsAndBits(UInt256.fromBytes(arg1), UInt256.fromBytes(arg2));
-        for (int ct = 0; ct < maxCt; ct++) {
-          trace(builder, data, ct);
-        }
-        return builder.build();
+        trace(builder, data);
       }
 
       default -> throw new RuntimeException("regime not supported");
+    }
+    // TODO captureBlockEnd should be called from elsewhere - not within messageFrame
+    //    captureBlockEnd();
+    MulData finalZeroToTheZero = new MulData(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO);
+    trace(builder, finalZeroToTheZero);
+
+    return builder.build();
+  }
+
+  private void trace(final MulTrace.Trace.Builder builder, final MulData data) {
+    stamp++;
+
+    for (int ct = 0; ct < data.maxCt(); ct++) {
+      trace(builder, data, ct);
     }
   }
 
