@@ -77,10 +77,11 @@ public class MulModOverflowResCalculator {
       long lambda, BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 alpha) {
     var sum = UInt256.valueOf(lambda);
     sum = sum.add(UInt256.fromBytes(hBytes.get(1)));
-    sum = sum.add(alpha.shiftLeft(64));
-    var prod = multiplyRange(bBytes.getBytesRange(0, 2), aBytes.getBytesRange(0, 2));
-    sum = sum.add(prod);
-    sum = sum.add(UInt256.fromBytes(hBytes.get(2).shiftLeft(64)));
+    sum = sum.add(UInt256.valueOf(alpha.toUnsignedBigInteger().shiftLeft(64)));
+    sum = sum.add( (UInt256.fromBytes(aBytes.get(2)).multiply(UInt256.fromBytes(bBytes.get(0)))));
+    sum = sum.add( (UInt256.fromBytes(aBytes.get(1)).multiply(UInt256.fromBytes(bBytes.get(1)))));
+    sum = sum.add( (UInt256.fromBytes(aBytes.get(0)).multiply(UInt256.fromBytes(bBytes.get(2)))));
+    sum = sum.add(UInt256.valueOf(hBytes.get(2).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sum, 3, "mu out of range (MULMOD)");
   }
 
