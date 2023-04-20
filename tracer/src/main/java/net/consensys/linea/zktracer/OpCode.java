@@ -37,7 +37,16 @@ public enum OpCode {
   // shf
   SHL(0x1b),
   SHR(0x1c),
-  SAR(0x1d);
+  SAR(0x1d),
+  BALANCE(0x31),
+  EXTCODESIZE(0x3b),
+  EXTCODECOPY(0x3c),
+  EXTCODEHASH(0x3f),
+  CALL(0xf1),
+  CALLCODE(0xf2),
+  DELEGATECALL(0xf4),
+  STATICCALL(0xfa),
+  SELFDESTRUCT(0xff);
 
   public final long value;
 
