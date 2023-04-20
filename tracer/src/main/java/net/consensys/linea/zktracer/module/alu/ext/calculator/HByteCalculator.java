@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
 import static net.consensys.linea.zktracer.module.Util.getOverflow;
+import static net.consensys.linea.zktracer.module.Util.multiplyRange;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
@@ -64,13 +65,11 @@ public class HByteCalculator {
    * @return the alpha value.
    */
   private static long calculateAlpha(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
-    UInt256 prodA0xB1 = UInt256.fromBytes(aBytes.get(0)).multiply(UInt256.fromBytes(bBytes.get(1)));
-    UInt256 prodA1xB0 = UInt256.fromBytes(aBytes.get(1)).multiply(UInt256.fromBytes(bBytes.get(0)));
-    UInt256 sum1 = prodA0xB1.add(prodA1xB0);
-    var truc = BaseTheta.fromBytes32(sum1);
+    UInt256 sum = multiplyRange(aBytes.getBytesRange(0, 1), bBytes.getBytesRange(0, 1));
+    var truc = BaseTheta.fromBytes32(sum);
     hBytes.set(0, truc.get(0));
     hBytes.set(1, truc.get(1));
-    return getOverflow(sum1, 1, "alpha OOB");
+    return getOverflow(sum, 1, "alpha OOB");
   }
 
   /**
@@ -82,15 +81,11 @@ public class HByteCalculator {
    * @return the beta value.
    */
   private static long calculateBeta(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
-    UInt256 prodA0xB3 = UInt256.fromBytes(aBytes.get(0)).multiply(UInt256.fromBytes(bBytes.get(3)));
-    UInt256 prodA1xB2 = UInt256.fromBytes(aBytes.get(1)).multiply(UInt256.fromBytes(bBytes.get(2)));
-    UInt256 prodA2xB1 = UInt256.fromBytes(aBytes.get(2)).multiply(UInt256.fromBytes(bBytes.get(1)));
-    UInt256 prodA3xB0 = UInt256.fromBytes(aBytes.get(3)).multiply(UInt256.fromBytes(bBytes.get(0)));
-    UInt256 sum2 = prodA0xB3.add(prodA1xB2).add(prodA2xB1).add(prodA3xB0);
-    var truc2 = BaseTheta.fromBytes32(sum2);
-    hBytes.set(2, truc2.get(0));
-    hBytes.set(3, truc2.get(1));
-    return getOverflow(sum2, 3, "beta OOB");
+    UInt256 sum = multiplyRange(aBytes.getBytesRange(0, 3), bBytes.getBytesRange(0, 3));
+    var truc = BaseTheta.fromBytes32(sum);
+    hBytes.set(2, truc.get(0));
+    hBytes.set(3, truc.get(1));
+    return getOverflow(sum, 3, "beta OOB");
   }
   /**
    * Calculates the gamma value for the given aBytes, bBytes, and hBytes values.
@@ -101,12 +96,10 @@ public class HByteCalculator {
    * @return the gamma value.
    */
   private static long calculateGamma(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
-    UInt256 prodA2xB3 = UInt256.fromBytes(aBytes.get(2)).multiply(UInt256.fromBytes(bBytes.get(3)));
-    UInt256 prodA3xB2 = UInt256.fromBytes(aBytes.get(3)).multiply(UInt256.fromBytes(bBytes.get(2)));
-    UInt256 sum3 = prodA2xB3.add(prodA3xB2);
-    var truc3 = BaseTheta.fromBytes32(sum3);
-    hBytes.set(4, truc3.get(0));
-    hBytes.set(5, truc3.get(1));
-    return getOverflow(sum3, 1, "gamma OOB");
+    UInt256 sum = multiplyRange(aBytes.getBytesRange(2, 3), bBytes.getBytesRange(2, 3));
+    var truc = BaseTheta.fromBytes32(sum);
+    hBytes.set(4, truc.get(0));
+    hBytes.set(5, truc.get(1));
+    return getOverflow(sum, 1, "gamma OOB");
   }
 }

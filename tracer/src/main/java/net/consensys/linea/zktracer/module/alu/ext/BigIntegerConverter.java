@@ -3,11 +3,7 @@ package net.consensys.linea.zktracer.module.alu.ext;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 
-@SuppressWarnings("UnusedVariable")
 public class BigIntegerConverter {
-  private static final int LONG_SIZE = 64;
-  private static final int WORDS = 8;
-  private static final long MASK = 0xFFFFFFFFFFFFFFFFL;
 
   public static long[] toLongArray(BigInteger bigInteger) {
     // Ensure the input BigInteger is within 512 bits
