@@ -60,7 +60,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void testByteBits() {
+  public void testByteBits_ofZero() {
     Boolean[] booleans = Util.byteBits(UnsignedByte.of(0));
     assertThat(booleans.length).isEqualTo(8);
     assertThat(booleans[0]).isNotNull();
