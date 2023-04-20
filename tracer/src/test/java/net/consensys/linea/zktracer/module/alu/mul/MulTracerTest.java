@@ -114,7 +114,7 @@ class MulTracerTest extends AbstractModuleTracerTest {
         Bytes32.fromHexString("0x8a48aa20e200ce3fee16b5dcdec5c4faff613bc914d47cd6ca69553f8eb2b377");
     payload[1] =
         Bytes32.fromHexString("0x59b635fec894caa3ed6817b1e67b3cbaeb8757fd6c7b03119b795303b7cd72c1");
-    return Stream.of(Arguments.of(getRandomSupportedOpcode(), payload[0], payload[1]));
+    return Stream.of(Arguments.of(OpCode.MUL, payload[0], payload[1]));
   }
 
   public Stream<Arguments> provideRandomNonTinyArguments() {
