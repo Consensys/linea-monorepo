@@ -61,20 +61,20 @@ public class AddTracer implements ModuleTracer {
 
     final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
 
-      UInt256 arg1Int = UInt256.fromBytes(arg1);
-      UInt256 arg2Int = UInt256.fromBytes(arg2);
-      UInt256 resultBytes;
+    UInt256 arg1Int = UInt256.fromBytes(arg1);
+    UInt256 arg2Int = UInt256.fromBytes(arg2);
+    UInt256 resultBytes;
 
-      if (opCode == OpCode.ADD) {
-        resultBytes = arg1Int.add(arg2Int);
-        if (resultBytes.compareTo(arg1Int) < 0) {
-          overflowHi = true;
-        }
-      } else if (opCode == OpCode.SUB) {
-        if (arg1Int.compareTo(arg2Int) < 0) {
-          overflowHi = true;
-        }
+    if (opCode == OpCode.ADD) {
+      resultBytes = arg1Int.add(arg2Int);
+      if (resultBytes.compareTo(arg1Int) < 0) {
+        overflowHi = true;
       }
+    } else if (opCode == OpCode.SUB) {
+      if (arg1Int.compareTo(arg2Int) < 0) {
+        overflowHi = true;
+      }
+    }
 
     // check if the result is greater than 2^128
     final UInt256 twoToThe128 = UInt256.ONE.shiftLeft(128);
