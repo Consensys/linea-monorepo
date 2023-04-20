@@ -69,6 +69,11 @@ public class MulData {
     this.tinyBase = isTiny(arg1BigInt);
     this.tinyExponent = isTiny(arg2BigInt);
 
+    // initialize bits
+    for (int i = 0; i < bits.length; i++) {
+      bits[i] = false;
+    }
+
     final Regime regime = getRegime();
     switch (regime) {
       case TRIVIAL_MUL -> {}
