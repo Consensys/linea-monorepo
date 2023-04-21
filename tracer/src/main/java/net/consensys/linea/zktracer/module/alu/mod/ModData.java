@@ -131,7 +131,7 @@ public class ModData {
       } else {
         delta = r(k).subtract(b(k));
       }
-      D_Bytes.set64BitSection(k, delta.slice(24, 8));
+      D_Bytes.set(k, delta.slice(24, 8));
     }
   }
 
@@ -158,7 +158,7 @@ public class ModData {
       throw new RuntimeException("b[0]q[3] + b[1]q[2] + b[2]q[1] + b[3]q[0] >= (1 << 64)");
     }
 
-    H_Bytes.set64BitSection(2, sum.slice(24, 8));
+    H_Bytes.set(2, sum.slice(24, 8));
 
     sum = q(0).multiply(b(0));
     sum = sum.add(h(0).multiply(theta));

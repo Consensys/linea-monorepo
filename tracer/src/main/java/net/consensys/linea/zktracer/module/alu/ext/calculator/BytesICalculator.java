@@ -35,7 +35,7 @@ public class BytesICalculator {
    * @param iBytes the hBytes value.
    * @return the overflow values.
    */
-  static boolean[] computeIsAndOverflowI(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  static boolean[] computeIsAndOverflowI(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     boolean[] overflowI = new boolean[8];
 
     // Calculate sigma
@@ -64,7 +64,7 @@ public class BytesICalculator {
    * @param cBytes the cBytes value.
    * @param iBytes the iBytes value.
    */
-  private static long calculateSigma(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  private static long calculateSigma(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     UInt256 sumSigma = multiplyRange(qBytes.getBytesRange(0, 1), cBytes.getBytesRange(0, 1));
     BaseTheta thetaSigma = BaseTheta.fromBytes32(sumSigma);
     iBytes.set(0, thetaSigma.get(0));
@@ -80,7 +80,7 @@ public class BytesICalculator {
    * @param iBytes the iBytes value.
    * @return The computed value of tau
    */
-  private static long calculateTau(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  private static long calculateTau(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     UInt256 sumTau = multiplyRange(qBytes.getBytesRange(0, 3), cBytes.getBytesRange(0, 3));
     BaseTheta thetaTau = BaseTheta.fromBytes32(sumTau);
     iBytes.set(2, thetaTau.get(0));
@@ -96,7 +96,7 @@ public class BytesICalculator {
    * @param iBytes the iBytes value.
    * @return The computed value of rho
    */
-  private static long calculateRho(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  private static long calculateRho(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
 
     UInt256 sumRho = multiplyRange(qBytes.getBytesRange(2, 5), cBytes.getBytesRange(0, 3));
     BaseTheta thetaRho = BaseTheta.fromBytes32(sumRho);
@@ -112,7 +112,7 @@ public class BytesICalculator {
    * @param cBytes the cBytes value.
    * @param iBytes the iBytes value.
    */
-  private static void setLastByte(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  private static void setLastByte(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     UInt256 lastSum = multiplyRange(qBytes.getBytesRange(4, 7), cBytes.getBytesRange(0, 3));
     BaseTheta lastTheta = BaseTheta.fromBytes32(lastSum);
     iBytes.set(6, lastTheta.get(0));

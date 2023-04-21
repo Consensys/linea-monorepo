@@ -40,7 +40,7 @@ class ExtTracerTest extends AbstractModuleTracerTest {
     Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(6));
     Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(7));
     Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(13));
-    runTest(OpCode.MULMOD, arg1, arg2, arg3);
+    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
   }
 
   @Test
@@ -48,7 +48,7 @@ class ExtTracerTest extends AbstractModuleTracerTest {
     Bytes32 arg1 = UInt256.MAX_VALUE;
     Bytes32 arg2 = UInt256.MAX_VALUE;
     Bytes32 arg3 = UInt256.MAX_VALUE;
-    runTest(OpCode.MULMOD, arg1, arg2, arg3);
+    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
   }
 
   @Test
@@ -59,7 +59,7 @@ class ExtTracerTest extends AbstractModuleTracerTest {
         UInt256.fromHexString("0xb1f3d8555ff1d8e1d1db41eb8640cdc0b5dc1ea19a87bd0cb046b634ab707409");
     Bytes32 arg3 =
         UInt256.fromHexString("0x07d761cc7e0bf9770db9d952e5b108c96e6c3f0526218d2bfbef3071b0d776b8");
-    runTest(OpCode.ADDMOD, arg1, arg2, arg3);
+    runTest(OpCode.ADDMOD, List.of(arg1, arg2, arg3));
   }
 
   @Override
@@ -68,7 +68,8 @@ class ExtTracerTest extends AbstractModuleTracerTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int i = 0; i <= 16; i++) {
         arguments.add(
-            Arguments.of(opCode, Bytes32.random(rand), Bytes32.random(rand), Bytes32.random(rand)));
+            Arguments.of(
+                opCode, List.of(Bytes32.random(rand), Bytes32.random(rand), Bytes32.random(rand))));
       }
     }
     return arguments.stream();
@@ -81,7 +82,8 @@ class ExtTracerTest extends AbstractModuleTracerTest {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
           arguments.add(
-              Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k), UInt256.valueOf(k)));
+              Arguments.of(
+                  opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k), UInt256.valueOf(k))));
         }
       }
     }

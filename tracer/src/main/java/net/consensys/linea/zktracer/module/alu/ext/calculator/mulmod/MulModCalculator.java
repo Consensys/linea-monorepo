@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.zktracer.module.alu.ext.calculator.mulmod;
 
-import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import net.consensys.linea.zktracer.module.alu.ext.calculator.AbstractExtCalculator;
 import org.apache.tuweni.bytes.Bytes32;
@@ -52,19 +52,26 @@ public class MulModCalculator extends AbstractExtCalculator {
   }
 
   /**
-   * Computes overflow results based on input parameters. Overflow results are stored in a boolean
-   * array.
+   * Computes the overflow result for the given arguments.
    *
-   * @param aBytes the first input parameter as a BaseTheta object
-   * @param bBytes the second input parameter as a BaseTheta object
-   * @param hBytes the third input parameter as a BytesArray object
-   * @param alpha the fourth input parameter as a UInt256 object
-   * @param beta the fifth input parameter as a UInt256 object
-   * @return a boolean array containing the overflow results
+   * @param arg1 the arg1 value.
+   * @param arg2 the arg2 value.
+   * @param aBytes the aBytes value.
+   * @param bBytes the bBytes value.
+   * @param hBytes the hBytes value.
+   * @param alpha the alpha value.
+   * @param beta the beta value.
+   * @return the overflow result.
    */
   @Override
   public boolean[] computeOverflowRes(
-      BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 alpha, UInt256 beta) {
+      BaseBytes arg1,
+      BaseBytes arg2,
+      BytesArray aBytes,
+      BytesArray bBytes,
+      BytesArray hBytes,
+      UInt256 alpha,
+      UInt256 beta) {
     return MulModOverflowResCalculator.calculateOverflow(aBytes, bBytes, hBytes, alpha, beta);
   }
 }
