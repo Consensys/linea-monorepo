@@ -33,7 +33,7 @@ public class JByteCalculator {
       UInt256 tau) {
     boolean[] overflow = new boolean[8];
 
-    long phi = calculatePhi(qBytes, cBytes, rBytes);
+    long phi = calculatePhi(qBytes, cBytes, rBytes, iBytes);
 
     long psi = calculatePsi(phi, qBytes, cBytes, rBytes, iBytes, sigma);
 
@@ -50,10 +50,12 @@ public class JByteCalculator {
     return overflow;
   }
 
-  private static long calculatePhi(BytesArray qBytes, BaseTheta cBytes, BaseTheta rBytes) {
-    var prodPhi = multiplyRange(qBytes.getBytesRange(0, 0), cBytes.getBytesRange(0, 0));
-    var sumPhi = prodPhi.add(UInt256.fromBytes(qBytes.get(0).shiftLeft(64)));
-    sumPhi = sumPhi.add((UInt256.fromBytes(rBytes.get(1).shiftLeft(64))));
+  private static long calculatePhi(
+      BytesArray qBytes, BaseTheta cBytes, BaseTheta rBytes, BytesArray iBytes) {
+    UInt256 prodPhi = multiplyRange(qBytes.getBytesRange(0, 0), cBytes.getBytesRange(0, 0));
+    UInt256 sumPhi =
+        prodPhi.add(UInt256.valueOf(iBytes.get(0).toUnsignedBigInteger().shiftLeft(64)));
+    sumPhi = sumPhi.add((UInt256.valueOf(rBytes.get(1).toUnsignedBigInteger().shiftLeft(64))));
     sumPhi = sumPhi.add(UInt256.fromBytes(rBytes.get(0)));
     return getOverflow(sumPhi, 2, "phi out of range");
   }
@@ -68,12 +70,11 @@ public class JByteCalculator {
 
     var sumPsi = UInt256.valueOf(phi);
     sumPsi = sumPsi.add(UInt256.fromBytes(iBytes.get(1)));
-    sumPsi = sumPsi.add(sigma.shiftLeft(64));
+    sumPsi = sumPsi.add(UInt256.valueOf(sigma.toUnsignedBigInteger().shiftLeft(64)));
     var prodPsi = multiplyRange(cBytes.getBytesRange(0, 2), qBytes.getBytesRange(0, 2));
     sumPsi = sumPsi.add(UInt256.fromBytes(prodPsi));
-    sumPsi = sumPsi.add(UInt256.fromBytes(prodPsi));
-    sumPsi = sumPsi.add(UInt256.fromBytes(iBytes.get(2).shiftLeft(64)));
-    sumPsi = sumPsi.add(UInt256.fromBytes(rBytes.get(3).shiftLeft(64)));
+    sumPsi = sumPsi.add(UInt256.valueOf(iBytes.get(2).toUnsignedBigInteger().shiftLeft(64)));
+    sumPsi = sumPsi.add(UInt256.valueOf(rBytes.get(3).toUnsignedBigInteger().shiftLeft(64)));
     sumPsi = sumPsi.add(UInt256.fromBytes(rBytes.get(2)));
     return getOverflow(UInt256.fromBytes(sumPsi.toBytes()), 4, "psi out of range");
   }
@@ -83,10 +84,10 @@ public class JByteCalculator {
 
     var sumChi = UInt256.valueOf(psi);
     sumChi = sumChi.add(UInt256.fromBytes(iBytes.get(3)));
-    sumChi = sumChi.add(tau.shiftLeft(64));
+    sumChi = sumChi.add(UInt256.valueOf(tau.toUnsignedBigInteger().shiftLeft(64)));
     var prodChi = multiplyRange(cBytes.getBytesRange(0, 3), qBytes.getBytesRange(1, 4));
     sumChi = sumChi.add(prodChi);
-    sumChi = sumChi.add(UInt256.fromBytes(iBytes.get(4).shiftLeft(64)));
+    sumChi = sumChi.add(UInt256.valueOf(iBytes.get(4).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sumChi, 4, "chi out of range");
   }
 }
