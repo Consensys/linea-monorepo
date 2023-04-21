@@ -18,7 +18,6 @@ import static net.consensys.linea.zktracer.module.Util.getBit;
 import static net.consensys.linea.zktracer.module.Util.getOverflow;
 import static net.consensys.linea.zktracer.module.Util.multiplyRange;
 
-import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import org.apache.tuweni.units.bigints.UInt256;
 
@@ -26,8 +25,8 @@ public class OverflowJCalculator {
 
   static boolean[] computeOverflowJ(
       BytesArray qBytes,
-      BaseTheta cBytes,
-      BaseTheta rBytes,
+      BytesArray cBytes,
+      BytesArray rBytes,
       BytesArray iBytes,
       UInt256 sigma,
       UInt256 tau) {
@@ -51,7 +50,7 @@ public class OverflowJCalculator {
   }
 
   private static long calculatePhi(
-      BytesArray qBytes, BaseTheta cBytes, BaseTheta rBytes, BytesArray iBytes) {
+      BytesArray qBytes, BytesArray cBytes, BytesArray rBytes, BytesArray iBytes) {
     UInt256 prodPhi = multiplyRange(qBytes.getBytesRange(0, 0), cBytes.getBytesRange(0, 0));
     UInt256 sumPhi =
         prodPhi.add(UInt256.valueOf(iBytes.get(0).toUnsignedBigInteger().shiftLeft(64)));
@@ -63,8 +62,8 @@ public class OverflowJCalculator {
   private static long calculatePsi(
       long phi,
       BytesArray qBytes,
-      BaseTheta cBytes,
-      BaseTheta rBytes,
+      BytesArray cBytes,
+      BytesArray rBytes,
       BytesArray iBytes,
       UInt256 sigma) {
 
@@ -80,7 +79,7 @@ public class OverflowJCalculator {
   }
 
   private static long calculateChi(
-      long psi, BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes, UInt256 tau) {
+      long psi, BytesArray qBytes, BytesArray cBytes, BytesArray iBytes, UInt256 tau) {
 
     var sumChi = UInt256.valueOf(psi);
     sumChi = sumChi.add(UInt256.fromBytes(iBytes.get(3)));

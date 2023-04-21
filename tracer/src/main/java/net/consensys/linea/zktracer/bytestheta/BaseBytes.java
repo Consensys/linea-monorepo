@@ -22,10 +22,8 @@ import org.apache.tuweni.bytes.MutableBytes32;
  * The `BaseBytes` class provides a base implementation for manipulating 256-bit (32-byte) blocks of
  * data.
  */
-public class BaseBytes {
+public class BaseBytes implements HighLowBytes {
 
-  /** The offset between 64-bit (8-byte) sections in the 256-bit block. */
-  protected final int OFFSET = 8;
   /** The size in bytes of the high and low sections of the 256-bit block. */
   private final int LOW_HIGH_SIZE = 16;
   /** The mutable `Bytes32` object that stores the 256-bit block of data. */
@@ -58,6 +56,7 @@ public class BaseBytes {
    *
    * @return A new `Bytes16` object that is the high section of the `bytes32` instance variable.
    */
+  @Override
   public Bytes16 getHigh() {
     return Bytes16.wrap(bytes32.slice(0, LOW_HIGH_SIZE));
   }
@@ -68,6 +67,7 @@ public class BaseBytes {
    *
    * @return A new `Bytes16` object that is the low section of the `bytes32` instance variable.
    */
+  @Override
   public Bytes16 getLow() {
     return Bytes16.wrap(bytes32.slice(LOW_HIGH_SIZE));
   }

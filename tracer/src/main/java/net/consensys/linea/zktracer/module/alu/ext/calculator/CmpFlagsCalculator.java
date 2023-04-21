@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
-import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import org.apache.tuweni.units.bigints.UInt256;
 
 /** A utility class for computing comparison flags for extended modular arithmetic operations. */
@@ -27,7 +27,7 @@ public class CmpFlagsCalculator {
    * @param rBytes the rBytes value.
    * @return the comparison flags.
    */
-  static boolean[] computeComparisonFlags(BaseTheta cBytes, BaseTheta rBytes) {
+  static boolean[] computeComparisonFlags(BytesArray cBytes, BytesArray rBytes) {
     boolean[] cmp = new boolean[8];
     for (int i = 0; i < 4; i++) {
       UInt256 c = UInt256.fromBytes(cBytes.get(i));
