@@ -53,19 +53,19 @@ public class IByteCalculator {
     overflowI[0] = getBit(sigma, 0);
     overflowI[1] = getBit(tau, 0);
     overflowI[2] = getBit(tau, 1);
-    overflowI[4] = getBit(rho, 0);
-    overflowI[5] = getBit(rho, 1);
+    overflowI[3] = getBit(rho, 0);
+    overflowI[4] = getBit(rho, 1);
     return overflowI;
   }
 
-/**
-
- Calculates the value of sigma for the given set of BytesArrays
- @param qBytes the qBytes value.
- @param cBytes the cBytes value.
- @param iBytes the iBytes value.
-*/
- private static long calculateSigma(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  /**
+   * Calculates the value of sigma for the given set of BytesArrays
+   *
+   * @param qBytes the qBytes value.
+   * @param cBytes the cBytes value.
+   * @param iBytes the iBytes value.
+   */
+  private static long calculateSigma(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
     UInt256 sumSigma = multiplyRange(qBytes.getBytesRange(0, 1), cBytes.getBytesRange(0, 1));
     BaseTheta thetaSigma = BaseTheta.fromBytes32(sumSigma);
     iBytes.set(0, thetaSigma.get(0));
@@ -74,12 +74,12 @@ public class IByteCalculator {
   }
 
   /**
-
-   Calculates the value of tau for the given set of BytesArrays
-   @param qBytes the qBytes value.
-   @param cBytes the cBytes value.
-   @param iBytes the iBytes value.
-   @return The computed value of tau
+   * Calculates the value of tau for the given set of BytesArrays
+   *
+   * @param qBytes the qBytes value.
+   * @param cBytes the cBytes value.
+   * @param iBytes the iBytes value.
+   * @return The computed value of tau
    */
   private static long calculateTau(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
     UInt256 sumTau = multiplyRange(qBytes.getBytesRange(0, 3), cBytes.getBytesRange(0, 3));
@@ -90,12 +90,12 @@ public class IByteCalculator {
   }
 
   /**
-
-   Calculates the value of rho for the given set of BytesArrays
-   @param qBytes the qBytes value.
-   @param cBytes the cBytes value.
-   @param iBytes the iBytes value.
-   @return The computed value of rho
+   * Calculates the value of rho for the given set of BytesArrays
+   *
+   * @param qBytes the qBytes value.
+   * @param cBytes the cBytes value.
+   * @param iBytes the iBytes value.
+   * @return The computed value of rho
    */
   private static long calculateRho(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
 
@@ -107,10 +107,11 @@ public class IByteCalculator {
   }
 
   /**
-   Set the value of the last byte for the given set of BytesArrays
-   @param qBytes the qBytes value.
-   @param cBytes the cBytes value.
-   @param iBytes the iBytes value.
+   * Set the value of the last byte for the given set of BytesArrays
+   *
+   * @param qBytes the qBytes value.
+   * @param cBytes the cBytes value.
+   * @param iBytes the iBytes value.
    */
   private static void setLastByte(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
     UInt256 lastSum = multiplyRange(qBytes.getBytesRange(4, 7), cBytes.getBytesRange(0, 3));
