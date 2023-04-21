@@ -13,34 +13,31 @@ package net.consensys.linea.zktracer.module.alu.add;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.OpCode;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Adder {
   private static final Logger LOG = LoggerFactory.getLogger(Adder.class);
 
-  public static Bytes32 addSub(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
+  public static BaseBytes addSub(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
     LOG.info("adding " + arg1 + " " + opCode.name() + " " + arg2);
-    final BigInteger res = x(opCode, arg1, arg2);
+    final BaseBytes resBytes = x(opCode, arg1, arg2);
     // ensure result is correct length
-    final Bytes resBytes = Bytes.of(res.toByteArray());
-    if (resBytes.size() > 32) {
-      return Bytes32.wrap(resBytes, resBytes.size() - 32);
-    }
-    return Bytes32.leftPad(Bytes.of(res.toByteArray()));
+    return BaseBytes.fromBytes32(resBytes.getBytes32());
   }
 
-  private static BigInteger x(final OpCode opCode, final Bytes32 value, final Bytes32 value2) {
+  private static BaseBytes x(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
     {
       return switch (opCode) {
-        case ADD -> value.toUnsignedBigInteger().add(value2.toUnsignedBigInteger());
-        case SUB -> value.toUnsignedBigInteger().subtract(value2.toUnsignedBigInteger());
-        default -> BigInteger.ZERO; // TODO what should happen here
+        case ADD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2)));
+        case SUB -> BaseBytes.fromBytes32(
+            UInt256.fromBytes(arg1).subtract(UInt256.fromBytes(arg2)));
+        default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
       };
     }
   }

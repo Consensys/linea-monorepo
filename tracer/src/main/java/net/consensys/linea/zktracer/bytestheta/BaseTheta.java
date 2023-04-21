@@ -1,3 +1,4 @@
+package net.consensys.linea.zktracer.bytestheta;
 /*
  * Copyright ConsenSys AG.
  *
@@ -12,8 +13,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-package net.consensys.linea.zktracer.bytestheta;
 
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
@@ -129,11 +128,11 @@ public class BaseTheta extends BaseBytes {
    *
    * @param i The index of the 64-bit section to start the slice from.
    * @param start The starting index of the slice within the 64-bit section.
-   * @param end The number of bytes in the slice.
+   * @param length The number of bytes in the slice.
    * @return The `Bytes` object representing the slice of the `bytes32` instance variable.
    */
-  public Bytes getRange(final int i, final int start, final int end) {
-    return bytes32.slice(OFFSET * i + start, end);
+  public Bytes getRange(final int i, final int start, final int length) {
+    return bytes32.slice(OFFSET * i + start, length);
   }
 
   /**
