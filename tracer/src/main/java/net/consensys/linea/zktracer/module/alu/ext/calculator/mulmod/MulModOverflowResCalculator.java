@@ -59,7 +59,7 @@ public class MulModOverflowResCalculator {
    */
   private static long calculateLambda(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
     var sum = multiplyRange(aBytes.getBytesRange(0, 0), bBytes.getBytesRange(0, 0));
-    sum = sum.add(UInt256.fromBytes(hBytes.get(0).shiftLeft(64)));
+    sum = sum.add(UInt256.valueOf(hBytes.get(0).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sum, 1, "lambda out of range (MULMOD)");
   }
 
@@ -78,9 +78,9 @@ public class MulModOverflowResCalculator {
     var sum = UInt256.valueOf(lambda);
     sum = sum.add(UInt256.fromBytes(hBytes.get(1)));
     sum = sum.add(UInt256.valueOf(alpha.toUnsignedBigInteger().shiftLeft(64)));
-    sum = sum.add( (UInt256.fromBytes(aBytes.get(2)).multiply(UInt256.fromBytes(bBytes.get(0)))));
-    sum = sum.add( (UInt256.fromBytes(aBytes.get(1)).multiply(UInt256.fromBytes(bBytes.get(1)))));
-    sum = sum.add( (UInt256.fromBytes(aBytes.get(0)).multiply(UInt256.fromBytes(bBytes.get(2)))));
+    sum = sum.add((UInt256.fromBytes(aBytes.get(2)).multiply(UInt256.fromBytes(bBytes.get(0)))));
+    sum = sum.add((UInt256.fromBytes(aBytes.get(1)).multiply(UInt256.fromBytes(bBytes.get(1)))));
+    sum = sum.add((UInt256.fromBytes(aBytes.get(0)).multiply(UInt256.fromBytes(bBytes.get(2)))));
     sum = sum.add(UInt256.valueOf(hBytes.get(2).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sum, 3, "mu out of range (MULMOD)");
   }
@@ -99,9 +99,9 @@ public class MulModOverflowResCalculator {
       long mu, BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 beta) {
     var sum = UInt256.valueOf(mu);
     sum = sum.add(UInt256.fromBytes(hBytes.get(3)));
-    sum = sum.add(beta.shiftLeft(64));
+    sum = sum.add(UInt256.valueOf(beta.toUnsignedBigInteger().shiftLeft(64)));
     sum = sum.add(multiplyRange(bBytes.getBytesRange(1, 3), aBytes.getBytesRange(1, 3)));
-    sum = sum.add(UInt256.fromBytes(hBytes.get(4).shiftLeft(64)));
+    sum = sum.add(UInt256.valueOf(hBytes.get(4).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sum, 3, "nu out of range (MULMOD)");
   }
 }
