@@ -26,27 +26,27 @@ class AdderTest {
   @Test
   void zeroAddZero_isZero() {
     BaseBytes actual = Adder.addSub(OpCode.ADD, Bytes32.ZERO, Bytes32.ZERO);
-    assertThat(actual).isEqualTo(Bytes32.ZERO);
+    assertThat(actual.getBytes32()).isEqualTo(Bytes32.ZERO);
   }
 
   @Test
   void zeroSubZero_isZero() {
     BaseBytes actual = Adder.addSub(OpCode.SUB, Bytes32.ZERO, Bytes32.ZERO);
-    assertThat(actual).isEqualTo(Bytes32.ZERO);
+    assertThat(actual.getBytes32()).isEqualTo(Bytes32.ZERO);
   }
 
   @Test
   void xSubZero_isX() {
     Bytes32 randomBytes = Bytes32.random();
     BaseBytes actual = Adder.addSub(OpCode.SUB, randomBytes, Bytes32.ZERO);
-    assertThat(actual).isEqualTo(randomBytes);
+    assertThat(actual.getBytes32()).isEqualTo(randomBytes);
   }
 
   @Test
   void xAddZero_isX() {
     Bytes32 randomBytes = Bytes32.random();
     BaseBytes actual = Adder.addSub(OpCode.ADD, randomBytes, Bytes32.ZERO);
-    assertThat(actual).isEqualTo(randomBytes);
+    assertThat(actual.getBytes32()).isEqualTo(randomBytes);
   }
 
   @Test
@@ -55,7 +55,7 @@ class AdderTest {
     b = 'f';
     Bytes32 max = Bytes32.repeat(b);
     BaseBytes actual = Adder.addSub(OpCode.SUB, max, max);
-    assertThat(actual).isEqualTo(Bytes32.ZERO);
+    assertThat(actual.getBytes32()).isEqualTo(Bytes32.ZERO);
   }
 
   @Test
@@ -64,7 +64,7 @@ class AdderTest {
     b = 'f';
     Bytes32 max = Bytes32.repeat(b);
     BaseBytes actual = Adder.addSub(OpCode.SUB, max, Bytes32.ZERO);
-    assertThat(actual).isEqualTo(max);
+    assertThat(actual.getBytes32()).isEqualTo(max);
   }
 
   @Test
