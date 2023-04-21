@@ -16,9 +16,7 @@ package net.consensys.linea.zktracer.module.alu.ext.calculator.addmod;
 
 import static net.consensys.linea.zktracer.module.Util.uInt64ToBytes;
 import static net.consensys.linea.zktracer.module.alu.ext.BigIntegerConverter.fromLongArray;
-import static net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator.calculateQuotient;
-import static net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator.calculateSum;
-import static net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator.convertToBaseTheta;
+import static net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator.*;
 
 import java.math.BigInteger;
 
@@ -28,7 +26,24 @@ import net.consensys.linea.zktracer.module.alu.ext.BigIntegerConverter;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+/**
+ * A calculator for computing the Q values for an AddMod operation in bytes format. Q values are
+ * calculated based on the given arguments arg1, arg2 and arg3. If the sum of arg1 and arg2 is less
+ * than or equal to arg3, then q values are calculated as the quotient of the sum and arg3 converted
+ * to base theta. If the sum of arg1 and arg2 is greater than arg3, then q values are calculated by
+ * dividing the sum and arg3 in BigInteger format with overflow, and converting the quotient to
+ * bytes format.
+ */
 public class AddModBytesQCalculator {
+
+  /**
+   * Computes Q values for an AddMod operation based on the given arguments.
+   *
+   * @param arg1 the first argument in bytes32 format
+   * @param arg2 the second argument in bytes32 format
+   * @param arg3 the third argument in bytes32 format
+   * @return the calculated Q values in bytes format as a BytesArray
+   */
   public static BytesArray computeQs(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     byte[][] qBytes = new byte[8][8];
     UInt256 sum = calculateSum(arg1, arg2);
@@ -54,7 +69,6 @@ public class AddModBytesQCalculator {
   }
 
   private static BigInteger convertToBigIntegerWithOverflow(UInt256 sum) {
-
     long[] sumUInt64 = new long[5];
     for (int k = 0; k < 4; k++) {
       sumUInt64[k] = sum.toUnsignedBigInteger().shiftRight(k * 64).longValue();
