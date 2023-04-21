@@ -22,7 +22,15 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 
+/** Utility class that provides various helper methods. */
 public class Util {
+
+  /**
+   * Converts the bits of an unsigned byte into an array of Booleans.
+   *
+   * @param b The unsigned byte to be converted.
+   * @return A Boolean array containing the bits of the input byte.
+   */
   public static Boolean[] byteBits(final UnsignedByte b) {
     final Boolean[] bits = new Boolean[8];
     for (int i = 0; i < 8; i++) {
@@ -31,6 +39,15 @@ public class Util {
     return bits;
   }
 
+  /**
+   * Checks if the shifted UInt256 argument overflows a given maximum value, and throws an exception
+   * with an error message if it does.
+   *
+   * @param arg The UInt256 argument to be checked.
+   * @param maxVal The maximum value the shifted argument should not exceed.
+   * @param err The error message to be included in the exception.
+   * @return The overflow value if it doesn't exceed the maximum value.
+   */
   public static long getOverflow(UInt256 arg, long maxVal, String err) {
     UInt256 shiftedArg = arg.shiftRight(128);
 
@@ -44,11 +61,23 @@ public class Util {
     return overflow;
   }
 
-  // GetBit returns true if the k'th bit of x is 1
+  /**
+   * Checks if the k'th bit of a given long value is 1.
+   *
+   * @param x The long value to be checked.
+   * @param k The index of the bit to be checked.
+   * @return True if the k'th bit of x is 1, otherwise false.
+   */
   public static boolean getBit(long x, int k) {
     return (x >> k) % 2 == 1;
   }
 
+  /**
+   * Converts a boolean value to an integer (1 for true and 0 for false).
+   *
+   * @param bool The boolean value to be converted.
+   * @return An integer representing the input boolean value.
+   */
   public static int boolToInt(boolean bool) {
     return bool ? 1 : 0;
   }
@@ -68,10 +97,23 @@ public class Util {
     return xBytes;
   }
 
+  /**
+   * Checks if a given BigInteger value is a valid UInt256.
+   *
+   * @param number The BigInteger value to be checked.
+   * @return True if the input value is a valid UInt256, otherwise false.
+   */
   public static boolean isUInt256(BigInteger number) {
     return number.bitLength() <= 256;
   }
 
+  /**
+   * Multiplies the elements of two byte array ranges and returns the sum of their UInt256 products.
+   *
+   * @param range1 The first byte array range.
+   * @param range2 The second byte array range.
+   * @return The UInt256 sum of the products of the elements in the two input ranges.
+   */
   public static UInt256 multiplyRange(Bytes[] range1, Bytes[] range2) {
     checkArgument(range1.length == range2.length);
     UInt256 sum = UInt256.ZERO;
