@@ -73,23 +73,23 @@ public class BaseThetaTest {
 
     BaseTheta baseTheta = BaseTheta.fromBytes32(bytes32);
 
-    assertThat(baseTheta.getRange(0, 6, 7)).isEqualTo(Bytes.fromHexString("0x000a"));
-    assertThat(baseTheta.getRange(2, 5, 7)).isEqualTo(Bytes.fromHexString("0x00000c"));
-    assertThat(baseTheta.getRange(2, 0, 1)).isEqualTo(Bytes.fromHexString("0x0000"));
+    assertThat(baseTheta.getRange(3, 6, 2)).isEqualTo(Bytes.fromHexString("0x000a"));
+    assertThat(baseTheta.getRange(1, 5, 3)).isEqualTo(Bytes.fromHexString("0x00000c"));
+    assertThat(baseTheta.getRange(1, 0, 1)).isEqualTo(Bytes.fromHexString("0x00"));
   }
 
   @Test
   public void getTest() {
-    Bytes firstByte = Bytes.fromHexString("0x000000000000000a");
-    Bytes secondByte = Bytes.fromHexString("0x000000000000000b");
-    Bytes thirdByte = Bytes.fromHexString("0x000000000000000c");
-    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d");
+    Bytes firstByte = Bytes.fromHexString("0x000000000000000a"); // baseTheta[3]
+    Bytes secondByte = Bytes.fromHexString("0x000000000000000b");// baseTheta[2]
+    Bytes thirdByte = Bytes.fromHexString("0x000000000000000c"); // baseTheta[1]
+    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d");// baseTheta[0]
     Bytes32 bytes32 = Bytes32.wrap(Bytes.concatenate(firstByte, secondByte, thirdByte, fourthByte));
 
     BaseTheta baseTheta = BaseTheta.fromBytes32(bytes32);
 
-    assertThat(baseTheta.get(0, 7)).isEqualTo(Bytes.fromHexString("0x0a"));
-    assertThat(baseTheta.get(2, 7)).isEqualTo(Bytes.fromHexString("0x0c"));
+    assertThat(baseTheta.get(0, 7)).isEqualTo(Bytes.fromHexString("0x0d").get(0)); // single byte
+    assertThat(baseTheta.get(2, 7)).isEqualTo(Bytes.fromHexString("0x0b").get(0)); // single byte
   }
 
   @Test
@@ -100,17 +100,18 @@ public class BaseThetaTest {
     Bytes fourthByte = Bytes.fromHexString("0x000000000000000d");
     Bytes32 bytes32 = Bytes32.wrap(Bytes.concatenate(firstByte, secondByte, thirdByte, fourthByte));
 
-    // equal before
     BaseTheta baseTheta = BaseTheta.fromBytes32(bytes32);
-    assertThat(baseTheta.getBytes32()).isEqualTo(bytes32);
 
-    Bytes32 modifiedBytes32 =
-        Bytes32.fromHexString("0x0000000000000009000000000000000b000000000000000c080000000000000d");
+    // equal before
+    baseTheta.set(0, 7, fourthByte.get(0)); // 00
+    baseTheta.set(3, 0, fourthByte.get(7)); // 0d
 
-    baseTheta.set(0, 7, (byte) '9');
-    baseTheta.set(3, 0, (byte) '8');
+    assertThat(baseTheta.get(0)).isEqualTo(Bytes.fromHexString("0x0000000000000000"));
+    assertThat(baseTheta.get(3)).isEqualTo(Bytes.fromHexString("0x0d0000000000000a"));
 
     // equal after modifications
-    assertThat(baseTheta.getBytes32()).isEqualTo(modifiedBytes32);
+    assertThat(baseTheta.get(0, 7)).isZero();
+    assertThat(baseTheta.get(2, 7)).isEqualTo(Bytes.fromHexString("0x0b").get(0));
+    assertThat(baseTheta.get(3, 0)).isEqualTo(Bytes.fromHexString("0x0d").get(0));
   }
 }
