@@ -19,17 +19,16 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 /**
- * The `BaseTheta` class is used to manipulate 256-bit (32-byte) blocks of data, with a focus on
- * dividing the block into four 64-bit (8-byte) sections and performing operations on those
- * sections.
+ * Represents a BaseTheta data structure, which is an extension of BytesArray, with support for high
+ * and low bytes' manipulation. It is organized as an array of 4 Bytes instances, each containing 8
+ * bytes of a Bytes32 input.
  */
 public class BaseTheta extends BytesArray implements HighLowBytes {
 
   /**
-   * The constructor for the `BaseTheta` class. It takes a parameter of type `Bytes32` called `arg`,
-   * which is used to initialize the object.
+   * Constructs a new BaseTheta instance by slicing a given Bytes32 into 4 Bytes instances.
    *
-   * @param arg The `Bytes32` parameter used to initialize the object.
+   * @param arg A Bytes32 input.
    */
   public BaseTheta(final Bytes32 arg) {
     super(arg);
@@ -40,16 +39,20 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   }
 
   /**
-   * This static factory method returns a new instance of the `BaseTheta` class, initialized with
-   * the given `arg` parameter.
+   * Creates a new BaseTheta instance from a given Bytes32 input.
    *
-   * @param arg The `Bytes32` parameter used to initialize the new `BaseTheta` instance.
-   * @return A new instance of the `BaseTheta` class, initialized with the given `arg` parameter.
+   * @param arg A Bytes32 input.
+   * @return A new BaseTheta instance.
    */
   public static BaseTheta fromBytes32(Bytes32 arg) {
     return new BaseTheta(arg);
   }
 
+  /**
+   * Returns a Bytes32 instance representing the concatenated bytes in the BaseTheta.
+   *
+   * @return A Bytes32 instance.
+   */
   public Bytes32 getBytes32() {
     return Bytes32.wrap(
         Bytes.concatenate(bytesArray[0], bytesArray[1], bytesArray[2], bytesArray[3]));
@@ -64,7 +67,7 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
    */
   @Override
   public Bytes16 getHigh() {
-    return Bytes16.wrap(Bytes.concatenate(get(3), get(2)));
+    return Bytes16.wrap(Bytes.concatenate(bytesArray[3], bytesArray[2]));
   }
 
   /**
@@ -76,44 +79,38 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
    */
   @Override
   public Bytes16 getLow() {
-    return Bytes16.wrap(Bytes.concatenate(get(1), get(0)));
+    return Bytes16.wrap(Bytes.concatenate(bytesArray[1], bytesArray[0]));
   }
-
   /**
-   * This method returns the byte at index `j` in the 64-bit section at index `i` in the `bytes32`
-   * instance variable.
+   * Returns the byte at the specified position within the specified Bytes instance in the array.
    *
-   * @param i The index of the 64-bit section to be accessed.
-   * @param j The index of the byte within the section to be returned.
-   * @return The byte at index `j` in the 64-bit section at index `i` in the `bytes32` instance
-   *     variable.
+   * @param i The index of the Bytes instance.
+   * @param j The index of the byte within the Bytes instance.
+   * @return The byte at the specified position.
    */
   public byte get(final int i, final int j) {
-    return get(i).get(j);
+    return bytesArray[i].get(j);
   }
-
   /**
-   * This method returns a slice of the `bytes32` instance variable, starting at index `OFFSET * i +
-   * start` and extending for `end` bytes.
+   * Returns a range of bytes from a specified Bytes instance within the array.
    *
-   * @param i The index of the 64-bit section to start the slice from.
-   * @param start The starting index of the slice within the 64-bit section.
-   * @param length The number of bytes in the slice.
-   * @return The `Bytes` object representing the slice of the `bytes32` instance variable.
+   * @param i The index of the Bytes instance.
+   * @param start The start index of the range (inclusive).
+   * @param length The length of the range.
+   * @return A new Bytes instance containing the specified range of bytes.
    */
   public Bytes getRange(final int i, final int start, final int length) {
-    return get(i).slice(start, length);
+    return bytesArray[i].slice(start, length);
   }
 
   /**
-   * This method sets the byte at index `OFFSET * i + j` in the `bytes32` instance variable to the
-   * given byte `b`.
+   * Sets the byte at the specified position within the specified Bytes instance in the array.
    *
-   * @param i The index of the 64-bit section to be accessed.
-   * @param j The index of the byte within the section to be set.
-   * @param b The byte to be set at the specified index.
+   * @param i The index of the Bytes instance.
+   * @param j The index of the byte within the Bytes instance.
+   * @param b The byte to be set.
    */
   public void set(int i, int j, byte b) {
-    get(i).set(j, b);
+    bytesArray[i].set(j, b);
   }
 }
