@@ -18,33 +18,8 @@ import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-/**
- * A utility class for computing comparison flags and delta values for extended modular arithmetic
- * operations.
- */
-public class CmpFlagsAndDeltaCalculator {
-
-  /**
-   * Computes the comparison flags for the given cBytes and rBytes values.
-   *
-   * @param cBytes the cBytes value.
-   * @param rBytes the rBytes value.
-   * @return the comparison flags.
-   */
-  public static boolean[] computeComparisonFlags(BaseTheta cBytes, BaseTheta rBytes) {
-    boolean[] cmp = new boolean[8];
-    for (int i = 0; i < 4; i++) {
-      UInt256 c = UInt256.fromBytes(cBytes.get(i));
-      UInt256 r = UInt256.fromBytes(rBytes.get(i));
-      boolean cGreaterThanR = c.compareTo(r) > 0;
-      if (cGreaterThanR) {
-        cmp[i] = true;
-      } else {
-        cmp[4 + i] = c.equals(r);
-      }
-    }
-    return cmp;
-  }
+/** A utility class for computing delta values for extended modular arithmetic operations. */
+public class DeltaCalculator {
   /**
    * Computes the delta values for the given cBytes and rBytes values.
    *

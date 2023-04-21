@@ -22,9 +22,9 @@ import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public class JByteCalculator {
+public class OverflowJCalculator {
 
-  public static boolean[] computeJsAndOverflowJ(
+  static boolean[] computeOverflowJ(
       BytesArray qBytes,
       BaseTheta cBytes,
       BaseTheta rBytes,

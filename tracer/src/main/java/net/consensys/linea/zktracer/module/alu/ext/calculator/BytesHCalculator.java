@@ -26,18 +26,17 @@ import org.apache.tuweni.units.bigints.UInt256;
  * A utility class for computing the Hs and overflow values for extended modular arithmetic
  * operations.
  */
-public class HByteCalculator {
+public class BytesHCalculator {
 
   /**
-   * Computes the Hs array and overflow values for the given arguments.
+   * Sets the Hs array and returns the overflow values for the given arguments.
    *
    * @param aBytes the aBytes value.
    * @param bBytes the bBytes value.
    * @param hBytes the hBytes value.
    * @return the overflow values.
    */
-  public static boolean[] computeHsAndOverflowH(
-      BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  static boolean[] computeHsAndOverflowH(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
     boolean[] overflow = new boolean[8];
 
     // Calculate alpha
