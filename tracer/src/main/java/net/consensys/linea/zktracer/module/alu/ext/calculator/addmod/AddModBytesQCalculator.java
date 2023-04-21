@@ -16,13 +16,13 @@ package net.consensys.linea.zktracer.module.alu.ext.calculator.addmod;
 
 import static net.consensys.linea.zktracer.module.Util.uInt64ToBytes;
 import static net.consensys.linea.zktracer.module.alu.ext.BigIntegerConverter.fromLongArray;
-import static net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator.*;
 
 import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import net.consensys.linea.zktracer.module.alu.ext.BigIntegerConverter;
+import net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
@@ -46,12 +46,13 @@ public class AddModBytesQCalculator {
    */
   public static BytesArray computeQs(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     byte[][] qBytes = new byte[8][8];
-    UInt256 sum = calculateSum(arg1, arg2);
+    UInt256 sum = UtilCalculator.calculateSum(arg1, arg2);
 
     // Addition does not overflow
     if (UInt256.fromBytes(arg1).compareTo(sum) <= 0) {
-      BigInteger quotBigInteger = calculateQuotient(sum.toUnsignedBigInteger(), arg3);
-      BaseTheta quotBaseTheta = convertToBaseTheta(quotBigInteger);
+      BigInteger quotBigInteger =
+          UtilCalculator.calculateQuotient(sum.toUnsignedBigInteger(), arg3);
+      BaseTheta quotBaseTheta = UtilCalculator.convertToBaseTheta(quotBigInteger);
 
       for (int k = 0; k < 4; k++) {
         qBytes[k] = quotBaseTheta.get(k).toArray();
