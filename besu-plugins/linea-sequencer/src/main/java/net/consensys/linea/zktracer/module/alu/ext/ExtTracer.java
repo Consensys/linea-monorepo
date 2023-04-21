@@ -38,6 +38,7 @@ public class ExtTracer implements ModuleTracer {
       final int accLength = ct + 1;
       builder
           .appendStamp(stamp)
+          // Byte A and Acc A
           .appendByteA0(UnsignedByte.of(data.getABytes().get(0).get(ct)))
           .appendByteA1(UnsignedByte.of(data.getABytes().get(1).get(ct)))
           .appendByteA2(UnsignedByte.of(data.getABytes().get(2).get(ct)))
@@ -46,7 +47,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccA1(data.getABytes().get(1).slice(0, accLength).toUnsignedBigInteger())
           .appendAccA2(data.getABytes().get(2).slice(0, accLength).toUnsignedBigInteger())
           .appendAccA3(data.getABytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte B and Acc B
           .appendByteB0(UnsignedByte.of(data.getBBytes().get(0).get(ct)))
           .appendByteB1(UnsignedByte.of(data.getBBytes().get(1).get(ct)))
           .appendByteB2(UnsignedByte.of(data.getBBytes().get(2).get(ct)))
@@ -55,7 +56,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccB1(data.getBBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
           .appendAccB2(data.getBBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
           .appendAccB3(data.getBBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte C and Acc C
           .appendByteC0(UnsignedByte.of(data.getCBytes().get(0).get(ct)))
           .appendByteC1(UnsignedByte.of(data.getCBytes().get(1).get(ct)))
           .appendByteC2(UnsignedByte.of(data.getCBytes().get(2).get(ct)))
@@ -64,7 +65,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccC1(data.getCBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
           .appendAccC2(data.getCBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
           .appendAccC3(data.getCBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte Delta and Acc Delta
           .appendByteDelta0(UnsignedByte.of(data.getDeltaBytes().get(0).get(ct)))
           .appendByteDelta1(UnsignedByte.of(data.getDeltaBytes().get(1).get(ct)))
           .appendByteDelta2(UnsignedByte.of(data.getDeltaBytes().get(2).get(ct)))
@@ -73,7 +74,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccDelta1(data.getDeltaBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
           .appendAccDelta2(data.getDeltaBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
           .appendAccDelta3(data.getDeltaBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte H and Acc H
           .appendByteH0(UnsignedByte.of(data.getHBytes().get(0).get(ct)))
           .appendByteH1(UnsignedByte.of(data.getHBytes().get(1).get(ct)))
           .appendByteH2(UnsignedByte.of(data.getHBytes().get(2).get(ct)))
@@ -86,7 +87,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccH3(data.getHBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           .appendAccH4(data.getHBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
           .appendAccH5(data.getHBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte I and Acc I
           .appendByteI0(UnsignedByte.of(data.getIBytes().get(0).get(ct)))
           .appendByteI1(UnsignedByte.of(data.getIBytes().get(1).get(ct)))
           .appendByteI2(UnsignedByte.of(data.getIBytes().get(2).get(ct)))
@@ -101,7 +102,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccI4(data.getIBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
           .appendAccI5(data.getIBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
           .appendAccI6(data.getIBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte J and Acc J
           .appendByteJ0(UnsignedByte.of(data.getJBytes().get(0).get(ct)))
           .appendByteJ1(UnsignedByte.of(data.getJBytes().get(1).get(ct)))
           .appendByteJ2(UnsignedByte.of(data.getJBytes().get(2).get(ct)))
@@ -118,8 +119,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccJ5(data.getJBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
           .appendAccJ6(data.getJBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
           .appendAccJ7(data.getJBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
-          //
-
+          // Byte Q and Acc Q
           .appendByteQ0(UnsignedByte.of(data.getQBytes().get(0).get(ct)))
           .appendByteQ1(UnsignedByte.of(data.getQBytes().get(1).get(ct)))
           .appendByteQ2(UnsignedByte.of(data.getQBytes().get(2).get(ct)))
@@ -136,7 +136,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccQ5(data.getQBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
           .appendAccQ6(data.getQBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
           .appendAccQ7(data.getQBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
-          //
+          // Byte R and Acc R
           .appendByteR0(UnsignedByte.of(data.getRBytes().get(0).get(ct)))
           .appendByteR1(UnsignedByte.of(data.getRBytes().get(1).get(ct)))
           .appendByteR2(UnsignedByte.of(data.getRBytes().get(2).get(ct)))
@@ -145,8 +145,7 @@ public class ExtTracer implements ModuleTracer {
           .appendAccR1(data.getRBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
           .appendAccR2(data.getRBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
           .appendAccR3(data.getRBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          //
-
+          // other
           .appendArg1Hi(data.getArg1().getHigh().toUnsignedBigInteger())
           .appendArg1Lo(data.getArg1().getLow().toUnsignedBigInteger())
           .appendArg2Hi(data.getArg2().getHigh().toUnsignedBigInteger())
@@ -160,22 +159,12 @@ public class ExtTracer implements ModuleTracer {
           .appendOfJ(data.getOverflowJ()[ct])
           .appendOfI(data.getOverflowI()[ct])
           .appendOfRes(data.getOverflowRes()[ct])
-
-          /*
-          self.Trace.PushBool(OF_RES.Name(), ed.overflowRes[ct])
-          */
           .appendCt(ct)
           .appendInst(UnsignedByte.of(opCode.value))
           .appendOli(data.isOli())
           .appendBit1(data.getBit1())
           .appendBit2(data.getBit2())
           .appendBit3(data.getBit3());
-
-      /*
-      self.Trace.PushBool(BIT_1.Name(), ed.bit1())
-      self.Trace.PushBool(BIT_2.Name(), ed.bit2())
-      self.Trace.PushBool(BIT_3.Name(), ed.bit3())
-      */
     }
     builder.setStamp(stamp);
     return builder.build();
