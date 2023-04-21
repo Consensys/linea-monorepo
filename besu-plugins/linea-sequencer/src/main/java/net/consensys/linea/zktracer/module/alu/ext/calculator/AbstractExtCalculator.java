@@ -76,7 +76,7 @@ public abstract class AbstractExtCalculator {
    * @return the comparison flags.
    */
   public boolean[] computeComparisonFlags(BaseTheta cBytes, BaseTheta rBytes) {
-    return CmpFlagsAndDeltaCalculator.computeComparisonFlags(cBytes, rBytes);
+    return CmpFlagsCalculator.computeComparisonFlags(cBytes, rBytes);
   }
   /**
    * Computes the delta values for the given arguments.
@@ -86,10 +86,10 @@ public abstract class AbstractExtCalculator {
    * @return the delta values.
    */
   public BaseTheta computeDeltas(BaseTheta cBytes, BaseTheta rBytes) {
-    return CmpFlagsAndDeltaCalculator.computeDeltas(cBytes, rBytes);
+    return DeltaCalculator.computeDeltas(cBytes, rBytes);
   }
   /**
-   * Computes the Hs array for the given arguments.
+   * Sets the Hs array and returns the overflow values for the given arguments.
    *
    * @param aBytes the aBytes value.
    * @param bBytes the bBytes value.
@@ -97,10 +97,10 @@ public abstract class AbstractExtCalculator {
    * @return the Hs array.
    */
   public boolean[] computeHs(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
-    return HByteCalculator.computeHsAndOverflowH(aBytes, bBytes, hBytes);
+    return BytesHCalculator.computeHsAndOverflowH(aBytes, bBytes, hBytes);
   }
   /**
-   * Computes the Is array for the given arguments.
+   * Sets the Is array and returns the overflow values for the given arguments.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.
@@ -108,10 +108,10 @@ public abstract class AbstractExtCalculator {
    * @return the Is array.
    */
   public boolean[] computeIs(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
-    return IByteCalculator.computeIsAndOverflowI(qBytes, cBytes, iBytes);
+    return BytesICalculator.computeIsAndOverflowI(qBytes, cBytes, iBytes);
   }
   /**
-   * Computes the overflow result for the given arguments.
+   * Computes the and returns the overflow values for the given arguments.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.
@@ -128,7 +128,7 @@ public abstract class AbstractExtCalculator {
       BytesArray iBytes,
       UInt256 sigma,
       UInt256 tau) {
-    return JByteCalculator.computeJsAndOverflowJ(qBytes, cBytes, rBytes, iBytes, sigma, tau);
+    return OverflowJCalculator.computeOverflowJ(qBytes, cBytes, rBytes, iBytes, sigma, tau);
   }
   /**
    * Creates a new instance of a calculator based on the given OpCode.

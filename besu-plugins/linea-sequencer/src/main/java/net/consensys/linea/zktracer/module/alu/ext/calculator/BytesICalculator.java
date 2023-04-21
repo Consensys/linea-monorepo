@@ -26,7 +26,7 @@ import org.apache.tuweni.units.bigints.UInt256;
  * A utility class for computing the Is and overflow values for extended modular arithmetic
  * operations.
  */
-public class IByteCalculator {
+public class BytesICalculator {
   /**
    * Computes the Is array and overflow values for the given arguments.
    *
@@ -35,8 +35,7 @@ public class IByteCalculator {
    * @param iBytes the hBytes value.
    * @return the overflow values.
    */
-  public static boolean[] computeIsAndOverflowI(
-      BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  static boolean[] computeIsAndOverflowI(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
     boolean[] overflowI = new boolean[8];
 
     // Calculate sigma
