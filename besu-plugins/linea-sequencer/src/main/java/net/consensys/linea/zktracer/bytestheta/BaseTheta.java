@@ -1,4 +1,3 @@
-package net.consensys.linea.zktracer.bytestheta;
 /*
  * Copyright ConsenSys AG.
  *
@@ -13,6 +12,7 @@ package net.consensys.linea.zktracer.bytestheta;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.zktracer.bytestheta;
 
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
@@ -23,7 +23,7 @@ import org.apache.tuweni.bytes.Bytes32;
  * dividing the block into four 64-bit (8-byte) sections and performing operations on those
  * sections.
  */
-public class BaseTheta extends BaseBytes {
+public class BaseTheta extends BytesArray implements HighLowBytes {
 
   /**
    * The constructor for the `BaseTheta` class. It takes a parameter of type `Bytes32` called `arg`,
@@ -33,10 +33,9 @@ public class BaseTheta extends BaseBytes {
    */
   public BaseTheta(final Bytes32 arg) {
     super(arg);
-    bytes32 = arg.mutableCopy();
     for (int k = 0; k < 4; k++) {
-      Bytes bytes = arg.slice(OFFSET * k, OFFSET);
-      set64BitSection((3 - k), bytes);
+      Bytes bytes = arg.slice(8 * k, 8);
+      set((3 - k), bytes);
     }
   }
 
@@ -51,38 +50,9 @@ public class BaseTheta extends BaseBytes {
     return new BaseTheta(arg);
   }
 
-  /**
-   * This method sets the 64-bit section at the specified `index` in the `bytes32` instance variable
-   * to the given `bytes`.
-   *
-   * @param index The index of the 64-bit section to be set.
-   * @param bytes The `Bytes` object that will be used to set the section.
-   */
-  public void set64BitSection(int index, Bytes bytes) {
-    bytes32.set(index * OFFSET, bytes);
-  }
-
-  /**
-   * This method returns the 64-bit section at the specified `index` in the `bytes32` instance
-   * variable.
-   *
-   * @param index The index of the 64-bit section to be returned.
-   * @return The `Bytes` object representing the 64-bit section at the specified index.
-   */
-  public Bytes get(int index) {
-    return bytes32.slice(OFFSET * index, OFFSET);
-  }
-
-  /**
-   * This method returns a slice of the `bytes32` instance variable, starting at index `i` and
-   * extending for `length` bytes.
-   *
-   * @param i The starting index of the slice.
-   * @param length The number of bytes in the slice.
-   * @return The `Bytes` object representing the slice of the `bytes32` instance variable.
-   */
-  public Bytes slice(int i, int length) {
-    return bytes32.slice(i, length);
+  public Bytes32 getBytes32() {
+    return Bytes32.wrap(
+        Bytes.concatenate(bytesArray[0], bytesArray[1], bytesArray[2], bytesArray[3]));
   }
 
   /**
@@ -132,7 +102,7 @@ public class BaseTheta extends BaseBytes {
    * @return The `Bytes` object representing the slice of the `bytes32` instance variable.
    */
   public Bytes getRange(final int i, final int start, final int length) {
-    return bytes32.slice(OFFSET * i + start, length);
+    return get(i).slice(start, length);
   }
 
   /**
@@ -144,15 +114,6 @@ public class BaseTheta extends BaseBytes {
    * @param b The byte to be set at the specified index.
    */
   public void set(int i, int j, byte b) {
-    bytes32.set(OFFSET * i + j, b);
-  }
-
-  public Bytes[] getBytesRange(final int start, final int end) {
-    int rangeSize = end - start + 1;
-    Bytes[] bytes = new Bytes[rangeSize];
-    for (int i = 0; i < rangeSize; i++) {
-      bytes[i] = get(start + i);
-    }
-    return bytes;
+    get(i).set(j, b);
   }
 }

@@ -36,7 +36,7 @@ public class BytesHCalculator {
    * @param hBytes the hBytes value.
    * @return the overflow values.
    */
-  static boolean[] computeHsAndOverflowH(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  static boolean[] computeHsAndOverflowH(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     boolean[] overflow = new boolean[8];
 
     // Calculate alpha
@@ -63,7 +63,7 @@ public class BytesHCalculator {
    * @param hBytes the hBytes value.
    * @return the alpha value.
    */
-  private static long calculateAlpha(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  private static long calculateAlpha(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     UInt256 sum = multiplyRange(aBytes.getBytesRange(0, 1), bBytes.getBytesRange(0, 1));
     var truc = BaseTheta.fromBytes32(sum);
     hBytes.set(0, truc.get(0));
@@ -79,7 +79,7 @@ public class BytesHCalculator {
    * @param hBytes the hBytes value.
    * @return the beta value.
    */
-  private static long calculateBeta(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  private static long calculateBeta(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     UInt256 sum = multiplyRange(aBytes.getBytesRange(0, 3), bBytes.getBytesRange(0, 3));
     var truc = BaseTheta.fromBytes32(sum);
     hBytes.set(2, truc.get(0));
@@ -94,7 +94,7 @@ public class BytesHCalculator {
    * @param hBytes the hBytes value.
    * @return the gamma value.
    */
-  private static long calculateGamma(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  private static long calculateGamma(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     UInt256 sum = multiplyRange(aBytes.getBytesRange(2, 3), bBytes.getBytesRange(2, 3));
     var truc = BaseTheta.fromBytes32(sum);
     hBytes.set(4, truc.get(0));

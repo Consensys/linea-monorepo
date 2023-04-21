@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import net.consensys.linea.zktracer.OpCode;
+import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import net.consensys.linea.zktracer.module.alu.ext.calculator.addmod.AddModCalculator;
@@ -59,6 +60,8 @@ public abstract class AbstractExtCalculator {
   /**
    * Computes the overflow result for the given arguments.
    *
+   * @param arg1 the arg1 value.
+   * @param arg2 the arg2 value.
    * @param aBytes the aBytes value.
    * @param bBytes the bBytes value.
    * @param hBytes the hBytes value.
@@ -67,7 +70,13 @@ public abstract class AbstractExtCalculator {
    * @return the overflow result.
    */
   public abstract boolean[] computeOverflowRes(
-      BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 alpha, UInt256 beta);
+      final BaseBytes arg1,
+      final BaseBytes arg2,
+      final BytesArray aBytes,
+      final BytesArray bBytes,
+      final BytesArray hBytes,
+      final UInt256 alpha,
+      final UInt256 beta);
   /**
    * Computes the comparison flags for the given arguments.
    *
@@ -75,7 +84,7 @@ public abstract class AbstractExtCalculator {
    * @param rBytes the rBytes value.
    * @return the comparison flags.
    */
-  public boolean[] computeComparisonFlags(BaseTheta cBytes, BaseTheta rBytes) {
+  public boolean[] computeComparisonFlags(BytesArray cBytes, BytesArray rBytes) {
     return CmpFlagsCalculator.computeComparisonFlags(cBytes, rBytes);
   }
   /**
@@ -85,7 +94,7 @@ public abstract class AbstractExtCalculator {
    * @param rBytes the rBytes value.
    * @return the delta values.
    */
-  public BaseTheta computeDeltas(BaseTheta cBytes, BaseTheta rBytes) {
+  public BaseTheta computeDeltas(BytesArray cBytes, BytesArray rBytes) {
     return DeltaCalculator.computeDeltas(cBytes, rBytes);
   }
   /**
@@ -96,7 +105,7 @@ public abstract class AbstractExtCalculator {
    * @param hBytes the hBytes value.
    * @return the Hs array.
    */
-  public boolean[] computeHs(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  public boolean[] computeHs(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     return BytesHCalculator.computeHsAndOverflowH(aBytes, bBytes, hBytes);
   }
   /**
@@ -107,7 +116,7 @@ public abstract class AbstractExtCalculator {
    * @param iBytes the iBytes value.
    * @return the Is array.
    */
-  public boolean[] computeIs(BytesArray qBytes, BaseTheta cBytes, BytesArray iBytes) {
+  public boolean[] computeIs(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     return BytesICalculator.computeIsAndOverflowI(qBytes, cBytes, iBytes);
   }
   /**
@@ -123,8 +132,8 @@ public abstract class AbstractExtCalculator {
    */
   public boolean[] computeOverflowJ(
       BytesArray qBytes,
-      BaseTheta cBytes,
-      BaseTheta rBytes,
+      BytesArray cBytes,
+      BytesArray rBytes,
       BytesArray iBytes,
       UInt256 sigma,
       UInt256 tau) {

@@ -41,25 +41,25 @@ class ModTracerTest extends AbstractModuleTracerTest {
   @ParameterizedTest()
   @MethodSource("provideRandomAluModArguments")
   void aluModTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideRandomDivisionsByZeroArguments")
   void aluModRandomDivisionsByZeroTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideDivisibleArguments")
   void aluModDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideNegativeDivisibleArguments")
   void aluModNegativeDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   private Stream<Arguments> provideRandomAluModArguments() {
@@ -76,7 +76,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
-          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }

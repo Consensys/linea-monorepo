@@ -31,7 +31,7 @@ public class ExtData {
   private final BaseBytes arg1;
   private final BaseBytes arg2;
   private final BaseBytes arg3;
-  private final BaseBytes result;
+  private final BaseTheta result;
   private final BaseTheta aBytes;
   private final BaseTheta bBytes;
   private final BaseTheta cBytes;
@@ -77,7 +77,9 @@ public class ExtData {
       overflowH = computer.computeHs(aBytes, bBytes, hBytes);
       overflowI = computer.computeIs(qBytes, cBytes, iBytes);
       overflowJ = computer.computeOverflowJ(qBytes, cBytes, rBytes, iBytes, getSigma(), getTau());
-      overflowRes = computer.computeOverflowRes(aBytes, bBytes, hBytes, getAlpha(), getBeta());
+      overflowRes =
+          computer.computeOverflowRes(
+              this.arg1, this.arg2, aBytes, bBytes, hBytes, getAlpha(), getBeta());
     }
   }
 
@@ -115,7 +117,7 @@ public class ExtData {
     return cBytes;
   }
 
-  public BaseTheta getDeltaBytes() {
+  public BytesArray getDeltaBytes() {
     return deltaBytes;
   }
 
@@ -151,7 +153,7 @@ public class ExtData {
     return arg3;
   }
 
-  public BaseBytes getResult() {
+  public BaseTheta getResult() {
     return result;
   }
 

@@ -18,11 +18,22 @@ import static net.consensys.linea.zktracer.module.Util.uInt64ToBytes;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
-import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 
+/**
+ * This class provides functionality to compute Js by adding two Bytes objects and converting the
+ * result into a byte array matrix.
+ */
 public class AddModBytesJCalculator {
-  public static BytesArray computeJs(Bytes32 arg1, Bytes32 arg2) {
+  /**
+   * Computes the Js by adding two Bytes objects, converting the result into a byte array matrix.
+   *
+   * @param arg1 the first Bytes object to be added
+   * @param arg2 the second Bytes object to be added
+   * @return a BytesArray object containing the computed Js as a byte array matrix
+   */
+  public static BytesArray computeJs(Bytes arg1, Bytes arg2) {
     byte[][] jBytes = new byte[8][8];
     UInt256 sum = UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2));
     BaseTheta sumBaseTheta = BaseTheta.fromBytes32(sum);

@@ -18,7 +18,6 @@ import static net.consensys.linea.zktracer.module.Util.getBit;
 import static net.consensys.linea.zktracer.module.Util.getOverflow;
 import static net.consensys.linea.zktracer.module.Util.multiplyRange;
 
-import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import org.apache.tuweni.units.bigints.UInt256;
 
@@ -28,7 +27,8 @@ import org.apache.tuweni.units.bigints.UInt256;
  */
 public class MulModOverflowResCalculator {
   static boolean[] calculateOverflow(
-      BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 alpha, UInt256 beta) {
+      BytesArray aBytes, BytesArray bBytes, BytesArray hBytes, UInt256 alpha, UInt256 beta) {
+
     boolean[] overflowRes = new boolean[8];
     // Calculate lambda
     long lambda = calculateLambda(aBytes, bBytes, hBytes);
@@ -57,7 +57,7 @@ public class MulModOverflowResCalculator {
    * @param hBytes the third input parameter as a BytesArray object
    * @return the calculated lambda value as a long
    */
-  private static long calculateLambda(BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes) {
+  private static long calculateLambda(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     var sum = multiplyRange(aBytes.getBytesRange(0, 0), bBytes.getBytesRange(0, 0));
     sum = sum.add(UInt256.valueOf(hBytes.get(0).toUnsignedBigInteger().shiftLeft(64)));
     return getOverflow(sum, 1, "lambda out of range (MULMOD)");
@@ -74,7 +74,7 @@ public class MulModOverflowResCalculator {
    * @return the calculated mu value as a long
    */
   private static long calculateMu(
-      long lambda, BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 alpha) {
+      long lambda, BytesArray aBytes, BytesArray bBytes, BytesArray hBytes, UInt256 alpha) {
     var sum = UInt256.valueOf(lambda);
     sum = sum.add(UInt256.fromBytes(hBytes.get(1)));
     sum = sum.add(UInt256.valueOf(alpha.toUnsignedBigInteger().shiftLeft(64)));
@@ -96,7 +96,7 @@ public class MulModOverflowResCalculator {
    * @return the calculated nu value as a long
    */
   private static long calculateNu(
-      long mu, BaseTheta aBytes, BaseTheta bBytes, BytesArray hBytes, UInt256 beta) {
+      long mu, BytesArray aBytes, BytesArray bBytes, BytesArray hBytes, UInt256 beta) {
     var sum = UInt256.valueOf(mu);
     sum = sum.add(UInt256.fromBytes(hBytes.get(3)));
     sum = sum.add(UInt256.valueOf(beta.toUnsignedBigInteger().shiftLeft(64)));

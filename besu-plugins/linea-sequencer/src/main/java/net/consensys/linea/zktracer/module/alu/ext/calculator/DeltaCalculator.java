@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
@@ -27,7 +28,7 @@ public class DeltaCalculator {
    * @param rBytes the rBytes value.
    * @return the delta values.
    */
-  public static BaseTheta computeDeltas(BaseTheta cBytes, BaseTheta rBytes) {
+  public static BaseTheta computeDeltas(BytesArray cBytes, BytesArray rBytes) {
     BaseTheta deltaBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
     for (int i = 0; i < 4; i++) {
       UInt256 c = UInt256.fromBytes(cBytes.get(i));
@@ -42,7 +43,7 @@ public class DeltaCalculator {
       }
       // Convert the delta value to a byte array and store it in the ith element of deltaBytes
       BaseTheta truc = (BaseTheta.fromBytes32(delta));
-      deltaBytes.set64BitSection(i, truc.get(0));
+      deltaBytes.set(i, truc.get(0));
     }
     return deltaBytes;
   }
