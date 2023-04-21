@@ -10,7 +10,17 @@ public class AddModCalculator extends AbstractExtCalculator {
 
   @Override
   public UInt256 computeResult(final Bytes32 arg1, final Bytes32 arg2, final Bytes32 arg3) {
-    throw new RuntimeException("Not Implemented");
+    return UInt256.fromBytes(arg1).addMod(UInt256.fromBytes(arg2), UInt256.fromBytes(arg3));
+  }
+
+  @Override
+  public BytesArray computeJs(final Bytes32 arg1, final Bytes32 arg2) {
+    return AddModBytesJCalculator.computeJs(arg1, arg2);
+  }
+
+  @Override
+  public BytesArray computeQs(final Bytes32 arg1, final Bytes32 arg2, final Bytes32 arg3) {
+    return AddModBytesQCalculator.computeQs(arg1, arg2, arg3);
   }
 
   @Override
@@ -20,16 +30,6 @@ public class AddModCalculator extends AbstractExtCalculator {
       final BytesArray hBytes,
       final UInt256 alpha,
       final UInt256 beta) {
-    throw new RuntimeException("Not Implemented");
-  }
-
-  @Override
-  public BytesArray computeJs(final Bytes32 arg1, final Bytes32 arg2) {
-    throw new RuntimeException("Not Implemented");
-  }
-
-  @Override
-  public BytesArray computeQs(final Bytes32 arg1, final Bytes32 arg2, final Bytes32 arg3) {
-    throw new RuntimeException("Not Implemented");
+    return AddModOverflowResCalculator.calculateOverflow(aBytes, bBytes);
   }
 }

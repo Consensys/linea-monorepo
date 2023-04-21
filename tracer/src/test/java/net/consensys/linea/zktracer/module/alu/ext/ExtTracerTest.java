@@ -54,19 +54,19 @@ class ExtTracerTest extends AbstractModuleTracerTest {
   @Test
   public void testRandomExactValue() {
     Bytes32 arg1 =
-        UInt256.fromHexString("0x356f7abfa51e0661ab46008480ad33de93eb57a9134bd7a3a867abaecd7f0f18");
+        UInt256.fromHexString("0xcb694eaa08d8cb30a26a74edc8ced2cc0d7f453c6df96307bf3d9336784aba26");
     Bytes32 arg2 =
-        UInt256.fromHexString("0x0de9be67a5d110c9542c5db93a767fcc0e318fd44fd79a4487da7eab25ae8f3e");
+        UInt256.fromHexString("0xb1f3d8555ff1d8e1d1db41eb8640cdc0b5dc1ea19a87bd0cb046b634ab707409");
     Bytes32 arg3 =
-        UInt256.fromHexString("0xa35a0ec172a1629af67adb990eeb62d985988fa592e5944fdb80ff516d4fbadb");
-    runTest(OpCode.MULMOD, arg1, arg2, arg3);
+        UInt256.fromHexString("0x07d761cc7e0bf9770db9d952e5b108c96e6c3f0526218d2bfbef3071b0d776b8");
+    runTest(OpCode.ADDMOD, arg1, arg2, arg3);
   }
 
   @Override
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
-      for (int i = 0; i <= 8; i++) {
+      for (int i = 0; i <= 16; i++) {
         arguments.add(
             Arguments.of(opCode, Bytes32.random(rand), Bytes32.random(rand), Bytes32.random(rand)));
       }

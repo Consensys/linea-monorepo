@@ -34,7 +34,7 @@ public class MulModCalculator extends AbstractExtCalculator {
    */
   @Override
   public BytesArray computeJs(Bytes32 arg1, Bytes32 arg2) {
-    return MulModProductQuotientCalculator.computeJs(arg1, arg2);
+    return MulModBytesJCalculator.computeJs(arg1, arg2);
   }
 
   /**
@@ -48,7 +48,7 @@ public class MulModCalculator extends AbstractExtCalculator {
    */
   @Override
   public BytesArray computeQs(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
-    return MulModProductQuotientCalculator.computeQs(arg1, arg2, arg3);
+    return MulModBytesQCalculator.computeQs(arg1, arg2, arg3);
   }
 
   /**
