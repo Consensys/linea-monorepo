@@ -14,158 +14,82 @@
  */
 package net.consensys.linea.zktracer.module.alu.add;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.when;
-
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.ZkTraceBuilder;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
+import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Named;
-import org.junit.jupiter.api.Test;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ExtendWith(MockitoExtension.class)
-class AddTracerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(AddTracerTest.class);
-
+class AddTracerTest extends AbstractModuleTracerTest {
   private static final Random rand = new Random();
-  private static final int TEST_REPETITIONS = 4;
 
-  private ZkTracer zkTracer;
-  private ZkTraceBuilder zkTraceBuilder;
+  private static final int TEST_ADD_REPETITIONS = 16;
 
-  @Mock MessageFrame mockFrame;
-  @Mock Operation mockOperation;
-
-  @BeforeEach
-  void setUp() {
-    zkTraceBuilder = new ZkTraceBuilder();
-    zkTracer = new ZkTracer(zkTraceBuilder, List.of(new AddTracer()));
-
-    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
+  @ParameterizedTest()
+  @MethodSource("provideRandomAluAddArguments")
+  void aluAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideAddOperators")
-  void testFailingBlockchainBlock(final int opCodeValue) {
-    when(mockOperation.getOpcode()).thenReturn(opCodeValue);
-
-    when(mockFrame.getStackItem(0)).thenReturn(Bytes32.rightPad(Bytes.fromHexString("0x80")));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.leftPad(Bytes.fromHexString("0x01")));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+  @ParameterizedTest()
+  @MethodSource("provideSimpleAluAddArguments")
+  void simpleAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+    runTest(opCode, arg1, arg2);
   }
 
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideRandomAddArguments")
-  void testRandomAdd(final Bytes32[] payload) {
-    LOG.info(
-        "addArg1: "
-            + payload[0].toShortHexString()
-            + ", addArg2: "
-            + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
-
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("provideNonRandomAddArguments")
-  void testNonRandomAdd(final Bytes32[] payload) {
-    LOG.info(
-        "addArg1: "
-            + payload[0].toShortHexString()
-            + ", addArg2: "
-            + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
-
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
-  }
-
-  @Test
-  void testSimpleAdd() {
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.ADD.value);
-
-    when(mockFrame.getStackItem(0))
-        .thenReturn(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexStringLenient("0xb5"));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
-  }
-
-  public static Stream<Arguments> provideAddOperators() {
-    return Stream.of(
-        Arguments.of(Named.of("ADD", (int) OpCode.ADD.value)),
-        Arguments.of(Named.of("SUB", (int) OpCode.SUB.value)));
-  }
-
-  public static Stream<Arguments> provideNonRandomAddArguments() {
-    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
-
-    for (int i = 0; i < TEST_REPETITIONS; i++) {
-      Bytes32[] payload = new Bytes32[2];
-      payload[0] = Bytes32.leftPad(Bytes.of(i));
-      payload[1] = Bytes32.leftPad(Bytes.of(i + 1));
-      arguments[i] =
-          Arguments.of(Named.of("addArg1: " + payload[0] + ", addArg2: " + payload[1], payload));
+  @Override
+  protected Stream<Arguments> provideNonRandomArguments() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+      for (int k = 1; k <= 4; k++) {
+        for (int i = 1; i <= 4; i++) {
+          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+        }
+      }
     }
-
-    return Stream.of(arguments);
+    return arguments.stream();
   }
 
-  public static Stream<Arguments> provideRandomAddArguments() {
-    final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
+  public Stream<Arguments> provideSimpleAluAddArguments() {
+    List<Arguments> arguments = new ArrayList<>();
 
-    for (int i = 0; i < TEST_REPETITIONS; i++) {
+    Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
+    Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
+    OpCode opCode = OpCode.SUB;
+    arguments.add(Arguments.of(opCode, bytes1, bytes2));
+    return arguments.stream();
+  }
 
-      final byte[] randomBytes1 = new byte[32];
-      rand.nextBytes(randomBytes1);
-      final byte[] randomBytes2 = new byte[32];
-      rand.nextBytes(randomBytes2);
+  public Stream<Arguments> provideRandomAluAddArguments() {
+    List<Arguments> arguments = new ArrayList<>();
 
-      Bytes32[] payload = new Bytes32[2];
-      payload[0] = Bytes32.wrap(randomBytes1);
-      payload[1] = Bytes32.wrap(randomBytes2);
-
-      arguments[i] =
-          Arguments.of(
-              Named.of(
-                  "addArg1: " + payload[0].toHexString() + ", addArg2: " + payload[1].toHexString(),
-                  payload));
+    for (int i = 0; i < TEST_ADD_REPETITIONS; i++) {
+      arguments.add(getRandomAluAddInstruction(rand.nextInt(32) + 1, rand.nextInt(32) + 1));
     }
+    return arguments.stream();
+  }
 
-    return Stream.of(arguments);
+  private Arguments getRandomAluAddInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
+    Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
+    Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
+    OpCode opCode = getRandomSupportedOpcode();
+    return Arguments.of(opCode, bytes1, bytes2);
+  }
+
+  @Override
+  protected ModuleTracer getModuleTracer() {
+    return new AddTracer();
   }
 }
