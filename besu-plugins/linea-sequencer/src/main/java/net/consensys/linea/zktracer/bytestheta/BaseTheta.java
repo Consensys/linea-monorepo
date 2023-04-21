@@ -59,8 +59,8 @@ public class BaseTheta extends BaseBytes {
     return get(i).get(j);
   }
 
-  public Bytes getRange(final int i, final int start, final int end) {
-    return bytes32.slice(OFFSET * i + start, end);
+  public Bytes getRange(final int i, final int start, final int length) {
+    return bytes32.slice(OFFSET * i + start, length);
   }
 
   public void set(int i, int j, byte b) {
