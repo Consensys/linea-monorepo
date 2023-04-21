@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.provider.Arguments;
@@ -34,33 +35,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class ExtTracerTest extends AbstractModuleTracerTest {
   static final Random rand = new Random();
-
-  @Test
-  public void testExactValue() {
-    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(6));
-    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(7));
-    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(13));
-    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
-  }
-
-  @Test
-  public void testMAXExactValue() {
-    Bytes32 arg1 = UInt256.MAX_VALUE;
-    Bytes32 arg2 = UInt256.MAX_VALUE;
-    Bytes32 arg3 = UInt256.MAX_VALUE;
-    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
-  }
-
-  @Test
-  public void testRandomExactValue() {
-    Bytes32 arg1 =
-        UInt256.fromHexString("0xcb694eaa08d8cb30a26a74edc8ced2cc0d7f453c6df96307bf3d9336784aba26");
-    Bytes32 arg2 =
-        UInt256.fromHexString("0xb1f3d8555ff1d8e1d1db41eb8640cdc0b5dc1ea19a87bd0cb046b634ab707409");
-    Bytes32 arg3 =
-        UInt256.fromHexString("0x07d761cc7e0bf9770db9d952e5b108c96e6c3f0526218d2bfbef3071b0d776b8");
-    runTest(OpCode.ADDMOD, List.of(arg1, arg2, arg3));
-  }
 
   @Override
   public Stream<Arguments> provideRandomArguments() {
@@ -88,6 +62,68 @@ class ExtTracerTest extends AbstractModuleTracerTest {
       }
     }
     return arguments.stream();
+  }
+
+  @Test
+  public void argumentZeroValueTestMulModTest() {
+    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(0));
+    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(7));
+    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(13));
+    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
+  }
+
+  @Test
+  public void argumentZeroValueTestAddModTest() {
+    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(0));
+    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(7));
+    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(13));
+    runTest(OpCode.ADDMOD, List.of(arg1, arg2, arg3));
+  }
+
+  @Test
+  public void modulusZeroValueTestMulModTest() {
+    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(1));
+    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(1));
+    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(0));
+
+    Assertions.assertThrows(
+        ArithmeticException.class, () -> runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3)));
+  }
+
+  @Test
+  public void modulusZeroValueTestAddModTest() {
+    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(1));
+    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(1));
+    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(0));
+    Assertions.assertThrows(
+        ArithmeticException.class, () -> runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3)));
+  }
+
+  @Test
+  public void tinyValueTest() {
+    Bytes32 arg1 = fromBigInteger(BigInteger.valueOf(6));
+    Bytes32 arg2 = fromBigInteger(BigInteger.valueOf(7));
+    Bytes32 arg3 = fromBigInteger(BigInteger.valueOf(13));
+    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
+  }
+
+  @Test
+  public void maxExactValueTest() {
+    Bytes32 arg1 = UInt256.MAX_VALUE;
+    Bytes32 arg2 = UInt256.MAX_VALUE;
+    Bytes32 arg3 = UInt256.MAX_VALUE;
+    runTest(OpCode.MULMOD, List.of(arg1, arg2, arg3));
+  }
+
+  @Test
+  public void largeValueTest() {
+    Bytes32 arg1 =
+        UInt256.fromHexString("0xcb694eaa08d8cb30a26a74edc8ced2cc0d7f453c6df96307bf3d9336784aba26");
+    Bytes32 arg2 =
+        UInt256.fromHexString("0xb1f3d8555ff1d8e1d1db41eb8640cdc0b5dc1ea19a87bd0cb046b634ab707409");
+    Bytes32 arg3 =
+        UInt256.fromHexString("0x07d761cc7e0bf9770db9d952e5b108c96e6c3f0526218d2bfbef3071b0d776b8");
+    runTest(OpCode.ADDMOD, List.of(arg1, arg2, arg3));
   }
 
   @Override
