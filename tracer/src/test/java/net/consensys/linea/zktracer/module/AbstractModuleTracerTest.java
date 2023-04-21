@@ -51,17 +51,17 @@ public abstract class AbstractModuleTracerTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomArguments")
-  void randomArgumentsTest(OpCode opCode, List<Bytes32> args) {
+  void randomArgumentsTest(final OpCode opCode, final List<Bytes32> args) {
     runTest(opCode, args);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNonRandomArguments")
-  void nonRandomArgumentsTest(OpCode opCode, List<Bytes32> arguments) {
+  void nonRandomArgumentsTest(final OpCode opCode, final List<Bytes32> arguments) {
     runTest(opCode, arguments);
   }
 
-  protected void runTest(OpCode opCode, List<Bytes32> arguments) {
+  protected void runTest(final OpCode opCode, final List<Bytes32> arguments) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
     for (int i = 0; i < arguments.size(); i++) {
       when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
