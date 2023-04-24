@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.mod;
+package net.consensys.linea.zktracer.corset.module.alu.mod;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -20,9 +20,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.alu.mod.ModTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -33,7 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ModTracerTest extends AbstractModuleTracerTest {
+class ModTracerTest extends AbstractModuleTracerCorsetTest {
   static final Random rand = new Random();
 
   final int TEST_MOD_REPETITIONS = 16;
