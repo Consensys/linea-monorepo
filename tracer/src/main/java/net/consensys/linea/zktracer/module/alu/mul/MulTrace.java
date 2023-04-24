@@ -124,7 +124,7 @@ public record MulTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp"
       @JsonProperty("EXPONENT_BIT_SOURCE") List<Boolean> EXPONENT_BIT_SOURCE,
       @JsonProperty("INST") List<UnsignedByte> INST,
       @JsonProperty("MUL_STAMP") List<Integer> MUL_STAMP,
-      @JsonProperty("ONE_LINE_INSTRUCTION") List<Boolean> ONE_LINE_INSTRUCTION,
+      @JsonProperty("OLI") List<Boolean> ONE_LINE_INSTRUCTION,
       @JsonProperty("RESULT_VANISHES") List<Boolean> RESULT_VANISHES,
       @JsonProperty("RES_HI") List<BigInteger> RES_HI,
       @JsonProperty("RES_LO") List<BigInteger> RES_LO,
