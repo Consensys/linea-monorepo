@@ -16,8 +16,8 @@ import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.units.bigints.UInt64;
 
-@SuppressWarnings("UnusedVariable")
 public class MulData {
   private static final int MMEDIUM = 8;
   final OpCode opCode;
@@ -110,7 +110,7 @@ public class MulData {
       bytes = aBytes.get(1);
     } else {
       for (int i = 0; i < 8; i++) {
-        cBytes.setBytes(0, ones);
+        cBytes.setChunk(0, ones);
       }
       bytes = aBytes.get(0);
     }
@@ -164,7 +164,7 @@ public class MulData {
       }
 
       final BaseTheta thing = BaseTheta.fromBytes32(UInt256.valueOf(target));
-      hBytes.setBytes(1, thing.get(0));
+      hBytes.setChunk(1, thing.get(0));
     }
 
     return;
@@ -285,7 +285,6 @@ public class MulData {
   public void update() {
 
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
-    final BigInteger arg2BigInt = UInt256.fromBytes(arg2).toUnsignedBigInteger();
     if (!snm) {
       // squaring
       setHsAndBits(resAcc, resAcc);
@@ -302,10 +301,11 @@ public class MulData {
 
   public void setHsAndBits(UInt256 a, UInt256 b) {
 
-    BaseTheta aBaseTheta = BaseTheta.fromBytes32(a);
-    BaseTheta bBaseTheta = BaseTheta.fromBytes32(b);
-    BaseTheta sumBaseTheta;
+    setHsAndBitsFromBaseThetas(BaseTheta.fromBytes32(a), BaseTheta.fromBytes32(b));
+  }
 
+  public void setHsAndBitsFromBaseThetas(BaseTheta aBaseTheta, BaseTheta bBaseTheta) {
+    BaseTheta sumBaseTheta;
     UInt256[] aBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
     UInt256[] bBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
 
@@ -321,9 +321,9 @@ public class MulData {
     sum = sum.add(prod); // sum += a0 * b1
 
     sumBaseTheta = BaseTheta.fromBytes32(sum);
-    hBytes.setBytes(0, sumBaseTheta.get(0));
-    hBytes.setBytes(1, sumBaseTheta.get(1));
-    int alpha = getOverflow(sum, 1, "alpha OOB");
+    hBytes.setChunk(0, sumBaseTheta.get(0));
+    hBytes.setChunk(1, sumBaseTheta.get(1));
+    UInt64 alpha = getOverflow(sum, UInt64.ONE, "alpha OOB");
 
     sum = aBaseThetaInts[3].multiply(bBaseThetaInts[0]); // sum := a3 * b0
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[1]);
@@ -334,27 +334,31 @@ public class MulData {
     sum = sum.add(prod); // sum += a0 * b3
 
     sumBaseTheta = BaseTheta.fromBytes32(sum);
-    hBytes.setBytes(2, sumBaseTheta.get(0));
-    hBytes.setBytes(3, sumBaseTheta.get(1));
-    int beta = getOverflow(sum, 3, "beta OOB");
+    hBytes.setChunk(2, sumBaseTheta.get(0));
+    hBytes.setChunk(3, sumBaseTheta.get(1));
+    UInt64 beta = getOverflow(sum, UInt64.valueOf(3), "beta OOB");
 
-    sum = aBaseThetaInts[0].multiply(bBaseThetaInts[0]); // sum := a0 * b0
-    sum = sum.add(UInt256.fromBytes(hBytes.get(0).shiftLeft(64))); // sum += (h0 << 64)
+    prod = aBaseThetaInts[0].multiply(bBaseThetaInts[0]);
+    sum = sum.add(prod); // sum := a0 * b0
 
-    int eta = getOverflow(sum, 1, "eta OOB");
+    prod = UInt256.fromBytes(hBytes.get(0)).shiftLeft(64);
+    sum = sum.add(prod); // sum += (h0 << 64)
 
-    sum = UInt256.valueOf(eta); // sum := eta
+    UInt64 eta = getOverflow(sum, UInt64.ONE, "eta OOB");
+
+    sum = UInt256.fromBytes(eta.toBytes()); // sum := eta
     sum = sum.add(UInt256.fromBytes(hBytes.get(1))); // sum += h1
-    sum = sum.add(UInt256.valueOf(alpha).shiftLeft(64)); // sum += (alpha << 64)
+    prod = UInt256.fromBytes(alpha.toBytes()).shiftLeft(64);
+    sum = sum.add(prod); // sum += (alpha << 64)
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[0]);
     sum = sum.add(prod); // sum += a2 * b0
     prod = aBaseThetaInts[1].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a1 * b1
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[2]);
     sum = sum.add(prod); // sum += a0 * b2
-    sum = sum.add(UInt256.fromBytes(hBytes.get(2).shiftLeft(64))); // sum += (h2 << 64)
+    sum = sum.add(UInt256.fromBytes(hBytes.get(2)).shiftLeft(64)); // sum += (h2 << 64)
 
-    int mu = getOverflow(sum, 3, "mu OOB");
+    UInt64 mu = getOverflow(sum, UInt64.valueOf(3), "mu OOB");
 
     bits[0] = false;
     bits[1] = false;
@@ -364,7 +368,6 @@ public class MulData {
     bits[5] = getBit(eta, 0);
     bits[6] = getBit(mu, 0);
     bits[7] = getBit(mu, 1);
-
     return;
   }
 
