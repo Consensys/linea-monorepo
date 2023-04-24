@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
 
 public class BaseThetaTest {
@@ -81,9 +82,9 @@ public class BaseThetaTest {
   @Test
   public void getTest() {
     Bytes firstByte = Bytes.fromHexString("0x000000000000000a"); // baseTheta[3]
-    Bytes secondByte = Bytes.fromHexString("0x000000000000000b");// baseTheta[2]
+    Bytes secondByte = Bytes.fromHexString("0x000000000000000b"); // baseTheta[2]
     Bytes thirdByte = Bytes.fromHexString("0x000000000000000c"); // baseTheta[1]
-    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d");// baseTheta[0]
+    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d"); // baseTheta[0]
     Bytes32 bytes32 = Bytes32.wrap(Bytes.concatenate(firstByte, secondByte, thirdByte, fourthByte));
 
     BaseTheta baseTheta = BaseTheta.fromBytes32(bytes32);
@@ -113,5 +114,31 @@ public class BaseThetaTest {
     assertThat(baseTheta.get(0, 7)).isZero();
     assertThat(baseTheta.get(2, 7)).isEqualTo(Bytes.fromHexString("0x0b").get(0));
     assertThat(baseTheta.get(3, 0)).isEqualTo(Bytes.fromHexString("0x0d").get(0));
+  }
+
+  @Test
+  public void setBytesTest() {
+    BaseTheta aBaseTheta = BaseTheta.fromBytes32(UInt256.valueOf(43532));
+
+    Bytes a0 = Bytes.fromHexString("0x000000000000aa0c");
+    assertThat(aBaseTheta.get(0)).isEqualTo(a0);
+    assertThat(aBaseTheta.get(1).isZero()).isTrue();
+    assertThat(aBaseTheta.get(2).isZero()).isTrue();
+    assertThat(aBaseTheta.get(3).isZero()).isTrue();
+
+    Bytes b3 = Bytes.fromHexString("0x533a124790000000");
+    Bytes b2 = Bytes.fromHexString("0xfaa47d49bf1d1e67");
+    Bytes b1 = Bytes.fromHexString("0x952951f4425bf6f3");
+    Bytes b0 = Bytes.fromHexString("0x0000000000d55835");
+    Bytes32 bytes32 = Bytes32.wrap(Bytes.concatenate(b3, b2, b1, b0));
+    BaseTheta bBaseTheta = BaseTheta.fromBytes32(bytes32);
+
+    assertThat(bBaseTheta.get(3)).isEqualTo(b3);
+    assertThat(bBaseTheta.get(2)).isEqualTo(b2);
+    assertThat(bBaseTheta.get(1)).isEqualTo(b1);
+    assertThat(bBaseTheta.get(0)).isEqualTo(b0);
+
+    bBaseTheta.setChunk(0, b3);
+    assertThat(bBaseTheta.get(0)).isEqualTo(b3);
   }
 }
