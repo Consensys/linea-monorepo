@@ -35,20 +35,28 @@ public class Util {
     return bits;
   }
 
-  public static int getOverflow(final UInt256 arg, final int maxVal, final String err) {
-    UInt256 shiftRight = arg.shiftRight(128);
-    if (shiftRight.compareTo(UInt64.MAX_VALUE.toBytes()) > 0) {
-      throw new RuntimeException("getOverflow expects a small high part");
+  // in Go implementation this method modifies the arg param
+  // however (at least in MUL module) the modified value is never used
+  // so have not gone to any effort to recreate that behavior in Java implementation
+  public static UInt64 getOverflow(final UInt256 arg, final UInt64 maxVal, final String err) {
+    UInt256 shifted = arg.shiftRight(128);
+    if (shifted.compareTo(UInt64.MAX_VALUE.toBytes()) > 0) {
+      // in Go this is panic() but caught by the calling func
+      // throw new RuntimeException("getOverflow expects a small high part");
+      return UInt64.ZERO;
     }
-    int overflow = shiftRight.intValue();
-    if (overflow > maxVal) {
-      throw new RuntimeException(err);
+
+    UInt64 overflow = UInt64.fromBytes(shifted.trimLeadingZeros());
+    if (overflow.compareTo(maxVal) > 0) {
+      // in Go this is panic() but caught by the calling func
+      // throw new RuntimeException(err + " overflow=" + overflow);
+      return UInt64.ZERO;
     }
     return overflow;
   }
 
   // GetBit returns true iff the k'th bit of x is 1
-  public static boolean getBit(int x, int k) {
-    return (x >> k) % 2 == 1;
+  public static boolean getBit(UInt64 x, int k) {
+    return (x.shiftRight(k)).mod(2).equals(UInt64.ONE);
   }
 }
