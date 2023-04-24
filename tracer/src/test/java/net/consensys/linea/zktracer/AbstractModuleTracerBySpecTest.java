@@ -47,10 +47,10 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
   @ParameterizedTest(name = "{index} {0}")
   @MethodSource("specs")
   public void traceWithSpecFile(final String ignored, URL specUrl) throws IOException {
-    traceCall(specUrl);
+    traceOperation(specUrl);
   }
 
-  private void traceCall(final URL specFile) throws IOException {
+  private void traceOperation(final URL specFile) throws IOException {
     InputStream inputStream = specFile.openStream();
     final ObjectNode specNode = (ObjectNode) MAPPER.readTree(inputStream);
     final JsonNode request = specNode.get("input");
