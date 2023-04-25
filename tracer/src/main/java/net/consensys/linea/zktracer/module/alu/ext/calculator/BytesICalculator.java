@@ -38,7 +38,6 @@ public class BytesICalculator {
   static boolean[] computeIsAndOverflowI(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     boolean[] overflowI = new boolean[8];
 
-    // Calculate sigma
     long sigma = calculateSigma(qBytes, cBytes, iBytes);
 
     // Calculate tau
