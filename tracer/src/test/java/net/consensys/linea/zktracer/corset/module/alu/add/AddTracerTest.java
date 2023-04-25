@@ -12,16 +12,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.corset.module.alu.add;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -32,7 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class AddTracerTest extends AbstractModuleTracerTest {
+class AddTracerTest extends AbstractModuleTracerCorsetTest {
   private static final Random rand = new Random();
 
   private static final int TEST_ADD_REPETITIONS = 16;
