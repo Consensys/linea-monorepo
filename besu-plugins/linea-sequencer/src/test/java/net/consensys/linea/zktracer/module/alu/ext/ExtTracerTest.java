@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -32,7 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ExtTracerTest extends AbstractModuleTracerTest {
+class ExtTracerTest extends AbstractModuleTracerCorsetTest {
 
   static final Random rand = new Random();
 
