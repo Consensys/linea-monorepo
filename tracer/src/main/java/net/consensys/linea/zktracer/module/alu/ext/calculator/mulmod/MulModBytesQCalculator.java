@@ -31,7 +31,7 @@ public class MulModBytesQCalculator {
   /**
    * Computes the quotient of the product of arg1 and arg2 divided by arg3, all of Bytes32 type, and
    * returns the result as a BytesArray.
-   *
+   * (arg1 * arg2 ) / arg3
    * @param arg1 The first Bytes32 argument.
    * @param arg2 The second Bytes32 argument.
    * @param arg3 The third Bytes32 argument.
