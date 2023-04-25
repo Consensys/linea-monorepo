@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.ext.calculator;
+package net.consensys.linea.zktracer.module;
 
 import java.math.BigInteger;
 
@@ -46,8 +46,7 @@ public class UtilCalculator {
    * @return The quotient of the given BigInteger and arg3 as a BigInteger.
    */
   public static BigInteger calculateQuotient(BigInteger prod, Bytes32 arg3) {
-    byte[] prodBytes = prod.toByteArray(); // Convert the product to a byte array.
-    return new BigInteger(1, prodBytes).divide(arg3.toUnsignedBigInteger());
+    return prod.divide(arg3.toUnsignedBigInteger());
   }
 
   /**
