@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.wcp;
+package net.consensys.linea.zktracer.corset.module.wcp;
 
 import static net.consensys.linea.zktracer.OpCode.SGT;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -26,10 +26,11 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import net.consensys.linea.CorsetValidator;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.corset.CorsetValidator;
+import net.consensys.linea.zktracer.module.wcp.WcpTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -113,4 +113,28 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   public void set(int i, int j, byte b) {
     bytesArray[i].set(j, b);
   }
+
+  // set the whole chunk of bytes at the given index.
+  // assumes index is one of 0,1,2,3
+  // assumes length of bytes is 8
+  public void setChunk(int index, Bytes bytes) {
+    set(index, bytes);
+  }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder();
+    sb.append("hi=").append(getHigh()).append(", ");
+    sb.append("lo=").append(getLow()).append(("\n"));
+    sb.append("  0 1 2 3\n  ");
+    sb.append(get(0))
+        .append(" ")
+        .append(get(1))
+        .append(" ")
+        .append(get(2))
+        .append(" ")
+        .append(get(3))
+        .append(" ");
+    return sb.toString();
+  }
 }
