@@ -21,8 +21,8 @@ import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
+import net.consensys.linea.zktracer.module.UtilCalculator;
 import net.consensys.linea.zktracer.module.alu.ext.BigIntegerConverter;
-import net.consensys.linea.zktracer.module.alu.ext.calculator.UtilCalculator;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
