@@ -42,7 +42,6 @@ public class BytesICalculator {
 
     long tau = calculateTau(qBytes, cBytes, iBytes);
 
-    // Calculate tau
     long rho = calculateRho(qBytes, cBytes, iBytes);
 
     setLastByte(qBytes, cBytes, iBytes);
