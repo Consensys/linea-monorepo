@@ -38,9 +38,13 @@ public abstract class AbstractBaseModuleTracerTest {
   Operation mockOperation;
   static ModuleTracer moduleTracer;
 
-  protected void runTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    String trace = generateTrace(opCode, List.of(arg1, arg2));
-    assertThat(CorsetValidator.isValid(trace)).isTrue();
+  protected void runTest(final OpCode opCode, final List<Bytes32> arguments) {
+    when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
+    for (int i = 0; i < arguments.size(); i++) {
+      when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
+    }
+    zkTracer.tracePreExecution(mockFrame);
+    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
   }
 
   protected String generateTrace(OpCode opCode, List<Bytes32> arguments) {

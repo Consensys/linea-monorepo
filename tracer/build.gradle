@@ -104,8 +104,6 @@ allprojects {
 
     implementation "org.hyperledger.besu:plugin-api:$besuVersion"
 
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
     errorprone("com.google.errorprone:error_prone_core")
 
     compileOnly 'io.vertx:vertx-core:4.3.8'
