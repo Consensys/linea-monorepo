@@ -40,7 +40,6 @@ public class BytesICalculator {
 
     long sigma = calculateSigma(qBytes, cBytes, iBytes);
 
-    // Calculate tau
     long tau = calculateTau(qBytes, cBytes, iBytes);
 
     // Calculate tau
