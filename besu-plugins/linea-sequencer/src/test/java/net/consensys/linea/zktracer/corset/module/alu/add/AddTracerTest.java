@@ -40,14 +40,14 @@ class AddTracerTest extends AbstractModuleTracerCorsetTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluAddArguments")
-  void aluAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void aluAddTest(OpCode opCode, List<Bytes32> args) {
+    runTest(opCode, args);
   }
 
   @ParameterizedTest()
   @MethodSource("provideSimpleAluAddArguments")
   void simpleAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @Override
@@ -56,7 +56,7 @@ class AddTracerTest extends AbstractModuleTracerCorsetTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
-          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
@@ -86,7 +86,7 @@ class AddTracerTest extends AbstractModuleTracerCorsetTest {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
     OpCode opCode = getRandomSupportedOpcode();
-    return Arguments.of(opCode, bytes1, bytes2);
+    return Arguments.of(opCode, List.of(bytes1, bytes2));
   }
 
   @Override

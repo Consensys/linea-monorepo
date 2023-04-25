@@ -33,14 +33,14 @@ public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleT
 
   @ParameterizedTest()
   @MethodSource("provideRandomArguments")
-  void randomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void randomArgumentsTest(OpCode opCode, List<Bytes32> params) {
+    runTest(opCode, params);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNonRandomArguments")
-  void nonRandomArgumentsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void nonRandomArgumentsTest(OpCode opCode, List<Bytes32> params) {
+    runTest(opCode, params);
   }
 
   protected abstract Stream<Arguments> provideNonRandomArguments();
@@ -49,7 +49,7 @@ public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleT
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int i = 0; i <= TEST_REPETITIONS; i++) {
-        arguments.add(Arguments.of(opCode, Bytes32.random(rand), Bytes32.random(rand)));
+        arguments.add(Arguments.of(opCode, List.of(Bytes32.random(rand), Bytes32.random(rand))));
       }
     }
     return arguments.stream();
