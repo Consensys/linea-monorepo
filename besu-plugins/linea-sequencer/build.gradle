@@ -215,6 +215,18 @@ allprojects {
     useJUnitPlatform()
   }
 
+  task unitTests(type: Test) {
+    useJUnitPlatform {
+      excludeTags("CorsetTest")
+    }
+  }
+
+  task corsetTests(type: Test) {
+    useJUnitPlatform {
+      includeTags("CorsetTest")
+    }
+  }
+
   javadoc {
     options.addStringOption('Xdoclint:all', '-quiet')
     options.addStringOption('Xwerror', '-html5')

@@ -119,7 +119,7 @@ public class Util {
     UInt256 sum = UInt256.ZERO;
     for (int i = 0; i < range1.length; i++) {
       UInt256 prod =
-              UInt256.fromBytes(range1[i]).multiply(UInt256.fromBytes(range2[range2.length - i - 1]));
+          UInt256.fromBytes(range1[i]).multiply(UInt256.fromBytes(range2[range2.length - i - 1]));
       sum = sum.add(prod);
     }
     return sum;
