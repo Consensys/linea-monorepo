@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.corset.module.alu.mod;
+package net.consensys.linea.zktracer.module.alu.mod;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
