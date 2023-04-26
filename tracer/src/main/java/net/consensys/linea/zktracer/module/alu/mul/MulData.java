@@ -338,7 +338,7 @@ public class MulData {
     long beta = getOverflow(sum, 3, "beta OOB");
 
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[0]);
-    sum = sum.add(prod); // sum := a0 * b0
+    sum = prod; // sum := a0 * b0
 
     prod = UInt256.fromBytes(hBytes.get(0)).shiftLeft(64);
     sum = sum.add(prod); // sum += (h0 << 64)
