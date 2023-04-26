@@ -39,13 +39,6 @@ public class Util {
     return bits;
   }
 
-  public static byte boolToByte(boolean b) {
-    if (b) {
-      return 1;
-    }
-    return 0;
-  }
-
   /**
    * Checks if the shifted UInt256 argument overflows a given maximum value, and throws an exception
    * with an error message if it does.
@@ -126,9 +119,21 @@ public class Util {
     UInt256 sum = UInt256.ZERO;
     for (int i = 0; i < range1.length; i++) {
       UInt256 prod =
-          UInt256.fromBytes(range1[i]).multiply(UInt256.fromBytes(range2[range2.length - i - 1]));
+              UInt256.fromBytes(range1[i]).multiply(UInt256.fromBytes(range2[range2.length - i - 1]));
       sum = sum.add(prod);
     }
     return sum;
+  }
+  /**
+   * Converts a boolean value to a byte (1 for true and 0 for false).
+   *
+   * @param b The boolean value to be converted.
+   * @return A byte representing the input boolean value.
+   */
+  public static byte boolToByte(boolean b) {
+    if (b) {
+      return 1;
+    }
+    return 0;
   }
 }

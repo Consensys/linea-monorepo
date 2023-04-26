@@ -39,7 +39,7 @@ class MulTracerTest extends AbstractModuleTracerCorsetTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluMulArguments")
-  void aluModTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluMulTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
