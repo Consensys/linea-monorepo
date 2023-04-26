@@ -12,7 +12,6 @@ import net.consensys.linea.zktracer.module.Util;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.apache.tuweni.units.bigints.UInt64;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -216,8 +215,7 @@ public class MulUtilsTest {
     mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
     BigInteger sum_010 = new BigInteger("375860551383434850958895718584879559103");
-    assertThat(Util.getOverflow(UInt256.valueOf(sum_010), UInt64.valueOf(3), "mu OOB"))
-        .isEqualTo(UInt64.ONE);
+    assertThat(Util.getOverflow(UInt256.valueOf(sum_010), 3, "mu OOB")).isEqualTo(1);
 
     // bits
     // expected value obtained from go implementation debug output
