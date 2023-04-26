@@ -91,7 +91,7 @@ public class MulData {
     return switch (opCode) {
       case MUL -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).multiply(UInt256.fromBytes(arg2)));
       case EXP -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).pow(UInt256.fromBytes(arg2)));
-      default -> BaseBytes.fromBytes32(UInt256.ZERO);
+      default -> throw new RuntimeException("MUL module was given wrong opcode");
     };
   }
 
