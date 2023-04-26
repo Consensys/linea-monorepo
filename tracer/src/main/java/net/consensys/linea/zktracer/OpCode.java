@@ -37,6 +37,9 @@ public enum OpCode {
   SGT(0x13),
   EQ(0x14),
   ISZERO(0x15),
+  // mul
+  MUL(0x02),
+  EXP(0x0a),
   // shf
   SHL(0x1b),
   SHR(0x1c),
