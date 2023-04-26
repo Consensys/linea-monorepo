@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.corset.module.wcp;
+package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.OpCode.SGT;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
