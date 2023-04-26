@@ -18,7 +18,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
-import net.consensys.linea.zktracer.module.alu.add.Adder;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Test;
 
