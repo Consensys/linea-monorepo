@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -32,7 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class MulTracerTest extends AbstractModuleTracerTest {
+class MulTracerTest extends AbstractModuleTracerCorsetTest {
   private static final Random rand = new Random();
 
   private static final int TEST_MUL_REPETITIONS = 16;
@@ -40,37 +40,37 @@ class MulTracerTest extends AbstractModuleTracerTest {
   @ParameterizedTest()
   @MethodSource("provideRandomAluMulArguments")
   void aluMulTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("singleTinyExponentiation")
   void testSingleTinyExponentiation(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideTinyArguments")
   void tinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideSpecificNonTinyArguments")
   void nonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideRandomNonTinyArguments")
   void randomNonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("multiplyByZero")
   void zerosArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   public Stream<Arguments> singleTinyExponentiation() {
@@ -140,7 +140,7 @@ class MulTracerTest extends AbstractModuleTracerTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 0; k <= 3; k++) {
         for (int i = 0; i <= 3; i++) {
-          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
