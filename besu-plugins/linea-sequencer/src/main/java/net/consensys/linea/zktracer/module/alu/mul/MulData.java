@@ -16,7 +16,6 @@ import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.apache.tuweni.units.bigints.UInt64;
 
 public class MulData {
   private static final int MMEDIUM = 8;
@@ -323,7 +322,7 @@ public class MulData {
     sumBaseTheta = BaseTheta.fromBytes32(sum);
     hBytes.setChunk(0, sumBaseTheta.get(0));
     hBytes.setChunk(1, sumBaseTheta.get(1));
-    UInt64 alpha = getOverflow(sum, UInt64.ONE, "alpha OOB");
+    long alpha = getOverflow(sum, 1, "alpha OOB");
 
     sum = aBaseThetaInts[3].multiply(bBaseThetaInts[0]); // sum := a3 * b0
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[1]);
@@ -336,7 +335,7 @@ public class MulData {
     sumBaseTheta = BaseTheta.fromBytes32(sum);
     hBytes.setChunk(2, sumBaseTheta.get(0));
     hBytes.setChunk(3, sumBaseTheta.get(1));
-    UInt64 beta = getOverflow(sum, UInt64.valueOf(3), "beta OOB");
+    long beta = getOverflow(sum, 3, "beta OOB");
 
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[0]);
     sum = sum.add(prod); // sum := a0 * b0
@@ -344,11 +343,11 @@ public class MulData {
     prod = UInt256.fromBytes(hBytes.get(0)).shiftLeft(64);
     sum = sum.add(prod); // sum += (h0 << 64)
 
-    UInt64 eta = getOverflow(sum, UInt64.ONE, "eta OOB");
+    long eta = getOverflow(sum, 1, "eta OOB");
 
-    sum = UInt256.fromBytes(eta.toBytes()); // sum := eta
+    sum = UInt256.valueOf(eta); // sum := eta
     sum = sum.add(UInt256.fromBytes(hBytes.get(1))); // sum += h1
-    prod = UInt256.fromBytes(alpha.toBytes()).shiftLeft(64);
+    prod = UInt256.valueOf(alpha).shiftLeft(64);
     sum = sum.add(prod); // sum += (alpha << 64)
     prod = aBaseThetaInts[2].multiply(bBaseThetaInts[0]);
     sum = sum.add(prod); // sum += a2 * b0
@@ -358,7 +357,7 @@ public class MulData {
     sum = sum.add(prod); // sum += a0 * b2
     sum = sum.add(UInt256.fromBytes(hBytes.get(2)).shiftLeft(64)); // sum += (h2 << 64)
 
-    UInt64 mu = getOverflow(sum, UInt64.valueOf(3), "mu OOB");
+    long mu = getOverflow(sum, 3, "mu OOB");
 
     bits[0] = false;
     bits[1] = false;

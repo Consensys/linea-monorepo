@@ -12,16 +12,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.add;
+package net.consensys.linea.zktracer.corset.module.alu.add;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -32,21 +33,21 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class AddTracerTest extends AbstractModuleTracerTest {
+class AddTracerTest extends AbstractModuleTracerCorsetTest {
   private static final Random rand = new Random();
 
   private static final int TEST_ADD_REPETITIONS = 16;
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluAddArguments")
-  void aluAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+  void aluAddTest(OpCode opCode, List<Bytes32> args) {
+    runTest(opCode, args);
   }
 
   @ParameterizedTest()
   @MethodSource("provideSimpleAluAddArguments")
   void simpleAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @Override
@@ -55,7 +56,7 @@ class AddTracerTest extends AbstractModuleTracerTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
-          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
@@ -85,7 +86,7 @@ class AddTracerTest extends AbstractModuleTracerTest {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
     OpCode opCode = getRandomSupportedOpcode();
-    return Arguments.of(opCode, bytes1, bytes2);
+    return Arguments.of(opCode, List.of(bytes1, bytes2));
   }
 
   @Override
