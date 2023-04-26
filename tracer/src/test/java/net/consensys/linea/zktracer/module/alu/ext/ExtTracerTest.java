@@ -22,7 +22,6 @@ import java.util.stream.Stream;
 import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.module.ModuleTracer;
-import net.consensys.linea.zktracer.module.alu.ext.ExtTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Assertions;

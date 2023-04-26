@@ -20,6 +20,7 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @TestInstance(Lifecycle.PER_CLASS)
+@Tag("CorsetTest")
 public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleTracerTest {
   static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 8;
