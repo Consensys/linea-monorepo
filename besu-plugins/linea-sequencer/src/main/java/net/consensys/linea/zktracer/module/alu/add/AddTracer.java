@@ -27,12 +27,12 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
 public class AddTracer implements ModuleTracer {
-
+  public static final String ADD_JSON_KEY = "add";
   private int stamp = 0;
 
   @Override
   public String jsonKey() {
-    return "add";
+    return ADD_JSON_KEY;
   }
 
   @Override
