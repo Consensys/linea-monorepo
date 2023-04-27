@@ -124,4 +124,16 @@ public class Util {
     }
     return sum;
   }
+  /**
+   * Converts a boolean value to a byte (1 for true and 0 for false).
+   *
+   * @param b The boolean value to be converted.
+   * @return A byte representing the input boolean value.
+   */
+  public static byte boolToByte(boolean b) {
+    if (b) {
+      return 1;
+    }
+    return 0;
+  }
 }
