@@ -227,6 +227,27 @@ allprojects {
     }
   }
 
+  task checkCorsetPreConditions {
+    doLast {
+      def stdout = new ByteArrayOutputStream()
+      exec {
+        commandLine 'sh', '-c', 'command -v corset || true'
+        standardOutput = stdout
+      }
+      def libraryInstalled = stdout.toString().trim()
+      def envVariable = System.getenv('ZK_EVM_BIN')
+
+      if (libraryInstalled && envVariable) {
+        println 'CORSET is installed and ZK_EVM_BIN is set, running corset tests'
+      } else {
+        throw new GradleException('Skipping corsetTests due to either CORSET not installed or ZK_EVM_BIN not set')
+      }
+    }
+  }
+
+  tasks.corsetTests.dependsOn(checkCorsetPreConditions)
+
+
   javadoc {
     options.addStringOption('Xdoclint:all', '-quiet')
     options.addStringOption('Xwerror', '-html5')
@@ -495,6 +516,8 @@ spotless {
   format 'bash', { target '**/*.sh' }
   format 'sol', { target '**/*.sol' }
 }
+
+
 
 
 check.dependsOn checkSpdxHeader
