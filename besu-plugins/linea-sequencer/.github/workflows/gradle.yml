@@ -3,10 +3,10 @@ name: gradle
 on:
   push:
     branches:
-      - cicd-test
+      - main
   pull_request:
     branches:
-      - cicd-test
+      - main
 
 jobs:
   build:
