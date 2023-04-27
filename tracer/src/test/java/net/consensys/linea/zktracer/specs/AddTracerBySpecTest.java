@@ -14,20 +14,20 @@
  */
 package net.consensys.linea.zktracer.specs;
 
+import static net.consensys.linea.zktracer.module.alu.add.AddTracer.ADD_JSON_KEY;
+
 import net.consensys.linea.zktracer.AbstractModuleTracerBySpecTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 
 public class AddTracerBySpecTest extends AbstractModuleTracerBySpecTest {
 
-  static ModuleTracer tracer = new AddTracer();
-
   public static Object[][] specs() {
-    return findSpecFiles(new String[] {tracer.jsonKey()});
+    return findSpecFiles(new String[] {ADD_JSON_KEY});
   }
 
   @Override
   protected ModuleTracer getModuleTracer() {
-    return tracer;
+    return new AddTracer();
   }
 }
