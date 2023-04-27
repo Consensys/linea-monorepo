@@ -1,0 +1,120 @@
+name: gradle
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Build without tests
+        run: ./gradlew build -x test -x spotlessCheck
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+  unitTests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Run unitTests
+        run: ./gradlew unitTests --info
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-report
+          path: build/reports/tests/
+
+  corsetTest:
+    runs-on: ubuntu-latest
+    if: ${{ false }}
+    steps:
+      - name: Check corset
+        id: corset
+        run: |
+          if sh -c 'command -v corset' &> /dev/null && [ ! -z "$ZK_EVM_BIN" ]; then
+          echo "Library corset is installed and ZK_EVM_BIN is set";
+          exit 0;
+          else
+          echo "Either corset is not installed or ZK_EVM_BIN is not set";
+          exit 1;
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Run corset tests
+        run: ./gradlew corsetTests --info
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-report
+          path: build/reports/tests/
+  spotless:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 17
+          cache: gradle
+      - name: spotless
+        run: ./gradlew --no-daemon --parallel clean spotlessCheck
