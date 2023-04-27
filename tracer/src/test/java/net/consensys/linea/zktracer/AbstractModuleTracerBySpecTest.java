@@ -57,9 +57,16 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
     final JsonNode expectedTrace = specNode.get("output");
     final JsonNode actualTrace = generateTrace(getModuleTracer().jsonKey(), request);
 
-    assertThat(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(actualTrace.get(0)))
+    assertThat(
+            MAPPER
+                .writerWithDefaultPrettyPrinter()
+                .writeValueAsString(
+                    MAPPER.readTree(String.valueOf(actualTrace)).findValue("Trace")))
         .isEqualTo(
-            MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(expectedTrace.get(0)));
+            MAPPER
+                .writerWithDefaultPrettyPrinter()
+                .writeValueAsString(
+                    MAPPER.readTree(String.valueOf(expectedTrace)).findValue("Trace")));
   }
 
   private JsonNode generateTrace(String moduleName, JsonNode jsonNodeParams)
