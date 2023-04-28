@@ -42,5 +42,10 @@ dependencyManagement {
 
         // auto service
         dependency 'com.google.auto.service:auto-service:1.0.1'
+
+        dependencySet(group: 'info.picocli', version: '4.7.1') {
+            entry 'picocli'
+            entry 'picocli-codegen'
+        }
     }
 }

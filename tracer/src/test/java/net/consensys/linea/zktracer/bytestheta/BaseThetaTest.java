@@ -81,9 +81,9 @@ public class BaseThetaTest {
   @Test
   public void getTest() {
     Bytes firstByte = Bytes.fromHexString("0x000000000000000a"); // baseTheta[3]
-    Bytes secondByte = Bytes.fromHexString("0x000000000000000b");// baseTheta[2]
+    Bytes secondByte = Bytes.fromHexString("0x000000000000000b"); // baseTheta[2]
     Bytes thirdByte = Bytes.fromHexString("0x000000000000000c"); // baseTheta[1]
-    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d");// baseTheta[0]
+    Bytes fourthByte = Bytes.fromHexString("0x000000000000000d"); // baseTheta[0]
     Bytes32 bytes32 = Bytes32.wrap(Bytes.concatenate(firstByte, secondByte, thirdByte, fourthByte));
 
     BaseTheta baseTheta = BaseTheta.fromBytes32(bytes32);

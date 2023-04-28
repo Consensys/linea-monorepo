@@ -103,6 +103,9 @@ allprojects {
     compileOnly 'com.google.auto.service:auto-service-annotations'
 
     implementation "org.hyperledger.besu:plugin-api:$besuVersion"
+    // implementation files('/Users/stefan/work/besu2ndTryBKU/build/install/besu/lib/plugin-api-23.4.1-SNAPSHOT.jar')
+
+    implementation 'info.picocli:picocli'
 
     compileOnly 'com.fasterxml.jackson.core:jackson-databind'
 
@@ -118,7 +121,7 @@ allprojects {
     implementation 'org.apache.tuweni:tuweni-bytes:2.3.1'
     implementation 'org.apache.tuweni:tuweni-units:2.3.1'
 
-    testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+    implementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
     testImplementation "org.hyperledger.besu:evm:$besuVersion"
     testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
 
