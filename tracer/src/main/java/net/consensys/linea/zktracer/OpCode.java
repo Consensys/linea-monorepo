@@ -27,6 +27,9 @@ public enum OpCode {
   SDIV(0x05),
   MOD(0x06),
   SMOD(0x07),
+  // ext
+  ADDMOD(0x8),
+  MULMOD(0x9),
   // wcp
   LT(0x10),
   GT(0x11),
@@ -34,6 +37,9 @@ public enum OpCode {
   SGT(0x13),
   EQ(0x14),
   ISZERO(0x15),
+  // mul
+  MUL(0x02),
+  EXP(0x0a),
   // shf
   SHL(0x1b),
   SHR(0x1c),
