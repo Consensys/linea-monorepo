@@ -90,11 +90,6 @@ allprojects {
       url 'https://artifacts.consensys.net/public/maven/maven/'
       content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
     }
-    maven {
-      // TODO: not sure we do need that: try
-      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
-      content { includeGroupByRegex('com\\.splunk\\..*') }
-    }
     mavenCentral()
   }
 
@@ -109,7 +104,6 @@ allprojects {
     compileOnly 'com.google.auto.service:auto-service-annotations'
 
     implementation "org.hyperledger.besu:plugin-api:$besuVersion"
-    // implementation files('/Users/stefan/work/besu2ndTryBKU/build/install/besu/lib/plugin-api-23.4.1-SNAPSHOT.jar')
 
     implementation 'info.picocli:picocli'
 

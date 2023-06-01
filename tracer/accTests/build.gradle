@@ -50,5 +50,4 @@ tasks.register ("copyPluginJar") {
 tasks.test {
     dependsOn copyPluginJar
     systemProperty "besu.plugins.dir", "/tmp/plugins"
-//    environment "besu.plugins.dir", "/tmp/plugins"
 }
