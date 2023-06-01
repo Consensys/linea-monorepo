@@ -113,8 +113,6 @@ allprojects {
 
     implementation 'info.picocli:picocli'
 
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind'
-
     errorprone("com.google.errorprone:error_prone_core")
 
     compileOnly 'io.vertx:vertx-core:4.3.8'
@@ -122,7 +120,7 @@ allprojects {
     implementation 'org.apache.logging.log4j:log4j-api:2.20.0'
     implementation 'org.apache.logging.log4j:log4j-core:2.20.0'
 
-    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
 
     implementation 'org.apache.tuweni:tuweni-bytes:2.3.1'
     implementation 'org.apache.tuweni:tuweni-units:2.3.1'
@@ -225,6 +223,39 @@ allprojects {
 
     useJUnitPlatform()
   }
+
+  task unitTests(type: Test) {
+    useJUnitPlatform {
+      excludeTags("CorsetTest")
+    }
+  }
+
+  task corsetTests(type: Test) {
+    useJUnitPlatform {
+      includeTags("CorsetTest")
+    }
+  }
+
+  task checkCorsetPreConditions {
+    doLast {
+      def stdout = new ByteArrayOutputStream()
+      exec {
+        commandLine 'sh', '-c', 'command -v corset || true'
+        standardOutput = stdout
+      }
+      def libraryInstalled = stdout.toString().trim()
+      def envVariable = System.getenv('ZK_EVM_BIN')
+
+      if (libraryInstalled && envVariable) {
+        println 'CORSET is installed and ZK_EVM_BIN is set, running corset tests'
+      } else {
+        throw new GradleException('Skipping corsetTests due to either CORSET not installed or ZK_EVM_BIN not set')
+      }
+    }
+  }
+
+  tasks.corsetTests.dependsOn(checkCorsetPreConditions)
+
 
   javadoc {
     options.addStringOption('Xdoclint:all', '-quiet')
@@ -494,6 +525,8 @@ spotless {
   format 'bash', { target '**/*.sh' }
   format 'sol', { target '**/*.sol' }
 }
+
+
 
 
 check.dependsOn checkSpdxHeader
