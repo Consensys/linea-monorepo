@@ -38,7 +38,7 @@ dependencyManagement {
         dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
 
         // Logging dependencies
-        dependency 'org.slf4j:slf4j-api:1.7.36'
+        dependency 'org.slf4j:slf4j-api:2.0.7'
 
         // auto service
         dependency 'com.google.auto.service:auto-service:1.0.1'
@@ -47,5 +47,17 @@ dependencyManagement {
             entry 'picocli'
             entry 'picocli-codegen'
         }
+
+        dependencySet(group: 'org.web3j', version: '4.9.7') {
+            entry 'abi'
+            entry 'besu'
+            entry 'core'
+            entry 'crypto'
+        }
+
+        dependency 'junit:junit:4.13.2'
+        dependency 'org.assertj:assertj-core:3.24.2'
+        dependency 'org.awaitility:awaitility:4.2.0'
+
     }
 }

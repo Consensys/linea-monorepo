@@ -1,0 +1,54 @@
+plugins {
+    id 'org.web3j' version '4.9.2'
+    id 'org.web3j.solidity' version '0.3.5'
+}
+
+web3j { generatedPackageName = 'org.hyperledger.besu.tests.web3j.generated' }
+
+solidity {
+    resolvePackages = false
+    optimizeRuns = 1
+}
+
+dependencies {
+    testImplementation "org.hyperledger.besu.internal:dsl:$besuVersion"
+    testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+    testImplementation "org.hyperledger.besu.internal:eth:$besuVersion"
+    testImplementation "org.hyperledger.besu.internal:eth:$besuVersion:test-support"
+    testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
+    testImplementation "org.hyperledger.besu.internal:core:$besuVersion:test-support"
+
+    testImplementation 'org.web3j:abi'
+    testImplementation 'org.web3j:besu'
+    testImplementation 'org.web3j:core'
+
+    testImplementation 'junit:junit'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.awaitility:awaitility'
+
+}
+
+
+tasks.register ("copyPluginJar") {
+    dependsOn rootProject.installDist
+    doLast {
+        def copyInto = new File("/tmp/plugins")
+        if (copyInto.exists()) {
+           // make sure that old plugins are deleted
+            copyInto.deleteDir()
+        }
+        copyInto.mkdirs()
+        def copyFrom = new File(getRootDir().toString() + "/build/libs")
+        copy {
+            from copyFrom.toString()
+            into copyInto.toString()
+            include '*.jar'
+        }
+    }
+}
+
+tasks.test {
+    dependsOn copyPluginJar
+    systemProperty "besu.plugins.dir", "/tmp/plugins"
+//    environment "besu.plugins.dir", "/tmp/plugins"
+}
