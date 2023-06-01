@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.AbstractModuleTracerTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -33,7 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ModTracerTest extends AbstractModuleTracerTest {
+class ModTracerTest extends AbstractModuleTracerCorsetTest {
   static final Random rand = new Random();
 
   final int TEST_MOD_REPETITIONS = 16;
@@ -41,25 +41,25 @@ class ModTracerTest extends AbstractModuleTracerTest {
   @ParameterizedTest()
   @MethodSource("provideRandomAluModArguments")
   void aluModTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideRandomDivisionsByZeroArguments")
   void aluModRandomDivisionsByZeroTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideDivisibleArguments")
   void aluModDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideNegativeDivisibleArguments")
   void aluModNegativeDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
-    runTest(opCode, arg1, arg2);
+    runTest(opCode, List.of(arg1, arg2));
   }
 
   private Stream<Arguments> provideRandomAluModArguments() {
@@ -76,7 +76,7 @@ class ModTracerTest extends AbstractModuleTracerTest {
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
-          arguments.add(Arguments.of(opCode, UInt256.valueOf(i), UInt256.valueOf(k)));
+          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
