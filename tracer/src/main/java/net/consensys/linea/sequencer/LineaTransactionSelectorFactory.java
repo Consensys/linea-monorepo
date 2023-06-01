@@ -19,15 +19,16 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionSelectorFacto
 
 public class LineaTransactionSelectorFactory implements TransactionSelectorFactory {
 
-  private final LineaConfiguration lineaConfig;
+  private final LineaCLIOptions options;
 
-  public LineaTransactionSelectorFactory(final LineaConfiguration config) {
-    this.lineaConfig = config;
+  public LineaTransactionSelectorFactory(final LineaCLIOptions options) {
+    this.options = options;
   }
 
   @Override
   public TransactionSelector create() {
+    final LineaConfiguration lineaConfiguration = options.toDomainObject();
     return new LineaTransactionSelector(
-        lineaConfig.getMaxTxCalldataSize(), lineaConfig.getMaxBlockCalldataSize());
+        lineaConfiguration.getMaxTxCalldataSize(), lineaConfiguration.getMaxBlockCalldataSize());
   }
 }

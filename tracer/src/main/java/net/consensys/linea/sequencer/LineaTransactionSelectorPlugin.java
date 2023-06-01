@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class LineaTransactionSelectorPlugin implements BesuPlugin {
 
   private static final Logger LOG = LoggerFactory.getLogger(TransactionSelectionService.class);
-  private static final String NAME = "linea";
+  public static final String NAME = "linea";
   private final LineaCLIOptions options;
   private Optional<TransactionSelectionService> service;
 
@@ -39,7 +39,7 @@ public class LineaTransactionSelectorPlugin implements BesuPlugin {
 
   @Override
   public Optional<String> getName() {
-    return BesuPlugin.super.getName();
+    return Optional.of(NAME);
   }
 
   @Override
@@ -51,26 +51,26 @@ public class LineaTransactionSelectorPlugin implements BesuPlugin {
           "Expecting a PicoCLI options to register CLI options with, but none found.");
     }
 
-    cmdlineOptions.get().addPicoCLIOptions(NAME, options);
+    cmdlineOptions.get().addPicoCLIOptions(getName().get(), options);
 
     service = context.getService(TransactionSelectionService.class);
     if (service.isEmpty()) {
       LOG.error(
-          "Failed to register TransactionSelectionService due to a missing TransactionSelectionService.");
+          "Failed to register TransactionSelectionService because it is not available from the BesuContext.");
     }
     createAndRegister(service.orElseThrow());
   }
 
   @Override
   public void start() {
-    LOG.debug("Starting Linea plugin with configuration: {}", options.toString());
+    LOG.debug("Starting {} with configuration: {}", NAME, options);
   }
 
   @Override
   public void stop() {}
 
   private void createAndRegister(final TransactionSelectionService transactionSelectionService) {
-    transactionSelectionService.registerTransactionSeclectorFactory(
-        new LineaTransactionSelectorFactory(options.toDomainObject()));
+    transactionSelectionService.registerTransactionSelectorFactory(
+        new LineaTransactionSelectorFactory(options));
   }
 }
