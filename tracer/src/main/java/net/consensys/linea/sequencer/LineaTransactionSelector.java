@@ -14,10 +14,12 @@
  */
 package net.consensys.linea.sequencer;
 
+import org.hyperledger.besu.plugin.data.Log;
 import org.hyperledger.besu.plugin.data.Transaction;
-import org.hyperledger.besu.plugin.data.TransactionReceipt;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
+
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,28 +39,33 @@ public class LineaTransactionSelector implements TransactionSelector {
 
   @Override
   public TransactionSelectionResult selectTransaction(
-      final Transaction transaction, final TransactionReceipt receipt) {
-
-    LOG.trace(
-        "Transaction: {}\nReceipt: {}\nCalldata sum: {}", transaction, receipt, blockCalldataSum);
+      final Transaction transaction,
+      final boolean isSuccessful,
+      final List<Log> logs,
+      final long commulativeGasUsed) {
 
     final int txCalldataSize = transaction.getPayload().size();
     if (txCalldataSize > maxTxCalldataSize) {
-      return TransactionSelectionResult.DELETE_TRANSACTION_AND_CONTINUE;
+      LOG.warn(
+          "Not adding transaction {} because calldata size {} is too big",
+          transaction,
+          txCalldataSize);
+      return TransactionSelectionResult.invalid("Calldata too big");
     }
     try {
       blockCalldataSum = Math.addExact(blockCalldataSum, txCalldataSize);
     } catch (final ArithmeticException e) {
-      LOG.debug(
+      // this should never happen
+      LOG.warn(
           "Not adding transaction {} otherwise block calldata size {} overflows",
           transaction,
           blockCalldataSum);
-      return TransactionSelectionResult.COMPLETE_OPERATION;
+      return TransactionSelectionResult.BLOCK_FULL;
     }
     if (blockCalldataSum > maxBlockCalldataSize) {
-      return TransactionSelectionResult.COMPLETE_OPERATION;
+      return TransactionSelectionResult.BLOCK_FULL;
     }
 
-    return TransactionSelectionResult.CONTINUE;
+    return TransactionSelectionResult.SELECTED;
   }
 }
