@@ -21,7 +21,7 @@ public class LineaConfiguration {
   private final int maxBlockCalldataSize;
 
   /**
-   * Instantiates a new RocksDb configuration.
+   * Instantiates a new Linea configuration.
    *
    * @param maxTxCalldataSize the maximum calldata size for a transaction
    * @param maxBlockCalldataSize the maximum calldata size for a block
