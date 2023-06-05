@@ -66,7 +66,7 @@ public class LineaCLIOptions {
   }
 
   /**
-   * To domain object rocks db factory configuration.
+   * To domain object Linea factory configuration.
    *
    * @return the rocks db factory configuration
    */
