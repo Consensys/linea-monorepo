@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin implements BesuPlugin {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TransactionSelectionService.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LineaTransactionSelectorPlugin.class);
   public static final String NAME = "linea";
   private final LineaCLIOptions options;
   private Optional<TransactionSelectionService> service;
