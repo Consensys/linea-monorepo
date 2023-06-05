@@ -120,7 +120,7 @@ public class MiningTest extends AcceptanceTestBase {
         Assertions.assertThat(receipt.getTransactionReceipt()).isEmpty();
     }
 
-    private void checkWithNumCharacters(
+    private void sendTransactionsWithGivenLengthPayload(
             final SimpleStorage simpleStorage, final List<String> accounts, final Web3j web3j, final int num) {
         final String contractAddress = simpleStorage.getContractAddress();
         final String txData = simpleStorage.set(RandomStringUtils.randomAlphabetic(num)).encodeFunctionCall();
