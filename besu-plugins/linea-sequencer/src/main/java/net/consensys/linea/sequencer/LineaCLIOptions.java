@@ -68,7 +68,7 @@ public class LineaCLIOptions {
   /**
    * To domain object Linea factory configuration.
    *
-   * @return the rocks db factory configuration
+   * @return the Linea factory configuration
    */
   public LineaConfiguration toDomainObject() {
     return new LineaConfiguration(maxTxCalldataSize, maxBlockCalldataSize);
