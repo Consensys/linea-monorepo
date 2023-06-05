@@ -25,6 +25,7 @@ dependencies {
     testImplementation 'junit:junit'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.awaitility:awaitility'
+    testImplementation 'com.splunk.logging:splunk-library-javalogging'
 
 }
 
