@@ -80,7 +80,7 @@ public class MiningTest extends AcceptanceTestBase {
     }
 
     @Test
-    public void trasactionIsNotMinedWhenTooBig() throws IOException, TransactionException {
+    public void transactionIsNotMinedWhenTooBig() throws IOException, TransactionException {
 
         final SimpleStorage simpleStorage =
                 minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
