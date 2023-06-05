@@ -81,7 +81,6 @@ allprojects {
   version '1.0.0-SNAPSHOT'
 
   repositories {
-    mavenLocal() // TODO: remove once besu PR has been merged
     maven {
       url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
       content { includeGroupByRegex('org\\.hyperledger\\..*') }
@@ -89,6 +88,10 @@ allprojects {
     maven {
       url 'https://artifacts.consensys.net/public/maven/maven/'
       content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
+    }
+    maven {
+      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
+      content { includeGroupByRegex('com\\.splunk\\..*') }
     }
     mavenCentral()
   }

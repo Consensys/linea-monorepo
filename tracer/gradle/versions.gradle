@@ -59,5 +59,6 @@ dependencyManagement {
         dependency 'org.assertj:assertj-core:3.24.2'
         dependency 'org.awaitility:awaitility:4.2.0'
 
+        dependency 'com.splunk.logging:splunk-library-javalogging:1.11.5'
     }
 }
