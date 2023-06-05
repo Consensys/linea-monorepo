@@ -17,7 +17,7 @@ package net.consensys.linea.sequencer;
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
 
-/** The RocksDb cli options. */
+/** The Linea CLI options. */
 public class LineaCLIOptions {
 
   public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 61440;
