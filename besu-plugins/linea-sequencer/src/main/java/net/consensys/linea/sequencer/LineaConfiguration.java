@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.sequencer;
 
-/** The Rocks db configuration. */
+/** The Linea configuration. */
 public class LineaConfiguration {
 
   private final int maxTxCalldataSize;
