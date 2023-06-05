@@ -76,7 +76,7 @@ public class MiningTest extends AcceptanceTestBase {
         final Web3j web3j = minerNode.nodeRequests().eth();
         final List<Integer> numCaractersInStringList = List.of(150, 200, 400);
 
-        numCaractersInStringList.forEach(num -> checkWithNumCharacters(simpleStorage, accounts, web3j, num));
+        numCaractersInStringList.forEach(num -> sendTransactionsWithGivenLengthPayload(simpleStorage, accounts, web3j, num));
     }
 
     @Test
