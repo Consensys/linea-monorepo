@@ -47,6 +47,6 @@ tasks.register ("copyPluginJar") {
 tasks.test {
     dependsOn copyPluginJar
     doFirst {
-        systemProperty "besu.plugins.dir", copyPluginJar.pluginDir
+        jvmArgs "-Dbesu.plugins.dir=$copyPluginJar.pluginDir"
     }
 }
