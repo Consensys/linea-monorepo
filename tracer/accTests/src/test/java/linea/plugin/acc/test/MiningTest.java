@@ -47,11 +47,6 @@ public class MiningTest extends AcceptanceTestBase {
 
     @BeforeEach
     public void setUp() throws Exception {
-        final String pluginDir = System.getProperty("besu.plugins.dir");
-        // this system property is set in the test task of accTests (accTests/build.gradle)
-        if (pluginDir == null) {
-            throw new RuntimeException("besu.plugins.dir is not set");
-        }
         final List<String> cliOptions =
                 List.of(
                         "--plugin-linea-max-tx-calldata-size=" + MAX_CALLDATA_SIZE,
