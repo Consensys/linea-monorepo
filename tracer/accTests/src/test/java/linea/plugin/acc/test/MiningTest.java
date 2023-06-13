@@ -47,6 +47,8 @@ public class MiningTest extends AcceptanceTestBase {
 
     @BeforeEach
     public void setUp() throws Exception {
+        final String pluginDir = System.getenv("besu.plugins.dir");
+        System.setProperty("besu.plugins.dir", pluginDir);
         final List<String> cliOptions =
                 List.of(
                         "--plugin-linea-max-tx-calldata-size=" + MAX_CALLDATA_SIZE,
