@@ -33,13 +33,9 @@ dependencies {
 tasks.register ("copyPluginJar") {
     dependsOn rootProject.installDist
     doLast {
-        def copyInto = new File("/tmp/plugins")
-        if (copyInto.exists()) {
-           // make sure that old plugins are deleted
-            copyInto.deleteDir()
-        }
-        copyInto.mkdirs()
+        def copyInto = File.createTempDir("plugins")
         def copyFrom = new File(getRootDir().toString() + "/build/libs")
+        ext.pluginDir = copyInto.toString()
         copy {
             from copyFrom.toString()
             into copyInto.toString()
@@ -50,5 +46,7 @@ tasks.register ("copyPluginJar") {
 
 tasks.test {
     dependsOn copyPluginJar
-    systemProperty "besu.plugins.dir", "/tmp/plugins"
+    doFirst {
+        systemProperty "besu.plugins.dir", copyPluginJar.pluginDir
+    }
 }
