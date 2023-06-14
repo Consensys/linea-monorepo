@@ -224,6 +224,7 @@ allprojects {
   task unitTests(type: Test) {
     useJUnitPlatform {
       excludeTags("CorsetTest")
+      excludeTags("AcceptanceTest")
     }
   }
 
