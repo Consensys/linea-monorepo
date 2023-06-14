@@ -28,18 +28,16 @@ public class LineaCLIOptions {
   @CommandLine.Option(
       names = {MAX_TX_CALLDATA_SIZE},
       hidden = true,
-      defaultValue = "61440",
       paramLabel = "<INTEGER>",
       description = "Maximum size for the calldata of a Transaction (default: ${DEFAULT-VALUE})")
-  int maxTxCalldataSize;
+  private int maxTxCalldataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
 
   @CommandLine.Option(
       names = {MAX_BLOCK_CALLDATA_SIZE},
       hidden = true,
-      defaultValue = "71680",
       paramLabel = "<INTEGER>",
       description = "Maximum size for the calldata of a Block (default: ${DEFAULT-VALUE})")
-  int maxBlockCalldataSize;
+  private int maxBlockCalldataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
 
   private LineaCLIOptions() {}
 
