@@ -29,13 +29,14 @@ dependencies {
 
 }
 
-
 tasks.register ("copyPluginJar") {
     dependsOn rootProject.installDist
+
     doLast {
         def copyInto = File.createTempDir("plugins")
         def copyFrom = new File(getRootDir().toString() + "/build/libs")
-        ext.pluginDir = copyInto.toString()
+        project.ext.pluginDir = copyInto.toString()
+
         copy {
             from copyFrom.toString()
             into copyInto.toString()
@@ -44,9 +45,18 @@ tasks.register ("copyPluginJar") {
     }
 }
 
-tasks.test {
-    dependsOn copyPluginJar
+test {
+    exclude "**"
+}
+
+task acceptanceTest(dependsOn: copyPluginJar, type: Test) {
+    inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
+    include '**'
+
+    useJUnitPlatform {}
+
     doFirst {
-        environment "besu.plugins.dir", copyPluginJar.pluginDir
+        systemProperty "besu.plugins.dir", project.ext.pluginDir
     }
 }
+

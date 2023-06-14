@@ -47,7 +47,8 @@ public class MiningTest extends AcceptanceTestBase {
 
     @BeforeEach
     public void setUp() throws Exception {
-        final String pluginDir = System.getenv("besu.plugins.dir");
+        final String pluginDir = System.getProperty("besu.plugins.dir");
+        System.out.println("****************************" + pluginDir);
         System.setProperty("besu.plugins.dir", pluginDir);
         final List<String> cliOptions =
                 List.of(
