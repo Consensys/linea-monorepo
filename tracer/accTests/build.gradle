@@ -29,6 +29,8 @@ dependencies {
 
 }
 
+test.enabled = false
+
 tasks.register ("copyPluginJar") {
     dependsOn rootProject.installDist
 
@@ -43,10 +45,6 @@ tasks.register ("copyPluginJar") {
             include '*.jar'
         }
     }
-}
-
-test {
-    exclude "**"
 }
 
 task acceptanceTest(dependsOn: copyPluginJar, type: Test) {
