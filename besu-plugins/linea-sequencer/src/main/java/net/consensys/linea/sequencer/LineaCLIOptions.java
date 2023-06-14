@@ -20,23 +20,30 @@ import picocli.CommandLine;
 /** The Linea CLI options. */
 public class LineaCLIOptions {
 
-  public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 61440;
-  public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 71680;
-  public static final String MAX_TX_CALLDATA_SIZE = "--plugin-linea-max-tx-calldata-size";
-  public static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
+  public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 60000;
+  public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 70000;
+
+  private static final String MAX_TX_CALLDATA_SIZE = "--plugin-linea-max-tx-calldata-size";
+  private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
 
   @CommandLine.Option(
       names = {MAX_TX_CALLDATA_SIZE},
       hidden = true,
       paramLabel = "<INTEGER>",
-      description = "Maximum size for the calldata of a Transaction (default: ${DEFAULT-VALUE})")
+      description =
+          "Maximum size for the calldata of a Transaction (default: "
+              + DEFAULT_MAX_TX_CALLDATA_SIZE
+              + ")")
   private int maxTxCalldataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
 
   @CommandLine.Option(
       names = {MAX_BLOCK_CALLDATA_SIZE},
       hidden = true,
       paramLabel = "<INTEGER>",
-      description = "Maximum size for the calldata of a Block (default: ${DEFAULT-VALUE})")
+      description =
+          "Maximum size for the calldata of a Block (default: "
+              + DEFAULT_MAX_BLOCK_CALLDATA_SIZE
+              + ")")
   private int maxBlockCalldataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
 
   private LineaCLIOptions() {}
