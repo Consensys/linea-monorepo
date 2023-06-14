@@ -31,6 +31,8 @@ dependencies {
 
 test.enabled = false
 
+unitTests.enabled = false
+
 tasks.register ("copyPluginJar") {
     dependsOn rootProject.installDist
 

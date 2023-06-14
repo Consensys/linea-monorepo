@@ -41,7 +41,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-@Tag("AcceptanceTest")
 public class MiningTest extends AcceptanceTestBase {
 
     public static final int MAX_CALLDATA_SIZE = 1092; // contract has a call data size of 979
