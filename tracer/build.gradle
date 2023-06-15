@@ -89,6 +89,10 @@ allprojects {
       url 'https://artifacts.consensys.net/public/maven/maven/'
       content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
     }
+    maven {
+      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
+      content { includeGroupByRegex('com\\.splunk\\..*') }
+    }
     mavenCentral()
   }
 
@@ -104,6 +108,8 @@ allprojects {
 
     implementation "org.hyperledger.besu:plugin-api:$besuVersion"
 
+    implementation 'info.picocli:picocli'
+
     errorprone("com.google.errorprone:error_prone_core")
 
     compileOnly 'io.vertx:vertx-core:4.3.8'
@@ -116,7 +122,7 @@ allprojects {
     implementation 'org.apache.tuweni:tuweni-bytes:2.3.1'
     implementation 'org.apache.tuweni:tuweni-units:2.3.1'
 
-    testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+    implementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
     testImplementation "org.hyperledger.besu:evm:$besuVersion"
     testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
 
@@ -218,6 +224,7 @@ allprojects {
   task unitTests(type: Test) {
     useJUnitPlatform {
       excludeTags("CorsetTest")
+      excludeTags("AcceptanceTest")
     }
   }
 
