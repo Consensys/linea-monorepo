@@ -26,3 +26,5 @@ tmp/
 build/
 out/
 site/
+/.direnv/
+/.envrc
