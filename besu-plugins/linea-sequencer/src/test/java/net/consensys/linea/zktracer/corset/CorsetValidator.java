@@ -18,7 +18,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
@@ -100,7 +99,14 @@ public class CorsetValidator {
     try {
       corsetValidationProcess =
           new ProcessBuilder(
-                  CORSET_BIN, "check", "-T", traceFile.toFile().getAbsolutePath(), "-v", "-t", "2", ZK_EVM_BIN)
+                  CORSET_BIN,
+                  "check",
+                  "-T",
+                  traceFile.toFile().getAbsolutePath(),
+                  "-v",
+                  "-t",
+                  "2",
+                  ZK_EVM_BIN)
               .redirectErrorStream(true)
               .start();
     } catch (IOException e) {
