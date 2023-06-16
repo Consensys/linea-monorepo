@@ -100,7 +100,7 @@ public class CorsetValidator {
     try {
       corsetValidationProcess =
           new ProcessBuilder(
-                  CORSET_BIN, "check", "-T", traceFile.toFile().getAbsolutePath(), "-v", ZK_EVM_BIN)
+                  CORSET_BIN, "check", "-T", traceFile.toFile().getAbsolutePath(), "-v", "-t", "2", ZK_EVM_BIN)
               .redirectErrorStream(true)
               .start();
     } catch (IOException e) {
