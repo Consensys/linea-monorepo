@@ -18,7 +18,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
@@ -90,7 +89,7 @@ public class CorsetValidator {
     }
 
     try {
-      Files.write(traceFile, trace.getBytes(StandardCharsets.UTF_8), WRITE);
+      Files.writeString(traceFile, trace, WRITE);
     } catch (IOException e) {
       LOG.error("Can't write to temporary trace file: " + e.getMessage());
       throw new RuntimeException(e);
@@ -99,28 +98,26 @@ public class CorsetValidator {
     final Process corsetValidationProcess;
     try {
       corsetValidationProcess =
-          Runtime.getRuntime()
-              .exec(
-                  new String[] {
-                    CORSET_BIN,
-                    "check",
-                    "-T",
-                    traceFile.toFile().getAbsolutePath(),
-                    "-v",
-                    ZK_EVM_BIN
-                  });
+          new ProcessBuilder(
+                  CORSET_BIN,
+                  "check",
+                  "-T",
+                  traceFile.toFile().getAbsolutePath(),
+                  "-v",
+                  "-t",
+                  "2",
+                  ZK_EVM_BIN)
+              .redirectErrorStream(true)
+              .start();
     } catch (IOException e) {
       LOG.error("Corset validation has thrown  an exception: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
-    final String corsetStdOutput;
-    final String corsetErrorOutput;
+    final String corsetOutput;
     try {
-      corsetStdOutput =
+      corsetOutput =
           IOUtils.toString(corsetValidationProcess.getInputStream(), Charset.defaultCharset());
-      corsetErrorOutput =
-          IOUtils.toString(corsetValidationProcess.getErrorStream(), Charset.defaultCharset());
     } catch (IOException e) {
       LOG.error("Error while catching output corsetValidationProcess: " + e.getMessage());
       throw new RuntimeException(e);
@@ -134,8 +131,7 @@ public class CorsetValidator {
     }
 
     if (corsetValidationProcess.exitValue() != 0) {
-      LOG.error("Validation failed: " + corsetStdOutput);
-      LOG.error(corsetErrorOutput);
+      LOG.error("Validation failed: " + corsetOutput);
       return false;
     }
 
