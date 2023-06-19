@@ -67,18 +67,7 @@ public class ZkTracer implements OperationTracer {
                 .supportedOpCodes()
                 .forEach(
                     opCode -> {
-                      if (opCodeTracerMap.containsKey(opCode)) {
-                        throw new AssertionError(
-                            "OpCode "
-                                + opCode.name()
-                                + " supported by more than one Tracer: "
-                                + opCodeTracerMap.get(opCode).getClass().getSimpleName()
-                                + " ,"
-                                + tracer.getClass().getSimpleName());
-                      }
-
                       List<ModuleTracer> moduleTracers = opCodeTracerMap.get(opCode);
-
                       if (moduleTracers == null) {
                         moduleTracers = List.of(tracer);
                       } else {
