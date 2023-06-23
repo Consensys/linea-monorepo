@@ -19,9 +19,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
-import org.apache.tuweni.bytes.Bytes32;
 
 public class HubTracer implements ModuleTracer {
   @Override
@@ -36,6 +34,7 @@ public class HubTracer implements ModuleTracer {
 
   @Override
   public Object trace(final MessageFrame frame) {
-      final OpCode opCode = OpCode.of(famelgetcurrentOperation().getOpcode());
+//      final OpCode opCode = OpCode.of(famelgetcurrentOperation().getOpcode());
+      return null;
   }
 }
