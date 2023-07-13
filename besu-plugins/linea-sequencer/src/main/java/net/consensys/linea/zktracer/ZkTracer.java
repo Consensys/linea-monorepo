@@ -25,9 +25,9 @@ import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 import net.consensys.linea.zktracer.module.alu.mod.ModTracer;
 import net.consensys.linea.zktracer.module.alu.mul.MulTracer;
+import net.consensys.linea.zktracer.module.hub.HubTracer;
 import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.wcp.WcpTracer;
-import net.consensys.linea.zktracer.module.hub.HubTracer;
 
 public class ZkTracer implements OperationTracer {
   private final List<ModuleTracer> tracers;
@@ -42,20 +42,21 @@ public class ZkTracer implements OperationTracer {
   }
 
   public ZkTracer(final ZkTraceBuilder zkTraceBuilder) {
-    this(zkTraceBuilder, List.of(
+    this(
+        zkTraceBuilder,
+        List.of(
             new HubTracer(),
             new MulTracer(),
             new ShfTracer(),
             new WcpTracer(),
             new AddTracer(),
-            new ModTracer()
-    ));
+            new ModTracer()));
   }
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
-    for (ModuleTracer tracer : opCodeTracerMap
-            .get(OpCode.of(frame.getCurrentOperation().getOpcode()))) {
+    for (ModuleTracer tracer :
+        opCodeTracerMap.get(OpCode.of(frame.getCurrentOperation().getOpcode()))) {
       if (tracer != null) {
         zkTraceBuilder.addTrace(tracer.jsonKey(), tracer.trace(frame));
       }
@@ -64,8 +65,7 @@ public class ZkTracer implements OperationTracer {
 
   private void setupTracers() {
     for (ModuleTracer tracer : tracers) {
-      for (OpCode opCode : tracer
-              .supportedOpCodes()) {
+      for (OpCode opCode : tracer.supportedOpCodes()) {
         List<ModuleTracer> moduleTracers = opCodeTracerMap.get(opCode);
         if (moduleTracers == null) {
           moduleTracers = List.of(tracer);
