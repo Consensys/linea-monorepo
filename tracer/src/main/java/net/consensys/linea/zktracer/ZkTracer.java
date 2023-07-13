@@ -25,6 +25,7 @@ import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 import net.consensys.linea.zktracer.module.alu.mod.ModTracer;
 import net.consensys.linea.zktracer.module.alu.mul.MulTracer;
+import net.consensys.linea.zktracer.module.hub.HubTracer;
 import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.wcp.WcpTracer;
 
@@ -44,37 +45,36 @@ public class ZkTracer implements OperationTracer {
     this(
         zkTraceBuilder,
         List.of(
-            new MulTracer(), new ShfTracer(), new WcpTracer(), new AddTracer(), new ModTracer()));
+            new HubTracer(),
+            new MulTracer(),
+            new ShfTracer(),
+            new WcpTracer(),
+            new AddTracer(),
+            new ModTracer()));
   }
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
-
-    opCodeTracerMap
-        .get(OpCode.of(frame.getCurrentOperation().getOpcode()))
-        .forEach(
-            tracer -> {
-              if (tracer != null) {
-                zkTraceBuilder.addTrace(tracer.jsonKey(), tracer.trace(frame));
-              }
-            });
+    for (ModuleTracer tracer :
+        opCodeTracerMap.get(OpCode.of(frame.getCurrentOperation().getOpcode()))) {
+      if (tracer != null) {
+        zkTraceBuilder.addTrace(tracer.jsonKey(), tracer.trace(frame));
+      }
+    }
   }
 
   private void setupTracers() {
-    tracers.forEach(
-        tracer ->
-            tracer
-                .supportedOpCodes()
-                .forEach(
-                    opCode -> {
-                      List<ModuleTracer> moduleTracers = opCodeTracerMap.get(opCode);
-                      if (moduleTracers == null) {
-                        moduleTracers = List.of(tracer);
-                      } else {
-                        moduleTracers.add(tracer);
-                      }
+    for (ModuleTracer tracer : tracers) {
+      for (OpCode opCode : tracer.supportedOpCodes()) {
+        List<ModuleTracer> moduleTracers = opCodeTracerMap.get(opCode);
+        if (moduleTracers == null) {
+          moduleTracers = List.of(tracer);
+        } else {
+          moduleTracers.add(tracer);
+        }
 
-                      opCodeTracerMap.put(opCode, moduleTracers);
-                    }));
+        opCodeTracerMap.put(opCode, moduleTracers);
+      }
+    }
   }
 }
