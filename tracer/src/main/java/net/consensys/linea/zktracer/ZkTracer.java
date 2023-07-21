@@ -12,10 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.tracing.OperationTracer;
+package net.consensys.linea.zktracer;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,6 +26,8 @@ import net.consensys.linea.zktracer.module.alu.mul.MulTracer;
 import net.consensys.linea.zktracer.module.hub.HubTracer;
 import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.wcp.WcpTracer;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
 
 public class ZkTracer implements OperationTracer {
   private final List<ModuleTracer> tracers;

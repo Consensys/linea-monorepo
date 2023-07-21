@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
@@ -38,24 +39,24 @@ public class BytesICalculator {
   static boolean[] computeIsAndOverflowI(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     boolean[] overflowI = new boolean[8];
 
-    long sigma = calculateSigma(qBytes, cBytes, iBytes);
-
-    long tau = calculateTau(qBytes, cBytes, iBytes);
-
-    long rho = calculateRho(qBytes, cBytes, iBytes);
-
     setLastByte(qBytes, cBytes, iBytes);
 
+    long sigma = calculateSigma(qBytes, cBytes, iBytes);
     overflowI[0] = getBit(sigma, 0);
+
+    long tau = calculateTau(qBytes, cBytes, iBytes);
     overflowI[1] = getBit(tau, 0);
     overflowI[2] = getBit(tau, 1);
+
+    long rho = calculateRho(qBytes, cBytes, iBytes);
     overflowI[3] = getBit(rho, 0);
     overflowI[4] = getBit(rho, 1);
+
     return overflowI;
   }
 
   /**
-   * Calculates the value of sigma for the given set of BytesArrays
+   * Calculates the value of sigma for the given set of BytesArrays.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.
@@ -70,7 +71,7 @@ public class BytesICalculator {
   }
 
   /**
-   * Calculates the value of tau for the given set of BytesArrays
+   * Calculates the value of tau for the given set of BytesArrays.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.
@@ -86,7 +87,7 @@ public class BytesICalculator {
   }
 
   /**
-   * Calculates the value of rho for the given set of BytesArrays
+   * Calculates the value of rho for the given set of BytesArrays.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.
@@ -103,7 +104,7 @@ public class BytesICalculator {
   }
 
   /**
-   * Set the value of the last byte for the given set of BytesArrays
+   * Set the value of the last byte for the given set of BytesArrays.
    *
    * @param qBytes the qBytes value.
    * @param cBytes the cBytes value.

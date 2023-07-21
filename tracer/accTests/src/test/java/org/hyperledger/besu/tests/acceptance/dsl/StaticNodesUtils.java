@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.hyperledger.besu.tests.acceptance.dsl;
 
 import java.io.IOException;
@@ -19,8 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class StaticNodesUtils {
 
@@ -34,10 +33,11 @@ public class StaticNodesUtils {
       staticNodesFile.toFile().deleteOnExit();
 
       final String json =
-          staticNodes.stream()
-              .map(s -> String.format("\"%s\"", s))
-              .collect(Collectors.joining(",", "[", "]"));
-      Files.write(staticNodesFile, json.getBytes(UTF_8));
+        staticNodes.stream()
+          .map(s -> String.format("\"%s\"", s))
+          .collect(Collectors.joining(",", "[", "]"));
+
+      Files.writeString(staticNodesFile, json);
 
       return staticNodesFile;
     } catch (final IOException e) {

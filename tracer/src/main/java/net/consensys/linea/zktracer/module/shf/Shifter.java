@@ -1,4 +1,3 @@
-package net.consensys.linea.zktracer.module.shf;
 /*
  * Copyright ConsenSys AG.
  *
@@ -13,6 +12,9 @@ package net.consensys.linea.zktracer.module.shf;
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+package net.consensys.linea.zktracer.module.shf;
+
 import net.consensys.linea.zktracer.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -48,6 +50,7 @@ public class Shifter {
           final Bytes32 significantBits = ALL_BITS.shiftLeft(256 - shiftAmountInt);
           result = result.or(significantBits);
         }
+
         return result;
       }
     }

@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytes;
 
 import java.util.Arrays;
@@ -54,6 +55,7 @@ class MutableArrayWrappingBytes extends ArrayWrappingBytes implements MutableByt
         break;
       }
     }
+
     return this;
   }
 
@@ -67,13 +69,18 @@ class MutableArrayWrappingBytes extends ArrayWrappingBytes implements MutableByt
         break;
       }
     }
+
     return this;
   }
 
   @Override
   public MutableBytes mutableSlice(int i, int length) {
-    if (i == 0 && length == this.length) return this;
-    if (length == 0) return MutableBytes.EMPTY;
+    if (i == 0 && length == this.length) {
+      return this;
+    }
+    if (length == 0) {
+      return MutableBytes.EMPTY;
+    }
 
     Checks.checkElementIndex(i, this.length);
     Checks.checkArgument(
@@ -83,6 +90,7 @@ class MutableArrayWrappingBytes extends ArrayWrappingBytes implements MutableByt
         this.length,
         this.length - i,
         i);
+
     return length == Bytes16.SIZE
         ? new MutableArrayWrappingBytes16(bytes, offset + i)
         : new MutableArrayWrappingBytes(bytes, offset + i, length);

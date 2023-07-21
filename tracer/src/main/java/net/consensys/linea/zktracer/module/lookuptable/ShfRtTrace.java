@@ -12,27 +12,16 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.lookupTable;
+
+package net.consensys.linea.zktracer.module.lookuptable;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import org.apache.tuweni.bytes.Bytes;
 
-@SuppressWarnings("unused")
 public record ShfRtTrace(@JsonProperty("Trace") Trace trace) {
-
-  @JsonPropertyOrder({"BYTE", "IS_IN_RT", "LAS", "MSHP", "ONES", "RAP"})
-  public record Trace(
-      @JsonProperty("BYTE") List<Integer> bytes,
-      @JsonProperty("IS_IN_RT") List<Integer> isInRt,
-      @JsonProperty("LAS") List<Integer> las,
-      @JsonProperty("MSHP") List<Integer> mshp,
-      @JsonProperty("ONES") List<Integer> ones,
-      @JsonProperty("RAP") List<Integer> rap) {}
-
   public static ShfRtTrace generate() {
     final List<Integer> bytes = new ArrayList<>(2305);
     final List<Integer> isInRt = new ArrayList<>(2305);

@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytes;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -42,7 +43,7 @@ public interface MutableBytes16 extends MutableBytes, Bytes16 {
   }
 
   /**
-   * Wrap a the provided array as a {@link MutableBytes16}.
+   * Wrap the provided array as a {@link MutableBytes16}.
    *
    * <p>Note that value is not copied, only wrapped, and thus any future update to {@code value}
    * within the wrapped parts will be reflected in the returned value.
@@ -62,7 +63,7 @@ public interface MutableBytes16 extends MutableBytes, Bytes16 {
   }
 
   /**
-   * Wrap a the provided value, which must be of size 16, as a {@link MutableBytes16}.
+   * Wrap the provided value, which must be of size 16, as a {@link MutableBytes16}.
    *
    * <p>Note that value is not copied, only wrapped, and thus any future update to {@code value}
    * will be reflected in the returned value.
@@ -99,10 +100,12 @@ public interface MutableBytes16 extends MutableBytes, Bytes16 {
     if (value instanceof MutableBytes16) {
       return (MutableBytes16) value;
     }
+
     MutableBytes slice = value.mutableSlice(offset, SIZE);
     if (slice instanceof MutableBytes16) {
       return (MutableBytes16) slice;
     }
+
     return DelegatingMutableBytes16.delegateTo(slice);
   }
 }

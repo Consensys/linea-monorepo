@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
@@ -30,6 +31,7 @@ public class DeltaCalculator {
    */
   public static BaseTheta computeDeltas(BytesArray cBytes, BytesArray rBytes) {
     BaseTheta deltaBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+
     for (int i = 0; i < 4; i++) {
       UInt256 c = UInt256.fromBytes(cBytes.get(i));
       UInt256 r = UInt256.fromBytes(rBytes.get(i));
@@ -41,10 +43,12 @@ public class DeltaCalculator {
       } else {
         delta = r.subtract(c);
       }
+
       // Convert the delta value to a byte array and store it in the ith element of deltaBytes
       BaseTheta truc = (BaseTheta.fromBytes32(delta));
       deltaBytes.set(i, truc.get(0));
     }
+
     return deltaBytes;
   }
 }

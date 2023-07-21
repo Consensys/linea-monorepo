@@ -12,13 +12,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module;
 
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public interface ModuleTracer {
   String jsonKey();

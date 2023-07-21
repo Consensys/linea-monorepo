@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.serializer;
 
 import java.io.IOException;
@@ -21,6 +22,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
+/** Custom JSON serializer for {@link BigInteger} type. */
 public class BigIntegerSerializer extends StdSerializer<BigInteger> {
   private static final BigInteger INTEGER_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
 

@@ -12,13 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer;
 
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.consensys.linea.zktracer.module.lookupTable.ShfRtTrace;
+import net.consensys.linea.zktracer.module.lookuptable.ShfRtTrace;
 import org.apache.tuweni.bytes.Bytes32;
 
 public class ZkTraceBuilder {

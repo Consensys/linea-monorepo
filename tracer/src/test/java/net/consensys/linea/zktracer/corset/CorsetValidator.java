@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.corset;
 
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -22,12 +23,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 public class CorsetValidator {
-  private static final Logger LOG = LoggerFactory.getLogger(CorsetValidator.class);
   private static final String ZK_EVM_BIN_ENV = "ZK_EVM_BIN";
 
   private static String CORSET_BIN;
@@ -40,7 +40,7 @@ public class CorsetValidator {
   private static void init() {
     ZK_EVM_BIN = System.getenv(ZK_EVM_BIN_ENV);
     if (ZK_EVM_BIN == null) {
-      LOG.error("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
+      log.error("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
       throw new RuntimeException("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
     }
 
@@ -49,7 +49,7 @@ public class CorsetValidator {
     try {
       whichCorsetProcess = Runtime.getRuntime().exec(new String[] {"which", "corset"});
     } catch (IOException e) {
-      LOG.error("Error while searching for corset" + e.getMessage());
+      log.error("Error while searching for corset" + e.getMessage());
       throw new RuntimeException(e);
     }
 
@@ -58,19 +58,19 @@ public class CorsetValidator {
       whichCorsetProcessOutput =
           IOUtils.toString(whichCorsetProcess.getInputStream(), Charset.defaultCharset());
     } catch (IOException e) {
-      LOG.error("Error while catching output whichCorsetProcess: " + e.getMessage());
+      log.error("Error while catching output whichCorsetProcess: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
     try {
       whichCorsetProcess.waitFor(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOG.error("Timeout while searching for corset: " + e.getMessage());
+      log.error("Timeout while searching for corset: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
     if (whichCorsetProcess.exitValue() != 0) {
-      LOG.error("Can't run corset executable with path: " + whichCorsetProcessOutput);
+      log.error("Can't run corset executable with path: " + whichCorsetProcessOutput);
       throw new RuntimeException();
     }
 
@@ -82,16 +82,16 @@ public class CorsetValidator {
 
     try {
       traceFile = Files.createTempFile("", ".tmp.json");
-      LOG.info("Trace file: " + traceFile.toAbsolutePath());
+      log.info("Trace file: " + traceFile.toAbsolutePath());
     } catch (IOException e) {
-      LOG.error("Can't create temporary trace file: " + e.getMessage());
+      log.error("Can't create temporary trace file: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
     try {
       Files.writeString(traceFile, trace, WRITE);
     } catch (IOException e) {
-      LOG.error("Can't write to temporary trace file: " + e.getMessage());
+      log.error("Can't write to temporary trace file: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
@@ -110,7 +110,7 @@ public class CorsetValidator {
               .redirectErrorStream(true)
               .start();
     } catch (IOException e) {
-      LOG.error("Corset validation has thrown  an exception: " + e.getMessage());
+      log.error("Corset validation has thrown  an exception: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
@@ -119,19 +119,19 @@ public class CorsetValidator {
       corsetOutput =
           IOUtils.toString(corsetValidationProcess.getInputStream(), Charset.defaultCharset());
     } catch (IOException e) {
-      LOG.error("Error while catching output corsetValidationProcess: " + e.getMessage());
+      log.error("Error while catching output corsetValidationProcess: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
     try {
       corsetValidationProcess.waitFor(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      LOG.error("Timeout while validating trace file: " + e.getMessage());
+      log.error("Timeout while validating trace file: " + e.getMessage());
       throw new RuntimeException(e);
     }
 
     if (corsetValidationProcess.exitValue() != 0) {
-      LOG.error("Validation failed: " + corsetOutput);
+      log.error("Validation failed: " + corsetOutput);
       return false;
     }
 

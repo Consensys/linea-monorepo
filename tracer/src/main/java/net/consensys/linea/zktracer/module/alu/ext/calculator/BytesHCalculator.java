@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
@@ -41,17 +42,17 @@ public class BytesHCalculator {
 
     // Calculate alpha
     long alpha = calculateAlpha(aBytes, bBytes, hBytes);
+    overflow[0] = getBit(alpha, 0);
 
     // Calculate Beta
     long beta = calculateBeta(aBytes, bBytes, hBytes);
+    overflow[1] = getBit(beta, 0);
+    overflow[2] = getBit(beta, 1);
 
     // Calculate gamma
     long gamma = calculateGamma(aBytes, bBytes, hBytes);
-
-    overflow[0] = getBit(alpha, 0);
-    overflow[1] = getBit(beta, 0);
-    overflow[2] = getBit(beta, 1);
     overflow[3] = getBit(gamma, 0);
+
     return overflow;
   }
 
@@ -86,6 +87,7 @@ public class BytesHCalculator {
     hBytes.set(3, truc.get(1));
     return getOverflow(sum, 3, "beta OOB");
   }
+
   /**
    * Calculates the gamma value for the given aBytes, bBytes, and hBytes values.
    *

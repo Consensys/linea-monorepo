@@ -155,7 +155,7 @@ downloadLicenses {
 }
 
 
-task checkLicenses {
+tasks.register('checkLicenses') {
     description "Verify that all dependencies use white-listed licenses."
     dependsOn ':downloadLicenses'
 
@@ -179,4 +179,5 @@ task checkLicenses {
         }
     }
 }
+
 check.dependsOn checkLicenses

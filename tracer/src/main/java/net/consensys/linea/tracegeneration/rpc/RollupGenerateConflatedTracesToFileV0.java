@@ -12,15 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.tracegeneration.rpc;
 
-import org.hyperledger.besu.evm.tracing.OperationTracer;
-import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.TraceService;
-import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
-import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+package net.consensys.linea.tracegeneration.rpc;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -39,12 +32,20 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
+import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.data.BlockContext;
+import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.TraceService;
+import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
+/** Responsible for conflated file traces generation. */
 public class RollupGenerateConflatedTracesToFileV0 {
 
   private final BesuContext context;
   private final JsonFactory jsonFactory = new JsonFactory();
-  private final boolean isGZIPEnabled = true;
+  private final boolean isGzipEnabled = true;
 
   public RollupGenerateConflatedTracesToFileV0(final BesuContext context) {
     this.context = context;
@@ -58,15 +59,23 @@ public class RollupGenerateConflatedTracesToFileV0 {
     return "generateConflatedTracesToFileV0";
   }
 
+  /**
+   * Handles execution traces generation logic.
+   *
+   * @param request holds parameters of the RPC request.
+   * @return an execution file trace.
+   */
   public FileTrace execute(final PluginRpcRequest request) {
     try {
       TraceRequestParams params = TraceRequestParams.createTraceParams(request.getParams());
-      ArrayList<String> paths = new ArrayList<>();
-      getBlocks(params.getFromBlock(), params.getToBlock())
+      List<String> paths = new ArrayList<>();
+
+      getBlocks(params.fromBlock(), params.toBlock())
           .forEach(
               blockContext ->
-                  paths.add(traceBlockAndReturnPath(blockContext, params.getRuntimeVersion())));
-      return new FileTrace(params.getRuntimeVersion(), paths);
+                  paths.add(traceBlockAndReturnPath(blockContext, params.runtimeVersion())));
+
+      return new FileTrace(params.runtimeVersion(), paths);
     } catch (Exception ex) {
       throw new PluginRpcEndpointException(ex.getMessage());
     }
@@ -77,6 +86,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
     final String dataDir = "traces";
     final File file = generateOutputFile(dataDir, block, traceRuntimeVersion);
     final OutputStream outputStream = createOutputStream(file);
+
     try (JsonGenerator jsonGenerator =
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
@@ -97,9 +107,10 @@ public class RollupGenerateConflatedTracesToFileV0 {
   private OutputStream createOutputStream(final File file) {
     try {
       FileOutputStream fileOutputStream = new FileOutputStream(file);
-      if (isGZIPEnabled) {
+      if (isGzipEnabled) {
         return new GZIPOutputStream(fileOutputStream);
       }
+
       return fileOutputStream;
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -108,11 +119,13 @@ public class RollupGenerateConflatedTracesToFileV0 {
 
   private List<BlockContext> getBlocks(final long fromBlock, final long toBlock) {
     BlockchainService blockchainService = context.getService(BlockchainService.class).orElseThrow();
-    ArrayList<BlockContext> blockContexts = new ArrayList<>();
+    List<BlockContext> blockContexts = new ArrayList<>();
+
     for (long blockNumber = fromBlock; blockNumber <= toBlock; blockNumber++) {
       Optional<BlockContext> block = blockchainService.getBlockByNumber(blockNumber);
       blockContexts.add(block.orElseThrow(() -> new RuntimeException("Block not found")));
     }
+
     return blockContexts;
   }
 
@@ -138,6 +151,6 @@ public class RollupGenerateConflatedTracesToFileV0 {
   }
 
   private String getFileFormat() {
-    return isGZIPEnabled ? "json.gz" : "json";
+    return isGzipEnabled ? "json.gz" : "json";
   }
 }

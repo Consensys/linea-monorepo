@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
@@ -29,25 +31,25 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 class WcpData {
-  private final boolean isOneLineInstruction;
-  private final Bytes16 arg1Hi;
-  private final Bytes16 arg1Lo;
-  private final Bytes16 arg2Hi;
-  private final Bytes16 arg2Lo;
+  @Getter private final boolean isOneLineInstruction;
+  @Getter private final Bytes16 arg1Hi;
+  @Getter private final Bytes16 arg1Lo;
+  @Getter private final Bytes16 arg2Hi;
+  @Getter private final Bytes16 arg2Lo;
 
-  private final Bytes16 adjHi;
+  @Getter private final Bytes16 adjHi;
 
-  private final Bytes16 adjLo;
-  private final Boolean neg1;
+  @Getter private final Bytes16 adjLo;
+  @Getter private final Boolean neg1;
 
-  private final Boolean neg2;
-  private Boolean bit1 = true;
-  private Boolean bit2 = true;
-  private final Boolean bit3;
-  private final Boolean bit4;
-  private final Boolean resLo;
+  @Getter private final Boolean neg2;
+  @Getter private Boolean bit1 = true;
+  @Getter private Boolean bit2 = true;
+  @Getter private final Boolean bit3;
+  @Getter private final Boolean bit4;
+  @Getter private final Boolean resLo;
 
-  final List<Boolean> bits;
+  @Getter final List<Boolean> bits;
 
   public WcpData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.isOneLineInstruction = isOneLineInstruction(opCode);
@@ -61,17 +63,17 @@ class WcpData {
     resLo = calculateResLow(opCode, arg1, arg2);
 
     // Initiate negatives
-    UnsignedByte msb_1 = UnsignedByte.of(this.arg1Hi.get(0));
-    UnsignedByte msb_2 = UnsignedByte.of(this.arg2Hi.get(0));
-    Boolean[] msb_1_bits = byteBits(msb_1);
-    Boolean[] msb_2_bits = byteBits(msb_2);
-    this.neg1 = msb_1_bits[0];
-    this.neg2 = msb_2_bits[0];
+    UnsignedByte msb1 = UnsignedByte.of(this.arg1Hi.get(0));
+    UnsignedByte msb2 = UnsignedByte.of(this.arg2Hi.get(0));
+    Boolean[] msb1Bits = byteBits(msb1);
+    Boolean[] msb2Bits = byteBits(msb2);
+    this.neg1 = msb1Bits[0];
+    this.neg2 = msb2Bits[0];
 
     // Initiate bits
     bits = new ArrayList<>(16);
-    Collections.addAll(bits, msb_1_bits);
-    Collections.addAll(bits, msb_2_bits);
+    Collections.addAll(bits, msb1Bits);
+    Collections.addAll(bits, msb2Bits);
 
     // Set bit 1 and 2
     for (int i = 0; i < 16; i++) {
@@ -94,6 +96,10 @@ class WcpData {
     final BigInteger secondLo = arg2Lo.toUnsignedBigInteger();
     bit4 = firstLo.compareTo(secondLo) > 0;
     this.adjLo = calculateAdj(bit4, firstLo, secondLo);
+  }
+
+  public Boolean getResHi() {
+    return false;
   }
 
   private boolean isOneLineInstruction(final OpCode opCode) {
@@ -120,70 +126,7 @@ class WcpData {
       adjHi = arg2.subtract(arg1);
     }
     var bytes32 = Bytes32.leftPad(Bytes.of(adjHi.toByteArray()));
+
     return Bytes16.wrap(bytes32.slice(16));
-  }
-
-  public Bytes16 getArg1Hi() {
-    return arg1Hi;
-  }
-
-  public Bytes16 getArg1Lo() {
-    return arg1Lo;
-  }
-
-  public Bytes16 getArg2Hi() {
-    return arg2Hi;
-  }
-
-  public Bytes16 getArg2Lo() {
-    return arg2Lo;
-  }
-
-  public Bytes16 getAdjHi() {
-    return adjHi;
-  }
-
-  public Bytes16 getAdjLo() {
-    return adjLo;
-  }
-
-  public Boolean getBit1() {
-    return bit1;
-  }
-
-  public Boolean getBit2() {
-    return bit2;
-  }
-
-  public Boolean getBit3() {
-    return bit3;
-  }
-
-  public Boolean getBit4() {
-    return bit4;
-  }
-
-  public boolean isOneLineInstruction() {
-    return isOneLineInstruction;
-  }
-
-  public Boolean getResHi() {
-    return false;
-  }
-
-  public Boolean getResLo() {
-    return resLo;
-  }
-
-  public List<Boolean> getBits() {
-    return bits;
-  }
-
-  public Boolean getNeg1() {
-    return neg1;
-  }
-
-  public Boolean getNeg2() {
-    return neg2;
   }
 }

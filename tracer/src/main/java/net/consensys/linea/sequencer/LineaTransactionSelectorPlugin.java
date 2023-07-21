@@ -12,29 +12,28 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.sequencer;
 
+import java.util.Optional;
+
+import com.google.auto.service.AutoService;
+import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
-import java.util.Optional;
-
-import com.google.auto.service.AutoService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+/** Implementation of the base {@link BesuPlugin} interfaces for Linea. */
+@Slf4j
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin implements BesuPlugin {
-
-  private static final Logger LOG = LoggerFactory.getLogger(LineaTransactionSelectorPlugin.class);
   public static final String NAME = "linea";
-  private final LineaCLIOptions options;
+  private final LineaCliOptions options;
   private Optional<TransactionSelectionService> service;
 
   public LineaTransactionSelectorPlugin() {
-    options = LineaCLIOptions.create();
+    options = LineaCliOptions.create();
   }
 
   @Override
@@ -55,7 +54,7 @@ public class LineaTransactionSelectorPlugin implements BesuPlugin {
 
     service = context.getService(TransactionSelectionService.class);
     if (service.isEmpty()) {
-      LOG.error(
+      log.error(
           "Failed to register TransactionSelectionService because it is not available from the BesuContext.");
     }
     createAndRegister(service.orElseThrow());
@@ -63,7 +62,7 @@ public class LineaTransactionSelectorPlugin implements BesuPlugin {
 
   @Override
   public void start() {
-    LOG.debug("Starting {} with configuration: {}", NAME, options);
+    log.debug("Starting {} with configuration: {}", NAME, options);
   }
 
   @Override

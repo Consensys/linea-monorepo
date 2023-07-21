@@ -12,14 +12,22 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+/** Supports operations of {@link BigInteger} conversions. */
 public class BigIntegerConverter {
 
+  /**
+   * Converts {@link BigInteger} to a long array.
+   *
+   * @param bigInteger a {@link BigInteger}
+   * @return a long array consisting of decomposed {@link BigInteger} bytes.
+   */
   public static long[] toLongArray(BigInteger bigInteger) {
     // Convert the BigInteger to a byte array
     byte[] inputBytes = bigInteger.toByteArray();
@@ -40,9 +48,16 @@ public class BigIntegerConverter {
     for (int i = 0; i < 8; i++) {
       longArray[7 - i] = buffer.getLong(i * 8);
     }
+
     return longArray;
   }
 
+  /**
+   * Converts an array of longs to a {@link BigInteger}.
+   *
+   * @param longArray an array of longs.
+   * @return a {@link BigInteger} number.
+   */
   public static BigInteger fromLongArray(long[] longArray) {
     // Convert the array of 8 longs to a byte array
     ByteBuffer buffer = ByteBuffer.allocate(64);

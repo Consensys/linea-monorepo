@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.mulmod;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
@@ -35,20 +36,21 @@ public class MulModOverflowResCalculator {
 
     // Calculate mu
     long mu = calculateMu(lambda, aBytes, bBytes, hBytes, alpha);
-
-    // Calculate nu
-    long nu = calculateNu(mu, aBytes, bBytes, hBytes, beta);
-
     // Store results in the boolean array
     overflowRes[0] = getBit(lambda, 0);
     overflowRes[1] = getBit(mu, 0);
     overflowRes[2] = getBit(mu, 1);
+
+    // Calculate nu
+    long nu = calculateNu(mu, aBytes, bBytes, hBytes, beta);
+    // Store results in the boolean array
     overflowRes[3] = getBit(nu, 0);
     overflowRes[4] = getBit(nu, 1);
 
     // Return the boolean array containing the overflow results
     return overflowRes;
   }
+
   /**
    * Calculates lambda based on input parameters.
    *

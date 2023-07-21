@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.mod;
 
 import java.math.BigInteger;
@@ -34,9 +35,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ModTracerTest extends AbstractModuleTracerCorsetTest {
-  static final Random rand = new Random();
+  private static final Random rand = new Random();
 
-  final int TEST_MOD_REPETITIONS = 16;
+  private static final int TEST_MOD_REPETITIONS = 16;
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluModArguments")

@@ -12,11 +12,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.shf;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 
-@SuppressWarnings("unused")
 public record ByteChunks(UnsignedByte ra, UnsignedByte la, UnsignedByte ones) {
 
   public static ByteChunks fromBytes(final UnsignedByte b, final UnsignedByte mshp) {
