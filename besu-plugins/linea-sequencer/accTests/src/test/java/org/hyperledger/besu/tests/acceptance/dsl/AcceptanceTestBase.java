@@ -12,8 +12,22 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package org.hyperledger.besu.tests.acceptance.dsl;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.ProcessBuilder.Redirect;
+import java.math.BigInteger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Blockchain;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.admin.AdminConditions;
@@ -45,33 +59,17 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.privacy.PrivacyTran
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.web3.Web3Transactions;
 import org.junit.After;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestName;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.ProcessBuilder.Redirect;
-import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-
+/**
+ * Base class for acceptance tests.
+ */
+@Slf4j
 public class AcceptanceTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(AcceptanceTestBase.class);
-
   protected final Accounts accounts;
   protected final AccountTransactions accountTransactions;
   protected final AdminConditions admin;
@@ -101,6 +99,7 @@ public class AcceptanceTestBase {
   protected final ExitedWithCode exitedSuccessfully;
 
   private final ExecutorService outputProcessorExecutor = Executors.newCachedThreadPool();
+
   protected AcceptanceTestBase() {
     ethTransactions = new EthTransactions();
     accounts = new Accounts(ethTransactions);
@@ -132,7 +131,8 @@ public class AcceptanceTestBase {
     exitedSuccessfully = new ExitedWithCode(0);
   }
 
-  @Rule public final TestName name = new TestName();
+  @Rule
+  public final TestName name = new TestName();
 
   @After
   public void tearDownAcceptanceTestBase() {
@@ -140,6 +140,9 @@ public class AcceptanceTestBase {
     cluster.close();
   }
 
+  /**
+   * Report memory usage after test execution.
+   */
   public void reportMemory() {
     String os = System.getProperty("os.name");
     String[] command = null;
@@ -150,83 +153,83 @@ public class AcceptanceTestBase {
       command = new String[] {"/usr/bin/top", "-l", "1", "-o", "mem", "-n", "20"};
     }
     if (command != null) {
-      LOG.info("Memory usage at end of test:");
+      log.info("Memory usage at end of test:");
       final ProcessBuilder processBuilder =
-          new ProcessBuilder(command).redirectErrorStream(true).redirectInput(Redirect.INHERIT);
+        new ProcessBuilder(command).redirectErrorStream(true).redirectInput(Redirect.INHERIT);
       try {
         final Process memInfoProcess = processBuilder.start();
         outputProcessorExecutor.execute(() -> printOutput(memInfoProcess));
         memInfoProcess.waitFor();
-        LOG.debug("Memory info process exited with code {}", memInfoProcess.exitValue());
+        log.debug("Memory info process exited with code {}", memInfoProcess.exitValue());
       } catch (final Exception e) {
-        LOG.warn("Error running memory information process", e);
+        log.warn("Error running memory information process", e);
       }
     } else {
-      LOG.info("Don't know how to report memory for OS {}", os);
+      log.info("Don't know how to report memory for OS {}", os);
     }
   }
 
   private void printOutput(final Process process) {
     try (final BufferedReader in =
-        new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
+           new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
       String line = in.readLine();
       while (line != null) {
-        LOG.info(line);
+        log.info(line);
         line = in.readLine();
       }
     } catch (final IOException e) {
-      LOG.warn("Failed to read output from memory information process: ", e);
+      log.warn("Failed to read output from memory information process: ", e);
     }
   }
 
   @Rule
   public TestWatcher logEraser =
-      new TestWatcher() {
+    new TestWatcher() {
 
-        @Override
-        protected void starting(final Description description) {
-          MDC.put("test", description.getMethodName());
-          MDC.put("class", description.getClassName());
+      @Override
+      protected void starting(final Description description) {
+        MDC.put("test", description.getMethodName());
+        MDC.put("class", description.getClassName());
 
-          final String errorMessage = "Uncaught exception in thread \"{}\"";
-          Thread.currentThread()
-              .setUncaughtExceptionHandler(
-                  (thread, error) -> LOG.error(errorMessage, thread.getName(), error));
-          Thread.setDefaultUncaughtExceptionHandler(
-              (thread, error) -> LOG.error(errorMessage, thread.getName(), error));
+        final String errorMessage = "Uncaught exception in thread \"{}\"";
+        Thread.currentThread()
+          .setUncaughtExceptionHandler(
+            (thread, error) -> log.error(errorMessage, thread.getName(), error));
+        Thread.setDefaultUncaughtExceptionHandler(
+          (thread, error) -> log.error(errorMessage, thread.getName(), error));
+      }
+
+      @Override
+      protected void failed(final Throwable e, final Description description) {
+        // add the result at the end of the log so it is self-sufficient
+        log.error(
+          "==========================================================================================");
+        log.error("Test failed. Reported Throwable at the point of failure:", e);
+        log.error(e.getMessage());
+      }
+
+      @Override
+      protected void succeeded(final Description description) {
+        // if so configured, delete logs of successful tests
+        if (!Boolean.getBoolean("acctests.keepLogsOfPassingTests")) {
+          String pathname =
+            "build/acceptanceTestLogs/"
+              + description.getClassName()
+              + "."
+              + description.getMethodName()
+              + ".log";
+          log.info("Test successful, deleting log at {}", pathname);
+          File file = new File(pathname);
+          file.delete();
         }
-
-        @Override
-        protected void failed(final Throwable e, final Description description) {
-          // add the result at the end of the log so it is self-sufficient
-          LOG.error(
-              "==========================================================================================");
-          LOG.error("Test failed. Reported Throwable at the point of failure:", e);
-          LOG.error(e.getMessage());
-        }
-
-        @Override
-        protected void succeeded(final Description description) {
-          // if so configured, delete logs of successful tests
-          if (!Boolean.getBoolean("acctests.keepLogsOfPassingTests")) {
-            String pathname =
-                "build/acceptanceTestLogs/"
-                    + description.getClassName()
-                    + "."
-                    + description.getMethodName()
-                    + ".log";
-            LOG.info("Test successful, deleting log at {}", pathname);
-            File file = new File(pathname);
-            file.delete();
-          }
-        }
-      };
+      }
+    };
 
   protected void waitForBlockHeight(final Node node, final long blockchainHeight) {
     WaitUtils.waitFor(
-        120,
-        () ->
-            assertThat(node.execute(ethTransactions.blockNumber()))
-                .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight)));
+      120,
+      () ->
+        assertThat(node.execute(ethTransactions.blockNumber()))
+          .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight)));
   }
 }

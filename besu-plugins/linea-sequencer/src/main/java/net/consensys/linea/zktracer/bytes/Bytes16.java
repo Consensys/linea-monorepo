@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytes;
 
 import java.security.SecureRandom;
@@ -24,7 +25,7 @@ public interface Bytes16 extends Bytes {
   /** The number of bytes in this value - i.e. 16 */
   int SIZE = 16;
 
-  /** A {@code Bytes16} containing all zero bytes */
+  /** A {@link Bytes16} containing all zero bytes. */
   Bytes16 ZERO = wrap(new byte[SIZE]);
 
   /**
@@ -64,7 +65,7 @@ public interface Bytes16 extends Bytes {
   }
 
   /**
-   * Wrap a the provided value, which must be of size 16, as a {@link Bytes16}.
+   * Wrap the provided value, which must be of size 16, as a {@link Bytes16}.
    *
    * <p>Note that value is not copied, only wrapped, and thus any future update to {@code value}
    * will be reflected in the returned value.
@@ -206,7 +207,7 @@ public interface Bytes16 extends Bytes {
   /**
    * Parse a hexadecimal string into a {@link Bytes16}.
    *
-   * <p>This method is extra strict in that {@code str} must of an even length and the provided
+   * <p>This method is extra strict in that {@code str} must have an even length and the provided
    * representation must have exactly 16 bytes.
    *
    * @param str The hexadecimal string to parse, which may or may not start with "0x".

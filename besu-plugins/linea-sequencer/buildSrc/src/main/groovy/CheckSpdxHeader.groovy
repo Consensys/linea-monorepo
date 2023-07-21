@@ -12,6 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+import groovy.io.FileType
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -62,8 +64,9 @@ class CheckSpdxHeader extends DefaultTask {
     @TaskAction
     void checkHeaders() {
         def filesWithoutHeader = []
+
         new File(rootPath).traverse(
-                type: groovy.io.FileType.FILES,
+                type: FileType.FILES,
                 nameFilter: ~/${filesRegex}/,
                 excludeFilter: ~/${excludeRegex}/
         ) {
@@ -77,5 +80,4 @@ class CheckSpdxHeader extends DefaultTask {
             throw new BuildException("Files without headers: " + filesWithoutHeader.join('\n'), null)
         }
     }
-
 }

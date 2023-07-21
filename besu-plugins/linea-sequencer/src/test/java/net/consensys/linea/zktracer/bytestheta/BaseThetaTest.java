@@ -23,8 +23,11 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Test class related to {@link BaseTheta} data structure, which is an extension of {@link
+ * BytesArray}, with support for high and low bytes' manipulation.
+ */
 public class BaseThetaTest {
-
   @Test
   public void baseThetaTest() {
     Bytes firstByte = Bytes.fromHexString("0x000000000000000a");

@@ -12,9 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.ext;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.alu.ext;
 
 import java.util.List;
 
@@ -22,11 +21,12 @@ import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ExtTracer implements ModuleTracer {
   private int stamp = 0;
 
-  private final int MMEDIUM = 8;
+  private static final int MMEDIUM = 8;
 
   @Override
   public String jsonKey() {
@@ -46,149 +46,150 @@ public class ExtTracer implements ModuleTracer {
     final Bytes32 arg3 = Bytes32.wrap(frame.getStackItem(2));
 
     final ExtData data = new ExtData(opCode, arg1, arg2, arg3);
-    final ExtTrace.Trace.Builder builder = ExtTrace.Trace.Builder.newInstance();
+    final Trace.TraceBuilder builder = Trace.builder();
     stamp++;
+
     for (int ct = 0; ct < maxCounter(data); ct++) {
       final int accLength = ct + 1;
       builder
-          .appendStamp(stamp)
+          .extStampArg(stamp)
           // Byte A and Acc A
-          .appendByteA0(UnsignedByte.of(data.getABytes().get(0).get(ct)))
-          .appendByteA1(UnsignedByte.of(data.getABytes().get(1).get(ct)))
-          .appendByteA2(UnsignedByte.of(data.getABytes().get(2).get(ct)))
-          .appendByteA3(UnsignedByte.of(data.getABytes().get(3).get(ct)))
-          .appendAccA0(data.getABytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccA1(data.getABytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccA2(data.getABytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccA3(data.getABytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .byteA0Arg(UnsignedByte.of(data.getABytes().get(0).get(ct)))
+          .byteA1Arg(UnsignedByte.of(data.getABytes().get(1).get(ct)))
+          .byteA2Arg(UnsignedByte.of(data.getABytes().get(2).get(ct)))
+          .byteA3Arg(UnsignedByte.of(data.getABytes().get(3).get(ct)))
+          .accA0Arg(data.getABytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accA1Arg(data.getABytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accA2Arg(data.getABytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accA3Arg(data.getABytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           // Byte B and Acc B
-          .appendByteB0(UnsignedByte.of(data.getBBytes().get(0).get(ct)))
-          .appendByteB1(UnsignedByte.of(data.getBBytes().get(1).get(ct)))
-          .appendByteB2(UnsignedByte.of(data.getBBytes().get(2).get(ct)))
-          .appendByteB3(UnsignedByte.of(data.getBBytes().get(3).get(ct)))
-          .appendAccB0(data.getBBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccB1(data.getBBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccB2(data.getBBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccB3(data.getBBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .byteB0Arg(UnsignedByte.of(data.getBBytes().get(0).get(ct)))
+          .byteB1Arg(UnsignedByte.of(data.getBBytes().get(1).get(ct)))
+          .byteB2Arg(UnsignedByte.of(data.getBBytes().get(2).get(ct)))
+          .byteB3Arg(UnsignedByte.of(data.getBBytes().get(3).get(ct)))
+          .accB0Arg(data.getBBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accB1Arg(data.getBBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accB2Arg(data.getBBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accB3Arg(data.getBBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           // Byte C and Acc C
-          .appendByteC0(UnsignedByte.of(data.getCBytes().get(0).get(ct)))
-          .appendByteC1(UnsignedByte.of(data.getCBytes().get(1).get(ct)))
-          .appendByteC2(UnsignedByte.of(data.getCBytes().get(2).get(ct)))
-          .appendByteC3(UnsignedByte.of(data.getCBytes().get(3).get(ct)))
-          .appendAccC0(data.getCBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccC1(data.getCBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccC2(data.getCBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccC3(data.getCBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .byteC0Arg(UnsignedByte.of(data.getCBytes().get(0).get(ct)))
+          .byteC1Arg(UnsignedByte.of(data.getCBytes().get(1).get(ct)))
+          .byteC2Arg(UnsignedByte.of(data.getCBytes().get(2).get(ct)))
+          .byteC3Arg(UnsignedByte.of(data.getCBytes().get(3).get(ct)))
+          .accC0Arg(data.getCBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accC1Arg(data.getCBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accC2Arg(data.getCBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accC3Arg(data.getCBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           // Byte Delta and Acc Delta
-          .appendByteDelta0(UnsignedByte.of(data.getDeltaBytes().get(0).get(ct)))
-          .appendByteDelta1(UnsignedByte.of(data.getDeltaBytes().get(1).get(ct)))
-          .appendByteDelta2(UnsignedByte.of(data.getDeltaBytes().get(2).get(ct)))
-          .appendByteDelta3(UnsignedByte.of(data.getDeltaBytes().get(3).get(ct)))
-          .appendAccDelta0(data.getDeltaBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccDelta1(data.getDeltaBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccDelta2(data.getDeltaBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccDelta3(data.getDeltaBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .byteDelta0Arg(UnsignedByte.of(data.getDeltaBytes().get(0).get(ct)))
+          .byteDelta1Arg(UnsignedByte.of(data.getDeltaBytes().get(1).get(ct)))
+          .byteDelta2Arg(UnsignedByte.of(data.getDeltaBytes().get(2).get(ct)))
+          .byteDelta3Arg(UnsignedByte.of(data.getDeltaBytes().get(3).get(ct)))
+          .accDelta0Arg(data.getDeltaBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accDelta1Arg(data.getDeltaBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accDelta2Arg(data.getDeltaBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accDelta3Arg(data.getDeltaBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           // Byte H and Acc H
-          .appendByteH0(UnsignedByte.of(data.getHBytes().get(0).get(ct)))
-          .appendByteH1(UnsignedByte.of(data.getHBytes().get(1).get(ct)))
-          .appendByteH2(UnsignedByte.of(data.getHBytes().get(2).get(ct)))
-          .appendByteH3(UnsignedByte.of(data.getHBytes().get(3).get(ct)))
-          .appendByteH4(UnsignedByte.of(data.getHBytes().get(4).get(ct)))
-          .appendByteH5(UnsignedByte.of(data.getHBytes().get(5).get(ct)))
-          .appendAccH0(data.getHBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccH1(data.getHBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccH2(data.getHBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccH3(data.getHBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccH4(data.getHBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccH5(data.getHBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
+          .byteH0Arg(UnsignedByte.of(data.getHBytes().get(0).get(ct)))
+          .byteH1Arg(UnsignedByte.of(data.getHBytes().get(1).get(ct)))
+          .byteH2Arg(UnsignedByte.of(data.getHBytes().get(2).get(ct)))
+          .byteH3Arg(UnsignedByte.of(data.getHBytes().get(3).get(ct)))
+          .byteH4Arg(UnsignedByte.of(data.getHBytes().get(4).get(ct)))
+          .byteH5Arg(UnsignedByte.of(data.getHBytes().get(5).get(ct)))
+          .accH0Arg(data.getHBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accH1Arg(data.getHBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accH2Arg(data.getHBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accH3Arg(data.getHBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .accH4Arg(data.getHBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
+          .accH5Arg(data.getHBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
           // Byte I and Acc I
-          .appendByteI0(UnsignedByte.of(data.getIBytes().get(0).get(ct)))
-          .appendByteI1(UnsignedByte.of(data.getIBytes().get(1).get(ct)))
-          .appendByteI2(UnsignedByte.of(data.getIBytes().get(2).get(ct)))
-          .appendByteI3(UnsignedByte.of(data.getIBytes().get(3).get(ct)))
-          .appendByteI4(UnsignedByte.of(data.getIBytes().get(4).get(ct)))
-          .appendByteI5(UnsignedByte.of(data.getIBytes().get(5).get(ct)))
-          .appendByteI6(UnsignedByte.of(data.getIBytes().get(6).get(ct)))
-          .appendAccI0(data.getIBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI1(data.getIBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI2(data.getIBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI3(data.getIBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI4(data.getIBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI5(data.getIBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccI6(data.getIBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
+          .byteI0Arg(UnsignedByte.of(data.getIBytes().get(0).get(ct)))
+          .byteI1Arg(UnsignedByte.of(data.getIBytes().get(1).get(ct)))
+          .byteI2Arg(UnsignedByte.of(data.getIBytes().get(2).get(ct)))
+          .byteI3Arg(UnsignedByte.of(data.getIBytes().get(3).get(ct)))
+          .byteI4Arg(UnsignedByte.of(data.getIBytes().get(4).get(ct)))
+          .byteI5Arg(UnsignedByte.of(data.getIBytes().get(5).get(ct)))
+          .byteI6Arg(UnsignedByte.of(data.getIBytes().get(6).get(ct)))
+          .accI0Arg(data.getIBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accI1Arg(data.getIBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accI2Arg(data.getIBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accI3Arg(data.getIBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .accI4Arg(data.getIBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
+          .accI5Arg(data.getIBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
+          .accI6Arg(data.getIBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
           // Byte J and Acc J
-          .appendByteJ0(UnsignedByte.of(data.getJBytes().get(0).get(ct)))
-          .appendByteJ1(UnsignedByte.of(data.getJBytes().get(1).get(ct)))
-          .appendByteJ2(UnsignedByte.of(data.getJBytes().get(2).get(ct)))
-          .appendByteJ3(UnsignedByte.of(data.getJBytes().get(3).get(ct)))
-          .appendByteJ4(UnsignedByte.of(data.getJBytes().get(4).get(ct)))
-          .appendByteJ5(UnsignedByte.of(data.getJBytes().get(5).get(ct)))
-          .appendByteJ6(UnsignedByte.of(data.getJBytes().get(6).get(ct)))
-          .appendByteJ7(UnsignedByte.of(data.getJBytes().get(7).get(ct)))
-          .appendAccJ0(data.getJBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ1(data.getJBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ2(data.getJBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ3(data.getJBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ4(data.getJBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ5(data.getJBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ6(data.getJBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccJ7(data.getJBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
+          .byteJ0Arg(UnsignedByte.of(data.getJBytes().get(0).get(ct)))
+          .byteJ1Arg(UnsignedByte.of(data.getJBytes().get(1).get(ct)))
+          .byteJ2Arg(UnsignedByte.of(data.getJBytes().get(2).get(ct)))
+          .byteJ3Arg(UnsignedByte.of(data.getJBytes().get(3).get(ct)))
+          .byteJ4Arg(UnsignedByte.of(data.getJBytes().get(4).get(ct)))
+          .byteJ5Arg(UnsignedByte.of(data.getJBytes().get(5).get(ct)))
+          .byteJ6Arg(UnsignedByte.of(data.getJBytes().get(6).get(ct)))
+          .byteJ7Arg(UnsignedByte.of(data.getJBytes().get(7).get(ct)))
+          .accJ0Arg(data.getJBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accJ1Arg(data.getJBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accJ2Arg(data.getJBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accJ3Arg(data.getJBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .accJ4Arg(data.getJBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
+          .accJ5Arg(data.getJBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
+          .accJ6Arg(data.getJBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
+          .accJ7Arg(data.getJBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
           // Byte Q and Acc Q
-          .appendByteQ0(UnsignedByte.of(data.getQBytes().get(0).get(ct)))
-          .appendByteQ1(UnsignedByte.of(data.getQBytes().get(1).get(ct)))
-          .appendByteQ2(UnsignedByte.of(data.getQBytes().get(2).get(ct)))
-          .appendByteQ3(UnsignedByte.of(data.getQBytes().get(3).get(ct)))
-          .appendByteQ4(UnsignedByte.of(data.getQBytes().get(4).get(ct)))
-          .appendByteQ5(UnsignedByte.of(data.getQBytes().get(5).get(ct)))
-          .appendByteQ6(UnsignedByte.of(data.getQBytes().get(6).get(ct)))
-          .appendByteQ7(UnsignedByte.of(data.getQBytes().get(7).get(ct)))
-          .appendAccQ0(data.getQBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ1(data.getQBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ2(data.getQBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ3(data.getQBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ4(data.getQBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ5(data.getQBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ6(data.getQBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccQ7(data.getQBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
+          .byteQ0Arg(UnsignedByte.of(data.getQBytes().get(0).get(ct)))
+          .byteQ1Arg(UnsignedByte.of(data.getQBytes().get(1).get(ct)))
+          .byteQ2Arg(UnsignedByte.of(data.getQBytes().get(2).get(ct)))
+          .byteQ3Arg(UnsignedByte.of(data.getQBytes().get(3).get(ct)))
+          .byteQ4Arg(UnsignedByte.of(data.getQBytes().get(4).get(ct)))
+          .byteQ5Arg(UnsignedByte.of(data.getQBytes().get(5).get(ct)))
+          .byteQ6Arg(UnsignedByte.of(data.getQBytes().get(6).get(ct)))
+          .byteQ7Arg(UnsignedByte.of(data.getQBytes().get(7).get(ct)))
+          .accQ0Arg(data.getQBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accQ1Arg(data.getQBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accQ2Arg(data.getQBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accQ3Arg(data.getQBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .accQ4Arg(data.getQBytes().get(4).slice(0, accLength).toUnsignedBigInteger())
+          .accQ5Arg(data.getQBytes().get(5).slice(0, accLength).toUnsignedBigInteger())
+          .accQ6Arg(data.getQBytes().get(6).slice(0, accLength).toUnsignedBigInteger())
+          .accQ7Arg(data.getQBytes().get(7).slice(0, accLength).toUnsignedBigInteger())
           // Byte R and Acc R
-          .appendByteR0(UnsignedByte.of(data.getRBytes().get(0).get(ct)))
-          .appendByteR1(UnsignedByte.of(data.getRBytes().get(1).get(ct)))
-          .appendByteR2(UnsignedByte.of(data.getRBytes().get(2).get(ct)))
-          .appendByteR3(UnsignedByte.of(data.getRBytes().get(3).get(ct)))
-          .appendAccR0(data.getRBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccR1(data.getRBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccR2(data.getRBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
-          .appendAccR3(data.getRBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
+          .byteR0Arg(UnsignedByte.of(data.getRBytes().get(0).get(ct)))
+          .byteR1Arg(UnsignedByte.of(data.getRBytes().get(1).get(ct)))
+          .byteR2Arg(UnsignedByte.of(data.getRBytes().get(2).get(ct)))
+          .byteR3Arg(UnsignedByte.of(data.getRBytes().get(3).get(ct)))
+          .accR0Arg(data.getRBytes().get(0).slice(0, accLength).toUnsignedBigInteger())
+          .accR1Arg(data.getRBytes().get(1).slice(0, accLength).toUnsignedBigInteger())
+          .accR2Arg(data.getRBytes().get(2).slice(0, accLength).toUnsignedBigInteger())
+          .accR3Arg(data.getRBytes().get(3).slice(0, accLength).toUnsignedBigInteger())
           // other
-          .appendArg1Hi(data.getArg1().getHigh().toUnsignedBigInteger())
-          .appendArg1Lo(data.getArg1().getLow().toUnsignedBigInteger())
-          .appendArg2Hi(data.getArg2().getHigh().toUnsignedBigInteger())
-          .appendArg2Lo(data.getArg2().getLow().toUnsignedBigInteger())
-          .appendArg3Hi(data.getArg3().getHigh().toUnsignedBigInteger())
-          .appendArg3Lo(data.getArg3().getLow().toUnsignedBigInteger())
-          .appendResHi(data.getResult().getHigh().toUnsignedBigInteger())
-          .appendResLo(data.getResult().getLow().toUnsignedBigInteger())
-          .appendCmp(data.getCmp()[ct])
-          .appendOfH(data.getOverflowH()[ct])
-          .appendOfJ(data.getOverflowJ()[ct])
-          .appendOfI(data.getOverflowI()[ct])
-          .appendOfRes(data.getOverflowRes()[ct])
-          .appendCt(ct)
-          .appendInst(UnsignedByte.of(opCode.value))
-          .appendOli(data.isOli())
-          .appendBit1(data.getBit1())
-          .appendBit2(data.getBit2())
-          .appendBit3(data.getBit3());
+          .arg1HiArg(data.getArg1().getHigh().toUnsignedBigInteger())
+          .arg1LoArg(data.getArg1().getLow().toUnsignedBigInteger())
+          .arg2HiArg(data.getArg2().getHigh().toUnsignedBigInteger())
+          .arg2LoArg(data.getArg2().getLow().toUnsignedBigInteger())
+          .arg3HiArg(data.getArg3().getHigh().toUnsignedBigInteger())
+          .arg3LoArg(data.getArg3().getLow().toUnsignedBigInteger())
+          .resHiArg(data.getResult().getHigh().toUnsignedBigInteger())
+          .resLoArg(data.getResult().getLow().toUnsignedBigInteger())
+          .cmpArg(data.getCmp()[ct])
+          .ofHArg(data.getOverflowH()[ct])
+          .ofJArg(data.getOverflowJ()[ct])
+          .ofIArg(data.getOverflowI()[ct])
+          .ofResArg(data.getOverflowRes()[ct])
+          .ctArg(ct)
+          .instArg(UnsignedByte.of(opCode.value))
+          .oliArg(data.isOli())
+          .bit1Arg(data.getBit1())
+          .bit2Arg(data.getBit2())
+          .bit3Arg(data.getBit3());
     }
-    builder.setStamp(stamp);
-    return builder.build();
+
+    return new ExtTrace(builder.build(), stamp);
   }
 
   private int maxCounter(ExtData data) {
     if (data.isOli()) {
       return 1;
-    } else {
-      return MMEDIUM;
     }
+
+    return MMEDIUM;
   }
 }

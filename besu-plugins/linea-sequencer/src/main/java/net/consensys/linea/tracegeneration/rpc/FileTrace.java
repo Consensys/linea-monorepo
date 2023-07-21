@@ -12,28 +12,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.tracegeneration.rpc;
 
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class FileTrace {
-  private final String tracesEngineVersion;
-  private final List<String> tracesFileName;
-
-  public FileTrace(final String tracesEngineVersion, final List<String> tracesFileName) {
-    this.tracesEngineVersion = tracesEngineVersion;
-    this.tracesFileName = tracesFileName;
-  }
-
+/** FileTrace represents an execution trace. */
+public record FileTrace(String tracesEngineVersion, List<String> tracesFileName) {
+  @Override
   @JsonProperty("tracesEngineVersion")
-  public String getTracesEngineVersion() {
+  public String tracesEngineVersion() {
     return tracesEngineVersion;
   }
 
+  @Override
   @JsonProperty("tracesFileName")
-  public List<String> getTracesFileName() {
+  public List<String> tracesFileName() {
     return tracesFileName;
   }
 }

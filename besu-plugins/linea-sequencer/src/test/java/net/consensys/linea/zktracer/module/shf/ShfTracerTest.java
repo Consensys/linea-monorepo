@@ -12,24 +12,25 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.shf;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.Mockito.when;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
-
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Tag;
@@ -40,14 +41,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+@Slf4j
 @ExtendWith(MockitoExtension.class)
 @Tag("CorsetTest")
 class ShfTracerTest {
-  private static final Logger LOG = LoggerFactory.getLogger(ShfTracerTest.class);
-
   private static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 4;
 
@@ -81,7 +79,7 @@ class ShfTracerTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideRandomSarArguments")
   void testRandomSar(final Bytes32[] payload) {
-    LOG.info(
+    log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
     when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
 
@@ -155,6 +153,7 @@ class ShfTracerTest {
     byte[] result = new byte[length];
     System.arraycopy(a, 0, result, 0, a.length);
     System.arraycopy(b, 0, result, a.length, b.length);
+
     return result;
   }
 }

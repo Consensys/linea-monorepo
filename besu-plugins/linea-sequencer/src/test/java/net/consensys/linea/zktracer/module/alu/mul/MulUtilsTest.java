@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.mul;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -228,8 +229,8 @@ public class MulUtilsTest {
     final MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
     mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
-    BigInteger sum_010 = new BigInteger("375860551383434850958895718584879559103");
-    assertThat(Util.getOverflow(UInt256.valueOf(sum_010), 3, "mu OOB")).isEqualTo(1);
+    BigInteger sum010 = new BigInteger("375860551383434850958895718584879559103");
+    assertThat(Util.getOverflow(UInt256.valueOf(sum010), 3, "mu OOB")).isEqualTo(1);
 
     // bits
     // expected value obtained from go implementation debug output

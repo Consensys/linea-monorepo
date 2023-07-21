@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.mulmod;
 
 import static net.consensys.linea.zktracer.module.Util.uInt64ToBytes;
@@ -32,6 +33,7 @@ public class MulModBytesJCalculator {
    */
   public static BytesArray computeJs(Bytes32 arg1, Bytes32 arg2) {
     byte[][] jBytes = new byte[8][8];
+
     BigInteger arg1UInt = arg1.toUnsignedBigInteger();
     BigInteger arg2UInt = arg2.toUnsignedBigInteger();
     // Compute the product of the two unsigned BigIntegers.
@@ -42,6 +44,7 @@ public class MulModBytesJCalculator {
     for (int k = 0; k < prodArray.length; k++) {
       jBytes[k] = uInt64ToBytes(prodArray[k]);
     }
+
     return new BytesArray(jBytes);
   }
 }

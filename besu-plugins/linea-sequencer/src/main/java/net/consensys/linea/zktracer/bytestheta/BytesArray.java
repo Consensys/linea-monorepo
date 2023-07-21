@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytestheta;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -36,6 +37,7 @@ public class BytesArray {
   public BytesArray(final byte[][] bytes) {
     int arraySize = bytes.length;
     bytesArray = new MutableBytes[arraySize];
+
     for (int i = 0; i < arraySize; i++) {
       bytesArray[i] = MutableBytes.wrap(bytes[i]);
     }
@@ -67,6 +69,7 @@ public class BytesArray {
    */
   public BytesArray(Bytes32 bytes32) {
     bytesArray = new MutableBytes[4];
+
     for (int i = 0; i < 4; i++) {
       bytesArray[i] = MutableBytes.wrap(bytes32.slice(i * 8, 8).toArray());
     }
@@ -115,6 +118,7 @@ public class BytesArray {
     for (int i = 0; i < rangeSize; i++) {
       bytes[i] = get(start + i);
     }
+
     return bytes;
   }
 }

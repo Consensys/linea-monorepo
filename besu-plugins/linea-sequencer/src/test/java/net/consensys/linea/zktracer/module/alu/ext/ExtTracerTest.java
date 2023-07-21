@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext;
 
 import java.util.ArrayList;
@@ -100,6 +101,7 @@ class ExtTracerTest extends AbstractModuleTracerCorsetTest {
           Arguments.of(
               opCode, List.of(UInt256.valueOf(0), UInt256.valueOf(12), UInt256.valueOf(6))));
     }
+
     return arguments.stream();
   }
 
@@ -110,6 +112,7 @@ class ExtTracerTest extends AbstractModuleTracerCorsetTest {
           Arguments.of(
               opCode, List.of(UInt256.valueOf(1), UInt256.valueOf(1), UInt256.valueOf(0))));
     }
+
     return arguments.stream();
   }
 
@@ -120,6 +123,7 @@ class ExtTracerTest extends AbstractModuleTracerCorsetTest {
           Arguments.of(
               opCode, List.of(UInt256.valueOf(6), UInt256.valueOf(7), UInt256.valueOf(13))));
     }
+
     return arguments.stream();
   }
 
@@ -129,6 +133,7 @@ class ExtTracerTest extends AbstractModuleTracerCorsetTest {
       arguments.add(
           Arguments.of(opCode, List.of(UInt256.MAX_VALUE, UInt256.MAX_VALUE, UInt256.MAX_VALUE)));
     }
+
     return arguments.stream();
   }
 }

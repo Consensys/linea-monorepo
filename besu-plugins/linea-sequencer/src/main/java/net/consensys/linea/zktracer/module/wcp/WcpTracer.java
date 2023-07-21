@@ -12,9 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.wcp;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.wcp;
 
 import java.util.List;
 
@@ -22,6 +21,7 @@ import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class WcpTracer implements ModuleTracer {
   private static final int LIMB_SIZE = 16;
@@ -44,44 +44,46 @@ public class WcpTracer implements ModuleTracer {
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
     final WcpData data = new WcpData(opCode, arg1, arg2);
-    final WcpTrace.Trace.Builder builder = WcpTrace.Trace.Builder.newInstance();
+    final Trace.TraceBuilder builder = Trace.builder();
 
     stamp++;
+
     for (int ct = 0; ct < maxCt(data.isOneLineInstruction()); ct++) {
       builder
-          .appendWcpStamp(stamp)
-          .appendOneLineInstruction(data.isOneLineInstruction())
-          .appendCounter(ct)
-          .appendInst(UnsignedByte.of(opCode.value))
-          .appendArg1Hi(data.getArg1Hi().toUnsignedBigInteger())
-          .appendArg1Lo(data.getArg1Lo().toUnsignedBigInteger())
-          .appendArg2Hi(data.getArg2Hi().toUnsignedBigInteger())
-          .appendArg2Lo(data.getArg2Lo().toUnsignedBigInteger())
-          .appendResHi(data.getResHi())
-          .appendResLo(data.getResLo())
-          .appendBits(data.getBits().get(ct))
-          .appendNeg1(data.getNeg1())
-          .appendNeg2(data.getNeg2())
-          .appendByte1(UnsignedByte.of(data.getArg1Hi().get(ct)))
-          .appendByte2(UnsignedByte.of(data.getArg1Lo().get(ct)))
-          .appendByte3(UnsignedByte.of(data.getArg2Hi().get(ct)))
-          .appendByte4(UnsignedByte.of(data.getArg2Lo().get(ct)))
-          .appendByte5(UnsignedByte.of(data.getAdjHi().get(ct)))
-          .appendByte6(UnsignedByte.of(data.getAdjLo().get(ct)))
-          .appendAcc1(data.getArg1Hi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendAcc2(data.getArg1Lo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendAcc3(data.getArg2Hi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendAcc4(data.getArg2Lo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendAcc5(data.getAdjHi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendAcc6(data.getAdjLo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .appendBit1(data.getBit1())
-          .appendBit2(data.getBit2())
-          .appendBit3(data.getBit3())
-          .appendBit4(data.getBit4());
+          .wordComparisonStampArg(stamp)
+          .oneLineInstructionArg(data.isOneLineInstruction())
+          .counterArg(ct)
+          .instArg(UnsignedByte.of(opCode.value))
+          .argument1HiArg(data.getArg1Hi().toUnsignedBigInteger())
+          .argument1LoArg(data.getArg1Lo().toUnsignedBigInteger())
+          .argument2HiArg(data.getArg2Hi().toUnsignedBigInteger())
+          .argument2LoArg(data.getArg2Lo().toUnsignedBigInteger())
+          .resultHiArg(data.getResHi())
+          .resultLoArg(data.getResLo())
+          .bitsArg(data.getBits().get(ct))
+          .neg1Arg(data.getNeg1())
+          .neg2Arg(data.getNeg2())
+          .byte1Arg(UnsignedByte.of(data.getArg1Hi().get(ct)))
+          .byte2Arg(UnsignedByte.of(data.getArg1Lo().get(ct)))
+          .byte3Arg(UnsignedByte.of(data.getArg2Hi().get(ct)))
+          .byte4Arg(UnsignedByte.of(data.getArg2Lo().get(ct)))
+          .byte5Arg(UnsignedByte.of(data.getAdjHi().get(ct)))
+          .byte6Arg(UnsignedByte.of(data.getAdjLo().get(ct)))
+          .acc1Arg(data.getArg1Hi().slice(0, 1 + ct).toUnsignedBigInteger())
+          .acc2Arg(data.getArg1Lo().slice(0, 1 + ct).toUnsignedBigInteger())
+          .acc3Arg(data.getArg2Hi().slice(0, 1 + ct).toUnsignedBigInteger())
+          .acc4Arg(data.getArg2Lo().slice(0, 1 + ct).toUnsignedBigInteger())
+          .acc5Arg(data.getAdjHi().slice(0, 1 + ct).toUnsignedBigInteger())
+          .acc6Arg(data.getAdjLo().slice(0, 1 + ct).toUnsignedBigInteger())
+          .bit1Arg(data.getBit1())
+          .bit2Arg(data.getBit2())
+          .bit3Arg(data.getBit3())
+          .bit4Arg(data.getBit4());
     }
 
-    builder.setStamp(stamp);
-    return builder.build();
+    Trace trace = builder.build();
+
+    return new WcpTrace(trace, stamp);
   }
 
   private int maxCt(final boolean isOneLineInstruction) {

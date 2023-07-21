@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -83,7 +84,7 @@ public class Util {
   }
 
   /**
-   * Converts a 64-bit unsigned integer into an 8-byte array
+   * Converts a 64-bit unsigned integer into an 8-byte array.
    *
    * @param x The 64-bit unsigned integer to be converted.
    * @return An 8-byte array representing the input value.
@@ -124,6 +125,7 @@ public class Util {
     }
     return sum;
   }
+
   /**
    * Converts a boolean value to a byte (1 for true and 0 for false).
    *

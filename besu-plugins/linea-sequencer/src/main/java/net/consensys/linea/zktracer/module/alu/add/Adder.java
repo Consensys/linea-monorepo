@@ -1,4 +1,3 @@
-package net.consensys.linea.zktracer.module.alu.add;
 /*
  * Copyright ConsenSys AG.
  *
@@ -14,31 +13,41 @@ package net.consensys.linea.zktracer.module.alu.add;
  * SPDX-License-Identifier: Apache-2.0
  */
 
+package net.consensys.linea.zktracer.module.alu.add;
+
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+/** A module responsible for addition operations. */
+@Slf4j
 public class Adder {
-  private static final Logger LOG = LoggerFactory.getLogger(Adder.class);
 
+  /**
+   * Performs addition or subtraction based on the opcode.
+   *
+   * @param opCode accepts {@link OpCode#ADD} or {@link OpCode#SUB}.
+   * @param arg1 left argument.
+   * @param arg2 right argument.
+   * @return {@link BaseBytes} - 256-bit (32-byte) blocks data.
+   */
   public static BaseBytes addSub(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
-    LOG.info("adding " + arg1 + " " + opCode.name() + " " + arg2);
-    final BaseBytes resBytes = x(opCode, arg1, arg2);
+    log.info("adding " + arg1 + " " + opCode.name() + " " + arg2);
+
+    final BaseBytes resBytes = performOperation(opCode, arg1, arg2);
+
     // ensure result is correct length
     return BaseBytes.fromBytes32(resBytes.getBytes32());
   }
 
-  private static BaseBytes x(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
-    {
-      return switch (opCode) {
-        case ADD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2)));
-        case SUB -> BaseBytes.fromBytes32(
-            UInt256.fromBytes(arg1).subtract(UInt256.fromBytes(arg2)));
-        default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
-      };
-    }
+  private static BaseBytes performOperation(
+      final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
+    return switch (opCode) {
+      case ADD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2)));
+      case SUB -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).subtract(UInt256.fromBytes(arg2)));
+      default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
+    };
   }
 }

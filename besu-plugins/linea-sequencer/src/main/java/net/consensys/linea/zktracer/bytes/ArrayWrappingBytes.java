@@ -23,6 +23,7 @@ import io.vertx.core.buffer.Buffer;
 import org.apache.tuweni.bytes.AbstractBytes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.MutableBytes;
+import org.jetbrains.annotations.NotNull;
 
 class ArrayWrappingBytes extends AbstractBytes {
 
@@ -103,15 +104,16 @@ class ArrayWrappingBytes extends AbstractBytes {
   }
 
   @Override
-  public int commonPrefixLength(Bytes other) {
-    if (!(other instanceof ArrayWrappingBytes)) {
+  public int commonPrefixLength(@NotNull Bytes other) {
+    if (!(other instanceof ArrayWrappingBytes o)) {
       return super.commonPrefixLength(other);
     }
-    ArrayWrappingBytes o = (ArrayWrappingBytes) other;
+
     int i = 0;
     while (i < length && i < o.length && bytes[offset + i] == o.bytes[o.offset + i]) {
       i++;
     }
+
     return i;
   }
 
@@ -121,8 +123,8 @@ class ArrayWrappingBytes extends AbstractBytes {
   }
 
   @Override
-  public void copyTo(MutableBytes destination, int destinationOffset) {
-    if (!(destination instanceof MutableArrayWrappingBytes)) {
+  public void copyTo(@NotNull MutableBytes destination, int destinationOffset) {
+    if (!(destination instanceof MutableArrayWrappingBytes d)) {
       super.copyTo(destination, destinationOffset);
       return;
     }
@@ -140,7 +142,6 @@ class ArrayWrappingBytes extends AbstractBytes {
         destination.size() - destinationOffset,
         destinationOffset);
 
-    MutableArrayWrappingBytes d = (MutableArrayWrappingBytes) destination;
     System.arraycopy(bytes, offset, d.bytes, d.offset + destinationOffset, size);
   }
 
@@ -164,6 +165,7 @@ class ArrayWrappingBytes extends AbstractBytes {
     if (offset == 0 && length == bytes.length) {
       return bytes;
     }
+
     return toArray();
   }
 }

@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytes;
 
 import javax.annotation.Nullable;
@@ -19,7 +20,6 @@ import javax.annotation.Nullable;
 import com.google.errorprone.annotations.FormatMethod;
 
 class Checks {
-
   static void checkNotNull(@Nullable Object object) {
     if (object == null) {
       throw new NullPointerException("argument cannot be null");

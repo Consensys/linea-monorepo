@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.addmod;
 
 import static net.consensys.linea.zktracer.module.Util.uInt64ToBytes;
@@ -66,6 +67,7 @@ public class AddModBytesQCalculator {
         qBytes[k] = uInt64ToBytes(quot[k]);
       }
     }
+
     return new BytesArray(qBytes);
   }
 
@@ -75,6 +77,7 @@ public class AddModBytesQCalculator {
       sumUInt64[k] = sum.toUnsignedBigInteger().shiftRight(k * 64).longValue();
     }
     sumUInt64[4] = 1L;
+
     return fromLongArray(sumUInt64);
   }
 }

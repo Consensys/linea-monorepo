@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytestheta;
 
 import net.consensys.linea.zktracer.bytes.Bytes16;
@@ -32,6 +33,7 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
    */
   public BaseTheta(final Bytes32 arg) {
     super(arg);
+
     for (int k = 0; k < 4; k++) {
       Bytes bytes = arg.slice(8 * k, 8);
       set((3 - k), bytes);
@@ -59,8 +61,8 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   }
 
   /**
-   * This method returns a new `Bytes16` object that is the concatenation of the third and second
-   * 64-bit sections of the `bytes32` instance variable.
+   * Returns a new `Bytes16` object that is the concatenation of the third and second 64-bit
+   * sections of the `bytes32` instance variable.
    *
    * @return A new `Bytes16` object that is the concatenation of the third and second 64-bit
    *     sections of the `bytes32` instance variable.
@@ -71,8 +73,8 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   }
 
   /**
-   * This method returns a new `Bytes16` object that is the concatenation of the first and second
-   * 64-bit sections of the `bytes32` instance variable.
+   * Returns a new `Bytes16` object that is the concatenation of the first and second 64-bit
+   * sections of the `bytes32` instance variable.
    *
    * @return A new `Bytes16` object that is the concatenation of the first and second 64-bit
    *     sections of the `bytes32` instance variable.
@@ -81,6 +83,7 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   public Bytes16 getLow() {
     return Bytes16.wrap(Bytes.concatenate(bytesArray[1], bytesArray[0]));
   }
+
   /**
    * Returns the byte at the specified position within the specified Bytes instance in the array.
    *
@@ -91,6 +94,7 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
   public byte get(final int i, final int j) {
     return bytesArray[i].get(j);
   }
+
   /**
    * Returns a range of bytes from a specified Bytes instance within the array.
    *
@@ -123,18 +127,7 @@ public class BaseTheta extends BytesArray implements HighLowBytes {
 
   @Override
   public String toString() {
-    final StringBuilder sb = new StringBuilder();
-    sb.append("hi=").append(getHigh()).append(", ");
-    sb.append("lo=").append(getLow()).append(("\n"));
-    sb.append("  0 1 2 3\n  ");
-    sb.append(get(0))
-        .append(" ")
-        .append(get(1))
-        .append(" ")
-        .append(get(2))
-        .append(" ")
-        .append(get(3))
-        .append(" ");
-    return sb.toString();
+    return "hi=%s, lo=%s\n  0 1 2 3\n  %s %s %s %s "
+        .formatted(getHigh(), getLow(), get(0), get(1), get(2), get(3));
   }
 }

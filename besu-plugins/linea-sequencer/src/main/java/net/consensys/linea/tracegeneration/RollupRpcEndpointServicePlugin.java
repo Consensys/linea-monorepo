@@ -12,19 +12,18 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.tracegeneration;
 
+import com.google.auto.service.AutoService;
+import net.consensys.linea.tracegeneration.rpc.RollupGenerateConflatedTracesToFileV0;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
-import com.google.auto.service.AutoService;
-import net.consensys.linea.tracegeneration.rpc.RollupGenerateConflatedTracesToFileV0;
-
-/** Test plugin with RPC endpoint */
+/** Test plugin with RPC endpoint. */
 @AutoService(BesuPlugin.class)
 public class RollupRpcEndpointServicePlugin implements BesuPlugin {
-
   @Override
   public void register(final BesuContext context) {
     RollupGenerateConflatedTracesToFileV0 method =

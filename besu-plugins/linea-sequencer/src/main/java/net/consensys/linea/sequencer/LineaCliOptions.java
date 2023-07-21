@@ -12,14 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.sequencer;
 
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
 
 /** The Linea CLI options. */
-public class LineaCLIOptions {
-
+public class LineaCliOptions {
   public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 60000;
   public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 70000;
 
@@ -46,15 +46,15 @@ public class LineaCLIOptions {
               + ")")
   private int maxBlockCalldataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
 
-  private LineaCLIOptions() {}
+  private LineaCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  public static LineaCLIOptions create() {
-    return new LineaCLIOptions();
+  public static LineaCliOptions create() {
+    return new LineaCliOptions();
   }
 
   /**
@@ -63,10 +63,11 @@ public class LineaCLIOptions {
    * @param config the config
    * @return the Linea cli options
    */
-  public static LineaCLIOptions fromConfig(final LineaConfiguration config) {
-    final LineaCLIOptions options = create();
-    options.maxTxCalldataSize = config.getMaxTxCalldataSize();
-    options.maxBlockCalldataSize = config.getMaxBlockCalldataSize();
+  public static LineaCliOptions fromConfig(final LineaConfiguration config) {
+    final LineaCliOptions options = create();
+    options.maxTxCalldataSize = config.maxTxCalldataSize();
+    options.maxBlockCalldataSize = config.maxBlockCalldataSize();
+
     return options;
   }
 

@@ -12,29 +12,20 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.shf;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
 
+@RequiredArgsConstructor
 public class Shb {
 
-  private final UnsignedByte[][] shbHi;
-  private final UnsignedByte[][] shbLo;
-
-  private Shb(UnsignedByte[][] shbHi, UnsignedByte[][] shbLo) {
-    this.shbHi = shbHi;
-    this.shbLo = shbLo;
-  }
-
-  public UnsignedByte[][] getShbHi() {
-    return shbHi;
-  }
-
-  public UnsignedByte[][] getShbLo() {
-    return shbLo;
-  }
+  @Getter private final UnsignedByte[][] shbHi;
+  @Getter private final UnsignedByte[][] shbLo;
 
   public static Shb create(final OpCode opCode, final Bytes32 arg2, final UnsignedByte lsb) {
     final UnsignedByte[][] shbHi = new UnsignedByte[5][16];

@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.addmod;
 
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
@@ -20,6 +21,7 @@ import net.consensys.linea.zktracer.module.alu.ext.calculator.AbstractExtCalcula
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+/** Calculator for performing extended modular arithmetic operations. */
 public class AddModCalculator extends AbstractExtCalculator {
 
   @Override

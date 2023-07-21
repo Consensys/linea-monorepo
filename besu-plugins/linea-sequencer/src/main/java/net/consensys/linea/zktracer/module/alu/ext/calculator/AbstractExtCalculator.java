@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import net.consensys.linea.zktracer.OpCode;
@@ -40,6 +41,7 @@ public abstract class AbstractExtCalculator {
    * @return the result of the extended modular arithmetic operation.
    */
   public abstract UInt256 computeResult(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3);
+
   /**
    * Computes the Js array for the given arguments.
    *
@@ -48,6 +50,7 @@ public abstract class AbstractExtCalculator {
    * @return the Js array.
    */
   public abstract BytesArray computeJs(Bytes32 arg1, Bytes32 arg2);
+
   /**
    * Computes the Qs array for the given arguments.
    *
@@ -57,6 +60,7 @@ public abstract class AbstractExtCalculator {
    * @return the Qs array.
    */
   public abstract BytesArray computeQs(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3);
+
   /**
    * Computes the overflow result for the given arguments.
    *
@@ -77,6 +81,7 @@ public abstract class AbstractExtCalculator {
       final BytesArray hBytes,
       final UInt256 alpha,
       final UInt256 beta);
+
   /**
    * Computes the comparison flags for the given arguments.
    *
@@ -87,6 +92,7 @@ public abstract class AbstractExtCalculator {
   public boolean[] computeComparisonFlags(BytesArray cBytes, BytesArray rBytes) {
     return CmpFlagsCalculator.computeComparisonFlags(cBytes, rBytes);
   }
+
   /**
    * Computes the delta values for the given arguments.
    *
@@ -97,6 +103,7 @@ public abstract class AbstractExtCalculator {
   public BaseTheta computeDeltas(BytesArray cBytes, BytesArray rBytes) {
     return DeltaCalculator.computeDeltas(cBytes, rBytes);
   }
+
   /**
    * Sets the Hs array and returns the overflow values for the given arguments.
    *
@@ -108,6 +115,7 @@ public abstract class AbstractExtCalculator {
   public boolean[] computeHs(BytesArray aBytes, BytesArray bBytes, BytesArray hBytes) {
     return BytesHCalculator.computeHsAndOverflowH(aBytes, bBytes, hBytes);
   }
+
   /**
    * Sets the Is array and returns the overflow values for the given arguments.
    *
@@ -119,6 +127,7 @@ public abstract class AbstractExtCalculator {
   public boolean[] computeIs(BytesArray qBytes, BytesArray cBytes, BytesArray iBytes) {
     return BytesICalculator.computeIsAndOverflowI(qBytes, cBytes, iBytes);
   }
+
   /**
    * Computes the and returns the overflow values for the given arguments.
    *
@@ -139,6 +148,7 @@ public abstract class AbstractExtCalculator {
       UInt256 tau) {
     return OverflowJCalculator.computeOverflowJ(qBytes, cBytes, rBytes, iBytes, sigma, tau);
   }
+
   /**
    * Creates a new instance of a calculator based on the given OpCode.
    *

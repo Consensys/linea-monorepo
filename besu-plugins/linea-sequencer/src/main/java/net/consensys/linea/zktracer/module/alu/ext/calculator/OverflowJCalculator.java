@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
@@ -33,19 +34,19 @@ public class OverflowJCalculator {
     boolean[] overflow = new boolean[8];
 
     long phi = calculatePhi(qBytes, cBytes, rBytes, iBytes);
-
-    long psi = calculatePsi(phi, qBytes, cBytes, rBytes, iBytes, sigma);
-
-    long chi = calculateChi(psi, qBytes, cBytes, iBytes, tau);
-
     overflow[0] = getBit(phi, 0);
     overflow[1] = getBit(phi, 1);
+
+    long psi = calculatePsi(phi, qBytes, cBytes, rBytes, iBytes, sigma);
     overflow[2] = getBit(psi, 0);
     overflow[3] = getBit(psi, 1);
     overflow[4] = getBit(psi, 2);
+
+    long chi = calculateChi(psi, qBytes, cBytes, iBytes, tau);
     overflow[5] = getBit(chi, 0);
     overflow[6] = getBit(chi, 1);
     overflow[7] = getBit(chi, 2);
+
     return overflow;
   }
 

@@ -1,31 +1,40 @@
 plugins {
-    id 'org.web3j' version '4.9.2'
-    id 'org.web3j.solidity' version '0.3.5'
+  id 'checkstyle'
+  id 'io.freefair.lombok' version '8.1.0'
+  id 'org.web3j' version '4.9.2'
+  id 'org.web3j.solidity' version '0.3.5'
 }
 
 web3j { generatedPackageName = 'org.hyperledger.besu.tests.web3j.generated' }
 
 solidity {
-    resolvePackages = false
-    optimizeRuns = 1
+  resolvePackages = false
+  optimizeRuns = 1
+}
+
+checkstyle {
+  toolVersion = '10.12.1'
+  //    maxWarnings = 0
+  //    ignoreFailures = false
 }
 
 dependencies {
-    testImplementation "org.hyperledger.besu.internal:dsl:$besuVersion"
-    testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
-    testImplementation "org.hyperledger.besu.internal:eth:$besuVersion"
-    testImplementation "org.hyperledger.besu.internal:eth:$besuVersion:test-support"
-    testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
-    testImplementation "org.hyperledger.besu.internal:core:$besuVersion:test-support"
+  testImplementation "org.hyperledger.besu.internal:dsl:$besuVersion"
+  testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+  testImplementation "org.hyperledger.besu.internal:eth:$besuVersion"
+  testImplementation "org.hyperledger.besu.internal:eth:$besuVersion:test-support"
+  testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
+  testImplementation "org.hyperledger.besu.internal:core:$besuVersion:test-support"
 
-    testImplementation 'org.web3j:abi'
-    testImplementation 'org.web3j:besu'
-    testImplementation 'org.web3j:core'
+  testImplementation 'org.web3j:abi'
+  testImplementation 'org.web3j:besu'
+  testImplementation 'org.web3j:core'
 
-    testImplementation 'junit:junit'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.awaitility:awaitility'
-    testImplementation 'com.splunk.logging:splunk-library-javalogging'
+  testImplementation 'junit:junit'
+  testImplementation 'org.assertj:assertj-core'
+  testImplementation 'org.awaitility:awaitility'
+  testImplementation 'com.splunk.logging:splunk-library-javalogging'
+  testImplementation 'org.projectlombok:lombok:1.18.26'
 
 }
 
@@ -33,30 +42,34 @@ test.enabled = false
 
 unitTests.enabled = false
 
-tasks.register ("copyPluginJar") {
-    dependsOn rootProject.installDist
+tasks.named("checkstyleTest", Checkstyle) {
+  exclude("**/generated/*.java")
+}
 
-    doLast {
-        def copyInto = File.createTempDir("plugins")
-        def copyFrom = new File(getRootDir().toString() + "/build/libs")
-        project.ext.pluginDir = copyInto.toString()
+tasks.register("copyPluginJar") {
+  dependsOn rootProject.installDist
 
-        copy {
-            from copyFrom.toString()
-            into copyInto.toString()
-            include '*.jar'
-        }
+  doLast {
+    def copyInto = File.createTempDir("plugins")
+    def copyFrom = new File(getRootDir().toString() + "/build/libs")
+    project.ext.pluginDir = copyInto.toString()
+
+    copy {
+      from copyFrom.toString()
+      into copyInto.toString()
+      include '*.jar'
     }
+  }
 }
 
 task acceptanceTest(dependsOn: copyPluginJar, type: Test) {
-    inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
-    include '**'
+  inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
+  include '**'
 
-    useJUnitPlatform {}
+  useJUnitPlatform {}
 
-    doFirst {
-        systemProperty "besu.plugins.dir", project.ext.pluginDir
-    }
+  doFirst {
+    systemProperty "besu.plugins.dir", project.ext.pluginDir
+  }
 }
 

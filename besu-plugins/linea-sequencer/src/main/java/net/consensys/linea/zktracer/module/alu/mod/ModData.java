@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.mod;
 
 import static com.google.common.base.Preconditions.checkElementIndex;
@@ -20,6 +21,7 @@ import static net.consensys.linea.zktracer.module.Util.byteBits;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
@@ -29,21 +31,21 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
 public class ModData {
-  private final OpCode opCode;
-  private final boolean oli;
-  private final BaseBytes arg1;
-  private final BaseBytes arg2;
-  private BaseBytes result = BaseBytes.fromBytes32(Bytes32.ZERO);
-  private BaseTheta A_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private BaseTheta B_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private BaseTheta Q_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private BaseTheta R_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private BaseTheta H_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private BaseTheta D_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  private final boolean[] cmp1 = new boolean[8];
-  private final boolean[] cmp2 = new boolean[8];
-  private Boolean[] msb1 = new Boolean[8];
-  private Boolean[] msb2 = new Boolean[8];
+  @Getter private final OpCode opCode;
+  @Getter private final boolean oli;
+  @Getter private final BaseBytes arg1;
+  @Getter private final BaseBytes arg2;
+  @Getter private BaseBytes result = BaseBytes.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta aBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta bBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta qBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta rBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta hBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private BaseTheta dBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  @Getter private final boolean[] cmp1 = new boolean[8];
+  @Getter private final boolean[] cmp2 = new boolean[8];
+  @Getter private Boolean[] msb1 = new Boolean[8];
+  @Getter private Boolean[] msb2 = new Boolean[8];
 
   public ModData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.arg1 = BaseBytes.fromBytes32(arg1);
@@ -59,23 +61,27 @@ public class ModData {
       this.result = getRes(opCode, arg1, arg2);
 
       UInt256 a = absoluteValueIfSignedInst(arg1);
+      this.aBytes = BaseTheta.fromBytes32(a);
+
       UInt256 b = absoluteValueIfSignedInst(arg2);
+      this.bBytes = BaseTheta.fromBytes32(b);
+
       UInt256 q = a.divide(b);
+      this.qBytes = BaseTheta.fromBytes32(q);
+
       UInt256 r = a.mod(b);
-      this.A_Bytes = BaseTheta.fromBytes32(a);
-      this.B_Bytes = BaseTheta.fromBytes32(b);
-      this.Q_Bytes = BaseTheta.fromBytes32(q);
-      this.R_Bytes = BaseTheta.fromBytes32(r);
-      this.D_Bytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+      this.rBytes = BaseTheta.fromBytes32(r);
+
+      this.dBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
       this.setCmp12();
       this.setDeltas();
       this.setAlphaBetasH012();
 
-      UnsignedByte msb_1 = UnsignedByte.of(this.arg1.getHigh().get(0));
-      UnsignedByte msb_2 = UnsignedByte.of(this.arg2.getHigh().get(0));
+      UnsignedByte msb1 = UnsignedByte.of(this.arg1.getHigh().get(0));
+      UnsignedByte msb2 = UnsignedByte.of(this.arg2.getHigh().get(0));
 
-      this.msb1 = byteBits(msb_1);
-      this.msb2 = byteBits(msb_2);
+      this.msb1 = byteBits(msb1);
+      this.msb2 = byteBits(msb2);
     }
   }
 
@@ -96,30 +102,30 @@ public class ModData {
     return UInt256.fromBytes(arg);
   }
 
-  private UInt256 b(int k) {
+  private UInt256 bVar(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(B_Bytes.get(k));
+    return UInt256.fromBytes(bBytes.get(k));
   }
 
-  private UInt256 q(int k) {
+  private UInt256 qVar(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(Q_Bytes.get(k));
+    return UInt256.fromBytes(qBytes.get(k));
   }
 
-  private UInt256 r(int k) {
+  private UInt256 rVar(int k) {
     checkElementIndex(k, 4);
-    return UInt256.fromBytes(R_Bytes.get(k));
+    return UInt256.fromBytes(rBytes.get(k));
   }
 
-  private UInt256 h(int k) {
+  private UInt256 hVar(int k) {
     checkElementIndex(k, 3);
-    return UInt256.fromBytes(H_Bytes.get(k));
+    return UInt256.fromBytes(hBytes.get(k));
   }
 
   private void setCmp12() {
     for (int k = 0; k < 4; k++) {
-      cmp1[k] = b(k).compareTo(r(k)) > 0;
-      cmp2[k] = b(k).compareTo(r(k)) == 0;
+      cmp1[k] = bVar(k).compareTo(rVar(k)) > 0;
+      cmp2[k] = bVar(k).compareTo(rVar(k)) == 0;
     }
   }
 
@@ -127,11 +133,11 @@ public class ModData {
     for (int k = 0; k < 4; k++) {
       UInt256 delta;
       if (this.cmp1[k]) {
-        delta = b(k).subtract(r(k)).subtract(UInt256.ONE);
+        delta = bVar(k).subtract(rVar(k)).subtract(UInt256.ONE);
       } else {
-        delta = r(k).subtract(b(k));
+        delta = rVar(k).subtract(bVar(k));
       }
-      D_Bytes.set(k, delta.slice(24, 8));
+      dBytes.set(k, delta.slice(24, 8));
     }
   }
 
@@ -142,27 +148,28 @@ public class ModData {
     theta = theta.shiftLeft(64);
     thetaSquared = thetaSquared.shiftLeft(128);
 
-    UInt256 sum = b(0).multiply(q(1)).add(b(1).multiply(q(0)));
-    this.H_Bytes = BaseTheta.fromBytes32(sum);
+    UInt256 sum = bVar(0).multiply(qVar(1)).add(bVar(1).multiply(qVar(0)));
+    this.hBytes = BaseTheta.fromBytes32(sum);
 
     // alpha
     cmp2[4] = sum.compareTo(thetaSquared) >= 0;
 
     sum =
-        b(0).multiply(q(3))
-            .add(b(1).multiply(q(2)))
-            .add(b(2).multiply(q(1)))
-            .add(b(3).multiply(q(0)));
+        bVar(0)
+            .multiply(qVar(3))
+            .add(bVar(1).multiply(qVar(2)))
+            .add(bVar(2).multiply(qVar(1)))
+            .add(bVar(3).multiply(qVar(0)));
 
     if (sum.bitLength() > 64) {
       throw new RuntimeException("b[0]q[3] + b[1]q[2] + b[2]q[1] + b[3]q[0] >= (1 << 64)");
     }
 
-    H_Bytes.set(2, sum.slice(24, 8));
+    hBytes.set(2, sum.slice(24, 8));
 
-    sum = q(0).multiply(b(0));
-    sum = sum.add(h(0).multiply(theta));
-    sum = sum.add(UInt256.fromBytes(R_Bytes.getLow()));
+    sum = qVar(0).multiply(bVar(0));
+    sum = sum.add(hVar(0).multiply(theta));
+    sum = sum.add(UInt256.fromBytes(rBytes.getLow()));
 
     UInt256 beta = sum.divide(thetaSquared);
     if (beta.compareTo(UInt256.valueOf(2)) > 0) {
@@ -174,66 +181,10 @@ public class ModData {
     cmp2[6] = betaUInt64.divide(UInt64.valueOf(2)).compareTo(UInt64.ONE) == 0; // beta_1
 
     BigInteger sumInt = sum.mod(thetaSquared).toUnsignedBigInteger();
-    BigInteger aLo = this.A_Bytes.getLow().toUnsignedBigInteger();
+    BigInteger aLo = this.aBytes.getLow().toUnsignedBigInteger();
     if (sumInt.compareTo(aLo) != 0) {
       throw new RuntimeException("b[0]q[0] + theta.h[0] + rLo = [beta|xxx] and xxx != aLo");
     }
-  }
-
-  public OpCode getOpCode() {
-    return opCode;
-  }
-
-  public boolean isOli() {
-    return oli;
-  }
-
-  public BaseBytes getArg1() {
-    return arg1;
-  }
-
-  public BaseBytes getArg2() {
-    return arg2;
-  }
-
-  public BaseBytes getResult() {
-    return result;
-  }
-
-  public BaseTheta getBBytes() {
-    return B_Bytes;
-  }
-
-  public BaseTheta getQBytes() {
-    return Q_Bytes;
-  }
-
-  public BaseTheta getRBytes() {
-    return R_Bytes;
-  }
-
-  public BaseTheta getHBytes() {
-    return H_Bytes;
-  }
-
-  public BaseTheta getDeltaBytes() {
-    return D_Bytes;
-  }
-
-  public Boolean[] getMsb1() {
-    return msb1;
-  }
-
-  public Boolean[] getMsb2() {
-    return msb2;
-  }
-
-  public boolean[] getCmp1() {
-    return cmp1;
-  }
-
-  public boolean[] getCmp2() {
-    return cmp2;
   }
 
   public boolean isSigned() {
