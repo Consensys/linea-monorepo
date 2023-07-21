@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer;
 
 import java.util.ArrayList;
@@ -27,6 +28,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/**
+ * Base class used for running tests suffixed with `CorsetTest`. Provides opcode arguments per
+ * module as input for the parameterized tests.
+ */
 @TestInstance(Lifecycle.PER_CLASS)
 @Tag("CorsetTest")
 public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleTracerTest {
@@ -47,6 +52,11 @@ public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleT
 
   protected abstract Stream<Arguments> provideNonRandomArguments();
 
+  /**
+   * Converts supported opcodes per module tracer into {@link Arguments} for parameterized tests.
+   *
+   * @return a {@link Stream} of {@link Arguments} for parameterized tests.
+   */
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
     for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
@@ -54,12 +64,19 @@ public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleT
         arguments.add(Arguments.of(opCode, List.of(Bytes32.random(rand), Bytes32.random(rand))));
       }
     }
+
     return arguments.stream();
   }
 
+  /**
+   * Get a random {@link OpCode} from the list of supported opcodes per module tracer.
+   *
+   * @return a random {@link OpCode} from the list of supported opcodes per module tracer.
+   */
   public OpCode getRandomSupportedOpcode() {
     var supportedOpCodes = getModuleTracer().supportedOpCodes();
     int index = rand.nextInt(supportedOpCodes.size());
+
     return supportedOpCodes.get(index);
   }
 }

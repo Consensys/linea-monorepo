@@ -12,9 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.mul;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.alu.mul;
 
 import java.util.List;
 
@@ -23,6 +22,7 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class MulTracer implements ModuleTracer {
 
@@ -48,7 +48,7 @@ public class MulTracer implements ModuleTracer {
 
     // argument order is reversed ??
     final MulData data = new MulData(opCode, arg2, arg1);
-    final MulTrace.Trace.Builder builder = MulTrace.Trace.Builder.newInstance();
+    final Trace.TraceBuilder builder = Trace.builder();
 
     switch (data.getRegime()) {
       case EXPONENT_ZERO_RESULT -> {
@@ -74,10 +74,12 @@ public class MulTracer implements ModuleTracer {
     MulData finalZeroToTheZero = new MulData(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO);
     trace(builder, finalZeroToTheZero);
 
-    return builder.build();
+    Trace trace = builder.build();
+
+    return new MulTrace(trace, stamp);
   }
 
-  private void trace(final MulTrace.Trace.Builder builder, final MulData data) {
+  private void trace(final Trace.TraceBuilder builder, final MulData data) {
     stamp++;
 
     for (int ct = 0; ct < data.maxCt(); ct++) {
@@ -85,77 +87,58 @@ public class MulTracer implements ModuleTracer {
     }
   }
 
-  private void trace(final MulTrace.Trace.Builder builder, final MulData data, final int i) {
-    builder.appendStamp(stamp);
-    builder.appendCounter(i);
-
+  private void trace(final Trace.TraceBuilder builder, final MulData data, final int i) {
     builder
-        .appendOneLineInstruction(data.isOneLineInstruction())
-        .appendTinyBase(data.tinyBase)
-        .appendTinyExponent(data.tinyExponent)
-        .appendResultVanishes(data.res.isZero());
-
-    builder
-        .appendInst(UnsignedByte.of(data.opCode.value))
-        .appendArg1Hi(data.arg1Hi.toUnsignedBigInteger())
-        .appendArg1Lo(data.arg1Lo.toUnsignedBigInteger())
-        .appendArg2Hi(data.arg2Hi.toUnsignedBigInteger())
-        .appendArg2Lo(data.arg2Lo.toUnsignedBigInteger());
-
-    builder
-        .appendResHi(data.res.getHigh().toUnsignedBigInteger())
-        .appendResLo(data.res.getLow().toUnsignedBigInteger());
-
-    builder.appendBits(data.bits[i]);
-
-    builder
-        .appendByteA3(UnsignedByte.of(data.aBytes.get(3, i)))
-        .appendByteA2(UnsignedByte.of(data.aBytes.get(2, i)))
-        .appendByteA1(UnsignedByte.of(data.aBytes.get(1, i)))
-        .appendByteA0(UnsignedByte.of(data.aBytes.get(0, i)));
-    builder
-        .appendAccA3(data.aBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .appendAccA2(data.aBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .appendAccA1(data.aBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .appendAccA0(data.aBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
-
-    builder
-        .appendByteB3(UnsignedByte.of(data.bBytes.get(3, i)))
-        .appendByteB2(UnsignedByte.of(data.bBytes.get(2, i)))
-        .appendByteB1(UnsignedByte.of(data.bBytes.get(1, i)))
-        .appendByteB0(UnsignedByte.of(data.bBytes.get(0, i)));
-    builder
-        .appendAccB3(data.bBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .appendAccB2(data.bBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .appendAccB1(data.bBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .appendAccB0(data.bBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
-    builder
-        .appendByteC3(UnsignedByte.of(data.cBytes.get(3, i)))
-        .appendByteC2(UnsignedByte.of(data.cBytes.get(2, i)))
-        .appendByteC1(UnsignedByte.of(data.cBytes.get(1, i)))
-        .appendByteC0(UnsignedByte.of(data.cBytes.get(0, i)));
-    builder
-        .appendAccC3(data.cBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .appendAccC2(data.cBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .appendAccC1(data.cBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .appendAccC0(data.cBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
-
-    builder
-        .appendByteH3(UnsignedByte.of(data.hBytes.get(3, i)))
-        .appendByteH2(UnsignedByte.of(data.hBytes.get(2, i)))
-        .appendByteH1(UnsignedByte.of(data.hBytes.get(1, i)))
-        .appendByteH0(UnsignedByte.of(data.hBytes.get(0, i)));
-    builder
-        .appendAccH3(data.hBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .appendAccH2(data.hBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .appendAccH1(data.hBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .appendAccH0(data.hBytes.getRange(0, 0, i + 1).toUnsignedBigInteger());
-    builder
-        .appendExponentBit(data.exponentBit())
-        .appendExponentBitAcc(data.expAcc.toUnsignedBigInteger())
-        .appendExponentBitSource(data.exponentSource())
-        .appendSquareAndMultiply(data.snm)
-        .appendBitNum(data.getBitNum());
-    builder.setStamp(stamp);
+        .mulStampArg(stamp)
+        .counterArg(i)
+        .oneLineInstructionArg(data.isOneLineInstruction())
+        .tinyBaseArg(data.tinyBase)
+        .tinyExponentArg(data.tinyExponent)
+        .resultVanishesArg(data.res.isZero())
+        .instArg(UnsignedByte.of(data.opCode.value))
+        .arg1HiArg(data.arg1Hi.toUnsignedBigInteger())
+        .arg1LoArg(data.arg1Lo.toUnsignedBigInteger())
+        .arg2HiArg(data.arg2Hi.toUnsignedBigInteger())
+        .arg2LoArg(data.arg2Lo.toUnsignedBigInteger())
+        .resHiArg(data.res.getHigh().toUnsignedBigInteger())
+        .resLoArg(data.res.getLow().toUnsignedBigInteger())
+        .bitsArg(data.bits[i])
+        .byteA3Arg(UnsignedByte.of(data.aBytes.get(3, i)))
+        .byteA2Arg(UnsignedByte.of(data.aBytes.get(2, i)))
+        .byteA1Arg(UnsignedByte.of(data.aBytes.get(1, i)))
+        .byteA0Arg(UnsignedByte.of(data.aBytes.get(0, i)))
+        .accA3Arg(data.aBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .accA2Arg(data.aBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .accA1Arg(data.aBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .accA0Arg(data.aBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .byteB3Arg(UnsignedByte.of(data.bBytes.get(3, i)))
+        .byteB2Arg(UnsignedByte.of(data.bBytes.get(2, i)))
+        .byteB1Arg(UnsignedByte.of(data.bBytes.get(1, i)))
+        .byteB0Arg(UnsignedByte.of(data.bBytes.get(0, i)))
+        .accB3Arg(data.bBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .accB2Arg(data.bBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .accB1Arg(data.bBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .accB0Arg(data.bBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .byteC3Arg(UnsignedByte.of(data.cBytes.get(3, i)))
+        .byteC2Arg(UnsignedByte.of(data.cBytes.get(2, i)))
+        .byteC1Arg(UnsignedByte.of(data.cBytes.get(1, i)))
+        .byteC0Arg(UnsignedByte.of(data.cBytes.get(0, i)))
+        .accC3Arg(data.cBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .accC2Arg(data.cBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .accC1Arg(data.cBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .accC0Arg(data.cBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .byteH3Arg(UnsignedByte.of(data.hBytes.get(3, i)))
+        .byteH2Arg(UnsignedByte.of(data.hBytes.get(2, i)))
+        .byteH1Arg(UnsignedByte.of(data.hBytes.get(1, i)))
+        .byteH0Arg(UnsignedByte.of(data.hBytes.get(0, i)))
+        .accH3Arg(data.hBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
+        .accH2Arg(data.hBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
+        .accH1Arg(data.hBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
+        .accH0Arg(data.hBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .exponentBitArg(data.exponentBit())
+        .exponentBitAccumulatorArg(data.expAcc.toUnsignedBigInteger())
+        .exponentBitSourceArg(data.exponentSource())
+        .squareAndMultiplyArg(data.snm)
+        .bitNumArg(data.getBitNum());
   }
 }

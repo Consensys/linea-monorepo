@@ -12,24 +12,28 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
-
 import java.util.List;
 
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
+/**
+ * Base test class used to set up mocking of a {@link MessageFrame}, {@link OpCode} and trace
+ * generation functionality.
+ */
 @TestInstance(Lifecycle.PER_CLASS)
 public abstract class AbstractBaseModuleTracerTest {
   private ZkTracer zkTracer;

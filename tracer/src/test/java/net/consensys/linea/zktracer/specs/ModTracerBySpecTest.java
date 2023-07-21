@@ -12,18 +12,20 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.specs;
 
 import net.consensys.linea.zktracer.AbstractModuleTracerBySpecTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.alu.mod.ModTracer;
 
+/** Implementation of a module tracer by spec class for the MOD module. */
 public class ModTracerBySpecTest extends AbstractModuleTracerBySpecTest {
 
   static ModuleTracer tracer = new ModTracer();
 
   public static Object[][] specs() {
-    return findSpecFiles(new String[] {tracer.jsonKey()});
+    return findSpecFiles(tracer.jsonKey());
   }
 
   @Override

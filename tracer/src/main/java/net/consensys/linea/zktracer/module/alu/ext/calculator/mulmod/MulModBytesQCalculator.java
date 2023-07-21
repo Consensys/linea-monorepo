@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.mulmod;
 
 import static net.consensys.linea.zktracer.module.Util.isUInt256;

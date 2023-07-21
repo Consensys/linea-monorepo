@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator;
 
 import net.consensys.linea.zktracer.bytestheta.BytesArray;

@@ -12,14 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.hub;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.hub;
 
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.module.ModuleTracer;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class HubTracer implements ModuleTracer {
   @Override

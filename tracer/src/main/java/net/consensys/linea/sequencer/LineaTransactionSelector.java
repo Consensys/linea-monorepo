@@ -12,22 +12,23 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.sequencer;
 
+import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.plugin.data.Log;
 import org.hyperledger.besu.plugin.data.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
 
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+/**
+ * Represents an implementation of a transaction selector which decides if a transaction is to be
+ * added to a block.
+ */
+@Slf4j
 public class LineaTransactionSelector implements TransactionSelector {
-
-  private static final Logger LOG = LoggerFactory.getLogger(LineaTransactionSelector.class);
-
   private final int maxTxCalldataSize;
   private final int maxBlockCalldataSize;
   private int blockCalldataSum;
@@ -45,8 +46,9 @@ public class LineaTransactionSelector implements TransactionSelector {
       final long commulativeGasUsed) {
 
     final int txCalldataSize = transaction.getPayload().size();
+
     if (txCalldataSize > maxTxCalldataSize) {
-      LOG.warn(
+      log.warn(
           "Not adding transaction {} because calldata size {} is too big",
           transaction,
           txCalldataSize);
@@ -56,7 +58,7 @@ public class LineaTransactionSelector implements TransactionSelector {
       blockCalldataSum = Math.addExact(blockCalldataSum, txCalldataSize);
     } catch (final ArithmeticException e) {
       // this should never happen
-      LOG.warn(
+      log.warn(
           "Not adding transaction {} otherwise block calldata size {} overflows",
           transaction,
           blockCalldataSum);

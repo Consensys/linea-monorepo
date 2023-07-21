@@ -12,38 +12,24 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.tracegeneration.rpc;
 
 import java.security.InvalidParameterException;
 
 import net.consensys.linea.zktracer.ZkTracer;
 
-public class TraceRequestParams {
-
+/** Holds needed parameters for sending an execution trace generation request. */
+@SuppressWarnings("unused")
+public record TraceRequestParams(long fromBlock, long toBlock, String runtimeVersion) {
   private static final int EXPECTED_PARAMS_SIZE = 3;
 
-  private final long fromBlock;
-  private final long toBlock;
-  private final String runtimeVersion;
-
-  public TraceRequestParams(final long fromBlock, final long toBlock, final String runtimeVersion) {
-    this.fromBlock = fromBlock;
-    this.toBlock = toBlock;
-    this.runtimeVersion = runtimeVersion;
-  }
-
-  public long getFromBlock() {
-    return fromBlock;
-  }
-
-  public long getToBlock() {
-    return toBlock;
-  }
-
-  public String getRuntimeVersion() {
-    return runtimeVersion;
-  }
-
+  /**
+   * Parses a list of params to a {@link TraceRequestParams} object.
+   *
+   * @param params an array of parameters.
+   * @return a parsed {@link TraceRequestParams} object..
+   */
   public static TraceRequestParams createTraceParams(final Object[] params) {
     // validate params size
     if (params.length != EXPECTED_PARAMS_SIZE) {
@@ -61,6 +47,7 @@ public class TraceRequestParams {
               "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s",
               getTracerRuntime(), version));
     }
+
     return new TraceRequestParams(fromBlock, toBlock, version);
   }
 

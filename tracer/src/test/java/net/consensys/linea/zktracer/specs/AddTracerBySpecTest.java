@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.specs;
 
 import static net.consensys.linea.zktracer.module.alu.add.AddTracer.ADD_JSON_KEY;
@@ -20,10 +21,11 @@ import net.consensys.linea.zktracer.AbstractModuleTracerBySpecTest;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import net.consensys.linea.zktracer.module.alu.add.AddTracer;
 
+/** Implementation of a module tracer by spec class for the ADD module. */
 public class AddTracerBySpecTest extends AbstractModuleTracerBySpecTest {
 
   public static Object[][] specs() {
-    return findSpecFiles(new String[] {ADD_JSON_KEY});
+    return findSpecFiles(ADD_JSON_KEY);
   }
 
   @Override

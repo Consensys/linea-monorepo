@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.mul;
 
 import static net.consensys.linea.zktracer.module.Util.boolToByte;
@@ -21,6 +22,7 @@ import static net.consensys.linea.zktracer.module.Util.getOverflow;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.util.Arrays;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
@@ -61,8 +63,8 @@ public class MulData {
 
   BaseBytes res;
 
+  @SuppressWarnings("checkstyle:WhitespaceAround")
   public MulData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
-
     this.opCode = opCode;
     this.arg1 = arg1;
     this.arg2 = arg2;
@@ -83,9 +85,7 @@ public class MulData {
     this.tinyExponent = isTiny(arg2BigInt);
 
     // initialize bits
-    for (int i = 0; i < bits.length; i++) {
-      bits[i] = false;
-    }
+    Arrays.fill(bits, false);
 
     final Regime regime = getRegime();
     switch (regime) {
@@ -97,15 +97,15 @@ public class MulData {
         snm = false;
       }
       case IOTA -> throw new RuntimeException("alu/mul regime was never set");
+      default -> throw new IllegalStateException("[MUL module] Unexpected regime value: " + regime);
     }
   }
 
   private static BaseBytes getRes(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
-
     return switch (opCode) {
       case MUL -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).multiply(UInt256.fromBytes(arg2)));
       case EXP -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).pow(UInt256.fromBytes(arg2)));
-      default -> throw new RuntimeException("MUL module was given wrong opcode");
+      default -> throw new IllegalStateException("[MUL module] Unexpected opcode: " + opCode);
     };
   }
 
@@ -127,6 +127,7 @@ public class MulData {
       }
       bytes = aBytes.get(0);
     }
+
     int nuQuo = (nu / 8) % 8;
     int nuRem = nu % 8;
     byte pivotByte = bytes.get(7 - nuQuo);
@@ -179,14 +180,13 @@ public class MulData {
       final BaseTheta thing = BaseTheta.fromBytes32(UInt256.valueOf(target));
       hBytes.setChunk(1, thing.get(0));
     }
-
-    return;
   }
 
   public static byte callFunc(final int x, final int k) {
     if (x < k) {
       return 0;
     }
+
     return (byte) (x - k);
   }
 
@@ -199,7 +199,6 @@ public class MulData {
   }
 
   public static int twoAdicity(final Bytes32 x) {
-
     if (x.isZero()) {
       // panic("twoAdicity was called on zero")
       return 256;
@@ -222,21 +221,14 @@ public class MulData {
   //    return exponentBits.length() > 128;
   //  }
 
-  public enum Regime {
-    IOTA,
-    TRIVIAL_MUL,
-    NON_TRIVIAL_MUL,
-    EXPONENT_ZERO_RESULT,
-    EXPONENT_NON_ZERO_RESULT
-  }
-
   public boolean isOneLineInstruction() {
     return tinyBase || tinyExponent;
   }
 
   public Regime getRegime() {
-
-    if (isOneLineInstruction()) return Regime.TRIVIAL_MUL;
+    if (isOneLineInstruction()) {
+      return Regime.TRIVIAL_MUL;
+    }
 
     if (OpCode.MUL.equals(opCode)) {
       return Regime.NON_TRIVIAL_MUL;
@@ -249,6 +241,7 @@ public class MulData {
         return Regime.EXPONENT_NON_ZERO_RESULT;
       }
     }
+
     return Regime.IOTA;
   }
 
@@ -257,12 +250,12 @@ public class MulData {
   }
 
   public boolean carryOn() {
-
     // first round is special
     if (index == 0 && !snm) {
       snm = true;
       resAcc = UInt256.valueOf(1); // TODO assuming this is what SetOne() does
       cBytes = BaseTheta.fromBytes32(arg1);
+
       return true;
     }
 
@@ -270,12 +263,11 @@ public class MulData {
       hiToLoExponentBitAccumulatorReset();
       index++;
       snm = false;
-      if (index == exponentBits.length()) {
-        return false;
-      }
+      return index != exponentBits.length();
     } else {
       snm = true;
     }
+
     return true;
   }
 
@@ -296,7 +288,6 @@ public class MulData {
   }
 
   public void update() {
-
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
     if (!snm) {
       // squaring
@@ -313,12 +304,11 @@ public class MulData {
   }
 
   public void setHsAndBits(UInt256 a, UInt256 b) {
-
     setHsAndBitsFromBaseThetas(BaseTheta.fromBytes32(a), BaseTheta.fromBytes32(b));
   }
 
+  @SuppressWarnings("checkstyle:VariableDeclarationUsageDistance")
   public void setHsAndBitsFromBaseThetas(BaseTheta aBaseTheta, BaseTheta bBaseTheta) {
-    BaseTheta sumBaseTheta;
     UInt256[] aBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
     UInt256[] bBaseThetaInts = (UInt256[]) Array.newInstance(UInt256.class, 4);
 
@@ -327,15 +317,15 @@ public class MulData {
       bBaseThetaInts[i] = UInt256.fromBytes(bBaseTheta.get(i));
     }
 
-    UInt256 sum, prod;
-    prod = aBaseThetaInts[1].multiply(bBaseThetaInts[0]);
-    sum = prod; // sum := a1 * b0
+    UInt256 prod = aBaseThetaInts[1].multiply(bBaseThetaInts[0]);
+    UInt256 sum = prod; // sum := a1 * b0
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[1]);
     sum = sum.add(prod); // sum += a0 * b1
 
-    sumBaseTheta = BaseTheta.fromBytes32(sum);
+    BaseTheta sumBaseTheta = BaseTheta.fromBytes32(sum);
     hBytes.setChunk(0, sumBaseTheta.get(0));
     hBytes.setChunk(1, sumBaseTheta.get(1));
+
     long alpha = getOverflow(sum, 1, "alpha OOB");
 
     sum = aBaseThetaInts[3].multiply(bBaseThetaInts[0]); // sum := a3 * b0
@@ -349,8 +339,8 @@ public class MulData {
     sumBaseTheta = BaseTheta.fromBytes32(sum);
     hBytes.setChunk(2, sumBaseTheta.get(0));
     hBytes.setChunk(3, sumBaseTheta.get(1));
-    long beta = getOverflow(sum, 3, "beta OOB");
 
+    long beta = getOverflow(sum, 3, "beta OOB");
     prod = aBaseThetaInts[0].multiply(bBaseThetaInts[0]);
     sum = prod; // sum := a0 * b0
 
@@ -381,7 +371,6 @@ public class MulData {
     bits[5] = getBit(eta, 0);
     bits[6] = getBit(mu, 0);
     bits[7] = getBit(mu, 1);
-    return;
   }
 
   // hiToLoExponentBitAccumulatorReset resets the exponent bit accumulator

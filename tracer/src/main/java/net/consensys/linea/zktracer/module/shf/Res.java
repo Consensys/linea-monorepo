@@ -12,28 +12,19 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.shf;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import org.apache.tuweni.bytes.Bytes32;
 
+@RequiredArgsConstructor
 public class Res {
-  final Bytes16 resHi;
-  final Bytes16 resLo;
-
-  private Res(Bytes16 resHi, Bytes16 resLo) {
-    this.resHi = resHi;
-    this.resLo = resLo;
-  }
-
-  public Bytes16 getResHi() {
-    return resHi;
-  }
-
-  public Bytes16 getResLo() {
-    return resLo;
-  }
+  @Getter final Bytes16 resHi;
+  @Getter final Bytes16 resLo;
 
   public static Res create(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
     final Bytes32 result = Shifter.shift(opCode, arg2, shiftBy(arg1));

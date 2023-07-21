@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext.calculator.addmod;
 
 import static net.consensys.linea.zktracer.module.Util.getBit;
@@ -45,6 +46,7 @@ public class AddModOverflowResCalculator {
 
     overflowRes[0] = getBit(lambda, 0);
     overflowRes[1] = getBit(mu, 0);
+
     return overflowRes;
   }
 
@@ -57,6 +59,7 @@ public class AddModOverflowResCalculator {
    */
   private static long calculateLambda(BaseBytes arg1, BaseBytes arg2) {
     UInt256 sum = UInt256.fromBytes(arg1.getLow()).add(UInt256.fromBytes(arg2.getLow()));
+
     return getOverflow(sum, 1, "lambda out of range (ADDMOD)");
   }
 
@@ -72,6 +75,7 @@ public class AddModOverflowResCalculator {
     UInt256 sum = UInt256.valueOf(lambda);
     sum = sum.add(UInt256.fromBytes(arg1.getHigh()));
     sum = sum.add(UInt256.fromBytes(arg2.getHigh()));
+
     return getOverflow(sum, 3, "mu out of range (ADDMOD)");
   }
 }

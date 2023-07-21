@@ -12,10 +12,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytestheta;
 
 import org.apache.tuweni.bytes.Bytes;
 
+/** Provides high and low parts of a {@link Bytes} object. */
 public interface HighLowBytes {
   /**
    * Returns the high part of the bytes object.
@@ -23,6 +25,7 @@ public interface HighLowBytes {
    * @return the high part of the bytes object
    */
   Bytes getHigh();
+
   /**
    * Returns the low part of the bytes object.
    *

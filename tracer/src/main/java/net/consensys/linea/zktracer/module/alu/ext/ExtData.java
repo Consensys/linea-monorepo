@@ -12,10 +12,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.alu.ext;
 
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
@@ -24,31 +26,48 @@ import net.consensys.linea.zktracer.module.alu.ext.calculator.AbstractExtCalcula
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-@SuppressWarnings("UnusedVariable")
 public class ExtData {
   private final OpCode opCode;
-  private final boolean oli;
-  private final BaseBytes arg1;
-  private final BaseBytes arg2;
-  private final BaseBytes arg3;
-  private final BaseTheta result;
-  private final BaseTheta aBytes;
-  private final BaseTheta bBytes;
-  private final BaseTheta cBytes;
-  private BaseTheta deltaBytes;
-  private final BytesArray hBytes;
-  private final BaseTheta rBytes;
-  private final BytesArray iBytes;
-  private BytesArray jBytes;
-  private BytesArray qBytes;
-  private boolean[] cmp = new boolean[8];
-  boolean[] overflowH = new boolean[8];
-  boolean[] overflowJ = new boolean[8];
-  boolean[] overflowRes = new boolean[8];
-  boolean[] overflowI = new boolean[8];
+
+  @Getter private final boolean oli;
+
+  @Getter private final BaseBytes arg1;
+
+  @Getter private final BaseBytes arg2;
+
+  @Getter private final BaseBytes arg3;
+
+  @Getter private final BaseTheta result;
+
+  @Getter private final BaseTheta aBytes;
+
+  @Getter private final BaseTheta bBytes;
+
+  @Getter private final BaseTheta cBytes;
+
+  @Getter private BaseTheta deltaBytes;
+
+  @Getter private final BytesArray hBytes;
+
+  @Getter private final BaseTheta rBytes;
+
+  @Getter private final BytesArray iBytes;
+
+  @Getter private BytesArray jBytes;
+
+  @Getter private BytesArray qBytes;
+
+  @Getter private boolean[] cmp = new boolean[8];
+
+  @Getter boolean[] overflowH = new boolean[8];
+
+  @Getter boolean[] overflowJ = new boolean[8];
+
+  @Getter boolean[] overflowRes = new boolean[8];
+
+  @Getter boolean[] overflowI = new boolean[8];
 
   public ExtData(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
-
     this.opCode = opCode;
     this.arg1 = BaseBytes.fromBytes32(arg1);
     this.arg2 = BaseBytes.fromBytes32(arg2);
@@ -93,88 +112,13 @@ public class ExtData {
 
   public boolean getBit3() {
     UInt256 uInt256 = UInt256.fromBytes(this.arg3.getBytes32());
+
     return UInt256.ONE.compareTo(uInt256) >= 0;
   }
 
   /** Returns true if any of the bit1, bit2, or bit3 flags are set. */
   private boolean isOneLineInstruction() {
     return getBit1() || getBit2() || getBit3();
-  }
-
-  public boolean isOli() {
-    return oli;
-  }
-
-  public BaseTheta getABytes() {
-    return aBytes;
-  }
-
-  public BaseTheta getBBytes() {
-    return bBytes;
-  }
-
-  public BaseTheta getCBytes() {
-    return cBytes;
-  }
-
-  public BytesArray getDeltaBytes() {
-    return deltaBytes;
-  }
-
-  public BytesArray getHBytes() {
-    return hBytes;
-  }
-
-  public BytesArray getIBytes() {
-    return iBytes;
-  }
-
-  public BytesArray getJBytes() {
-    return jBytes;
-  }
-
-  public BytesArray getQBytes() {
-    return qBytes;
-  }
-
-  public BaseTheta getRBytes() {
-    return rBytes;
-  }
-
-  public BaseBytes getArg1() {
-    return arg1;
-  }
-
-  public BaseBytes getArg2() {
-    return arg2;
-  }
-
-  public BaseBytes getArg3() {
-    return arg3;
-  }
-
-  public BaseTheta getResult() {
-    return result;
-  }
-
-  public boolean[] getCmp() {
-    return cmp;
-  }
-
-  public boolean[] getOverflowH() {
-    return overflowH;
-  }
-
-  public boolean[] getOverflowJ() {
-    return overflowJ;
-  }
-
-  public boolean[] getOverflowI() {
-    return overflowI;
-  }
-
-  public boolean[] getOverflowRes() {
-    return overflowRes;
   }
 
   private UInt256 getSigma() {

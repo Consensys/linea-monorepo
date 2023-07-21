@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +41,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+/** Base class used for parsing JSON trace specs. */
 @TestInstance(Lifecycle.PER_CLASS)
 public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleTracerTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -57,16 +59,13 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
     final JsonNode expectedTrace = specNode.get("output");
     final JsonNode actualTrace = generateTrace(getModuleTracer().jsonKey(), request);
 
-    assertThat(
-            MAPPER
-                .writerWithDefaultPrettyPrinter()
-                .writeValueAsString(
-                    MAPPER.readTree(String.valueOf(actualTrace)).findValue("Trace")))
-        .isEqualTo(
-            MAPPER
-                .writerWithDefaultPrettyPrinter()
-                .writeValueAsString(
-                    MAPPER.readTree(String.valueOf(expectedTrace)).findValue("Trace")));
+    assertThat(getTrace(actualTrace)).isEqualTo(getTrace(expectedTrace));
+  }
+
+  private static String getTrace(JsonNode actualTrace) throws JsonProcessingException {
+    return MAPPER
+        .writerWithDefaultPrettyPrinter()
+        .writeValueAsString(MAPPER.readTree(String.valueOf(actualTrace)).findValue("Trace"));
   }
 
   private JsonNode generateTrace(String moduleName, JsonNode jsonNodeParams)
@@ -76,20 +75,31 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
     JsonNode arg = jsonNodeParams.get("params");
     arg.forEach(bytes -> arguments.add(Bytes32.fromHexString(bytes.asText())));
     String trace = generateTrace(opcode, arguments);
+
     return MAPPER.readTree(trace).get(moduleName);
   }
 
-  public static Object[][] findSpecFiles(final String[] subDirectoryPaths) {
+  /**
+   * Find trace spec JSON file paths.
+   *
+   * @param subDirectoryPaths directories with trace spec JSON file paths.
+   * @return trace spec JSON file paths
+   */
+  public static Object[][] findSpecFiles(final String... subDirectoryPaths) {
     final List<Object[]> specFiles = new ArrayList<>();
+
     for (final String path : subDirectoryPaths) {
       final URL url = AbstractModuleTracerBySpecTest.class.getResource(path);
       checkState(url != null, "Cannot find test directory " + path);
+
       final Path dir;
+
       try {
         dir = Paths.get(url.toURI());
       } catch (final URISyntaxException e) {
         throw new RuntimeException("Problem converting URL to URI " + url, e);
       }
+
       try (final Stream<Path> s = Files.walk(dir, 1)) {
         s.map(Path::toFile)
             .filter(f -> f.getPath().endsWith(".json"))
@@ -99,10 +109,12 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
         throw new RuntimeException("Problem reading directory " + dir, e);
       }
     }
+
     final Object[][] result = new Object[specFiles.size()][2];
     for (int i = 0; i < specFiles.size(); i++) {
       result[i] = specFiles.get(i);
     }
+
     return result;
   }
 
@@ -110,6 +122,7 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
     try {
       final String fileName = file.toPath().getFileName().toString();
       final URL fileURL = file.toURI().toURL();
+
       return new Object[] {fileName, fileURL};
     } catch (final MalformedURLException e) {
       throw new RuntimeException("Problem reading spec file " + file.getAbsolutePath(), e);

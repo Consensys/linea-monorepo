@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytestheta;
 
 import net.consensys.linea.zktracer.bytes.Bytes16;
@@ -23,9 +24,8 @@ import org.apache.tuweni.bytes.MutableBytes32;
  * data.
  */
 public class BaseBytes implements HighLowBytes {
-
   /** The size in bytes of the high and low sections of the 256-bit block. */
-  private final int LOW_HIGH_SIZE = 16;
+  private static final int LOW_HIGH_SIZE = 16;
   /** The mutable `Bytes32` object that stores the 256-bit block of data. */
   protected MutableBytes32 bytes32;
 
@@ -51,10 +51,10 @@ public class BaseBytes implements HighLowBytes {
   }
 
   /**
-   * This method returns a new `Bytes16` object that is the high section (first 16 bytes) of the
-   * `bytes32` instance variable.
+   * Returns a new `Bytes16` object that is the high section (first 16 bytes) of the bytes32`
+   * instance variable.
    *
-   * @return A new `Bytes16` object that is the high section of the `bytes32` instance variable.
+   * @return a wrapped {@link Bytes16} instance.
    */
   @Override
   public Bytes16 getHigh() {
@@ -62,10 +62,10 @@ public class BaseBytes implements HighLowBytes {
   }
 
   /**
-   * This method returns a new `Bytes16` object that is the low section (last 16 bytes) of the
-   * `bytes32` instance variable.
+   * Returns a new `Bytes16` object that is the low section (last 16 bytes) of the `bytes32`
+   * instance variable.
    *
-   * @return A new `Bytes16` object that is the low section of the `bytes32` instance variable.
+   * @return a wrapped {@link Bytes16} instance.
    */
   @Override
   public Bytes16 getLow() {
@@ -73,7 +73,7 @@ public class BaseBytes implements HighLowBytes {
   }
 
   /**
-   * This method returns the byte at the specified `index` in the `bytes32` instance variable.
+   * Returns the byte at the specified `index` in the `bytes32` instance variable.
    *
    * @param index The index of the byte to be returned.
    * @return The byte at the specified index in the `bytes32` instance variable.
@@ -83,7 +83,7 @@ public class BaseBytes implements HighLowBytes {
   }
 
   /**
-   * This method returns the `Bytes32` object that stores the 256-bit block of data.
+   * Returns the `Bytes32` object that stores the 256-bit block of data.
    *
    * @return The `Bytes32` object that stores the 256-bit block of data.
    */
@@ -92,8 +92,7 @@ public class BaseBytes implements HighLowBytes {
   }
 
   /**
-   * This method returns `true` if the `bytes32` instance variable contains all zeros, and `false`
-   * otherwise.
+   * Returns `true` if the `bytes32` instance variable contains all zeros, and `false` otherwise.
    *
    * @return `true` if the `bytes32` instance variable contains all zeros, and `false` otherwise.
    */

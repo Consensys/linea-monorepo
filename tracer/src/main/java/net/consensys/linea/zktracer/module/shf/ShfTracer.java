@@ -12,9 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.shf;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.shf;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +24,7 @@ import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class ShfTracer implements ModuleTracer {
   private static final int LIMB_SIZE = 16;
@@ -86,89 +86,89 @@ public class ShfTracer implements ModuleTracer {
     final boolean isBitB6 = lsbBits[1];
     final boolean isBitB7 = lsbBits[0];
 
-    final ShfTrace.Trace.Builder builder = ShfTrace.Trace.Builder.newInstance();
+    final Trace.TraceBuilder builder = Trace.builder();
 
     stamp++;
     for (int i = 0; i < maxCt(isOneLineInstruction); i++) {
       builder
-          .appendAcc1(arg1Lo.slice(0, 1 + i).toUnsignedBigInteger())
-          .appendAcc2(arg2Hi.slice(0, 1 + i).toUnsignedBigInteger())
-          .appendAcc3(arg2Lo.slice(0, 1 + i).toUnsignedBigInteger())
-          .appendAcc4(res.getResHi().slice(0, 1 + i).toUnsignedBigInteger())
-          .appendAcc5(res.getResLo().slice(0, 1 + i).toUnsignedBigInteger())
-          .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
-          .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
-          .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
-          .appendArg2Lo(arg2Lo.toUnsignedBigInteger());
+          .acc1Arg(arg1Lo.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc2Arg(arg2Hi.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc3Arg(arg2Lo.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc4Arg(res.getResHi().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc5Arg(res.getResLo().slice(0, 1 + i).toUnsignedBigInteger())
+          .arg1HiArg(arg1Hi.toUnsignedBigInteger())
+          .arg1LoArg(arg1Lo.toUnsignedBigInteger())
+          .arg2HiArg(arg2Hi.toUnsignedBigInteger())
+          .arg2LoArg(arg2Lo.toUnsignedBigInteger());
 
       if (isShiftRight) {
-        builder.appendBit1(i >= 1).appendBit2(i >= 2).appendBit3(i >= 4).appendBit4(i >= 8);
+        builder.bit1Arg(i >= 1).bit2Arg(i >= 2).bit3Arg(i >= 4).bit4Arg(i >= 8);
       } else {
         builder
-            .appendBit1(i >= (16 - 1))
-            .appendBit2(i >= (16 - 2))
-            .appendBit3(i >= (16 - 4))
-            .appendBit4(i >= (16 - 8));
+            .bit1Arg(i >= (16 - 1))
+            .bit2Arg(i >= (16 - 2))
+            .bit3Arg(i >= (16 - 4))
+            .bit4Arg(i >= (16 - 8));
       }
 
       builder
-          .appendBitB3(isBitB3)
-          .appendBitB4(isBitB4)
-          .appendBitB5(isBitB5)
-          .appendBitB6(isBitB6)
-          .appendBitB7(isBitB7);
+          .bitB3Arg(isBitB3)
+          .bitB4Arg(isBitB4)
+          .bitB5Arg(isBitB5)
+          .bitB6Arg(isBitB6)
+          .bitB7Arg(isBitB7);
 
       builder
-          .appendByte1(UnsignedByte.of(arg1Lo.get(i)))
-          .appendByte2(UnsignedByte.of(arg2Hi.get(i)))
-          .appendByte3(UnsignedByte.of(arg2Lo.get(i)))
-          .appendByte4(UnsignedByte.of(res.getResHi().get(i)))
-          .appendByte5(UnsignedByte.of(res.getResLo().get(i)));
-
-      builder.appendBits(bits.get(i)).appendCounter(i);
+          .byte1Arg(UnsignedByte.of(arg1Lo.get(i)))
+          .byte2Arg(UnsignedByte.of(arg2Hi.get(i)))
+          .byte3Arg(UnsignedByte.of(arg2Lo.get(i)))
+          .byte4Arg(UnsignedByte.of(res.getResHi().get(i)))
+          .byte5Arg(UnsignedByte.of(res.getResLo().get(i)));
 
       builder
-          .appendInst(UnsignedByte.of(opCode.value))
-          .appendKnown(isKnown)
-          .appendNeg(isNegative)
-          .appendOneLineInstruction(isOneLineInstruction);
-
-      builder.appendLow3(low3).appendMicroShiftParameter(mshp);
-
-      builder
-          .appendResHi(res.getResHi().toUnsignedBigInteger())
-          .appendResLo(res.getResLo().toUnsignedBigInteger());
+          .bitsArg(bits.get(i))
+          .counterArg(i)
+          .instArg(UnsignedByte.of(opCode.value))
+          .knownArg(isKnown)
+          .negArg(isNegative)
+          .oneLineInstructionArg(isOneLineInstruction)
+          .low3Arg(low3)
+          .microShiftParameterArg(mshp)
+          .resHiArg(res.getResHi().toUnsignedBigInteger())
+          .resLoArg(res.getResLo().toUnsignedBigInteger());
 
       final ByteChunks arg2HiByteChunks =
           ByteChunks.fromBytes(UnsignedByte.of(arg2Hi.get(i)), mshp);
+
       builder
-          .appendLeftAlignedSuffixHigh(arg2HiByteChunks.la())
-          .appendRightAlignedPrefixHigh(arg2HiByteChunks.ra())
-          .appendOnes(arg2HiByteChunks.ones());
+          .leftAlignedSuffixHighArg(arg2HiByteChunks.la())
+          .rightAlignedPrefixHighArg(arg2HiByteChunks.ra())
+          .onesArg(arg2HiByteChunks.ones());
 
       final ByteChunks arg2LoByteChunks =
           ByteChunks.fromBytes(UnsignedByte.of(arg2Lo.get(i)), mshp);
-      builder
-          .appendLeftAlignedSuffixLow(arg2LoByteChunks.la())
-          .appendRightAlignedPrefixLow(arg2LoByteChunks.ra());
 
       builder
-          .appendShb3Hi(shb.getShbHi()[3 - 3][i])
-          .appendShb3Lo(shb.getShbLo()[3 - 3][i])
-          .appendShb4Hi(shb.getShbHi()[4 - 3][i])
-          .appendShb4Lo(shb.getShbLo()[4 - 3][i])
-          .appendShb5Hi(shb.getShbHi()[5 - 3][i])
-          .appendShb5Lo(shb.getShbLo()[5 - 3][i])
-          .appendShb6Hi(shb.getShbHi()[6 - 3][i])
-          .appendShb6Lo(shb.getShbLo()[6 - 3][i])
-          .appendShb7Hi(shb.getShbHi()[7 - 3][i])
-          .appendShb7Lo(shb.getShbLo()[7 - 3][i]);
-
-      builder.appendShiftDirection(isShiftRight).appendIsData(stamp != 0).appendShiftStamp(stamp);
+          .leftAlignedSuffixLowArg(arg2LoByteChunks.la())
+          .rightAlignedPrefixLowArg(arg2LoByteChunks.ra())
+          .shb3HiArg(shb.getShbHi()[0][i])
+          .shb3LoArg(shb.getShbLo()[0][i])
+          .shb4HiArg(shb.getShbHi()[4 - 3][i])
+          .shb4LoArg(shb.getShbLo()[4 - 3][i])
+          .shb5HiArg(shb.getShbHi()[5 - 3][i])
+          .shb5LoArg(shb.getShbLo()[5 - 3][i])
+          .shb6HiArg(shb.getShbHi()[6 - 3][i])
+          .shb6LoArg(shb.getShbLo()[6 - 3][i])
+          .shb7HiArg(shb.getShbHi()[7 - 3][i])
+          .shb7LoArg(shb.getShbLo()[7 - 3][i])
+          .shiftDirectionArg(isShiftRight)
+          .isDataArg(stamp != 0)
+          .shiftStampArg(stamp);
     }
-    builder.setStamp(stamp);
 
-    return builder.build();
+    Trace trace = builder.build();
+
+    return new ShfTrace(trace, stamp);
   }
 
   private int maxCt(final boolean isOneLineInstruction) {

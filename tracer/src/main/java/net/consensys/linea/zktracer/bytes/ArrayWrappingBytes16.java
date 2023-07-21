@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.bytes;
 
 final class ArrayWrappingBytes16 extends ArrayWrappingBytes implements Bytes16 {

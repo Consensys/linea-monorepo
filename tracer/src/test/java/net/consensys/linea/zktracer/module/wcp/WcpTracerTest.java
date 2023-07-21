@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.OpCode.GT;

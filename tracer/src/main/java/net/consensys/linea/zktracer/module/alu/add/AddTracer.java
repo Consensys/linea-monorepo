@@ -12,9 +12,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.alu.add;
 
-import org.hyperledger.besu.evm.frame.MessageFrame;
+package net.consensys.linea.zktracer.module.alu.add;
 
 import java.util.List;
 
@@ -25,7 +24,9 @@ import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.module.ModuleTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
+/** Implementation of a {@link ModuleTracer} for addition/subtraction. */
 public class AddTracer implements ModuleTracer {
   public static final String ADD_JSON_KEY = "add";
   private int stamp = 0;
@@ -59,7 +60,7 @@ public class AddTracer implements ModuleTracer {
     final Bytes16 resHi = res.getHigh();
     final Bytes16 resLo = res.getLow();
 
-    final AddTrace.Trace.Builder builder = AddTrace.Trace.Builder.newInstance();
+    final Trace.TraceBuilder builder = Trace.builder();
 
     UInt256 arg1Int = UInt256.fromBytes(arg1);
     UInt256 arg2Int = UInt256.fromBytes(arg2);
@@ -80,39 +81,49 @@ public class AddTracer implements ModuleTracer {
     final UInt256 twoToThe128 = UInt256.ONE.shiftLeft(128);
 
     stamp++;
+
     for (int i = 0; i < 16; i++) {
+      Bytes32 addRes;
       if (opCode == OpCode.ADD) {
-        Bytes32 addRes = Bytes32.wrap((UInt256.fromBytes(arg1Lo)).add(UInt256.fromBytes(arg2Lo)));
-        overflowLo = (addRes.compareTo(twoToThe128) >= 0);
+        addRes = Bytes32.wrap((UInt256.fromBytes(arg1Lo)).add(UInt256.fromBytes(arg2Lo)));
       } else {
-        Bytes32 addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
-        overflowLo = (addRes.compareTo(twoToThe128) >= 0);
+        addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
       }
 
+      overflowLo = (addRes.compareTo(twoToThe128) >= 0);
+
       builder
-          .appendAcc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
-          .appendAcc2(resLo.slice(0, 1 + i).toUnsignedBigInteger())
-          .appendArg1Hi(arg1Hi.toUnsignedBigInteger())
-          .appendArg1Lo(arg1Lo.toUnsignedBigInteger())
-          .appendArg2Hi(arg2Hi.toUnsignedBigInteger())
-          .appendArg2Lo(arg2Lo.toUnsignedBigInteger())
-          .appendByte1(UnsignedByte.of(resHi.get(i)))
-          .appendByte2(UnsignedByte.of(resLo.get(i)))
-          .appendCounter(i)
-          .appendInst(UnsignedByte.of(opCode.value))
-          .appendOverflow(overflowBit(i, overflowHi, overflowLo))
-          .appendResHi(resHi.toUnsignedBigInteger())
-          .appendResLo(resLo.toUnsignedBigInteger())
-          .appendStamp(stamp);
+          .acc1Arg(resHi.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc2Arg(resLo.slice(0, 1 + i).toUnsignedBigInteger())
+          .arg1HiArg(arg1Hi.toUnsignedBigInteger())
+          .arg1LoArg(arg1Lo.toUnsignedBigInteger())
+          .arg2HiArg(arg2Hi.toUnsignedBigInteger())
+          .arg2LoArg(arg2Lo.toUnsignedBigInteger())
+          .byte1Arg(UnsignedByte.of(resHi.get(i)))
+          .byte2Arg(UnsignedByte.of(resLo.get(i)))
+          .counterArg(i)
+          .instArg(UnsignedByte.of(opCode.value))
+          .overflowArg(overflowBit(i, overflowHi, overflowLo))
+          .resHiArg(resHi.toUnsignedBigInteger())
+          .resLoArg(resLo.toUnsignedBigInteger())
+          .addStampArg(stamp);
     }
-    builder.setStamp(stamp);
-    return builder.build();
+
+    Trace trace = builder.build();
+
+    return new AddTrace(trace, stamp);
   }
 
   private boolean overflowBit(
       final int counter, final boolean overflowHi, final boolean overflowLo) {
-    if (counter == 14) return overflowHi;
-    if (counter == 15) return overflowLo;
+    if (counter == 14) {
+      return overflowHi;
+    }
+
+    if (counter == 15) {
+      return overflowLo;
+    }
+
     return false; // default bool value in go
   }
 }

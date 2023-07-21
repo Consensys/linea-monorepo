@@ -12,30 +12,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.sequencer;
 
-/** The Linea configuration. */
-public class LineaConfiguration {
-
-  private final int maxTxCalldataSize;
-  private final int maxBlockCalldataSize;
-
-  /**
-   * Instantiates a new Linea configuration.
-   *
-   * @param maxTxCalldataSize the maximum calldata size for a transaction
-   * @param maxBlockCalldataSize the maximum calldata size for a block
-   */
-  public LineaConfiguration(final int maxTxCalldataSize, final int maxBlockCalldataSize) {
-    this.maxTxCalldataSize = maxTxCalldataSize;
-    this.maxBlockCalldataSize = maxBlockCalldataSize;
-  }
-
-  public int getMaxTxCalldataSize() {
-    return maxTxCalldataSize;
-  }
-
-  public int getMaxBlockCalldataSize() {
-    return maxBlockCalldataSize;
-  }
-}
+/**
+ * The Linea configuration.
+ *
+ * @param maxTxCalldataSize the maximum calldata size for a transaction.
+ * @param maxBlockCalldataSize the maximum calldata size for a block.
+ */
+public record LineaConfiguration(int maxTxCalldataSize, int maxBlockCalldataSize) {}
