@@ -17,6 +17,7 @@ package net.consensys.linea.sequencer;
 
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.plugin.data.Log;
 import org.hyperledger.besu.plugin.data.Transaction;
@@ -28,15 +29,11 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
  * added to a block.
  */
 @Slf4j
+@RequiredArgsConstructor
 public class LineaTransactionSelector implements TransactionSelector {
   private final int maxTxCalldataSize;
   private final int maxBlockCalldataSize;
   private int blockCalldataSum;
-
-  public LineaTransactionSelector(final int maxTxCalldataSize, final int maxBlockCalldataSize) {
-    this.maxTxCalldataSize = maxTxCalldataSize;
-    this.maxBlockCalldataSize = maxBlockCalldataSize;
-  }
 
   @Override
   public TransactionSelectionResult selectTransaction(
