@@ -14,6 +14,8 @@ solidity {
 
 checkstyle {
   toolVersion = '10.12.1'
+  // Following settings will be activated once the entire project complies with the checkstyle rules
+  // and once achieved all future code that does not comply with the rules will fail the build of the project.
   //    maxWarnings = 0
   //    ignoreFailures = false
 }
@@ -72,4 +74,3 @@ task acceptanceTest(dependsOn: copyPluginJar, type: Test) {
     systemProperty "besu.plugins.dir", project.ext.pluginDir
   }
 }
-
