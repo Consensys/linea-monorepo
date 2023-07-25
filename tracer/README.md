@@ -110,7 +110,8 @@ NOTE
 
 ______________________________________________________________________
 
-**Step 2.** Set IDE code reformatting to comply with the project's Checkstyle configuration:
+**Step 2.** Install [Checkstyle](https://plugins.jetbrains.com/plugin/1065-checkstyle-idea) plugin and set IDE code
+reformatting to comply with the project's Checkstyle configuration:
 
 - Go to `Settings | Editor | Code Style | Java | <hamburger menu> | Import Scheme | Checkstyle configuration`:
 
@@ -118,8 +119,8 @@ ______________________________________________________________________
 
   and select `<project_root>/config/checkstyle.xml`.
 
-**Step 3.** OPTIONAL: Install [Checkstyle](https://plugins.jetbrains.com/plugin/1065-checkstyle-idea) and
-[Spotless Gradle](https://plugins.jetbrains.com/plugin/18321-spotless-gradle) plugins for code linting capabilities
+**Step 3.** OPTIONAL: Install [Spotless Gradle](https://plugins.jetbrains.com/plugin/18321-spotless-gradle) plugins
+for code linting capabilities
 within the IDE.
 
 ## Debugging Traces
