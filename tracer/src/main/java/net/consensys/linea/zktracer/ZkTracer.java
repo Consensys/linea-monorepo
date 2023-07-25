@@ -27,9 +27,9 @@ import net.consensys.linea.zktracer.module.hub.HubTracer;
 import net.consensys.linea.zktracer.module.shf.ShfTracer;
 import net.consensys.linea.zktracer.module.wcp.WcpTracer;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.tracing.OperationTracer;
+import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
-public class ZkTracer implements OperationTracer {
+public class ZkTracer implements BlockAwareOperationTracer {
   private final List<ModuleTracer> tracers;
   private final Map<OpCode, List<ModuleTracer>> opCodeTracerMap = new HashMap<>();
 
