@@ -37,7 +37,6 @@ dependencies {
   testImplementation 'org.awaitility:awaitility'
   testImplementation 'com.splunk.logging:splunk-library-javalogging'
   testImplementation 'org.projectlombok:lombok:1.18.26'
-
 }
 
 test.enabled = false

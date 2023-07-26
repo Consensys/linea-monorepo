@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
+import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -33,7 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class AddTracerTest extends AbstractModuleTracerCorsetTest {
+class AddTracerTest extends AbstractModuleCorsetTest {
   private static final Random rand = new Random();
 
   private static final int TEST_ADD_REPETITIONS = 16;
@@ -90,7 +90,7 @@ class AddTracerTest extends AbstractModuleTracerCorsetTest {
   }
 
   @Override
-  protected ModuleTracer getModuleTracer() {
-    return new AddTracer();
+  protected Module getModuleTracer() {
+    return new Add();
   }
 }

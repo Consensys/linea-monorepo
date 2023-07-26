@@ -18,18 +18,21 @@ package net.consensys.linea.zktracer;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
+import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.lookuptable.ShfRtTrace;
 import org.apache.tuweni.bytes.Bytes32;
 
 public class ZkTraceBuilder {
   private final Map<String, Object> traceResults = new HashMap<>();
 
-  public void addTrace(final String moduleName, final Object traceResult) {
-    traceResults.put(moduleName, traceResult);
+  public void addTrace(Module module) {
+    Optional.ofNullable(module.commit()).ifPresent(v -> traceResults.put(module.jsonKey(), v));
   }
 
   public ZkTrace build() {
+    // TODO: add other reference tables
     if (!traceResults.containsKey("shfRT")) {
       traceResults.put("shfRT", ShfRtTrace.generate());
     }

@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 
 import net.consensys.linea.zktracer.corset.CorsetValidator;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -35,12 +35,11 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
  * generation functionality.
  */
 @TestInstance(Lifecycle.PER_CLASS)
-public abstract class AbstractBaseModuleTracerTest {
+public abstract class AbstractBaseModuleTest {
   private ZkTracer zkTracer;
-  private ZkTraceBuilder zkTraceBuilder;
   MessageFrame mockFrame;
   Operation mockOperation;
-  static ModuleTracer moduleTracer;
+  static Module module;
 
   protected void runTest(final OpCode opCode, final List<Bytes32> arguments) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
@@ -48,7 +47,7 @@ public abstract class AbstractBaseModuleTracerTest {
       when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
     }
     zkTracer.tracePreExecution(mockFrame);
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
   }
 
   protected String generateTrace(OpCode opCode, List<Bytes32> arguments) {
@@ -57,18 +56,18 @@ public abstract class AbstractBaseModuleTracerTest {
       when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
     }
     zkTracer.tracePreExecution(mockFrame);
-    return zkTraceBuilder.build().toJson();
+    return zkTracer.getTrace().toJson();
   }
 
   @BeforeEach
   void setUp() {
-    zkTraceBuilder = new ZkTraceBuilder();
-    moduleTracer = getModuleTracer();
-    zkTracer = new ZkTracer(zkTraceBuilder, List.of(moduleTracer));
+    ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
+    module = getModuleTracer();
+    zkTracer = new ZkTracer(List.of(module));
     mockFrame = mock(MessageFrame.class);
     mockOperation = mock(Operation.class);
     when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
 
-  protected abstract ModuleTracer getModuleTracer();
+  protected abstract Module getModuleTracer();
 }

@@ -15,21 +15,21 @@
 
 package net.consensys.linea.zktracer.specs;
 
-import net.consensys.linea.zktracer.AbstractModuleTracerBySpecTest;
-import net.consensys.linea.zktracer.module.ModuleTracer;
-import net.consensys.linea.zktracer.module.alu.mod.ModTracer;
+import net.consensys.linea.zktracer.AbstractModuleBySpecTest;
+import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.alu.mod.Mod;
 
 /** Implementation of a module tracer by spec class for the MOD module. */
-public class ModTracerBySpecTest extends AbstractModuleTracerBySpecTest {
+public class ModTracerBySpecTest extends AbstractModuleBySpecTest {
 
-  static ModuleTracer tracer = new ModTracer();
+  static Module tracer = new Mod();
 
   public static Object[][] specs() {
     return findSpecFiles(tracer.jsonKey());
   }
 
   @Override
-  protected ModuleTracer getModuleTracer() {
+  protected Module getModuleTracer() {
     return tracer;
   }
 }

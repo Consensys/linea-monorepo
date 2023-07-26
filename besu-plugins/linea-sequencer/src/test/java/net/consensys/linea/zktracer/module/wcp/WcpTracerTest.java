@@ -20,19 +20,19 @@ import static net.consensys.linea.zktracer.OpCode.GT;
 import java.util.List;
 import java.util.stream.Stream;
 
-import net.consensys.linea.zktracer.AbstractModuleTracerCorsetTest;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.provider.Arguments;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class WcpTracerTest extends AbstractModuleTracerCorsetTest {
+class WcpTracerTest extends AbstractModuleCorsetTest {
 
   @Override
-  protected ModuleTracer getModuleTracer() {
-    return new WcpTracer();
+  protected Module getModuleTracer() {
+    return new Wcp();
   }
 
   @Override

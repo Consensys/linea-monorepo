@@ -24,7 +24,6 @@ import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import org.apache.tuweni.bytes.Bytes;
@@ -50,15 +49,13 @@ class ShfTracerTest {
   private static final int TEST_REPETITIONS = 4;
 
   private ZkTracer zkTracer;
-  private ZkTraceBuilder zkTraceBuilder;
 
   @Mock MessageFrame mockFrame;
   @Mock Operation mockOperation;
 
   @BeforeEach
   void setUp() {
-    zkTraceBuilder = new ZkTraceBuilder();
-    zkTracer = new ZkTracer(zkTraceBuilder, List.of(new ShfTracer()));
+    zkTracer = new ZkTracer(List.of(new Shf()));
 
     when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
@@ -73,7 +70,7 @@ class ShfTracerTest {
 
     zkTracer.tracePreExecution(mockFrame);
 
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
   }
 
   @ParameterizedTest(name = "{0}")
@@ -88,7 +85,7 @@ class ShfTracerTest {
 
     zkTracer.tracePreExecution(mockFrame);
 
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
   }
 
   @Test
@@ -101,7 +98,7 @@ class ShfTracerTest {
 
     zkTracer.tracePreExecution(mockFrame);
 
-    assertThat(CorsetValidator.isValid(zkTraceBuilder.build().toJson())).isTrue();
+    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
   }
 
   public static Stream<Arguments> provideRandomSarArguments() {
