@@ -1,0 +1,3 @@
+[submodule "zkevm-constraints"]
+	path = zkevm-constraints
+	url = git@github.com:Consensys/zkevm-constraints.git

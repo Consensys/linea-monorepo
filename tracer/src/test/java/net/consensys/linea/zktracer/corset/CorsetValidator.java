@@ -31,19 +31,13 @@ public class CorsetValidator {
   private static final String ZK_EVM_BIN_ENV = "ZK_EVM_BIN";
 
   private static String CORSET_BIN;
-  private static String ZK_EVM_BIN;
+  private static final String ZK_EVM_BIN = "zkevm-constraints/zkevm.bin";
 
   static {
     init();
   }
 
   private static void init() {
-    ZK_EVM_BIN = System.getenv(ZK_EVM_BIN_ENV);
-    if (ZK_EVM_BIN == null) {
-      log.error("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
-      throw new RuntimeException("Environment variable " + ZK_EVM_BIN_ENV + " is not set");
-    }
-
     final Process whichCorsetProcess;
 
     try {

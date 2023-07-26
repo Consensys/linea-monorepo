@@ -226,18 +226,30 @@ allprojects {
         commandLine 'sh', '-c', 'command -v corset || true'
         standardOutput = stdout
       }
-      def libraryInstalled = stdout.toString().trim()
-      def envVariable = System.getenv('ZK_EVM_BIN')
+      def corsetInstalled = stdout.toString().trim()
 
-      if (libraryInstalled && envVariable) {
-        println 'CORSET is installed and ZK_EVM_BIN is set, running corset tests'
+      if (corsetInstalled) {
+        println 'CORSET found, running corset tests'
       } else {
-        throw new GradleException('Skipping corsetTests due to either CORSET not installed or ZK_EVM_BIN not set')
+        throw new GradleException('Corset not found, skipping corsetTests')
       }
     }
   }
 
-  tasks.corsetTests.dependsOn(checkCorsetPreConditions)
+  tasks.register('buildZkevmBin', Exec) {
+    workingDir "${project.rootDir}/zkevm-constraints/"
+    commandLine 'make', 'zkevm.bin'
+
+    //store the output instead of printing to the console
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+      return standardOutput.toString()
+    }
+  }
+
+  tasks.buildZkevmBin.dependsOn(checkCorsetPreConditions)
+  tasks.corsetTests.dependsOn(buildZkevmBin)
+  tasks.test.dependsOn(buildZkevmBin)
 
 
   javadoc {
