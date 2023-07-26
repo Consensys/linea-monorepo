@@ -19,12 +19,13 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class MulTracer implements ModuleTracer {
+public class Mul implements Module {
+  final Trace.TraceBuilder builder = Trace.builder();
 
   private int stamp = 0;
 
@@ -34,13 +35,13 @@ public class MulTracer implements ModuleTracer {
   }
 
   @Override
-  public List<OpCode> supportedOpCodes() {
+  public final List<OpCode> supportedOpCodes() {
     return List.of(OpCode.MUL, OpCode.EXP);
   }
 
   @SuppressWarnings("UnusedVariable")
   @Override
-  public Object trace(MessageFrame frame) {
+  public void trace(MessageFrame frame) {
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
@@ -48,12 +49,9 @@ public class MulTracer implements ModuleTracer {
 
     // argument order is reversed ??
     final MulData data = new MulData(opCode, arg2, arg1);
-    final Trace.TraceBuilder builder = Trace.builder();
 
     switch (data.getRegime()) {
-      case EXPONENT_ZERO_RESULT -> {
-        trace(builder, data);
-      }
+      case EXPONENT_ZERO_RESULT -> trace(builder, data);
 
       case EXPONENT_NON_ZERO_RESULT -> {
         if (data.carryOn()) {
@@ -73,10 +71,11 @@ public class MulTracer implements ModuleTracer {
     //    captureBlockEnd();
     MulData finalZeroToTheZero = new MulData(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO);
     trace(builder, finalZeroToTheZero);
+  }
 
-    Trace trace = builder.build();
-
-    return new MulTrace(trace, stamp);
+  @Override
+  public Object commit() {
+    return new MulTrace(builder.build(), stamp);
   }
 
   private void trace(final Trace.TraceBuilder builder, final MulData data) {

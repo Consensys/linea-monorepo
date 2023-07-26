@@ -19,14 +19,15 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class ExtTracer implements ModuleTracer {
-  private int stamp = 0;
-
+public class Ext implements Module {
   private static final int MMEDIUM = 8;
+
+  final Trace.TraceBuilder builder = Trace.builder();
+  private int stamp = 0;
 
   @Override
   public String jsonKey() {
@@ -34,19 +35,18 @@ public class ExtTracer implements ModuleTracer {
   }
 
   @Override
-  public List<OpCode> supportedOpCodes() {
+  public final List<OpCode> supportedOpCodes() {
     return List.of(OpCode.MULMOD, OpCode.ADDMOD);
   }
 
   @Override
-  public Object trace(final MessageFrame frame) {
+  public void trace(final MessageFrame frame) {
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
     final Bytes32 arg3 = Bytes32.wrap(frame.getStackItem(2));
 
     final ExtData data = new ExtData(opCode, arg1, arg2, arg3);
-    final Trace.TraceBuilder builder = Trace.builder();
     stamp++;
 
     for (int ct = 0; ct < maxCounter(data); ct++) {
@@ -181,7 +181,10 @@ public class ExtTracer implements ModuleTracer {
           .bit2Arg(data.getBit2())
           .bit3Arg(data.getBit3());
     }
+  }
 
+  @Override
+  public Object commit() {
     return new ExtTrace(builder.build(), stamp);
   }
 

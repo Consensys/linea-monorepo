@@ -18,10 +18,9 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.ModuleTracer;
-import org.hyperledger.besu.evm.frame.MessageFrame;
+import net.consensys.linea.zktracer.module.Module;
 
-public class HubTracer implements ModuleTracer {
+public class Hub implements Module {
   @Override
   public String jsonKey() {
     return "hub";
@@ -29,12 +28,11 @@ public class HubTracer implements ModuleTracer {
 
   @Override
   public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
+    return List.of(OpCode.values());
   }
 
   @Override
-  public Object trace(final MessageFrame frame) {
-    //      final OpCode opCode = OpCode.of(famelgetcurrentOperation().getOpcode());
+  public Object commit() {
     return null;
   }
 }

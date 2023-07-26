@@ -34,7 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 @TestInstance(Lifecycle.PER_CLASS)
 @Tag("CorsetTest")
-public abstract class AbstractModuleTracerCorsetTest extends AbstractBaseModuleTracerTest {
+public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
   static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 8;
 
