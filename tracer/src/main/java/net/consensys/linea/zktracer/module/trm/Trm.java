@@ -18,18 +18,17 @@ package net.consensys.linea.zktracer.module.trm;
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class TrmTracer implements ModuleTracer {
-
+public class Trm implements Module {
   @Override
   public String jsonKey() {
     return "trm";
   }
 
   @Override
-  public List<OpCode> supportedOpCodes() {
+  public final List<OpCode> supportedOpCodes() {
     return List.of(
         OpCode.BALANCE,
         OpCode.EXTCODESIZE,
@@ -43,7 +42,10 @@ public class TrmTracer implements ModuleTracer {
   }
 
   @Override
-  public Object trace(MessageFrame frame) {
+  public void trace(MessageFrame frame) {}
+
+  @Override
+  public Object commit() {
     return null;
   }
 }

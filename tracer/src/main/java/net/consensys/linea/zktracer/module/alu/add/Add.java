@@ -21,14 +21,15 @@ import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
-import net.consensys.linea.zktracer.module.ModuleTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-/** Implementation of a {@link ModuleTracer} for addition/subtraction. */
-public class AddTracer implements ModuleTracer {
+/** Implementation of a {@link Module} for addition/subtraction. */
+public class Add implements Module {
   public static final String ADD_JSON_KEY = "add";
+  final Trace.TraceBuilder builder = Trace.builder();
   private int stamp = 0;
 
   @Override
@@ -37,12 +38,12 @@ public class AddTracer implements ModuleTracer {
   }
 
   @Override
-  public List<OpCode> supportedOpCodes() {
+  public final List<OpCode> supportedOpCodes() {
     return List.of(OpCode.ADD, OpCode.SUB);
   }
 
   @Override
-  public Object trace(MessageFrame frame) {
+  public void trace(MessageFrame frame) {
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
@@ -59,8 +60,6 @@ public class AddTracer implements ModuleTracer {
 
     final Bytes16 resHi = res.getHigh();
     final Bytes16 resLo = res.getLow();
-
-    final Trace.TraceBuilder builder = Trace.builder();
 
     UInt256 arg1Int = UInt256.fromBytes(arg1);
     UInt256 arg2Int = UInt256.fromBytes(arg2);
@@ -108,10 +107,11 @@ public class AddTracer implements ModuleTracer {
           .resLoArg(resLo.toUnsignedBigInteger())
           .addStampArg(stamp);
     }
+  }
 
-    Trace trace = builder.build();
-
-    return new AddTrace(trace, stamp);
+  @Override
+  public Object commit() {
+    return new AddTrace(builder.build(), stamp);
   }
 
   private boolean overflowBit(

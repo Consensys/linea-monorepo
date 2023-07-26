@@ -30,7 +30,6 @@ import java.util.zip.GZIPOutputStream;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
-import net.consensys.linea.zktracer.ZkTraceBuilder;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.data.BlockContext;
@@ -90,12 +89,11 @@ public class RollupGenerateConflatedTracesToFileV0 {
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
 
-      final ZkTraceBuilder builder = new ZkTraceBuilder();
-      final ZkTracer tracer = new ZkTracer(builder);
+      final ZkTracer tracer = new ZkTracer();
 
       traceService.traceBlock(block.getBlockHeader().getNumber(), tracer);
 
-      jsonGenerator.writeObject(builder.build().toJson());
+      jsonGenerator.writeObject(tracer.getTrace().toJson());
 
       return file.getAbsolutePath();
     } catch (IOException e) {

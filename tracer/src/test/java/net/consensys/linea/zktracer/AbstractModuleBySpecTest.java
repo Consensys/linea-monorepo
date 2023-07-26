@@ -43,7 +43,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /** Base class used for parsing JSON trace specs. */
 @TestInstance(Lifecycle.PER_CLASS)
-public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleTracerTest {
+public abstract class AbstractModuleBySpecTest extends AbstractBaseModuleTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @ParameterizedTest(name = "{index} {0}")
@@ -89,7 +89,7 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
     final List<Object[]> specFiles = new ArrayList<>();
 
     for (final String path : subDirectoryPaths) {
-      final URL url = AbstractModuleTracerBySpecTest.class.getResource(path);
+      final URL url = AbstractModuleBySpecTest.class.getResource(path);
       checkState(url != null, "Cannot find test directory " + path);
 
       final Path dir;
@@ -103,7 +103,7 @@ public abstract class AbstractModuleTracerBySpecTest extends AbstractBaseModuleT
       try (final Stream<Path> s = Files.walk(dir, 1)) {
         s.map(Path::toFile)
             .filter(f -> f.getPath().endsWith(".json"))
-            .map(AbstractModuleTracerBySpecTest::fileToParams)
+            .map(AbstractModuleBySpecTest::fileToParams)
             .forEach(specFiles::add);
       } catch (final IOException e) {
         throw new RuntimeException("Problem reading directory " + dir, e);

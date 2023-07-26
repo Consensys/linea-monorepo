@@ -366,13 +366,14 @@ tasks.register('distZip', Zip) {
 
 tasks.register('deployPlugins', Copy) {
   dependsOn jar
+  dependsOn installDist
 
   from(configurations.installedJars) {
     into new File(distributionIdentifier, "plugins")
     exclude "**/common*.jar"
   }
 
-  into tasks.named("installDist").destinationDir
+  into installDist.destinationDir
 }
 
 // Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
