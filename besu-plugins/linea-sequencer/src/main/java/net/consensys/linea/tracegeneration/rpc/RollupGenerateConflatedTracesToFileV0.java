@@ -68,10 +68,17 @@ public class RollupGenerateConflatedTracesToFileV0 {
       TraceRequestParams params = TraceRequestParams.createTraceParams(request.getParams());
       List<String> paths = new ArrayList<>();
 
-      getBlocks(params.fromBlock(), params.toBlock())
+      final long fromBlock = params.fromBlock();
+      final long toBlock = params.toBlock();
+      final ZkTracer tracer = new ZkTracer();
+
+      tracer.traceStartConflation(toBlock - fromBlock + 1);
+      getBlocks(fromBlock, toBlock)
           .forEach(
               blockContext ->
-                  paths.add(traceBlockAndReturnPath(blockContext, params.runtimeVersion())));
+                  paths.add(
+                      traceBlockAndReturnPath(blockContext, params.runtimeVersion(), tracer)));
+      tracer.traceEndConflation();
 
       return new FileTrace(params.runtimeVersion(), paths);
     } catch (Exception ex) {
@@ -79,7 +86,8 @@ public class RollupGenerateConflatedTracesToFileV0 {
     }
   }
 
-  private String traceBlockAndReturnPath(BlockContext block, String traceRuntimeVersion) {
+  private String traceBlockAndReturnPath(
+      final BlockContext block, final String traceRuntimeVersion, final ZkTracer tracer) {
     final TraceService traceService = context.getService(TraceService.class).orElseThrow();
     final String dataDir = "traces";
     final File file = generateOutputFile(dataDir, block, traceRuntimeVersion);
@@ -88,11 +96,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
     try (JsonGenerator jsonGenerator =
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
-
-      final ZkTracer tracer = new ZkTracer();
-
       traceService.traceBlock(block.getBlockHeader().getNumber(), tracer);
-
       jsonGenerator.writeObject(tracer.getTrace().toJson());
 
       return file.getAbsolutePath();
