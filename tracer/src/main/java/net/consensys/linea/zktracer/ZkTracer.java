@@ -48,6 +48,14 @@ public class ZkTracer implements BlockAwareOperationTracer {
     return zkTraceBuilder.build();
   }
 
+  public void traceStartConflation(final long numBlocksInConflation) {
+    // TODO: implement
+  }
+
+  public void traceEndConflation() {
+    // TODO: implement
+  }
+
   @Override
   public void tracePreExecution(final MessageFrame frame) {
     OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
