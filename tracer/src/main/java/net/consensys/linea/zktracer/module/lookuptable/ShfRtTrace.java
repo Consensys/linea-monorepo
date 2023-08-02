@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.lookuptable;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,31 +24,31 @@ import org.apache.tuweni.bytes.Bytes;
 
 public record ShfRtTrace(@JsonProperty("Trace") Trace trace) {
   public static ShfRtTrace generate() {
-    final List<Integer> bytes = new ArrayList<>(2305);
-    final List<Integer> isInRt = new ArrayList<>(2305);
-    final List<Integer> las = new ArrayList<>(2305);
-    final List<Integer> mshp = new ArrayList<>(2305);
-    final List<Integer> ones = new ArrayList<>(2305);
-    final List<Integer> rap = new ArrayList<>(2305);
+    final List<BigInteger> bytes = new ArrayList<>(2305);
+    final List<BigInteger> isInRt = new ArrayList<>(2305);
+    final List<BigInteger> las = new ArrayList<>(2305);
+    final List<BigInteger> mshp = new ArrayList<>(2305);
+    final List<BigInteger> ones = new ArrayList<>(2305);
+    final List<BigInteger> rap = new ArrayList<>(2305);
 
     for (int a = 0; a <= 255; a++) {
       for (int uShp = 0; uShp <= 8; uShp++) {
-        bytes.add(a);
+        bytes.add(BigInteger.valueOf(a));
         // rt.Trace.PushByte(LAS.Name(), a<<(8-µShp))
-        las.add((Bytes.of((byte) a).shiftLeft(8 - uShp)).toInt());
-        mshp.add(uShp);
-        rap.add(Bytes.ofUnsignedShort(a).shiftRight(uShp).toInt());
-        ones.add((Bytes.fromHexString("0xFF").shiftRight(uShp)).not().toInt());
-        isInRt.add(1);
+        las.add(BigInteger.valueOf(Bytes.of((byte) a).shiftLeft(8 - uShp).toInt()));
+        mshp.add(BigInteger.valueOf(uShp));
+        rap.add(BigInteger.valueOf(Bytes.ofUnsignedShort(a).shiftRight(uShp).toInt()));
+        ones.add(BigInteger.valueOf((Bytes.fromHexString("0xFF").shiftRight(uShp)).not().toInt()));
+        isInRt.add(BigInteger.ONE);
       }
     }
 
-    bytes.add(0);
-    isInRt.add(0);
-    las.add(0);
-    mshp.add(0);
-    ones.add(0);
-    rap.add(0);
+    bytes.add(BigInteger.ZERO);
+    isInRt.add(BigInteger.ZERO);
+    las.add(BigInteger.ZERO);
+    mshp.add(BigInteger.ZERO);
+    ones.add(BigInteger.ZERO);
+    rap.add(BigInteger.ZERO);
 
     return new ShfRtTrace(new Trace(bytes, isInRt, las, mshp, ones, rap));
   }

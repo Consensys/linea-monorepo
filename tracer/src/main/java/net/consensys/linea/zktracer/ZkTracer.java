@@ -19,10 +19,10 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.alu.add.Add;
-import net.consensys.linea.zktracer.module.alu.mod.Mod;
-import net.consensys.linea.zktracer.module.alu.mul.Mul;
+import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;

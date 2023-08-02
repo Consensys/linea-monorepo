@@ -15,8 +15,21 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import java.math.BigInteger;
 
-@JsonPropertyOrder({"Trace", "Stamp"})
-public record WcpTrace(@JsonProperty("Trace") Trace trace, @JsonProperty("Stamp") int stamp) {}
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record WcpTrace(@JsonProperty("Trace") Trace trace) {
+  static final BigInteger EQ_ = new BigInteger("20");
+  static final BigInteger GT = new BigInteger("17");
+  static final BigInteger ISZERO = new BigInteger("21");
+  static final BigInteger LIMB_SIZE = new BigInteger("16");
+  static final BigInteger LIMB_SIZE_MINUS_ONE = new BigInteger("15");
+  static final BigInteger LT = new BigInteger("16");
+  static final BigInteger SGT = new BigInteger("19");
+  static final BigInteger SLT = new BigInteger("18");
+}

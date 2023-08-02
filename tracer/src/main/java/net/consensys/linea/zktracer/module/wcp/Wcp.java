@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import java.math.BigInteger;
 import java.util.List;
 
 import net.consensys.linea.zktracer.OpCode;
@@ -48,43 +49,44 @@ public class Wcp implements Module {
 
     stamp++;
 
-    for (int ct = 0; ct < maxCt(data.isOneLineInstruction()); ct++) {
+    for (int i = 0; i < maxCt(data.isOneLineInstruction()); i++) {
       builder
-          .wordComparisonStampArg(stamp)
-          .oneLineInstructionArg(data.isOneLineInstruction())
-          .counterArg(ct)
-          .instArg(UnsignedByte.of(opCode.value))
-          .argument1HiArg(data.getArg1Hi().toUnsignedBigInteger())
-          .argument1LoArg(data.getArg1Lo().toUnsignedBigInteger())
-          .argument2HiArg(data.getArg2Hi().toUnsignedBigInteger())
-          .argument2LoArg(data.getArg2Lo().toUnsignedBigInteger())
-          .resultHiArg(data.getResHi())
-          .resultLoArg(data.getResLo())
-          .bitsArg(data.getBits().get(ct))
-          .neg1Arg(data.getNeg1())
-          .neg2Arg(data.getNeg2())
-          .byte1Arg(UnsignedByte.of(data.getArg1Hi().get(ct)))
-          .byte2Arg(UnsignedByte.of(data.getArg1Lo().get(ct)))
-          .byte3Arg(UnsignedByte.of(data.getArg2Hi().get(ct)))
-          .byte4Arg(UnsignedByte.of(data.getArg2Lo().get(ct)))
-          .byte5Arg(UnsignedByte.of(data.getAdjHi().get(ct)))
-          .byte6Arg(UnsignedByte.of(data.getAdjLo().get(ct)))
-          .acc1Arg(data.getArg1Hi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .acc2Arg(data.getArg1Lo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .acc3Arg(data.getArg2Hi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .acc4Arg(data.getArg2Lo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .acc5Arg(data.getAdjHi().slice(0, 1 + ct).toUnsignedBigInteger())
-          .acc6Arg(data.getAdjLo().slice(0, 1 + ct).toUnsignedBigInteger())
-          .bit1Arg(data.getBit1())
-          .bit2Arg(data.getBit2())
-          .bit3Arg(data.getBit3())
-          .bit4Arg(data.getBit4());
+          .wordComparisonStamp(BigInteger.valueOf(stamp))
+          .oneLineInstruction(data.isOneLineInstruction())
+          .counter(BigInteger.valueOf(i))
+          .inst(BigInteger.valueOf(opCode.value))
+          .argument1Hi(data.getArg1Hi().toUnsignedBigInteger())
+          .argument1Lo(data.getArg1Lo().toUnsignedBigInteger())
+          .argument2Hi(data.getArg2Hi().toUnsignedBigInteger())
+          .argument2Lo(data.getArg2Lo().toUnsignedBigInteger())
+          .resultHi(data.getResHi() ? BigInteger.ONE : BigInteger.ZERO)
+          .resultLo(data.getResLo() ? BigInteger.ONE : BigInteger.ZERO)
+          .bits(data.getBits().get(i))
+          .neg1(data.getNeg1())
+          .neg2(data.getNeg2())
+          .byte1(UnsignedByte.of(data.getArg1Hi().get(i)))
+          .byte2(UnsignedByte.of(data.getArg1Lo().get(i)))
+          .byte3(UnsignedByte.of(data.getArg2Hi().get(i)))
+          .byte4(UnsignedByte.of(data.getArg2Lo().get(i)))
+          .byte5(UnsignedByte.of(data.getAdjHi().get(i)))
+          .byte6(UnsignedByte.of(data.getAdjLo().get(i)))
+          .acc1(data.getArg1Hi().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc2(data.getArg1Lo().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc3(data.getArg2Hi().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc4(data.getArg2Lo().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc5(data.getAdjHi().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc6(data.getAdjLo().slice(0, 1 + i).toUnsignedBigInteger())
+          .bit1(data.getBit1())
+          .bit2(data.getBit2())
+          .bit3(data.getBit3())
+          .bit4(data.getBit4())
+          .validateRow();
     }
   }
 
   @Override
   public Object commit() {
-    return new WcpTrace(builder.build(), stamp);
+    return new WcpTrace(builder.build());
   }
 
   private int maxCt(final boolean isOneLineInstruction) {
