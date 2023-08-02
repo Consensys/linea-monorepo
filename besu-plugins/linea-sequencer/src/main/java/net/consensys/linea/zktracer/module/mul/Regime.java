@@ -13,23 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.specs;
+package net.consensys.linea.zktracer.module.mul;
 
-import net.consensys.linea.zktracer.AbstractModuleBySpecTest;
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.mod.Mod;
-
-/** Implementation of a module tracer by spec class for the MOD module. */
-public class ModTracerBySpecTest extends AbstractModuleBySpecTest {
-
-  static Module tracer = new Mod();
-
-  public static Object[][] specs() {
-    return findSpecFiles(tracer.jsonKey());
-  }
-
-  @Override
-  protected Module getModuleTracer() {
-    return tracer;
-  }
+enum Regime {
+  IOTA,
+  TRIVIAL_MUL,
+  NON_TRIVIAL_MUL,
+  EXPONENT_ZERO_RESULT,
+  EXPONENT_NON_ZERO_RESULT
 }

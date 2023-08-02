@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.bytes;
 
+import java.math.BigInteger;
+
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /** Represents an unsigned byte type. */
@@ -116,6 +118,15 @@ public class UnsignedByte {
   @JsonValue
   public int toInteger() {
     return unsignedByte;
+  }
+
+  /**
+   * Converts to {@link BigInteger} type.
+   *
+   * @return the unsigned byte to converted to {@link BigInteger}
+   */
+  public BigInteger toBigInteger() {
+    return BigInteger.valueOf(this.toInteger());
   }
 
   private static void checkLength(final long b) {
