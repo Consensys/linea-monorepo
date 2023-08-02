@@ -6,6 +6,7 @@
 *.launch
 *.swp
 *.log
+*.out
 .classpath
 .DS_Store
 .externalToolBuilders/
