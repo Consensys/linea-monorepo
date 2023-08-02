@@ -56,7 +56,7 @@ public class MulData {
   final BaseTheta bBytes;
   BaseTheta cBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
   BaseTheta hBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  boolean snm = false;
+  boolean squareAndMultiply = false;
   int index;
   Boolean[] bits = new Boolean[8];
   String exponentBits = "0";
@@ -93,8 +93,8 @@ public class MulData {
       case NON_TRIVIAL_MUL -> cBytes = BaseTheta.fromBytes32(res.getBytes32());
       case EXPONENT_ZERO_RESULT -> setArraysForZeroResultCase();
       case EXPONENT_NON_ZERO_RESULT -> {
-        this.exponentBits = arg2.toBigInteger().toString();
-        snm = false;
+        this.exponentBits = new BigInteger(1, arg2.toArray()).toString(2);
+        squareAndMultiply = false;
       }
       case IOTA -> throw new RuntimeException("alu/mul regime was never set");
       default -> throw new IllegalStateException("[MUL module] Unexpected regime value: " + regime);
@@ -190,11 +190,11 @@ public class MulData {
     return (byte) (x - k);
   }
 
-  public boolean exponentBit() {
-    return '1' == exponentBits.charAt(index);
+  public boolean isExponentBitSet() {
+    return exponentBits.charAt(index) == '1';
   }
 
-  public boolean exponentSource() {
+  public boolean isExponentInSource() {
     return this.index + 128 >= exponentBits.length();
   }
 
@@ -251,21 +251,21 @@ public class MulData {
 
   public boolean carryOn() {
     // first round is special
-    if (index == 0 && !snm) {
-      snm = true;
+    if (index == 0 && !squareAndMultiply) {
+      squareAndMultiply = true;
       resAcc = UInt256.valueOf(1); // TODO assuming this is what SetOne() does
       cBytes = BaseTheta.fromBytes32(arg1);
 
       return true;
     }
 
-    if (snm == exponentBit()) {
+    if (squareAndMultiply == isExponentBitSet()) {
       hiToLoExponentBitAccumulatorReset();
       index++;
-      snm = false;
+      squareAndMultiply = false;
       return index != exponentBits.length();
     } else {
-      snm = true;
+      squareAndMultiply = true;
     }
 
     return true;
@@ -289,7 +289,7 @@ public class MulData {
 
   public void update() {
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
-    if (!snm) {
+    if (!squareAndMultiply) {
       // squaring
       setHsAndBits(resAcc, resAcc);
       expAcc = expAcc.add(expAcc);
@@ -379,8 +379,8 @@ public class MulData {
   //   - SQUARE_AND_MULTIPLY == EXPONENT_BIT
   //   - the exponent bit accumulator coincides with the high part of the exponent
   private void hiToLoExponentBitAccumulatorReset() {
-    if (!exponentSource()) {
-      if (snm == exponentBit()) { // note: when called this is already assumed
+    if (!isExponentInSource()) {
+      if (squareAndMultiply == isExponentBitSet()) { // note: when called this is already assumed
         Bytes32 arg2Copy = arg2.copy();
         if (arg2Copy.shiftRight(128).equals(expAcc)) {
           expAcc = UInt256.MIN_VALUE;

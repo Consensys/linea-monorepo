@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -187,11 +186,155 @@ public enum OpCode {
     return BY_VALUE.get(value);
   }
 
-  public boolean isEqual(final long opCode) {
-    return this.value == opCode;
-  }
-
-  public boolean isElementOf(OpCode... opCodeSet) {
-    return Arrays.asList(opCodeSet).contains(this);
+  public int numberOfArguments() {
+    return switch (this) {
+      case STOP -> 0;
+      case ADD -> 2;
+      case MUL -> 2;
+      case SUB -> 2;
+      case DIV -> 2;
+      case SDIV -> 2;
+      case MOD -> 2;
+      case SMOD -> 2;
+      case ADDMOD -> 3;
+      case MULMOD -> 3;
+      case EXP -> 2;
+      case SIGNEXTEND -> 2;
+      case LT -> 2;
+      case GT -> 2;
+      case SLT -> 2;
+      case SGT -> 2;
+      case EQ -> 2;
+      case ISZERO -> 1;
+      case AND -> 2;
+      case OR -> 2;
+      case XOR -> 2;
+      case NOT -> 2;
+      case BYTE -> 2;
+      case SHL -> 2;
+      case SHR -> 2;
+      case SAR -> 2;
+      case SHA3 -> 2;
+      case ADDRESS -> 0;
+      case BALANCE -> 1;
+      case ORIGIN -> 0;
+      case CALLER -> 0;
+      case CALLVALUE -> 0;
+      case CALLDATALOAD -> 2;
+      case CALLDATASIZE -> 0;
+      case CALLDATACOPY -> 3;
+      case CODESIZE -> 0;
+      case CODECOPY -> 3;
+      case GASPRICE -> 0;
+      case EXTCODESIZE -> 1;
+      case EXTCODECOPY -> 4;
+      case RETURNDATASIZE -> 0;
+      case RETURNDATACOPY -> 3;
+      case EXTCODEHASH -> 1;
+      case BLOCKHASH -> 1;
+      case COINBASE -> 0;
+      case TIMESTAMP -> 0;
+      case NUMBER -> 0;
+      case DIFFICULTY -> 0;
+      case GASLIMIT -> 0;
+      case CHAINID -> 0;
+      case SELFBALANCE -> 0;
+      case BASEFEE -> 0;
+      case POP -> 0;
+      case MLOAD -> 1;
+      case MSTORE -> 2;
+      case MSTORE8 -> 2;
+      case SLOAD -> 1;
+      case SSTORE -> 2;
+      case JUMP -> 1;
+      case JUMPI -> 2;
+      case PC -> 0;
+      case MSIZE -> 0;
+      case GAS -> 0;
+      case JUMPDEST -> 0;
+      case PUSH0 -> 0;
+      case PUSH1 -> 0;
+      case PUSH2 -> 0;
+      case PUSH3 -> 0;
+      case PUSH4 -> 0;
+      case PUSH5 -> 0;
+      case PUSH6 -> 0;
+      case PUSH7 -> 0;
+      case PUSH8 -> 0;
+      case PUSH9 -> 0;
+      case PUSH10 -> 0;
+      case PUSH11 -> 0;
+      case PUSH12 -> 0;
+      case PUSH13 -> 0;
+      case PUSH14 -> 0;
+      case PUSH15 -> 0;
+      case PUSH16 -> 0;
+      case PUSH17 -> 0;
+      case PUSH18 -> 0;
+      case PUSH19 -> 0;
+      case PUSH20 -> 0;
+      case PUSH21 -> 0;
+      case PUSH22 -> 0;
+      case PUSH23 -> 0;
+      case PUSH24 -> 0;
+      case PUSH25 -> 0;
+      case PUSH26 -> 0;
+      case PUSH27 -> 0;
+      case PUSH28 -> 0;
+      case PUSH29 -> 0;
+      case PUSH30 -> 0;
+      case PUSH31 -> 0;
+      case PUSH32 -> 0;
+      case DUP1 -> 0;
+      case DUP2 -> 0;
+      case DUP3 -> 0;
+      case DUP4 -> 0;
+      case DUP5 -> 0;
+      case DUP6 -> 0;
+      case DUP7 -> 0;
+      case DUP8 -> 0;
+      case DUP9 -> 0;
+      case DUP10 -> 0;
+      case DUP11 -> 0;
+      case DUP12 -> 0;
+      case DUP13 -> 0;
+      case DUP14 -> 0;
+      case DUP15 -> 0;
+      case DUP16 -> 0;
+      case SWAP1 -> 0;
+      case SWAP2 -> 0;
+      case SWAP3 -> 0;
+      case SWAP4 -> 0;
+      case SWAP5 -> 0;
+      case SWAP6 -> 0;
+      case SWAP7 -> 0;
+      case SWAP8 -> 0;
+      case SWAP9 -> 0;
+      case SWAP10 -> 0;
+      case SWAP11 -> 0;
+      case SWAP12 -> 0;
+      case SWAP13 -> 0;
+      case SWAP14 -> 0;
+      case SWAP15 -> 0;
+      case SWAP16 -> 0;
+      case LOG0 -> 2;
+      case LOG1 -> 3;
+      case LOG2 -> 4;
+      case LOG3 -> 5;
+      case LOG4 -> 6;
+      case CREATE -> 3;
+      case CALL -> 7;
+      case CALLCODE -> 7;
+      case RETURN -> 2;
+      case DELEGATECALL -> 6;
+      case CREATE2 -> 4;
+      case STATICCALL -> 6;
+      case REVERT -> 3;
+      case INVALID -> 0;
+      case SELFDESTRUCT -> 1;
+      default -> {
+        throw new RuntimeException("unaccounted opcode");
+      }
+    };
   }
 }
