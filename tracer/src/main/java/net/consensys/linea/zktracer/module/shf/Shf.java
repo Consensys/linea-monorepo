@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -90,85 +91,77 @@ public class Shf implements Module {
     stamp++;
     for (int i = 0; i < maxCt(isOneLineInstruction); i++) {
       builder
-          .acc1Arg(arg1Lo.slice(0, 1 + i).toUnsignedBigInteger())
-          .acc2Arg(arg2Hi.slice(0, 1 + i).toUnsignedBigInteger())
-          .acc3Arg(arg2Lo.slice(0, 1 + i).toUnsignedBigInteger())
-          .acc4Arg(res.getResHi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc5Arg(res.getResLo().slice(0, 1 + i).toUnsignedBigInteger())
-          .arg1HiArg(arg1Hi.toUnsignedBigInteger())
-          .arg1LoArg(arg1Lo.toUnsignedBigInteger())
-          .arg2HiArg(arg2Hi.toUnsignedBigInteger())
-          .arg2LoArg(arg2Lo.toUnsignedBigInteger());
+          .acc1(arg1Lo.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc2(arg2Hi.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc3(arg2Lo.slice(0, 1 + i).toUnsignedBigInteger())
+          .acc4(res.getResHi().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc5(res.getResLo().slice(0, 1 + i).toUnsignedBigInteger())
+          .arg1Hi(arg1Hi.toUnsignedBigInteger())
+          .arg1Lo(arg1Lo.toUnsignedBigInteger())
+          .arg2Hi(arg2Hi.toUnsignedBigInteger())
+          .arg2Lo(arg2Lo.toUnsignedBigInteger());
 
       if (isShiftRight) {
-        builder.bit1Arg(i >= 1).bit2Arg(i >= 2).bit3Arg(i >= 4).bit4Arg(i >= 8);
+        builder.bit1(i >= 1).bit2(i >= 2).bit3(i >= 4).bit4(i >= 8);
       } else {
-        builder
-            .bit1Arg(i >= (16 - 1))
-            .bit2Arg(i >= (16 - 2))
-            .bit3Arg(i >= (16 - 4))
-            .bit4Arg(i >= (16 - 8));
+        builder.bit1(i >= (16 - 1)).bit2(i >= (16 - 2)).bit3(i >= (16 - 4)).bit4(i >= (16 - 8));
       }
 
-      builder
-          .bitB3Arg(isBitB3)
-          .bitB4Arg(isBitB4)
-          .bitB5Arg(isBitB5)
-          .bitB6Arg(isBitB6)
-          .bitB7Arg(isBitB7);
+      builder.bitB3(isBitB3).bitB4(isBitB4).bitB5(isBitB5).bitB6(isBitB6).bitB7(isBitB7);
 
       builder
-          .byte1Arg(UnsignedByte.of(arg1Lo.get(i)))
-          .byte2Arg(UnsignedByte.of(arg2Hi.get(i)))
-          .byte3Arg(UnsignedByte.of(arg2Lo.get(i)))
-          .byte4Arg(UnsignedByte.of(res.getResHi().get(i)))
-          .byte5Arg(UnsignedByte.of(res.getResLo().get(i)));
+          .byte1(UnsignedByte.of(arg1Lo.get(i)))
+          .byte2(UnsignedByte.of(arg2Hi.get(i)))
+          .byte3(UnsignedByte.of(arg2Lo.get(i)))
+          .byte4(UnsignedByte.of(res.getResHi().get(i)))
+          .byte5(UnsignedByte.of(res.getResLo().get(i)));
 
       builder
-          .bitsArg(bits.get(i))
-          .counterArg(i)
-          .instArg(UnsignedByte.of(opCode.value))
-          .knownArg(isKnown)
-          .negArg(isNegative)
-          .oneLineInstructionArg(isOneLineInstruction)
-          .low3Arg(low3)
-          .microShiftParameterArg(mshp)
-          .resHiArg(res.getResHi().toUnsignedBigInteger())
-          .resLoArg(res.getResLo().toUnsignedBigInteger());
+          .bits(bits.get(i))
+          .counter(BigInteger.valueOf(i))
+          .inst(BigInteger.valueOf(opCode.value))
+          .known(isKnown)
+          .neg(isNegative)
+          .oneLineInstruction(isOneLineInstruction)
+          .low3(BigInteger.valueOf(low3.toInteger()))
+          .microShiftParameter(BigInteger.valueOf(mshp.toInteger()))
+          .resHi(res.getResHi().toUnsignedBigInteger())
+          .resLo(res.getResLo().toUnsignedBigInteger());
 
       final ByteChunks arg2HiByteChunks =
           ByteChunks.fromBytes(UnsignedByte.of(arg2Hi.get(i)), mshp);
 
       builder
-          .leftAlignedSuffixHighArg(arg2HiByteChunks.la())
-          .rightAlignedPrefixHighArg(arg2HiByteChunks.ra())
-          .onesArg(arg2HiByteChunks.ones());
+          .leftAlignedSuffixHigh(arg2HiByteChunks.la().toBigInteger())
+          .rightAlignedPrefixHigh(arg2HiByteChunks.ra().toBigInteger())
+          .ones(BigInteger.valueOf(arg2HiByteChunks.ones().toInteger()));
 
       final ByteChunks arg2LoByteChunks =
           ByteChunks.fromBytes(UnsignedByte.of(arg2Lo.get(i)), mshp);
 
       builder
-          .leftAlignedSuffixLowArg(arg2LoByteChunks.la())
-          .rightAlignedPrefixLowArg(arg2LoByteChunks.ra())
-          .shb3HiArg(shb.getShbHi()[0][i])
-          .shb3LoArg(shb.getShbLo()[0][i])
-          .shb4HiArg(shb.getShbHi()[4 - 3][i])
-          .shb4LoArg(shb.getShbLo()[4 - 3][i])
-          .shb5HiArg(shb.getShbHi()[5 - 3][i])
-          .shb5LoArg(shb.getShbLo()[5 - 3][i])
-          .shb6HiArg(shb.getShbHi()[6 - 3][i])
-          .shb6LoArg(shb.getShbLo()[6 - 3][i])
-          .shb7HiArg(shb.getShbHi()[7 - 3][i])
-          .shb7LoArg(shb.getShbLo()[7 - 3][i])
-          .shiftDirectionArg(isShiftRight)
-          .isDataArg(stamp != 0)
-          .shiftStampArg(stamp);
+          .leftAlignedSuffixLow(arg2LoByteChunks.la().toBigInteger())
+          .rightAlignedPrefixLow(arg2LoByteChunks.ra().toBigInteger())
+          .shb3Hi(shb.getShbHi()[0][i].toBigInteger())
+          .shb3Lo(shb.getShbLo()[0][i].toBigInteger())
+          .shb4Hi(shb.getShbHi()[4 - 3][i].toBigInteger())
+          .shb4Lo(shb.getShbLo()[4 - 3][i].toBigInteger())
+          .shb5Hi(shb.getShbHi()[5 - 3][i].toBigInteger())
+          .shb5Lo(shb.getShbLo()[5 - 3][i].toBigInteger())
+          .shb6Hi(shb.getShbHi()[6 - 3][i].toBigInteger())
+          .shb6Lo(shb.getShbLo()[6 - 3][i].toBigInteger())
+          .shb7Hi(shb.getShbHi()[7 - 3][i].toBigInteger())
+          .shb7Lo(shb.getShbLo()[7 - 3][i].toBigInteger())
+          .shiftDirection(isShiftRight)
+          .isData(stamp != 0)
+          .shiftStamp(BigInteger.valueOf(stamp))
+          .validateRow();
     }
   }
 
   @Override
   public Object commit() {
-    return new ShfTrace(builder.build(), stamp);
+    return new ShfTrace(builder.build());
   }
 
   private int maxCt(final boolean isOneLineInstruction) {

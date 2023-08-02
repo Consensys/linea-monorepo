@@ -15,11 +15,11 @@
 
 package net.consensys.linea.zktracer.specs;
 
-import static net.consensys.linea.zktracer.module.alu.add.Add.ADD_JSON_KEY;
+import static net.consensys.linea.zktracer.module.add.Add.ADD_JSON_KEY;
 
 import net.consensys.linea.zktracer.AbstractModuleBySpecTest;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.alu.add.Add;
+import net.consensys.linea.zktracer.module.add.Add;
 
 /** Implementation of a module tracer by spec class for the ADD module. */
 public class AddTracerBySpecTest extends AbstractModuleBySpecTest {

@@ -133,9 +133,6 @@ public class Util {
    * @return A byte representing the input boolean value.
    */
   public static byte boolToByte(boolean b) {
-    if (b) {
-      return 1;
-    }
-    return 0;
+    return (byte) (b ? 1 : 0);
   }
 }

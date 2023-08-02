@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.shf;
+package net.consensys.linea.zktracer.module.mul;
 
 import java.math.BigInteger;
 
@@ -23,10 +23,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record ShfTrace(@JsonProperty("Trace") Trace trace) {
-  static final BigInteger LIMB_SIZE = new BigInteger("16");
-  static final BigInteger LIMB_SIZE_MINUS_ONE = new BigInteger("15");
-  static final BigInteger SAR = new BigInteger("29");
-  static final BigInteger SHL = new BigInteger("27");
-  static final BigInteger SHR = new BigInteger("28");
+record MulTrace(@JsonProperty("Trace") Trace trace) {
+  static final BigInteger EXP = new BigInteger("10");
+  static final BigInteger MMEDIUM = new BigInteger("8");
+  static final BigInteger MMEDIUMMO = new BigInteger("7");
+  static final BigInteger MUL = new BigInteger("2");
+  static final BigInteger ONETWOEIGHT = new BigInteger("128");
+  static final BigInteger ONETWOSEVEN = new BigInteger("127");
+  static final BigInteger THETA = new BigInteger("18446744073709551616");
+  static final BigInteger THETA2 = new BigInteger("340282366920938463463374607431768211456");
 }
