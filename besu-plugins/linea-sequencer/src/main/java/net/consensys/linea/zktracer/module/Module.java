@@ -28,6 +28,10 @@ public interface Module {
 
   List<OpCode> supportedOpCodes();
 
+  default void traceStartConflation(final long blockCount) {}
+
+  default void traceEndConflation() {}
+
   default void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
 
   default void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}

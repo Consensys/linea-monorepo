@@ -57,7 +57,7 @@ public class Shf implements Module {
 
     final boolean isOneLineInstruction = isOneLineInstruction(opCode, arg1Hi);
     final boolean isNegative = Long.compareUnsigned(arg2Hi.get(0), 128) >= 0;
-    final boolean isShiftRight = opCode.isElementOf(OpCode.SAR, OpCode.SHR);
+    final boolean isShiftRight = List.of(OpCode.SAR, OpCode.SHR).contains(opCode);
     final boolean isKnown = isKnown(opCode, arg1Hi, arg1Lo);
 
     final UnsignedByte msb = UnsignedByte.of(arg2Hi.get(0));
@@ -179,7 +179,7 @@ public class Shf implements Module {
   }
 
   private boolean isOneLineInstruction(final OpCode opCode, final Bytes16 arg1Hi) {
-    return opCode.isElementOf(OpCode.SHR, OpCode.SHL) && !arg1Hi.isZero();
+    return (opCode == OpCode.SHR || opCode == OpCode.SHL) && !arg1Hi.isZero();
   }
 
   private boolean isKnown(final OpCode opCode, final Bytes16 arg1Hi, final Bytes16 arg1Lo) {
