@@ -97,7 +97,10 @@ public class CorsetValidator {
                   "check",
                   "-T",
                   traceFile.toFile().getAbsolutePath(),
-                  "-v",
+                  "-q",
+                  "-r",
+                  "-d",
+                  "-s",
                   "-t",
                   "2",
                   ZK_EVM_BIN)

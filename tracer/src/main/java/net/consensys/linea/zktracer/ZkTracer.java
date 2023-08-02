@@ -49,20 +49,14 @@ public class ZkTracer implements BlockAwareOperationTracer {
   }
 
   public void traceStartConflation(final long numBlocksInConflation) {
-    // TODO: implement
+    for (Module module : this.modules) {
+      module.traceStartConflation(numBlocksInConflation);
+    }
   }
 
   public void traceEndConflation() {
-    // TODO: implement
-  }
-
-  @Override
-  public void tracePreExecution(final MessageFrame frame) {
-    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     for (Module module : this.modules) {
-      if (module.supportedOpCodes().contains(opCode)) {
-        module.trace(frame);
-      }
+      module.traceEndConflation();
     }
   }
 
@@ -95,4 +89,14 @@ public class ZkTracer implements BlockAwareOperationTracer {
   }
 
   // TODO: missing ContextEnter/Exit
+
+  @Override
+  public void tracePreExecution(final MessageFrame frame) {
+    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    for (Module module : this.modules) {
+      if (module.supportedOpCodes().contains(opCode)) {
+        module.trace(frame);
+      }
+    }
+  }
 }

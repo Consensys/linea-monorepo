@@ -44,17 +44,25 @@ public class Wcp implements Module {
   public void trace(final MessageFrame frame) {
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
+    final Bytes32 arg2 =
+        (opCode != OpCode.ISZERO)
+            ? Bytes32.wrap(frame.getStackItem(1))
+            : Bytes32.repeat((byte) 0x00);
+
     final WcpData data = new WcpData(opCode, arg1, arg2);
 
     stamp++;
 
+    this.traceWcpData(data);
+  }
+
+  public void traceWcpData(WcpData data) {
     for (int i = 0; i < maxCt(data.isOneLineInstruction()); i++) {
       builder
           .wordComparisonStamp(BigInteger.valueOf(stamp))
           .oneLineInstruction(data.isOneLineInstruction())
           .counter(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCode.value))
+          .inst(BigInteger.valueOf(data.getOpCode().value))
           .argument1Hi(data.getArg1Hi().toUnsignedBigInteger())
           .argument1Lo(data.getArg1Lo().toUnsignedBigInteger())
           .argument2Hi(data.getArg2Hi().toUnsignedBigInteger())
@@ -91,5 +99,21 @@ public class Wcp implements Module {
 
   private int maxCt(final boolean isOneLineInstruction) {
     return isOneLineInstruction ? 1 : LIMB_SIZE;
+  }
+
+  public void callLT(Bytes32 arg1, Bytes32 arg2) {
+    WcpData data = new WcpData(OpCode.LT, arg1, arg2);
+    this.traceWcpData(data);
+  }
+
+  public void callEQ(Bytes32 arg1, Bytes32 arg2) {
+    WcpData data = new WcpData(OpCode.EQ, arg1, arg2);
+    this.traceWcpData(data);
+  }
+
+  public void callISZERO(Bytes32 arg1) {
+    Bytes32 zero = Bytes32.repeat((byte) 0x00);
+    WcpData data = new WcpData(OpCode.ISZERO, arg1, zero);
+    this.traceWcpData(data);
   }
 }

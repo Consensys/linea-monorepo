@@ -42,20 +42,20 @@ public abstract class AbstractBaseModuleTest {
   static Module module;
 
   protected void runTest(final OpCode opCode, final List<Bytes32> arguments) {
-    when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
-    for (int i = 0; i < arguments.size(); i++) {
-      when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
-    }
-    zkTracer.tracePreExecution(mockFrame);
-    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
+    assertThat(CorsetValidator.isValid(generateTrace(opCode, arguments))).isTrue();
   }
 
   protected String generateTrace(OpCode opCode, List<Bytes32> arguments) {
     when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
+
     for (int i = 0; i < arguments.size(); i++) {
       when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
     }
+
+    zkTracer.traceStartConflation(1);
     zkTracer.tracePreExecution(mockFrame);
+    zkTracer.traceEndConflation();
+
     return zkTracer.getTrace().toJson();
   }
 

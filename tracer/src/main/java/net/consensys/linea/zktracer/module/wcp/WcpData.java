@@ -30,8 +30,9 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-class WcpData {
+public class WcpData {
   @Getter private final boolean isOneLineInstruction;
+  @Getter private final OpCode opCode;
   @Getter private final Bytes16 arg1Hi;
   @Getter private final Bytes16 arg1Lo;
   @Getter private final Bytes16 arg2Hi;
@@ -53,6 +54,11 @@ class WcpData {
 
   public WcpData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.isOneLineInstruction = isOneLineInstruction(opCode);
+    this.opCode = opCode;
+
+    // maybe ?
+    // Bytes32[] args
+    // assert args.size() == opCode.numberOfArguments();
 
     this.arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
     this.arg1Lo = Bytes16.wrap(arg1.slice(16));
@@ -103,7 +109,7 @@ class WcpData {
   }
 
   private boolean isOneLineInstruction(final OpCode opCode) {
-    return opCode.isElementOf(OpCode.EQ, OpCode.ISZERO);
+    return List.of(OpCode.EQ, OpCode.ISZERO).contains(opCode);
   }
 
   private boolean calculateResLow(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
