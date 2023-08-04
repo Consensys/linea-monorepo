@@ -51,13 +51,17 @@ public class Mod implements Module {
 
     stamp++;
 
+    this.traceModData(data);
+  }
+
+  public void traceModData(ModData data) {
     for (int i = 0; i < maxCounter(data); i++) {
       final int accLength = i + 1;
       builder
           .stamp(BigInteger.valueOf(stamp))
           .oli(data.isOli())
           .ct(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCode.value))
+          .inst(BigInteger.valueOf(data.getOpCode().value))
           .decSigned(data.isSigned())
           .decOutput(data.isDiv())
           .arg1Hi(data.getArg1().getHigh().toUnsignedBigInteger())
@@ -128,8 +132,30 @@ public class Mod implements Module {
   private int maxCounter(ModData data) {
     if (data.isOli()) {
       return 1;
+    } else {
+      return MMEDIUM;
     }
+  }
 
-    return MMEDIUM;
+  /**
+   * Performs a context-free call to the DIV opcode in the current trace
+   *
+   * @param arg1 the divider
+   * @param arg2 the dividend
+   */
+  public void callDiv(Bytes32 arg1, Bytes32 arg2) {
+    ModData data = new ModData(OpCode.DIV, arg1, arg2);
+    this.traceModData(data);
+  }
+
+  /**
+   * Performs a context-free call to the MOD opcode in the current trace
+   *
+   * @param arg1 the number
+   * @param arg2 the module
+   */
+  public void callMod(Bytes32 arg1, Bytes32 arg2) {
+    ModData data = new ModData(OpCode.MOD, arg1, arg2);
+    this.traceModData(data);
   }
 }
