@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.mxp;
+package net.consensys.linea.zktracer.opcode.gas;
 
 /** All the ways for the Mxp to compute the total gas consumption of an instruction. */
 public enum MxpType {
