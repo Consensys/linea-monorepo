@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
-import static net.consensys.linea.zktracer.OpCode.GT;
+import static net.consensys.linea.zktracer.opcode.OpCode.GT;
 
 import java.util.List;
 import java.util.stream.Stream;

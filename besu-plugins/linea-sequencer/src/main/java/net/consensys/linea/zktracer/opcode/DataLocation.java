@@ -13,26 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.opcode;
 
-import java.util.List;
-
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
-
-public class Hub implements Module {
-  @Override
-  public String jsonKey() {
-    return "hub";
-  }
-
-  @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.values());
-  }
-
-  @Override
-  public Object commit() {
-    return null;
-  }
+public enum DataLocation {
+  None,
+  Rom,
+  TxnCallData,
+  Ram,
+  Stack,
+  EcData,
+  EcInfo,
+  ModExpData,
+  HashData,
+  HashInfo,
+  BlakeData,
+  LogData,
 }

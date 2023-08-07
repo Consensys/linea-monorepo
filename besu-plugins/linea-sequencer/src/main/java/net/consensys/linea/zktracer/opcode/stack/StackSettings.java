@@ -13,26 +13,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.opcode.stack;
 
-import java.util.List;
+import net.consensys.linea.zktracer.opcode.gas.Gas;
 
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
-
-public class Hub implements Module {
-  @Override
-  public String jsonKey() {
-    return "hub";
-  }
-
-  @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.values());
-  }
-
-  @Override
-  public Object commit() {
-    return null;
-  }
-}
+// TODO: maybe a builder?
+public record StackSettings(
+    Pattern pattern,
+    int alpha,
+    int delta,
+    int nbAdded,
+    int nbRemoved,
+    Gas staticGas,
+    boolean twoLinesInstruction,
+    boolean staticInstruction,
+    boolean addressTrimmingInstruction,
+    boolean oobFlag,
+    boolean flag1,
+    boolean flag2,
+    boolean flag3,
+    boolean flag4) {}

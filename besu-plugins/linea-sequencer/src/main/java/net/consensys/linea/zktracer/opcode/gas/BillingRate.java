@@ -13,26 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.opcode.gas;
 
-import java.util.List;
-
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
-
-public class Hub implements Module {
-  @Override
-  public String jsonKey() {
-    return "hub";
-  }
-
-  @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.values());
-  }
-
-  @Override
-  public Object commit() {
-    return null;
-  }
+/** The unit used to bill the gas usage of an instruction. */
+public enum BillingRate {
+  ByWord,
+  ByByte,
 }
