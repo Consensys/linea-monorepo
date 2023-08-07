@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;

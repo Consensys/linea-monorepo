@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.ext.calculator;
 
-import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import net.consensys.linea.zktracer.module.ext.calculator.addmod.AddModCalculator;
 import net.consensys.linea.zktracer.module.ext.calculator.mulmod.MulModCalculator;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 

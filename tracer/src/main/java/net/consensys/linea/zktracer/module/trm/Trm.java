@@ -17,8 +17,8 @@ package net.consensys.linea.zktracer.module.trm;
 
 import java.util.List;
 
-import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Trm implements Module {

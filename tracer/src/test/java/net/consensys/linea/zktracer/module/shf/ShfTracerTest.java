@@ -23,9 +23,9 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
