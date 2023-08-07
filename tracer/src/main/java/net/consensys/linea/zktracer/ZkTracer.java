@@ -25,6 +25,7 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;

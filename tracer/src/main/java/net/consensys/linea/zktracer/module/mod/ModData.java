@@ -22,10 +22,10 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import lombok.Getter;
-import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;

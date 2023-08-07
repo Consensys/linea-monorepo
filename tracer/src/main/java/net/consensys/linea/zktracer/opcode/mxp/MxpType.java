@@ -13,26 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.opcode.mxp;
 
-import java.util.List;
-
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
-
-public class Hub implements Module {
-  @Override
-  public String jsonKey() {
-    return "hub";
-  }
-
-  @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.values());
-  }
-
-  @Override
-  public Object commit() {
-    return null;
-  }
+/** All the ways for the Mxp to compute the total gas consumption of an instruction. */
+public enum MxpType {
+  None,
+  Type1,
+  Type2,
+  Type3,
+  Type4,
+  Type5,
 }

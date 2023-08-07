@@ -18,11 +18,11 @@ package net.consensys.linea.zktracer.module.ext;
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
 
 import lombok.Getter;
-import net.consensys.linea.zktracer.OpCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
 import net.consensys.linea.zktracer.module.ext.calculator.AbstractExtCalculator;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 

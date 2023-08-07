@@ -23,6 +23,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
