@@ -13,10 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.mxp;
-
-import net.consensys.linea.zktracer.opcode.gas.BillingRate;
-import net.consensys.linea.zktracer.opcode.gas.Gas;
+package net.consensys.linea.zktracer.opcode.gas;
 
 /**
  * An ancillary class to compute gas billing of some instructions.
