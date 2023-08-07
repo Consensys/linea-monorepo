@@ -18,9 +18,9 @@ package net.consensys.linea.zktracer.opcode;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.consensys.linea.zktracer.opcode.gas.Billing;
 import net.consensys.linea.zktracer.opcode.gas.Gas;
-import net.consensys.linea.zktracer.opcode.mxp.Billing;
-import net.consensys.linea.zktracer.opcode.mxp.MxpType;
+import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.stack.Pattern;
 import net.consensys.linea.zktracer.opcode.stack.StackSettings;
 
