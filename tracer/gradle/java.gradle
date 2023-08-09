@@ -13,23 +13,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.hyperledger.besu.tests.acceptance.dsl;
+apply plugin: 'java-library'
 
-import java.util.concurrent.TimeUnit;
+if (!JavaVersion.current().java11Compatible) {
+  throw new GradleException("Java 17 or later is required.\n" +
+    "  Detected version ${JavaVersion.current()}")
+}
 
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
+sourceCompatibility = 17
+targetCompatibility = 17
 
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
+tasks.withType(JavaCompile) {
+  options.compilerArgs += [
+    '-Xlint:unchecked',
+    '-Xlint:cast',
+    '-Xlint:rawtypes',
+    '-Xlint:overloads',
+    '-Xlint:divzero',
+    '-Xlint:finally',
+    '-Xlint:static',
+    '-Werror',
+  ]
 
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+  options.encoding = 'UTF-8'
 }
