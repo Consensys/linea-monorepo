@@ -13,23 +13,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.hyperledger.besu.tests.acceptance.dsl;
+// Default tasks and build aliases
+defaultTasks 'build', 'checkLicenses', 'javadoc', 'jar'
 
-import java.util.concurrent.TimeUnit;
+def buildAliases = ['dev': [
+  'spotlessApply',
+  'build',
+  'checkLicenses',
+  //      'javadoc'
+]]
 
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
-
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
-
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+def expandedTaskList = []
+gradle.startParameter.taskNames.each {
+  expandedTaskList << (buildAliases[it] ? buildAliases[it] : it)
 }
+gradle.startParameter.taskNames = expandedTaskList.flatten()

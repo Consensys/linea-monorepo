@@ -13,23 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.hyperledger.besu.tests.acceptance.dsl;
-
-import java.util.concurrent.TimeUnit;
-
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
-
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
-
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+plugins {
+  id 'io.freefair.lombok'
+  id 'com.diffplug.spotless'
+  id 'com.github.ben-manes.versions'
+  id 'io.spring.dependency-management'
 }

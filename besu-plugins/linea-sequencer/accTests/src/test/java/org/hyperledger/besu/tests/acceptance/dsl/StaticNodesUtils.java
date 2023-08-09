@@ -33,9 +33,9 @@ public class StaticNodesUtils {
       staticNodesFile.toFile().deleteOnExit();
 
       final String json =
-        staticNodes.stream()
-          .map(s -> String.format("\"%s\"", s))
-          .collect(Collectors.joining(",", "[", "]"));
+          staticNodes.stream()
+              .map(s -> String.format("\"%s\"", s))
+              .collect(Collectors.joining(",", "[", "]"));
 
       Files.writeString(staticNodesFile, json);
 

@@ -65,9 +65,7 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.slf4j.MDC;
 
-/**
- * Base class for acceptance tests.
- */
+/** Base class for acceptance tests. */
 @Slf4j
 public class AcceptanceTestBase {
   protected final Accounts accounts;
@@ -131,8 +129,7 @@ public class AcceptanceTestBase {
     exitedSuccessfully = new ExitedWithCode(0);
   }
 
-  @Rule
-  public final TestName name = new TestName();
+  @Rule public final TestName name = new TestName();
 
   @After
   public void tearDownAcceptanceTestBase() {
@@ -140,9 +137,7 @@ public class AcceptanceTestBase {
     cluster.close();
   }
 
-  /**
-   * Report memory usage after test execution.
-   */
+  /** Report memory usage after test execution. */
   public void reportMemory() {
     String os = System.getProperty("os.name");
     String[] command = null;
@@ -155,7 +150,7 @@ public class AcceptanceTestBase {
     if (command != null) {
       log.info("Memory usage at end of test:");
       final ProcessBuilder processBuilder =
-        new ProcessBuilder(command).redirectErrorStream(true).redirectInput(Redirect.INHERIT);
+          new ProcessBuilder(command).redirectErrorStream(true).redirectInput(Redirect.INHERIT);
       try {
         final Process memInfoProcess = processBuilder.start();
         outputProcessorExecutor.execute(() -> printOutput(memInfoProcess));
@@ -171,7 +166,7 @@ public class AcceptanceTestBase {
 
   private void printOutput(final Process process) {
     try (final BufferedReader in =
-           new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
+        new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
       String line = in.readLine();
       while (line != null) {
         log.info(line);
@@ -184,52 +179,52 @@ public class AcceptanceTestBase {
 
   @Rule
   public TestWatcher logEraser =
-    new TestWatcher() {
+      new TestWatcher() {
 
-      @Override
-      protected void starting(final Description description) {
-        MDC.put("test", description.getMethodName());
-        MDC.put("class", description.getClassName());
+        @Override
+        protected void starting(final Description description) {
+          MDC.put("test", description.getMethodName());
+          MDC.put("class", description.getClassName());
 
-        final String errorMessage = "Uncaught exception in thread \"{}\"";
-        Thread.currentThread()
-          .setUncaughtExceptionHandler(
-            (thread, error) -> log.error(errorMessage, thread.getName(), error));
-        Thread.setDefaultUncaughtExceptionHandler(
-          (thread, error) -> log.error(errorMessage, thread.getName(), error));
-      }
-
-      @Override
-      protected void failed(final Throwable e, final Description description) {
-        // add the result at the end of the log so it is self-sufficient
-        log.error(
-          "==========================================================================================");
-        log.error("Test failed. Reported Throwable at the point of failure:", e);
-        log.error(e.getMessage());
-      }
-
-      @Override
-      protected void succeeded(final Description description) {
-        // if so configured, delete logs of successful tests
-        if (!Boolean.getBoolean("acctests.keepLogsOfPassingTests")) {
-          String pathname =
-            "build/acceptanceTestLogs/"
-              + description.getClassName()
-              + "."
-              + description.getMethodName()
-              + ".log";
-          log.info("Test successful, deleting log at {}", pathname);
-          File file = new File(pathname);
-          file.delete();
+          final String errorMessage = "Uncaught exception in thread \"{}\"";
+          Thread.currentThread()
+              .setUncaughtExceptionHandler(
+                  (thread, error) -> log.error(errorMessage, thread.getName(), error));
+          Thread.setDefaultUncaughtExceptionHandler(
+              (thread, error) -> log.error(errorMessage, thread.getName(), error));
         }
-      }
-    };
+
+        @Override
+        protected void failed(final Throwable e, final Description description) {
+          // add the result at the end of the log so it is self-sufficient
+          log.error(
+              "==========================================================================================");
+          log.error("Test failed. Reported Throwable at the point of failure:", e);
+          log.error(e.getMessage());
+        }
+
+        @Override
+        protected void succeeded(final Description description) {
+          // if so configured, delete logs of successful tests
+          if (!Boolean.getBoolean("acctests.keepLogsOfPassingTests")) {
+            String pathname =
+                "build/acceptanceTestLogs/"
+                    + description.getClassName()
+                    + "."
+                    + description.getMethodName()
+                    + ".log";
+            log.info("Test successful, deleting log at {}", pathname);
+            File file = new File(pathname);
+            file.delete();
+          }
+        }
+      };
 
   protected void waitForBlockHeight(final Node node, final long blockchainHeight) {
     WaitUtils.waitFor(
-      120,
-      () ->
-        assertThat(node.execute(ethTransactions.blockNumber()))
-          .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight)));
+        120,
+        () ->
+            assertThat(node.execute(ethTransactions.blockNumber()))
+                .isGreaterThanOrEqualTo(BigInteger.valueOf(blockchainHeight)));
   }
 }
