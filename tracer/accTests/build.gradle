@@ -1,6 +1,20 @@
+/*
+ * Copyright ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 plugins {
-  id 'checkstyle'
-  id 'io.freefair.lombok' version '8.1.0'
+  id 'common-plugins'
   id 'org.web3j' version '4.9.2'
   id 'org.web3j.solidity' version '0.3.5'
 }
@@ -12,14 +26,6 @@ solidity {
   optimizeRuns = 1
 }
 
-checkstyle {
-  toolVersion = '10.12.1'
-  // Following settings will be activated once the entire project complies with the checkstyle rules
-  // and once achieved all future code that does not comply with the rules will fail the build of the project.
-  //    maxWarnings = 0
-  //    ignoreFailures = false
-}
-
 dependencies {
   testImplementation "org.hyperledger.besu.internal:dsl:$besuVersion"
   testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
@@ -27,49 +33,20 @@ dependencies {
   testImplementation "org.hyperledger.besu.internal:eth:$besuVersion:test-support"
   testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
   testImplementation "org.hyperledger.besu.internal:core:$besuVersion:test-support"
+  testImplementation "org.hyperledger.besu:evm:$besuVersion"
+
+  testImplementation 'org.apache.tuweni:tuweni-bytes'
+  testImplementation 'org.apache.tuweni:tuweni-units'
 
   testImplementation 'org.web3j:abi'
   testImplementation 'org.web3j:besu'
   testImplementation 'org.web3j:core'
 
   testImplementation 'junit:junit'
-  testImplementation 'org.assertj:assertj-core'
   testImplementation 'org.awaitility:awaitility'
   testImplementation 'com.splunk.logging:splunk-library-javalogging'
-  testImplementation 'org.projectlombok:lombok:1.18.26'
 }
 
 test.enabled = false
 
 unitTests.enabled = false
-
-tasks.named("checkstyleTest", Checkstyle) {
-  exclude("**/generated/*.java")
-}
-
-tasks.register("copyPluginJar") {
-  dependsOn rootProject.installDist
-
-  doLast {
-    def copyInto = File.createTempDir("plugins")
-    def copyFrom = new File(getRootDir().toString() + "/build/libs")
-    project.ext.pluginDir = copyInto.toString()
-
-    copy {
-      from copyFrom.toString()
-      into copyInto.toString()
-      include '*.jar'
-    }
-  }
-}
-
-task acceptanceTest(dependsOn: copyPluginJar, type: Test) {
-  inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
-  include '**'
-
-  useJUnitPlatform {}
-
-  doFirst {
-    systemProperty "besu.plugins.dir", project.ext.pluginDir
-  }
-}

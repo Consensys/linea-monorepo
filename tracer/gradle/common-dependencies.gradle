@@ -13,23 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.hyperledger.besu.tests.acceptance.dsl;
+dependencies {
+  api 'org.slf4j:slf4j-api'
 
-import java.util.concurrent.TimeUnit;
+  implementation 'ch.qos.logback:logback-core'
+  implementation 'ch.qos.logback:logback-classic'
 
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
+  testImplementation 'commons-io:commons-io'
+  testImplementation 'org.apache.commons:commons-lang3'
+  testImplementation 'org.assertj:assertj-core'
 
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.junit.jupiter:junit-jupiter-params'
 
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+  testImplementation 'org.mockito:mockito-core'
+  testImplementation 'org.mockito:mockito-junit-jupiter'
 }

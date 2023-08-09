@@ -13,23 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.hyperledger.besu.tests.acceptance.dsl;
+allprojects {
+  group = 'net.consensys.linea.besu.plugin'
+  version = rootProject.version
 
-import java.util.concurrent.TimeUnit;
-
-import org.awaitility.Awaitility;
-import org.awaitility.core.ThrowingRunnable;
-
-/** Contains functionality for timeouts. */
-public class WaitUtils {
-  public static void waitFor(final ThrowingRunnable condition) {
-    waitFor(30, condition);
-  }
-
-  public static void waitFor(final int timeout, final ThrowingRunnable condition) {
-    Awaitility.await()
-        .ignoreExceptions()
-        .atMost(timeout, TimeUnit.SECONDS)
-        .untilAsserted(condition);
-  }
+  apply from: rootProject.file("gradle/java.gradle")
+  apply from: rootProject.file("gradle/dependency-management.gradle")
+  apply from: rootProject.file("gradle/check-licenses.gradle")
+  apply from: rootProject.file("gradle/build-aliases.gradle")
+  apply from: rootProject.file('gradle/common-dependencies.gradle')
+  apply from: rootProject.file("gradle/lint.gradle")
+  apply from: rootProject.file("gradle/tests.gradle")
 }
