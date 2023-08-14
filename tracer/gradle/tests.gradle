@@ -60,35 +60,6 @@ test {
   useJUnitPlatform()
 }
 
-tasks.register('checkCorsetPreConditions') {
-  doLast {
-    def stdout = new ByteArrayOutputStream()
-    exec {
-      commandLine 'sh', '-c', 'command -v corset || true'
-      standardOutput = stdout
-    }
-    def corsetInstalled = stdout.toString().trim()
-
-    if (corsetInstalled) {
-      println 'CORSET found, running corset tests'
-    } else {
-      throw new GradleException('Corset not found, skipping corsetTests')
-    }
-  }
-}
-
-tasks.register('buildZkevmBin', Exec) {
-  dependsOn checkCorsetPreConditions
-  workingDir "${project.rootDir}/zkevm-constraints/"
-  commandLine 'make', 'zkevm.bin'
-
-  //store the output instead of printing to the console
-  standardOutput = new ByteArrayOutputStream()
-  ext.output = {
-    return standardOutput.toString()
-  }
-}
-
 tasks.test.dependsOn(buildZkevmBin)
 
 tasks.register('unitTests', Test) {
