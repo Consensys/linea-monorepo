@@ -41,6 +41,8 @@ dependencies {
   implementation 'org.apache.tuweni:tuweni-bytes'
   implementation 'org.apache.tuweni:tuweni-units'
 
+  implementation 'org.bouncycastle:bcprov-jdk18on'
+
   testImplementation "org.hyperledger.besu:evm:$besuVersion"
   testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
 }
