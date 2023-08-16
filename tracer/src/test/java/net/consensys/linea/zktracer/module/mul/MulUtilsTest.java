@@ -24,15 +24,22 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.module.Util;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class MulUtilsTest {
+  @BeforeAll
+  static void beforeAll() {
+    OpCodes.load();
+  }
+
   @Test
-  public void isTiny() {
+  void isTiny() {
     // tiny means zero or one
     assertThat(MulData.isTiny(BigInteger.ZERO)).isTrue();
     assertThat(MulData.isTiny(BigInteger.ONE)).isTrue();
@@ -41,7 +48,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void twoAdicity() {
+  void twoAdicity() {
     assertThat(MulData.twoAdicity(UInt256.MIN_VALUE)).isEqualTo(256);
     // TODO no idea what these should be
     //    assertThat(MulData.twoAdicity(UInt256.MAX_VALUE)).isEqualTo(0);
@@ -49,47 +56,51 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void multiplyByZero() {
+  void multiplyByZero() {
     Bytes32 arg1 = Bytes32.random();
-    OpCode mul = OpCode.MUL;
+    OpCodeData mul = OpCode.MUL.getData();
     MulData oxo = new MulData(mul, arg1, Bytes32.ZERO);
-    Assertions.assertThat(oxo.arg2Hi.isZero()).isTrue();
-    Assertions.assertThat(oxo.arg2Lo).isEqualTo(Bytes16.ZERO);
-    Assertions.assertThat(oxo.arg2Hi).isEqualTo(Bytes16.ZERO);
-    assertThat(oxo.opCode).isEqualTo(mul);
-    assertThat(oxo.tinyExponent).isTrue();
+
+    assertThat(oxo.getArg2Hi().isZero()).isTrue();
+    assertThat(oxo.getArg2Lo()).isEqualTo(Bytes16.ZERO);
+    assertThat(oxo.getArg2Hi()).isEqualTo(Bytes16.ZERO);
+    assertThat(oxo.getOpCode().getData()).isEqualTo(mul);
+    assertThat(oxo.isTinyExponent()).isTrue();
     assertThat(oxo.isOneLineInstruction()).isTrue();
     assertThat(oxo.bits[0]).isFalse();
   }
 
   @Test
-  public void zeroExp() {
+  void zeroExp() {
     Bytes32 arg1 = Bytes32.random();
-    OpCode mul = OpCode.EXP;
-    MulData oxo = new MulData(mul, arg1, Bytes32.ZERO);
-    Assertions.assertThat(oxo.arg2Hi.isZero()).isTrue();
-    Assertions.assertThat(oxo.arg2Lo).isEqualTo(Bytes16.ZERO);
-    Assertions.assertThat(oxo.arg2Hi).isEqualTo(Bytes16.ZERO);
-    assertThat(oxo.opCode).isEqualTo(mul);
-    assertThat(oxo.tinyExponent).isTrue();
+    OpCodeData exp = OpCode.EXP.getData();
+    MulData oxo = new MulData(exp, arg1, Bytes32.ZERO);
+
+    assertThat(oxo.getArg2Hi().isZero()).isTrue();
+    assertThat(oxo.getArg2Lo()).isEqualTo(Bytes16.ZERO);
+    assertThat(oxo.getArg2Hi()).isEqualTo(Bytes16.ZERO);
+    assertThat(oxo.getOpCode().getData()).isEqualTo(exp);
+    assertThat(oxo.isTinyExponent()).isTrue();
     assertThat(oxo.isOneLineInstruction()).isTrue();
     assertThat(oxo.bits[0]).isFalse();
   }
 
   @Test
-  public void testByteBits_ofZero() {
+  void testByteBits_ofZero() {
     Boolean[] booleans = Util.byteBits(UnsignedByte.of(0));
+
     assertThat(booleans.length).isEqualTo(8);
     assertThat(booleans[0]).isNotNull();
   }
 
   @Test
-  public void hBytesAllZeros() {
+  void hBytesAllZeros() {
     Bytes32 arg1 = Bytes32.ZERO;
     Bytes32 arg2 = Bytes32.ZERO;
     MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
     mulData.setHsAndBitsFromBaseThetas(
         BaseTheta.fromBytes32(UInt256.ZERO), BaseTheta.fromBytes32(UInt256.ZERO));
+
     assertThat(mulData.hBytes.get(0).isZero()).isTrue();
     assertThat(mulData.hBytes.get(1).isZero()).isTrue();
     assertThat(mulData.hBytes.get(2).isZero()).isTrue();
@@ -99,12 +110,13 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytesWhereOneArgIsZero() {
+  void hBytesWhereOneArgIsZero() {
     Bytes32 arg1 = Bytes32.ZERO;
     Bytes32 arg2 = Bytes32.ZERO;
     MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
     mulData.setHsAndBitsFromBaseThetas(
         BaseTheta.fromBytes32(UInt256.ZERO), BaseTheta.fromBytes32(UInt256.valueOf(1)));
+
     assertThat(mulData.hBytes.get(0).isZero()).isTrue();
     assertThat(mulData.hBytes.get(1).isZero()).isTrue();
     assertThat(mulData.hBytes.get(2).isZero()).isTrue();
@@ -114,11 +126,12 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytes_5_5() {
+  void hBytes_5_5() {
     Bytes32 arg1 = Bytes32.fromHexString("0x05");
     Bytes32 arg2 = Bytes32.fromHexString("0x05");
     MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
     mulData.setHsAndBitsFromBaseThetas(BaseTheta.fromBytes32(arg1), BaseTheta.fromBytes32(arg2));
+
     assertThat(mulData.hBytes.get(0).isZero()).isTrue();
     assertThat(mulData.hBytes.get(1).isZero()).isTrue();
     assertThat(mulData.hBytes.get(2).isZero()).isTrue();
@@ -126,8 +139,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytes_largeEnoughArgsToGetNonZeros() {
-
+  void hBytes_largeEnoughArgsToGetNonZeros() {
     // these args aren't used directly in the calculation of hs and bits
     Bytes32 arg1 = Bytes32.fromHexString("0x05");
     Bytes32 arg2 = Bytes32.fromHexString("0x05");
@@ -153,8 +165,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytes_aReallyBigNumber() {
-
+  void hBytes_aReallyBigNumber() {
     // these args aren't used directly in the calculation of hs and bits
     Bytes32 arg1 = Bytes32.fromHexString("0x05");
     Bytes32 arg2 = Bytes32.fromHexString("0x05");
@@ -178,8 +189,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytesValue_and_generatesATrueBit() {
-
+  void hBytesValue_and_generatesATrueBit() {
     // these args aren't used directly in the calculation of hs and bits
     Bytes32 arg1 = Bytes32.fromHexString("0x05");
     Bytes32 arg2 = Bytes32.fromHexString("0x05");
@@ -208,7 +218,7 @@ public class MulUtilsTest {
   }
 
   @Test
-  public void hBytes_twoReallyBigNumbers_generatesADifferentTrueBit() {
+  void hBytes_twoReallyBigNumbers_generatesADifferentTrueBit() {
 
     // these args aren't used directly in the calculation of hs and bits
     Bytes32 arg1 = Bytes32.fromHexString("0x05");

@@ -24,6 +24,8 @@ import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -39,8 +41,8 @@ public class Shf implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
   }
 
   @Override
@@ -53,7 +55,8 @@ public class Shf implements Module {
     final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCodeData = OpCodes.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = opCodeData.mnemonic();
 
     final boolean isOneLineInstruction = isOneLineInstruction(opCode, arg1Hi);
     final boolean isNegative = Long.compareUnsigned(arg2Hi.get(0), 128) >= 0;
@@ -119,7 +122,7 @@ public class Shf implements Module {
       builder
           .bits(bits.get(i))
           .counter(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCode.value))
+          .inst(BigInteger.valueOf(opCodeData.value()))
           .known(isKnown)
           .neg(isNegative)
           .oneLineInstruction(isOneLineInstruction)

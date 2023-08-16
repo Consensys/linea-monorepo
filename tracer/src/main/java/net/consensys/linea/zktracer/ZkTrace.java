@@ -23,16 +23,14 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import net.consensys.linea.zktracer.serializer.BigIntegerSerializer;
-import net.consensys.linea.zktracer.serializer.NumericBooleanSerializer;
+import lombok.SneakyThrows;
+import net.consensys.linea.zktracer.json.BigIntegerSerializer;
+import net.consensys.linea.zktracer.json.JsonConverter;
+import net.consensys.linea.zktracer.json.NumericBooleanSerializer;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @JsonPropertyOrder({"BlockRlp", "ParentRootHash", "TxNumber", "Pc", "Op", "shf", "shfRT"})
-@SuppressWarnings("unused")
 public record ZkTrace(
     @JsonProperty("BlockRlp") Bytes blockRlp,
     @JsonIgnore Bytes32 parentRootHash,
@@ -41,27 +39,26 @@ public record ZkTrace(
     @JsonProperty("Op") BigInteger op,
     @JsonAnyGetter Map<String, Object> traceResults) {
 
-  private static final ObjectMapper MAPPER = new ObjectMapper();
-
-  static {
-    final SimpleModule module = new SimpleModule();
-    module.addSerializer(Boolean.class, new NumericBooleanSerializer());
-    module.addSerializer(BigInteger.class, new BigIntegerSerializer());
-    MAPPER.registerModule(module);
-  }
+  private static final JsonConverter JSON_CONVERTER =
+      JsonConverter.builder()
+          .addCustomSerializer(Boolean.class, new NumericBooleanSerializer())
+          .addCustomSerializer(BigInteger.class, new BigIntegerSerializer())
+          .build();
 
   @JsonGetter("ParentRootHash")
   public String parentRootHashAsString() {
     return parentRootHash.toHexString();
   }
 
+  /**
+   * Converts traces to a JSON string.
+   *
+   * @return a trace as a JSON string
+   */
+  @SneakyThrows
   public String toJson() {
-    try {
-      return MAPPER.writeValueAsString(
-          new ZkTrace(
-              null, Bytes32.ZERO, BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO, traceResults));
-    } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
-    }
+    return JSON_CONVERTER.toJson(
+        new ZkTrace(
+            null, Bytes32.ZERO, BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO, traceResults));
   }
 }

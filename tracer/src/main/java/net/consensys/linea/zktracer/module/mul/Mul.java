@@ -21,6 +21,8 @@ import java.util.List;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -36,8 +38,8 @@ public class Mul implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.MUL, OpCode.EXP);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.MUL, OpCode.EXP);
   }
 
   @SuppressWarnings("UnusedVariable")
@@ -46,7 +48,7 @@ public class Mul implements Module {
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
 
     // argument order is reversed ??
     final MulData data = new MulData(opCode, arg1, arg2);
@@ -94,14 +96,14 @@ public class Mul implements Module {
         .mulStamp(BigInteger.valueOf(stamp))
         .counter(BigInteger.valueOf(i))
         .oli(data.isOneLineInstruction())
-        .tinyBase(data.tinyBase)
-        .tinyExponent(data.tinyExponent)
+        .tinyBase(data.isTinyBase())
+        .tinyExponent(data.isTinyExponent())
         .resultVanishes(data.res.isZero())
-        .instruction(BigInteger.valueOf(data.opCode.value))
-        .arg1Hi(data.arg1Hi.toUnsignedBigInteger())
-        .arg1Lo(data.arg1Lo.toUnsignedBigInteger())
-        .arg2Hi(data.arg2Hi.toUnsignedBigInteger())
-        .arg2Lo(data.arg2Lo.toUnsignedBigInteger())
+        .instruction(BigInteger.valueOf(data.getOpCode().getData().value()))
+        .arg1Hi(data.getArg1Hi().toUnsignedBigInteger())
+        .arg1Lo(data.getArg1Lo().toUnsignedBigInteger())
+        .arg2Hi(data.getArg2Hi().toUnsignedBigInteger())
+        .arg2Lo(data.getArg2Lo().toUnsignedBigInteger())
         .resHi(data.res.getHigh().toUnsignedBigInteger())
         .resLo(data.res.getLow().toUnsignedBigInteger())
         .bits(data.bits[i])

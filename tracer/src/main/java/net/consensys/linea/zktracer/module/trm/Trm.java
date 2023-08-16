@@ -19,6 +19,8 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Trm implements Module {
@@ -28,8 +30,8 @@ public class Trm implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(
         OpCode.BALANCE,
         OpCode.EXTCODESIZE,
         OpCode.EXTCODECOPY,

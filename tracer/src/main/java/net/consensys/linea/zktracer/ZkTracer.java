@@ -25,7 +25,8 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -40,6 +41,9 @@ public class ZkTracer implements BlockAwareOperationTracer {
 
   public ZkTracer() {
     this(List.of(new Hub(), new Mul(), new Shf(), new Wcp(), new Add(), new Mod()));
+
+    // Load opcodes configured in src/main/resources/opcodes.yml.
+    OpCodes.load();
   }
 
   public ZkTrace getTrace() {
@@ -93,7 +97,7 @@ public class ZkTracer implements BlockAwareOperationTracer {
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
-    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     for (Module module : this.modules) {
       if (module.supportedOpCodes().contains(opCode)) {
         module.trace(frame);

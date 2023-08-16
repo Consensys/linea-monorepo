@@ -17,6 +17,6 @@ package net.consensys.linea.zktracer.opcode.gas;
 
 /** The unit used to bill the gas usage of an instruction. */
 public enum BillingRate {
-  ByWord,
-  ByByte,
+  BY_WORD,
+  BY_BYTE,
 }

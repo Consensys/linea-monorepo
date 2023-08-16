@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
 import net.consensys.linea.zktracer.module.mod.Mod;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -41,25 +41,25 @@ class ModTracerTest extends AbstractModuleCorsetTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluModArguments")
-  void aluModTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideRandomDivisionsByZeroArguments")
-  void aluModRandomDivisionsByZeroTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModRandomDivisionsByZeroTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideDivisibleArguments")
-  void aluModDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModDivisibleTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideNegativeDivisibleArguments")
-  void aluModNegativeDivisibleTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluModNegativeDivisibleTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
@@ -68,19 +68,21 @@ class ModTracerTest extends AbstractModuleCorsetTest {
     for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
       arguments.add(getRandomAluModInstruction(rand.nextInt(32) + 1, rand.nextInt(32) + 1));
     }
+
     return arguments.stream();
   }
 
   @Override
   public Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
           arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
+
     return arguments.stream();
   }
 
@@ -90,9 +92,11 @@ class ModTracerTest extends AbstractModuleCorsetTest {
       long b = rand.nextInt(Integer.MAX_VALUE);
       long q = rand.nextInt(Integer.MAX_VALUE);
       long a = b * q;
-      OpCode opCode = getRandomSupportedOpcode();
+
+      OpCodeData opCode = getRandomSupportedOpcode();
       arguments.add(Arguments.of(opCode, UInt256.valueOf(a), UInt256.valueOf(b)));
     }
+
     return arguments.stream();
   }
 
@@ -102,10 +106,12 @@ class ModTracerTest extends AbstractModuleCorsetTest {
       long b = rand.nextInt(Integer.MAX_VALUE) + 1L;
       long q = rand.nextInt(Integer.MAX_VALUE) + 1L;
       long a = b * q;
-      OpCode opCode = getRandomSupportedOpcode();
+
+      OpCodeData opCode = getRandomSupportedOpcode();
       arguments.add(
           Arguments.of(opCode, convertToComplementBytes32(a), convertToComplementBytes32(b)));
     }
+
     return arguments.stream();
   }
 
@@ -118,6 +124,7 @@ class ModTracerTest extends AbstractModuleCorsetTest {
     if (resultBytes.size() > 32) {
       resultBytes = resultBytes.slice(resultBytes.size() - 32, 32);
     }
+
     return Bytes32.leftPad(resultBytes, bigInteger.signum() < 0 ? (byte) 0xFF : 0x00);
   }
 
@@ -127,13 +134,15 @@ class ModTracerTest extends AbstractModuleCorsetTest {
       int a = rand.nextInt(256) + 1;
       arguments.add(getRandomAluModInstruction(a, 0));
     }
+
     return arguments.stream();
   }
 
   private Arguments getRandomAluModInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCode opCode = getRandomSupportedOpcode();
+    OpCodeData opCode = getRandomSupportedOpcode();
+
     return Arguments.of(opCode, bytes1, bytes2);
   }
 

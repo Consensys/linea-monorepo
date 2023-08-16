@@ -15,63 +15,62 @@
 
 package net.consensys.linea.zktracer.opcode.gas;
 
+import lombok.RequiredArgsConstructor;
+
 /** All the classes of gas prices per instruction used in the EVM. */
+@RequiredArgsConstructor
 public enum Gas {
-  gZero(0),
-  gJumpDest(0),
-  gBase(2),
-  gVeryLow(3),
-  gLow(5),
-  gMid(8),
-  gHigh(10),
-  gWarmAccess(100),
-  gAccessListAddress(2400),
-  gAccessListStorage(1900),
-  gColdAccountAccess(2600),
-  gColdSLoad(2100),
-  gSSet(20000),
-  gSReset(2900),
-  rSClear(15000),
-  rSelfDestruct(24000),
-  gSelfDestruct(5000),
-  gCreate(32000),
-  gCodeDeposit(200),
-  gCallValue(9000),
-  gCallStipend(2300),
-  gNewAccount(25000),
-  gExp(10),
-  gExpByte(50),
-  gMemory(3),
-  gTxCreate(32000),
-  gTxDataZero(4),
-  gTxDataNonZero(16),
-  gTransaction(21000),
-  gLog0(Constants.log),
-  gLog1(Constants.log + Constants.logTopic),
-  gLog2(Constants.log + 2 * Constants.logTopic),
-  gLog3(Constants.log + 3 * Constants.logTopic),
-  gLog4(Constants.log + 4 * Constants.logTopic),
-  gLogData(8),
-  gLogTopic(375),
-  gKeccak256(30),
-  gKeccak256Word(6),
-  gCopy(3),
-  gBlockHash(20),
+  G_ZERO(0),
+  G_JUMP_DEST(0),
+  G_BASE(2),
+  G_VERY_LOW(3),
+  G_LOW(5),
+  G_MID(8),
+  G_HIGH(10),
+  G_WARM_ACCESS(100),
+  G_ACCESS_LIST_ADDRESS(2400),
+  G_ACCESS_LIST_STORAGE(1900),
+  G_COLD_ACCOUNT_ACCESS(2600),
+  G_COLD_S_LOAD(2100),
+  G_S_SET(20000),
+  G_S_RESET(2900),
+  R_S_CLEAR(15000),
+  R_SELF_DESTRUCT(24000),
+  G_SELF_DESTRUCT(5000),
+  G_CREATE(32000),
+  G_CODE_DEPOSIT(200),
+  G_CALL_VALUE(9000),
+  G_CALL_STIPEND(2300),
+  G_NEW_ACCOUNT(25000),
+  G_EXP(10),
+  G_EXP_BYTE(50),
+  G_MEMORY(3),
+  G_TX_CREATE(32000),
+  G_TX_DATA_ZERO(4),
+  G_TX_DATA_NON_ZERO(16),
+  G_TRANSACTION(21000),
+  G_LOG_0(Constants.LOG),
+  G_LOG_1(Constants.LOG + Constants.LOG_TOPIC),
+  G_LOG_2(Constants.LOG + 2 * Constants.LOG_TOPIC),
+  G_LOG_3(Constants.LOG + 3 * Constants.LOG_TOPIC),
+  G_LOG_4(Constants.LOG + 4 * Constants.LOG_TOPIC),
+  G_LOG_DATA(8),
+  G_LOG_TOPIC(375),
+  G_KECCAK_256(30),
+  G_KECCAK_256_WORD(6),
+  G_COPY(3),
+  G_BLOCK_HASH(20),
   // below are markers for gas that is computed in other modules
   // that is: hub, memory expansion, stipend, precompile info
-  sMxp(0),
-  sCall(0), // computing the cost of a CALL requires HUB data (warmth, account existence, ...), MXP
+  S_MXP(0),
+  S_CALL(0), // computing the cost of a CALL requires HUB data (warmth, account existence, ...), MXP
   // data for memory expansion, STP data for gas stipend <- made it its own type
-  sHub(0),
-  sStp(0),
-  sPrecInfo(0);
+  S_HUB(0),
+  S_STP(0),
+  S_PREC_INFO(0);
 
   /** The gas price of the instruction family. */
   private final int cost;
-
-  Gas(int cost) {
-    this.cost = cost;
-  }
 
   int cost() {
     return this.cost();
@@ -80,8 +79,8 @@ public enum Gas {
   /** Constants required to compute some instruction families base price. */
   private static class Constants {
     /** Base price for a LOGx call. */
-    private static final int log = 375;
+    private static final int LOG = 375;
     /** Additional price per topic for a LOGx call. */
-    private static final int logTopic = 375;
+    private static final int LOG_TOPIC = 375;
   }
 }

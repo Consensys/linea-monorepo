@@ -26,10 +26,12 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Tag;
@@ -52,6 +54,11 @@ class ShfTracerTest {
 
   @Mock MessageFrame mockFrame;
   @Mock Operation mockOperation;
+
+  @BeforeAll
+  static void beforeAll() {
+    OpCodes.load();
+  }
 
   @BeforeEach
   void setUp() {
@@ -78,7 +85,7 @@ class ShfTracerTest {
   void testRandomSar(final Bytes32[] payload) {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
+    when(mockOperation.getOpcode()).thenReturn(OpCode.SAR.getData().value().intValue());
 
     when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
     when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
@@ -90,7 +97,7 @@ class ShfTracerTest {
 
   @Test
   void testTmp() {
-    when(mockOperation.getOpcode()).thenReturn((int) OpCode.SAR.value);
+    when(mockOperation.getOpcode()).thenReturn(OpCode.SAR.getData().value().intValue());
 
     when(mockFrame.getStackItem(0))
         .thenReturn(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"));
@@ -140,9 +147,9 @@ class ShfTracerTest {
 
   public static Stream<Arguments> provideShiftOperators() {
     return Stream.of(
-        Arguments.of(Named.of("SAR", (int) OpCode.SAR.value)),
-        Arguments.of(Named.of("SHL", (int) OpCode.SHL.value)),
-        Arguments.of(Named.of("SHR", (int) OpCode.SHR.value)));
+        Arguments.of(Named.of("SAR", OpCode.SAR.getData().value().intValue())),
+        Arguments.of(Named.of("SHL", OpCode.SHL.getData().value().intValue())),
+        Arguments.of(Named.of("SHR", OpCode.SHR.getData().value().intValue())));
   }
 
   private static byte[] concatenateArrays(byte[] a, byte[] b) {

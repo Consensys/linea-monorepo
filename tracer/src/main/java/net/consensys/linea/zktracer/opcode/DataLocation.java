@@ -16,16 +16,16 @@
 package net.consensys.linea.zktracer.opcode;
 
 public enum DataLocation {
-  None,
-  Rom,
-  TxnCallData,
-  Ram,
-  Stack,
-  EcData,
-  EcInfo,
-  ModExpData,
-  HashData,
-  HashInfo,
-  BlakeData,
-  LogData,
+  NONE,
+  ROM,
+  TXN_CALL_DATA,
+  RAM,
+  STACK,
+  EC_DATA,
+  EC_INFO,
+  MOD_EXP_DATA,
+  HASH_DATA,
+  HASH_INFO,
+  BLAKE_DATA,
+  LOG_DATA,
 }

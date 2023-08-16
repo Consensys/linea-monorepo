@@ -15,15 +15,18 @@
 
 package net.consensys.linea.zktracer.opcode.gas;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
 /**
  * An ancillary class to compute gas billing of some instructions.
  *
  * @param perUnit gas cost of a unit
  * @param billingRate the unit used to bill gas
  */
+@JsonDeserialize(using = BillingDeserializer.class)
 public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
   public Billing() {
-    this(null, null, MxpType.None);
+    this(null, null, MxpType.NONE);
   }
 
   /**
@@ -44,7 +47,7 @@ public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
    * @return the billing scheme
    */
   public static Billing byWord(MxpType type, Gas wordPrice) {
-    return new Billing(wordPrice, BillingRate.ByWord, type);
+    return new Billing(wordPrice, BillingRate.BY_WORD, type);
   }
 
   /**
@@ -55,6 +58,6 @@ public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
    * @return the billing scheme
    */
   public static Billing byByte(MxpType type, Gas bytePrice) {
-    return new Billing(bytePrice, BillingRate.ByByte, type);
+    return new Billing(bytePrice, BillingRate.BY_BYTE, type);
   }
 }
