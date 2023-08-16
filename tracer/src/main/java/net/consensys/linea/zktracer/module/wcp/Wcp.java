@@ -21,6 +21,8 @@ import java.util.List;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -36,16 +38,16 @@ public class Wcp implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
   }
 
   @Override
   public void trace(final MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 =
-        (opCode != OpCode.ISZERO)
+        (opCode.mnemonic() != OpCode.ISZERO)
             ? Bytes32.wrap(frame.getStackItem(1))
             : Bytes32.repeat((byte) 0x00);
 
@@ -62,7 +64,7 @@ public class Wcp implements Module {
           .wordComparisonStamp(BigInteger.valueOf(stamp))
           .oneLineInstruction(data.isOneLineInstruction())
           .counter(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(data.getOpCode().value))
+          .inst(BigInteger.valueOf(data.getOpCode().getData().value()))
           .argument1Hi(data.getArg1Hi().toUnsignedBigInteger())
           .argument1Lo(data.getArg1Lo().toUnsignedBigInteger())
           .argument2Hi(data.getArg2Hi().toUnsignedBigInteger())

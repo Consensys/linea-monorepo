@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -40,20 +41,20 @@ class AddTracerTest extends AbstractModuleCorsetTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluAddArguments")
-  void aluAddTest(OpCode opCode, List<Bytes32> args) {
+  void aluAddTest(OpCodeData opCode, List<Bytes32> args) {
     runTest(opCode, args);
   }
 
   @ParameterizedTest()
   @MethodSource("provideSimpleAluAddArguments")
-  void simpleAddTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void simpleAddTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @Override
   protected Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
           arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
@@ -68,8 +69,9 @@ class AddTracerTest extends AbstractModuleCorsetTest {
 
     Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
     Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
-    OpCode opCode = OpCode.SUB;
-    arguments.add(Arguments.of(opCode, bytes1, bytes2));
+
+    arguments.add(Arguments.of(OpCode.SUB.getData(), bytes1, bytes2));
+
     return arguments.stream();
   }
 
@@ -85,7 +87,8 @@ class AddTracerTest extends AbstractModuleCorsetTest {
   private Arguments getRandomAluAddInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCode opCode = getRandomSupportedOpcode();
+    OpCodeData opCode = getRandomSupportedOpcode();
+
     return Arguments.of(opCode, List.of(bytes1, bytes2));
   }
 

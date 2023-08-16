@@ -17,10 +17,10 @@ package net.consensys.linea.zktracer.opcode.gas;
 
 /** All the ways for the Mxp to compute the total gas consumption of an instruction. */
 public enum MxpType {
-  None,
-  Type1,
-  Type2,
-  Type3,
-  Type4,
-  Type5,
+  NONE,
+  TYPE_1,
+  TYPE_2,
+  TYPE_3,
+  TYPE_4,
+  TYPE_5,
 }

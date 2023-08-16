@@ -21,6 +21,7 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
@@ -41,14 +42,14 @@ public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomArguments")
-  void randomArgumentsTest(OpCode opCode, List<Bytes32> params) {
-    runTest(opCode, params);
+  void randomArgumentsTest(OpCodeData opCodeData, List<Bytes32> params) {
+    runTest(opCodeData, params);
   }
 
   @ParameterizedTest()
   @MethodSource("provideNonRandomArguments")
-  void nonRandomArgumentsTest(OpCode opCode, List<Bytes32> params) {
-    runTest(opCode, params);
+  void nonRandomArgumentsTest(OpCodeData opCodeData, List<Bytes32> params) {
+    runTest(opCodeData, params);
   }
 
   protected abstract Stream<Arguments> provideNonRandomArguments();
@@ -60,7 +61,8 @@ public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
    */
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
-    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+
+    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
       for (int i = 0; i <= TEST_REPETITIONS; i++) {
         List<Bytes32> args = new ArrayList<>();
         for (int j = 0; j < opCode.numberOfArguments(); j++) {
@@ -78,8 +80,8 @@ public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
    *
    * @return a random {@link OpCode} from the list of supported opcodes per module tracer.
    */
-  public OpCode getRandomSupportedOpcode() {
-    var supportedOpCodes = getModuleTracer().supportedOpCodes();
+  public OpCodeData getRandomSupportedOpcode() {
+    List<OpCodeData> supportedOpCodes = getModuleTracer().supportedOpCodes();
     int index = rand.nextInt(supportedOpCodes.size());
 
     return supportedOpCodes.get(index);

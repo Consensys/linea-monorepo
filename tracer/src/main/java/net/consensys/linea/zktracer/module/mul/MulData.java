@@ -24,28 +24,32 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
 public class MulData {
   private static final int MMEDIUM = 8;
-  final OpCode opCode;
-  final Bytes32 arg1;
-  final Bytes32 arg2;
 
-  final Bytes16 arg1Hi;
-  final Bytes16 arg1Lo;
-  final Bytes16 arg2Hi;
-  final Bytes16 arg2Lo;
+  @Getter private final OpCode opCode;
 
-  final boolean tinyBase;
-  final boolean tinyExponent;
+  @Getter private final Bytes32 arg1;
+  @Getter private final Bytes32 arg2;
+
+  @Getter private final Bytes16 arg1Hi;
+  @Getter private final Bytes16 arg1Lo;
+  @Getter private final Bytes16 arg2Hi;
+  @Getter private final Bytes16 arg2Lo;
+
+  @Getter private final boolean tinyBase;
+  @Getter private final boolean tinyExponent;
 
   UInt256 resAcc =
       UInt256.ZERO; // accumulator which converges in a series of "square and multiply"'s
@@ -62,6 +66,10 @@ public class MulData {
   String exponentBits = "0";
 
   BaseBytes res;
+
+  public MulData(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
+    this(opCodeData.mnemonic(), arg1, arg2);
+  }
 
   @SuppressWarnings("checkstyle:WhitespaceAround")
   public MulData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {

@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -40,37 +41,37 @@ class MulTracerTest extends AbstractModuleCorsetTest {
 
   @ParameterizedTest()
   @MethodSource("provideRandomAluMulArguments")
-  void aluMulTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void aluMulTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("singleTinyExponentiation")
-  void testSingleTinyExponentiation(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void testSingleTinyExponentiation(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideTinyArguments")
-  void tinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void tinyArgsTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideSpecificNonTinyArguments")
-  void nonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void nonTinyArgsTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("provideRandomNonTinyArguments")
-  void randomNonTinyArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void randomNonTinyArgsTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
   @ParameterizedTest()
   @MethodSource("multiplyByZero")
-  void zerosArgsTest(OpCode opCode, final Bytes32 arg1, Bytes32 arg2) {
+  void zerosArgsTest(OpCodeData opCode, final Bytes32 arg1, Bytes32 arg2) {
     runTest(opCode, List.of(arg1, arg2));
   }
 
@@ -79,7 +80,8 @@ class MulTracerTest extends AbstractModuleCorsetTest {
 
     Bytes32 bytes1 = Bytes32.leftPad(Bytes.fromHexString("0x13"));
     Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x02"));
-    arguments.add(Arguments.of(OpCode.EXP, bytes1, bytes2));
+    arguments.add(Arguments.of(OpCode.EXP.getData(), bytes1, bytes2));
+
     return arguments.stream();
   }
 
@@ -95,7 +97,8 @@ class MulTracerTest extends AbstractModuleCorsetTest {
   private Arguments getRandomAluMulInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCode opCode = getRandomSupportedOpcode();
+    OpCodeData opCode = getRandomSupportedOpcode();
+
     return Arguments.of(opCode, bytes1, bytes2);
   }
 
@@ -115,7 +118,8 @@ class MulTracerTest extends AbstractModuleCorsetTest {
         Bytes32.fromHexString("0x8a48aa20e200ce3fee16b5dcdec5c4faff613bc914d47cd6ca69553f8eb2b377");
     payload[1] =
         Bytes32.fromHexString("0x59b635fec894caa3ed6817b1e67b3cbaeb8757fd6c7b03119b795303b7cd72c1");
-    return Stream.of(Arguments.of(OpCode.MUL, payload[0], payload[1]));
+
+    return Stream.of(Arguments.of(OpCode.MUL.getData(), payload[0], payload[1]));
   }
 
   public Stream<Arguments> provideRandomNonTinyArguments() {
@@ -138,7 +142,7 @@ class MulTracerTest extends AbstractModuleCorsetTest {
   @Override
   protected Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 0; k <= 3; k++) {
         for (int i = 0; i <= 3; i++) {
           arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
@@ -153,8 +157,10 @@ class MulTracerTest extends AbstractModuleCorsetTest {
     for (int i = 0; i < 2; i++) {
       Bytes32 bytes1 = Bytes32.ZERO;
       Bytes32 bytes2 = UInt256.valueOf(i);
-      arguments.add(Arguments.of(OpCode.MUL, bytes1, bytes2));
-      arguments.add(Arguments.of(OpCode.MUL, bytes2, bytes1));
+
+      OpCodeData mulOpCode = OpCode.MUL.getData();
+      arguments.add(Arguments.of(mulOpCode, bytes1, bytes2));
+      arguments.add(Arguments.of(mulOpCode, bytes2, bytes1));
     }
     return arguments.stream();
   }

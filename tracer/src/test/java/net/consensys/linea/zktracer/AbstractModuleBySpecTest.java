@@ -71,11 +71,11 @@ public abstract class AbstractModuleBySpecTest extends AbstractBaseModuleTest {
 
   private JsonNode generateTrace(String moduleName, JsonNode jsonNodeParams)
       throws JsonProcessingException {
-    OpCode opcode = OpCode.valueOf(jsonNodeParams.get("opcode").asText());
+    OpCode opCode = OpCode.valueOf(jsonNodeParams.get("opcode").asText());
     List<Bytes32> arguments = new ArrayList<>();
     JsonNode arg = jsonNodeParams.get("params");
     arg.forEach(bytes -> arguments.add(Bytes32.fromHexString(bytes.asText())));
-    String trace = generateTrace(opcode, arguments);
+    String trace = generateTrace(opCode.getData(), arguments);
 
     return MAPPER.readTree(trace).get(moduleName);
   }

@@ -43,7 +43,7 @@ public class CorsetValidator {
     try {
       whichCorsetProcess = Runtime.getRuntime().exec(new String[] {"which", "corset"});
     } catch (IOException e) {
-      log.error("Error while searching for corset" + e.getMessage());
+      log.error("Error while searching for corset: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
@@ -52,19 +52,19 @@ public class CorsetValidator {
       whichCorsetProcessOutput =
           IOUtils.toString(whichCorsetProcess.getInputStream(), Charset.defaultCharset());
     } catch (IOException e) {
-      log.error("Error while catching output whichCorsetProcess: " + e.getMessage());
+      log.error("Error while catching output whichCorsetProcess: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
     try {
       whichCorsetProcess.waitFor(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      log.error("Timeout while searching for corset: " + e.getMessage());
+      log.error("Timeout while searching for corset: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
     if (whichCorsetProcess.exitValue() != 0) {
-      log.error("Can't run corset executable with path: " + whichCorsetProcessOutput);
+      log.error("Cannot run corset executable with path: %s".formatted(whichCorsetProcessOutput));
       throw new RuntimeException();
     }
 
@@ -76,16 +76,16 @@ public class CorsetValidator {
 
     try {
       traceFile = Files.createTempFile("", ".tmp.json");
-      log.info("Trace file: " + traceFile.toAbsolutePath());
+      log.info("Trace file: %s".formatted(traceFile.toAbsolutePath()));
     } catch (IOException e) {
-      log.error("Can't create temporary trace file: " + e.getMessage());
+      log.error("Can't create temporary trace file: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
     try {
       Files.writeString(traceFile, trace, WRITE);
     } catch (IOException e) {
-      log.error("Can't write to temporary trace file: " + e.getMessage());
+      log.error("Cannot write to temporary trace file: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
@@ -107,7 +107,7 @@ public class CorsetValidator {
               .redirectErrorStream(true)
               .start();
     } catch (IOException e) {
-      log.error("Corset validation has thrown  an exception: " + e.getMessage());
+      log.error("Corset validation has thrown an exception: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
@@ -116,19 +116,20 @@ public class CorsetValidator {
       corsetOutput =
           IOUtils.toString(corsetValidationProcess.getInputStream(), Charset.defaultCharset());
     } catch (IOException e) {
-      log.error("Error while catching output corsetValidationProcess: " + e.getMessage());
+      log.error(
+          "Error while catching output corsetValidationProcess: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
     try {
       corsetValidationProcess.waitFor(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
-      log.error("Timeout while validating trace file: " + e.getMessage());
+      log.error("Timeout while validating trace file: %s".formatted(e.getMessage()));
       throw new RuntimeException(e);
     }
 
     if (corsetValidationProcess.exitValue() != 0) {
-      log.error("Validation failed: " + corsetOutput);
+      log.error("Validation failed: %s".formatted(corsetOutput));
       return false;
     }
 

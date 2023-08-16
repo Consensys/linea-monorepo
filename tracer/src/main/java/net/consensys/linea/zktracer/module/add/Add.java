@@ -23,6 +23,8 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -39,8 +41,8 @@ public class Add implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.ADD, OpCode.SUB);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.ADD, OpCode.SUB);
   }
 
   @Override
@@ -56,7 +58,9 @@ public class Add implements Module {
     boolean overflowHi = false;
     boolean overflowLo;
 
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCodeData = OpCodes.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = opCodeData.mnemonic();
+
     final BaseBytes res = Adder.addSub(opCode, arg1, arg2);
 
     final Bytes16 resHi = res.getHigh();
@@ -102,7 +106,7 @@ public class Add implements Module {
           .byte1(UnsignedByte.of(resHi.get(i)))
           .byte2(UnsignedByte.of(resLo.get(i)))
           .ct(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCode.value))
+          .inst(BigInteger.valueOf(opCodeData.value()))
           .overflow(overflowBit(i, overflowHi, overflowLo))
           .resHi(resHi.toUnsignedBigInteger())
           .resLo(resLo.toUnsignedBigInteger())

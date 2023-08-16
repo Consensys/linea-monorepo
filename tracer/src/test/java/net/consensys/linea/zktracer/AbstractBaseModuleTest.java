@@ -24,9 +24,12 @@ import java.util.List;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -42,12 +45,12 @@ public abstract class AbstractBaseModuleTest {
   Operation mockOperation;
   static Module module;
 
-  protected void runTest(final OpCode opCode, final List<Bytes32> arguments) {
-    assertThat(CorsetValidator.isValid(generateTrace(opCode, arguments))).isTrue();
+  protected void runTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
+    assertThat(CorsetValidator.isValid(generateTrace(opCodeData, arguments))).isTrue();
   }
 
-  protected String generateTrace(OpCode opCode, List<Bytes32> arguments) {
-    when(mockOperation.getOpcode()).thenReturn((int) opCode.value);
+  protected String generateTrace(OpCodeData opCodeData, List<Bytes32> arguments) {
+    when(mockOperation.getOpcode()).thenReturn(opCodeData.value().intValue());
 
     for (int i = 0; i < arguments.size(); i++) {
       when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
@@ -58,6 +61,11 @@ public abstract class AbstractBaseModuleTest {
     zkTracer.traceEndConflation();
 
     return zkTracer.getTrace().toJson();
+  }
+
+  @BeforeAll
+  static void beforeAll() {
+    OpCodes.load();
   }
 
   @BeforeEach
