@@ -26,12 +26,13 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
 public class ModData {
-  @Getter private final OpCode opCode;
+  @Getter private OpCode opCode;
   @Getter private final boolean oli;
   @Getter private final BaseBytes arg1;
   @Getter private final BaseBytes arg2;
@@ -46,6 +47,10 @@ public class ModData {
   @Getter private final boolean[] cmp2 = new boolean[8];
   @Getter private Boolean[] msb1 = new Boolean[8];
   @Getter private Boolean[] msb2 = new Boolean[8];
+
+  public ModData(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
+    this(opCodeData.mnemonic(), arg1, arg2);
+  }
 
   public ModData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.arg1 = BaseBytes.fromBytes32(arg1);

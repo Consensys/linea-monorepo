@@ -21,6 +21,8 @@ import java.util.List;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -36,18 +38,19 @@ public class Ext implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.MULMOD, OpCode.ADDMOD);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.MULMOD, OpCode.ADDMOD);
   }
 
   @Override
   public void trace(final MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
     final Bytes32 arg3 = Bytes32.wrap(frame.getStackItem(2));
 
     final ExtData data = new ExtData(opCode, arg1, arg2, arg3);
+
     stamp++;
 
     for (int i = 0; i < maxCounter(data); i++) {
@@ -175,7 +178,7 @@ public class Ext implements Module {
           .ofI(data.getOverflowI()[i])
           .ofRes(data.getOverflowRes()[i])
           .ct(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCode.value))
+          .inst(BigInteger.valueOf(opCode.value()))
           .oli(data.isOli())
           .bit1(data.getBit1())
           .bit2(data.getBit2())

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.serializer;
+package net.consensys.linea.zktracer.json;
 
 import java.io.IOException;
 import java.math.BigInteger;

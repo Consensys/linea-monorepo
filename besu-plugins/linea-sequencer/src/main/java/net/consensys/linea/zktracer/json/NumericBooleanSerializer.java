@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.serializer;
+package net.consensys.linea.zktracer.json;
 
 import java.io.IOException;
 
@@ -33,7 +33,7 @@ public class NumericBooleanSerializer extends StdSerializer<Boolean> {
   @Override
   public void serialize(Boolean value, JsonGenerator gen, SerializerProvider provider)
       throws IOException {
-    // converts the boolean to an numeric representation
+    // converts the boolean to a numeric representation
     gen.writeNumber(value ? 1 : 0);
   }
 }

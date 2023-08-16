@@ -19,6 +19,8 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 
 public class Hub implements Module {
   @Override
@@ -27,8 +29,8 @@ public class Hub implements Module {
   }
 
   @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.values());
+  public List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.values());
   }
 
   @Override

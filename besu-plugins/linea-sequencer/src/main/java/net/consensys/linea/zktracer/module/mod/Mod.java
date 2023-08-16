@@ -21,6 +21,8 @@ import java.util.List;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -37,17 +39,18 @@ public class Mod implements Module {
   }
 
   @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.DIV, OpCode.SDIV, OpCode.MOD, OpCode.SMOD);
+  public final List<OpCodeData> supportedOpCodes() {
+    return OpCodes.of(OpCode.DIV, OpCode.SDIV, OpCode.MOD, OpCode.SMOD);
   }
 
   @Override
   public void trace(final MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCodeData = OpCodes.of(frame.getCurrentOperation().getOpcode());
+
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
 
-    final ModData data = new ModData(opCode, arg1, arg2);
+    final ModData data = new ModData(opCodeData, arg1, arg2);
 
     stamp++;
 
@@ -61,7 +64,7 @@ public class Mod implements Module {
           .stamp(BigInteger.valueOf(stamp))
           .oli(data.isOli())
           .ct(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(data.getOpCode().value))
+          .inst(BigInteger.valueOf(data.getOpCode().getData().value()))
           .decSigned(data.isSigned())
           .decOutput(data.isDiv())
           .arg1Hi(data.getArg1().getHigh().toUnsignedBigInteger())
@@ -138,7 +141,7 @@ public class Mod implements Module {
   }
 
   /**
-   * Performs a context-free call to the DIV opcode in the current trace
+   * Performs a context-free call to the DIV opcode in the current trace.
    *
    * @param arg1 the divider
    * @param arg2 the dividend
@@ -149,7 +152,7 @@ public class Mod implements Module {
   }
 
   /**
-   * Performs a context-free call to the MOD opcode in the current trace
+   * Performs a context-free call to the MOD opcode in the current trace.
    *
    * @param arg1 the number
    * @param arg2 the module
