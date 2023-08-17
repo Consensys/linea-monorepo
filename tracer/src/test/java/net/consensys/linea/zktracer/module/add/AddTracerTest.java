@@ -54,10 +54,11 @@ class AddTracerTest extends AbstractModuleCorsetTest {
   @Override
   protected Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
-          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
+          arguments.add(
+              Arguments.of(opCode.getData(), List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }
@@ -87,7 +88,7 @@ class AddTracerTest extends AbstractModuleCorsetTest {
   private Arguments getRandomAluAddInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCodeData opCode = getRandomSupportedOpcode();
+    OpCodeData opCode = getRandomSupportedOpcode().getData();
 
     return Arguments.of(opCode, List.of(bytes1, bytes2));
   }

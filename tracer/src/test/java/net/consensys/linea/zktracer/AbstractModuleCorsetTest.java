@@ -62,13 +62,13 @@ public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
 
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int i = 0; i <= TEST_REPETITIONS; i++) {
         List<Bytes32> args = new ArrayList<>();
-        for (int j = 0; j < opCode.numberOfArguments(); j++) {
+        for (int j = 0; j < opCode.getData().numberOfArguments(); j++) {
           args.add(Bytes32.random(rand));
         }
-        arguments.add(Arguments.of(opCode, args));
+        arguments.add(Arguments.of(opCode.getData(), args));
       }
     }
 
@@ -80,8 +80,8 @@ public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
    *
    * @return a random {@link OpCode} from the list of supported opcodes per module tracer.
    */
-  public OpCodeData getRandomSupportedOpcode() {
-    List<OpCodeData> supportedOpCodes = getModuleTracer().supportedOpCodes();
+  public OpCode getRandomSupportedOpcode() {
+    List<OpCode> supportedOpCodes = getModuleTracer().supportedOpCodes();
     int index = rand.nextInt(supportedOpCodes.size());
 
     return supportedOpCodes.get(index);

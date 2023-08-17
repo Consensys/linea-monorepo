@@ -41,8 +41,8 @@ public class Shf implements Module {
   }
 
   @Override
-  public final List<OpCodeData> supportedOpCodes() {
-    return OpCodes.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
+  public final List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
   }
 
   @Override
