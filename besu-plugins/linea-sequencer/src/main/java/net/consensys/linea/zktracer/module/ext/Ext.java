@@ -38,8 +38,8 @@ public class Ext implements Module {
   }
 
   @Override
-  public final List<OpCodeData> supportedOpCodes() {
-    return OpCodes.of(OpCode.MULMOD, OpCode.ADDMOD);
+  public final List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.MULMOD, OpCode.ADDMOD);
   }
 
   @Override

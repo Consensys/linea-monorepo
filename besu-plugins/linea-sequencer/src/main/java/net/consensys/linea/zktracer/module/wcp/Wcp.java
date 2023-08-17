@@ -38,8 +38,8 @@ public class Wcp implements Module {
   }
 
   @Override
-  public final List<OpCodeData> supportedOpCodes() {
-    return OpCodes.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
+  public final List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
   }
 
   @Override

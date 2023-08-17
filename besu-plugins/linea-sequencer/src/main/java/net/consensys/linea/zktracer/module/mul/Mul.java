@@ -38,8 +38,8 @@ public class Mul implements Module {
   }
 
   @Override
-  public final List<OpCodeData> supportedOpCodes() {
-    return OpCodes.of(OpCode.MUL, OpCode.EXP);
+  public final List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.MUL, OpCode.EXP);
   }
 
   @SuppressWarnings("UnusedVariable")
