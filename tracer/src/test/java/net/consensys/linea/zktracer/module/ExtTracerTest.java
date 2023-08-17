@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
 import net.consensys.linea.zktracer.module.ext.Ext;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -40,11 +41,12 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
   @Override
   public Stream<Arguments> provideRandomArguments() {
     final List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int i = 0; i <= 16; i++) {
         arguments.add(
             Arguments.of(
-                opCode, List.of(Bytes32.random(rand), Bytes32.random(rand), Bytes32.random(rand))));
+                opCode.getData(),
+                List.of(Bytes32.random(rand), Bytes32.random(rand), Bytes32.random(rand))));
       }
     }
 
@@ -54,12 +56,13 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
   @Override
   public Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 1; k <= 4; k++) {
         for (int i = 1; i <= 4; i++) {
           arguments.add(
               Arguments.of(
-                  opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k), UInt256.valueOf(k))));
+                  opCode.getData(),
+                  List.of(UInt256.valueOf(i), UInt256.valueOf(k), UInt256.valueOf(k))));
         }
       }
     }
@@ -100,10 +103,11 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
 
   public Stream<Arguments> provideZeroValueTest() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       arguments.add(
           Arguments.of(
-              opCode, List.of(UInt256.valueOf(0), UInt256.valueOf(12), UInt256.valueOf(6))));
+              opCode.getData(),
+              List.of(UInt256.valueOf(0), UInt256.valueOf(12), UInt256.valueOf(6))));
     }
 
     return arguments.stream();
@@ -111,10 +115,11 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
 
   public Stream<Arguments> provideModulusZeroValueArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       arguments.add(
           Arguments.of(
-              opCode, List.of(UInt256.valueOf(1), UInt256.valueOf(1), UInt256.valueOf(0))));
+              opCode.getData(),
+              List.of(UInt256.valueOf(1), UInt256.valueOf(1), UInt256.valueOf(0))));
     }
 
     return arguments.stream();
@@ -122,10 +127,11 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
 
   public Stream<Arguments> provideTinyValueArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       arguments.add(
           Arguments.of(
-              opCode, List.of(UInt256.valueOf(6), UInt256.valueOf(7), UInt256.valueOf(13))));
+              opCode.getData(),
+              List.of(UInt256.valueOf(6), UInt256.valueOf(7), UInt256.valueOf(13))));
     }
 
     return arguments.stream();
@@ -133,9 +139,10 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
 
   public Stream<Arguments> provideMaxValueArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       arguments.add(
-          Arguments.of(opCode, List.of(UInt256.MAX_VALUE, UInt256.MAX_VALUE, UInt256.MAX_VALUE)));
+          Arguments.of(
+              opCode.getData(), List.of(UInt256.MAX_VALUE, UInt256.MAX_VALUE, UInt256.MAX_VALUE)));
     }
 
     return arguments.stream();

@@ -176,4 +176,22 @@ public enum OpCode {
   public OpCodeData getData() {
     return OpCodes.of(this);
   }
+
+  /**
+   * Retrieves the {@link OpCode} corresponding to a given value.
+   *
+   * @return the {@link OpCode}
+   */
+  public static OpCode of(final long value) {
+    return OpCodes.of(value).mnemonic();
+  }
+
+  /**
+   * Retrieves the {@link OpCode} corresponding to a given value.
+   *
+   * @return the {@link OpCode}
+   */
+  public static OpCode of(final int value) {
+    return OpCodes.of(value).mnemonic();
+  }
 }

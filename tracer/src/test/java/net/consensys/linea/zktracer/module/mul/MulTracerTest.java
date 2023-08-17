@@ -97,7 +97,7 @@ class MulTracerTest extends AbstractModuleCorsetTest {
   private Arguments getRandomAluMulInstruction(int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCodeData opCode = getRandomSupportedOpcode();
+    OpCodeData opCode = getRandomSupportedOpcode().getData();
 
     return Arguments.of(opCode, bytes1, bytes2);
   }
@@ -142,10 +142,11 @@ class MulTracerTest extends AbstractModuleCorsetTest {
   @Override
   protected Stream<Arguments> provideNonRandomArguments() {
     List<Arguments> arguments = new ArrayList<>();
-    for (OpCodeData opCode : getModuleTracer().supportedOpCodes()) {
+    for (OpCode opCode : getModuleTracer().supportedOpCodes()) {
       for (int k = 0; k <= 3; k++) {
         for (int i = 0; i <= 3; i++) {
-          arguments.add(Arguments.of(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
+          arguments.add(
+              Arguments.of(opCode.getData(), List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
         }
       }
     }

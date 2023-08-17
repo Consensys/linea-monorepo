@@ -41,8 +41,8 @@ public class Add implements Module {
   }
 
   @Override
-  public final List<OpCodeData> supportedOpCodes() {
-    return OpCodes.of(OpCode.ADD, OpCode.SUB);
+  public final List<OpCode> supportedOpCodes() {
+    return List.of(OpCode.ADD, OpCode.SUB);
   }
 
   @Override
