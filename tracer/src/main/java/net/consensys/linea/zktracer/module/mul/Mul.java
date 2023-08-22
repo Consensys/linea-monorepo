@@ -45,8 +45,8 @@ public class Mul implements Module {
   @SuppressWarnings("UnusedVariable")
   @Override
   public void trace(MessageFrame frame) {
-    final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
 

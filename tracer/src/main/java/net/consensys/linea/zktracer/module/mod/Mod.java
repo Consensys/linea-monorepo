@@ -47,8 +47,8 @@ public class Mod implements Module {
   public void trace(final MessageFrame frame) {
     final OpCodeData opCodeData = OpCodes.of(frame.getCurrentOperation().getOpcode());
 
-    final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
     final ModData data = new ModData(opCodeData, arg1, arg2);
 

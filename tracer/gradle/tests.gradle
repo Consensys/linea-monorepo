@@ -64,15 +64,7 @@ tasks.test.dependsOn(buildZkevmBin)
 
 tasks.register('unitTests', Test) {
   useJUnitPlatform {
-    excludeTags("CorsetTest")
     excludeTags("AcceptanceTest")
-  }
-}
-
-tasks.register('corsetTests', Test) {
-  dependsOn buildZkevmBin
-  useJUnitPlatform {
-    includeTags("CorsetTest")
   }
 }
 
