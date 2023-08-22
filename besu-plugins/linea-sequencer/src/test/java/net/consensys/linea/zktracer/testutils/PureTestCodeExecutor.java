@@ -13,21 +13,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-dependencies {
-  api 'org.slf4j:slf4j-api'
+package net.consensys.linea.zktracer.testutils;
 
-  implementation 'ch.qos.logback:logback-core'
-  implementation 'ch.qos.logback:logback-classic'
+import org.apache.tuweni.bytes.Bytes;
+import org.junit.jupiter.api.Disabled;
 
-  testImplementation 'commons-io:commons-io'
-  testImplementation 'org.apache.commons:commons-lang3'
-  testImplementation 'com.google.guava:guava'
-  testImplementation 'org.assertj:assertj-core'
+@Disabled("Shall not be tested by itself")
+public class PureTestCodeExecutor extends TestCodeExecutor {
+  private final Bytes byteCode;
 
-  testImplementation 'org.junit.jupiter:junit-jupiter-api'
-  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-  testImplementation 'org.junit.jupiter:junit-jupiter-params'
+  public PureTestCodeExecutor(Bytes byteCode) {
+    this.byteCode = byteCode;
+  }
 
-  testImplementation 'org.mockito:mockito-core'
-  testImplementation 'org.mockito:mockito-junit-jupiter'
+  @Override
+  public Bytes getBytecode() {
+    return this.byteCode;
+  }
+
+  public void run() {
+    this.executeCode();
+  }
 }

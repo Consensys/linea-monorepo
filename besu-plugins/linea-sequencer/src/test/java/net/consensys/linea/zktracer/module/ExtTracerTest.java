@@ -12,7 +12,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 package net.consensys.linea.zktracer.module;
 
 import java.util.ArrayList;
@@ -35,7 +34,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ExtTracerTest extends AbstractModuleCorsetTest {
-
   static final Random rand = new Random();
 
   @Override

@@ -13,21 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-dependencies {
-  api 'org.slf4j:slf4j-api'
+package net.consensys.linea.zktracer.module.hub;
+;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
+import net.consensys.linea.zktracer.testutils.TestCodeExecutor;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
-  implementation 'ch.qos.logback:logback-core'
-  implementation 'ch.qos.logback:logback-classic'
+public class TwoPlusTwo extends TestCodeExecutor {
+  public Bytes getBytecode() {
+    return new BytecodeCompiler().push(32).push(27).op(OpCode.ADD).compile();
+  }
 
-  testImplementation 'commons-io:commons-io'
-  testImplementation 'org.apache.commons:commons-lang3'
-  testImplementation 'com.google.guava:guava'
-  testImplementation 'org.assertj:assertj-core'
-
-  testImplementation 'org.junit.jupiter:junit-jupiter-api'
-  testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-  testImplementation 'org.junit.jupiter:junit-jupiter-params'
-
-  testImplementation 'org.mockito:mockito-core'
-  testImplementation 'org.mockito:mockito-junit-jupiter'
+  @Override
+  public void postTest(MessageFrame frame) {
+    assert frame.getState() == MessageFrame.State.COMPLETED_SUCCESS;
+  }
 }
