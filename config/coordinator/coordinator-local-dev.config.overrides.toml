@@ -1,0 +1,50 @@
+# Can override any of this propeties in CLI as follows:
+# -Dconfig.override.sequencer.engine-api=http://127.0.0.1:8650
+
+[sequencer]
+eth-api="http://127.0.0.1:8645"
+
+[prover]
+fs-input-directory="tmp/local/prover/request"
+fs-output-directory="tmp/local/prover/response"
+
+[zk-geth-traces]
+eth-api = "http://127.0.0.1:8645"
+
+# Config of Traces API Facade endpoint
+[traces]
+[traces.counters]
+endpoints=["http://127.0.0.1:8080/"]
+[traces.conflation]
+endpoints=["http://127.0.0.1:8080/"]
+[traces.file-manager]
+traces-file-extension = "json.gz"
+raw-traces-directory = "tmp/local/traces/raw"
+non-canonical-raw-traces-directory = "tmp/local/traces/raw-non-canonical"
+
+[state-manager]
+endpoints=["http://127.0.0.1:8888/"]
+
+[dynamic-gas-price-service]
+#miner-gas-price-update-recipients=[]
+
+# [conflation]
+# blocks-limit=2
+# Will force conflation to start a given block
+# This is for Dev/Testing purposes
+# alternatively can use -Dconfig.override.conflation.force-starting-block=1
+#force-starting-block=1
+
+[l1]
+rpc-endpoint="http://127.0.0.1:8445"
+blocks-to-finalization=2
+earliestBlock=0
+
+[l2]
+blocks-to-finalization=0
+
+[database]
+host="localhost"
+
+[api]
+observability_port=9546

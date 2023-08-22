@@ -1,0 +1,100 @@
+package query
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
+	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
+	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
+	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
+	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/gnark/frontend"
+)
+
+// Multiple polynomials, one point
+type UnivariateEval struct {
+	Pols    []ifaces.Column
+	QueryID ifaces.QueryID
+}
+
+// Parameters for an univariate evaluation
+type UnivariateEvalParams struct {
+	X  field.Element
+	Ys []field.Element
+}
+
+/*
+Constructor for univariate evaluation queries
+The list of polynomial must be deduplicated.
+*/
+func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval {
+	// Panics if there is a duplicate
+	polsSet := collection.NewSet[ifaces.ColID]()
+
+	if len(pols) == 0 {
+		utils.Panic("Univariate eval declared with zero polynomials")
+	}
+
+	for _, pol := range pols {
+
+		if len(pol.GetColID()) == 0 {
+			utils.Panic("Assigned a polynomial ifaces.QueryID with an empty length")
+		}
+
+		if polsSet.Insert(pol.GetColID()) {
+			utils.Panic("(query %v) Got a duplicate entry %v in %v\n", id, pol, pols)
+		}
+	}
+
+	return UnivariateEval{QueryID: id, Pols: pols}
+}
+
+// Constructor for non-fixed point univariate evaluation query parameters
+func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
+	return UnivariateEvalParams{X: x, Ys: ys}
+}
+
+// Update the fiat-shamir state with the alleged evaluations. We assume that
+// the verifer always computes the values of X upfront on his own. Therefore
+// there is no need to include them in the FS.
+func (p UnivariateEvalParams) UpdateFS(state *fiatshamir.State) {
+	state.Update(p.Ys...)
+}
+
+// Test that the polynomial evaluation holds
+func (r UnivariateEval) Check(run ifaces.Runtime) error {
+	params := run.GetParams(r.QueryID).(UnivariateEvalParams)
+
+	errMsg := "univariate query check failed\n"
+	anyErr := false
+
+	for k, pol := range r.Pols {
+		wit := pol.GetColAssignment(run)
+		actualY := smartvectors.Interpolate(wit, params.X)
+
+		if actualY != params.Ys[k] {
+			anyErr = true
+			errMsg += fmt.Sprintf("expected P(x) = %s but got %s for %v\n", params.Ys[k].String(), actualY.String(), pol.GetColID())
+		}
+	}
+
+	if anyErr {
+		return errors.New(errMsg)
+	}
+
+	return nil
+}
+
+// Test that the polynomial evaluation holds
+func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
+
+	for k, pol := range r.Pols {
+		wit := pol.GetColAssignmentGnark(run)
+		actualY := fastpoly.InterpolateGnark(api, wit, params.X)
+		api.AssertIsEqual(actualY, params.Ys[k])
+	}
+}

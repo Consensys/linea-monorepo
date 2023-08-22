@@ -1,0 +1,15 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+    id 'java-library'
+    id 'java-test-fixtures'
+}
+
+dependencies {
+  implementation "org.apache.tuweni:tuweni-units:${versions.tuweni}"
+  testImplementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
+  testImplementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
+}
+
+jar {
+    dependsOn configurations.runtimeClasspath
+}

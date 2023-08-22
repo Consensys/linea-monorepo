@@ -1,0 +1,28 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-library-conventions'
+    id 'java-library'
+}
+
+dependencies {
+  implementation project(":jvm-libs:metrics:monitoring")
+  implementation project(":jvm-libs:future-extensions")
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+
+  api "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+
+  api "io.vertx:vertx-core:${versions.vertx}"
+  api "io.vertx:vertx-web:${versions.vertx}"
+  api "io.vertx:vertx-lang-kotlin:${versions.vertx}"
+
+  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  testImplementation "io.micrometer:micrometer-registry-prometheus:${versions.micrometer}"
+  testImplementation "io.rest-assured:rest-assured:${versions.test.restassured}"
+  testImplementation "io.rest-assured:json-schema-validator:${versions.test.restassured}"
+  testImplementation "com.github.tomakehurst:wiremock-jre8:2.29.0"
+}
+
+jar {
+    dependsOn configurations.runtimeClasspath
+}

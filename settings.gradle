@@ -1,0 +1,33 @@
+rootProject.name = 'zkevm'
+
+include('jvm-libs:traces')
+include('jvm-libs:domain-models')
+include('jvm-libs:metrics:monitoring')
+include('jvm-libs:json-rpc')
+include('jvm-libs:future-extensions')
+include('jvm-libs:vertx-helper')
+include('jvm-libs:jsonwebtoken')
+include 'jvm-libs:fork-choice-state-provider'
+include 'jvm-libs:testing-teku-helper'
+include 'jvm-libs:http-rest'
+include 'jvm-libs:errors'
+include 'jvm-libs:web3j-extensions'
+include('coordinator:app')
+include('coordinator:core')
+include('coordinator:utilities')
+include('coordinator:clients:engine-api-client')
+include('coordinator:clients:persistence')
+include('coordinator:clients:prover-client')
+include('coordinator:clients:type2-state-manager-client')
+include('coordinator:clients:traces-generator-api-client')
+include('coordinator:clients:smart-contract-client')
+include 'coordinator:clock-consensus'
+include('traces-api-facade:app')
+include('traces-api-facade:core')
+include('traces-api-facade:conflation')
+include 'coordinator:ethereum:batch-submitter'
+include 'coordinator:clients:web3signer-client'
+include 'coordinator:ethereum:crypto'
+include 'consensus-layer-app:app'
+include 'transaction-decoder-tool'
+

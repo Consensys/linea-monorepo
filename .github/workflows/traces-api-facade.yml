@@ -1,0 +1,167 @@
+name: Traces-api-facade CI
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: To generate test report
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-with-ssh:
+        description: Run end to end tests with ability to ssh into environment
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-logs-dump:
+        description: Dump logs after running end to end tests
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    name: Filter commit changes
+    outputs:
+      traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            traces-api-facade:
+              - 'traces-api-facade/**'
+              - 'jvm-libs/**'
+              - 'config/common/traces-limits-v1.toml'
+              - '.github/workflows/traces-api-facade.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'buildSrc/**'
+              - 'gradle/**'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
+
+  store_image_name_and_tags:
+    uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
+    with:
+      image_name: consensys/linea-traces-api-facade
+
+  check_image_tags_exist:
+    needs: [ changes, store_image_name_and_tags ]
+    if: ${{ needs.changes.outputs.traces-api-facade == 'false' }}
+    uses: ./.github/workflows/reuse-check-image-tags-exist.yml
+    with:
+      last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    secrets: inherit
+
+  traces-api-facade-tag-only:
+    needs: [ changes, store_image_name_and_tags, check_image_tags_exist ]
+    if: ${{ needs.changes.outputs.traces-api-facade == 'false' }}
+    uses: ./.github/workflows/reuse-image-tag-push.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
+      develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+      last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists }}
+      common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists }}
+    secrets: inherit
+
+  build-and-publish:
+    needs: [ changes, store_image_name_and_tags, traces-api-facade-tag-only ]
+    if: ${{ always() && (needs.changes.outputs.traces-api-facade == 'true' || needs.traces-api-facade-tag-only.result != 'success' || needs.traces-api-facade-tag-only.outputs.image_tagged != 'true') }}
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_TAG: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      DEVELOP_TAG: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      UNTESTED_TAG_SUFFIX: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      IMAGE_NAME: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - name: Install gradle
+        uses: gradle/gradle-build-action@v2
+      - name: Run tests with coverage
+        uses: nick-fields/retry@v2
+        if: ${{ inputs.coverage }}
+        with:
+          max_attempts: 2
+          retry_on: error
+          timeout_minutes: 20
+          command: |
+            ./gradlew traces-api-facade:app:buildNeeded jacocoRootReport --no-daemon
+      - name: Run tests without coverage
+        uses: nick-fields/retry@v2
+        if: ${{ !inputs.coverage }}
+        with:
+          max_attempts: 2
+          retry_on: error
+          timeout_minutes: 20
+          command: |
+            ./gradlew traces-api-facade:app:buildNeeded --no-daemon
+      - name: Build dist
+        run: |
+          ./gradlew traces-api-facade:app:shadowJar
+          echo ${{ github.workspace }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: traces-api-facade
+        uses: docker/metadata-action@v3
+        with:
+          images: consensys/linea-traces-api-facade
+      - name: Build & push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          build-contexts: jar=./traces-api-facade/app/build/libs/
+          file: ./traces-api-facade/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
+
+  run-e2e-tests:
+    needs: [ changes, store_image_name_and_tags, build-and-publish ]
+    if: ${{ always() && (needs.changes.outputs.coordinator == 'true' || needs.build-and-publish.result == 'success') }}
+    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      e2e-tests-with-ssh: ${{ false && inputs.e2e-tests-with-ssh }}
+      e2e-tests-logs-dump: ${{ false && inputs.e2e-tests-logs-dump }}
+    secrets: inherit
+
+  tag-after-run-tests-success:
+    needs: [ store_image_name_and_tags, run-e2e-tests ]
+    if: ${{ always() && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    uses: ./.github/workflows/reuse-tag-without-untested-suffix.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    secrets: inherit

@@ -1,0 +1,574 @@
+version: "3.9"
+
+volumes:
+  local-dev:
+    name: "linea-local-dev"
+  logs:
+    name: "linea-logs"
+
+networks:
+  linea:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 11.11.11.0/24
+  l1-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+
+# To debug inside the network and volumes
+# docker run --rm -it --network=docker_linea -v=linea-local-dev:/data -v=linea-logs:/logs weibeld/ubuntu-networking bash
+
+services:
+  sequencer:
+    hostname: sequencer
+    container_name: sequencer
+    image: consensys/linea-geth:${ZKGETH_TAG:-59f0967}
+    platform: linux/amd64
+    profiles: [ "l2", "l2-bc", "debug" ]
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+      - "8550:8550"
+      - "30301:30301"
+    restart: "no"
+    environment:
+      DATA_DIR: "/l2-zkgeth-sequencer/"
+      BOOTNODE_PORT: '30301'
+      NETRESTRICT: "11.11.11.0/24"
+      ZKGETH_COUNT_ONLY: "true"
+      ZKGETH_DISABLE_TRACES: "true"
+      ZKGETH_EMPTY_BLOCK_CREATION: "false"
+      ZKGETH_TRACES_LIMITS_FILE: "/config/limits.toml"
+      ZKGETH_BLOCK_SIZE_LIMIT: "108592" # 129072(coordinator limit) - 20*1024(safety margin)
+      ZKGETH_TRACE_OVERFLOW_NBRETRIES: "10"
+      ZKGETH_ADDR_BLACKLIST: "0x0000000000000000000000000000000000000001:0x0000000000000000000000000000000000000002:0x0000000000000000000000000000000000000003:0x0000000000000000000000000000000000000004:0x0000000000000000000000000000000000000005:0x0000000000000000000000000000000000000006:0x0000000000000000000000000000000000000007:0x0000000000000000000000000000000000000008:0x0000000000000000000000000000000000000009"
+      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
+      MAX_TXDATA_BYTES: 30000 #30 KBytes
+      ETHSTATS_URL: "linea-sequencer:${WS_SECRET:-dummy-secret}@l2-ethstats:3000"
+    entrypoint: ""
+    command: [ "sh", "/scripts/sequencer.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484" ]
+    volumes:
+      - ./geth/scripts:/scripts:ro
+      - ./config/linea-local-dev-genesis-PoA.json:/genesis.json:ro
+      - ../config/common/traces-limits-v1.toml:/config/limits.toml:ro
+      # - ./config/jwt-secret.hex:/jwt-secret.hex:ro
+      - ./geth/geth-l2-boot.key:/boot.key:ro
+      - ./keystore/L2:/keystore:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.101
+
+  l2-node:
+    container_name: l2-node
+    hostname: l2-node
+    image: consensys/linea-geth:${ZKGETH_TAG:-59f0967}
+    platform: linux/amd64
+    profiles: [ "l2", "debug" ]
+    ports:
+      - "8845:8545"
+      - "8846:8546"
+      - "30303:30303"
+    environment:
+      DATA_DIR: "/data/l2-zkgeth-l2-node/"
+      BOOTNODES: "enode://f94118749beb981da38b82ab6be7b00dc0082783d698080fd0ae45a2c3d42f1ce74cbb153ffcfb1379b64235605bfff43f85b112032ddd9685ad2ab88735e1b1@11.11.11.101:30301"
+      NETRESTRICT: "11.11.11.0/24"
+      DISABLE_ZKEVM: "true"
+      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
+      MAX_TXDATA_BYTES: 30000 #30 KBytes
+    entrypoint: ""
+    command: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0x0", "0x1C9C380" ]
+    volumes:
+      - ./geth/scripts:/scripts:ro
+      - ./config/linea-local-dev-genesis-PoA.json:/genesis.json:ro
+      - ./geth/geth-l2-node.key:/boot.key:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.209
+
+  traces-node:
+    container_name: traces-node
+    hostname: traces-node
+    image: consensys/linea-geth:${ZKGETH_TAG:-59f0967}
+    platform: linux/amd64
+    profiles: [ "l2", "l2-bc", "debug" ]
+    depends_on:
+      sequencer:
+        condition: service_started
+    ports:
+      - "8645:8545" # http
+      - "8646:8546" # websockets
+      - "8651:8551" # engine_ API
+    environment:
+      DATA_DIR: "/l2-zkgeth-traces-node/"
+      NETRESTRICT: "11.11.11.0/24"
+      # ETHSTATS_URL: "zkgeth-traces-node:${WS_SECRET:-dummy-secret}@l2-ethstats:3000"
+      BOOTNODES: "enode://f94118749beb981da38b82ab6be7b00dc0082783d698080fd0ae45a2c3d42f1ce74cbb153ffcfb1379b64235605bfff43f85b112032ddd9685ad2ab88735e1b1@11.11.11.101:30301"
+      TRACES_DIR: "/data/traces/raw"
+      MAX_BLOCK_GAS: 10000000  #10M
+      MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
+      MAX_TXDATA_BYTES: 30000 #30 KBytes
+      VERSION: "0.2.0"
+      TRACES_FILE_EXTENSION: ".json.gz"
+    entrypoint: ""
+    command: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0xa", "0x1C9C380" ]
+    volumes:
+      - ./geth/scripts:/scripts:ro
+      - ./config/linea-local-dev-genesis-PoA.json:/genesis.json:ro
+      - local-dev:/data/
+    #      - ../tmp/:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.102
+
+  prover:
+    container_name: prover
+    hostname: prover
+    image: consensys/linea-prover:${PROVER_TAG:-develop}
+    platform: linux/amd64
+    profiles: [ "l2", "debug" ]
+    environment:
+      GOMAXPROCS: 16
+      WORKER_ID: prover1
+      BINARY: "/opt/linea/prover/prover.sh"
+      VERSION: "0.2.0"
+      FROM_DIR: "/data/prover/request"
+      IF_EXT: "json"
+      TO_DIR: "/data/prover/response"
+      OF_EXT: "json"
+      DONE_DIR: "/data/prover/requests-done"
+      LARGE_EXT: "large"
+      RETRYABLE_ERROR_CODES: "137,333"
+      PROVER_CONFLATED_TRACES_DIR: "/data/traces/conflated"
+      PROVER_SKIP_TRACES: "true"
+      LOGS_DIR: "/logs/prover/"
+      LOG_LEVEL: "info"
+      PROVER_DEV_LIGHT_VERSION: "true"
+      #      PROVER_R1CS_FILE: "/opt/linea/prover/setup-data-light/circuit.bin"
+      #      PROVER_PKEY_FILE: "/opt/linea/prover/setup-data-light/proving_key.bin"
+      #      PROVER_VKEY_FILE: "/opt/linea/prover/setup-data-light/verifying_key.bin"
+      #      PROVER_SOL_VERIFIER: "/opt/linea/prover/setup-data-light/verifierContract.sol"
+      LAYER2_CHAIN_ID: "1337"
+      LAYER2_MESSAGE_SERVICE_CONTRACT: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+    volumes:
+      - local-dev:/data
+      - logs:/logs
+    networks:
+      linea:
+        ipv4_address: 11.11.11.108
+
+  postman:
+    container_name: postman
+    hostname: postman
+    image: consensys/linea-postman:${POSTMAN_TAG:-develop}
+    platform: linux/amd64
+    profiles: [ "l2", "debug" ]
+    depends_on:
+      sequencer:
+        condition: service_started
+#      l1-validator:
+#        condition: service_started
+      postgres-postman:
+        condition: service_healthy
+    environment:
+      L1_RPC_URL: "http://l1-validator:8545"
+      L1_CONTRACT_ADDRESS: "0xC737F2334651ea85A72D8DA9d933c821A8377F9f"
+      # WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+      L1_SIGNER_PRIVATE_KEY: "0x202454d1b4e72c41ebf58150030f649648d3cf5590297fb6718e27039ed9c86d"
+      L1_LISTENER_INTERVAL: 2000
+      L1_LISTENER_INITIAL_FROM_BLOCK: 0
+      L1_LISTENER_BLOCK_CONFIRMATION: 1
+      L1_MAX_BLOCKS_TO_FETCH_LOGS: 1000
+      L2_RPC_URL: "http://sequencer:8545"
+      L2_CONTRACT_ADDRESS: "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+      # WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+      L2_SIGNER_PRIVATE_KEY: "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+      L2_LISTENER_INTERVAL: 2000
+      L2_LISTENER_INITIAL_FROM_BLOCK: 0
+      L2_LISTENER_BLOCK_CONFIRMATION: 0 # set confirmation as zero since L2 block won't auto increase
+      L2_MAX_BLOCKS_TO_FETCH_LOGS: 1000
+      MESSAGE_SUBMISSION_TIMEOUT: 300000
+      MAX_FETCH_MESSAGES_FROM_DB: 1000
+      MAX_NONCE_DIFF: 10000
+      MAX_FEE_PER_GAS: 100000000000
+      GAS_ESTIMATION_PERCENTILE: 50
+      PROFIT_MARGIN: 0.0
+      MAX_NUMBER_OF_RETRIES: 100
+      RETRY_DELAY_IN_SECONDS: 30
+      MAX_CLAIM_GAS_LIMIT: 100000
+      ONLY_EOA_TARGET: "false"
+      POSTGRES_HOST: "postgres-postman"
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "postman_db"
+    networks:
+      l1-network:
+        ipv4_address: 10.10.10.222
+      linea:
+        ipv4_address: 11.11.11.222
+
+  traces-api:
+    hostname: traces-api
+    container_name: traces-api
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-develop}
+    profiles: [ "l2", "debug" ]
+    depends_on:
+      traces-node:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx.properties', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/traces-app-docker.config.toml', ]
+    volumes:
+      - ../config/traces-api/traces-app-docker.config.toml:/opt/consensys/linea/traces-api-facade/config/traces-app-docker.config.toml:ro
+      - ../config/traces-api/vertx.properties:/opt/consensys/linea/traces-api-facade/config/vertx.properties:ro
+      - ../config/traces-api/log4j2-dev.xml:/opt/consensys/linea/traces-api-facade/config/log4j2-dev.xml:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.105
+
+  coordinator:
+    hostname: coordinator
+    container_name: coordinator
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-develop}
+    profiles: [ "l2", "debug" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      l1-validator:
+        condition: service_started
+      sequencer:
+        condition: service_started
+      shomei:
+        condition: service_started
+    ports:
+      - "9545:9545"
+    restart: on-failure
+    command: [ 'java', '-Dvertx.configurationFile=/var/lib/coordinator/vertx.properties', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/app-all.jar', '--traces-limits', 'config/traces-limits-v1.toml', 'config/coordinator-docker.config.toml' ]
+    volumes:
+      - ../config/coordinator/coordinator-docker.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker.config.toml:ro
+      - ../config/common/traces-limits-v1.toml:/opt/consensys/linea/coordinator/config/traces-limits-v1.toml:ro
+      #- ./config/jwt-secret.hex:/var/lib/coordinator/jwt-secret.hex:ro
+      - ../config/coordinator/vertx.properties:/var/lib/coordinator/vertx.properties:ro
+      - ../config/coordinator/log4j2-dev.xml:/var/lib/coordinator/log4j2-dev.xml:ro
+      - ../testdata/type2state-manager/state-proof.json:/opt/consensys/linea/coordinator/testdata/type2state-manager/state-proof.json
+      - local-dev:/data/
+    networks:
+      l1-network:
+        ipv4_address: 10.10.10.106
+      linea:
+        ipv4_address: 11.11.11.106
+
+  web3signer:
+    hostname: web3signer
+    container_name: web3signer
+    image: consensys/web3signer:23.3-jdk17
+    profiles: [ "l2", "debug" ]
+    ports:
+      - "9000:9000"
+    command:
+      - --key-store-path=/keyFiles/
+      - eth1
+    volumes:
+      - ./web3signer/keyFiles/:/keyFiles/
+    networks:
+      - linea
+
+  l2-ethstats:
+    container_name: l2-ethstats
+    image: puppeth/ethstats:latest
+    profiles: [ "l2-observability", "debug" ]
+    environment:
+      WS_SECRET: ${WS_SECRET:-dummy-secret}
+    ports:
+      - "3000:3000"
+    restart: on-failure
+    networks:
+      linea:
+        ipv4_address: 11.11.11.200
+
+  postgres:
+    image: postgres:14.5
+    hostname: postgres
+    container_name: postgres
+    profiles: [ "l2", "debug" ]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /data/postgres
+      POSTGRES_DB: ${POSTGRES_DB:-coordinator}
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    # uncomment command below if you need to log and debug queries to PG
+    #    command:
+    #      - postgres
+    #      - -c
+    #      - config_file=/etc/postgresql/postgresql.conf
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    restart: unless-stopped
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d/
+      - ./postgres/conf/:/etc/postgresql/
+    networks:
+      - linea
+      - l1-network
+
+  postgres-postman:
+    image: postgres:14.5
+    hostname: postgres-postman
+    container_name: postgres-postman
+    profiles: [ "l2", "debug" ]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PGDATA: /data/postgres
+      POSTGRES_DB: ${POSTGRES_DB:-postman_db}
+    ports:
+      - "6432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - linea
+      - l1-network
+
+  # The node container is our entry point to issue RPC commands
+  # This also the network bootnode,  but it's not sealing.
+  l1-node:
+    container_name: l1-node
+    hostname: l1-node
+    image: ethereum/client-go:alltools-v1.11.4-${DOCKER_ARC_TAG:-amd64}
+    profiles: [ "l1", "debug" ]
+    environment:
+      DATA_DIR: "/data/l1-node/"
+      BOOTNODE_PORT: '30201'
+      NETRESTRICT: "10.10.10.0/24"
+    command: [ "sh", "/scripts/node.sh", "31648428", "/genesis.json", "0x4ecf8295", "0x1C9C380" ]
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./l1-genesis.json:/genesis.json:ro
+      - ./l1-boot.key:/boot.key:ro
+      - local-dev:/data
+    networks:
+      l1-network:
+        ipv4_address: 10.10.10.201
+
+  l1-validator:
+    container_name: l1-validator
+    hostname: l1-validator
+    image: ethereum/client-go:alltools-v1.11.4-${DOCKER_ARC_TAG:-amd64}
+    profiles: [ "l1", "debug" ]
+    depends_on:
+      - l1-node
+    ports:
+      - "8445:8545"
+      - "8446:8546"
+      - "30201:30201"
+    environment:
+      DATA_DIR: "/data/l1-validator/"
+      NETRESTRICT: "10.10.10.0/24"
+      BOOTNODES: "enode://a93ce823807ac28c11e7b7a90699abe3021a6fc8d4bfe1593759e6b93b631b3771b838f19d238cb2e2c55497b26607f4c456b03400360bda4fe18db88dad407f@10.10.10.201:30201"
+    # "Usage: validator.sh etherbase networkid genesis_file gasprice gaslimit"
+    command: [ "sh", "/scripts/validator.sh", "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484", "31648428", "/genesis.json", "0x4ecf8295", "0x1C9C380" ]
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./keystore/L1/:/keystore:ro
+      - ./l1-genesis.json:/genesis.json:ro
+      - local-dev:/data
+    networks:
+      - l1-network
+
+  #  deploy-l1-verifier:
+  #    container_name: deploy-l1-verifier
+  #    image: consensys/linea-smart-contract:latest
+  #    profiles: [ "l1" ]
+  #    depends_on:
+  #      l1-node:
+  #        condition: service_started
+  #      l1-validator:
+  #        condition: service_started
+  #    environment:
+  #      BLOCKCHAIN_NODE: "http://l1-validator:8545"
+  #      BLOCKCHAIN_TIMEOUT_MS: 30000
+  #      TX_GAS_LIMIT: 10000000
+  #      BLOCKCHAIN_GAS_PRICE: 1800000000
+  #      ROLLUP_GENESIS_ROOT_HASH: "0x0000000000000000000000000000000000000000000000000000000000000000"
+  #      SMC_CONFIG_PATH: '/smart_contract/config/smc_config.json'
+  #      ROLLUP_JSON_PATH: '/data/smart_contract/rollup.json'
+  #      SIGNATURE_VERIFICATION_FLAG: 1
+  #      ZK_VERIFICATION_FLAG: 1
+  #      PROVER_DEV_LIGHT_VERSION: 'true'
+  #    command:
+  #      - /bin/bash
+  #      - -c
+  #      - |
+  #        mkdir -p /data/smart_contract/ && \
+  #        mkdir -p $$(dirname $${SMC_CONFIG_PATH}) && \
+  #        cp /smart_contract/pre-config/smc_config.json $${SMC_CONFIG_PATH} && \
+  #        sed -i "s/\"root_hash\": \"PLACEHOLDER\",/\"root_hash\": \"$${ROLLUP_GENESIS_ROOT_HASH}\",/" $${SMC_CONFIG_PATH} && \
+  #        echo "smart contract initial config:" && \
+  #        cat $${SMC_CONFIG_PATH} && \
+  #        echo "" && \
+  #        sleep 10 && \
+  #        npx hardhat run --network zkevm_dev /smart_contract/scripts/hardhat/deploy.js && \
+  #        node /smart_contract/scripts/registerOperator.js /data/smart_contract/rollup.json /node-data/test/keys/contract_owner.acc /node-data/test/keys/operator_1.acc && \
+  #        node /smart_contract/scripts/changeSignatureVerification.js /data/smart_contract/rollup.json /node-data/test/keys/contract_owner.acc $${SIGNATURE_VERIFICATION_FLAG} && \
+  #        node /smart_contract/scripts/changeZkVerification.js /data/smart_contract/rollup.json /node-data/test/keys/contract_owner.acc $${ZK_VERIFICATION_FLAG}
+  #    volumes:
+  #      - local-dev:/data
+  #      - ./relayer/smart_contract/smc_config.json:/smart_contract/pre-config/smc_config.json:ro
+  #      - ./keys/l1:/node-data/test/keys/
+  #    networks:
+  #      - l1-network
+
+
+  l1-blockscout:
+    container_name: l1-blockscout
+    hostname: l1-blockscout
+    image: blockscout/blockscout:${BLOCKSCOUT_TAG:-5.0.0}
+    profiles: [ "debug" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      l1-node:
+        condition: service_started
+    command: bash -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
+    env_file:
+      - ../config/blockscout/l1-blockscout.env
+    environment:
+      ETHEREUM_JSONRPC_HTTP_URL: http://l1-node:8545/
+      ETHEREUM_JSONRPC_TRACE_URL: http://l1-node:8545/
+      ETHEREUM_JSONRPC_WS_URL: ws://l1-node:8546/
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/l1_blockscout_db?ssl=false
+      ECTO_USE_SSL: 'false'
+    ports:
+      - "4001:4000"
+    volumes:
+      - ./l1-genesis.json:/app/genesis.json:ro
+    networks:
+      - l1-network
+
+  zkbesu-shomei:
+    image: consensys/linea-besu:linea-delivery-1
+    hostname: zkbesu-shomei
+    container_name: zkbesu-shomei
+    profiles: ["l2", "l2-bc"]
+    depends_on:
+      shomei-plugin-downloader:
+        condition: service_completed_successfully
+      sequencer:
+        condition: service_started
+    privileged: true
+    user: root
+    restart: always
+    ports:
+      - "8745:8545" # http
+      - "8746:8546" # websockets
+      - "8750:8550"
+      - "30304:30303"
+    networks:
+      linea:
+        ipv4_address: 11.11.11.103
+    environment:
+      LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu \
+        --config-file=/var/lib/besu/zkbesu-config.toml \
+        --genesis-file=/var/lib/besu/genesis.json \
+        --p2p-host="$$(hostname -i)" \
+        --min-gas-price=0 \
+        --revert-reason-enabled \
+        --node-private-key-file=/var/lib/besu/key \
+        --plugin-shomei-http-host="11.11.11.104" \
+        --plugin-shomei-http-port=8888 \
+        --bootnodes="enode://f94118749beb981da38b82ab6be7b00dc0082783d698080fd0ae45a2c3d42f1ce74cbb153ffcfb1379b64235605bfff43f85b112032ddd9685ad2ab88735e1b1@11.11.11.101:30301"
+    volumes:
+      - ./config/zkbesu-shomei/zkbesu-config.toml:/var/lib/besu/zkbesu-config.toml:ro
+      - ./config/zkbesu-shomei/key:/var/lib/besu/key:ro
+      - ./config/zkbesu-shomei/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
+      - ../tmp/zkbesu-shomei/plugins:/opt/besu/plugins/
+
+  shomei:
+    image: consensys/linea-shomei:1.2.0
+    hostname: shomei
+    container_name: shomei
+    profiles: ["l2", "l2-bc"]
+    depends_on:
+      zkbesu-shomei:
+        condition: service_started
+    privileged: true
+    user: root
+    restart: always
+    ports:
+      - "8888:8888"
+    networks:
+      linea:
+        ipv4_address: 11.11.11.104
+    environment:
+      LOG4J_CONFIGURATION_FILE: /log4j.xml
+    command:
+      - --besu-rpc-http-host=11.11.11.103
+      - --besu-rpc-http-port=8545
+      - --rpc-http-host=11.11.11.104
+      - --rpc-http-host-allow-list=*
+      - --rpc-http-port=8888
+      - --min-confirmations-before-importing=0
+      - --trace-start-block-number=0
+      - --data-path=/data/shomei
+    volumes:
+      #      - local-dev:/data/
+      - ./config/shomei/log4j.xml:/log4j.xml:ro
+      - ../tmp/local/shomei:/data/shomei/:z
+
+  shomei-plugin-downloader:
+    image: busybox:1.28
+    command: [ "sh", "/file-downloader.sh", "https://github.com/ConsenSys/besu-shomei-plugin/releases/download/v0.2.1/besu-shomei-plugin-v0.2.1.jar",  "/shomei-plugin"]
+    volumes:
+      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
+      - ../tmp/zkbesu-shomei/plugins:/shomei-plugin/
+
+  l2-blockscout:
+    container_name: l2-blockscout
+    hostname: l2-blockscout
+    image: blockscout/blockscout:${BLOCKSCOUT_TAG:-5.0.0}
+    profiles: [ "debug" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      l2-node:
+        condition: service_started
+    # - smart-contract-verifier not supported for v0.1
+    command: bash -c "bin/blockscout eval \"Elixir.Explorer.ReleaseTasks.create_and_migrate()\" && bin/blockscout start"
+    env_file:
+      - ../config/blockscout/l2-blockscout.env
+    environment:
+      ETHEREUM_JSONRPC_HTTP_URL: http://l2-node:8545/
+      ETHEREUM_JSONRPC_TRACE_URL: http://l2-node:8545/
+      ETHEREUM_JSONRPC_WS_URL: ws://l2-node:8546/
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/l2_blockscout_db?ssl=false
+      ECTO_USE_SSL: 'false'
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./config/linea-local-dev-genesis-PoA.json:/app/genesis.json:ro
+    networks:
+      - linea

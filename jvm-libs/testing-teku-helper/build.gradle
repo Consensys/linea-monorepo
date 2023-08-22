@@ -1,0 +1,9 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  api "tech.pegasys.teku.internal:executionclient:${versions.teku}"
+  api "tech.pegasys.teku.internal:unsigned:${versions.teku}"
+  api "tech.pegasys.teku.internal:bytes:${versions.teku}"
+}

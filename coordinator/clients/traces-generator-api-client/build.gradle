@@ -1,0 +1,23 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+    implementation project(':coordinator:core')
+    implementation project(':jvm-libs:future-extensions')
+    implementation project(':jvm-libs:json-rpc')
+    implementation project(':jvm-libs:metrics:monitoring')
+    implementation project(':jvm-libs:traces')
+    implementation "tech.pegasys.teku.internal:executionclient:${versions.teku}"
+    implementation "tech.pegasys.teku.internal:unsigned:${versions.teku}"
+
+    api "io.vertx:vertx-core:${versions.vertx}"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+    testImplementation "com.github.tomakehurst:wiremock-jre8:2.29.0"
+}
+
+test {
+    useJUnitPlatform()
+}

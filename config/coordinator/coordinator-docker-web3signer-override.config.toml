@@ -1,0 +1,9 @@
+[l1-signer]
+# Web3j/Web3signer
+type="Web3Signer"
+
+[l2-signer]
+# Web3j/Web3signer
+type="Web3Signer"
+
+

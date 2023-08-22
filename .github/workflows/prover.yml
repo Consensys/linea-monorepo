@@ -1,0 +1,260 @@
+name: Prover CI
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      e2e-tests-with-ssh:
+        description: Run end to end tests with ability to ssh into environment
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-logs-dump:
+        description: Dump logs after running end to end tests
+        required: false
+        type: boolean
+        default: false
+
+env:
+  GOPROXY: "https://proxy.golang.org"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    name: Filter commit changes
+    outputs:
+      prover: ${{ steps.filter.outputs.prover }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            prover:
+              - 'prover/**'
+              - '.github/workflows/prover.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'constraints'
+
+  staticcheck:
+    needs:
+    - changes
+    if: ${{ needs.changes.outputs.prover == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.20.x
+    - name: checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: gofmt
+      working-directory: prover
+      run: if [[ -n $(gofmt -l .) ]]; then echo "please run gofmt"; exit 1; fi
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+          working-directory: prover
+          args: --timeout=5m
+    - name: generated files should not be modified
+      working-directory: prover
+      run: |
+        go generate ./...
+        git update-index --assume-unchanged go.mod
+        git update-index --assume-unchanged go.sum
+        if [[ -n $(git status --porcelain) ]]; then echo "git repo is dirty after running go generate -- please don't modify generated files"; echo $(git diff);echo $(git status --porcelain); exit 1; fi
+
+  test:
+    if: ${{ needs.changes.outputs.prover == 'true' }}
+    strategy:
+      matrix:
+        go-version: [1.20.x]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    needs:
+      - staticcheck
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: checkout code
+      uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Test
+      working-directory: prover
+      run: |
+        go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
+    - name: Test (32 bits & race)
+      working-directory: prover
+      if: (matrix.os == 'ubuntu-latest') && (matrix.go-version == '1.20.x')
+      run: |
+          go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
+
+  slack-workflow-status-failed:
+    if: failure()
+    name: post workflow status to slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow failed
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "FAIL",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_FAIL }}
+
+  slack-workflow-status-success:
+    if: success()
+    name: post workflow status to slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow succeeded
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "SUCCESS",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_SUCCESS }}
+
+  store_image_name_and_tags:
+    uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
+    with:
+      image_name: consensys/linea-prover
+
+  check_image_tags_exist:
+    needs: [ changes, store_image_name_and_tags ]
+    if: ${{ needs.changes.outputs.prover == 'false' }}
+    uses: ./.github/workflows/reuse-check-image-tags-exist.yml
+    with:
+      last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    secrets: inherit
+
+  prover-tag-only:
+    needs: [ changes, store_image_name_and_tags, check_image_tags_exist ]
+    if: ${{ needs.changes.outputs.prover == 'false' }}
+    uses: ./.github/workflows/reuse-image-tag-push.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      last_commit_tag: ${{ needs.store_image_name_and_tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store_image_name_and_tags.outputs.common_ancestor_tag }}
+      develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+      last_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.last_commit_tag_exists }}
+      common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists }}
+    secrets: inherit
+
+  build-and-publish:
+    needs: [ changes, store_image_name_and_tags, prover-tag-only ]
+    if: ${{ always() && (needs.changes.outputs.prover == 'true' || needs.prover-tag-only.result != 'success' || needs.prover-tag-only.outputs.image_tagged != 'true') }}
+    runs-on: ubuntu-latest
+    env:
+      COMMIT_TAG: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      DEVELOP_TAG: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      UNTESTED_TAG_SUFFIX: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      IMAGE_NAME: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    name: Prover build and push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ssh-key: ${{ secrets.SELF_GITHUB_SSH_KEY }}
+          submodules: true
+          persist-credentials: false
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Show the "version" build argument
+        run: |
+          echo "We inject the commit tag in the docker image ${{ env.COMMIT_TAG }}"
+          echo COMMIT_TAG=${{ env.COMMIT_TAG }} >> $GITHUB_ENV
+      - name: Build and push prover image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./prover/Dockerfile
+          build-args: |
+            VERSION=${{ env.COMMIT_TAG }}
+            RUSTFLAGS="-C target-cpu=x86-64-v3"
+          build-contexts: |
+            prover=prover/
+            corset=corset/
+            constraints=constraints/
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}-${{ env.UNTESTED_TAG_SUFFIX }}
+
+  run-e2e-tests:
+    needs: [ changes, store_image_name_and_tags, build-and-publish ]
+    if: ${{ always() && (needs.changes.outputs.coordinator == 'true' || needs.build-and-publish.result == 'success') }}
+    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      e2e-tests-with-ssh: ${{ false && inputs.e2e-tests-with-ssh }}
+      e2e-tests-logs-dump: ${{ false && inputs.e2e-tests-logs-dump }}
+    secrets: inherit
+
+  tag-after-run-tests-success:
+    needs: [ store_image_name_and_tags, run-e2e-tests ]
+    if: ${{ always() && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    uses: ./.github/workflows/reuse-tag-without-untested-suffix.yml
+    with:
+      commit_tag: ${{ needs.store_image_name_and_tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.store_image_name_and_tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store_image_name_and_tags.outputs.untested_tag_suffix }}
+      image_name: ${{ needs.store_image_name_and_tags.outputs.image_name }}
+    secrets: inherit

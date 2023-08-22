@@ -1,0 +1,79 @@
+*.pprof
+*.trace
+**/*.DS_Store
+**/.ipynb_checkpoints
+**/__pycache__
+**/debug.log
+**/*.lisp
+lispified
+**/profiling
+!utils/profiling
+**/large_data
+**/*-*-zkProof.json
+**/full/proving_key.bin
+**/full/circuit.bin
+**/full-large/proving_key.bin
+**/full-large/circuit.bin
+
+
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+__pycache__
+bin/
+vendor/
+.env
+
+# except for single-round bin
+!**/single_round/bin/
+
+!/**/.gitkeep
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Coverage
+coverage.html
+*.cov.tmp
+
+# Jetbrains files
+.DS_Store
+.idea
+*.iml
+.idea_modules/
+
+# Build
+build/
+cmake-build-*/
+
+# File-based project format
+*.iws
+*.ipr
+
+# JIRA plugin
+atlassian-ide-plugin.xml
+
+# Go packages and sources:
+.gocache
+
+# Visual Code Studio
+.vscode
+
+!**/**/.gitkeep
+
+# API Doc
+node_modules
+
+# Various logging outputs
+**/*.csv
+**/*.log
+
+# Output of the generator command
+test-data

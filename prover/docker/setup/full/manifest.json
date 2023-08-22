@@ -1,0 +1,15 @@
+{
+  "timestamp": "2023-07-28T12:16:13.459211889Z",
+  "commit": "8c4fd74905f508685704f0bfc5cac2dc0ed66e87",
+  "git_status": "git status is not clean: ?? prover/run-and-save-setup-on-s3.sh\n",
+  "nb_constraints": 27099466,
+  "trusted_srs": true,
+  "circuit_name": "full",
+  "files": [
+    "circuit.bin",
+    "proving_key.bin",
+    "verifying_key.bin",
+    "Verifier.sol",
+    "manifest.json"
+  ]
+}

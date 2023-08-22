@@ -1,0 +1,12 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-common-conventions'
+    id 'java-library'
+}
+
+dependencies {
+  implementation "io.vertx:vertx-core:${versions.vertx}"
+}
+
+jar {
+    dependsOn configurations.runtimeClasspath
+}

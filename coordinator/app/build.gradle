@@ -1,0 +1,223 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
+plugins {
+  id 'net.consensys.zkevm.kotlin-application-conventions'
+  id 'com.github.johnrengelman.shadow' version '7.1.2'
+  id "com.avast.gradle.docker-compose" version "0.14.2"
+}
+
+dependencies {
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:http-rest')
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:web3j-extensions')
+  implementation project(':coordinator:utilities')
+  implementation project(':coordinator:core')
+  implementation project(':coordinator:clock-consensus')
+  implementation project(':coordinator:clients:persistence')
+  implementation project(':coordinator:clients:engine-api-client')
+  implementation project(':coordinator:clients:traces-generator-api-client')
+  implementation project(':coordinator:clients:type2-state-manager-client')
+  implementation project(':coordinator:clients:prover-client')
+  implementation project(':coordinator:clients:smart-contract-client')
+  implementation project(':coordinator:ethereum:batch-submitter')
+  implementation project(':coordinator:clients:web3signer-client')
+  implementation "tech.pegasys.teku.internal:unsigned:${versions.teku}"
+  implementation "tech.pegasys.teku.internal:logging:${versions.teku}"
+  implementation "tech.pegasys.teku.internal:infrastructure-events:${versions.teku}"
+
+  implementation "info.picocli:picocli:${versions.picoli}"
+  implementation "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  implementation "io.vertx:vertx-web-client:${versions.vertx}"
+  implementation "io.micrometer:micrometer-registry-prometheus:${versions.micrometer}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
+  implementation("org.web3j:core:${versions.web3j}") {
+    exclude group: 'org.slf4j', module: 'slf4j-nop'
+  }
+  api("io.netty:netty-transport-native-epoll:${versions.netty}:linux-x86_64") {
+    because "It enables native transport for Linux."
+    // Note that its version should match netty version used in Vertx
+  }
+  api("io.netty:netty-transport-native-kqueue:${versions.netty}:osx-x86_64") {
+    because "It enables native transport for Mac OSX."
+    // Note that its version should match netty version used in Vertx
+  }
+  // Transaction encoding
+  implementation "org.hyperledger.besu:besu-datatypes:${versions.besu}"
+  implementation "org.hyperledger.besu.internal:rlp:${versions.besu}"
+  implementation "org.hyperledger.besu:evm:${versions.besu}"
+  implementation "org.hyperledger.besu.internal:core:${versions.besu}"
+  implementation "org.hyperledger.besu.internal:crypto:${versions.besu}"
+
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${versions.jackson}"
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${versions.jackson}")
+
+  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "com.github.tomakehurst:wiremock-jre8:${versions.test.wiremock}"
+  testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0"
+}
+
+application {
+  mainClass = 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain'
+}
+
+jar {
+  archiveBaseName = 'coordiantor'
+  dependsOn configurations.runtimeClasspath
+  manifest {
+    attributes(
+      'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
+      'Multi-Release': 'true'
+    )
+  }
+}
+
+distributions {
+  main {
+    distributionBaseName = 'coordinator'
+  }
+}
+
+run {
+  workingDir = rootProject.projectDir
+  jvmArgs = [
+    "-Dvertx.configurationFile=config/coordinator/vertx.properties",
+    "-Dlog4j2.configurationFile=config/coordinator/log4j2-dev.xml"
+  ] + System.properties.entrySet()
+    .findAll { it.key.startsWith("config") }
+    .collect { "-D${it.key}=${it.value}" }
+  args = ["--traces-limits", "config/common/traces-limits-v1.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    java {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+tasks.register('integrationTest', Test) {
+  test ->
+    testLogging {
+      events TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STARTED
+      exceptionFormat TestExceptionFormat.FULL
+      showCauses true
+      showExceptions true
+      showStackTraces true
+      showStandardStreams true
+    }
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    doFirst {
+      def zkEvmV2Address = deployZkevmV2()
+      def l2MessageServiceAddress = deployL2MessageService()
+      test.systemProperty("ZkEvmV2Address", zkEvmV2Address)
+      test.systemProperty("L2MessageService", l2MessageServiceAddress)
+    }
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    dependsOn(composeUp)
+}
+
+String deployZkevmV2() {
+  // Container can start afresh and this file becomes outdated and causes issues
+  delete(project.rootProject.file("./contracts/.openzeppelin/unknown-31648428.json"))
+  println("Running zkevm deployment scripts")
+
+  Map<String, String> env = Map.of("VERIFIER_CONTRACT_NAME", "IntegrationTestTrueVerifier")
+  String output = runRootMakefileCommand("deploy-zkevm2-to-local", env)
+  def deploymentAddressLine = output.split("\n").find { it.startsWith("ZkEvmV2 deployed at ") }
+  Pattern pattern = Pattern.compile("^ZkEvmV2 deployed at (.*)\$");
+  Matcher matcher = pattern.matcher(deploymentAddressLine)
+
+  if (!matcher.find()) {
+    throw new IllegalStateException("Couldn't extract ZkEvmV2 address from the output: $output")
+  } else {
+    return matcher.group(1)
+  }
+}
+
+String deployL2MessageService() {
+  // Container can start afresh and this file becomes outdated and causes issues
+  delete(project.rootProject.file("./contracts/.openzeppelin/unknown-1337.json"))
+  println("Running l2 message service deployment scripts")
+
+  String output = runRootMakefileCommand("deploy-l2messageservice-to-local", Map.of())
+  def deploymentAddressLine = output.split("\n").find { it.startsWith("L2MessageService deployed at ") }
+  Pattern pattern = Pattern.compile("^L2MessageService deployed at (.*)\$");
+  Matcher matcher = pattern.matcher(deploymentAddressLine);
+
+  if (!matcher.find()) {
+    throw new IllegalStateException("Couldn't extract L2MessageService address from the output: $output")
+  } else {
+    return matcher.group(1)
+  }
+}
+
+String runRootMakefileCommand(String command, Map<String, String> env) {
+  File outputFile = file("output.txt")
+  def deploymentProcessBuilder = new ProcessBuilder("make", "-C", project.rootDir.path, command)
+  deploymentProcessBuilder.environment().putAll(env)
+  deploymentProcessBuilder.redirectOutput(outputFile)
+  deploymentProcessBuilder.redirectError(outputFile)
+  def deploymentProcess = deploymentProcessBuilder.start()
+  def deploymentResult = deploymentProcess.waitFor(4, TimeUnit.MINUTES)
+  def output = outputFile.text
+  outputFile.delete()
+  println(output)
+  if (!deploymentResult) {
+    throw new GradleException("Deployment timed out")
+  }
+  return output
+}
+
+dockerCompose {
+  startedServices = [
+    "postgres",
+    "sequencer",
+    "l1-node",
+    "l1-validator",
+    "l2-node",
+    // For debug
+//    "l1-blockscout",
+//    "l2-blockscout"
+  ]
+  useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+  environment.putAll(Map.of(
+    "POSTGRES_DB", "coordinator_tests",
+    "POSTGRES_USER", "coordinator",
+    "POSTGRES_PUBLISH_PORT", "6543",
+    "POSTGRES_PASSWORD", "coordinator_tests"))
+  waitForHealthyStateTimeout = Duration.ofMinutes(2)
+  waitForTcpPorts = false
+  removeOrphans = true
+
+  projectName = "docker"
+}
+
+check.finalizedBy("integrationTest")

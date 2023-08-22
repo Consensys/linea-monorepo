@@ -1,0 +1,42 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+import { requireEnv } from "../hardhat/utils";
+import Safe from "@safe-global/safe-core-sdk";
+const { EthersAdapter } = require("@safe-global/protocol-kit");
+const { ethers } = require("ethers");
+
+const main = async () => {
+  const SAFE_ADDRESS = requireEnv("SAFE_ADDRESS");
+  const RPC_URL = requireEnv("BLOCKCHAIN_NODE");
+  const SAFE_OWNER1_PRIVATE_KEY = requireEnv("SAFE_OWNER1_PRIVATE_KEY");
+  const SAFE_NEW_THRESHOLD = requireEnv("SAFE_NEW_THRESHOLD");
+
+  const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+  const signer = new ethers.Wallet(SAFE_OWNER1_PRIVATE_KEY, provider);
+
+  const ethAdapter = new EthersAdapter({ ethers, signerOrProvider: signer });
+
+  const safeSdk = await Safe.create({ ethAdapter, safeAddress: SAFE_ADDRESS });
+
+  // Display initial threshold & owners
+  const threshold = await safeSdk.getThreshold();
+  console.log("Safe's current threshold: ", threshold);
+
+  const currentOwners = await safeSdk.getOwners();
+  console.log("Safe's owners :", currentOwners);
+
+  // Threshold change
+  const safeTransaction = await safeSdk.createChangeThresholdTx(ethers.BigNumber.from(SAFE_NEW_THRESHOLD));
+  const txResponse = await safeSdk.executeTransaction(safeTransaction);
+  await txResponse.transactionResponse?.wait();
+
+  // Display new threshold
+  const newThreshold = await safeSdk.getThreshold();
+  console.log("Safe's new threshold: ", newThreshold);
+};
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

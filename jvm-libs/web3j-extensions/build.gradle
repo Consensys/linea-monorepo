@@ -1,0 +1,13 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-common-conventions'
+    id 'java-library'
+}
+
+dependencies {
+  api "org.web3j:core:${versions.web3j}"
+  api project(':jvm-libs:domain-models')
+}
+
+jar {
+    dependsOn configurations.runtimeClasspath
+}

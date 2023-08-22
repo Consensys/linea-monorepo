@@ -1,0 +1,49 @@
+{
+  "name": "smart_contract",
+  "engines": {
+    "node": "18.12.1",
+    "npm": "9.6.1"
+  },
+  "scripts": {
+    "build": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "test:reportgas": "REPORT_GAS=true npx hardhat test",
+    "test-zkevm-all": "npx hardhat test test/ZkEvm.ts test/Bridging.ts test/ZkEvmBridge.ts",
+    "test-zkevm": "npx hardhat test test/ZkEvm.ts",
+    "test-token-bridge": "npx hardhat test test/tokenBridge/BridgedToken.ts test/tokenBridge/E2E.ts test/tokenBridge/TokenBridge.ts",
+    "coverage": "npx hardhat coverage",
+    "balance": "ts-node scripts/balanceOf.ts",
+    "solhint": "npx solhint 'contracts/**/*.sol'",
+    "fmt:js:check": "prettier -c '**/*.{js,ts}'",
+    "fmt:js": "prettier -w '**/*.{js,ts}'",
+    "lint:js:check": "npx eslint '**/*.{js,ts}'",
+    "lint:js": "npx eslint --fix '**/*.{js,ts}'",
+    "fmt:sol:check": "prettier -c 'contracts/**/*.sol'",
+    "fmt:sol": "prettier -w 'contracts/**/*.sol'"
+  },
+  "devDependencies": {
+    "@gnosis.pm/zodiac": "^3.3.2",
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/contracts": "^4.9.2",
+    "@openzeppelin/contracts-upgradeable": "^4.9.2",
+    "@openzeppelin/hardhat-upgrades": "^1.28.0",
+    "@types/diff": "^5.0.3",
+    "@types/npmlog": "^4.1.4",
+    "@types/yargs": "^17.0.24",
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "colors": "^1.4.0",
+    "dotenv": "^16.0.3",
+    "edit-json-file": "^1.7.0",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.8.0",
+    "hardhat": "^2.14.0",
+    "hardhat-tracer": "^2.2.2",
+    "npmlog": "^7.0.1",
+    "prettier": "^2.8.7",
+    "prettier-plugin-solidity": "^1.1.3",
+    "solhint": "^3.4.1",
+    "solhint-plugin-prettier": "^0.0.5",
+    "yargs": "^17.7.1"
+  }
+}

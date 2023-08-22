@@ -1,0 +1,13 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  api "io.vertx:vertx-core:${versions.vertx}"
+  api "io.vertx:vertx-web:${versions.vertx}"
+  api "io.vertx:vertx-lang-kotlin:${versions.vertx}"
+  api "io.vertx:vertx-config:${versions.vertx}"
+  api "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  api "io.vertx:vertx-health-check:${versions.vertx}"
+}
+

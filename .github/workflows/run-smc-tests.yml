@@ -1,0 +1,52 @@
+name: Smart contracts test
+
+on:
+  push:
+    paths:
+      - 'contracts/**'
+      - 'testdata/**'
+
+jobs:
+  run-contract-tests:
+    runs-on: ubuntu-latest
+    name: Run smart contracts tests
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache-dependency-path: contracts/package-lock.json
+      - name: Npm install
+        working-directory: contracts
+        run: npm ci --no-audit
+      - name: Check JS formatting
+        working-directory: contracts
+        run: npm run lint:js:check
+      - name: Run smart contracts tests
+        working-directory: contracts
+        run: make test
+      - name: Generate coverage report
+        working-directory: contracts
+        run: make coverage
+
+  solidity-format-check:
+    runs-on: ubuntu-latest
+    name: Solidity format check
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache-dependency-path: contracts/package-lock.json
+      - name: Npm install
+        working-directory: contracts
+        run: npm ci --no-audit
+      - name: Check Solidity formatting
+        working-directory: contracts
+        run: npm run fmt:sol:check

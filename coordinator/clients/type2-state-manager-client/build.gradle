@@ -1,0 +1,21 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation project(':coordinator:core')
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:metrics:monitoring')
+  implementation project(':jvm-libs:future-extensions')
+
+  implementation "tech.pegasys.teku.internal:bytes:${versions.teku}"
+  implementation "io.vertx:vertx-core:${versions.vertx}"
+  implementation "io.vertx:vertx-web:${versions.vertx}"
+  implementation "io.vertx:vertx-lang-kotlin:${versions.vertx}"
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${versions.jackson}"
+
+  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "com.github.tomakehurst:wiremock-jre8:2.29.0"
+}

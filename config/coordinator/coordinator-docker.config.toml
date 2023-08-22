@@ -1,0 +1,190 @@
+testL1Disabled = false
+
+[sequencer]
+eth-api="http://sequencer:8545"
+#version="0.0.1"
+#engine-api="http://sequencer:8550"
+#suggested-fee-recipient="0x0000000000000000000000000000000000000000"
+#block-time="PT6S"
+#jwt-secret-file="/var/lib/coordinator/jwt-secret.hex"
+
+[prover]
+version="0.2.0"
+# only File System supported for now. JSON-RPC will be added later
+# client-mode="file-system",
+fs-input-directory="/data/prover/request"
+fs-output-directory="/data/prover/response"
+fs-polling-interval="PT20S"
+fs-inprogess-proving-suffix-pattern="\\.inprogress\\.prover.*"
+timeout="PT10M"
+
+[zk-geth-traces]
+eth-api = "http://traces-node:8545"
+new-block-polling-interval="PT1S"
+
+[traces]
+version="0.2.0"
+[traces.counters]
+endpoints=["http://traces-api:8080/"]
+request-limit-per-endpoint=20
+request-max-retries=2
+request-retry-interval="PT1S"
+[traces.conflation]
+endpoints=["http://traces-api:8080/"]
+request-limit-per-endpoint=2
+request-max-retries=2
+request-retry-interval="PT1S"
+
+[traces.file-manager]
+traces-file-extension = "json.gz"
+raw-traces-directory = "/data/traces/raw"
+non-canonical-raw-traces-directory = "/data/traces/raw-non-canonical"
+create-non-canonical-directory = true
+polling-interval="PT1S"
+traces-file-creation-wait-timeout="PT30S"
+
+[state-manager]
+version="1.2.0"
+endpoints=["http://shomei:8888/"]
+request-limit-per-endpoint=3
+
+[api]
+observability_port = 9545
+
+[l1]
+rpc-endpoint="http://l1-validator:8545"
+zk-evm-contract-address="0xC737F2334651ea85A72D8DA9d933c821A8377F9f"
+finalization-polling-interval="PT6S"
+new-batch-polling-interval="PT6S"
+# blocks-to-finalization=2 is a dev value.
+blocks-to-finalization=2
+gas-limit=10000000
+fee-history-block-count=10
+fee-history-reward-percentile=15
+max-fee-per-gas=100000000000
+# blocks are 12s, this may catch in between blocks - could be 12?
+send-message-event-polling-interval="PT6S"
+# 10 blocks worth at 12s per block
+max-event-scraping-time="PT02M"
+block-range-loop-limit=5
+max-messages-to-collect=1000
+finalized-block-tag="latest"
+# reset this once we know what to do on dev/UAT
+earliest-block=0
+
+[l2]
+message-service-address="0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+gas-limit=10000000
+max-fee-per-gas-cap=100000000000
+fee-history-block-count=4
+fee-history-reward-percentile=15
+last-hash-search-window=25
+last-hash-search-max-blocks-back=1000
+anchoring-receipt-polling-interval="PT01S"
+max-receipt-retries=120
+# Number of children blocks to wait before considering a block "finalized"
+# and elegible for conflation and
+# this a workaround to mitigate Geth fork issues with Clique PoA
+# Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
+# Recommended minimum of 2
+blocks-to-finalization=2
+
+[batch-submission]
+disabled=false
+max-batches-to-send-per-tick=10
+# Delay interval since
+proof-submission-delay="PT1S"
+
+[l1-signer]
+# Web3j/Web3signer
+type="Web3j"
+
+[l1-signer.web3j]
+private-key="0x202454d1b4e72c41ebf58150030f649648d3cf5590297fb6718e27039ed9c86d"
+
+[l1-signer.web3signer]
+endpoint="http://127.0.0.1:9000"
+max-pool-size=10
+keep-alive=true
+public-key="0x3c753c0c9db5ce651144dbba3da47476ddede5b98607272de97a347d72c2eac2be3f6aea33598f297a0cd0f12cf08fe0e5198531393ea726a36efd07a7872382"
+
+[l2-signer]
+# Web3j/Web3signer
+type="Web3j"
+
+[l2-signer.web3j]
+private-key="0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+
+[l2-signer.web3signer]
+endpoint="http://127.0.0.1:9000"
+max-pool-size=10
+keep-alive=true
+public-key="0cdc73b5a30ecb3eb2028fdd2d5ab423221763fbda7127e38d664b033455e30e7c6833bff6b99197de4d2069de30f6aaa90626986b737b7e74e635f4f7cedfbf"
+
+[message-anchoring-service]
+disabled=false
+polling-interval="PT48S"
+max-messages-to-anchor=100
+
+[dynamic-gas-price-service]
+disabled=false
+polling-interval="PT12S"
+fee-history-block-count=50
+fee-history-reward-percentile=15
+base-fee-coefficient=0.1
+priority-fee-coefficient=1.0
+gas-price-cap=10000000000 # 10 GWEI
+miner-gas-price-update-recipients=[
+  "http://sequencer:8545/",
+  "http://traces-node:8545/",
+  "http://l2-node:8545/"
+]
+
+[conflation]
+#blocks-limit=2
+conflation-deadline="PT6S" # =3*l2_block_time
+conflation-deadline-check-interval="PT3S"
+conflation-deadline-last-block-confirmation-delay="PT2S" # recommended: at least 2 * blockInterval
+
+# Total number of bytes that can be used for blocks conflation;
+# This should be around:
+#  L1_transaction_size_limit(128KB)
+#    - (signature and rlp overhead) 300B margin, for now
+#    - proof size: 928 + 2
+#    - proof type: 32 + 1
+#    - blockDataOffsetEncodingSize (BlockData[] rlp overhead): 2bytes
+#
+# Finalize Block call with 1 block takes: ~1926
+#  (includes: proof 928, parentRoot: 32, verifierIndex: 4, gasPrice 32 and gasLimit 32
+#    1 block with:( 1tx, 1 l2ToL1MsgHashes, 1 fromAddresses, 1 batchReceptionIndices ))
+# total: 128*1024 - 2000 = 129072
+total-limit-bytes=129072
+
+# Number of extra bytes each block will require to send to L1, due smart contract interface;
+# This should be around:
+#  blockRootHash: 32 + 1 bytes
+#  l2BlockTimestamp: 4 + 1 bytes
+#  BlockData struct rlp overhead: 2 bytes
+# total: 40 bytes
+per-block-overhead-bytes=40
+
+# Minimum number of bytes the smallest block with single ETH transfer would require;
+# If totalAccumulatedData + minBlockL1Size > totalLimitBytes, then conflation will be triggered
+# Setting for overhead atm
+min-block-l1-size-bytes=1699
+
+# This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
+# Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
+# If state is updated meanwhile, it resets counter and restarts the polling.
+consistent-number-of-blocks-on-l1-to-wait=1
+
+[database]
+host = "postgres"
+port = "5432"
+username = "postgres"
+password = "postgres"
+schema = "linea_coordinator"
+read_pool_size = 10
+read_pipelining_limit = 10
+transactional_pool_size = 10
+

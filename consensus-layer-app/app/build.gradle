@@ -1,0 +1,52 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-application-conventions'
+}
+
+dependencies {
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:metrics:monitoring')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:fork-choice-state-provider')
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:jsonwebtoken')
+
+  implementation "tech.pegasys.teku.internal:time:${versions.teku}"
+  implementation "tech.pegasys.teku.internal:infrastructure-events:${versions.teku}"
+  implementation "com.github.ben-manes.caffeine:caffeine:${versions.caffeine}"
+  implementation "io.vertx:vertx-core:${versions.vertx}"
+  implementation "io.vertx:vertx-web:${versions.vertx}"
+  implementation "io.vertx:vertx-health-check:${versions.vertx}"
+  implementation "io.vertx:vertx-lang-kotlin:${versions.vertx}"
+  implementation "io.vertx:vertx-config:${versions.vertx}"
+  implementation "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  implementation "info.picocli:picocli:${versions.picoli}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
+  implementation "io.micrometer:micrometer-registry-prometheus:${versions.micrometer}"
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${versions.jackson}"
+  api("io.netty:netty-transport-native-epoll:${versions.netty}:linux-x86_64") {
+        because "It enables native transport for Linux."
+        // Note that its version should match netty version used in Vertx
+    }
+    api("io.netty:netty-transport-native-kqueue:${versions.netty}:osx-x86_64") {
+        because "It enables native transport for Mac OSX."
+        // Note that its version should match netty version used in Vertx
+    }
+
+  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "io.rest-assured:rest-assured:${versions.test.restassured}"
+  testImplementation "io.rest-assured:json-schema-validator:${versions.test.restassured}"
+}
+
+application {
+    mainClass = 'net.consensys.linea.consensus.app.ConsensusLayerAppMain'
+}
+
+
+run {
+  workingDir = rootProject.projectDir
+  jvmArgs = ["-Dvertx.configurationFile=consensus-layer-app/config/vertx.properties", "-Dlog4j2.configurationFile=consensus-layer-app/config/log4j2-dev.xml"]
+  args = ["consensus-layer-app/config/consensus-layer-app.config.toml"]
+}

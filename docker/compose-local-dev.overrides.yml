@@ -1,0 +1,26 @@
+version: "3.9"
+
+# to use this file run
+# docker compose -f compose.yml -f compose-local-dev.overrides.yml --profile l2 --profile l1 up
+
+services:
+  traces-node:
+    volumes:
+      - ../tmp/local/:/data/
+
+  traces-api:
+#    image: consensys/linea-traces-api-facade:137ab52
+    volumes:
+      - ../tmp/local/:/data/
+
+  prover:
+#    image: consensys/linea-prover:8d1c974
+    platform: linux/amd64
+    volumes:
+      - ../tmp/local/:/data/
+
+  coordinator:
+#    image: consensys/linea-coordinator:1d37365
+#    command: [ 'echo', 'stopping coordinator to debug locally']
+    volumes:
+      - ../tmp/local/:/data/

@@ -1,0 +1,28 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text eol=lf
+
+/gradlew -text
+*.md -text
+*.jar -text
+*.bat -text
+*.pcap binary
+*.blocks binary
+*.dll binary
+*.dylib binary
+*.so binary
+*.gz binary
+*.ssz binary
+*.ssz_snappy binary
+
+prover/docker/setup/full/proving_key.bin binary
+prover/docker/setup/full/verifying_key.bin binary
+prover/docker/setup/full/circuit.bin binary
+prover/docker/setup/full/sample-proof.bin binary
+
+prover/docker/setup/light/proving_key.bin binary
+prover/docker/setup/light/verifying_key.bin binary
+prover/docker/setup/light/circuit.bin binary
+prover/docker/setup/light/sample-proof.bin binary

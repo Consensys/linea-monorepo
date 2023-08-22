@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="warn" packages="net.consensys" shutdownHook="disable" monitorInterval="2">
+  <Appenders>
+    <Console name="console" target="SYSTEM_OUT">
+      <PatternLayout pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %m%n"/>
+    </Console>
+  </Appenders>
+
+  <Loggers>
+    <Logger name="net.consensys.linea.jsonrpc.client" level="DEBUG" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+<!--    <Logger name="net.consensys.zkevm.ethereum.coordination.dynamicgasprice.GasPriceUpdaterImpl" level="TRACE" additivity="false">-->
+<!--      <appender-ref ref="console" level="trace"/>-->
+<!--    </Logger>-->
+    <Logger name="net.consensys.zkevm.coordinator.blockcreation" level="DEBUG" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="net.consensys.linea" level="DEBUG" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="net.consensys.zkevm" level="DEBUG" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="net.consensys.zkevm.ethereum.coordination.conflation" level="TRACE" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="net.consensys.zkevm.ethereum.settlement.persistence" level="DEBUG" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="org.web3j.protocol.http.HttpService" level="INFO" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Logger name="tech.pegasys.teku.ethereum.executionclient.web3j.Web3jHttpClient" level="TRACE" additivity="false">
+      <appender-ref ref="console" level="trace"/>
+    </Logger>
+    <Root level="info" additivity="true">
+      <appender-ref ref="console"/>
+    </Root>
+  </Loggers>
+
+</Configuration>

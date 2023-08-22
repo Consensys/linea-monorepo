@@ -1,0 +1,78 @@
+## Design of the Merkle-tree hashing
+
+This section describes our technique to verify binary Merkle-trees
+
+### Structure
+
+| IsInactive    | NewProof      | IsEndOfProof      | Root     | Curr        | Proof         | PosBit          | PosAcc                               | *Zero* | Left          | IntermState        | Right         | NodeHash          |
+| ---           | ---           | ---               | -------- | ----------- | ------------- | --------------- | ------------------------------------ | ------ | ------------- | -----------        | ------------- | -----------       |
+|  $0$          | $0$           | 1                 | $R_0$    | $H_{d-1,0}$ | $\pi_{d-1,0}$ | $b_{d-1,0} = 0$ | $p_{d-1,0} = b_{d-1,0}$              | $0$    | $H_{d-1,0}$   | $I_{d-1,0}$        | $\pi_{d-1,0}$ | $R_0$             |
+|  $0$          | $0$           | $0$               | $R_0$    | $H_{d-2,0}$ | $\pi_{d-2,0}$ | $b_{d-2,0} = 1$ | $p_{d-2,0} = b_{d-2,0} + 2p_{d-1,0}$ | $0$    | $\pi_{d-2,0}$ | $I_{d-2,0}$        | $H_{d-2,0}$   | $H_{d-1,0}$       |
+|  $\cdots$     | $\cdots$      | $\cdots$          | $\cdots$ | $\cdots$    | $\cdots$      | $\cdots$        | $\cdots$                             | $0$    | $\cdots$      | $\cdots$           | $\cdots$      | $\cdots$          |
+|  $0$          | $1$           | $0$               | $R_0$    | $L_0$       | $\pi_{0,0}$   | $b_{0,0} = 1$   | $p_{d-2,0} = b_{0,0} + 2p_{1,0}$     | $0$    | $\pi_{0,0}$   | $I_{0,0}$          | $L_0$         | $H_{1,0}$         |
+|  $0$          | $0$           | 1                 | $R_1$    | $H_{d-1,1}$ | $\pi_{d-1,1}$ | $b_{d-1,1} = 1$ | $p_{d-1,1} = b_{d-1,1}$              | $0$    | $\pi_{d-1,1}$ | $I_{d-1,1}$        | $H_{d-1,1}$   | $R_0$             |
+|  $0$          | $0$           | $0$               | $R_1$    | $H_{d-2,1}$ | $\pi_{d-2,1}$ | $b_{d-2,1} = 1$ | $p_{d-2,1} = b_{d-2,1} + 2p_{d-1,1}$ | $0$    | $\pi_{d-2,1}$ | $I_{d-2,1}$        | $H_{d-2,1}$   | $H_{d-1,1}$       |
+|  $\cdots$     | $\cdots$      | $\cdots$          | $\cdots$ | $\cdots$    | $\cdots$      | $\cdots$        | $\cdots$                             | $0$    | $\cdots$      | $\cdots$           | $\cdots$      | $\cdots$          |
+|  $0$          | $1$           | $0$               | $R_1$    | $L_1$       | $\pi_{0,1}$   | $b_{0,1} = 0$   | $p_{d-2,1} = b_{0,1} + 2p_{1,1}$     | $0$    | $L_1$         | $I_{0,1}$          | $\pi_{0,1}$   | $H_{1,1}$         |
+|  $\cdots$     | $\cdots$      | $\cdots$          | $\cdots$ | $\cdots$    | $\cdots$      | $\cdots$        | $\cdots$                             | $0$    | $\cdots$      | $\cdots$           | $\cdots$      | $\cdots$          |
+|  $0$          | $1$           | $0$               | $R_n$    | $L_n$       | $\pi_{0,n}$   | $b_{0,n} = 0$   | $p_{d-2,n} = b_{0,n} + 2p_{1,n}$     | $0$    | $L_n$         | $I_{0,n}$          | $\pi_{0,n}$   | $H_{n,n}$         |
+|  $1$          | $0$           | $0$               | $0$      | $0$         | $0$           | $0$             | $0$                                  | $0$    | $0$           | $I_\text{dead}$    | $0$           | $H_\text{dead}$   |
+|  $\cdots$     | $\cdots$      | $\cdots$          | $\cdots$ | $\cdots$    | $\cdots$      | $\cdots$        | $\cdots$                             | $0$    | $\cdots$      | $\cdots$           | $\cdots$      | $\cdots$          |
+|  $1$          | $0$           | $0$               | $0$      | $0$         | $0$           | $0$             | $0$                                  | $0$    | $0$           | $I_\text{dead}$    | $0$           | $H_\text{dead}$   |
+
+The table below represents how we model Merkle-tree verification, each proof uses a segment of $d$ rows. In each segment, the Merkle root is recomputed from bottom-up. The zero column is implicitly not really committed to (it is a constant). This can be confusing, so we say "bottom" to mean the last row of a segment. Which corresponds to the first hash of the Merkle-proof
+
+For convenience, we use the following two expressions to constructs the constraints
+
+- $\text{NotNewProof}[i] = 1 - \text{NewProof}[i]$
+- $\text{IsActive}[i] = 1 - \text{IsInactive}[i]$
+- $\text{NotEndOfProof}[i] = 1 - \text{EndOfProof}[i]$
+
+This are not materialized by columns but are used as subexpressions in the constraints for clarity.
+
+#### Root is constant over a segment
+
+Root is constant within a segment and it must be inactive when the "IsInactive" flag is set.
+
+Global : $(\text{Root}[i] - \text{IsActive}[i]\text{Root}[i+1])\text{NotNewProof[i]} == 0$
+
+#### For each segment the root is result of the topmost hash
+
+Global : $\text{EndOfProof[i]}(\text{Root}[i] - \text{NodeHash}[i]) == 0$
+
+#### PosBit is boolean
+
+This enforces $\text{PosBit}$ to be boolean and zero if the inactive flag is set.
+
+Global : $\text{PosBit}[i] = \text{IsActive}[i]\text{PosBit}[i]^2$
+
+#### PosAcc should compute the final position
+
+PosAcc progressively computes the position of the opened leaf from the bits.
+It must be zero when the inactive flag is set.
+
+Global : $\text{PosAcc}[i] = \text{IsActive}[i](\text{PosBit}[i] + 2 \text{NotEndOfProof}[i]\text{PosAcc}[i+1])$
+
+#### Left and Right should be correctly passed
+
+The flag $\text{PosBit}$ decides which one of $\text{Proof}$ or $\text{Curr}$ is mapped to $\text{Left}$ or $\text{Right}$.
+Since, we enforce both proofs and curr to be zero when the inactive flag is set the constraints do not have to account for that : $\text{Left}$ and $\text{Right}$ are already enforced to be $0$.
+
+- Global : $\text{Left}[i] - \text{PosBit}[i] \text{Proof}[i] - (1 - \text{PosBit}[i])\text{Curr}[i]$
+- Global : $\text{Right}[i] - \text{PosBit}[i] \text{Curr}[i] - (1 - \text{PosBit}[i])\text{Proof}[i]$
+
+#### Within a chunk, use the previous node hash as current node
+
+When the inactive flag is set, this enforces that $\text{Curr}$ is zero. This works because the 
+
+Global : $\text{NotNewProof}[i](\text{Curr}[i] - \text{IsActive}[i]\text{NodeHash}[i+1])$
+
+#### The MiMC are well-computed
+
+MiMC: $(\text{Left}, \text{Zero}, \text{Interm})$
+MiMC: $(\text{Right}, \text{Interm}, \text{NodeHash})$
+
+#### Proof is canceled when inactive
+
+Global : $\text{Proof}[i] = \text{IsActive}[i]\text{Proof}[i]$
+

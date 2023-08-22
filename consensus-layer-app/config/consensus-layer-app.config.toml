@@ -1,0 +1,24 @@
+# Souce endpoint to poll for the latest forkchoice
+[fork-choice-source]
+url="http://127.0.0.1:8081/linea/api/consensus/v0"
+# formats accepted are based on the ISO-8601 duration format PnDTnHnMn.nS
+polling-interval="PT0.5S"
+
+[execution-client]
+# zkgeth traces node
+url = "http://127.0.0.1:8651"
+# besu-follower
+#url = "http://127.0.0.1:8850"
+jwt-secret-file="docker/config/jwt-secret.hex"
+
+[api]
+observability_port = 8090
+
+# This enables other peers to fetch the lattest forkchoice state from this node as well
+# Useful for Public Facing instances, where this can act as man in the middle.
+# Comment section bellow to disable this feature
+[api.fork-choice-provider]
+port = 8082
+path = "/linea/api/consensus/v0"
+# if =0, it will create one verticle per core (or hyperthread if supported)
+number_of_verticles = 1
