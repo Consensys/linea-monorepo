@@ -45,6 +45,20 @@ public abstract class AbstractBaseModuleTest {
   Operation mockOperation;
   static Module module;
 
+  @BeforeAll
+  static void beforeAll() {
+    OpCodes.load();
+  }
+
+  @BeforeEach
+  void beforeEach() {
+    module = getModuleTracer();
+    zkTracer = new ZkTracer(List.of(module));
+    mockFrame = mock(MessageFrame.class);
+    mockOperation = mock(Operation.class);
+    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
+  }
+
   protected void runTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
     assertThat(CorsetValidator.isValid(generateTrace(opCodeData, arguments))).isTrue();
   }
@@ -61,21 +75,6 @@ public abstract class AbstractBaseModuleTest {
     zkTracer.traceEndConflation();
 
     return zkTracer.getTrace().toJson();
-  }
-
-  @BeforeAll
-  static void beforeAll() {
-    OpCodes.load();
-  }
-
-  @BeforeEach
-  void setUp() {
-    ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
-    module = getModuleTracer();
-    zkTracer = new ZkTracer(List.of(module));
-    mockFrame = mock(MessageFrame.class);
-    mockOperation = mock(Operation.class);
-    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
 
   protected abstract Module getModuleTracer();

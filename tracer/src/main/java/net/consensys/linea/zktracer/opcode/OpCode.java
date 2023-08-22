@@ -194,4 +194,13 @@ public enum OpCode {
   public static OpCode of(final int value) {
     return OpCodes.of(value).mnemonic();
   }
+
+  /**
+   * Returns the {@link OpCode}'s long value as a byte type.
+   *
+   * @return the {@link OpCode}'s value as a byte
+   */
+  public byte byteValue() {
+    return this.getData().value().byteValue();
+  }
 }
