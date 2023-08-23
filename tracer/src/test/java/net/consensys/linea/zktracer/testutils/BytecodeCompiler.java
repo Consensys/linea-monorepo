@@ -49,6 +49,10 @@ public class BytecodeCompiler {
     return this.immediate(toBytes(x));
   }
 
+  public BytecodeCompiler immediate(byte x) {
+    return this.immediate(new byte[] {x});
+  }
+
   public BytecodeCompiler immediate(UInt256 x) {
     return this.immediate(x.toArray());
   }

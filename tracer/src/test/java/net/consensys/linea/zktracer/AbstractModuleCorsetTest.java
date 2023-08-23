@@ -23,7 +23,6 @@ import java.util.stream.Stream;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,7 +34,6 @@ import org.junit.jupiter.params.provider.MethodSource;
  * module as input for the parameterized tests.
  */
 @TestInstance(Lifecycle.PER_CLASS)
-@Tag("CorsetTest")
 public abstract class AbstractModuleCorsetTest extends AbstractBaseModuleTest {
   private static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 8;

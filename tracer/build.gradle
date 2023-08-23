@@ -31,6 +31,7 @@ dependencies {
   implementation "org.hyperledger.besu:plugin-api"
   implementation "org.hyperledger.besu:besu-datatypes"
   implementation "org.hyperledger.besu:evm:$besuVersion"
+  implementation "org.hyperledger.besu.internal:algorithms:${besuVersion}"
 
 
   implementation 'info.picocli:picocli'

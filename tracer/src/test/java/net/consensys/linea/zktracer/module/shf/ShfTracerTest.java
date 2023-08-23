@@ -15,69 +15,46 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodes;
+import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
+import net.consensys.linea.zktracer.testutils.PureTestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @Slf4j
 @ExtendWith(MockitoExtension.class)
-@Tag("CorsetTest")
 class ShfTracerTest {
   private static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 4;
-
-  private ZkTracer zkTracer;
-
-  @Mock MessageFrame mockFrame;
-  @Mock Operation mockOperation;
 
   @BeforeAll
   static void beforeAll() {
     OpCodes.load();
   }
 
-  @BeforeEach
-  void setUp() {
-    zkTracer = new ZkTracer(List.of(new Shf()));
-
-    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
-  }
-
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideShiftOperators")
   void testFailingBlockchainBlock(final int opCodeValue) {
-    when(mockOperation.getOpcode()).thenReturn(opCodeValue);
-
-    when(mockFrame.getStackItem(0)).thenReturn(Bytes32.rightPad(Bytes.fromHexString("0x08")));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexString("0x01"));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
+    new PureTestCodeExecutor(
+            new BytecodeCompiler()
+                .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
+                .push(Bytes32.fromHexString("0x01"))
+                .immediate(opCodeValue)
+                .compile())
+        .run();
   }
 
   @ParameterizedTest(name = "{0}")
@@ -85,27 +62,21 @@ class ShfTracerTest {
   void testRandomSar(final Bytes32[] payload) {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
-    when(mockOperation.getOpcode()).thenReturn(OpCode.SAR.getData().value().intValue());
 
-    when(mockFrame.getStackItem(0)).thenReturn(payload[0]);
-    when(mockFrame.getStackItem(1)).thenReturn(payload[1]);
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
+    new PureTestCodeExecutor(
+            new BytecodeCompiler().push(payload[1]).push(payload[0]).op(OpCode.SAR).compile())
+        .run();
   }
 
   @Test
   void testTmp() {
-    when(mockOperation.getOpcode()).thenReturn(OpCode.SAR.getData().value().intValue());
-
-    when(mockFrame.getStackItem(0))
-        .thenReturn(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"));
-    when(mockFrame.getStackItem(1)).thenReturn(Bytes32.fromHexStringLenient("0xb5"));
-
-    zkTracer.tracePreExecution(mockFrame);
-
-    assertThat(CorsetValidator.isValid(zkTracer.getTrace().toJson())).isTrue();
+    new PureTestCodeExecutor(
+            new BytecodeCompiler()
+                .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
+                .immediate(Bytes32.fromHexStringLenient("0xb5"))
+                .op(OpCode.SAR)
+                .compile())
+        .run();
   }
 
   public static Stream<Arguments> provideRandomSarArguments() {

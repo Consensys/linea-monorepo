@@ -13,29 +13,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testutils;
+package net.consensys.linea.zktracer.module.hub;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
+import net.consensys.linea.zktracer.opcode.OpCode;
 
-@Disabled("Shall not be tested by itself")
-public class PureTestCodeExecutor extends TestCodeExecutor {
-  private final Bytes byteCode;
+enum CallFrameType {
+  InitCode,
+  Standard,
+  Delegate,
+  Static,
+  CallCode,
+  Root;
 
-  public PureTestCodeExecutor(Bytes byteCode) {
-    this.byteCode = byteCode;
-  }
-
-  @Override
-  public Bytes getBytecode() {
-    return this.byteCode;
-  }
-
-  public void run() {
-    this.executeCode();
-  }
-
-  public String trace() {
-    return this.traceCode();
+  public CallFrameType ofOpCode(OpCode opCode) {
+    return switch (opCode) {
+      case CREATE, CREATE2 -> InitCode;
+      case DELEGATECALL -> Delegate;
+      case CALLCODE -> CallCode;
+      case STATICCALL -> Static;
+      default -> Standard;
+    };
   }
 }
