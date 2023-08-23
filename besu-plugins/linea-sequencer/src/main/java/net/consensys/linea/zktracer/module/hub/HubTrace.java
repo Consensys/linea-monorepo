@@ -13,29 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testutils;
+package net.consensys.linea.zktracer.module.hub;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Disabled("Shall not be tested by itself")
-public class PureTestCodeExecutor extends TestCodeExecutor {
-  private final Bytes byteCode;
-
-  public PureTestCodeExecutor(Bytes byteCode) {
-    this.byteCode = byteCode;
-  }
-
-  @Override
-  public Bytes getBytecode() {
-    return this.byteCode;
-  }
-
-  public void run() {
-    this.executeCode();
-  }
-
-  public String trace() {
-    return this.traceCode();
-  }
-}
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record HubTrace(@JsonProperty("Trace") Trace trace) {}

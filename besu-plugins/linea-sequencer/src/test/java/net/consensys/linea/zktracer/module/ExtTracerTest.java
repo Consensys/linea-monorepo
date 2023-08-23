@@ -105,7 +105,7 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
       arguments.add(
           Arguments.of(
               opCode.getData(),
-              List.of(UInt256.valueOf(0), UInt256.valueOf(12), UInt256.valueOf(6))));
+              List.of(UInt256.valueOf(6), UInt256.valueOf(12), UInt256.valueOf(0))));
     }
 
     return arguments.stream();
@@ -117,7 +117,7 @@ class ExtTracerTest extends AbstractModuleCorsetTest {
       arguments.add(
           Arguments.of(
               opCode.getData(),
-              List.of(UInt256.valueOf(1), UInt256.valueOf(1), UInt256.valueOf(0))));
+              List.of(UInt256.valueOf(0), UInt256.valueOf(1), UInt256.valueOf(1))));
     }
 
     return arguments.stream();

@@ -15,17 +15,14 @@
 
 package net.consensys.linea.zktracer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.util.List;
 
-import net.consensys.linea.zktracer.corset.CorsetValidator;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
+import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
+import net.consensys.linea.zktracer.testutils.PureTestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -40,7 +37,6 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
  */
 @TestInstance(Lifecycle.PER_CLASS)
 public abstract class AbstractBaseModuleTest {
-  private ZkTracer zkTracer;
   MessageFrame mockFrame;
   Operation mockOperation;
   static Module module;
@@ -53,28 +49,26 @@ public abstract class AbstractBaseModuleTest {
   @BeforeEach
   void beforeEach() {
     module = getModuleTracer();
-    zkTracer = new ZkTracer(List.of(module));
-    mockFrame = mock(MessageFrame.class);
-    mockOperation = mock(Operation.class);
-    when(mockFrame.getCurrentOperation()).thenReturn(mockOperation);
   }
 
   protected void runTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
-    assertThat(CorsetValidator.isValid(generateTrace(opCodeData, arguments))).isTrue();
+    BytecodeCompiler bytecode = new BytecodeCompiler();
+    for (Bytes32 argument : arguments) {
+      bytecode.push(argument);
+    }
+    bytecode.op(opCodeData.mnemonic());
+
+    new PureTestCodeExecutor(bytecode.compile()).run();
   }
 
-  protected String generateTrace(OpCodeData opCodeData, List<Bytes32> arguments) {
-    when(mockOperation.getOpcode()).thenReturn(opCodeData.value().intValue());
-
-    for (int i = 0; i < arguments.size(); i++) {
-      when(mockFrame.getStackItem(i)).thenReturn(arguments.get(i));
+  protected String traceTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
+    BytecodeCompiler bytecode = new BytecodeCompiler();
+    for (Bytes32 argument : arguments) {
+      bytecode.push(argument);
     }
+    bytecode.op(opCodeData.mnemonic());
 
-    zkTracer.traceStartConflation(1);
-    zkTracer.tracePreExecution(mockFrame);
-    zkTracer.traceEndConflation();
-
-    return zkTracer.getTrace().toJson();
+    return new PureTestCodeExecutor(bytecode.compile()).trace();
   }
 
   protected abstract Module getModuleTracer();

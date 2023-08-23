@@ -63,6 +63,7 @@ public class BlockUtils {
         mixHash,
         new BigInteger(block.getNonceRaw().substring(2), 16).longValue(),
         null,
+        0L,
         null,
         null,
         null,

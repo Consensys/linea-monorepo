@@ -74,8 +74,8 @@ public abstract class AbstractModuleBySpecTest extends AbstractBaseModuleTest {
     OpCode opCode = OpCode.valueOf(jsonNodeParams.get("opcode").asText());
     List<Bytes32> arguments = new ArrayList<>();
     JsonNode arg = jsonNodeParams.get("params");
-    arg.forEach(bytes -> arguments.add(Bytes32.fromHexString(bytes.asText())));
-    String trace = generateTrace(opCode.getData(), arguments);
+    arg.forEach(bytes -> arguments.add(0, Bytes32.fromHexString(bytes.asText())));
+    String trace = traceTest(opCode.getData(), arguments);
 
     return MAPPER.readTree(trace).get(moduleName);
   }
