@@ -32,7 +32,7 @@ public class PureTestCodeExecutor extends TestCodeExecutor {
   }
 
   public void run() {
-    this.executeCode();
+    this.testCode();
   }
 
   public String trace() {
