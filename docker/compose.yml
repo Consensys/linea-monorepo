@@ -130,7 +130,7 @@ services:
   prover:
     container_name: prover
     hostname: prover
-    image: consensys/linea-prover:${PROVER_TAG:-develop}
+    image: consensys/linea-prover:${PROVER_TAG:-68e25c4}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     environment:
@@ -166,7 +166,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-develop}
+    image: consensys/linea-postman:${POSTMAN_TAG:-68e25c4}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -217,7 +217,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-develop}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-68e25c4}
     profiles: [ "l2", "debug" ]
     depends_on:
       traces-node:
@@ -237,7 +237,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-develop}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-68e25c4}
     profiles: [ "l2", "debug" ]
     depends_on:
       postgres:
