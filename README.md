@@ -10,6 +10,11 @@ This is a monorepo for Linea, the Consensys zkEVM network.
 
 ## Getting Started
 
+Requirements:
+- Node.js v18
+- Java 17
+
+
 ```
 cd contracts
 npm install
