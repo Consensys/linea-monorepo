@@ -1607,7 +1607,7 @@ opcodes:
     value: 0xff
     instructionFamily: HALT
     stackSettings:
-      pattern: TWO_ZERO
+      pattern: ONE_ZERO
       alpha: 0
       delta: 1
       nbAdded: 0
