@@ -15,27 +15,17 @@
 
 package net.consensys.linea.zktracer.testutils;
 
-import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
+import net.consensys.linea.zktracer.opcode.OpCodes;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
-@Disabled("Shall not be tested by itself")
-public class PureTestCodeExecutor extends TestCodeExecutor {
-  private final Bytes byteCode;
-
-  public PureTestCodeExecutor(Bytes byteCode) {
-    this.byteCode = byteCode;
-  }
-
+/**
+ * A JUnit {@link org.junit.jupiter.api.extension.Extension} handling the test lifecycle for EVM
+ * tests.
+ */
+public class EvmExtension implements BeforeAllCallback {
   @Override
-  public Bytes getBytecode() {
-    return this.byteCode;
-  }
-
-  public void run() {
-    this.testCode();
-  }
-
-  public String trace() {
-    return this.traceCode();
+  public void beforeAll(ExtensionContext context) {
+    OpCodes.load();
   }
 }

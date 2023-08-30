@@ -20,31 +20,27 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
-import net.consensys.linea.zktracer.testutils.PureTestCodeExecutor;
+import net.consensys.linea.zktracer.testutils.EvmExtension;
+import net.consensys.linea.zktracer.testutils.TestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Base test class used to set up mocking of a {@link MessageFrame}, {@link OpCode} and trace
  * generation functionality.
  */
 @TestInstance(Lifecycle.PER_CLASS)
+@ExtendWith(EvmExtension.class)
 public abstract class AbstractBaseModuleTest {
   MessageFrame mockFrame;
   Operation mockOperation;
   static Module module;
-
-  @BeforeAll
-  static void beforeAll() {
-    OpCodes.load();
-  }
 
   @BeforeEach
   void beforeEach() {
@@ -52,23 +48,23 @@ public abstract class AbstractBaseModuleTest {
   }
 
   protected void runTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
-    BytecodeCompiler bytecode = new BytecodeCompiler();
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram();
     for (Bytes32 argument : arguments) {
       bytecode.push(argument);
     }
     bytecode.op(opCodeData.mnemonic());
 
-    new PureTestCodeExecutor(bytecode.compile()).run();
+    TestCodeExecutor.builder().byteCode(bytecode.compile()).build().run();
   }
 
   protected String traceTest(final OpCodeData opCodeData, final List<Bytes32> arguments) {
-    BytecodeCompiler bytecode = new BytecodeCompiler();
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram();
     for (Bytes32 argument : arguments) {
       bytecode.push(argument);
     }
     bytecode.op(opCodeData.mnemonic());
 
-    return new PureTestCodeExecutor(bytecode.compile()).trace();
+    return TestCodeExecutor.builder().byteCode(bytecode.compile()).build().traceCode();
   }
 
   protected abstract Module getModuleTracer();
