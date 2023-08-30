@@ -104,6 +104,8 @@ public class CorsetValidator {
                   "-t",
                   "2",
                   ZK_EVM_BIN)
+              // Default value is PIPE, leading for Corset indefinitely waiting for nothing on STDIN
+              .redirectInput(ProcessBuilder.Redirect.INHERIT)
               .redirectErrorStream(true)
               .start();
     } catch (IOException e) {
