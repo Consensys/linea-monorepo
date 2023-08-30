@@ -52,9 +52,9 @@ public class ToyWorld implements WorldUpdater {
       return accounts.get(address);
     } else if (parent != null) {
       return parent.get(address);
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   @Override
@@ -70,6 +70,7 @@ public class ToyWorld implements WorldUpdater {
       final Bytes code) {
     ToyAccount account = new ToyAccount(parentAccount, address, nonce, balance, code);
     accounts.put(address, account);
+
     return account;
   }
 
@@ -79,9 +80,7 @@ public class ToyWorld implements WorldUpdater {
       return accounts.get(address);
     } else if (parent != null) {
       Account parentAccount = parent.getAccount(address);
-      if (parentAccount == null) {
-        return null;
-      } else {
+      if (parentAccount != null) {
         return createAccount(
             parentAccount,
             parentAccount.getAddress(),
@@ -89,9 +88,9 @@ public class ToyWorld implements WorldUpdater {
             parentAccount.getBalance(),
             parentAccount.getCode());
       }
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   @Override
