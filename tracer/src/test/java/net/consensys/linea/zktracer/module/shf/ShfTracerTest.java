@@ -20,12 +20,11 @@ import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
-import net.consensys.linea.zktracer.testutils.PureTestCodeExecutor;
+import net.consensys.linea.zktracer.testutils.EvmExtension;
+import net.consensys.linea.zktracer.testutils.TestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,25 +34,22 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @Slf4j
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, EvmExtension.class})
 class ShfTracerTest {
   private static final Random rand = new Random();
   private static final int TEST_REPETITIONS = 4;
 
-  @BeforeAll
-  static void beforeAll() {
-    OpCodes.load();
-  }
-
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideShiftOperators")
   void testFailingBlockchainBlock(final int opCodeValue) {
-    new PureTestCodeExecutor(
-            new BytecodeCompiler()
+    TestCodeExecutor.builder()
+        .byteCode(
+            BytecodeCompiler.newProgram()
                 .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
                 .push(Bytes32.fromHexString("0x01"))
                 .immediate(opCodeValue)
                 .compile())
+        .build()
         .run();
   }
 
@@ -63,19 +59,27 @@ class ShfTracerTest {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
 
-    new PureTestCodeExecutor(
-            new BytecodeCompiler().push(payload[1]).push(payload[0]).op(OpCode.SAR).compile())
+    TestCodeExecutor.builder()
+        .byteCode(
+            BytecodeCompiler.newProgram()
+                .push(payload[1])
+                .push(payload[0])
+                .op(OpCode.SAR)
+                .compile())
+        .build()
         .run();
   }
 
   @Test
   void testTmp() {
-    new PureTestCodeExecutor(
-            new BytecodeCompiler()
+    TestCodeExecutor.builder()
+        .byteCode(
+            BytecodeCompiler.newProgram()
                 .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
                 .immediate(Bytes32.fromHexStringLenient("0xb5"))
                 .op(OpCode.SAR)
                 .compile())
+        .build()
         .run();
   }
 
