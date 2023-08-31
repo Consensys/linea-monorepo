@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testutils;
+package net.consensys.linea.zktracer.testing;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +108,9 @@ public class BytecodeCompiler {
     Preconditions.condition(
         !xs.isEmpty() && xs.size() <= 32, "Provided byte array is empty or exceeds 32 bytes");
 
-    return this.immediate(OpCode.PUSH1.byteValue() + xs.size() - 1).immediate(xs);
+    int pushNOpCode = OpCode.PUSH1.byteValue() + xs.size() - 1;
+
+    return this.immediate(pushNOpCode).immediate(xs);
   }
 
   /**

@@ -18,9 +18,9 @@ package net.consensys.linea.zktracer.module.hub;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
-import net.consensys.linea.zktracer.testutils.EvmExtension;
-import net.consensys.linea.zktracer.testutils.TestCodeExecutor;
+import net.consensys.linea.zktracer.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.testing.EvmExtension;
+import net.consensys.linea.zktracer.testing.TestCodeExecutor;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -96,18 +96,18 @@ public class ToyAccount implements EvmAccount, MutableAccount {
       return storage.get(key);
     } else if (parent != null) {
       return getOriginalStorageValue(key);
-    } else {
-      return UInt256.ZERO;
     }
+
+    return UInt256.ZERO;
   }
 
   @Override
   public UInt256 getOriginalStorageValue(final UInt256 key) {
     if (parent != null) {
       return parent.getStorageValue(key);
-    } else {
-      return getStorageValue(key);
     }
+
+    return getStorageValue(key);
   }
 
   @Override
@@ -134,21 +134,21 @@ public class ToyAccount implements EvmAccount, MutableAccount {
   @Override
   public void setCode(final Bytes code) {
     this.code = code;
-    codeHash = Suppliers.memoize(() -> this.code == null ? Hash.EMPTY : Hash.hash(this.code));
+    this.codeHash = Suppliers.memoize(() -> this.code == null ? Hash.EMPTY : Hash.hash(this.code));
   }
 
   @Override
   public void setStorageValue(final UInt256 key, final UInt256 value) {
-    storage.put(key, value);
+    this.storage.put(key, value);
   }
 
   @Override
   public void clearStorage() {
-    storage.clear();
+    this.storage.clear();
   }
 
   @Override
   public Map<UInt256, UInt256> getUpdatedStorage() {
-    return storage;
+    return this.storage;
   }
 }

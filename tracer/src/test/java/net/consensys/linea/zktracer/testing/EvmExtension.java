@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testutils;
+package net.consensys.linea.zktracer.testing;
 
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
