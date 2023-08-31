@@ -12,13 +12,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.testutils;
+package net.consensys.linea.zktracer.testing;
 
 import java.util.Optional;
 
+import lombok.RequiredArgsConstructor;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.BlockValues;
 
+@RequiredArgsConstructor
 public class FakeBlockValues implements BlockValues {
   final long number;
   final Optional<Wei> baseFee;
@@ -29,11 +31,6 @@ public class FakeBlockValues implements BlockValues {
 
   public FakeBlockValues(final Optional<Wei> baseFee) {
     this(1337, baseFee);
-  }
-
-  public FakeBlockValues(final long number, final Optional<Wei> baseFee) {
-    this.number = number;
-    this.baseFee = baseFee;
   }
 
   @Override

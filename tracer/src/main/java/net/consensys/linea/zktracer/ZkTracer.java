@@ -34,10 +34,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
 @RequiredArgsConstructor
-public class ZkTracer implements BlockAwareOperationTracer {
+public class ZkTracer implements ZkBlockAwareOperationTracer {
   private final ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
   private final Hub hub;
   private final List<Module> modules;
@@ -63,19 +62,27 @@ public class ZkTracer implements BlockAwareOperationTracer {
     for (Module module : this.modules) {
       zkTraceBuilder.addTrace(module);
     }
+
     return zkTraceBuilder.build();
   }
 
+  @Override
   public void traceStartConflation(final long numBlocksInConflation) {
     for (Module module : this.modules) {
       module.traceStartConflation(numBlocksInConflation);
     }
   }
 
+  @Override
   public void traceEndConflation() {
     for (Module module : this.modules) {
       module.traceEndConflation();
     }
+  }
+
+  @Override
+  public String getJsonTrace() {
+    return getTrace().toJson();
   }
 
   @Override

@@ -20,9 +20,9 @@ import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.testutils.BytecodeCompiler;
-import net.consensys.linea.zktracer.testutils.EvmExtension;
-import net.consensys.linea.zktracer.testutils.TestCodeExecutor;
+import net.consensys.linea.zktracer.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.testing.EvmExtension;
+import net.consensys.linea.zktracer.testing.TestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Named;
