@@ -97,7 +97,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
       traceService.traceBlock(block.getBlockHeader().getNumber(), tracer);
-      jsonGenerator.writeObject(tracer.getTrace().toJson());
+      jsonGenerator.writeObject(tracer.getJsonTrace());
 
       return file.getAbsolutePath();
     } catch (IOException e) {
