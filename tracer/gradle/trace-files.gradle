@@ -13,7 +13,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 abstract class TraceFilesTask extends Exec {
     @Input
     abstract Property<String> getModule()
@@ -52,6 +51,18 @@ abstract class TraceFilesTask extends Exec {
     }
 }
 
+//
+// Special case: hub
+//
+tasks.register("hub", TraceFilesTask) {
+    group "Trace files generation"
+    dependsOn corsetExists
+
+    module = 'hub'
+    files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction']
+            .collect {"hub_v2/columns/${it}.lisp"}
+}
+
 // Special case: PUB modules
 ['block', 'hash', 'log'].each { moduleName ->
     ['data', 'info'].each { submoduleName ->
@@ -77,15 +88,4 @@ abstract class TraceFilesTask extends Exec {
         module = moduleName
         files = ["${moduleName}/columns.lisp"]
     }
-}
-
-//
-// Special modules
-//
-tasks.register("hub", TraceFilesTask) {
-    group "Trace files generation"
-    dependsOn corsetExists
-
-    files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction']
-            .collect {"hub_v2/columns/${it}.lisp"}
 }

@@ -13,36 +13,38 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.stack;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-class Stack {
+public class Stack {
   public static final int MAX_STACK_SIZE = 1024;
 
-  enum Status {
-    Normal,
-    Underflow,
-    Overflow;
-
-    boolean isFailure() {
-      return this != Status.Normal;
-    }
-  }
-
-  int height;
-  int heightNew;
-  OpCodeData currentOpcodeData;
+  @Getter int height;
+  @Getter int heightNew;
+  @Getter OpCodeData currentOpcodeData;
   Status status;
   int stamp;
 
-  Stack() {
+  public Stack() {
     this.height = 0;
     this.heightNew = 0;
-    this.status = Status.Normal;
+    this.status = Status.NORMAL;
+  }
+
+  public Stack snapshot() {
+    var r = new Stack();
+    r.height = this.height;
+    r.heightNew = this.heightNew;
+    r.currentOpcodeData = this.currentOpcodeData;
+    r.status = this.status;
+
+    return r;
   }
 
   private EWord getStack(MessageFrame frame, int i) {
@@ -303,29 +305,29 @@ class Stack {
   /**
    * @return true if no stack exception has been raised
    */
-  boolean isOk() {
-    return this.status == Status.Normal;
+  public boolean isOk() {
+    return this.status == Status.NORMAL;
   }
 
   /**
    * @return true if a stack underflow exception has been raised
    */
-  boolean isUnderflow() {
-    return this.status == Status.Underflow;
+  public boolean isUnderflow() {
+    return this.status == Status.UNDERFLOW;
   }
 
   /**
    * @return true if a stack underflow exception has been raised
    */
-  boolean isOverflow() {
-    return this.status == Status.Overflow;
+  public boolean isOverflow() {
+    return this.status == Status.OVERFLOW;
   }
 
-  boolean processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
+  public boolean processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
     this.stamp = stackStamp;
     this.height = this.heightNew;
     this.currentOpcodeData = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
-    callFrame.pending = new StackContext(this.currentOpcodeData.mnemonic());
+    callFrame.setPending(new StackContext(this.currentOpcodeData.mnemonic()));
 
     assert this.height == frame.stackSize();
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
@@ -333,40 +335,40 @@ class Stack {
 
     if (frame.stackSize()
         < this.currentOpcodeData.stackSettings().delta()) { // Testing for underflow
-      this.status = Status.Underflow;
+      this.status = Status.UNDERFLOW;
     } else if (this.heightNew > MAX_STACK_SIZE) { // Testing for overflow
-      this.status = Status.Overflow;
+      this.status = Status.OVERFLOW;
     }
 
     if (this.status.isFailure()) {
       this.heightNew = 0;
 
       if (this.currentOpcodeData.stackSettings().twoLinesInstruction()) {
-        this.stamp += callFrame.pending.addEmptyLines(2);
+        this.stamp += callFrame.getPending().addEmptyLines(2);
       } else {
-        this.stamp += callFrame.pending.addEmptyLines(1);
+        this.stamp += callFrame.getPending().addEmptyLines(1);
       }
 
       return false;
     }
 
     switch (this.currentOpcodeData.stackSettings().pattern()) {
-      case ZERO_ZERO -> this.stamp += callFrame.pending.addEmptyLines(1);
-      case ONE_ZERO -> this.oneZero(frame, callFrame.pending);
-      case TWO_ZERO -> this.twoZero(frame, callFrame.pending);
-      case ZERO_ONE -> this.zeroOne(frame, callFrame.pending);
-      case ONE_ONE -> this.oneOne(frame, callFrame.pending);
-      case TWO_ONE -> this.twoOne(frame, callFrame.pending);
-      case THREE_ONE -> this.threeOne(frame, callFrame.pending);
-      case LOAD_STORE -> this.loadStore(frame, callFrame.pending);
-      case DUP -> this.dup(frame, callFrame.pending);
-      case SWAP -> this.swap(frame, callFrame.pending);
-      case LOG -> this.log(frame, callFrame.pending);
-      case COPY -> this.copy(frame, callFrame.pending);
-      case CALL -> this.call(frame, callFrame.pending);
-      case CREATE -> this.create(frame, callFrame.pending);
+      case ZERO_ZERO -> this.stamp += callFrame.getPending().addEmptyLines(1);
+      case ONE_ZERO -> this.oneZero(frame, callFrame.getPending());
+      case TWO_ZERO -> this.twoZero(frame, callFrame.getPending());
+      case ZERO_ONE -> this.zeroOne(frame, callFrame.getPending());
+      case ONE_ONE -> this.oneOne(frame, callFrame.getPending());
+      case TWO_ONE -> this.twoOne(frame, callFrame.getPending());
+      case THREE_ONE -> this.threeOne(frame, callFrame.getPending());
+      case LOAD_STORE -> this.loadStore(frame, callFrame.getPending());
+      case DUP -> this.dup(frame, callFrame.getPending());
+      case SWAP -> this.swap(frame, callFrame.getPending());
+      case LOG -> this.log(frame, callFrame.getPending());
+      case COPY -> this.copy(frame, callFrame.getPending());
+      case CALL -> this.call(frame, callFrame.getPending());
+      case CREATE -> this.create(frame, callFrame.getPending());
     }
 
-    return this.status == Status.Normal;
+    return this.status == Status.NORMAL;
   }
 }

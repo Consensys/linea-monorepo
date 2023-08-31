@@ -128,4 +128,14 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
     this.hub.tracePostExecution(frame, operationResult);
   }
+
+  @Override
+  public void traceContextEnter(MessageFrame frame) {
+    this.hub.traceContextEnter(frame);
+  }
+
+  @Override
+  public void traceContextExit(MessageFrame frame) {
+    this.hub.traceContextExit(frame);
+  }
 }
