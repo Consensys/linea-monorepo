@@ -1,0 +1,110 @@
+/*
+ * Copyright ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package net.consensys.linea.zktracer.module.hub.stack;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.module.hub.Hub;
+
+/**
+ * As the zkEVM spec can only handle up to four stack operations per trace line of the {@link Hub},
+ * operations on the stack must be decomposed in “lines” (mapping 1-to-1 with a trace line from the
+ * hub, hence the name) of zero to four atomic {@link StackOperation}.
+ *
+ * @param items zero to four stack operations contained within this line
+ * @param ct the index of this line within its parent {@link StackContext}
+ * @param resultColumn if positive, in which item to store the expected retroactive result
+ */
+public record StackLine(
+    List<IndexedStackOperation> items,
+    int ct, // TODO: could probably be inferred at trace-time
+    int resultColumn) {
+
+  /** The default constructor, an empty stack line. */
+  StackLine() {
+    this(new ArrayList<>(), 0, -1);
+  }
+
+  /** The default constructor, an empty stack line at a given counter. */
+  public StackLine(int ct) {
+    this(new ArrayList<>(), ct, -1);
+  }
+
+  /**
+   * Build a stack line from a set of {@link StackOperation}.
+   *
+   * @param ct the index of this line within the parent {@link StackContext}
+   * @param items the {@link IndexedStackOperation} to include in this line
+   */
+  StackLine(int ct, IndexedStackOperation... items) {
+    this(Arrays.stream(items).toList(), ct, -1);
+  }
+
+  /**
+   * @return a consolidated 4-elements array of the {@link StackOperation} – or no-ops
+   */
+  public List<StackOperation> asStackOperations() {
+    StackOperation[] r =
+        new StackOperation[] {
+          new StackOperation(), new StackOperation(), new StackOperation(), new StackOperation()
+        };
+    for (IndexedStackOperation item : this.items) {
+      r[item.i()] = item.it();
+    }
+    return Arrays.asList(r);
+  }
+
+  /**
+   * Sets the value of a stack item in the line. Used to retroactively set the value of push {@link
+   * Action} during the unlatching process.
+   *
+   * @param i the 1-based stack item to alter
+   * @param value the {@link EWord} to use
+   */
+  public void setResult(int i, EWord value) {
+    for (var item : this.items) {
+      if (item.i() == i - 1) {
+        item.it().setValue(value);
+        return;
+      }
+    }
+
+    throw new RuntimeException(String.format("Item #%s not found in stack line", i));
+  }
+
+  /**
+   * Sets the value of stack item <code>resultColumn</code>. Used to retroactively set the value of
+   * push {@link Action} during the unlatching process.
+   *
+   * @param value the {@link EWord} to use
+   */
+  public void setResult(EWord value) {
+    if (this.resultColumn == -1) {
+      throw new RuntimeException("Stack line has no result column");
+    }
+    this.setResult(this.resultColumn, value);
+  }
+
+  /**
+   * @return whether an item in this stack line requires a retroactively set value.
+   */
+  public boolean needsResult() {
+    return this.resultColumn >= 0;
+  }
+}

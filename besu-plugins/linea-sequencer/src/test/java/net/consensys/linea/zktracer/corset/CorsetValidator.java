@@ -28,8 +28,6 @@ import org.apache.commons.io.IOUtils;
 
 @Slf4j
 public class CorsetValidator {
-  private static final String ZK_EVM_BIN_ENV = "ZK_EVM_BIN";
-
   private static String CORSET_BIN;
   private static final String ZK_EVM_BIN = "zkevm-constraints/zkevm.bin";
 
