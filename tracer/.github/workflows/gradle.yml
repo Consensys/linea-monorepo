@@ -100,7 +100,7 @@ jobs:
         run: sudo apt-get install -y cargo
 
       - name: Install corset
-        run: cargo install --git ssh://git@github.com/Consensys/corset.git
+        run: cargo install --git ssh://git@github.com/Consensys/corset.git --locked
 
       - name: Run corset tests
         run: ./gradlew test

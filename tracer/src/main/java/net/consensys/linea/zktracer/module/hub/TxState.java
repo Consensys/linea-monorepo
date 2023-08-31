@@ -15,23 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import net.consensys.linea.zktracer.opcode.OpCode;
-
-enum CallFrameType {
-  InitCode,
-  Standard,
-  Delegate,
-  Static,
-  CallCode,
-  Root;
-
-  public CallFrameType ofOpCode(OpCode opCode) {
-    return switch (opCode) {
-      case CREATE, CREATE2 -> InitCode;
-      case DELEGATECALL -> Delegate;
-      case CALLCODE -> CallCode;
-      case STATICCALL -> Static;
-      default -> Standard;
-    };
-  }
+enum TxState {
+  // A state marking the first trace of the current tx, required to set up some things
+  TX_PRE_INIT,
+  TX_STATE,
+  TX_FINAL,
+  TX_INIT,
+  TX_SKIP,
+  TX_WARM,
 }

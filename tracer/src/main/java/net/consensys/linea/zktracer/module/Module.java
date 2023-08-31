@@ -40,9 +40,9 @@ public interface Module {
 
   default void traceEndTx() {}
 
-  default void traceContextStart(MessageFrame frame) {}
+  default void traceContextEnter(MessageFrame frame) {}
 
-  default void traceContextEnd(MessageFrame frame) {}
+  default void traceContextExit(MessageFrame frame) {}
 
   default void trace(MessageFrame frame) {}
 

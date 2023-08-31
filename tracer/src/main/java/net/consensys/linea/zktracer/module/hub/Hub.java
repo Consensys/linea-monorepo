@@ -16,135 +16,75 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.Map;
+import java.util.Optional;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
+import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
+import net.consensys.linea.zktracer.module.hub.callstack.CallFrameType;
+import net.consensys.linea.zktracer.module.hub.callstack.CallStack;
+import net.consensys.linea.zktracer.module.hub.chunks.StackChunk;
+import net.consensys.linea.zktracer.module.hub.chunks.TraceChunk;
+import net.consensys.linea.zktracer.module.hub.stack.StackContext;
+import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.Code;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.code.CodeV0;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
-
-enum TxState {
-  // A state marking the first trace of the current tx, required to set up some things
-  TxPreInit,
-  TxExec,
-  TxFinal,
-  TxInit,
-  TxSkip,
-  TxWarm,
-}
-
-record Exceptions(
-    boolean InvalidOpcode,
-    boolean StackUnderflow,
-    boolean StackOverflow,
-    boolean OutOfMemoryExpansion,
-    boolean OutOfGas,
-    boolean ReturnDataCopyFault,
-    boolean JumpFault,
-    boolean StaticViolation,
-    boolean OutOfSStore,
-    boolean InvalidCodePrefix,
-    boolean CodeSizeOverflow) {
-  public boolean noStackException() {
-    return !this.StackOverflow() && !this.StackUnderflow();
-  }
-
-  public boolean failure() {
-    return this.InvalidOpcode
-        || this.StackUnderflow
-        || this.StackOverflow
-        || this.OutOfMemoryExpansion
-        || this.OutOfGas
-        || this.ReturnDataCopyFault
-        || this.JumpFault
-        || this.StaticViolation
-        || this.OutOfSStore
-        || this.InvalidCodePrefix
-        || this.CodeSizeOverflow;
-  }
-}
 
 @Slf4j
 public class Hub implements Module {
   private static final Address ADDRESS_ZERO = Address.fromHexString("0x0");
   private static final int TAU = 8;
 
-  final Trace.TraceBuilder trace = Trace.builder();
-  private final List<BiFunction<BigInteger, Integer, Trace.TraceBuilder>> valHiSetters =
-      List.of(
-          this.trace::setPStackStackItemValueHi1At,
-          this.trace::setPStackStackItemValueHi2At,
-          this.trace::setPStackStackItemValueHi3At,
-          this.trace::setPStackStackItemValueHi4At);
-  private final List<BiFunction<BigInteger, Integer, Trace.TraceBuilder>> valLoSetters =
-      List.of(
-          this.trace::setPStackStackItemValueLo1At,
-          this.trace::setPStackStackItemValueLo2At,
-          this.trace::setPStackStackItemValueLo3At,
-          this.trace::setPStackStackItemValueLo4At);
-  private final List<Function<BigInteger, Trace.TraceBuilder>> valHiTracers =
-      List.of(
-          this.trace::pStackStackItemValueHi1,
-          this.trace::pStackStackItemValueHi2,
-          this.trace::pStackStackItemValueHi3,
-          this.trace::pStackStackItemValueHi4);
-  private final List<Function<BigInteger, Trace.TraceBuilder>> valLoTracers =
-      List.of(
-          this.trace::pStackStackItemValueLo1,
-          this.trace::pStackStackItemValueLo2,
-          this.trace::pStackStackItemValueLo3,
-          this.trace::pStackStackItemValueLo4);
-  private final List<Function<Boolean, Trace.TraceBuilder>> popTracers =
-      List.of(
-          this.trace::pStackStackItemPop1,
-          this.trace::pStackStackItemPop2,
-          this.trace::pStackStackItemPop3,
-          this.trace::pStackStackItemPop4);
-  private final List<Function<BigInteger, Trace.TraceBuilder>> heightTracers =
-      List.of(
-          this.trace::pStackStackItemHeight1,
-          this.trace::pStackStackItemHeight2,
-          this.trace::pStackStackItemHeight3,
-          this.trace::pStackStackItemHeight4);
-  private final List<Function<BigInteger, Trace.TraceBuilder>> stampTracers =
-      List.of(
-          this.trace::pStackStackItemStamp1,
-          this.trace::pStackStackItemStamp2,
-          this.trace::pStackStackItemStamp3,
-          this.trace::pStackStackItemStamp4);
+  public final Trace.TraceBuilder trace = Trace.builder();
+
   private int pc;
   private OpCode opCode;
-  private Exceptions exceptions;
+  private int maxContextNumber;
 
   private OpCodeData opCodeData() {
     return this.opCode.getData();
   }
 
+  private final Map<Address, Integer> deploymentNumber = new HashMap<>();
+  private final Map<Address, Boolean> deploymentStatus = new HashMap<>();
+
+  private final List<List<TraceChunk>> traceChunks = new ArrayList<>();
+  private Exceptions exceptions;
+
   TxState txState;
-  Transaction currentTx;
-  CallStack callStack = new CallStack();
+  @Getter Transaction currentTx;
+  CallStack callStack;
   int txNumber = 0;
-  int batchNumber = 0;
-  int blockNumber = 0;
+  @Getter int batchNumber = 0;
+  @Getter int blockNumber = 0;
   int stamp = 0;
 
   private final Module add;
@@ -167,7 +107,7 @@ public class Hub implements Module {
 
   @Override
   public String jsonKey() {
-    return "hub";
+    return "hub_v2_off";
   }
 
   @Override
@@ -176,31 +116,7 @@ public class Hub implements Module {
     return List.of(OpCode.values());
   }
 
-  private void updateExceptions(MessageFrame frame) {
-    this.exceptions =
-        new Exceptions(
-            this.opCode == OpCode.INVALID,
-            frame.stackSize() < this.opCodeData().stackSettings().nbRemoved(),
-            frame.stackSize()
-                    + this.opCodeData().stackSettings().nbAdded()
-                    - this.opCodeData().stackSettings().nbRemoved()
-                > 1024,
-            false, // TODO mxp
-            frame.getRemainingGas() < 0,
-            false, // TODO
-            false, // TODO
-            frame.isStatic() && !this.opCodeData().stackSettings().staticInstruction(),
-            false, // TODO
-            false, // TODO
-            false // TODO
-            );
-  }
-
-  public boolean isError() {
-    return false;
-  }
-
-  private static boolean isPrecompile(Address to) {
+  public static boolean isPrecompile(Address to) {
     return List.of(
             Address.ECREC,
             Address.SHA256,
@@ -227,74 +143,162 @@ public class Hub implements Module {
     // 3 lines -- account changes
     // From account information
     EWord from = EWord.of(this.currentTx.getSender());
-    Wei currentFromBalance = frame.getWorldUpdater().get(this.currentTx.getSender()).getBalance();
+    Address fromAddress = this.currentTx.getSender();
+    Account fromAccount = frame.getWorldUpdater().get(fromAddress);
+    long fromNonce = fromAccount.getNonce();
+    Wei currentFromBalance = fromAccount.getBalance();
     Wei newFromBalance = currentFromBalance.subtract((Wei) value);
-    this.trace
-        .absoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
-        .batchNumber(BigInteger.valueOf(this.batchNumber))
-        .txSkip(true)
-        .hubStamp(BigInteger.valueOf(this.stamp))
+    Code fromCode = frame.getCode();
+    EWord fromCodeHash = EWord.of(fromCode.getCodeHash());
+    this.traceCommon()
         .peekAtAccount(true)
         .pAccountAddressHi(from.hiBigInt())
         .pAccountAddressLo(from.loBigInt())
         .pAccountBalance(currentFromBalance.toUnsignedBigInteger())
         .pAccountBalanceNew(newFromBalance.toUnsignedBigInteger())
+        .pAccountCodeHashHi(fromCodeHash.hiBigInt())
+        .pAccountCodeHashLo(fromCodeHash.loBigInt())
+        .pAccountCodeHashHiNew(fromCodeHash.hiBigInt())
+        .pAccountCodeHashLoNew(fromCodeHash.loBigInt())
+        .pAccountCodeSize(BigInteger.valueOf(fromCode.getSize()))
+        .pAccountCodeSizeNew(BigInteger.valueOf(fromCode.getSize()))
+        .pAccountDeploymentNumber(BigInteger.ZERO)
+        .pAccountDeploymentNumberInfty(BigInteger.ZERO)
+        .pAccountDeploymentNumberNew(BigInteger.ZERO)
+        .pAccountDeploymentStatus(BigInteger.ZERO)
+        .pAccountDeploymentStatusInfty(false)
+        .pAccountDeploymentStatusNew(BigInteger.ZERO)
         .pAccountExists(true)
         .pAccountExistsNew(true)
         .pAccountSufficientBalance(true)
+        .pAccountHasCode(false)
+        .pAccountHasCodeNew(false)
+        .pAccountIsPrecompile(false)
+        .pAccountNonce(BigInteger.valueOf(fromNonce))
+        .pAccountNonceNew(BigInteger.valueOf(fromNonce + 1))
+        .pAccountWarm(false)
+        .pAccountWarmNew(true)
         .fillAndValidateRow();
 
     // To account information
-    boolean exists = frame.getWorldUpdater().getAccount(this.currentTx.getTo().get()) != null;
-    EWord to =
-        EWord.of(
-            this.currentTx.getTo().map(EWord::of).orElse(EWord.ZERO)); // TODO: fix empty ToAddress
-    Wei currentToBalance =
-        this.currentTx
-            .getTo()
-            .map(t -> frame.getWorldUpdater().getAccount(t).getBalance())
-            .orElse(Wei.ZERO);
+    Address toAddress = effectiveToAddress(this.currentTx, fromAccount);
+    EWord eToAddress = EWord.of(toAddress);
+    Optional<Account> toAccount = Optional.of(frame.getWorldUpdater().get(toAddress));
+    Optional<Long> toNonce = toAccount.map(Account::getNonce);
+    Wei currentToBalance = frame.getWorldUpdater().getAccount(toAddress).getBalance();
     Wei newToBalance = currentToBalance.add((Wei) value);
-    this.traceHeader()
+    Bytes toCode = toAccount.map(Account::getCode).orElse(Bytes.EMPTY);
+    EWord toCodeHash = EWord.of(toAccount.map(Account::getCodeHash).orElse(Hash.EMPTY));
+    this.traceCommon()
         .peekAtAccount(true)
-        .pAccountAddressHi(to.hiBigInt())
-        .pAccountAddressLo(to.loBigInt())
+        .pAccountAddressHi(eToAddress.hiBigInt())
+        .pAccountAddressLo(eToAddress.loBigInt())
         .pAccountBalance(currentToBalance.toUnsignedBigInteger())
         .pAccountBalanceNew(newToBalance.toUnsignedBigInteger())
-        .pAccountExists(exists)
+        .pAccountCodeHashHi(toCodeHash.hiBigInt())
+        .pAccountCodeHashLo(toCodeHash.loBigInt())
+        .pAccountCodeHashHiNew(toCodeHash.hiBigInt())
+        .pAccountCodeHashLoNew(toCodeHash.loBigInt())
+        .pAccountCodeSize(BigInteger.valueOf(toCode.size()))
+        .pAccountCodeSizeNew(BigInteger.valueOf(toCode.size()))
+        .pAccountDeploymentNumber(BigInteger.ZERO)
+        .pAccountDeploymentNumberInfty(BigInteger.ZERO)
+        .pAccountDeploymentNumberNew(BigInteger.ZERO)
+        .pAccountDeploymentStatus(BigInteger.ZERO)
+        .pAccountDeploymentStatusInfty(false)
+        .pAccountDeploymentStatusNew(BigInteger.ZERO)
+        .pAccountExists(!isDeployment)
         .pAccountExistsNew(true)
         .pAccountSufficientBalance(true)
+        .pAccountHasCode(!toCode.isEmpty())
+        .pAccountHasCodeNew(!toCode.isEmpty())
+        .pAccountIsPrecompile(false)
+        .pAccountNonce(BigInteger.valueOf(isDeployment ? 0L : toNonce.orElse(0L)))
+        .pAccountNonceNew(BigInteger.valueOf(isDeployment ? 1L : toNonce.orElse(0L)))
+        .pAccountWarm(false)
+        .pAccountWarmNew(true)
         .fillAndValidateRow();
 
     // Basecoin/miner information
-    EWord miner = EWord.of(frame.getMiningBeneficiary());
+    Address minerAddress = frame.getMiningBeneficiary();
+    EWord eMinerAddress = EWord.of(minerAddress);
+    Optional<Account> minerAccount = Optional.ofNullable(frame.getWorldUpdater().get(minerAddress));
+    Optional<Long> minerNonce = minerAccount.map(Account::getNonce);
+    Bytes minerCode = minerAccount.map(Account::getCode).orElse(Bytes.EMPTY);
+    EWord minerCodeHash = EWord.of(minerAccount.map(Account::getCodeHash).orElse(Hash.EMPTY));
+
     Wei currentMinerBalance =
         frame.getWorldUpdater().get(frame.getMiningBeneficiary()).getBalance();
-    Wei newMinerBalance = Wei.ZERO;
-    this.traceHeader()
+    Wei newMinerBalance = Wei.ZERO; // TODO: latch it
+    this.traceCommon()
         .peekAtAccount(true)
-        .pAccountAddressHi(miner.hiBigInt())
-        .pAccountAddressLo(miner.loBigInt())
+        .pAccountAddressHi(eMinerAddress.hiBigInt())
+        .pAccountAddressLo(eMinerAddress.loBigInt())
+        .pAccountIsPrecompile(isPrecompile(minerAddress))
+        .pAccountNonce(
+            BigInteger.valueOf(
+                (isDeployment && minerAddress == toAddress)
+                    ? 1L
+                    : minerAddress == fromAddress
+                        ? fromNonce + 1
+                        : minerNonce.orElse(0L))) // TODO: check == behaviour
+        .pAccountNonceNew(
+            BigInteger.valueOf(
+                (isDeployment && minerAddress == toAddress)
+                    ? 1L
+                    : minerAddress == fromAddress ? fromNonce + 1 : minerNonce.orElse(0L)))
         .pAccountBalance(currentMinerBalance.toUnsignedBigInteger())
         .pAccountBalanceNew(newMinerBalance.toUnsignedBigInteger())
-        .pAccountExists(true)
-        .pAccountExistsNew(true)
+        .pAccountCodeSize(BigInteger.valueOf(minerCode.size()))
+        .pAccountCodeSizeNew(BigInteger.valueOf(minerCode.size()))
+        .pAccountCodeHashHi(minerCodeHash.hiBigInt())
+        .pAccountCodeHashLo(minerCodeHash.loBigInt())
+        .pAccountCodeHashHiNew(minerCodeHash.hiBigInt())
+        .pAccountCodeHashLoNew(minerCodeHash.loBigInt())
+        .pAccountHasCode(!minerCode.isEmpty())
+        .pAccountHasCodeNew(!minerCode.isEmpty())
+        .pAccountExists(minerAccount.isPresent() || (isDeployment && minerAddress == toAddress))
+        .pAccountExistsNew(
+            minerAccount.isPresent()
+                || this.currentTx
+                    .getGasPrice()
+                    .map(g -> g.getAsBigInteger() != BigInteger.ZERO)
+                    .orElse(false)) // TODO: latch it?
+        .pAccountWarm(
+            isPrecompile(minerAddress) || minerAddress == fromAddress || minerAddress == toAddress)
+        .pAccountWarmNew(true)
+        .pAccountDeploymentNumber(BigInteger.ZERO)
+        .pAccountDeploymentNumberNew(BigInteger.ZERO)
+        .pAccountDeploymentStatus(BigInteger.ZERO)
+        .pAccountDeploymentStatusNew(BigInteger.ZERO)
         .pAccountSufficientBalance(true)
+        .pAccountDeploymentStatusInfty(false)
         .fillAndValidateRow();
 
     // 1 line -- tx data
-    this.traceHeader()
+    this.traceCommon()
         .peekAtTransaction(true)
+        .pTransactionBatchNumber(BigInteger.valueOf(this.batchNumber))
         .pTransactionNonce(BigInteger.valueOf(this.currentTx.getNonce()))
+        .pTransactionIsDeployment(isDeployment)
         .pTransactionFromAddressHi(from.hiBigInt())
         .pTransactionFromAddressLo(from.loBigInt())
+        .pTransactionToAddressHi(eToAddress.hiBigInt())
+        .pTransactionToAddressLo(eToAddress.loBigInt())
+        .pTransactionInitGas(computeInitGas(this.currentTx))
         .pTransactionValue(value.getAsBigInteger())
-        .pTransactionToAddressHi(to.hiBigInt())
-        .pTransactionToAddressLo(to.loBigInt())
-        .pTransactionBatchNumber(BigInteger.valueOf(this.batchNumber))
-        .pTransactionAbsoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
-        .pTransactionIsDeployment(isDeployment)
+        .pTransactionGasFee(frame.getGasPrice().toUnsignedBigInteger())
         .fillAndValidateRow();
+  }
+
+  public static BigInteger computeInitGas(Transaction tx) {
+    GasCalculator gc = new LondonGasCalculator();
+
+    boolean isDeployment = tx.getTo().isEmpty();
+    return BigInteger.valueOf(
+        tx.getGasLimit()
+            - gc.transactionIntrinsicGasCost(tx.getPayload(), isDeployment)
+            - tx.getAccessList().map(gc::accessListGasCost).orElse(0L));
   }
 
   /**
@@ -302,15 +306,15 @@ public class Hub implements Module {
    *
    * @return the partially filled trace row
    */
-  private Trace.TraceBuilder traceHeader() {
+  public Trace.TraceBuilder traceCommon() {
     return this.trace
         .absoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
         .batchNumber(BigInteger.valueOf(this.batchNumber))
-        .txSkip(this.txState == TxState.TxSkip)
-        .txWarm(this.txState == TxState.TxWarm)
-        .txInit(this.txState == TxState.TxInit)
-        .txExec(this.txState == TxState.TxExec)
-        .txFinl(this.txState == TxState.TxFinal)
+        .txSkip(this.txState == TxState.TX_SKIP)
+        .txWarm(this.txState == TxState.TX_WARM)
+        .txInit(this.txState == TxState.TX_INIT)
+        .txExec(this.txState == TxState.TX_STATE)
+        .txFinl(this.txState == TxState.TX_FINAL)
         .hubStamp(BigInteger.valueOf(this.stamp))
         .transactionEndStamp(BigInteger.ZERO) // TODO
         .transactionReverts(BigInteger.ZERO) // TODO
@@ -320,7 +324,7 @@ public class Hub implements Module {
         .failureConditionFlag(false) // TODO
 
         // Context data
-        .contextNumber(BigInteger.valueOf(this.currentFrame().contextNumber))
+        .contextNumber(BigInteger.valueOf(this.currentFrame().getContextNumber()))
         .contextNumberNew(BigInteger.ZERO) // TODO
         .contextRevertStamp(BigInteger.ZERO) // TODO
         .contextWillRevertFlag(false) // TODO
@@ -332,106 +336,19 @@ public class Hub implements Module {
         // Bytecode metadata
         .codeAddressHi(this.currentFrame().addressAsEWord().hiBigInt())
         .codeAddressLo(this.currentFrame().addressAsEWord().loBigInt())
-        .codeDeploymentNumber(BigInteger.valueOf(this.currentFrame().deploymentNumber))
+        .codeDeploymentNumber(BigInteger.valueOf(this.currentFrame().getAccountDeploymentNumber()))
         .codeDeploymentStatus(false) // TODO
-        .callerContextNumber(BigInteger.valueOf(this.callStack.caller().deploymentNumber));
-  }
-
-  /**
-   * Trace the stack-related perspective columns for a given {@link StackLine}
-   *
-   * @param line the stack line to trace
-   * @return the partially filled trace row
-   */
-  private Trace.TraceBuilder traceStackLine(StackLine line) {
-    final var stack = currentFrame().stack;
-
-    final var alpha = this.opCodeData().stackSettings().alpha();
-    final var delta = this.opCodeData().stackSettings().delta();
-    var heightUnder = stack.height - delta;
-    var heightOver = 0;
-
-    var overflow = stack.isOverflow() ? 1 : 0;
-
-    if (!stack.isUnderflow()) {
-      if (alpha == 1 && delta == 0 && stack.height == Stack.MAX_STACK_SIZE) {
-        heightOver = stack.height + alpha - delta - Stack.MAX_STACK_SIZE - 1;
-      } else {
-        heightOver = (2 * overflow - 1) * (heightUnder + alpha - Stack.MAX_STACK_SIZE) - overflow;
-      }
-    } else {
-      heightUnder = -heightUnder - 1;
-    }
-
-    final var stackOps = line.asStackOperations();
-    var it = stackOps.listIterator();
-    while (it.hasNext()) {
-      var i = it.nextIndex();
-      var op = it.next();
-
-      heightTracers.get(i).apply(BigInteger.valueOf(op.height()));
-      valLoTracers.get(i).apply(op.value().loBigInt());
-      valHiTracers.get(i).apply(op.value().hiBigInt());
-      popTracers.get(i).apply(op.action() == Action.POP);
-      stampTracers.get(i).apply(BigInteger.valueOf(op.stackStamp()));
-    }
-
-    return this.trace
-        // Stack height
-        .pStackHeight(BigInteger.valueOf(stack.height))
-        .pStackHeightNew(BigInteger.valueOf(stack.heightNew))
-        .pStackHeightUnder(BigInteger.valueOf(heightUnder))
-        .pStackHeightOver(BigInteger.valueOf(heightOver))
-        // Instruction details
-        .pStackInstruction(BigInteger.valueOf(this.opCodeData().value()))
-        .pStackStaticGas(BigInteger.ZERO) // TODO
-        .pStackDecodedFlag1(this.opCodeData().stackSettings().flag1())
-        .pStackDecodedFlag2(this.opCodeData().stackSettings().flag2())
-        .pStackDecodedFlag3(this.opCodeData().stackSettings().flag3())
-        .pStackDecodedFlag4(this.opCodeData().stackSettings().flag4())
-        // Exception flag
-        .pStackOpcx(false) // TODO
-        .pStackSux(stack.isUnderflow())
-        .pStackSox(stack.isOverflow())
-        .pStackOogx(false) // TODO
-        .pStackMxpx(false) // TODO
-        .pStackRdcx(false) // TODO
-        .pStackJumpx(false) // TODO
-        .pStackStaticx(false) // TODO
-        .pStackSstorex(false) // TODO
-        .pStackInvprex(false) // TODO
-        .pStackMaxcsx(false) // TODO
-        // Opcode families
-        .pStackAddFlag(this.opCodeData().instructionFamily() == InstructionFamily.ADD)
-        .pStackModFlag(this.opCodeData().instructionFamily() == InstructionFamily.MOD)
-        .pStackMulFlag(this.opCodeData().instructionFamily() == InstructionFamily.MUL)
-        .pStackExtFlag(this.opCodeData().instructionFamily() == InstructionFamily.EXT)
-        .pStackWcpFlag(this.opCodeData().instructionFamily() == InstructionFamily.WCP)
-        .pStackBinFlag(this.opCodeData().instructionFamily() == InstructionFamily.BIN)
-        .pStackShfFlag(this.opCodeData().instructionFamily() == InstructionFamily.SHF)
-        .pStackKecFlag(this.opCodeData().instructionFamily() == InstructionFamily.KEC)
-        .pStackConFlag(this.opCodeData().instructionFamily() == InstructionFamily.CONTEXT)
-        .pStackAccFlag(this.opCodeData().instructionFamily() == InstructionFamily.ACCOUNT)
-        .pStackCopyFlag(this.opCodeData().instructionFamily() == InstructionFamily.COPY)
-        .pStackTxnFlag(this.opCodeData().instructionFamily() == InstructionFamily.TRANSACTION)
-        .pStackBtcFlag(this.opCodeData().instructionFamily() == InstructionFamily.BATCH)
-        .pStackStackramFlag(this.opCodeData().instructionFamily() == InstructionFamily.STACK_RAM)
-        .pStackStoFlag(this.opCodeData().instructionFamily() == InstructionFamily.STORAGE)
-        .pStackJumpFlag(this.opCodeData().instructionFamily() == InstructionFamily.JUMP)
-        .pStackPushpopFlag(this.opCodeData().instructionFamily() == InstructionFamily.PUSH_POP)
-        .pStackDupFlag(this.opCodeData().instructionFamily() == InstructionFamily.DUP)
-        .pStackSwapFlag(this.opCodeData().instructionFamily() == InstructionFamily.SWAP)
-        .pStackLogFlag(this.opCodeData().instructionFamily() == InstructionFamily.LOG)
-        .pStackCreateFlag(this.opCodeData().instructionFamily() == InstructionFamily.CREATE)
-        .pStackCallFlag(this.opCodeData().instructionFamily() == InstructionFamily.CALL)
-        .pStackHaltFlag(this.opCodeData().instructionFamily() == InstructionFamily.HALT)
-        .pStackInvalidFlag(this.opCodeData().instructionFamily() == InstructionFamily.INVALID)
-        //      .pStackMxpFlag(this.opCodeData().billing().type() != MxpType.NONE) // TODO: billing
-        // not yet specified
-        .pStackMxpFlag(false)
-        .pStackTrmFlag(this.opCodeData().stackSettings().addressTrimmingInstruction())
-        .pStackStaticFlag(this.opCodeData().stackSettings().staticInstruction())
-        .pStackOobFlag(this.opCodeData().stackSettings().oobFlag());
+        .callerContextNumber(
+            BigInteger.valueOf(this.callStack.caller().getAccountDeploymentNumber()))
+        .gasExpected(BigInteger.ZERO)
+        .gasActual(BigInteger.ZERO)
+        .gasCost(BigInteger.ZERO)
+        .gasNext(BigInteger.ZERO)
+        .gasRefund(BigInteger.ZERO)
+        .twoLineInstruction(this.opCodeData().stackSettings().twoLinesInstruction())
+        .counterTli(false)
+        .numberOfNonStackRows(BigInteger.ZERO)
+        .counterNsr(BigInteger.ZERO);
   }
 
   void processStateWarm() {
@@ -450,11 +367,13 @@ public class Hub implements Module {
     return this.trace.size();
   }
 
-  private boolean handleStack(MessageFrame frame) {
-    boolean stackOk =
-        this.currentFrame().stack.processInstruction(frame, this.currentFrame(), TAU * this.stamp);
-    this.currentFrame().pending.startInTrace = this.currentLine();
-    return stackOk;
+  private CallFrame currentFrame() {
+    return this.callStack.top();
+  }
+
+  private void handleStack(MessageFrame frame) {
+    this.currentFrame().getStack().processInstruction(frame, this.currentFrame(), TAU * this.stamp);
+    this.currentFrame().getPending().setStartInTrace(this.currentLine());
   }
 
   void triggerModules(MessageFrame frame) {
@@ -515,11 +434,11 @@ public class Hub implements Module {
     this.opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     this.pc = frame.getPC();
     this.stamp++;
-    this.updateExceptions(frame);
+    this.exceptions = Exceptions.fromFrame(frame);
+    this.handleStack(frame);
     this.triggerModules(frame);
-    boolean noXFlow = this.handleStack(frame);
 
-    if (this.currentFrame().stack.isOk()) {
+    if (this.currentFrame().getStack().isOk()) {
       /*
       this.handleCallReturnData
       this.handleMemory
@@ -528,10 +447,6 @@ public class Hub implements Module {
     }
 
     this.updateTrace();
-
-    if (false /* frame.isError() */) {
-      // ...
-    }
   }
 
   void processStateFinal() {
@@ -539,7 +454,21 @@ public class Hub implements Module {
     // if no revert: 2 account rows (sender, coinbase) + 1 tx row
     // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
 
-    this.txState = TxState.TxPreInit;
+    this.txState = TxState.TX_PRE_INIT;
+  }
+
+  /**
+   * Compute the effective address of a transaction target, i.e. the specified target if explicitely
+   * set, or the to-be-deployed address otherwise.
+   *
+   * @param tx the transaction to find the target for
+   * @param senderAccount the transaction sender account
+   * @return the effective target address of tx
+   */
+  private static Address effectiveToAddress(Transaction tx, Account senderAccount) {
+    return tx.getTo()
+        .map(x -> (Address) x)
+        .orElse(Address.contractAddress(senderAccount.getAddress(), senderAccount.getNonce()));
   }
 
   @Override
@@ -552,12 +481,12 @@ public class Hub implements Module {
     this.currentTx = tx;
 
     // impossible to do the pre-init here -- missing information from the MessageFrame
-    this.txState = TxState.TxPreInit;
+    this.txState = TxState.TX_PRE_INIT;
   }
 
   @Override
   public void traceEndTx() {
-    this.txState = TxState.TxFinal;
+    this.txState = TxState.TX_FINAL;
     this.processStateFinal();
   }
 
@@ -567,78 +496,86 @@ public class Hub implements Module {
             && frame.getCode().getSize() == 0) // pure transaction
         || (frame.getRecipientAddress().equals(ADDRESS_ZERO)
             && frame.getInputData().isEmpty())) { // contract creation without initcode
-      this.txState = TxState.TxSkip;
+      this.txState = TxState.TX_SKIP;
       this.traceSkippedTx(frame);
       return;
-    } else {
-      // TODO: only if warmed stuff present
-      this.txState = TxState.TxWarm;
     }
 
-    this.processStateWarm();
-    this.txState = TxState.TxInit;
+    var to = this.currentTx.getTo();
+    boolean isDeployment = to.isEmpty();
+    Address toAddress =
+        effectiveToAddress(this.currentTx, frame.getWorldUpdater().getSenderAccount(frame));
+    this.callStack =
+        new CallStack(
+            toAddress,
+            isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
+            CodeV0.EMPTY_CODE, // TODO
+            Wei.of(this.currentTx.getValue().getAsBigInteger()),
+            this.currentTx.getGasLimit(),
+            this.currentTx.getData().orElse(Bytes.EMPTY),
+            this.maxContextNumber,
+            0, // TODO
+            to.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(to.get(), 0),
+            false); // TODO
 
+    if (false /* doWarm */) {
+      this.processStateWarm();
+    }
     this.processStateInit();
-    this.txState = TxState.TxExec;
+    this.txState = TxState.TX_STATE;
   }
 
-  private CallFrame currentFrame() {
-    return this.callStack.top();
-  }
-
-  private void unlatchStack(MessageFrame stack, boolean failureState, boolean mxpx) {
-    if (this.currentFrame().pending == null) {
+  private void unlatchStack(MessageFrame frame, boolean failureState, boolean mxpx) {
+    if (this.currentFrame().getPending() == null) {
       return;
     }
 
-    StackContext pending = this.currentFrame().pending;
-
-    for (StackLine line : this.currentFrame().pending.lines) {
+    StackContext pending = this.currentFrame().getPending();
+    for (StackLine line : pending.getLines()) {
       if (line.needsResult()) {
         EWord result = EWord.ZERO;
         if (!failureState) {
-          result = EWord.of(stack.getStackItem(0));
+          result = EWord.of(frame.getStackItem(0));
         }
 
-        int startLine = pending.startInTrace;
-
-        valHiSetters
+        // This works because we are certain that the stack chunks are the first.
+        ((StackChunk) traceChunks.get(traceChunks.size() - 1).get(line.ct()))
+            .stackOps()
             .get(line.resultColumn() - 1)
-            .apply(result.hi().toUnsignedBigInteger(), startLine + line.ct());
-        valLoSetters
-            .get(line.resultColumn() - 1)
-            .apply(result.lo().toUnsignedBigInteger(), startLine + line.ct());
+            .setValue(result);
       }
     }
   }
 
   @Override
-  public void traceContextStart(MessageFrame frame) {
-    var type = CallFrameType.Root;
+  public void traceContextEnter(MessageFrame frame) {
+    this.maxContextNumber += 1;
     this.callStack.enter(
         frame.getContractAddress(),
         frame.getCode(),
-        type,
+        this.callStack.top().getType().ofOpCode(OpCode.of(frame.getCurrentOperation().getOpcode())),
         frame.getValue(),
         frame.getRemainingGas(),
         this.trace.size(),
         frame.getInputData(),
+        this.maxContextNumber,
         0,
-        0);
+        this.deploymentNumber.getOrDefault(frame.getContractAddress(), 0),
+        false);
   }
 
   @Override
-  public void traceContextEnd(MessageFrame frame) {
+  public void traceContextExit(MessageFrame frame) {
     this.callStack.exit(this.trace.size() - 1, frame.getReturnData());
   }
 
   @Override
   public void trace(final MessageFrame frame) {
-    if (this.txState == TxState.TxPreInit) {
+    if (this.txState == TxState.TX_PRE_INIT) {
       this.txInit(frame);
     }
 
-    if (this.txState == TxState.TxSkip) {
+    if (this.txState == TxState.TX_SKIP) {
       return;
     }
 
@@ -646,9 +583,16 @@ public class Hub implements Module {
   }
 
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
-    this.trace.fillAndValidateRow();
     boolean mxpx = false;
     this.unlatchStack(frame, false, mxpx);
+
+    if (this.opCode.isCreate() && operationResult.getHaltReason() == null) {
+      this.handleCreate(Address.wrap(frame.getStackItem(0)));
+    }
+  }
+
+  private void handleCreate(Address target) {
+    this.deploymentNumber.put(target, this.deploymentNumber.getOrDefault(target, 0) + 1);
   }
 
   @Override
@@ -659,26 +603,96 @@ public class Hub implements Module {
   @Override
   public void traceStartConflation(long blockCount) {
     this.batchNumber++;
-    this.callStack = new CallStack();
   }
 
   @Override
   public Object commit() {
+    for (List<TraceChunk> opChunks : traceChunks) {
+      for (TraceChunk chunk : opChunks) {
+        this.traceCommon();
+        chunk.trace(this.trace);
+        this.trace.fillAndValidateRow();
+      }
+    }
     return new HubTrace(trace.build());
   }
 
   void updateTrace() {
-    this.traceStack();
+    var opChunks = new ArrayList<TraceChunk>();
+    this.makeStackChunks(opChunks);
+
+    switch (this.opCodeData().instructionFamily()) {
+      case ADD,
+          MOD,
+          MUL,
+          SHF,
+          BIN,
+          WCP,
+          EXT,
+          KEC,
+          BATCH,
+          MACHINE_STATE,
+          PUSH_POP,
+          DUP,
+          SWAP,
+          HALT,
+          INVALID -> {}
+      case CONTEXT, LOG -> {
+        //        opChunks.add(new ContextChunk());
+      }
+      case ACCOUNT -> {
+        if (this.opCodeData().stackSettings().flag1()) {
+          //          opChunks.add(new ContextChunk());
+          //          opChunks.add(new AccountChunk());
+        } else {
+          //          opChunks.add(new AccountChunk());
+        }
+      }
+      case COPY -> {
+        if (this.opCodeData().stackSettings().flag1()) {
+          //          opChunks.add(new AccountChunk());
+        } else {
+          //          opChunks.add(new ContextChunk());
+        }
+      }
+      case TRANSACTION -> {
+        //        opChunks.add(new TransactionChunk());
+      }
+      case STACK_RAM -> {
+        if (this.opCodeData().stackSettings().flag2()) {
+          //          opChunks.add(new ContextChunk());
+        }
+      }
+      case STORAGE -> {
+        //        opChunks.add(new ContextChunk());
+        //        opChunks.add(new StorageChunk());
+      }
+      case CREATE, CALL -> {
+        //        opChunks.add(new ContextChunk());
+        //        opChunks.add(new AccountChunk());
+        //        opChunks.add(new AccountChunk());
+        //        opChunks.add(new AccountChunk());
+      }
+      case JUMP -> {
+        //        opChunks.add(new ContextChunk());
+        //        opChunks.add(new AccountChunk());
+      }
+    }
+
+    this.traceChunks.add(opChunks);
   }
 
-  void traceStack() {
-    if (this.currentFrame().pending.lines.isEmpty()) {
+  void makeStackChunks(List<TraceChunk> currentChunks) {
+    if (this.currentFrame().getPending().getLines().isEmpty()) {
       for (int i = 0; i < (this.opCodeData().stackSettings().twoLinesInstruction() ? 2 : 1); i++) {
-        this.traceStackLine(new StackLine(i));
+        currentChunks.add(
+            new StackChunk(
+                this.currentFrame().getStack().snapshot(), new StackLine(i).asStackOperations()));
       }
     } else {
-      for (StackLine line : this.currentFrame().pending.lines) {
-        this.traceStackLine(line);
+      for (StackLine line : this.currentFrame().getPending().getLines()) {
+        currentChunks.add(
+            new StackChunk(this.currentFrame().getStack().snapshot(), line.asStackOperations()));
       }
     }
   }
