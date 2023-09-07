@@ -12,25 +12,58 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.testing;
 
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.BlockValues;
 
+/** An implementation of {@link BlockValues} for testing purposes. */
 @RequiredArgsConstructor
 public class FakeBlockValues implements BlockValues {
-  final long number;
-  final Optional<Wei> baseFee;
+  private static final Bytes DEFAULT_DIFFICULTY_BYTES = UInt256.ZERO;
+  private static final long DEFAULT_NUMBER = 0L;
+  private static final long DEFAULT_GAS_LIMIT = 0L;
+  private static final long DEFAULT_TIMESTAMP = 0L;
+  private static final Optional<Wei> DEFAULT_BASE_FEE = Optional.empty();
 
-  public FakeBlockValues(final long number) {
-    this(number, Optional.empty());
+  private final long number;
+  private final long gasLimit;
+  private final long timestamp;
+  private final Bytes difficultyBytes;
+  private final Optional<Wei> baseFee;
+
+  /** Constructor with sane defaults. */
+  public FakeBlockValues() {
+    this(
+        DEFAULT_NUMBER,
+        DEFAULT_GAS_LIMIT,
+        DEFAULT_TIMESTAMP,
+        DEFAULT_DIFFICULTY_BYTES,
+        DEFAULT_BASE_FEE);
   }
 
+  /**
+   * Constructor allowing specification of block number argument.
+   *
+   * @param number block number
+   */
+  public FakeBlockValues(final long number) {
+    this(number, DEFAULT_GAS_LIMIT, DEFAULT_TIMESTAMP, DEFAULT_DIFFICULTY_BYTES, DEFAULT_BASE_FEE);
+  }
+
+  /**
+   * Constructor allowing specification of a base fee of the block.
+   *
+   * @param baseFee base fee of the block
+   */
   public FakeBlockValues(final Optional<Wei> baseFee) {
-    this(1337, baseFee);
+    this(DEFAULT_NUMBER, DEFAULT_GAS_LIMIT, DEFAULT_TIMESTAMP, DEFAULT_DIFFICULTY_BYTES, baseFee);
   }
 
   @Override
@@ -41,5 +74,20 @@ public class FakeBlockValues implements BlockValues {
   @Override
   public Optional<Wei> getBaseFee() {
     return baseFee;
+  }
+
+  @Override
+  public Bytes getDifficultyBytes() {
+    return difficultyBytes;
+  }
+
+  @Override
+  public long getGasLimit() {
+    return gasLimit;
+  }
+
+  @Override
+  public long getTimestamp() {
+    return timestamp;
   }
 }

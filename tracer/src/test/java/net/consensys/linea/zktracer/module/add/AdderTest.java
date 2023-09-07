@@ -23,7 +23,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Test;
 
 class AdderTest {
-
   @Test
   void zeroAddZero_isZero() {
     BaseBytes actual = Adder.addSub(OpCode.ADD, Bytes32.ZERO, Bytes32.ZERO);

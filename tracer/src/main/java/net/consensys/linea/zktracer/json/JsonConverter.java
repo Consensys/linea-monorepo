@@ -27,8 +27,11 @@ public class JsonConverter {
 
   @Getter private final ObjectMapper objectMapper;
 
+  private final boolean prettyPrintEnabled;
+
   private JsonConverter(Builder builder) {
     this.objectMapper = builder.objectMapper;
+    this.prettyPrintEnabled = builder.prettyPrintEnabled;
   }
 
   /**
@@ -39,6 +42,10 @@ public class JsonConverter {
    * @throws JsonProcessingException n case of a serialization failure
    */
   public String toJson(Object object) throws JsonProcessingException {
+    if (prettyPrintEnabled) {
+      return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(object);
+    }
+
     return objectMapper.writeValueAsString(object);
   }
 
@@ -68,6 +75,7 @@ public class JsonConverter {
   public static class Builder {
     private ObjectMapper objectMapper;
     private final SimpleModule module;
+    private boolean prettyPrintEnabled;
 
     private Builder() {
       this.objectMapper = new ObjectMapper();
@@ -89,6 +97,11 @@ public class JsonConverter {
 
     public Builder enableYaml() {
       objectMapper = new ObjectMapper(new YAMLFactory());
+      return this;
+    }
+
+    public Builder enablePrettyPrint() {
+      this.prettyPrintEnabled = true;
       return this;
     }
 

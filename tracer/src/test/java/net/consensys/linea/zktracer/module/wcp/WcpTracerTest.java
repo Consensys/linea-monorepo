@@ -15,32 +15,38 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
-import java.util.List;
 import java.util.stream.Stream;
 
-import net.consensys.linea.zktracer.AbstractModuleCorsetTest;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.testing.DynamicTests;
 import org.apache.tuweni.bytes.Bytes32;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.provider.Arguments;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
-@ExtendWith(MockitoExtension.class)
-class WcpTracerTest extends AbstractModuleCorsetTest {
+class WcpTracerTest {
+  private static final Module MODULE = new Wcp();
 
-  @Override
-  protected Module getModuleTracer() {
-    return new Wcp();
+  private static final DynamicTests DYN_TESTS = DynamicTests.forModule(MODULE);
+
+  @TestFactory
+  Stream<DynamicTest> runDynamicTests() {
+    return DYN_TESTS.testCase("non random arguments test", provideNonRandomArguments()).run();
   }
 
-  @Override
-  protected Stream<Arguments> provideNonRandomArguments() {
+  private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
+    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+
     Bytes32 arg1 =
         Bytes32.fromHexString("0xdcd5cf52e4daec5389587d0d0e996e6ce2d0546b63d3ea0a0dc48ad984d180a9");
     Bytes32 arg2 =
         Bytes32.fromHexString("0x0479484af4a59464a48818b3980174687661bafb13d06f49537995fa6c02159e");
 
-    return Stream.of(Arguments.of(OpCode.GT.getData(), List.of(arg1, arg2)));
+    arguments.put(OpCode.GT, arg1);
+    arguments.put(OpCode.GT, arg2);
+
+    return arguments;
   }
 }
