@@ -28,7 +28,6 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ZkBlockAwareOperationTracer;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.corset.CorsetValidator;
-import net.consensys.linea.zktracer.toy.ToyWorld;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -51,7 +50,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 /** Fluent API for executing EVM bytecode in tests. */
 @Builder
 @RequiredArgsConstructor
-public class TestCodeExecutor {
+public class BytecodeExecutor {
   private static final Address DEFAULT_SENDER_ADDRESS = Address.fromHexString("0xe8f1b89");
   public static final Wei DEFAULT_VALUE = Wei.ZERO;
   public static final Bytes DEFAULT_INPUT_DATA = Bytes.EMPTY;
@@ -93,7 +92,7 @@ public class TestCodeExecutor {
    * @param customFrameSetup optional customization on the {@link MessageFrame}
    * @param senderAccountSetup optional customization on {@link MutableAccount}
    */
-  public TestCodeExecutor(
+  public BytecodeExecutor(
       final Bytes byteCode,
       final Consumer<MessageFrame> frameAssertions,
       final Consumer<MessageFrame> customFrameSetup,
@@ -116,7 +115,7 @@ public class TestCodeExecutor {
    * @param customFrameSetup optional customization on the {@link MessageFrame}
    * @param senderAccountSetup optional customization on {@link MutableAccount}
    */
-  public TestCodeExecutor(
+  public BytecodeExecutor(
       final EVM evm,
       final Bytes byteCode,
       final Consumer<MessageFrame> frameAssertions,
@@ -134,7 +133,7 @@ public class TestCodeExecutor {
    * @param customFrameSetup optional customization on the {@link MessageFrame}
    * @param senderAccountSetup optional customization on {@link MutableAccount}
    */
-  public TestCodeExecutor(
+  public BytecodeExecutor(
       final ZkBlockAwareOperationTracer tracer,
       final Bytes byteCode,
       final Consumer<MessageFrame> frameAssertions,
@@ -268,26 +267,26 @@ public class TestCodeExecutor {
   }
 
   /** Customizations performed on the Lombok generated builder. */
-  public static class TestCodeExecutorBuilder {
+  public static class BytecodeExecutorBuilder {
 
     /**
-     * Builder method returning an instance of {@link TestCodeExecutor}.
+     * Builder method returning an instance of {@link BytecodeExecutor}.
      *
-     * @return an instance of {@link TestCodeExecutor}
+     * @return an instance of {@link BytecodeExecutor}
      */
-    public TestCodeExecutor build() {
+    public BytecodeExecutor build() {
       if (evm != null && tracer != null) {
-        return new TestCodeExecutor(
+        return new BytecodeExecutor(
             evm, tracer, byteCode, frameAssertions, customFrameSetup, senderAccountSetup);
       } else if (evm != null) {
-        return new TestCodeExecutor(
+        return new BytecodeExecutor(
             evm, byteCode, frameAssertions, customFrameSetup, senderAccountSetup);
       } else if (tracer != null) {
-        return new TestCodeExecutor(
+        return new BytecodeExecutor(
             tracer, byteCode, frameAssertions, customFrameSetup, senderAccountSetup);
       }
 
-      return new TestCodeExecutor(byteCode, frameAssertions, customFrameSetup, senderAccountSetup);
+      return new BytecodeExecutor(byteCode, frameAssertions, customFrameSetup, senderAccountSetup);
     }
   }
 }

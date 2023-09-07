@@ -20,6 +20,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.platform.commons.util.Preconditions;
 
@@ -38,7 +39,7 @@ public class BytecodeCompiler {
     return new BytecodeCompiler();
   }
 
-  private static Bytes toBytes(int x) {
+  private static Bytes toBytes(final int x) {
     return Bytes.ofUnsignedShort(x).trimLeadingZeros();
   }
 
@@ -48,8 +49,18 @@ public class BytecodeCompiler {
    * @param opCode opcode to be added
    * @return current instance
    */
-  public BytecodeCompiler op(OpCode opCode) {
+  public BytecodeCompiler op(final OpCode opCode) {
     byteCode.add(Bytes.of(opCode.byteValue()));
+
+    return this;
+  }
+
+  public BytecodeCompiler opAnd32ByteArgs(final OpCode opCode, final List<Bytes32> arguments) {
+    for (Bytes32 argument : arguments) {
+      push(argument);
+    }
+
+    op(opCode);
 
     return this;
   }
@@ -60,7 +71,7 @@ public class BytecodeCompiler {
    * @param bs byte array to be added
    * @return current instance
    */
-  public BytecodeCompiler immediate(byte[] bs) {
+  public BytecodeCompiler immediate(final byte[] bs) {
     for (byte b : bs) {
       this.byteCode.add(Bytes.of(b));
     }
@@ -74,7 +85,7 @@ public class BytecodeCompiler {
    * @param bytes {@link Bytes} to be added
    * @return current instance
    */
-  public BytecodeCompiler immediate(Bytes bytes) {
+  public BytecodeCompiler immediate(final Bytes bytes) {
     return this.immediate(bytes.toArray());
   }
 
@@ -84,7 +95,7 @@ public class BytecodeCompiler {
    * @param x integer number to be added
    * @return current instance
    */
-  public BytecodeCompiler immediate(int x) {
+  public BytecodeCompiler immediate(final int x) {
     return this.immediate(toBytes(x));
   }
 
@@ -94,7 +105,7 @@ public class BytecodeCompiler {
    * @param x {@link UInt256} number to be added
    * @return current instance
    */
-  public BytecodeCompiler immediate(UInt256 x) {
+  public BytecodeCompiler immediate(final UInt256 x) {
     return this.immediate(x.toArray());
   }
 
@@ -104,7 +115,7 @@ public class BytecodeCompiler {
    * @param xs byte array arguments
    * @return current instance
    */
-  public BytecodeCompiler push(Bytes xs) {
+  public BytecodeCompiler push(final Bytes xs) {
     Preconditions.condition(
         !xs.isEmpty() && xs.size() <= 32, "Provided byte array is empty or exceeds 32 bytes");
 
@@ -119,7 +130,7 @@ public class BytecodeCompiler {
    * @param x int number argument
    * @return current instance
    */
-  public BytecodeCompiler push(int x) {
+  public BytecodeCompiler push(final int x) {
     return this.push(toBytes(x));
   }
 

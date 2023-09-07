@@ -13,10 +13,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.add;
+package net.consensys.linea.zktracer.module.ext;
 
-import java.net.URL;
-import java.util.Random;
 import java.util.stream.Stream;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -24,38 +22,25 @@ import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
-import net.consensys.linea.zktracer.testing.SpecTests;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
-class AddTracerTest {
-  private static final Random RAND = new Random();
-  private static final int TEST_ADD_REPETITIONS = 16;
-  private static final Module MODULE = new Add();
+class ExtTracerTest {
+  private static final Module MODULE = new Ext();
+
   private static final DynamicTests DYN_TESTS = DynamicTests.forModule(MODULE);
 
   @TestFactory
   Stream<DynamicTest> runDynamicTests() {
     return DYN_TESTS
         .testCase("non random arguments test", provideNonRandomArguments())
-        .testCase("simple alu add arguments test", provideSimpleAluAddArguments())
-        .testCase("random alu add arguments test", provideRandomAluAddArguments())
+        .testCase("zero value test", provideZeroValueTest())
+        //      .testCase("modulus zero value arguments test", provideModulusZeroValueArguments())
+        .testCase("tiny value arguments test", provideTinyValueArguments())
+        .testCase("max value arguments test", provideMaxValueArguments())
         .run();
-  }
-
-  @ParameterizedTest(name = "{index} {0}")
-  @MethodSource("provideTraceSpecs")
-  void traceWithSpecFile(final String ignored, URL specUrl) {
-    SpecTests.runSpecTestWithTraceComparison(specUrl, MODULE.jsonKey());
-  }
-
-  private static Object[][] provideTraceSpecs() {
-    return SpecTests.findSpecFiles(MODULE.jsonKey());
   }
 
   private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
@@ -66,6 +51,7 @@ class AddTracerTest {
         for (int i = 1; i <= 4; i++) {
           arguments.put(opCode, UInt256.valueOf(i));
           arguments.put(opCode, UInt256.valueOf(k));
+          arguments.put(opCode, UInt256.valueOf(k));
         }
       }
     }
@@ -73,35 +59,51 @@ class AddTracerTest {
     return arguments;
   }
 
-  public Multimap<OpCode, Bytes32> provideRandomAluAddArguments() {
+  private Multimap<OpCode, Bytes32> provideZeroValueTest() {
     Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
 
-    for (int i = 0; i < TEST_ADD_REPETITIONS; i++) {
-      addRandomAluAddInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
+    for (OpCode opCode : MODULE.supportedOpCodes()) {
+      arguments.put(opCode, UInt256.valueOf(6));
+      arguments.put(opCode, UInt256.valueOf(12));
+      arguments.put(opCode, UInt256.valueOf(0));
     }
 
     return arguments;
   }
 
-  private Multimap<OpCode, Bytes32> provideSimpleAluAddArguments() {
+  private Multimap<OpCode, Bytes32> provideModulusZeroValueArguments() {
     Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
 
-    Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
-    Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
-
-    arguments.put(OpCode.SUB, bytes1);
-    arguments.put(OpCode.SUB, bytes2);
+    for (OpCode opCode : MODULE.supportedOpCodes()) {
+      arguments.put(opCode, UInt256.valueOf(0));
+      arguments.put(opCode, UInt256.valueOf(1));
+      arguments.put(opCode, UInt256.valueOf(1));
+    }
 
     return arguments;
   }
 
-  private void addRandomAluAddInstruction(
-      Multimap<OpCode, Bytes32> arguments, int sizeArg1MinusOne, int sizeArg2MinusOne) {
-    Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
-    Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
-    OpCode opCode = DYN_TESTS.getRandomSupportedOpcode();
+  private Multimap<OpCode, Bytes32> provideTinyValueArguments() {
+    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
 
-    arguments.put(opCode, bytes1);
-    arguments.put(opCode, bytes2);
+    for (OpCode opCode : MODULE.supportedOpCodes()) {
+      arguments.put(opCode, UInt256.valueOf(6));
+      arguments.put(opCode, UInt256.valueOf(7));
+      arguments.put(opCode, UInt256.valueOf(13));
+    }
+
+    return arguments;
+  }
+
+  private Multimap<OpCode, Bytes32> provideMaxValueArguments() {
+    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+
+    for (OpCode opCode : MODULE.supportedOpCodes()) {
+      arguments.put(opCode, UInt256.MAX_VALUE);
+      arguments.put(opCode, UInt256.MAX_VALUE);
+      arguments.put(opCode, UInt256.MAX_VALUE);
+    }
+
+    return arguments;
   }
 }
