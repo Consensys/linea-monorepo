@@ -59,28 +59,24 @@ class AddTracerTest {
   }
 
   private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      for (int k = 1; k <= 4; k++) {
-        for (int i = 1; i <= 4; i++) {
-          arguments.put(opCode, UInt256.valueOf(i));
-          arguments.put(opCode, UInt256.valueOf(k));
-        }
-      }
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int k = 1; k <= 4; k++) {
+            for (int i = 1; i <= 4; i++) {
+              arguments.put(opCode, UInt256.valueOf(i));
+              arguments.put(opCode, UInt256.valueOf(k));
+            }
+          }
+        });
   }
 
   public Multimap<OpCode, Bytes32> provideRandomAluAddArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (int i = 0; i < TEST_ADD_REPETITIONS; i++) {
-      addRandomAluAddInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int i = 0; i < TEST_ADD_REPETITIONS; i++) {
+            addRandomAluAddInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
+          }
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideSimpleAluAddArguments() {

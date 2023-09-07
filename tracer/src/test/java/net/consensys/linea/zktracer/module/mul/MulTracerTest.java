@@ -69,6 +69,7 @@ class MulTracerTest {
     for (int i = 0; i < TEST_MUL_REPETITIONS; i++) {
       addRandomAluMulInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
     }
+
     return arguments;
   }
 

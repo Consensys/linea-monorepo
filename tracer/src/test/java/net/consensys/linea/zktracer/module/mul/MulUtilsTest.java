@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class MulUtilsTest {
+class MulUtilsTest {
   @Test
   void isTiny() {
     // tiny means zero or one
