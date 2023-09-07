@@ -204,7 +204,7 @@ public enum OpCode {
     return this.getData().value().byteValue();
   }
 
-  /** Returns whether the {@link OpCode} entails a contract creation */
+  /** Returns whether the {@link OpCode} entails a contract creation. */
   public boolean isCreate() {
     return this == OpCode.CREATE || this == OpCode.CREATE2;
   }

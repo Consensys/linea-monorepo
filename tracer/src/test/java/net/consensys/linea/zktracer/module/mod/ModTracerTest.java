@@ -65,28 +65,24 @@ class ModTracerTest {
   }
 
   private Multimap<OpCode, Bytes32> provideRandomAluModArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
-      addRandomAluModInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int i = 0; i < TEST_MOD_REPETITIONS; i++) {
+            addRandomAluModInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
+          }
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      for (int k = 1; k <= 4; k++) {
-        for (int i = 1; i <= 4; i++) {
-          arguments.put(opCode, UInt256.valueOf(i));
-          arguments.put(opCode, UInt256.valueOf(k));
-        }
-      }
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int k = 1; k <= 4; k++) {
+            for (int i = 1; i <= 4; i++) {
+              arguments.put(opCode, UInt256.valueOf(i));
+              arguments.put(opCode, UInt256.valueOf(k));
+            }
+          }
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideRandomDivisibleArguments() {
@@ -136,6 +132,7 @@ class ModTracerTest {
     if (Math.random() >= 0.5) {
       bigInteger = bigInteger.negate();
     }
+
     Bytes resultBytes = Bytes.wrap(bigInteger.toByteArray());
     if (resultBytes.size() > 32) {
       resultBytes = resultBytes.slice(resultBytes.size() - 32, 32);

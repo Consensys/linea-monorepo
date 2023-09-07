@@ -15,9 +15,11 @@
 
 package net.consensys.linea.zktracer.module.ext;
 
+import static net.consensys.linea.zktracer.testing.ModuleTests.runTestWithOpCodeArgs;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.stream.Stream;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -37,73 +39,62 @@ class ExtTracerTest {
     return DYN_TESTS
         .testCase("non random arguments test", provideNonRandomArguments())
         .testCase("zero value test", provideZeroValueTest())
-        //      .testCase("modulus zero value arguments test", provideModulusZeroValueArguments())
+        .testCase(
+            "modulus zero value arguments test",
+            provideModulusZeroValueArguments(),
+            ((opCode, args) ->
+                assertThrows(ArithmeticException.class, () -> runTestWithOpCodeArgs(opCode, args))))
         .testCase("tiny value arguments test", provideTinyValueArguments())
         .testCase("max value arguments test", provideMaxValueArguments())
         .run();
   }
 
   private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      for (int k = 1; k <= 4; k++) {
-        for (int i = 1; i <= 4; i++) {
-          arguments.put(opCode, UInt256.valueOf(i));
-          arguments.put(opCode, UInt256.valueOf(k));
-          arguments.put(opCode, UInt256.valueOf(k));
-        }
-      }
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int k = 1; k <= 4; k++) {
+            for (int i = 1; i <= 4; i++) {
+              arguments.put(opCode, UInt256.valueOf(i));
+              arguments.put(opCode, UInt256.valueOf(k));
+              arguments.put(opCode, UInt256.valueOf(k));
+            }
+          }
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideZeroValueTest() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      arguments.put(opCode, UInt256.valueOf(6));
-      arguments.put(opCode, UInt256.valueOf(12));
-      arguments.put(opCode, UInt256.valueOf(0));
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          arguments.put(opCode, UInt256.valueOf(6));
+          arguments.put(opCode, UInt256.valueOf(12));
+          arguments.put(opCode, UInt256.valueOf(0));
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideModulusZeroValueArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      arguments.put(opCode, UInt256.valueOf(0));
-      arguments.put(opCode, UInt256.valueOf(1));
-      arguments.put(opCode, UInt256.valueOf(1));
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          arguments.put(opCode, UInt256.valueOf(0));
+          arguments.put(opCode, UInt256.valueOf(1));
+          arguments.put(opCode, UInt256.valueOf(1));
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideTinyValueArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      arguments.put(opCode, UInt256.valueOf(6));
-      arguments.put(opCode, UInt256.valueOf(7));
-      arguments.put(opCode, UInt256.valueOf(13));
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          arguments.put(opCode, UInt256.valueOf(6));
+          arguments.put(opCode, UInt256.valueOf(7));
+          arguments.put(opCode, UInt256.valueOf(13));
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideMaxValueArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      arguments.put(opCode, UInt256.MAX_VALUE);
-      arguments.put(opCode, UInt256.MAX_VALUE);
-      arguments.put(opCode, UInt256.MAX_VALUE);
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          arguments.put(opCode, UInt256.MAX_VALUE);
+          arguments.put(opCode, UInt256.MAX_VALUE);
+          arguments.put(opCode, UInt256.MAX_VALUE);
+        });
   }
 }
