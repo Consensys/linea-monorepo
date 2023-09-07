@@ -13,7 +13,8 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  */
-package net.consensys.linea.zktracer.toy;
+
+package net.consensys.linea.zktracer.testing;
 
 import java.util.HashMap;
 import java.util.Map;

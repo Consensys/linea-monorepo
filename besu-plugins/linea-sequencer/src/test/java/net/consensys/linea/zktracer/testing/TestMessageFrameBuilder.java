@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import net.consensys.linea.zktracer.toy.ToyWorld;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;

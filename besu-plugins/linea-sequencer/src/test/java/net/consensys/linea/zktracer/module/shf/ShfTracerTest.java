@@ -21,8 +21,8 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
+import net.consensys.linea.zktracer.testing.BytecodeExecutor;
 import net.consensys.linea.zktracer.testing.EvmExtension;
-import net.consensys.linea.zktracer.testing.TestCodeExecutor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Named;
@@ -31,18 +31,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @Slf4j
-@ExtendWith({MockitoExtension.class, EvmExtension.class})
+@ExtendWith(EvmExtension.class)
 class ShfTracerTest {
-  private static final Random rand = new Random();
+  private static final Random RAND = new Random();
   private static final int TEST_REPETITIONS = 4;
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideShiftOperators")
   void testFailingBlockchainBlock(final int opCodeValue) {
-    TestCodeExecutor.builder()
+    BytecodeExecutor.builder()
         .byteCode(
             BytecodeCompiler.newProgram()
                 .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
@@ -59,7 +58,7 @@ class ShfTracerTest {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
 
-    TestCodeExecutor.builder()
+    BytecodeExecutor.builder()
         .byteCode(
             BytecodeCompiler.newProgram()
                 .push(payload[1])
@@ -72,7 +71,7 @@ class ShfTracerTest {
 
   @Test
   void testTmp() {
-    TestCodeExecutor.builder()
+    BytecodeExecutor.builder()
         .byteCode(
             BytecodeCompiler.newProgram()
                 .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
@@ -83,17 +82,17 @@ class ShfTracerTest {
         .run();
   }
 
-  public static Stream<Arguments> provideRandomSarArguments() {
+  private static Stream<Arguments> provideRandomSarArguments() {
     final Arguments[] arguments = new Arguments[TEST_REPETITIONS];
 
     for (int i = 0; i < TEST_REPETITIONS; i++) {
-      final boolean signBit = rand.nextInt(2) == 1;
+      final boolean signBit = RAND.nextInt(2) == 1;
 
       // leave the first byte untouched
-      final int k = 1 + rand.nextInt(31);
+      final int k = 1 + RAND.nextInt(31);
 
       final byte[] randomBytes = new byte[k];
-      rand.nextBytes(randomBytes);
+      RAND.nextBytes(randomBytes);
 
       final byte[] signBytes = new byte[32 - k];
       if (signBit) {
@@ -101,7 +100,7 @@ class ShfTracerTest {
       }
 
       final byte[] bytes = concatenateArrays(signBytes, randomBytes);
-      byte shiftBy = (byte) rand.nextInt(256);
+      byte shiftBy = (byte) RAND.nextInt(256);
 
       Bytes32[] payload = new Bytes32[2];
       payload[0] = Bytes32.wrap(bytes);
