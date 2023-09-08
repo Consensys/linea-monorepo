@@ -37,15 +37,15 @@ class MulUtilsTest {
   @Test
   void isTiny() {
     // tiny means zero or one
-    assertThat(MulData.isTiny(BigInteger.ZERO)).isTrue();
-    assertThat(MulData.isTiny(BigInteger.ONE)).isTrue();
-    assertThat(MulData.isTiny(BigInteger.TWO)).isFalse();
-    assertThat(MulData.isTiny(BigInteger.TEN)).isFalse();
+    assertThat(MulOperation.isTiny(BigInteger.ZERO)).isTrue();
+    assertThat(MulOperation.isTiny(BigInteger.ONE)).isTrue();
+    assertThat(MulOperation.isTiny(BigInteger.TWO)).isFalse();
+    assertThat(MulOperation.isTiny(BigInteger.TEN)).isFalse();
   }
 
   @Test
   void twoAdicity() {
-    assertThat(MulData.twoAdicity(UInt256.MIN_VALUE)).isEqualTo(256);
+    assertThat(MulOperation.twoAdicity(UInt256.MIN_VALUE)).isEqualTo(256);
     // TODO no idea what these should be
     //    assertThat(MulData.twoAdicity(UInt256.MAX_VALUE)).isEqualTo(0);
     //    assertThat(MulData.twoAdicity(UInt256.valueOf(1))).isEqualTo(0);
@@ -55,7 +55,7 @@ class MulUtilsTest {
   void multiplyByZero() {
     Bytes32 arg1 = Bytes32.random();
     OpCodeData mul = OpCode.MUL.getData();
-    MulData oxo = new MulData(mul, arg1, Bytes32.ZERO);
+    MulOperation oxo = new MulOperation(mul, arg1, Bytes32.ZERO);
 
     assertThat(oxo.getArg2Hi().isZero()).isTrue();
     assertThat(oxo.getArg2Lo()).isEqualTo(Bytes16.ZERO);
@@ -70,7 +70,7 @@ class MulUtilsTest {
   void zeroExp() {
     Bytes32 arg1 = Bytes32.random();
     OpCodeData exp = OpCode.EXP.getData();
-    MulData oxo = new MulData(exp, arg1, Bytes32.ZERO);
+    MulOperation oxo = new MulOperation(exp, arg1, Bytes32.ZERO);
 
     assertThat(oxo.getArg2Hi().isZero()).isTrue();
     assertThat(oxo.getArg2Lo()).isEqualTo(Bytes16.ZERO);
@@ -93,45 +93,48 @@ class MulUtilsTest {
   void hBytesAllZeros() {
     Bytes32 arg1 = Bytes32.ZERO;
     Bytes32 arg2 = Bytes32.ZERO;
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(
         BaseTheta.fromBytes32(UInt256.ZERO), BaseTheta.fromBytes32(UInt256.ZERO));
 
-    assertThat(mulData.hBytes.get(0).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(1).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(1).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
 
-    assertThat(mulData.hBytes.get(0).shiftLeft(64)).isEqualTo(mulData.hBytes.get(1)); // ZERO
+    assertThat(mulOperation.hBytes.get(0).shiftLeft(64))
+        .isEqualTo(mulOperation.hBytes.get(1)); // ZERO
   }
 
   @Test
   void hBytesWhereOneArgIsZero() {
     Bytes32 arg1 = Bytes32.ZERO;
     Bytes32 arg2 = Bytes32.ZERO;
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(
         BaseTheta.fromBytes32(UInt256.ZERO), BaseTheta.fromBytes32(UInt256.valueOf(1)));
 
-    assertThat(mulData.hBytes.get(0).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(1).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(1).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
 
-    assertThat(mulData.hBytes.get(0).shiftLeft(64)).isEqualTo(mulData.hBytes.get(1)); // ZERO
+    assertThat(mulOperation.hBytes.get(0).shiftLeft(64))
+        .isEqualTo(mulOperation.hBytes.get(1)); // ZERO
   }
 
   @Test
   void hBytes_5_5() {
     Bytes32 arg1 = Bytes32.fromHexString("0x05");
     Bytes32 arg2 = Bytes32.fromHexString("0x05");
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(BaseTheta.fromBytes32(arg1), BaseTheta.fromBytes32(arg2));
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(
+        BaseTheta.fromBytes32(arg1), BaseTheta.fromBytes32(arg2));
 
-    assertThat(mulData.hBytes.get(0).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(1).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(1).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
   }
 
   @Test
@@ -149,15 +152,15 @@ class MulUtilsTest {
 
     BaseTheta bBaseTheta = BaseTheta.fromBytes32(b2uint);
 
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
     Bytes h0 = Bytes.fromHexString("0x00000e9b37bfd908");
 
-    assertThat(mulData.hBytes.get(0)).isEqualTo(h0);
-    assertThat(mulData.hBytes.get(1).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0)).isEqualTo(h0);
+    assertThat(mulOperation.hBytes.get(1).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
   }
 
   @Test
@@ -172,16 +175,16 @@ class MulUtilsTest {
     BaseTheta aBaseTheta = BaseTheta.fromBytes32(b4uint);
     BaseTheta bBaseTheta = BaseTheta.fromBytes32(b4uint);
 
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
     Bytes h0 = Bytes.fromHexString("0xe9e4064d86460000");
     Bytes h1 = Bytes.fromHexString("0x00000779079ae9e3");
 
-    assertThat(mulData.hBytes.get(0)).isEqualTo(h0);
-    assertThat(mulData.hBytes.get(1)).isEqualTo(h1);
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0)).isEqualTo(h0);
+    assertThat(mulOperation.hBytes.get(1)).isEqualTo(h1);
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
   }
 
   @Test
@@ -196,21 +199,21 @@ class MulUtilsTest {
     BaseTheta aBaseTheta = BaseTheta.fromBytes32(b4uint);
     BaseTheta bBaseTheta = BaseTheta.fromBytes32(b4uint);
 
-    MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
+    MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
     Bytes h0 = Bytes.fromHexString("0x8d222c056a351fb0");
     Bytes h1 = Bytes.fromHexString("0x0000000013fc1cf0");
 
-    assertThat(mulData.hBytes.get(2).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(3).isZero()).isTrue();
-    assertThat(mulData.hBytes.get(0)).isEqualTo(h0);
-    assertThat(mulData.hBytes.get(1)).isEqualTo(h1);
+    assertThat(mulOperation.hBytes.get(2).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(3).isZero()).isTrue();
+    assertThat(mulOperation.hBytes.get(0)).isEqualTo(h0);
+    assertThat(mulOperation.hBytes.get(1)).isEqualTo(h1);
 
     // bits
     // expected value obtained from go implementation debug output
     Boolean[] expectedBools = {false, false, false, false, false, true, false, false};
-    assertThat(mulData.bits).isEqualTo(expectedBools);
+    assertThat(mulOperation.bits).isEqualTo(expectedBools);
   }
 
   @Test
@@ -232,8 +235,8 @@ class MulUtilsTest {
     BaseTheta aBaseTheta = BaseTheta.fromBytes32(b1uint);
     BaseTheta bBaseTheta = BaseTheta.fromBytes32(b2uint);
 
-    final MulData mulData = new MulData(OpCode.EXP, arg1, arg2);
-    mulData.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
+    final MulOperation mulOperation = new MulOperation(OpCode.EXP, arg1, arg2);
+    mulOperation.setHsAndBitsFromBaseThetas(aBaseTheta, bBaseTheta);
 
     BigInteger sum010 = new BigInteger("375860551383434850958895718584879559103");
     assertThat(Util.getOverflow(UInt256.valueOf(sum010), 3, "mu OOB")).isEqualTo(1);
@@ -241,6 +244,6 @@ class MulUtilsTest {
     // bits
     // expected value obtained from go implementation debug output
     Boolean[] expectedBools = {false, false, false, false, false, false, true, false};
-    assertThat(mulData.bits).isEqualTo(expectedBools);
+    assertThat(mulOperation.bits).isEqualTo(expectedBools);
   }
 }
