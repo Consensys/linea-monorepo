@@ -22,6 +22,7 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.bytes.Bytes16;
@@ -31,9 +32,12 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-public class WcpData {
+public class WcpOperation {
+  private static final int LIMB_SIZE = 16;
 
   @Getter private final OpCode opCode;
+  private final Bytes32 arg1;
+  private final Bytes32 arg2;
 
   @Getter private final boolean isOneLineInstruction;
 
@@ -56,12 +60,15 @@ public class WcpData {
 
   @Getter final List<Boolean> bits;
 
-  public WcpData(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
+  public WcpOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
     this(opCodeData.mnemonic(), arg1, arg2);
   }
 
-  public WcpData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+  public WcpOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;
+    this.arg1 = arg1;
+    this.arg2 = arg2;
+
     this.isOneLineInstruction = isOneLineInstruction(opCode);
 
     // maybe ?
@@ -112,6 +119,11 @@ public class WcpData {
     this.adjLo = calculateAdj(bit4, firstLo, secondLo);
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.opCode, this.arg1, this.arg2);
+  }
+
   public Boolean getResHi() {
     return false;
   }
@@ -142,5 +154,9 @@ public class WcpData {
     var bytes32 = Bytes32.leftPad(Bytes.of(adjHi.toByteArray()));
 
     return Bytes16.wrap(bytes32.slice(16));
+  }
+
+  int maxCt() {
+    return this.isOneLineInstruction ? 1 : LIMB_SIZE;
   }
 }
