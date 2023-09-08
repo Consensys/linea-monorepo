@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.ext;
 
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
 
+import java.util.Objects;
+
 import lombok.Getter;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
@@ -27,52 +29,44 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public class ExtData {
-  @Getter private OpCode opCode;
+public class ExtOperation {
+  private static final int MMEDIUM = 8;
 
+  @Getter private final OpCode opCode;
   @Getter private final boolean oli;
-
   @Getter private final BaseBytes arg1;
-
   @Getter private final BaseBytes arg2;
-
   @Getter private final BaseBytes arg3;
-
   @Getter private final BaseTheta result;
-
   @Getter private final BaseTheta aBytes;
-
   @Getter private final BaseTheta bBytes;
-
   @Getter private final BaseTheta cBytes;
-
   @Getter private BaseTheta deltaBytes;
-
   @Getter private final BytesArray hBytes;
-
   @Getter private final BaseTheta rBytes;
-
   @Getter private final BytesArray iBytes;
-
   @Getter private BytesArray jBytes;
-
   @Getter private BytesArray qBytes;
-
   @Getter private boolean[] cmp = new boolean[8];
-
   @Getter boolean[] overflowH = new boolean[8];
-
   @Getter boolean[] overflowJ = new boolean[8];
-
   @Getter boolean[] overflowRes = new boolean[8];
-
   @Getter boolean[] overflowI = new boolean[8];
 
-  public ExtData(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
+  /**
+   * This custom hash function ensures that all identical operations are only traced once per
+   * conflation block.
+   */
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.opCode, this.arg1, this.arg2, this.arg3);
+  }
+
+  public ExtOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     this(opCodeData.mnemonic(), arg1, arg2, arg3);
   }
 
-  public ExtData(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
+  public ExtOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     this.opCode = opCode;
     this.arg1 = BaseBytes.fromBytes32(arg1);
     this.arg2 = BaseBytes.fromBytes32(arg2);
@@ -124,6 +118,14 @@ public class ExtData {
   /** Returns true if any of the bit1, bit2, or bit3 flags are set. */
   private boolean isOneLineInstruction() {
     return getBit1() || getBit2() || getBit3();
+  }
+
+  public int maxCounter() {
+    if (this.isOli()) {
+      return 1;
+    }
+
+    return MMEDIUM;
   }
 
   private UInt256 getSigma() {

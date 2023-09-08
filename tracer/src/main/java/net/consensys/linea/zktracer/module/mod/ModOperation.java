@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.module.Util.byteBits;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Objects;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
@@ -31,8 +32,10 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
-public class ModData {
-  @Getter private OpCode opCode;
+public class ModOperation {
+  private static final int MMEDIUM = 8;
+
+  @Getter private final OpCode opCode;
   @Getter private final boolean oli;
   @Getter private final BaseBytes arg1;
   @Getter private final BaseBytes arg2;
@@ -48,11 +51,20 @@ public class ModData {
   @Getter private Boolean[] msb1 = new Boolean[8];
   @Getter private Boolean[] msb2 = new Boolean[8];
 
-  public ModData(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
+  /**
+   * This custom hash function ensures that all identical operations are only traced once per
+   * conflation block.
+   */
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.opCode, this.arg1, this.arg2);
+  }
+
+  public ModOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
     this(opCodeData.mnemonic(), arg1, arg2);
   }
 
-  public ModData(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+  public ModOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.arg1 = BaseBytes.fromBytes32(arg1);
     this.arg2 = BaseBytes.fromBytes32(arg2);
 
@@ -198,5 +210,13 @@ public class ModData {
 
   public boolean isDiv() {
     return this.opCode == OpCode.DIV || this.opCode == OpCode.SDIV;
+  }
+
+  int maxCounter() {
+    if (this.isOli()) {
+      return 1;
+    } else {
+      return MMEDIUM;
+    }
   }
 }
