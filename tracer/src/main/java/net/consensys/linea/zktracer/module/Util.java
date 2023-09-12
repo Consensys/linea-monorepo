@@ -135,4 +135,18 @@ public class Util {
   public static byte boolToByte(boolean b) {
     return (byte) (b ? 1 : 0);
   }
+
+  /**
+   * Returns the maximum of two BigInteger values.
+   *
+   * @param x the first BigInteger to compare
+   * @param y the second BigInteger to compare
+   * @return the maximum of x and y. If x is less than y, it returns y, otherwise it returns x.
+   */
+  public static BigInteger max(final BigInteger x, final BigInteger y) {
+    if (x.compareTo(y) < 0) {
+      return y;
+    }
+    return x;
+  }
 }
