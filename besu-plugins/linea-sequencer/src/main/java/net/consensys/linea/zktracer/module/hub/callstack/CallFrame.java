@@ -22,6 +22,7 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.module.hub.Bytecode;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.memory.MemorySpan;
 import net.consensys.linea.zktracer.module.hub.stack.Stack;
@@ -29,7 +30,6 @@ import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.evm.Code;
 
 public class CallFrame {
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
@@ -55,8 +55,8 @@ public class CallFrame {
   /** the {@link CallFrameType} of this frame. */
   @Getter private CallFrameType type;
 
-  /** the {@link Code} executing within this frame. */
-  private Code code;
+  /** the {@link Bytecode} executing within this frame. */
+  private Bytecode code;
 
   /** the ether amount given to this frame. */
   @Getter private Wei value;
@@ -97,7 +97,7 @@ public class CallFrame {
    * @param contextNumber the CN of this frame in the {@link Hub}
    * @param accountDeploymentNumber the DN of this frame in the {@link Hub}
    * @param codeDeploymentNumber the DN of this frame in the {@link Hub}
-   * @param codeDeploymentStatus the DN of this frame in the {@link Hub}
+   * @param isDeployment whether the executing code is initcode
    * @param id the ID of this frame in the {@link CallStack}
    * @param address the {@link Address} of this frame executor
    * @param type the {@link CallFrameType} of this frame
@@ -111,10 +111,10 @@ public class CallFrame {
       int contextNumber,
       int accountDeploymentNumber,
       int codeDeploymentNumber,
-      boolean codeDeploymentStatus,
+      boolean isDeployment,
       int id,
       Address address,
-      Code code,
+      Bytecode code,
       CallFrameType type,
       int caller,
       Wei value,
@@ -124,7 +124,7 @@ public class CallFrame {
     this.contextNumber = contextNumber;
     this.accountDeploymentNumber = accountDeploymentNumber;
     this.codeDeploymentNumber = codeDeploymentNumber;
-    this.codeDeploymentStatus = codeDeploymentStatus;
+    this.codeDeploymentStatus = isDeployment;
     this.id = id;
     this.address = address;
     this.code = code;

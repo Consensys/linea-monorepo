@@ -24,18 +24,17 @@ abstract class TraceFilesTask extends Exec {
 
     @Override
     protected void exec() {
-        def stdout = new ByteArrayOutputStream()
-        def command = ["besu",
-                       "-o", "src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}",
-                       "-P", module.get()]
-        command.addAll(files.get().collect({"zkevm-constraints/${it}"}))
+        def arguments = ["besu",
+                         "-P", module.get(),
+                         "-o", "src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}"
+        ]
+        arguments.addAll(files.get().collect({"zkevm-constraints/${it}"}))
 
         workingDir project.rootDir
         executable "corset"
-        args command
-        standardOutput stdout
+        args arguments
 
-        println "Generating traces for ${module.get()} from ${files.get()}"
+        println "Generating traces for ${module.get()} from ${arguments}"
         super.exec()
     }
 }

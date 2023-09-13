@@ -20,42 +20,46 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.datatypes.Wei;
 
-public record TransactionChunk(
-    int batchNumber, MessageFrame frame, Transaction tx, boolean evmExecutes)
-    implements TraceChunk {
+public record TransactionFragment(
+    int batchNumber,
+    Address minerAddress,
+    Transaction tx,
+    boolean evmExecutes,
+    Wei gasPrice,
+    Wei baseFee)
+    implements TraceFragment {
   @Override
   public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
     final EWord deploymentAddress = EWord.of(Address.EMPTY); // TODO compute deployment address
     final EWord to = tx.getTo().map(EWord::of).orElse(deploymentAddress);
     final EWord from = EWord.of(tx.getSender());
-    final EWord miner = EWord.of(frame.getMiningBeneficiary());
+    final EWord miner = EWord.of(minerAddress);
 
     return trace
         .peekAtTransaction(true)
-        .pTransactionBatchNumber(BigInteger.valueOf(batchNumber))
         .pTransactionNonce(BigInteger.valueOf(tx.getNonce()))
         .pTransactionIsDeployment(tx.getTo().isEmpty())
         .pTransactionFromAddressHi(from.hiBigInt())
         .pTransactionFromAddressLo(from.loBigInt())
         .pTransactionToAddressHi(to.hiBigInt())
         .pTransactionToAddressLo(to.loBigInt())
-        // .pTransactionGasPrice(tx.getGasPrice()) TODO (compute from TX)
-        // .pTransactionBaseFee(frame.getBlockValues().getBaseFee().orElse(Wei.ZERO)) // TODO
+        .pTransactionGasPrice(gasPrice.toUnsignedBigInteger())
+        .pTransactionBasefee(baseFee.toUnsignedBigInteger())
         .pTransactionInitGas(Hub.computeInitGas(tx))
-        // .pTransactionInitBalance() // TODO save the init balance from TX_INIT
+        .pTransactionInitialBalance(BigInteger.ZERO) // TODO save the init balance from TX_INIT
         .pTransactionValue(tx.getValue().getAsBigInteger())
-    //      .pTransactionMinerAddressHi(miner.hiBigInt())
-    //      .pTransactionMinerAddressLo(miner.loBigInt())
-    // .pTransactionCalldataSize(BigInteger.valueOf(tx.getData().map(Bytes::size).orElse(0)))
-    //      .pTransactionRequiresEvmExecution(evmExecutes)
-    //      .pTransactionLeftOverGas(0) // TODO retcon
-    //      .pTransactionRefundCounter(0) // TODO retcon
-    //      .pTransactionRefundAmount(0) // TODO retcon
-    //        .pTransactionStatusCode(0) // TODO retcon
-    ;
+        .pTransactionCoinbaseAddressHi(miner.hiBigInt())
+        .pTransactionCoinbaseAddressLo(miner.loBigInt())
+        .pTransactionCallDataSize(BigInteger.valueOf(tx.getData().map(Bytes::size).orElse(0)))
+        .pTransactionTxnRequiresEvmExecution(evmExecutes)
+        .pTransactionLeftoverGas(BigInteger.ZERO) // TODO defer/retcon
+        .pTransactionGasRefundCounterFinal(BigInteger.ZERO) // TODO defer/retcon
+        .pTransactionGasRefundAmount(BigInteger.ZERO) // TODO retcon
+        .pTransactionStatusCode(false); // TODO defer/retcon false si exception ou revert
   }
 }

@@ -13,14 +13,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.chunks;
 
-public enum TxState {
-  // A state marking the first trace of the current tx, required to set up some things
-  TX_PRE_INIT,
-  TX_STATE,
-  TX_FINAL,
-  TX_INIT,
-  TX_SKIP,
-  TX_WARM,
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.Trace;
+
+/**
+ * A TraceFragment represents a piece of a trace line; either a {@link CommonFragment} present in
+ * each line, or a perspective-specific fragment.
+ */
+public interface TraceFragment {
+  Trace.TraceBuilder trace(Trace.TraceBuilder trace);
+
+  /**
+   * This hook is called by the {@link Hub} at the end of the conflation to retrofit information if
+   * required.
+   *
+   * @param hub a reference to the hub
+   */
+  default void retcon(Hub hub) {}
 }

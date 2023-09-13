@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -31,8 +30,29 @@ import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
 import net.consensys.linea.zktracer.module.hub.callstack.CallFrameType;
 import net.consensys.linea.zktracer.module.hub.callstack.CallStack;
-import net.consensys.linea.zktracer.module.hub.chunks.StackChunk;
-import net.consensys.linea.zktracer.module.hub.chunks.TraceChunk;
+import net.consensys.linea.zktracer.module.hub.chunks.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.chunks.CommonFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.ContextFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.StackFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.StorageFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.TransactionFragment;
+import net.consensys.linea.zktracer.module.hub.defer.CallDefer;
+import net.consensys.linea.zktracer.module.hub.defer.CreateDefer;
+import net.consensys.linea.zktracer.module.hub.defer.NextContextDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostExecDefer;
+import net.consensys.linea.zktracer.module.hub.defer.SkippedTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.TransactionDefer;
+import net.consensys.linea.zktracer.module.hub.section.AccountSection;
+import net.consensys.linea.zktracer.module.hub.section.ContextLogSection;
+import net.consensys.linea.zktracer.module.hub.section.CopySection;
+import net.consensys.linea.zktracer.module.hub.section.JumpSection;
+import net.consensys.linea.zktracer.module.hub.section.StackOnlySection;
+import net.consensys.linea.zktracer.module.hub.section.StackRam;
+import net.consensys.linea.zktracer.module.hub.section.StorageSection;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
+import net.consensys.linea.zktracer.module.hub.section.TransactionSection;
 import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
@@ -43,17 +63,15 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.evm.Code;
 import org.hyperledger.besu.evm.account.Account;
-import org.hyperledger.besu.evm.code.CodeV0;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
@@ -62,6 +80,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 public class Hub implements Module {
   private static final Address ADDRESS_ZERO = Address.fromHexString("0x0");
   private static final int TAU = 8;
+  private static final GasCalculator gc = new LondonGasCalculator();
 
   public final Trace.TraceBuilder trace = Trace.builder();
 
@@ -73,19 +92,108 @@ public class Hub implements Module {
     return this.opCode.getData();
   }
 
-  private final Map<Address, Integer> deploymentNumber = new HashMap<>();
-  private final Map<Address, Boolean> deploymentStatus = new HashMap<>();
+  final Map<Address, Map<EWord, EWord>> valOrigs = new HashMap<>();
 
-  private final List<List<TraceChunk>> traceChunks = new ArrayList<>();
+  private EWord getValOrigOrUpdate(Address address, EWord key, EWord value) {
+    EWord r = this.valOrigs.getOrDefault(address, new HashMap<>()).putIfAbsent(key, value);
+    if (r == null) {
+      return value;
+    }
+    return r;
+  }
+
+  private EWord getValOrigOrUpdate(Address address, EWord key) {
+    return this.getValOrigOrUpdate(address, key, EWord.ZERO);
+  }
+
+  public final Map<Address, Integer> deploymentNumber = new HashMap<>();
+
+  public final int deploymentNumber(Address address) {
+    return this.deploymentNumber.getOrDefault(address, 0);
+  }
+
+  private void increaseDeploymentNumber(Address address) {
+    this.deploymentNumber.put(address, this.deploymentNumber(address) + 1);
+  }
+
+  final Map<Address, Boolean> isDeploying = new HashMap<>();
+
+  public final boolean isDeploying(Address address) {
+    return this.isDeploying.getOrDefault(address, false);
+  }
+
+  public final void markDeploying(Address address) {
+    this.increaseDeploymentNumber(address);
+    this.isDeploying.put(address, true);
+  }
+
+  public final void unmarkDeploying(Address address) {
+    this.isDeploying.put(address, false);
+  }
+  // Tx -> Opcode -> TraceSection
+  private final List<List<TraceSection>> traceSections = new ArrayList<>();
+
+  private int txChunksCount() {
+    return this.traceSections.size();
+  }
+
+  private int opcodeChunksCount() {
+    return this.traceSections.get(this.txChunksCount() - 1).size();
+  }
+
+  private List<TraceSection> currentTxTrace() {
+    return this.traceSections.get(this.txChunksCount() - 1);
+  }
+
+  TraceSection currentTraceSection() {
+    return this.traceSections.get(this.txChunksCount() - 1).get(this.opcodeChunksCount() - 1);
+  }
+
+  public void addTraceSection(TraceSection section) {
+    if (!this.currentTxTrace().isEmpty()) {
+      section.setContextNumber(
+          this.currentTxTrace().get(this.currentTxTrace().size() - 1).contextNumber());
+      section.setNewPc(this.currentTxTrace().get(this.currentTxTrace().size() - 1).pc());
+    }
+    section.seal(this);
+
+    this.currentTxTrace().add(section);
+  }
+
+  void chunkNewTransaction() {
+    this.traceSections.add(new ArrayList<>());
+  }
+
   private Exceptions exceptions;
 
   TxState txState;
   @Getter Transaction currentTx;
-  CallStack callStack;
+  @Getter CallStack callStack;
   int txNumber = 0;
   @Getter int batchNumber = 0;
   @Getter int blockNumber = 0;
-  int stamp = 0;
+  @Getter int stamp = 0;
+
+  /** A list of latches deferred until the end of the current transaction */
+  private final List<TransactionDefer> txDefers = new ArrayList<>();
+  /** Defers a latch to be executed at the end of the current transaction. */
+  private void deferPostTx(TransactionDefer latch) {
+    this.txDefers.add(latch);
+  }
+
+  /** A list of latches deferred until the end of the current opcode execution */
+  private final List<PostExecDefer> postExecDefers = new ArrayList<>();
+  /** Defers a latch to be executed after the completion of the current opcode. */
+  private void deferPostExec(PostExecDefer latch) {
+    this.postExecDefers.add(latch);
+  }
+
+  /** A list of latches deferred until the end of the current opcode execution */
+  private final List<NextContextDefer> nextContextDefers = new ArrayList<>();
+  /** Defers a latch to be executed after the completion of the current opcode. */
+  private void deferNextContext(NextContextDefer latch) {
+    this.nextContextDefers.add(latch);
+  }
 
   private final Module add;
   private final Module ext;
@@ -103,6 +211,10 @@ public class Hub implements Module {
     this.shf = shf;
     this.trm = trm;
     this.wcp = wcp;
+  }
+
+  public List<Module> getModules() {
+    return List.of(add, ext, mod, mul, shf, trm, wcp);
   }
 
   @Override
@@ -130,170 +242,71 @@ public class Hub implements Module {
         .contains(to);
   }
 
+  public static boolean isValidPrecompileCall(MessageFrame frame) {
+    return switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
+      case CALL, CALLCODE, STATICCALL, DELEGATECALL -> {
+        if (frame.stackSize() < 2) {
+          yield false; // invalid stack for a *CALL
+        }
+
+        Address targetAddress = Words.toAddress(frame.getStackItem(1));
+        yield isPrecompile(targetAddress);
+      }
+      default -> false;
+    };
+  }
+
   /**
    * Traces a skipped transaction, i.e. a “pure” transaction without EVM execution.
    *
    * @param frame the frame of the transaction
    */
-  void traceSkippedTx(MessageFrame frame) {
+  void processStateSkip(MessageFrame frame) {
     this.stamp++;
-    Quantity value = this.currentTx.getValue();
+    var world = frame.getWorldUpdater();
     boolean isDeployment = this.currentTx.getTo().isEmpty();
 
+    //
     // 3 lines -- account changes
+    //
     // From account information
-    EWord from = EWord.of(this.currentTx.getSender());
     Address fromAddress = this.currentTx.getSender();
-    Account fromAccount = frame.getWorldUpdater().get(fromAddress);
-    long fromNonce = fromAccount.getNonce();
-    Wei currentFromBalance = fromAccount.getBalance();
-    Wei newFromBalance = currentFromBalance.subtract((Wei) value);
-    Code fromCode = frame.getCode();
-    EWord fromCodeHash = EWord.of(fromCode.getCodeHash());
-    this.traceCommon()
-        .peekAtAccount(true)
-        .pAccountAddressHi(from.hiBigInt())
-        .pAccountAddressLo(from.loBigInt())
-        .pAccountBalance(currentFromBalance.toUnsignedBigInteger())
-        .pAccountBalanceNew(newFromBalance.toUnsignedBigInteger())
-        .pAccountCodeHashHi(fromCodeHash.hiBigInt())
-        .pAccountCodeHashLo(fromCodeHash.loBigInt())
-        .pAccountCodeHashHiNew(fromCodeHash.hiBigInt())
-        .pAccountCodeHashLoNew(fromCodeHash.loBigInt())
-        .pAccountCodeSize(BigInteger.valueOf(fromCode.getSize()))
-        .pAccountCodeSizeNew(BigInteger.valueOf(fromCode.getSize()))
-        .pAccountDeploymentNumber(BigInteger.ZERO)
-        .pAccountDeploymentNumberInfty(BigInteger.ZERO)
-        .pAccountDeploymentNumberNew(BigInteger.ZERO)
-        .pAccountDeploymentStatus(BigInteger.ZERO)
-        .pAccountDeploymentStatusInfty(false)
-        .pAccountDeploymentStatusNew(BigInteger.ZERO)
-        .pAccountExists(true)
-        .pAccountExistsNew(true)
-        .pAccountSufficientBalance(true)
-        .pAccountHasCode(false)
-        .pAccountHasCodeNew(false)
-        .pAccountIsPrecompile(false)
-        .pAccountNonce(BigInteger.valueOf(fromNonce))
-        .pAccountNonceNew(BigInteger.valueOf(fromNonce + 1))
-        .pAccountWarm(false)
-        .pAccountWarmNew(true)
-        .fillAndValidateRow();
+    AccountSnapshot oldFromAccount =
+        AccountSnapshot.fromAccount(
+            world.get(fromAddress), false, this.deploymentNumber(fromAddress), false);
 
     // To account information
-    Address toAddress = effectiveToAddress(this.currentTx, fromAccount);
-    EWord eToAddress = EWord.of(toAddress);
-    Optional<Account> toAccount = Optional.of(frame.getWorldUpdater().get(toAddress));
-    Optional<Long> toNonce = toAccount.map(Account::getNonce);
-    Wei currentToBalance = frame.getWorldUpdater().getAccount(toAddress).getBalance();
-    Wei newToBalance = currentToBalance.add((Wei) value);
-    Bytes toCode = toAccount.map(Account::getCode).orElse(Bytes.EMPTY);
-    EWord toCodeHash = EWord.of(toAccount.map(Account::getCodeHash).orElse(Hash.EMPTY));
-    this.traceCommon()
-        .peekAtAccount(true)
-        .pAccountAddressHi(eToAddress.hiBigInt())
-        .pAccountAddressLo(eToAddress.loBigInt())
-        .pAccountBalance(currentToBalance.toUnsignedBigInteger())
-        .pAccountBalanceNew(newToBalance.toUnsignedBigInteger())
-        .pAccountCodeHashHi(toCodeHash.hiBigInt())
-        .pAccountCodeHashLo(toCodeHash.loBigInt())
-        .pAccountCodeHashHiNew(toCodeHash.hiBigInt())
-        .pAccountCodeHashLoNew(toCodeHash.loBigInt())
-        .pAccountCodeSize(BigInteger.valueOf(toCode.size()))
-        .pAccountCodeSizeNew(BigInteger.valueOf(toCode.size()))
-        .pAccountDeploymentNumber(BigInteger.ZERO)
-        .pAccountDeploymentNumberInfty(BigInteger.ZERO)
-        .pAccountDeploymentNumberNew(BigInteger.ZERO)
-        .pAccountDeploymentStatus(BigInteger.ZERO)
-        .pAccountDeploymentStatusInfty(false)
-        .pAccountDeploymentStatusNew(BigInteger.ZERO)
-        .pAccountExists(!isDeployment)
-        .pAccountExistsNew(true)
-        .pAccountSufficientBalance(true)
-        .pAccountHasCode(!toCode.isEmpty())
-        .pAccountHasCodeNew(!toCode.isEmpty())
-        .pAccountIsPrecompile(false)
-        .pAccountNonce(BigInteger.valueOf(isDeployment ? 0L : toNonce.orElse(0L)))
-        .pAccountNonceNew(BigInteger.valueOf(isDeployment ? 1L : toNonce.orElse(0L)))
-        .pAccountWarm(false)
-        .pAccountWarmNew(true)
-        .fillAndValidateRow();
+    Address toAddress = effectiveToAddress(this.currentTx, fromAddress, 0);
+    boolean toIsWarm =
+        (fromAddress == toAddress)
+            || isPrecompile(toAddress); // should never happen – no TX to PC allowed
+    AccountSnapshot oldToAccount =
+        AccountSnapshot.fromAccount(
+            world.get(toAddress), toIsWarm, this.deploymentNumber(toAddress), false);
 
-    // Basecoin/miner information
+    // Miner account information
     Address minerAddress = frame.getMiningBeneficiary();
-    EWord eMinerAddress = EWord.of(minerAddress);
-    Optional<Account> minerAccount = Optional.ofNullable(frame.getWorldUpdater().get(minerAddress));
-    Optional<Long> minerNonce = minerAccount.map(Account::getNonce);
-    Bytes minerCode = minerAccount.map(Account::getCode).orElse(Bytes.EMPTY);
-    EWord minerCodeHash = EWord.of(minerAccount.map(Account::getCodeHash).orElse(Hash.EMPTY));
+    boolean minerIsWarm =
+        (minerAddress == fromAddress) || (minerAddress == toAddress) || isPrecompile(minerAddress);
+    AccountSnapshot oldMinerAccount =
+        AccountSnapshot.fromAccount(
+            world.get(minerAddress), minerIsWarm, this.deploymentNumber(minerAddress), false);
 
-    Wei currentMinerBalance =
-        frame.getWorldUpdater().get(frame.getMiningBeneficiary()).getBalance();
-    Wei newMinerBalance = Wei.ZERO; // TODO: latch it
-    this.traceCommon()
-        .peekAtAccount(true)
-        .pAccountAddressHi(eMinerAddress.hiBigInt())
-        .pAccountAddressLo(eMinerAddress.loBigInt())
-        .pAccountIsPrecompile(isPrecompile(minerAddress))
-        .pAccountNonce(
-            BigInteger.valueOf(
-                (isDeployment && minerAddress == toAddress)
-                    ? 1L
-                    : minerAddress == fromAddress
-                        ? fromNonce + 1
-                        : minerNonce.orElse(0L))) // TODO: check == behaviour
-        .pAccountNonceNew(
-            BigInteger.valueOf(
-                (isDeployment && minerAddress == toAddress)
-                    ? 1L
-                    : minerAddress == fromAddress ? fromNonce + 1 : minerNonce.orElse(0L)))
-        .pAccountBalance(currentMinerBalance.toUnsignedBigInteger())
-        .pAccountBalanceNew(newMinerBalance.toUnsignedBigInteger())
-        .pAccountCodeSize(BigInteger.valueOf(minerCode.size()))
-        .pAccountCodeSizeNew(BigInteger.valueOf(minerCode.size()))
-        .pAccountCodeHashHi(minerCodeHash.hiBigInt())
-        .pAccountCodeHashLo(minerCodeHash.loBigInt())
-        .pAccountCodeHashHiNew(minerCodeHash.hiBigInt())
-        .pAccountCodeHashLoNew(minerCodeHash.loBigInt())
-        .pAccountHasCode(!minerCode.isEmpty())
-        .pAccountHasCodeNew(!minerCode.isEmpty())
-        .pAccountExists(minerAccount.isPresent() || (isDeployment && minerAddress == toAddress))
-        .pAccountExistsNew(
-            minerAccount.isPresent()
-                || this.currentTx
-                    .getGasPrice()
-                    .map(g -> g.getAsBigInteger() != BigInteger.ZERO)
-                    .orElse(false)) // TODO: latch it?
-        .pAccountWarm(
-            isPrecompile(minerAddress) || minerAddress == fromAddress || minerAddress == toAddress)
-        .pAccountWarmNew(true)
-        .pAccountDeploymentNumber(BigInteger.ZERO)
-        .pAccountDeploymentNumberNew(BigInteger.ZERO)
-        .pAccountDeploymentStatus(BigInteger.ZERO)
-        .pAccountDeploymentStatusNew(BigInteger.ZERO)
-        .pAccountSufficientBalance(true)
-        .pAccountDeploymentStatusInfty(false)
-        .fillAndValidateRow();
+    // Putatively update deployment number
+    if (isDeployment) {
+      this.increaseDeploymentNumber(toAddress);
+    }
 
-    // 1 line -- tx data
-    this.traceCommon()
-        .peekAtTransaction(true)
-        .pTransactionBatchNumber(BigInteger.valueOf(this.batchNumber))
-        .pTransactionNonce(BigInteger.valueOf(this.currentTx.getNonce()))
-        .pTransactionIsDeployment(isDeployment)
-        .pTransactionFromAddressHi(from.hiBigInt())
-        .pTransactionFromAddressLo(from.loBigInt())
-        .pTransactionToAddressHi(eToAddress.hiBigInt())
-        .pTransactionToAddressLo(eToAddress.loBigInt())
-        .pTransactionInitGas(computeInitGas(this.currentTx))
-        .pTransactionValue(value.getAsBigInteger())
-        .pTransactionGasFee(frame.getGasPrice().toUnsignedBigInteger())
-        .fillAndValidateRow();
+    this.deferPostTx(
+        new SkippedTransactionDefer(
+            oldFromAccount,
+            oldToAccount,
+            oldMinerAccount,
+            frame.getGasPrice(),
+            frame.getBlockValues().getBaseFee().orElse(Wei.ZERO)));
   }
 
   public static BigInteger computeInitGas(Transaction tx) {
-    GasCalculator gc = new LondonGasCalculator();
-
     boolean isDeployment = tx.getTo().isEmpty();
     return BigInteger.valueOf(
         tx.getGasLimit()
@@ -304,57 +317,55 @@ public class Hub implements Module {
   /**
    * Fill the columns shared by all operations.
    *
-   * @return the partially filled trace row
+   * @return a chunk representing the share columns
    */
-  public Trace.TraceBuilder traceCommon() {
-    return this.trace
-        .absoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
-        .batchNumber(BigInteger.valueOf(this.batchNumber))
-        .txSkip(this.txState == TxState.TX_SKIP)
-        .txWarm(this.txState == TxState.TX_WARM)
-        .txInit(this.txState == TxState.TX_INIT)
-        .txExec(this.txState == TxState.TX_STATE)
-        .txFinl(this.txState == TxState.TX_FINAL)
-        .hubStamp(BigInteger.valueOf(this.stamp))
-        .transactionEndStamp(BigInteger.ZERO) // TODO
-        .transactionReverts(BigInteger.ZERO) // TODO
-        .contextMayChangeFlag(false) // TODO
-        .exceptionAhoyFlag(false) // TODO
-        .abortFlag(false) // TODO
-        .failureConditionFlag(false) // TODO
-
-        // Context data
-        .contextNumber(BigInteger.valueOf(this.currentFrame().getContextNumber()))
-        .contextNumberNew(BigInteger.ZERO) // TODO
-        .contextRevertStamp(BigInteger.ZERO) // TODO
-        .contextWillRevertFlag(false) // TODO
-        .contextGetsRevrtdFlag(false) // TODO
-        .contextSelfRevrtsFlag(false) // TODO
-        .programCounter(BigInteger.valueOf(this.pc))
-        .programCounterNew(BigInteger.ZERO) // TODO
-
-        // Bytecode metadata
-        .codeAddressHi(this.currentFrame().addressAsEWord().hiBigInt())
-        .codeAddressLo(this.currentFrame().addressAsEWord().loBigInt())
-        .codeDeploymentNumber(BigInteger.valueOf(this.currentFrame().getAccountDeploymentNumber()))
-        .codeDeploymentStatus(false) // TODO
-        .callerContextNumber(
-            BigInteger.valueOf(this.callStack.caller().getAccountDeploymentNumber()))
-        .gasExpected(BigInteger.ZERO)
-        .gasActual(BigInteger.ZERO)
-        .gasCost(BigInteger.ZERO)
-        .gasNext(BigInteger.ZERO)
-        .gasRefund(BigInteger.ZERO)
-        .twoLineInstruction(this.opCodeData().stackSettings().twoLinesInstruction())
-        .counterTli(false)
-        .numberOfNonStackRows(BigInteger.ZERO)
-        .counterNsr(BigInteger.ZERO);
+  public CommonFragment traceCommon() {
+    return new CommonFragment(
+        this.txNumber,
+        this.batchNumber,
+        this.txState,
+        this.stamp,
+        0,
+        false, // TODO
+        this.opCodeData().instructionFamily(),
+        this.exceptions.snapshot(),
+        false, // TODO
+        false, // TODO
+        this.currentFrame().getContextNumber(),
+        this.currentFrame().getContextNumber(),
+        0, // TODO
+        false, // TODO
+        false, // TODO
+        false, // TODO
+        this.pc,
+        this.pc,
+        this.currentFrame().addressAsEWord(),
+        this.currentFrame().getCodeDeploymentNumber(),
+        this.currentFrame().isCodeDeploymentStatus(),
+        this.currentFrame().getAccountDeploymentNumber(),
+        0,
+        0,
+        0,
+        0,
+        0, // TODO
+        this.opCodeData().stackSettings().twoLinesInstruction(),
+        false, // TODO -- retcon with stack
+        0, // TODO -- do it now
+        0 // TODO -- do it now
+        );
   }
 
   void processStateWarm() {
     this.stamp++;
-    // x lines - warm addresses
-    // y lines - warm storage keys
+    // reproduction ordonnée des préchauffages de la Tx
+    this.currentTx
+        .getAccessList()
+        .ifPresent(
+            preWarmed -> {
+              for (AccessListEntry entry : preWarmed) {
+                // TODO
+              }
+            });
   }
 
   void processStateInit() {
@@ -367,7 +378,7 @@ public class Hub implements Module {
     return this.trace.size();
   }
 
-  private CallFrame currentFrame() {
+  public CallFrame currentFrame() {
     return this.callStack.top();
   }
 
@@ -439,40 +450,77 @@ public class Hub implements Module {
     this.triggerModules(frame);
 
     if (this.currentFrame().getStack().isOk()) {
-      /*
-      this.handleCallReturnData
-      this.handleMemory
-      this.handleRam
-       */
+      this.traceOperation(frame);
+    } else {
+      this.addTraceSection(new StackOnlySection(this));
     }
-
-    this.updateTrace();
   }
 
   void processStateFinal() {
     this.stamp++;
-    // if no revert: 2 account rows (sender, coinbase) + 1 tx row
-    // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
+
+    // TODO: waiting on Besu PR
+
+    //    Address fromAddress = this.currentTx.getSender();
+    //    Account fromAccount; // TODO
+    //    AccountSnapshot fromSnapshot =
+    //        AccountSnapshot.fromAccount(
+    //            fromAccount, true, this.deploymentNumber(fromAddress),
+    // this.isDeploying(fromAddress));
+    //
+    //    Address minerAddress;
+    //    Account minerAccount; // TODO
+    //    AccountSnapshot minerSnapshot =
+    //        AccountSnapshot.fromAccount(
+    //            minerAccount,
+    //            true,
+    //            this.deploymentNumber(minerAddress),
+    //            this.isDeploying(minerAddress));
+    //
+    //    if (true /* TODO: statusCode == 1 */) {
+    //      // if no revert: 2 account rows (sender, coinbase) + 1 tx row
+    //      this.addTraceSection(
+    //          new EndTransaction(
+    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+    //              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
+    //              new TransactionFragment(
+    //                  this.batchNumber,
+    //                  minerAddress,
+    //                  this.currentTx,
+    //                  true,
+    //                  this.currentTx.getGasPrice(),
+    //                  this.baseFee)));
+    //    } else {
+    //      Address toAddress = this.currentTx.getSender();
+    //      Account toAccount; // TODO
+    //      AccountSnapshot toSnapshot =
+    //          AccountSnapshot.fromAccount(
+    //              toAccount, true, this.deploymentNumber(toAddress), this.isDeploying(toAddress));
+    //      // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
+    //      this.addTraceSection(
+    //          new EndTransaction(
+    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+    //              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
+    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+    //              new AccountFragment(toSnapshot, toSnapshot, false, 0, false)));
+    //    }
 
     this.txState = TxState.TX_PRE_INIT;
   }
 
   /**
-   * Compute the effective address of a transaction target, i.e. the specified target if explicitely
+   * Compute the effective address of a transaction target, i.e. the specified target if explicitly
    * set, or the to-be-deployed address otherwise.
    *
-   * @param tx the transaction to find the target for
-   * @param senderAccount the transaction sender account
    * @return the effective target address of tx
    */
-  private static Address effectiveToAddress(Transaction tx, Account senderAccount) {
-    return tx.getTo()
-        .map(x -> (Address) x)
-        .orElse(Address.contractAddress(senderAccount.getAddress(), senderAccount.getNonce()));
+  private static Address effectiveToAddress(Transaction tx, Address fromAddress, long fromNonce) {
+    return tx.getTo().map(x -> (Address) x).orElse(Address.contractAddress(fromAddress, fromNonce));
   }
 
   @Override
   public void traceStartTx(Transaction tx) {
+    this.chunkNewTransaction();
     if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
     } else {
@@ -485,9 +533,14 @@ public class Hub implements Module {
   }
 
   @Override
-  public void traceEndTx() {
+  public void traceEndTx(final Bytes output, final long gasUsed) {
     this.txState = TxState.TX_FINAL;
     this.processStateFinal();
+
+    for (TransactionDefer defer : this.txDefers) {
+      defer.run(this, null, this.currentTx); // TODO
+    }
+    this.txDefers.clear();
   }
 
   private void txInit(final MessageFrame frame) {
@@ -495,37 +548,36 @@ public class Hub implements Module {
     if ((!frame.getRecipientAddress().equals(ADDRESS_ZERO)
             && frame.getCode().getSize() == 0) // pure transaction
         || (frame.getRecipientAddress().equals(ADDRESS_ZERO)
-            && frame.getInputData().isEmpty())) { // contract creation without initcode
+            && frame.getInputData().isEmpty())) { // contract creation without init code
       this.txState = TxState.TX_SKIP;
-      this.traceSkippedTx(frame);
+      this.processStateSkip(frame);
       return;
     }
 
-    var to = this.currentTx.getTo();
-    boolean isDeployment = to.isEmpty();
+    var fromAddress = this.currentTx.getSender();
+    boolean isDeployment = this.currentTx.getTo().isEmpty();
     Address toAddress =
-        effectiveToAddress(this.currentTx, frame.getWorldUpdater().getSenderAccount(frame));
+        effectiveToAddress(
+            this.currentTx, fromAddress, frame.getWorldUpdater().get(fromAddress).getNonce());
     this.callStack =
         new CallStack(
             toAddress,
             isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
-            CodeV0.EMPTY_CODE, // TODO
+            new Bytecode(frame.getWorldUpdater().getAccount(toAddress).getCode()),
             Wei.of(this.currentTx.getValue().getAsBigInteger()),
             this.currentTx.getGasLimit(),
             this.currentTx.getData().orElse(Bytes.EMPTY),
             this.maxContextNumber,
-            0, // TODO
-            to.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(to.get(), 0),
-            false); // TODO
+            this.deploymentNumber(toAddress),
+            toAddress.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(toAddress, 0),
+            this.isDeploying(toAddress));
 
-    if (false /* doWarm */) {
-      this.processStateWarm();
-    }
+    this.processStateWarm();
     this.processStateInit();
     this.txState = TxState.TX_STATE;
   }
 
-  private void unlatchStack(MessageFrame frame, boolean failureState, boolean mxpx) {
+  private void unlatchStack(MessageFrame frame, boolean mxpx) {
     if (this.currentFrame().getPending() == null) {
       return;
     }
@@ -534,12 +586,12 @@ public class Hub implements Module {
     for (StackLine line : pending.getLines()) {
       if (line.needsResult()) {
         EWord result = EWord.ZERO;
-        if (!failureState) {
+        if (!exceptions.any()) {
           result = EWord.of(frame.getStackItem(0));
         }
 
         // This works because we are certain that the stack chunks are the first.
-        ((StackChunk) traceChunks.get(traceChunks.size() - 1).get(line.ct()))
+        ((StackFragment) this.currentTraceSection().getLines().get(2 * line.ct() + 1).specific())
             .stackOps()
             .get(line.resultColumn() - 1)
             .setValue(result);
@@ -550,22 +602,37 @@ public class Hub implements Module {
   @Override
   public void traceContextEnter(MessageFrame frame) {
     this.maxContextNumber += 1;
+
+    final boolean isDeployment = frame.getType() == MessageFrame.Type.CONTRACT_CREATION;
+    final Address codeAddress = frame.getContractAddress();
+    final CallFrameType frameType =
+        frame.isStatic() ? CallFrameType.STATIC : CallFrameType.STANDARD;
+    if (isDeployment) {
+      this.markDeploying(codeAddress);
+    }
+    final int codeDeploymentNumber = this.deploymentNumber.getOrDefault(codeAddress, 0);
     this.callStack.enter(
         frame.getContractAddress(),
-        frame.getCode(),
-        this.callStack.top().getType().ofOpCode(OpCode.of(frame.getCurrentOperation().getOpcode())),
+        new Bytecode(frame.getCode().getBytes()),
+        frameType,
         frame.getValue(),
         frame.getRemainingGas(),
         this.trace.size(),
         frame.getInputData(),
-        this.maxContextNumber,
-        0,
-        this.deploymentNumber.getOrDefault(frame.getContractAddress(), 0),
-        false);
+        this.stamp + 1,
+        this.deploymentNumber.getOrDefault(codeAddress, 0),
+        codeDeploymentNumber,
+        isDeployment);
+
+    for (NextContextDefer defer : this.nextContextDefers) {
+      defer.run(this, frame);
+    }
+    this.nextContextDefers.clear();
   }
 
   @Override
   public void traceContextExit(MessageFrame frame) {
+    unmarkDeploying(this.currentFrame().getCodeAddress());
     this.callStack.exit(this.trace.size() - 1, frame.getReturnData());
   }
 
@@ -584,11 +651,16 @@ public class Hub implements Module {
 
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
     boolean mxpx = false;
-    this.unlatchStack(frame, false, mxpx);
+    this.unlatchStack(frame, mxpx);
 
     if (this.opCode.isCreate() && operationResult.getHaltReason() == null) {
       this.handleCreate(Address.wrap(frame.getStackItem(0)));
     }
+
+    for (PostExecDefer defer : this.postExecDefers) {
+      defer.run(this, frame, operationResult);
+    }
+    this.postExecDefers.clear();
   }
 
   private void handleCreate(Address target) {
@@ -606,20 +678,42 @@ public class Hub implements Module {
   }
 
   @Override
+  public void traceEndConflation() {
+    for (List<TraceSection> txSections : this.traceSections) {
+      for (TraceSection section : txSections) {
+        section.retcon(this);
+      }
+    }
+  }
+
+  @Override
   public Object commit() {
-    for (List<TraceChunk> opChunks : traceChunks) {
-      for (TraceChunk chunk : opChunks) {
-        this.traceCommon();
-        chunk.trace(this.trace);
-        this.trace.fillAndValidateRow();
+    for (var txSection : this.traceSections) {
+      for (TraceSection opSection : txSection) {
+        for (TraceSection.TraceLine line : opSection.getLines()) {
+          line.trace(this.trace);
+        }
       }
     }
     return new HubTrace(trace.build());
   }
 
-  void updateTrace() {
-    var opChunks = new ArrayList<TraceChunk>();
-    this.makeStackChunks(opChunks);
+  public int lineCount() {
+    int count = 0;
+    for (var txSection : this.traceSections) {
+      for (TraceSection opSection : txSection) {
+        count += opSection.getLines().size();
+      }
+    }
+    return count;
+  }
+
+  void traceOperation(MessageFrame frame) {
+    boolean updateReturnData =
+        this.opCodeData().isHalt()
+            || this.opCodeData().isInvalid()
+            || exceptions.any()
+            || isValidPrecompileCall(frame);
 
     switch (this.opCodeData().instructionFamily()) {
       case ADD,
@@ -636,64 +730,206 @@ public class Hub implements Module {
           DUP,
           SWAP,
           HALT,
-          INVALID -> {}
-      case CONTEXT, LOG -> {
-        //        opChunks.add(new ContextChunk());
-      }
+          INVALID -> this.addTraceSection(new StackOnlySection(this));
+      case CONTEXT, LOG -> this.addTraceSection(
+          new ContextLogSection(
+              this, new ContextFragment(this.callStack, this.currentFrame(), updateReturnData)));
       case ACCOUNT -> {
+        TraceSection accountSection = new AccountSection(this);
         if (this.opCodeData().stackSettings().flag1()) {
-          //          opChunks.add(new ContextChunk());
-          //          opChunks.add(new AccountChunk());
-        } else {
-          //          opChunks.add(new AccountChunk());
+          accountSection.addChunk(
+              this, new ContextFragment(this.callStack, this.currentFrame(), updateReturnData));
         }
+
+        Address targetAddress =
+            switch (this.opCode) {
+              case BALANCE, EXTCODESIZE, EXTCODEHASH -> Address.wrap(frame.getStackItem(0));
+              default -> Address.wrap(this.currentFrame().getAddress());
+            };
+        Account targetAccount = frame.getWorldUpdater().getAccount(targetAddress);
+        AccountSnapshot accountSnapshot =
+            AccountSnapshot.fromAccount(
+                targetAccount,
+                frame.isAddressWarm(targetAddress),
+                this.deploymentNumber(targetAddress),
+                this.isDeploying(targetAddress));
+        accountSection.addChunk(
+            this, new AccountFragment(accountSnapshot, accountSnapshot, false, 0, false));
+
+        this.addTraceSection(accountSection);
       }
       case COPY -> {
+        TraceSection copySection = new CopySection(this);
         if (this.opCodeData().stackSettings().flag1()) {
-          //          opChunks.add(new AccountChunk());
+          Address targetAddress =
+              switch (this.opCode) {
+                case CODECOPY -> this.currentFrame().getCodeAddress();
+                case EXTCODECOPY -> Words.toAddress(frame.getStackItem(0));
+                default -> {
+                  throw new IllegalStateException("unexpected opcode");
+                }
+              };
+          Account targetAccount = frame.getWorldUpdater().getAccount(targetAddress);
+          AccountSnapshot accountSnapshot =
+              AccountSnapshot.fromAccount(
+                  targetAccount,
+                  frame.isAddressWarm(targetAddress),
+                  this.deploymentNumber(targetAddress),
+                  this.isDeploying(targetAddress));
+
+          copySection.addChunk(
+              this, new AccountFragment(accountSnapshot, accountSnapshot, false, 0, false));
         } else {
-          //          opChunks.add(new ContextChunk());
+          copySection.addChunk(
+              this, new ContextFragment(this.callStack, this.currentFrame(), updateReturnData));
         }
+        this.addTraceSection(copySection);
       }
-      case TRANSACTION -> {
-        //        opChunks.add(new TransactionChunk());
-      }
+      case TRANSACTION -> this.addTraceSection(
+          new TransactionSection(
+              this,
+              new TransactionFragment(
+                  this.batchNumber,
+                  frame.getMiningBeneficiary(),
+                  this.currentTx,
+                  true,
+                  frame.getGasPrice(),
+                  frame.getBlockValues().getBaseFee().orElse(Wei.ZERO))));
+
       case STACK_RAM -> {
+        TraceSection stackRamSection = new StackRam(this);
         if (this.opCodeData().stackSettings().flag2()) {
-          //          opChunks.add(new ContextChunk());
+          stackRamSection.addChunk(
+              this, new ContextFragment(this.callStack, this.currentFrame(), updateReturnData));
         }
+        this.addTraceSection(stackRamSection);
       }
       case STORAGE -> {
-        //        opChunks.add(new ContextChunk());
-        //        opChunks.add(new StorageChunk());
+        Address address = this.currentFrame().getAddress();
+        EWord key = EWord.of(frame.getStackItem(0));
+        switch (this.opCode) {
+          case SSTORE -> {
+            EWord valNext = EWord.of(frame.getStackItem(0));
+            this.addTraceSection(
+                new StorageSection(
+                    this,
+                    new ContextFragment(this.callStack, this.currentFrame(), updateReturnData),
+                    new StorageFragment(
+                        address,
+                        this.currentFrame().getAccountDeploymentNumber(),
+                        key,
+                        getValOrigOrUpdate(address, key, valNext),
+                        EWord.of(frame.getTransientStorageValue(address, key)),
+                        valNext,
+                        frame.isStorageWarm(address, key),
+                        true)));
+          }
+          case SLOAD -> {
+            EWord valCurrent = EWord.of(frame.getTransientStorageValue(address, key));
+            this.addTraceSection(
+                new StorageSection(
+                    this,
+                    new ContextFragment(this.callStack, this.currentFrame(), updateReturnData),
+                    new StorageFragment(
+                        address,
+                        this.currentFrame().getAccountDeploymentNumber(),
+                        key,
+                        getValOrigOrUpdate(address, key),
+                        valCurrent,
+                        valCurrent,
+                        frame.isStorageWarm(address, key),
+                        true)));
+          }
+          default -> throw new IllegalStateException("invalid operation in family STORAGE");
+        }
       }
-      case CREATE, CALL -> {
-        //        opChunks.add(new ContextChunk());
-        //        opChunks.add(new AccountChunk());
-        //        opChunks.add(new AccountChunk());
-        //        opChunks.add(new AccountChunk());
+      case CREATE -> {
+        Address myAddress = this.currentFrame().getAddress();
+        Account myAccount = frame.getWorldUpdater().getAccount(myAddress);
+        AccountSnapshot myAccountSnapshot =
+            AccountSnapshot.fromAccount(
+                myAccount,
+                frame.isAddressWarm(myAddress),
+                this.deploymentNumber(myAddress),
+                this.isDeploying(myAddress));
+
+        Address createdAddress = this.currentFrame().getAddress();
+        Account createdAccount = frame.getWorldUpdater().getAccount(createdAddress);
+        AccountSnapshot createdAccountSnapshot =
+            AccountSnapshot.fromAccount(
+                createdAccount,
+                frame.isAddressWarm(myAddress),
+                this.deploymentNumber(myAddress),
+                this.isDeploying(myAddress));
+
+        CreateDefer protoCreateSection =
+            new CreateDefer(
+                myAccountSnapshot,
+                createdAccountSnapshot,
+                new ContextFragment(this.callStack, this.currentFrame(), updateReturnData));
+        // Will be traced in one (and only one!) of these depending on the success of the operation
+        this.deferPostExec(protoCreateSection);
+        this.deferNextContext(protoCreateSection);
+      }
+      case CALL -> {
+        Address myAddress = this.currentFrame().getAddress();
+        Account myAccount = frame.getWorldUpdater().getAccount(myAddress);
+        AccountSnapshot myAccountSnapshot =
+            AccountSnapshot.fromAccount(
+                myAccount,
+                frame.isAddressWarm(myAddress),
+                this.deploymentNumber(myAddress),
+                this.isDeploying(myAddress));
+
+        Address calledAddress = Address.wrap(frame.getStackItem(1));
+        Account calledAccount = frame.getWorldUpdater().getAccount(calledAddress);
+        AccountSnapshot calledAccountSnapshot =
+            AccountSnapshot.fromAccount(
+                calledAccount,
+                frame.isAddressWarm(myAddress),
+                this.deploymentNumber(myAddress),
+                this.isDeploying(myAddress));
+
+        CallDefer protoCallSection =
+            new CallDefer(
+                myAccountSnapshot,
+                calledAccountSnapshot,
+                new ContextFragment(this.callStack, this.currentFrame(), updateReturnData));
+
+        this.deferPostExec(protoCallSection);
+        this.deferNextContext(protoCallSection);
       }
       case JUMP -> {
-        //        opChunks.add(new ContextChunk());
-        //        opChunks.add(new AccountChunk());
+        AccountSnapshot codeAccountSnapshot =
+            AccountSnapshot.fromAccount(
+                frame.getWorldUpdater().getAccount(this.currentFrame().getCodeAddress()),
+                true,
+                this.deploymentNumber(this.currentFrame().getCodeAddress()),
+                this.currentFrame().isCodeDeploymentStatus());
+
+        this.addTraceSection(
+            new JumpSection(
+                this,
+                new ContextFragment(this.callStack, this.currentFrame(), updateReturnData),
+                new AccountFragment(codeAccountSnapshot, codeAccountSnapshot, false, 0, false)));
       }
     }
-
-    this.traceChunks.add(opChunks);
   }
 
-  void makeStackChunks(List<TraceChunk> currentChunks) {
+  public List<TraceFragment> makeStackChunks() {
+    List<TraceFragment> r = new ArrayList<>();
     if (this.currentFrame().getPending().getLines().isEmpty()) {
       for (int i = 0; i < (this.opCodeData().stackSettings().twoLinesInstruction() ? 2 : 1); i++) {
-        currentChunks.add(
-            new StackChunk(
+        r.add(
+            new StackFragment(
                 this.currentFrame().getStack().snapshot(), new StackLine(i).asStackOperations()));
       }
     } else {
       for (StackLine line : this.currentFrame().getPending().getLines()) {
-        currentChunks.add(
-            new StackChunk(this.currentFrame().getStack().snapshot(), line.asStackOperations()));
+        r.add(
+            new StackFragment(this.currentFrame().getStack().snapshot(), line.asStackOperations()));
       }
     }
+    return r;
   }
 }

@@ -13,14 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.section;
 
-public enum TxState {
-  // A state marking the first trace of the current tx, required to set up some things
-  TX_PRE_INIT,
-  TX_STATE,
-  TX_FINAL,
-  TX_INIT,
-  TX_SKIP,
-  TX_WARM,
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
+
+public class ContextLogSection extends TraceSection {
+  public ContextLogSection(Hub hub, TraceFragment... chunks) {
+    this.addChunksAndStack(hub, chunks);
+  }
+
+  @Override
+  public void seal(Hub hub) {}
 }
