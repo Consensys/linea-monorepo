@@ -12,6 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
 package net.consensys.linea.zktracer.testing;
 
 import static org.hyperledger.besu.evm.frame.MessageFrame.DEFAULT_MAX_STACK_SIZE;
@@ -37,7 +38,7 @@ import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 public class TestMessageFrameBuilder {
 
   public static final Address DEFAULT_ADDRESS = Address.fromHexString("0xe8f1b89");
-  private static final int maxStackSize = DEFAULT_MAX_STACK_SIZE;
+  private final int maxStackSize = DEFAULT_MAX_STACK_SIZE;
 
   private Deque<MessageFrame> messageFrameStack = new ArrayDeque<>();
   private Optional<BlockValues> blockValues = Optional.empty();
@@ -152,7 +153,7 @@ public class TestMessageFrameBuilder {
     final MessageFrame frame =
         MessageFrame.builder()
             .type(MessageFrame.Type.MESSAGE_CALL)
-            .worldUpdater(worldUpdater.orElseGet(this::createDefaultWorldUpdater))
+            .worldUpdater(worldUpdater.orElseGet(ToyWorld::empty))
             .initialGas(initialGas)
             .address(address)
             .originator(originator)
@@ -163,7 +164,8 @@ public class TestMessageFrameBuilder {
             .apparentValue(value)
             .contract(contract)
             .code(code)
-            .blockValues(blockValues.orElseGet(() -> new FakeBlockValues(1337)))
+            .blockValues(
+                blockValues.orElseGet(() -> ToyBlockValues.builder().number(1337L).build()))
             .completer(c -> {})
             .miningBeneficiary(Address.ZERO)
             .blockHashLookup(blockHashLookup.orElse(number -> Hash.hash(Words.longBytes(number))))
@@ -176,9 +178,5 @@ public class TestMessageFrameBuilder {
     frame.writeMemory(0, memory.size(), memory);
 
     return frame;
-  }
-
-  private WorldUpdater createDefaultWorldUpdater() {
-    return new ToyWorld();
   }
 }
