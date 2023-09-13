@@ -19,7 +19,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-record Exceptions(
+public record Exceptions(
     boolean invalidOpcode,
     boolean stackUnderflow,
     boolean stackOverflow,
@@ -38,6 +38,20 @@ record Exceptions(
     return !this.stackOverflow() && !this.stackUnderflow();
   }
 
+  public Exceptions snapshot() {
+    return new Exceptions(
+        invalidOpcode,
+        stackUnderflow,
+        stackOverflow,
+        outOfMemoryExpansion,
+        outOfGas,
+        returnDataCopyFault,
+        jumpFault,
+        staticViolation,
+        outOfSStore,
+        invalidCodePrefix,
+        codeSizeOverflow);
+  }
   /**
    * @return true if any exception flag has been raised
    */

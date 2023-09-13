@@ -25,7 +25,7 @@ import net.consensys.linea.zktracer.module.hub.stack.Stack;
 import net.consensys.linea.zktracer.module.hub.stack.StackOperation;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 
-public record StackChunk(Stack stack, List<StackOperation> stackOps) implements TraceChunk {
+public record StackFragment(Stack stack, List<StackOperation> stackOps) implements TraceFragment {
   @Override
   public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
     final List<Function<BigInteger, Trace.TraceBuilder>> valHiTracers =

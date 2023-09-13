@@ -13,14 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub;
+package net.consensys.linea.zktracer.module.hub.defer;
 
-public enum TxState {
-  // A state marking the first trace of the current tx, required to set up some things
-  TX_PRE_INIT,
-  TX_STATE,
-  TX_FINAL,
-  TX_INIT,
-  TX_SKIP,
-  TX_WARM,
+import net.consensys.linea.zktracer.module.hub.Hub;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
+
+public interface PostExecDefer {
+  void run(Hub hub, MessageFrame frame, Operation.OperationResult operationResult);
 }

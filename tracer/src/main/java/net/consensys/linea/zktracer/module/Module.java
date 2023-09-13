@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module;
 import java.util.List;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -38,7 +39,7 @@ public interface Module {
 
   default void traceStartTx(Transaction tx) {}
 
-  default void traceEndTx() {}
+  default void traceEndTx(final Bytes output, final long gasUsed) {}
 
   default void traceContextEnter(MessageFrame frame) {}
 
