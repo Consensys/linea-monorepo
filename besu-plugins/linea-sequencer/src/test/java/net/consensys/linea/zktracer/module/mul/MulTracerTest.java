@@ -118,18 +118,15 @@ class MulTracerTest {
   }
 
   private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
-
-    for (OpCode opCode : MODULE.supportedOpCodes()) {
-      for (int k = 0; k <= 3; k++) {
-        for (int i = 0; i <= 3; i++) {
-          arguments.put(opCode, UInt256.valueOf(i));
-          arguments.put(opCode, UInt256.valueOf(k));
-        }
-      }
-    }
-
-    return arguments;
+    return DYN_TESTS.newModuleArgumentsProvider(
+        (arguments, opCode) -> {
+          for (int k = 0; k <= 3; k++) {
+            for (int i = 0; i <= 3; i++) {
+              arguments.put(opCode, UInt256.valueOf(i));
+              arguments.put(opCode, UInt256.valueOf(k));
+            }
+          }
+        });
   }
 
   private Multimap<OpCode, Bytes32> provideMultiplicationByZeroArguments() {

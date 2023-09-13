@@ -22,6 +22,7 @@ import java.util.NavigableMap;
 import java.util.function.Supplier;
 
 import com.google.common.base.Suppliers;
+import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -48,6 +49,7 @@ public class ToyAccount implements EvmAccount, MutableAccount {
       Suppliers.memoize(() -> code == null ? Hash.EMPTY : Hash.hash(code));
   private final Map<UInt256, UInt256> storage = new HashMap<>();
 
+  @Builder
   public ToyAccount(
       final Account parent,
       final Address address,

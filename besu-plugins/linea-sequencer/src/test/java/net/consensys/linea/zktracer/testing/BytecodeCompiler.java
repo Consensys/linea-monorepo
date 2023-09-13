@@ -55,6 +55,13 @@ public class BytecodeCompiler {
     return this;
   }
 
+  /**
+   * Add an opcode and a list of {@link Bytes32} opcode arguments to the bytecode sequence.
+   *
+   * @param opCode opcode to be added
+   * @param arguments list of arguments related to the opcode to be added
+   * @return current instance
+   */
   public BytecodeCompiler opAnd32ByteArgs(final OpCode opCode, final List<Bytes32> arguments) {
     for (Bytes32 argument : arguments) {
       push(argument);
