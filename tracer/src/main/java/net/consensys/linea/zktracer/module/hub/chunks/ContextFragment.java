@@ -22,8 +22,8 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
 import net.consensys.linea.zktracer.module.hub.callstack.CallStack;
 
-public record ContextChunk(CallStack callStack, CallFrame callFrame, boolean update)
-    implements TraceChunk {
+public record ContextFragment(CallStack callStack, CallFrame callFrame, boolean update)
+    implements TraceFragment {
   @Override
   public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
     EWord eAddress = callFrame.addressAsEWord();

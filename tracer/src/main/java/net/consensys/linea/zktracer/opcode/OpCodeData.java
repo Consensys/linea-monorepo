@@ -54,4 +54,22 @@ public record OpCodeData(
   boolean isPush() {
     return (0x60 <= this.value) && (this.value < 0x80);
   }
+
+  /**
+   * Returns whether this instruction belong to the HALT family.
+   *
+   * @return true if {@link InstructionFamily} is HALT
+   */
+  public boolean isHalt() {
+    return this.instructionFamily == InstructionFamily.HALT;
+  }
+
+  /**
+   * Returns whether this instruction belong to the INVALID family.
+   *
+   * @return true if {@link InstructionFamily} is INVALID
+   */
+  public boolean isInvalid() {
+    return this.instructionFamily == InstructionFamily.INVALID;
+  }
 }

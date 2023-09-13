@@ -13,13 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.section;
 
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
 
-public record StorageChunk() implements TraceChunk {
-  @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
-    return trace.peekAtStorage(true);
+public class StackOnlySection extends TraceSection {
+  public StackOnlySection(Hub hub, TraceFragment... chunks) {
+    this.addChunksAndStack(hub, chunks);
   }
+
+  @Override
+  public void seal(Hub hub) {}
 }
