@@ -72,7 +72,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.operation.Operation;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -519,7 +521,7 @@ public class Hub implements Module {
   }
 
   @Override
-  public void traceStartTx(Transaction tx) {
+  public void traceStartTx(WorldView worldView, Transaction tx) {
     this.chunkNewTransaction();
     if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
@@ -533,7 +535,13 @@ public class Hub implements Module {
   }
 
   @Override
-  public void traceEndTx(final Bytes output, final long gasUsed) {
+  public void traceEndTx(
+      WorldView worldView,
+      Transaction tx,
+      boolean status,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed) {
     this.txState = TxState.TX_FINAL;
     this.processStateFinal();
 

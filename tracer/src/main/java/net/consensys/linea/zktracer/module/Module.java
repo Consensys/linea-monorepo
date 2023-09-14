@@ -21,6 +21,8 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -37,9 +39,15 @@ public interface Module {
 
   default void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
 
-  default void traceStartTx(Transaction tx) {}
+  default void traceStartTx(WorldView worldView, Transaction tx) {}
 
-  default void traceEndTx(final Bytes output, final long gasUsed) {}
+  default void traceEndTx(
+      WorldView worldView,
+      Transaction tx,
+      boolean status,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed) {}
 
   default void traceContextEnter(MessageFrame frame) {}
 
