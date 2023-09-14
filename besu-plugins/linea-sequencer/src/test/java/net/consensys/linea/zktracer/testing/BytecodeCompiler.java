@@ -79,9 +79,7 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler immediate(final byte[] bs) {
-    for (byte b : bs) {
-      this.byteCode.add(Bytes.of(b));
-    }
+    this.byteCode.add(Bytes.wrap(bs));
 
     return this;
   }
@@ -117,7 +115,7 @@ public class BytecodeCompiler {
   }
 
   /**
-   * Add {@link OpCode#PUSH1} and byte array arguments.
+   * Add a {@link OpCode#PUSH1} and byte array arguments.
    *
    * @param xs byte array arguments
    * @return current instance
@@ -132,13 +130,67 @@ public class BytecodeCompiler {
   }
 
   /**
-   * Add {@link OpCode#PUSH1} and int number argument.
+   * Add a {@link OpCode#PUSH1} and int number argument.
    *
    * @param x int number argument
    * @return current instance
    */
   public BytecodeCompiler push(final int x) {
     return this.push(toBytes(x));
+  }
+
+  /**
+   * Add a PUSH operation of the given width and its (padded) argument
+   *
+   * @param w the width to push (in [[1; 32]])
+   * @param bs byte array to be added
+   * @return current instance
+   */
+  public BytecodeCompiler push(final int w, final byte[] bs) {
+    Preconditions.condition(w > 0 && w <= 32, "Invalid PUSH width");
+    Preconditions.condition(bs.length <= w, "PUSH argument must be smaller than the width");
+
+    final int padding = w - bs.length;
+
+    this.op(OpCode.of(0x5f + w));
+    this.byteCode.add(Bytes.repeat((byte) 0, padding));
+    this.byteCode.add(Bytes.of(bs));
+
+    return this;
+  }
+
+  /**
+   * Add a PUSH operation of the given width and its (padded) argument
+   *
+   * @param w the width to push (in [[1; 32]])
+   * @param bytes {@link Bytes} to be added
+   * @return current instance
+   */
+  public BytecodeCompiler push(final int w, final Bytes bytes) {
+
+    return this.push(w, bytes.toArray());
+  }
+
+  /**
+   * Add an int as is to the bytecode sequence.
+   *
+   * @param w the width to push (in [[1; 32]])
+   * @param x integer number to be added
+   * @return current instance
+   */
+  public BytecodeCompiler push(final int w, final int x) {
+    return this.push(w, toBytes(x));
+  }
+
+  /**
+   * Add a PUSH operation of the given width and its (padded) argument
+   *
+   * @param w the width to push (in [[1; 32]])
+   * @param x {@link UInt256} number to be added
+   * @return current instance
+   */
+  public BytecodeCompiler push(final int w, final UInt256 x) {
+    return this.push(w, x.toArray());
   }
 
   /**

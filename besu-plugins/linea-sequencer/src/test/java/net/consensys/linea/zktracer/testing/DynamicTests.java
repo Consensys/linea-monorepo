@@ -15,13 +15,13 @@
 
 package net.consensys.linea.zktracer.testing;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -66,7 +66,7 @@ public class DynamicTests {
    * @param args arguments of the test case
    * @return the current instance
    */
-  public DynamicTests testCase(final String testCaseName, final Multimap<OpCode, Bytes32> args) {
+  public DynamicTests testCase(final String testCaseName, final List<OpcodeCall> args) {
     testCaseRegistry.add(new DynamicTestCase(testCaseName, args, null));
 
     return this;
@@ -82,7 +82,7 @@ public class DynamicTests {
    */
   public DynamicTests testCase(
       final String testCaseName,
-      final Multimap<OpCode, Bytes32> args,
+      final List<OpcodeCall> args,
       final BiConsumer<OpCode, List<Bytes32>> customAssertions) {
     testCaseRegistry.add(new DynamicTestCase(testCaseName, args, customAssertions));
 
@@ -107,9 +107,9 @@ public class DynamicTests {
    *     supported opcode
    * @return a multimap of generated arguments for the given test case
    */
-  public Multimap<OpCode, Bytes32> newModuleArgumentsProvider(
-      final BiConsumer<Multimap<OpCode, Bytes32>, OpCode> argsGenerationFunc) {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  public List<OpcodeCall> newModuleArgumentsProvider(
+      final BiConsumer<List<OpcodeCall>, OpCode> argsGenerationFunc) {
+    List<OpcodeCall> arguments = new ArrayList<>();
 
     for (OpCode opCode : module.supportedOpCodes()) {
       argsGenerationFunc.accept(arguments, opCode);
@@ -132,25 +132,23 @@ public class DynamicTests {
 
   private Stream<DynamicTest> generateTestCases(
       final String testCaseName,
-      final Multimap<OpCode, Bytes32> args,
+      final List<OpcodeCall> args,
       final BiConsumer<OpCode, List<Bytes32>> customAssertions) {
-    return args.asMap().entrySet().stream()
+    return args.stream()
         .map(
             e -> {
-              OpCode opCode = e.getKey();
-              List<Bytes32> opArgs = e.getValue().stream().toList();
-
               String testName =
                   "[%s][%s] Test bytecode for opcode %s with opArgs %s"
-                      .formatted(module.jsonKey().toUpperCase(), testCaseName, opCode, opArgs);
+                      .formatted(
+                          module.jsonKey().toUpperCase(), testCaseName, e.opCode(), e.args());
 
               return DynamicTest.dynamicTest(
                   testName,
                   () -> {
                     if (customAssertions == null) {
-                      ModuleTests.runTestWithOpCodeArgs(opCode, opArgs);
+                      ModuleTests.runTestWithOpCodeArgs(e.opCode(), e.args());
                     } else {
-                      customAssertions.accept(opCode, opArgs);
+                      customAssertions.accept(e.opCode(), e.args());
                     }
                   });
             });
@@ -162,13 +160,15 @@ public class DynamicTests {
    * @return a {@link Stream} of {@link DynamicTests} for dynamic test execution via {@link
    *     org.junit.jupiter.api.TestFactory}.
    */
-  private Multimap<OpCode, Bytes32> provideRandomArguments() {
+  private List<OpcodeCall> provideRandomArguments() {
     return newModuleArgumentsProvider(
-        (arguments, opCode) -> {
+        (testCases, opCode) -> {
           for (int i = 0; i <= TEST_REPETITIONS; i++) {
+            List<Bytes32> args = new ArrayList<>();
             for (int j = 0; j < opCode.getData().numberOfArguments(); j++) {
-              arguments.put(opCode, Bytes32.random(RAND));
+              args.add(Bytes32.random(RAND));
             }
+            testCases.add(new OpcodeCall(opCode, args));
           }
         });
   }

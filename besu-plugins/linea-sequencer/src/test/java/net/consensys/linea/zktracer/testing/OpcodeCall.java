@@ -16,17 +16,8 @@
 package net.consensys.linea.zktracer.testing;
 
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 
-/**
- * Dynamic test case data structure.
- *
- * @param name name of the test case
- * @param arguments arguments for the test case
- * @param customAssertions optional custom assertions per test case
- */
-public record DynamicTestCase(
-    String name, List<OpcodeCall> arguments, BiConsumer<OpCode, List<Bytes32>> customAssertions) {}
+public record OpcodeCall(OpCode opCode, List<Bytes32> args) {}

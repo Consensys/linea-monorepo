@@ -15,13 +15,14 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
+import net.consensys.linea.zktracer.testing.OpcodeCall;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -36,17 +37,16 @@ class WcpTracerTest {
     return DYN_TESTS.testCase("non random arguments test", provideNonRandomArguments()).run();
   }
 
-  private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideNonRandomArguments() {
+    List<OpcodeCall> testCases = new ArrayList<>();
 
     Bytes32 arg1 =
         Bytes32.fromHexString("0xdcd5cf52e4daec5389587d0d0e996e6ce2d0546b63d3ea0a0dc48ad984d180a9");
     Bytes32 arg2 =
         Bytes32.fromHexString("0x0479484af4a59464a48818b3980174687661bafb13d06f49537995fa6c02159e");
 
-    arguments.put(OpCode.GT, arg1);
-    arguments.put(OpCode.GT, arg2);
+    testCases.add(new OpcodeCall(OpCode.GT, List.of(arg1, arg2)));
 
-    return arguments;
+    return testCases;
   }
 }
