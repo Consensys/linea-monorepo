@@ -30,7 +30,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
-import org.hyperledger.besu.evm.account.EvmAccount;
+import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
@@ -70,11 +70,11 @@ public class ToyWorld implements WorldUpdater {
   }
 
   @Override
-  public EvmAccount createAccount(final Address address, final long nonce, final Wei balance) {
+  public MutableAccount createAccount(final Address address, final long nonce, final Wei balance) {
     return createAccount(null, address, nonce, balance, Bytes.EMPTY);
   }
 
-  public EvmAccount createAccount(
+  public MutableAccount createAccount(
       final Account parentAccount,
       final Address address,
       final long nonce,
@@ -97,7 +97,7 @@ public class ToyWorld implements WorldUpdater {
   }
 
   @Override
-  public EvmAccount getAccount(final Address address) {
+  public MutableAccount getAccount(final Address address) {
     if (addressAccountMap.containsKey(address)) {
       return addressAccountMap.get(address);
     } else if (parent != null) {

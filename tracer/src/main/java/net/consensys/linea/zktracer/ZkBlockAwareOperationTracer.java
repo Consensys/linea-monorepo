@@ -15,6 +15,12 @@
 
 package net.consensys.linea.zktracer;
 
+import java.util.List;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
 /**
@@ -39,4 +45,15 @@ public interface ZkBlockAwareOperationTracer extends BlockAwareOperationTracer {
    * @return a JSON string of the trace
    */
   String getJsonTrace();
+
+  void traceStartTransaction(WorldView worldView, Transaction transaction);
+
+  void traceEndTransaction(
+      WorldView worldView,
+      Transaction tx,
+      boolean status,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed,
+      long timeNs);
 }

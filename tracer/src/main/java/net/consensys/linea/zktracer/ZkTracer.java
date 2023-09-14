@@ -31,7 +31,9 @@ import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.operation.Operation;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
@@ -102,18 +104,25 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   }
 
   @Override
-  public void traceStartTransaction(final Transaction transaction) {
-    this.hub.traceStartTx(transaction);
+  public void traceStartTransaction(WorldView worldView, Transaction transaction) {
+    this.hub.traceStartTx(worldView, transaction);
     for (Module module : this.modules) {
-      module.traceStartTx(transaction);
+      module.traceStartTx(worldView, transaction);
     }
   }
 
   @Override
-  public void traceEndTransaction(final Bytes output, final long gasUsed, final long timeNs) {
-    this.hub.traceEndTx(output, gasUsed);
+  public void traceEndTransaction(
+      WorldView worldView,
+      Transaction tx,
+      boolean status,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed,
+      long timeNs) {
+    this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
     for (Module module : this.modules) {
-      module.traceEndTx(output, gasUsed);
+      module.traceEndTx(worldView, tx, status, output, logs, gasUsed);
     }
   }
 
