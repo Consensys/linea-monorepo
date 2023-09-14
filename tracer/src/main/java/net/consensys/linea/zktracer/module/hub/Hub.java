@@ -47,6 +47,7 @@ import net.consensys.linea.zktracer.module.hub.defer.TransactionDefer;
 import net.consensys.linea.zktracer.module.hub.section.AccountSection;
 import net.consensys.linea.zktracer.module.hub.section.ContextLogSection;
 import net.consensys.linea.zktracer.module.hub.section.CopySection;
+import net.consensys.linea.zktracer.module.hub.section.EndTransaction;
 import net.consensys.linea.zktracer.module.hub.section.JumpSection;
 import net.consensys.linea.zktracer.module.hub.section.StackOnlySection;
 import net.consensys.linea.zktracer.module.hub.section.StackRam;
@@ -65,6 +66,7 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
@@ -80,7 +82,6 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @Slf4j
 public class Hub implements Module {
-  private static final Address ADDRESS_ZERO = Address.fromHexString("0x0");
   private static final int TAU = 8;
   private static final GasCalculator gc = new LondonGasCalculator();
 
@@ -89,12 +90,19 @@ public class Hub implements Module {
   private int pc;
   private OpCode opCode;
   private int maxContextNumber;
+  private Address minerAddress;
+  private Wei baseFee;
 
   private OpCodeData opCodeData() {
     return this.opCode.getData();
   }
 
   final Map<Address, Map<EWord, EWord>> valOrigs = new HashMap<>();
+
+  private Wei gasPrice() {
+    return Wei.of(
+        this.currentTx.getGasPrice().map(Quantity::getAsBigInteger).orElse(BigInteger.ZERO));
+  }
 
   private EWord getValOrigOrUpdate(Address address, EWord key, EWord value) {
     EWord r = this.valOrigs.getOrDefault(address, new HashMap<>()).putIfAbsent(key, value);
@@ -261,11 +269,11 @@ public class Hub implements Module {
   /**
    * Traces a skipped transaction, i.e. a “pure” transaction without EVM execution.
    *
-   * @param frame the frame of the transaction
+   * @param world a view onto the state
    */
-  void processStateSkip(MessageFrame frame) {
+  void processStateSkip(WorldView world) {
+    log.error("TX_SKIP");
     this.stamp++;
-    var world = frame.getWorldUpdater();
     boolean isDeployment = this.currentTx.getTo().isEmpty();
 
     //
@@ -287,12 +295,16 @@ public class Hub implements Module {
             world.get(toAddress), toIsWarm, this.deploymentNumber(toAddress), false);
 
     // Miner account information
-    Address minerAddress = frame.getMiningBeneficiary();
     boolean minerIsWarm =
-        (minerAddress == fromAddress) || (minerAddress == toAddress) || isPrecompile(minerAddress);
+        (this.minerAddress == fromAddress)
+            || (this.minerAddress == toAddress)
+            || isPrecompile(this.minerAddress);
     AccountSnapshot oldMinerAccount =
         AccountSnapshot.fromAccount(
-            world.get(minerAddress), minerIsWarm, this.deploymentNumber(minerAddress), false);
+            world.get(this.minerAddress),
+            minerIsWarm,
+            this.deploymentNumber(this.minerAddress),
+            false);
 
     // Putatively update deployment number
     if (isDeployment) {
@@ -301,11 +313,7 @@ public class Hub implements Module {
 
     this.deferPostTx(
         new SkippedTransactionDefer(
-            oldFromAccount,
-            oldToAccount,
-            oldMinerAccount,
-            frame.getGasPrice(),
-            frame.getBlockValues().getBaseFee().orElse(Wei.ZERO)));
+            oldFromAccount, oldToAccount, oldMinerAccount, this.gasPrice(), this.baseFee));
   }
 
   public static BigInteger computeInitGas(Transaction tx) {
@@ -359,6 +367,8 @@ public class Hub implements Module {
 
   void processStateWarm() {
     this.stamp++;
+    this.txState = TxState.TX_WARM;
+
     // reproduction ordonnée des préchauffages de la Tx
     this.currentTx
         .getAccessList()
@@ -370,10 +380,26 @@ public class Hub implements Module {
             });
   }
 
-  void processStateInit() {
+  void processStateInit(WorldView world) {
     this.stamp++;
-    // 2 lines -- trace from & to accounts
-    // 1 line  -- trace tx data
+    this.txState = TxState.TX_INIT;
+
+    var fromAddress = this.currentTx.getSender();
+    boolean isDeployment = this.currentTx.getTo().isEmpty();
+    Address toAddress =
+        effectiveToAddress(this.currentTx, fromAddress, world.get(fromAddress).getNonce());
+    this.callStack =
+        new CallStack(
+            toAddress,
+            isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
+            new Bytecode(world.get(toAddress).getCode()),
+            Wei.of(this.currentTx.getValue().getAsBigInteger()),
+            this.currentTx.getGasLimit(),
+            this.currentTx.getData().orElse(Bytes.EMPTY),
+            this.maxContextNumber,
+            this.deploymentNumber(toAddress),
+            toAddress.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(toAddress, 0),
+            this.isDeploying(toAddress));
   }
 
   private int currentLine() {
@@ -458,56 +484,48 @@ public class Hub implements Module {
     }
   }
 
-  void processStateFinal() {
+  void processStateFinal(WorldView worldView, Transaction tx, boolean isSuccess) {
+    log.error("TX_FINAL");
     this.stamp++;
 
-    // TODO: waiting on Besu PR
+    Address fromAddress = this.currentTx.getSender();
+    Account fromAccount = worldView.get(fromAddress);
+    AccountSnapshot fromSnapshot =
+        AccountSnapshot.fromAccount(
+            fromAccount, true, this.deploymentNumber(fromAddress), this.isDeploying(fromAddress));
 
-    //    Address fromAddress = this.currentTx.getSender();
-    //    Account fromAccount; // TODO
-    //    AccountSnapshot fromSnapshot =
-    //        AccountSnapshot.fromAccount(
-    //            fromAccount, true, this.deploymentNumber(fromAddress),
-    // this.isDeploying(fromAddress));
-    //
-    //    Address minerAddress;
-    //    Account minerAccount; // TODO
-    //    AccountSnapshot minerSnapshot =
-    //        AccountSnapshot.fromAccount(
-    //            minerAccount,
-    //            true,
-    //            this.deploymentNumber(minerAddress),
-    //            this.isDeploying(minerAddress));
-    //
-    //    if (true /* TODO: statusCode == 1 */) {
-    //      // if no revert: 2 account rows (sender, coinbase) + 1 tx row
-    //      this.addTraceSection(
-    //          new EndTransaction(
-    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
-    //              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
-    //              new TransactionFragment(
-    //                  this.batchNumber,
-    //                  minerAddress,
-    //                  this.currentTx,
-    //                  true,
-    //                  this.currentTx.getGasPrice(),
-    //                  this.baseFee)));
-    //    } else {
-    //      Address toAddress = this.currentTx.getSender();
-    //      Account toAccount; // TODO
-    //      AccountSnapshot toSnapshot =
-    //          AccountSnapshot.fromAccount(
-    //              toAccount, true, this.deploymentNumber(toAddress), this.isDeploying(toAddress));
-    //      // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
-    //      this.addTraceSection(
-    //          new EndTransaction(
-    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
-    //              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
-    //              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
-    //              new AccountFragment(toSnapshot, toSnapshot, false, 0, false)));
-    //    }
+    Account minerAccount = worldView.get(this.minerAddress);
+    AccountSnapshot minerSnapshot =
+        AccountSnapshot.fromAccount(
+            minerAccount,
+            true,
+            this.deploymentNumber(this.minerAddress),
+            this.isDeploying(this.minerAddress));
 
-    this.txState = TxState.TX_PRE_INIT;
+    if (isSuccess) {
+      // if no revert: 2 account rows (sender, coinbase) + 1 tx row
+      this.addTraceSection(
+          new EndTransaction(
+              this,
+              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
+              new TransactionFragment(
+                  this.batchNumber, minerAddress, tx, true, this.gasPrice(), this.baseFee)));
+    } else {
+      // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
+      Address toAddress = this.currentTx.getSender();
+      Account toAccount = worldView.get(toAddress);
+      AccountSnapshot toSnapshot =
+          AccountSnapshot.fromAccount(
+              toAccount, true, this.deploymentNumber(toAddress), this.isDeploying(toAddress));
+      this.addTraceSection(
+          new EndTransaction(
+              this,
+              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+              new AccountFragment(minerSnapshot, minerSnapshot, false, 0, false),
+              new AccountFragment(fromSnapshot, fromSnapshot, false, 0, false),
+              new AccountFragment(toSnapshot, toSnapshot, false, 0, false)));
+    }
   }
 
   /**
@@ -521,7 +539,7 @@ public class Hub implements Module {
   }
 
   @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
+  public void traceStartTx(final WorldView world, final Transaction tx) {
     this.chunkNewTransaction();
     if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
@@ -530,8 +548,18 @@ public class Hub implements Module {
     }
     this.currentTx = tx;
 
-    // impossible to do the pre-init here -- missing information from the MessageFrame
-    this.txState = TxState.TX_PRE_INIT;
+    if ((this.currentTx.getTo().isPresent()
+            && world.get(this.currentTx.getTo().get()).getCode().isEmpty()) // pure transaction
+        || (this.currentTx.getTo().isEmpty()
+            && this.currentTx.getInit().isEmpty())) { // contract creation without init code
+      this.txState = TxState.TX_SKIP;
+      this.processStateSkip(world);
+      return;
+    }
+
+    this.processStateWarm();
+    this.processStateInit(world);
+    this.txState = TxState.TX_EXEC;
   }
 
   @Override
@@ -543,7 +571,7 @@ public class Hub implements Module {
       List<Log> logs,
       long gasUsed) {
     this.txState = TxState.TX_FINAL;
-    this.processStateFinal();
+    this.processStateFinal(worldView, tx, status);
 
     for (TransactionDefer defer : this.txDefers) {
       defer.run(this, null, this.currentTx); // TODO
@@ -551,41 +579,7 @@ public class Hub implements Module {
     this.txDefers.clear();
   }
 
-  private void txInit(final MessageFrame frame) {
-    // TODO: check that this actually does what it should
-    if ((!frame.getRecipientAddress().equals(ADDRESS_ZERO)
-            && frame.getCode().getSize() == 0) // pure transaction
-        || (frame.getRecipientAddress().equals(ADDRESS_ZERO)
-            && frame.getInputData().isEmpty())) { // contract creation without init code
-      this.txState = TxState.TX_SKIP;
-      this.processStateSkip(frame);
-      return;
-    }
-
-    var fromAddress = this.currentTx.getSender();
-    boolean isDeployment = this.currentTx.getTo().isEmpty();
-    Address toAddress =
-        effectiveToAddress(
-            this.currentTx, fromAddress, frame.getWorldUpdater().get(fromAddress).getNonce());
-    this.callStack =
-        new CallStack(
-            toAddress,
-            isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
-            new Bytecode(frame.getWorldUpdater().getAccount(toAddress).getCode()),
-            Wei.of(this.currentTx.getValue().getAsBigInteger()),
-            this.currentTx.getGasLimit(),
-            this.currentTx.getData().orElse(Bytes.EMPTY),
-            this.maxContextNumber,
-            this.deploymentNumber(toAddress),
-            toAddress.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(toAddress, 0),
-            this.isDeploying(toAddress));
-
-    this.processStateWarm();
-    this.processStateInit();
-    this.txState = TxState.TX_EXEC;
-  }
-
-  private void unlatchStack(MessageFrame frame, boolean mxpx) {
+  private void unlatchStack(MessageFrame frame) {
     if (this.currentFrame().getPending() == null) {
       return;
     }
@@ -646,10 +640,6 @@ public class Hub implements Module {
 
   @Override
   public void trace(final MessageFrame frame) {
-    if (this.txState == TxState.TX_PRE_INIT) {
-      this.txInit(frame);
-    }
-
     if (this.txState == TxState.TX_SKIP) {
       return;
     }
@@ -662,8 +652,7 @@ public class Hub implements Module {
       return;
     }
 
-    boolean mxpx = false;
-    this.unlatchStack(frame, mxpx);
+    this.unlatchStack(frame);
 
     if (this.opCode.isCreate() && operationResult.getHaltReason() == null) {
       this.handleCreate(Address.wrap(frame.getStackItem(0)));
@@ -682,6 +671,8 @@ public class Hub implements Module {
   @Override
   public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     this.blockNumber++;
+    this.minerAddress = blockHeader.getCoinbase();
+    this.baseFee = Wei.of(blockHeader.getBaseFee().get().getAsBigInteger());
   }
 
   @Override
@@ -777,9 +768,7 @@ public class Hub implements Module {
               switch (this.opCode) {
                 case CODECOPY -> this.currentFrame().getCodeAddress();
                 case EXTCODECOPY -> Words.toAddress(frame.getStackItem(0));
-                default -> {
-                  throw new IllegalStateException("unexpected opcode");
-                }
+                default -> throw new IllegalStateException("unexpected opcode");
               };
           Account targetAccount = frame.getWorldUpdater().getAccount(targetAddress);
           AccountSnapshot accountSnapshot =

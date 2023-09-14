@@ -147,7 +147,8 @@ public class ToyExecutionEnvironment {
     final MessageCallProcessor messageCallProcessor =
         new MessageCallProcessor(evm, new PrecompileContractRegistry());
 
-    BlockHeader mockBlockHeader = BlockHeaderBuilder.createDefault().buildBlockHeader();
+    BlockHeader mockBlockHeader =
+        BlockHeaderBuilder.createDefault().baseFee(Wei.of(7)).buildBlockHeader();
     BlockBody mockBlockBody = new BlockBody(transactions, new ArrayList<>());
 
     tracer.traceStartConflation(1);
