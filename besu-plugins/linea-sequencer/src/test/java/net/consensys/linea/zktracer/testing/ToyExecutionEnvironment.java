@@ -157,9 +157,16 @@ public class ToyExecutionEnvironment {
       MessageFrame frame = this.prepareFrame(tx);
       setupFrame(frame);
 
-      tracer.traceStartTransaction(tx);
+      tracer.traceStartTransaction(toyWorld.updater(), tx);
       messageCallProcessor.process(frame, this.tracer);
-      tracer.traceEndTransaction(Bytes.EMPTY, 0, 0); // TODO
+      tracer.traceEndTransaction(
+          toyWorld.updater(),
+          tx,
+          frame.getState() == MessageFrame.State.COMPLETED_SUCCESS,
+          frame.getOutputData(),
+          frame.getLogs(),
+          0, // TODO
+          0);
 
       postTest(frame);
     }
