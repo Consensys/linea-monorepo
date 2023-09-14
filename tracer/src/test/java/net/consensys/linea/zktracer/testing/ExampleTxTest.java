@@ -43,7 +43,12 @@ class ExampleTxTest {
             .balance(Wei.ONE)
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
-            .code(BytecodeCompiler.newProgram().push(2).push(2).op(OpCode.ADD).compile())
+            .code(
+                BytecodeCompiler.newProgram()
+                    .push(32, 0xbeef)
+                    .push(32, 0xdead)
+                    .op(OpCode.ADD)
+                    .compile())
             .build();
 
     Transaction tx =

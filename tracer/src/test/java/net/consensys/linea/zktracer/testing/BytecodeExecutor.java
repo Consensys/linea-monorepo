@@ -20,7 +20,6 @@ import java.util.function.Consumer;
 
 import com.google.common.base.Preconditions;
 import lombok.Builder;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -59,7 +58,7 @@ public class BytecodeExecutor {
             .balance(Wei.ONE)
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
-            .code(BytecodeCompiler.newProgram().push(2).push(2).op(OpCode.ADD).compile())
+            .code(byteCode)
             .build();
 
     Transaction tx =

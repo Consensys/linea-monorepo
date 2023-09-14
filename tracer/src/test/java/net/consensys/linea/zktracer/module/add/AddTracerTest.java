@@ -16,14 +16,15 @@
 package net.consensys.linea.zktracer.module.add;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
+import net.consensys.linea.zktracer.testing.OpcodeCall;
 import net.consensys.linea.zktracer.testing.SpecTests;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -58,46 +59,44 @@ class AddTracerTest {
     return SpecTests.findSpecFiles(MODULE.jsonKey());
   }
 
-  private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
+  private List<OpcodeCall> provideNonRandomArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
+        (testCases, opCode) -> {
           for (int k = 1; k <= 4; k++) {
             for (int i = 1; i <= 4; i++) {
-              arguments.put(opCode, UInt256.valueOf(i));
-              arguments.put(opCode, UInt256.valueOf(k));
+              testCases.add(
+                  new OpcodeCall(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
             }
           }
         });
   }
 
-  public Multimap<OpCode, Bytes32> provideRandomAluAddArguments() {
+  public List<OpcodeCall> provideRandomAluAddArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
+        (testCases, opCode) -> {
           for (int i = 0; i < TEST_ADD_REPETITIONS; i++) {
-            addRandomAluAddInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
+            addRandomAluAddInstruction(testCases, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
           }
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideSimpleAluAddArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideSimpleAluAddArguments() {
+    List<OpcodeCall> testCases = new ArrayList<>();
 
     Bytes32 bytes1 = Bytes32.rightPad(Bytes.fromHexString("0x80"));
     Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x01"));
 
-    arguments.put(OpCode.SUB, bytes1);
-    arguments.put(OpCode.SUB, bytes2);
+    testCases.add(new OpcodeCall(OpCode.SUB, List.of(bytes1, bytes2)));
 
-    return arguments;
+    return testCases;
   }
 
   private void addRandomAluAddInstruction(
-      Multimap<OpCode, Bytes32> arguments, int sizeArg1MinusOne, int sizeArg2MinusOne) {
+      List<OpcodeCall> testCases, int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
     OpCode opCode = DYN_TESTS.getRandomSupportedOpcode();
 
-    arguments.put(opCode, bytes1);
-    arguments.put(opCode, bytes2);
+    testCases.add(new OpcodeCall(opCode, List.of(bytes1, bytes2)));
   }
 }
