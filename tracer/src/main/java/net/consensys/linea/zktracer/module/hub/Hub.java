@@ -32,7 +32,6 @@ import net.consensys.linea.zktracer.module.hub.callstack.CallFrameType;
 import net.consensys.linea.zktracer.module.hub.callstack.CallStack;
 import net.consensys.linea.zktracer.module.hub.chunks.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.AccountSnapshot;
-import net.consensys.linea.zktracer.module.hub.chunks.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.StackFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.StorageFragment;
@@ -87,13 +86,22 @@ public class Hub implements Module {
 
   public final Trace.TraceBuilder trace = Trace.builder();
 
-  private int pc;
+  @Getter private int pc;
   private OpCode opCode;
   private int maxContextNumber;
   private Address minerAddress;
   private Wei baseFee;
+  private Boolean txResult;
 
-  private OpCodeData opCodeData() {
+  public boolean getTxResult() {
+    if (this.txResult == null) {
+      throw new RuntimeException("TX state can not be queried for now.");
+    }
+
+    return this.txResult;
+  }
+
+  public OpCodeData opCodeData() {
     return this.opCode.getData();
   }
 
@@ -159,14 +167,24 @@ public class Hub implements Module {
     return this.traceSections.get(this.txChunksCount() - 1).get(this.opcodeChunksCount() - 1);
   }
 
-  public void addTraceSection(TraceSection section) {
-    if (!this.currentTxTrace().isEmpty()) {
-      section.setContextNumber(
-          this.currentTxTrace().get(this.currentTxTrace().size() - 1).contextNumber());
-      section.setNewPc(this.currentTxTrace().get(this.currentTxTrace().size() - 1).pc());
+  public int lastPc() {
+    if (this.currentTxTrace().isEmpty()) {
+      return 0;
+    } else {
+      return this.currentTxTrace().get(this.currentTxTrace().size() - 1).pc();
     }
-    section.seal(this);
+  }
 
+  public int lastContextNumber() {
+    if (this.currentTxTrace().isEmpty()) {
+      return 0;
+    } else {
+      return this.currentTxTrace().get(this.currentTxTrace().size() - 1).contextNumber();
+    }
+  }
+
+  public void addTraceSection(TraceSection section) {
+    section.seal(this);
     this.currentTxTrace().add(section);
   }
 
@@ -174,12 +192,12 @@ public class Hub implements Module {
     this.traceSections.add(new ArrayList<>());
   }
 
-  private Exceptions exceptions;
+  @Getter private Exceptions exceptions;
 
-  TxState txState;
+  @Getter TxState txState;
   @Getter Transaction currentTx;
   @Getter CallStack callStack;
-  int txNumber = 0;
+  @Getter int txNumber = 0;
   @Getter int batchNumber = 0;
   @Getter int blockNumber = 0;
   @Getter int stamp = 0;
@@ -322,47 +340,6 @@ public class Hub implements Module {
         tx.getGasLimit()
             - gc.transactionIntrinsicGasCost(tx.getPayload(), isDeployment)
             - tx.getAccessList().map(gc::accessListGasCost).orElse(0L));
-  }
-
-  /**
-   * Fill the columns shared by all operations.
-   *
-   * @return a chunk representing the share columns
-   */
-  public CommonFragment traceCommon() {
-    return new CommonFragment(
-        this.txNumber,
-        this.batchNumber,
-        this.txState,
-        this.stamp,
-        0,
-        false, // TODO
-        this.opCodeData().instructionFamily(),
-        this.exceptions.snapshot(),
-        false, // TODO
-        false, // TODO
-        this.currentFrame().getContextNumber(),
-        this.currentFrame().getContextNumber(),
-        0, // TODO
-        false, // TODO
-        false, // TODO
-        false, // TODO
-        this.pc,
-        this.pc,
-        this.currentFrame().addressAsEWord(),
-        this.currentFrame().getCodeDeploymentNumber(),
-        this.currentFrame().isCodeDeploymentStatus(),
-        this.currentFrame().getAccountDeploymentNumber(),
-        0,
-        0,
-        0,
-        0,
-        0, // TODO
-        this.opCodeData().stackSettings().twoLinesInstruction(),
-        false, // TODO -- retcon with stack
-        0, // TODO -- do it now
-        0 // TODO -- do it now
-        );
   }
 
   void processStateWarm() {
@@ -540,13 +517,15 @@ public class Hub implements Module {
 
   @Override
   public void traceStartTx(final WorldView world, final Transaction tx) {
-    this.chunkNewTransaction();
     if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
     } else {
       this.txNumber += 1;
     }
+    this.txResult = null;
     this.currentTx = tx;
+
+    this.chunkNewTransaction();
 
     if ((this.currentTx.getTo().isPresent()
             && world.get(this.currentTx.getTo().get()).getCode().isEmpty()) // pure transaction
@@ -571,12 +550,17 @@ public class Hub implements Module {
       List<Log> logs,
       long gasUsed) {
     this.txState = TxState.TX_FINAL;
-    this.processStateFinal(worldView, tx, status);
+    this.txResult = status;
 
+    this.processStateFinal(worldView, tx, status);
     for (TransactionDefer defer : this.txDefers) {
-      defer.run(this, null, this.currentTx); // TODO
+      defer.run(this, null, this.currentTx);
     }
     this.txDefers.clear();
+
+    for (TraceSection section : this.currentTxTrace()) {
+      section.postTxRetcon(this);
+    }
   }
 
   private void unlatchStack(MessageFrame frame) {
@@ -684,7 +668,7 @@ public class Hub implements Module {
   public void traceEndConflation() {
     for (List<TraceSection> txSections : this.traceSections) {
       for (TraceSection section : txSections) {
-        section.retcon(this);
+        section.postConflationRetcon(this);
       }
     }
   }
