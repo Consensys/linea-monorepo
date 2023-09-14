@@ -22,6 +22,7 @@ import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.chunks.CommonFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.StackFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
 
 /** A TraceSection gather the trace lines linked to a single operation */
@@ -50,8 +51,50 @@ public abstract class TraceSection {
     }
   }
 
+  /** Count the stack lines */
+  private int stackRowsCounter;
+  /** Count the non-stack lines */
+  private int nonStackRowsCounter;
+
   /** A list of {@link TraceLine} representing the trace lines associated with this section. */
   @Getter List<TraceLine> lines = new ArrayList<>();
+
+  /**
+   * Fill the columns shared by all operations.
+   *
+   * @return a chunk representing the share columns
+   */
+  private CommonFragment traceCommon(Hub hub) {
+    return new CommonFragment(
+        hub.getTxNumber(),
+        hub.getBatchNumber(),
+        hub.getTxState(),
+        hub.getStamp(),
+        0, // retconned later on
+        false, // retconned later on
+        hub.opCodeData().instructionFamily(),
+        hub.getExceptions().snapshot(),
+        hub.currentFrame().getContextNumber(),
+        hub.currentFrame().getContextNumber(),
+        0, // TODO retconned
+        false, // TODO
+        false, // TODO
+        hub.getPc(),
+        hub.getPc(), // retconned later on
+        hub.currentFrame().addressAsEWord(),
+        hub.currentFrame().getCodeDeploymentNumber(),
+        hub.currentFrame().isCodeDeploymentStatus(),
+        hub.currentFrame().getAccountDeploymentNumber(),
+        0,
+        0,
+        0,
+        0,
+        0, // TODO
+        hub.opCodeData().stackSettings().twoLinesInstruction(),
+        this.stackRowsCounter == 1,
+        0, // retconned on sealing
+        this.nonStackRowsCounter - 1);
+  }
 
   /** Default creator for an empty section. */
   public TraceSection() {}
@@ -64,8 +107,13 @@ public abstract class TraceSection {
    */
   public final void addChunk(Hub hub, TraceFragment fragment) {
     assert !(fragment instanceof CommonFragment);
+    if (fragment instanceof StackFragment) {
+      this.stackRowsCounter++;
+    } else {
+      this.nonStackRowsCounter++;
+    }
 
-    this.lines.add(new TraceLine(hub.traceCommon(), fragment));
+    this.lines.add(new TraceLine(traceCommon(hub), fragment));
   }
 
   /**
@@ -124,24 +172,35 @@ public abstract class TraceSection {
   }
 
   /**
-   * Set the newPC associated with the operation encoded by this TraceSection.
-   *
-   * @param contextNumber the new PC
-   */
-  public final void setNewPc(int contextNumber) {
-    for (TraceLine chunk : this.lines) {
-      chunk.common.newPc(contextNumber);
-    }
-  }
-
-  /**
-   * This method is called when the TraceChunk is finished, to build required information post-hoc.
+   * This method is called when the TraceSection is finished, to build required information
+   * post-hoc.
    *
    * @param hub the linked {@link Hub} context
    */
   public void seal(Hub hub) {
+    int nonStackLineNumbers =
+        (int) this.lines.stream().filter(l -> !(l.specific instanceof StackFragment)).count();
+    int nonStackLineCounter = 0;
     for (TraceLine chunk : this.lines) {
-      chunk.common.txEndStamp(hub.getStamp());
+      if (!(chunk.specific instanceof StackFragment)) {
+        nonStackLineCounter++;
+        chunk.common.nonStackRowsCounter(nonStackLineCounter);
+      }
+      chunk.common.newPc(hub.lastPc());
+      chunk.common.newContextNumber(hub.lastContextNumber());
+      chunk.common.numberOfNonStackRows(nonStackLineNumbers);
+    }
+  }
+
+  /**
+   * This method is called when the transaction is finished to build required information post-hoc.
+   *
+   * @param hub the linked {@link Hub} context
+   */
+  public final void postTxRetcon(Hub hub) {
+    for (TraceLine chunk : lines) {
+      chunk.common().postTxRetcon(hub);
+      chunk.specific().postTxRetcon(hub);
     }
   }
 
@@ -150,10 +209,10 @@ public abstract class TraceSection {
    *
    * @param hub the linked {@link Hub} context
    */
-  public void retcon(Hub hub) {
+  public final void postConflationRetcon(Hub hub) {
     for (TraceLine chunk : lines) {
-      chunk.common().retcon(hub);
-      chunk.specific().retcon(hub);
+      chunk.common().postConflationRetcon(hub);
+      chunk.specific().postConflationRetcon(hub);
     }
   }
 }

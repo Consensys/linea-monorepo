@@ -23,6 +23,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Exceptions;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.TxState;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
@@ -35,15 +36,12 @@ public final class CommonFragment implements TraceFragment {
   private final TxState txState;
   private final int stamp;
   @Setter private int txEndStamp;
-  private final boolean txReverts;
+  private boolean txReverts;
   private final InstructionFamily instructionFamily;
   private final Exceptions exceptions;
-  private final boolean abortFlag;
-  private final boolean failureConditionFlag;
   @Getter private final int contextNumber;
   @Setter private int newContextNumber;
   private final int revertStamp;
-  private final boolean willRevert;
   private final boolean getsReverted;
   private final boolean selfReverts;
   @Getter private final int pc;
@@ -82,14 +80,12 @@ public final class CommonFragment implements TraceFragment {
                     || instructionFamily == InstructionFamily.INVALID)
                 || exceptions.any())
         .exceptionAhoyFlag(exceptions.any())
-        .abortFlag(abortFlag)
-        .failureConditionFlag(failureConditionFlag)
 
         // Context data
         .contextNumber(BigInteger.valueOf(contextNumber))
         .contextNumberNew(BigInteger.valueOf(newContextNumber))
         .contextRevertStamp(BigInteger.valueOf(revertStamp))
-        .contextWillRevertFlag(willRevert)
+        .contextWillRevertFlag(getsReverted || selfReverts)
         .contextGetsRevrtdFlag(getsReverted)
         .contextSelfRevrtsFlag(selfReverts)
         .programCounter(BigInteger.valueOf(pc))
@@ -110,5 +106,11 @@ public final class CommonFragment implements TraceFragment {
         .counterTli(twoLinesInstructionCounter)
         .numberOfNonStackRows(BigInteger.valueOf(numberOfNonStackRows))
         .counterNsr(BigInteger.valueOf(nonStackRowsCounter));
+  }
+
+  @Override
+  public void postTxRetcon(Hub hub) {
+    this.txEndStamp = hub.getStamp();
+    this.txReverts = hub.getTxResult();
   }
 }
