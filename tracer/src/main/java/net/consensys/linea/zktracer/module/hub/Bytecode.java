@@ -15,45 +15,80 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import java.util.Objects;
+
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.Code;
 
-public class Bytecode {
+/** This class is intended to store a bytecode and its memoized hash. */
+public final class Bytecode {
+  /** The empty bytecode. */
   public static Bytecode EMPTY = new Bytecode(Bytes.EMPTY);
 
+  /** The bytecode. */
   private final Bytes bytecode;
+  /** The bytecode hash; is null by default and computed & memoized on the fly when required. */
   private Hash hash;
 
+  /**
+   * Create an instance from {@link Bytes}.
+   *
+   * @param bytes the bytecode
+   */
   public Bytecode(Bytes bytes) {
-    this.bytecode = bytes;
+    this.bytecode = Objects.requireNonNullElse(bytes, Bytes.EMPTY);
   }
 
-  public Bytecode(Bytes bytes, Hash hash) {
-    this.bytecode = bytes;
-    this.hash = hash;
-  }
-
+  /**
+   * Create an instance from Besu {@link Code}.
+   *
+   * @param code the bytecode
+   */
   public Bytecode(Code code) {
     this.bytecode = code.getBytes();
     this.hash = code.getCodeHash();
   }
 
+  /**
+   * Get the size of the bytecode, in bytes.
+   *
+   * @return the bytecode size
+   */
   public int getSize() {
     return this.bytecode.size();
   }
 
+  /**
+   * Expose the wrapped bytecode as {@link Bytes}.
+   *
+   * @return the bytecode
+   */
   public Bytes getBytes() {
     return this.bytecode;
   }
 
+  /**
+   * Returns whether the bytecode is empty or not.
+   *
+   * @return true if the bytecode is empty
+   */
   public boolean isEmpty() {
     return this.bytecode.isEmpty();
   }
 
+  /**
+   * Compute the bytecode hash if required, then return it.
+   *
+   * @return the bytecode hash
+   */
   public Hash getCodeHash() {
     if (this.hash == null) {
-      this.hash = Hash.hash(this.bytecode);
+      if (this.bytecode.isEmpty()) {
+        this.hash = Hash.EMPTY;
+      } else {
+        this.hash = Hash.hash(this.bytecode);
+      }
     }
     return this.hash;
   }
