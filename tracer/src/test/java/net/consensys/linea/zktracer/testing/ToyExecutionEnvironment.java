@@ -73,7 +73,7 @@ public class ToyExecutionEnvironment {
    * @return default EVM implementation
    */
   public static EVM defaultEvm() {
-    return MainnetEVMs.paris(EvmConfiguration.DEFAULT);
+    return MainnetEVMs.london(EvmConfiguration.DEFAULT);
   }
 
   /**

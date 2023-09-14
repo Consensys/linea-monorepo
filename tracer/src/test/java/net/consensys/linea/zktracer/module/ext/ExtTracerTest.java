@@ -18,13 +18,12 @@ package net.consensys.linea.zktracer.module.ext;
 import static net.consensys.linea.zktracer.testing.ModuleTests.runTestWithOpCodeArgs;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.List;
 import java.util.stream.Stream;
 
-import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
-import org.apache.tuweni.bytes.Bytes32;
+import net.consensys.linea.zktracer.testing.OpcodeCall;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -49,52 +48,52 @@ class ExtTracerTest {
         .run();
   }
 
-  private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
+  private List<OpcodeCall> provideNonRandomArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
+        (testCases, opCode) -> {
           for (int k = 1; k <= 4; k++) {
             for (int i = 1; i <= 4; i++) {
-              arguments.put(opCode, UInt256.valueOf(i));
-              arguments.put(opCode, UInt256.valueOf(k));
-              arguments.put(opCode, UInt256.valueOf(k));
+              testCases.add(
+                  new OpcodeCall(
+                      opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k), UInt256.valueOf(k))));
             }
           }
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideZeroValueTest() {
+  private List<OpcodeCall> provideZeroValueTest() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
-          arguments.put(opCode, UInt256.valueOf(6));
-          arguments.put(opCode, UInt256.valueOf(12));
-          arguments.put(opCode, UInt256.valueOf(0));
+        (testCases, opCode) -> {
+          testCases.add(
+              new OpcodeCall(
+                  opCode, List.of(UInt256.valueOf(6), UInt256.valueOf(12), UInt256.valueOf(0))));
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideModulusZeroValueArguments() {
+  private List<OpcodeCall> provideModulusZeroValueArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
-          arguments.put(opCode, UInt256.valueOf(0));
-          arguments.put(opCode, UInt256.valueOf(1));
-          arguments.put(opCode, UInt256.valueOf(1));
+        (testCases, opCode) -> {
+          testCases.add(
+              new OpcodeCall(
+                  opCode, List.of(UInt256.valueOf(0), UInt256.valueOf(1), UInt256.valueOf(1))));
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideTinyValueArguments() {
+  private List<OpcodeCall> provideTinyValueArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
-          arguments.put(opCode, UInt256.valueOf(6));
-          arguments.put(opCode, UInt256.valueOf(7));
-          arguments.put(opCode, UInt256.valueOf(13));
+        (testCases, opCode) -> {
+          testCases.add(
+              new OpcodeCall(
+                  opCode, List.of(UInt256.valueOf(6), UInt256.valueOf(7), UInt256.valueOf(13))));
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideMaxValueArguments() {
+  private List<OpcodeCall> provideMaxValueArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
-          arguments.put(opCode, UInt256.MAX_VALUE);
-          arguments.put(opCode, UInt256.MAX_VALUE);
-          arguments.put(opCode, UInt256.MAX_VALUE);
+        (testCases, opCode) -> {
+          testCases.add(
+              new OpcodeCall(
+                  opCode, List.of(UInt256.MAX_VALUE, UInt256.MAX_VALUE, UInt256.MAX_VALUE)));
         });
   }
 }

@@ -15,14 +15,15 @@
 
 package net.consensys.linea.zktracer.module.mul;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
+import net.consensys.linea.zktracer.testing.OpcodeCall;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -52,19 +53,18 @@ class MulTracerTest {
         .run();
   }
 
-  private Multimap<OpCode, Bytes32> provideSingleTinyExponentiationArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideSingleTinyExponentiationArguments() {
+    List<OpcodeCall> testCases = new ArrayList<>();
 
     Bytes32 bytes1 = Bytes32.leftPad(Bytes.fromHexString("0x13"));
     Bytes32 bytes2 = Bytes32.leftPad(Bytes.fromHexString("0x02"));
-    arguments.put(OpCode.EXP, bytes1);
-    arguments.put(OpCode.EXP, bytes2);
+    testCases.add(new OpcodeCall(OpCode.EXP, List.of(bytes1, bytes2)));
 
-    return arguments;
+    return testCases;
   }
 
-  private Multimap<OpCode, Bytes32> provideRandomAluMulArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideRandomAluMulArguments() {
+    List<OpcodeCall> arguments = new ArrayList<>();
 
     for (int i = 0; i < TEST_MUL_REPETITIONS; i++) {
       addRandomAluMulInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
@@ -73,8 +73,8 @@ class MulTracerTest {
     return arguments;
   }
 
-  private Multimap<OpCode, Bytes32> provideSpecificNonTinyArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideSpecificNonTinyArguments() {
+    List<OpcodeCall> arguments = new ArrayList<>();
     //    these values are used in Go module test
     //    0x8a, 0x48, 0xaa, 0x20, 0xe2, 0x00, 0xce, 0x3f, 0xee, 0x16, 0xb5, 0xdc, 0xde, 0xc5, 0xc4,
     // 0xfa,
@@ -85,20 +85,18 @@ class MulTracerTest {
     // 0x7b, 0x3c, 0xba,
     //            0xeb, 0x87, 0x57, 0xfd, 0x6c, 0x7b, 0x03, 0x11, 0x9b, 0x79, 0x53, 0x03, 0xb7,
     // 0xcd, 0x72, 0xc1,
-    final Bytes32[] payload = new Bytes32[2];
-    payload[0] =
+    Bytes32 arg1 =
         Bytes32.fromHexString("0x8a48aa20e200ce3fee16b5dcdec5c4faff613bc914d47cd6ca69553f8eb2b377");
-    payload[1] =
+    Bytes32 arg2 =
         Bytes32.fromHexString("0x59b635fec894caa3ed6817b1e67b3cbaeb8757fd6c7b03119b795303b7cd72c1");
 
-    arguments.put(OpCode.MUL, payload[0]);
-    arguments.put(OpCode.MUL, payload[1]);
+    arguments.add(new OpcodeCall(OpCode.MUL, List.of(arg1, arg2)));
 
     return arguments;
   }
 
-  private Multimap<OpCode, Bytes32> provideRandomNonTinyArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideRandomNonTinyArguments() {
+    List<OpcodeCall> arguments = new ArrayList<>();
 
     for (int i = 0; i < TEST_MUL_REPETITIONS; i++) {
       addRandomAluMulInstruction(arguments, RAND.nextInt(32) + 1, RAND.nextInt(32) + 1);
@@ -107,51 +105,48 @@ class MulTracerTest {
     return arguments;
   }
 
-  private Multimap<OpCode, Bytes32> provideTinyArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideTinyArguments() {
+    List<OpcodeCall> testCases = new ArrayList<>();
 
     for (int i = 0; i < 4; i++) {
-      addRandomAluMulInstruction(arguments, i, i + 1);
+      addRandomAluMulInstruction(testCases, i, i + 1);
     }
 
-    return arguments;
+    return testCases;
   }
 
-  private Multimap<OpCode, Bytes32> provideNonRandomArguments() {
+  private List<OpcodeCall> provideNonRandomArguments() {
     return DYN_TESTS.newModuleArgumentsProvider(
-        (arguments, opCode) -> {
+        (testCases, opCode) -> {
           for (int k = 0; k <= 3; k++) {
             for (int i = 0; i <= 3; i++) {
-              arguments.put(opCode, UInt256.valueOf(i));
-              arguments.put(opCode, UInt256.valueOf(k));
+              testCases.add(
+                  new OpcodeCall(opCode, List.of(UInt256.valueOf(i), UInt256.valueOf(k))));
             }
           }
         });
   }
 
-  private Multimap<OpCode, Bytes32> provideMultiplicationByZeroArguments() {
-    Multimap<OpCode, Bytes32> arguments = ArrayListMultimap.create();
+  private List<OpcodeCall> provideMultiplicationByZeroArguments() {
+    List<OpcodeCall> testCases = new ArrayList<>();
 
     for (int i = 0; i < 2; i++) {
       Bytes32 bytes1 = Bytes32.ZERO;
       Bytes32 bytes2 = UInt256.valueOf(i);
 
-      arguments.put(OpCode.MUL, bytes1);
-      arguments.put(OpCode.MUL, bytes2);
-      arguments.put(OpCode.MUL, bytes2);
-      arguments.put(OpCode.MUL, bytes1);
+      testCases.add(new OpcodeCall(OpCode.MUL, List.of(bytes1)));
+      testCases.add(new OpcodeCall(OpCode.MUL, List.of(bytes2)));
     }
 
-    return arguments;
+    return testCases;
   }
 
   private void addRandomAluMulInstruction(
-      Multimap<OpCode, Bytes32> arguments, int sizeArg1MinusOne, int sizeArg2MinusOne) {
+      List<OpcodeCall> testCases, int sizeArg1MinusOne, int sizeArg2MinusOne) {
     Bytes32 bytes1 = UInt256.valueOf(sizeArg1MinusOne);
     Bytes32 bytes2 = UInt256.valueOf(sizeArg2MinusOne);
     OpCode opCode = DYN_TESTS.getRandomSupportedOpcode();
 
-    arguments.put(opCode, bytes1);
-    arguments.put(opCode, bytes2);
+    testCases.add(new OpcodeCall(opCode, List.of(bytes1, bytes2)));
   }
 }

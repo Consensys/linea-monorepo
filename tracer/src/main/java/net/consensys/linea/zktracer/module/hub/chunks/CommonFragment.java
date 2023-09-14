@@ -70,7 +70,7 @@ public final class CommonFragment implements TraceFragment {
         .txSkip(this.txState == TxState.TX_SKIP)
         .txWarm(this.txState == TxState.TX_WARM)
         .txInit(this.txState == TxState.TX_INIT)
-        .txExec(this.txState == TxState.TX_STATE)
+        .txExec(this.txState == TxState.TX_EXEC)
         .txFinl(this.txState == TxState.TX_FINAL)
         .hubStamp(BigInteger.valueOf(this.stamp))
         .transactionEndStamp(BigInteger.valueOf(txEndStamp))

@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 public enum TxState {
   // A state marking the first trace of the current tx, required to set up some things
   TX_PRE_INIT,
-  TX_STATE,
+  TX_EXEC,
   TX_FINAL,
   TX_INIT,
   TX_SKIP,
