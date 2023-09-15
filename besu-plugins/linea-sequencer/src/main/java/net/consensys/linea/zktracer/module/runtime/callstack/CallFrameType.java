@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.callstack;
+package net.consensys.linea.zktracer.module.runtime.callstack;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 
