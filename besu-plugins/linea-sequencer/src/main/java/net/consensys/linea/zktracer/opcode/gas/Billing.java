@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
  * @param billingRate the unit used to bill gas
  */
 @JsonDeserialize(using = BillingDeserializer.class)
-public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
+public record Billing(GasConstants perUnit, BillingRate billingRate, MxpType type) {
   public Billing() {
     this(null, null, MxpType.NONE);
   }
@@ -46,7 +46,7 @@ public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
    * @param wordPrice gas cost of a word
    * @return the billing scheme
    */
-  public static Billing byWord(MxpType type, Gas wordPrice) {
+  public static Billing byWord(MxpType type, GasConstants wordPrice) {
     return new Billing(wordPrice, BillingRate.BY_WORD, type);
   }
 
@@ -57,7 +57,7 @@ public record Billing(Gas perUnit, BillingRate billingRate, MxpType type) {
    * @param bytePrice gas cost of a byte
    * @return the billing scheme
    */
-  public static Billing byByte(MxpType type, Gas bytePrice) {
+  public static Billing byByte(MxpType type, GasConstants bytePrice) {
     return new Billing(bytePrice, BillingRate.BY_BYTE, type);
   }
 }

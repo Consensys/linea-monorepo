@@ -13,23 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-// TODO: maybe a builder?
-public record StackSettings(
-    Pattern pattern,
-    int alpha,
-    int delta,
-    int nbAdded,
-    int nbRemoved,
-    GasConstants staticGas,
-    boolean twoLinesInstruction,
-    boolean staticInstruction,
-    boolean addressTrimmingInstruction,
-    boolean oobFlag,
-    boolean flag1,
-    boolean flag2,
-    boolean flag3,
-    boolean flag4) {}
+public record SLoad(GasCalculator gc, MessageFrame frame) implements GasProjection {
+  @Override
+  public long storageWarmth() {
+    final UInt256 key = UInt256.fromBytes(frame.getStackItem(0));
+    if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {
+      return GasConstants.G_WARM_ACCESS.cost();
+    } else {
+      return GasConstants.G_COLD_S_LOAD.cost();
+    }
+  }
+}

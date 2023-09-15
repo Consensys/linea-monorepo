@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 /** All the classes of gas prices per instruction used in the EVM. */
 @RequiredArgsConstructor
-public enum Gas {
+public enum GasConstants {
   G_ZERO(0),
   G_JUMP_DEST(0),
   G_BASE(2),
@@ -72,8 +72,8 @@ public enum Gas {
   /** The gas price of the instruction family. */
   private final int cost;
 
-  int cost() {
-    return this.cost();
+  public int cost() {
+    return this.cost;
   }
 
   /** Constants required to compute some instruction families base price. */
