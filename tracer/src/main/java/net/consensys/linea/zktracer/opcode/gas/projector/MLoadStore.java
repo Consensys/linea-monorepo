@@ -13,23 +13,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-// TODO: maybe a builder?
-public record StackSettings(
-    Pattern pattern,
-    int alpha,
-    int delta,
-    int nbAdded,
-    int nbRemoved,
-    GasConstants staticGas,
-    boolean twoLinesInstruction,
-    boolean staticInstruction,
-    boolean addressTrimmingInstruction,
-    boolean oobFlag,
-    boolean flag1,
-    boolean flag2,
-    boolean flag3,
-    boolean flag4) {}
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+
+public record MLoadStore(GasCalculator gc, MessageFrame frame) implements GasProjection {
+  @Override
+  public long staticGas() {
+    return gc.getVeryLowTierGasCost();
+  }
+
+  @Override
+  public long memoryExpansion() {
+    long offset = clampedToLong(frame.getStackItem(0));
+    return gc.memoryExpansionGasCost(frame, offset, 32);
+  }
+}

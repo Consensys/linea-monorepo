@@ -13,23 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.stack;
+package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-// TODO: maybe a builder?
-public record StackSettings(
-    Pattern pattern,
-    int alpha,
-    int delta,
-    int nbAdded,
-    int nbRemoved,
-    GasConstants staticGas,
-    boolean twoLinesInstruction,
-    boolean staticInstruction,
-    boolean addressTrimmingInstruction,
-    boolean oobFlag,
-    boolean flag1,
-    boolean flag2,
-    boolean flag3,
-    boolean flag4) {}
+public record Mid(GasCalculator gc) implements GasProjection {
+  @Override
+  public long staticGas() {
+    return gc.getMidTierGasCost();
+  }
+}

@@ -101,7 +101,7 @@ public final class AccountFragment implements TraceFragment {
   }
 
   @Override
-  public void retcon(Hub hub /* TODO WorldState state */) {
+  public void postConflationRetcon(Hub hub /* TODO WorldState state */) {
     this.deploymentNumberInfnty = hub.deploymentNumber(this.who);
     this.existsInfinity =
         false; // TODO should be account != null; see with Besu team if we can get a view on
