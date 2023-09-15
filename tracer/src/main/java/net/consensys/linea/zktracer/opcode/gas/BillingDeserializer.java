@@ -54,7 +54,7 @@ public class BillingDeserializer extends StdDeserializer<Billing> {
                           "'wordPrice' is a mandatory property when declaring 'byWord' billing"));
 
       MxpType type = extractMxpType(wordNode, "byWord");
-      Gas wordPrice = Gas.valueOf(wordPriceNode.textValue());
+      GasConstants wordPrice = GasConstants.valueOf(wordPriceNode.textValue());
 
       return Billing.byWord(type, wordPrice);
     }
@@ -78,7 +78,7 @@ public class BillingDeserializer extends StdDeserializer<Billing> {
                           "'bytePrice' is a mandatory property when declaring 'byByte' billing"));
 
       MxpType type = extractMxpType(byteNode, "byByte");
-      Gas bytePrice = Gas.valueOf(bytePriceNode.textValue());
+      GasConstants bytePrice = GasConstants.valueOf(bytePriceNode.textValue());
 
       return Billing.byByte(type, bytePrice);
     }
