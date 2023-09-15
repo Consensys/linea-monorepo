@@ -19,6 +19,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
 public record MLoadStore(GasCalculator gc, MessageFrame frame) implements GasProjection {
   @Override
@@ -30,5 +31,12 @@ public record MLoadStore(GasCalculator gc, MessageFrame frame) implements GasPro
   public long memoryExpansion() {
     long offset = clampedToLong(frame.getStackItem(0));
     return gc.memoryExpansionGasCost(frame, offset, 32);
+  }
+
+  @Override
+  public long largestOffset() {
+    long offset = clampedToLong(frame.getStackItem(0));
+
+    return Words.clampedAdd(offset, 32);
   }
 }

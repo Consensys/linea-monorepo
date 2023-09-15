@@ -26,15 +26,9 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class GasProjector {
-  private final GasCalculator gc;
-
-  public GasProjector(GasCalculator gc) {
-    this.gc = gc;
-  }
-
-  public GasProjection of(MessageFrame frame, OpCode opCode) {
-    switch (opCode) {
+public record GasProjector() {
+  public static GasProjection of(MessageFrame frame, OpCode opCode, GasCalculator gc) {
+    return switch (opCode) {
       case STOP -> new Zero(gc);
       case ADD,
           SUB,
@@ -154,7 +148,7 @@ public final class GasProjector {
         final UInt256 originalValue = account.getOriginalStorageValue(key);
         final UInt256 newValue = UInt256.fromBytes(frame.getStackItem(1));
 
-        return new SStore(gc, frame, key, originalValue, currentValue, newValue);
+        yield new SStore(gc, frame, key, originalValue, currentValue, newValue);
       }
       case JUMPI -> new High(gc);
       case JUMPDEST -> new JumpDest(gc);
@@ -162,43 +156,43 @@ public final class GasProjector {
         long offset = clampedToLong(frame.getStackItem(0));
         long size = clampedToLong(frame.getStackItem(1));
 
-        return new Log(gc, frame, offset, size, 0);
+        yield new Log(gc, frame, offset, size, 0);
       }
       case LOG1 -> {
         long offset = clampedToLong(frame.getStackItem(0));
         long size = clampedToLong(frame.getStackItem(1));
 
-        return new Log(gc, frame, offset, size, 1);
+        yield new Log(gc, frame, offset, size, 1);
       }
       case LOG2 -> {
         long offset = clampedToLong(frame.getStackItem(0));
         long size = clampedToLong(frame.getStackItem(1));
 
-        return new Log(gc, frame, offset, size, 2);
+        yield new Log(gc, frame, offset, size, 2);
       }
       case LOG3 -> {
         long offset = clampedToLong(frame.getStackItem(0));
         long size = clampedToLong(frame.getStackItem(1));
 
-        return new Log(gc, frame, offset, size, 3);
+        yield new Log(gc, frame, offset, size, 3);
       }
       case LOG4 -> {
         long offset = clampedToLong(frame.getStackItem(0));
         long size = clampedToLong(frame.getStackItem(1));
 
-        return new Log(gc, frame, offset, size, 4);
+        yield new Log(gc, frame, offset, size, 4);
       }
       case CREATE -> {
         final long initCodeOffset = clampedToLong(frame.getStackItem(1));
         final long initCodeLength = clampedToLong(frame.getStackItem(2));
 
-        return new Create(gc, frame, initCodeOffset, initCodeLength);
+        yield new Create(gc, frame, initCodeOffset, initCodeLength);
       }
       case CREATE2 -> {
         final long initCodeOffset = clampedToLong(frame.getStackItem(1));
         final long initCodeLength = clampedToLong(frame.getStackItem(2));
 
-        return new Create2(gc, frame, initCodeOffset, initCodeLength);
+        yield new Create2(gc, frame, initCodeOffset, initCodeLength);
       }
       case CALL -> {
         final long stipend = clampedToLong(frame.getStackItem(0));
@@ -210,7 +204,7 @@ public final class GasProjector {
         final long inputDataLength = clampedToLong(frame.getStackItem(4));
         final long returnDataOffset = clampedToLong(frame.getStackItem(5));
         final long returnDataLength = clampedToLong(frame.getStackItem(6));
-        return new Call(
+        yield new Call(
             gc,
             frame,
             stipend,
@@ -231,7 +225,7 @@ public final class GasProjector {
         final long inputDataLength = clampedToLong(frame.getStackItem(4));
         final long returnDataOffset = clampedToLong(frame.getStackItem(5));
         final long returnDataLength = clampedToLong(frame.getStackItem(6));
-        return new Call(
+        yield new Call(
             gc,
             frame,
             stipend,
@@ -251,7 +245,7 @@ public final class GasProjector {
         final long inputDataLength = clampedToLong(frame.getStackItem(3));
         final long returnDataOffset = clampedToLong(frame.getStackItem(4));
         final long returnDataLength = clampedToLong(frame.getStackItem(5));
-        return new Call(
+        yield new Call(
             gc,
             frame,
             stipend,
@@ -272,7 +266,7 @@ public final class GasProjector {
         final long inputDataLength = clampedToLong(frame.getStackItem(3));
         final long returnDataOffset = clampedToLong(frame.getStackItem(4));
         final long returnDataLength = clampedToLong(frame.getStackItem(5));
-        return new Call(
+        yield new Call(
             gc,
             frame,
             stipend,
@@ -286,15 +280,14 @@ public final class GasProjector {
       }
       case RETURN -> new Return(gc, frame);
       case REVERT -> {
-        final long offset = clampedToLong(frame.popStackItem());
-        final long length = clampedToLong(frame.popStackItem());
+        final long offset = clampedToLong(frame.getStackItem(0));
+        final long length = clampedToLong(frame.getStackItem(1));
 
-        return new Revert(gc, frame, offset, length);
+        yield new Revert(gc, frame, offset, length);
       }
       case INVALID -> new GasProjection() {};
       case SELFDESTRUCT -> new SelfDestruct(gc, frame);
       default -> throw new IllegalStateException("Unexpected value: " + opCode);
-    }
-    throw new IllegalStateException();
+    };
   }
 }

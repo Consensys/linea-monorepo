@@ -21,6 +21,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
 public record Call(
     GasCalculator gc,
@@ -39,6 +40,13 @@ public record Call(
     return Math.max(
         gc.memoryExpansionGasCost(frame, inputDataOffset, inputDataLength),
         gc.memoryExpansionGasCost(frame, returnDataOffset, returnDataLength));
+  }
+
+  @Override
+  public long largestOffset() {
+    return Math.max(
+        Words.clampedAdd(inputDataOffset, inputDataLength),
+        Words.clampedAdd(returnDataOffset, returnDataLength));
   }
 
   @Override

@@ -22,7 +22,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
 
 /**

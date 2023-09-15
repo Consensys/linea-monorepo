@@ -17,11 +17,17 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
 public record Revert(GasCalculator gc, MessageFrame frame, long offset, long length)
     implements GasProjection {
   @Override
   public long memoryExpansion() {
     return gc.memoryExpansionGasCost(frame, offset, length);
+  }
+
+  @Override
+  public long largestOffset() {
+    return Words.clampedAdd(offset, length);
   }
 }
