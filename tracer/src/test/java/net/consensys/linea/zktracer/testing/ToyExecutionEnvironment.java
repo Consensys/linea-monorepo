@@ -41,6 +41,9 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.evm.Code;
 import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.MainnetEVMs;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.account.AccountState;
+import org.hyperledger.besu.evm.code.CodeV0;
 import org.hyperledger.besu.evm.frame.BlockValues;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
@@ -58,6 +61,7 @@ public class ToyExecutionEnvironment {
   private static final Bytes DEFAULT_BYTECODE = Bytes.EMPTY;
   private static final long DEFAULT_GAS_LIMIT = 1_000_000;
   private static final ToyWorld DEFAULT_TOY_WORLD = ToyWorld.empty();
+  private static final Wei DEFAULT_BASE_FEE = Wei.of(7_000_000_000L);
 
   private final BlockValues blockValues = ToyBlockValues.builder().number(13L).build();
   private final ToyWorld toyWorld;
@@ -104,17 +108,13 @@ public class ToyExecutionEnvironment {
   }
 
   private MessageFrame prepareFrame(final Transaction tx) {
-    final Bytes byteCode =
-        toyWorld
-            .get(
-                tx.getTo()
-                    .orElseThrow(
-                        () ->
-                            new IllegalArgumentException(
-                                "Cannot fetch receiver account address from transaction")))
-            .getCode();
+    final Account receiverAccount = toyWorld.get(tx.getTo().orElse(null));
 
-    final Code code = evm.getCode(Hash.hash(byteCode), byteCode);
+    final Optional<Bytes> byteCode =
+        Optional.ofNullable(receiverAccount).map(AccountState::getCode);
+
+    final Code code =
+        byteCode.map(bytes -> evm.getCode(Hash.hash(bytes), bytes)).orElse(CodeV0.EMPTY_CODE);
 
     return new TestMessageFrameBuilder()
         .worldUpdater(this.toyWorld.updater())
@@ -148,7 +148,8 @@ public class ToyExecutionEnvironment {
         new MessageCallProcessor(evm, new PrecompileContractRegistry());
 
     BlockHeader mockBlockHeader =
-        BlockHeaderBuilder.createDefault().baseFee(Wei.of(7)).buildBlockHeader();
+        BlockHeaderBuilder.createDefault().baseFee(DEFAULT_BASE_FEE).buildBlockHeader();
+
     BlockBody mockBlockBody = new BlockBody(transactions, new ArrayList<>());
 
     tracer.traceStartConflation(1);
