@@ -24,6 +24,10 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.chunks.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.StackFragment;
 import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.chunks.TransactionFragment;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
+import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 
 /** A TraceSection gather the trace lines linked to a single operation */
 public abstract class TraceSection {
@@ -65,20 +69,21 @@ public abstract class TraceSection {
    * @return a chunk representing the share columns
    */
   private CommonFragment traceCommon(Hub hub) {
+    OpCode opCode = hub.getOpCode();
     return new CommonFragment(
         hub.getTxNumber(),
         hub.getBatchNumber(),
         hub.getTxState(),
         hub.getStamp(),
-        0, // retconned later on
-        false, // retconned later on
+        0, // retconned
+        false, // retconned
         hub.opCodeData().instructionFamily(),
         hub.getExceptions().snapshot(),
         hub.currentFrame().getContextNumber(),
         hub.currentFrame().getContextNumber(),
-        0, // TODO retconned
-        false, // TODO
-        false, // TODO
+        0, // retconned
+        false, // retconned
+        false, // retconned
         hub.getPc(),
         hub.getPc(), // retconned later on
         hub.currentFrame().addressAsEWord(),
@@ -89,7 +94,8 @@ public abstract class TraceSection {
         0,
         0,
         0,
-        0, // TODO
+        GasProjector.of(hub.getFrame(), opCode, new LondonGasCalculator()).refund(),
+        0,
         hub.opCodeData().stackSettings().twoLinesInstruction(),
         this.stackRowsCounter == 1,
         0, // retconned on sealing
@@ -193,14 +199,46 @@ public abstract class TraceSection {
   }
 
   /**
+   * Returns whether the opcode encoded in this section is part of a reverted context. As it is
+   * section-specific, we simply take the first one.
+   *
+   * @return true if the context reverted
+   */
+  public final boolean hasReverted() {
+    return this.lines.get(0).common.txReverts();
+  }
+
+  /**
+   * Returns the gas refund delta incurred by this operation. As it is section-specific, we simply
+   * take the first one.
+   *
+   * @return the gas delta
+   */
+  public final long refundDelta() {
+    return this.lines.get(0).common.refundDelta();
+  }
+
+  /**
    * This method is called when the transaction is finished to build required information post-hoc.
    *
    * @param hub the linked {@link Hub} context
    */
-  public final void postTxRetcon(Hub hub) {
+  public final void postTxRetcon(Hub hub, long gasRefund) {
     for (TraceLine chunk : lines) {
       chunk.common().postTxRetcon(hub);
+      chunk.common().gasRefund(gasRefund);
       chunk.specific().postTxRetcon(hub);
+      if (chunk.specific instanceof TransactionFragment fragment) {
+        fragment.setGasRefundAmount(gasRefund);
+      }
+    }
+  }
+
+  public void setFinalGasRefundCounter(long refundedGas) {
+    for (TraceLine chunk : lines) {
+      if (chunk.specific instanceof TransactionFragment fragment) {
+        fragment.setGasRefundFinalCounter(refundedGas);
+      }
     }
   }
 

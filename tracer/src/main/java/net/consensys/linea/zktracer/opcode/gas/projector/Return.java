@@ -20,6 +20,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
 public record Return(GasCalculator gc, MessageFrame frame) implements GasProjection {
   @Override
@@ -31,7 +32,14 @@ public record Return(GasCalculator gc, MessageFrame frame) implements GasProject
   }
 
   @Override
-  public long codeReturn() {
+  public long largestOffset() {
+    final long offset = clampedToLong(frame.getStackItem(0));
+    final long length = clampedToLong(frame.getStackItem(1));
+    return Words.clampedAdd(offset, length);
+  }
+
+  @Override
+  public long deploymentCost() {
     final long length = clampedToLong(frame.getStackItem(1));
 
     if (length > 24_576) {

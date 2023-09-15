@@ -31,4 +31,9 @@ public record MStore8(GasCalculator gc, MessageFrame frame) implements GasProjec
     long offset = clampedToLong(frame.getStackItem(0));
     return gc.memoryExpansionGasCost(frame, offset, 1);
   }
+
+  @Override
+  public long largestOffset() {
+    return clampedToLong(frame.getStackItem(0));
+  }
 }

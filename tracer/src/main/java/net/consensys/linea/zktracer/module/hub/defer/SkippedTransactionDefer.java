@@ -73,7 +73,7 @@ public record SkippedTransactionDefer(
             new AccountFragment(oldMinerAccount, newMinerAccount, false, 0, false),
 
             // 1 line -- transaction data
-            new TransactionFragment(
+            TransactionFragment.prepare(
                 hub.getBatchNumber(), minerAddress, tx, false, gasPrice, baseFee)));
   }
 }

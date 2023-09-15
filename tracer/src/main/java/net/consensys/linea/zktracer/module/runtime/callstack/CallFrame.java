@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.callstack;
+package net.consensys.linea.zktracer.module.runtime.callstack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +62,6 @@ public class CallFrame {
   @Getter private Wei value;
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
-  // @Getter RevertReason revertReason;
 
   /** where does this frame start in the {@link Hub} trace. */
   private int startLine;
@@ -79,6 +78,9 @@ public class CallFrame {
   @Getter private MemorySpan returnDataPointer;
   /** where this frame is expected to write its returnData within its parent's memory space. */
   @Getter private MemorySpan returnDataTarget;
+
+  @Getter @Setter private int selfReverts = 0;
+  @Getter @Setter private int getsReverted = 0;
 
   /** this frame {@link Stack}. */
   @Getter private final Stack stack = new Stack();
@@ -170,5 +172,27 @@ public class CallFrame {
     }
 
     return Optional.of(this.childFrames.get(this.childFrames.size() - 1));
+  }
+
+  private void revertChildren(CallStack callStack, int stamp) {
+    if (this.getsReverted == 0) {
+      this.getsReverted = stamp;
+      this.childFrames.stream()
+          .map(callStack::get)
+          .forEach(frame -> frame.revertChildren(callStack, stamp));
+    }
+  }
+
+  public void revert(CallStack callStack, int stamp) {
+    if (this.selfReverts == 0) {
+      this.selfReverts = stamp;
+      this.revertChildren(callStack, stamp);
+    } else {
+      throw new RuntimeException("a context can not self-reverse twice");
+    }
+  }
+
+  public boolean hasReverted() {
+    return (this.selfReverts > 0) || (this.getsReverted > 0);
   }
 }

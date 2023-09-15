@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.hub.stack;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.EWord;
-import net.consensys.linea.zktracer.module.hub.callstack.CallFrame;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.hyperledger.besu.evm.frame.MessageFrame;

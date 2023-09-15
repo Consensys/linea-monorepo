@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
 public record Log(GasCalculator gc, MessageFrame frame, long offset, long size, int numTopics)
     implements GasProjection {
@@ -46,6 +47,11 @@ public record Log(GasCalculator gc, MessageFrame frame, long offset, long size, 
   @Override
   public long memoryExpansion() {
     return gc.memoryExpansionGasCost(frame, offset, size);
+  }
+
+  @Override
+  public long largestOffset() {
+    return Words.clampedAdd(offset, size);
   }
 
   @Override

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
@@ -32,6 +33,13 @@ public record Sha3(GasCalculator gc, MessageFrame frame) implements GasProjectio
     long offset = clampedToLong(frame.getStackItem(0));
     long length = clampedToLong(frame.getStackItem(1));
     return gc.memoryExpansionGasCost(frame, offset, length);
+  }
+
+  @Override
+  public long largestOffset() {
+    long offset = clampedToLong(frame.getStackItem(0));
+    long length = clampedToLong(frame.getStackItem(1));
+    return clampedAdd(offset, length);
   }
 
   @Override

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.callstack;
+package net.consensys.linea.zktracer.module.runtime.callstack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -201,5 +201,9 @@ public final class CallStack {
    */
   public CallFrame getParentOf(int i) {
     return this.get(this.frames.get(i).getParentFrame());
+  }
+
+  public void revert(int stamp) {
+    this.top().revert(this, stamp);
   }
 }
