@@ -20,7 +20,7 @@ import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
 
 public class TxSkippedSection extends TraceSection {
   public TxSkippedSection(Hub hub, TraceFragment... chunks) {
-    this.addChunks(hub, chunks);
+    this.addChunksWithoutStack(hub, chunks);
   }
 
   @Override
