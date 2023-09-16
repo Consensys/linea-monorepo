@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 
@@ -35,7 +35,7 @@ public record ContextFragment(CallStack callStack, CallFrame callFrame, boolean 
     return trace
         .peekAtContext(true)
         .pContextContextNumber(BigInteger.valueOf(callFrame.getContextNumber()))
-        .pContextCallStackDepth(BigInteger.ZERO) // TODO: should be CallFrame::getDepth
+        .pContextCallStackDepth(BigInteger.valueOf(callFrame.getDepth()))
         .pContextIsStatic(callFrame.getType().isStatic() ? BigInteger.ONE : BigInteger.ZERO)
         .pContextAccountAddressHi(eAddress.hiBigInt())
         .pContextAccountAddressLo(eAddress.loBigInt())

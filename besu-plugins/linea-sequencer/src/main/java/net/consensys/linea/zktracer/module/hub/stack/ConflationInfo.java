@@ -13,16 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.stack;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.DeploymentInfo;
 
-public class CreateSection extends TraceSection {
-  public CreateSection(Hub hub, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, chunks);
+/** Stores data relative to the conflation. */
+@Accessors(fluent = true)
+@Getter
+public class ConflationInfo {
+  private int number = 0;
+  private DeploymentInfo deploymentInfo;
+
+  public void update() {
+    this.number++;
+    this.deploymentInfo = new DeploymentInfo();
   }
-
-  @Override
-  public void seal(Hub hub) {}
 }

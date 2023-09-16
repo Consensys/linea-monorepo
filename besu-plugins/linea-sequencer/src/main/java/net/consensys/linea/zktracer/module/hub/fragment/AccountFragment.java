@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 
@@ -102,7 +102,7 @@ public final class AccountFragment implements TraceFragment {
 
   @Override
   public void postConflationRetcon(Hub hub /* TODO WorldState state */) {
-    this.deploymentNumberInfnty = hub.deploymentNumber(this.who);
+    this.deploymentNumberInfnty = hub.conflation().deploymentInfo().number(this.who);
     this.existsInfinity =
         false; // TODO should be account != null; see with Besu team if we can get a view on
     // the state in traceEndConflation

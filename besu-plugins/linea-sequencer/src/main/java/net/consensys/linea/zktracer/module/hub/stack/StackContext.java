@@ -81,8 +81,7 @@ public final class StackContext {
    * @param items the stack operations to execute
    */
   void addArmingLine(int posResult, IndexedStackOperation... items) {
-    int newPos = this.lines.size();
-    this.lines.add(new StackLine(Arrays.stream(items).toList(), newPos, posResult));
+    this.lines.add(new StackLine(Arrays.stream(items).toList(), posResult));
   }
 
   /**

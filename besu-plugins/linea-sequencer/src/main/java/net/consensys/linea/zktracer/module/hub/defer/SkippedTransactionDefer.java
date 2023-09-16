@@ -16,9 +16,9 @@
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountSnapshot;
-import net.consensys.linea.zktracer.module.hub.chunks.TransactionFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.TxSkippedSection;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -46,19 +46,28 @@ public record SkippedTransactionDefer(
     Address fromAddress = this.oldFromAccount.address();
     Address toAddress = this.oldToAccount.address();
     Address minerAddress = this.oldMinerAccount.address();
-    hub.unmarkDeploying(toAddress);
+    hub.conflation().deploymentInfo().unmarkDeploying(toAddress);
 
     AccountSnapshot newFromAccount =
         AccountSnapshot.fromAccount(
-            state.get(fromAddress), true, hub.deploymentNumber(fromAddress), false);
+            state.get(fromAddress),
+            true,
+            hub.conflation().deploymentInfo().number(fromAddress),
+            false);
 
     AccountSnapshot newToAccount =
         AccountSnapshot.fromAccount(
-            state.get(fromAddress), true, hub.deploymentNumber(toAddress), false);
+            state.get(fromAddress),
+            true,
+            hub.conflation().deploymentInfo().number(toAddress),
+            false);
 
     AccountSnapshot newMinerAccount =
         AccountSnapshot.fromAccount(
-            state.get(minerAddress), true, hub.deploymentNumber(minerAddress), false);
+            state.get(minerAddress),
+            true,
+            hub.conflation().deploymentInfo().number(minerAddress),
+            false);
 
     // Append the final chunk to the hub chunks
     hub.addTraceSection(
@@ -74,6 +83,12 @@ public record SkippedTransactionDefer(
 
             // 1 line -- transaction data
             TransactionFragment.prepare(
-                hub.getBatchNumber(), minerAddress, tx, false, gasPrice, baseFee)));
+                hub.conflation().number(),
+                minerAddress,
+                tx,
+                false,
+                gasPrice,
+                baseFee,
+                hub.tx().initialGas())));
   }
 }
