@@ -18,8 +18,10 @@ package net.consensys.linea.zktracer.module.hub;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ import net.consensys.linea.zktracer.module.hub.section.StackRam;
 import net.consensys.linea.zktracer.module.hub.section.StorageSection;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.section.TransactionSection;
+import net.consensys.linea.zktracer.module.hub.section.WarmupSection;
 import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
@@ -63,6 +66,8 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Quantity;
@@ -114,7 +119,7 @@ public class Hub implements Module {
   }
 
   private EWord getValOrigOrUpdate(Address address, EWord key, EWord value) {
-    EWord r = this.valOrigs.getOrDefault(address, new HashMap<>()).putIfAbsent(key, value);
+    EWord r = this.valOrigs.computeIfAbsent(address, x -> new HashMap<>()).putIfAbsent(key, value);
     if (r == null) {
       return value;
     }
@@ -339,7 +344,7 @@ public class Hub implements Module {
             - tx.getAccessList().map(gc::accessListGasCost).orElse(0L));
   }
 
-  void processStateWarm() {
+  void processStateWarm(WorldView world) {
     this.stamp++;
     this.txState = TxState.TX_WARM;
 
@@ -348,9 +353,36 @@ public class Hub implements Module {
         .getAccessList()
         .ifPresent(
             preWarmed -> {
+              Set<Address> seenAddresses = new HashSet<>();
+              Map<Address, Set<Bytes32>> seenKeys = new HashMap<>();
+              List<TraceFragment> fragments = new ArrayList<>();
+
               for (AccessListEntry entry : preWarmed) {
-                // TODO
+                Address address = entry.address();
+                AccountSnapshot snapshot =
+                    AccountSnapshot.fromAccount(
+                        world.get(address), seenAddresses.contains(address), 0, false);
+                fragments.add(new AccountFragment(snapshot, snapshot, false, 0, false));
+                seenAddresses.add(address);
+
+                List<Bytes32> keys = entry.storageKeys();
+                for (Bytes32 key_ : keys) {
+                  UInt256 key = UInt256.fromBytes(key_);
+                  EWord value = EWord.of(world.get(address).getStorageValue(key));
+                  fragments.add(
+                      new StorageFragment(
+                          address,
+                          this.deploymentNumber(address),
+                          EWord.of(key),
+                          value,
+                          value,
+                          value,
+                          seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
+                          true));
+                  seenKeys.get(address).add(key);
+                }
               }
+              this.addTraceSection(new WarmupSection(this, fragments));
             });
   }
 
@@ -372,7 +404,7 @@ public class Hub implements Module {
             this.currentTx.getData().orElse(Bytes.EMPTY),
             this.maxContextNumber,
             this.deploymentNumber(toAddress),
-            toAddress.isEmpty() ? 0 : this.deploymentNumber.getOrDefault(toAddress, 0),
+            toAddress.isEmpty() ? 0 : this.deploymentNumber(toAddress),
             this.isDeploying(toAddress));
   }
 
@@ -539,7 +571,7 @@ public class Hub implements Module {
       return;
     }
 
-    this.processStateWarm();
+    this.processStateWarm(world);
     this.processStateInit(world);
     this.txState = TxState.TX_EXEC;
   }
@@ -598,7 +630,7 @@ public class Hub implements Module {
     if (isDeployment) {
       this.markDeploying(codeAddress);
     }
-    final int codeDeploymentNumber = this.deploymentNumber.getOrDefault(codeAddress, 0);
+    final int codeDeploymentNumber = this.deploymentNumber(codeAddress);
     this.callStack.enter(
         frame.getContractAddress(),
         new Bytecode(frame.getCode().getBytes()),
@@ -608,7 +640,7 @@ public class Hub implements Module {
         this.trace.size(),
         frame.getInputData(),
         this.stamp + 1,
-        this.deploymentNumber.getOrDefault(codeAddress, 0),
+        this.deploymentNumber(codeAddress),
         codeDeploymentNumber,
         isDeployment);
 
@@ -627,7 +659,16 @@ public class Hub implements Module {
       this.callStack.revert(this.stamp);
     }
 
-    this.callStack.exit(this.trace.size() - 1, frame.getReturnData()); // TODO: or getOutputData?
+    if (!frame.getReturnData().isEmpty() && !frame.getOutputData().isEmpty()) {
+      throw new RuntimeException("both return data and output data set");
+    }
+
+    if (!frame.getOutputData().isEmpty()) {
+      this.callStack.exit(this.trace.size() - 1, frame.getOutputData());
+    } else {
+      this.callStack.exit(this.trace.size() - 1, frame.getReturnData());
+    }
+
   }
 
   @Override
@@ -657,7 +698,7 @@ public class Hub implements Module {
   }
 
   private void handleCreate(Address target) {
-    this.deploymentNumber.put(target, this.deploymentNumber.getOrDefault(target, 0) + 1);
+    this.deploymentNumber.put(target, this.deploymentNumber(target) + 1);
   }
 
   @Override
