@@ -17,7 +17,24 @@ package net.consensys.linea.zktracer.opcode.stack;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 
-// TODO: maybe a builder?
+/**
+ * Stores instruction-specific data that are required to generate the stack traces.
+ *
+ * @param pattern the stack pattern as given in the spec
+ * @param alpha alpha as set in the spec
+ * @param delta delta as set in the sped
+ * @param nbAdded the number of elements this operation adds on the stack
+ * @param nbRemoved the number of elements this operation pops from the stack
+ * @param staticGas the static part of the gas consumed by this operation
+ * @param twoLinesInstruction whether this operation fills one or two stack lines
+ * @param staticInstruction whether this instruction is allowed in a static context
+ * @param addressTrimmingInstruction whether this instruction triggers addres trimming
+ * @param oobFlag whether this instruction may trigger an OoB exception
+ * @param flag1
+ * @param flag2
+ * @param flag3
+ * @param flag4
+ */
 public record StackSettings(
     Pattern pattern,
     int alpha,

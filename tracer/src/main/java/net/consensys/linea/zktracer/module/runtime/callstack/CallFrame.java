@@ -34,6 +34,8 @@ import org.hyperledger.besu.datatypes.Wei;
 public class CallFrame {
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
+  /** the depth of this CallFrame within its call hierarchy. */
+  @Getter private int depth;
   /** the associated context number in the {@link Hub}. */
   @Getter private int contextNumber;
   /** */
@@ -62,11 +64,6 @@ public class CallFrame {
   @Getter private Wei value;
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
-
-  /** where does this frame start in the {@link Hub} trace. */
-  private int startLine;
-  /** where does this frame end in the {@link Hub} trace. */
-  private int endLine;
 
   /** the call data given to this frame. */
   @Getter private Bytes callData;
@@ -106,7 +103,6 @@ public class CallFrame {
    * @param caller the ID of this frame caller in the {@link CallStack}
    * @param value how much ether was given to this frame
    * @param gas how much gas was given to this frame
-   * @param currentLine where does this frame start in the {@link Hub} trace
    * @param callData {@link Bytes} containing this frame call data
    */
   CallFrame(
@@ -121,8 +117,8 @@ public class CallFrame {
       int caller,
       Wei value,
       long gas,
-      int currentLine,
-      Bytes callData) {
+      Bytes callData,
+      int depth) {
     this.contextNumber = contextNumber;
     this.accountDeploymentNumber = accountDeploymentNumber;
     this.codeDeploymentNumber = codeDeploymentNumber;
@@ -134,17 +130,12 @@ public class CallFrame {
     this.parentFrame = caller;
     this.value = value;
     this.gasEndowment = gas;
-    this.startLine = currentLine;
-    this.endLine = currentLine;
     this.callData = callData;
-  }
-
-  void close(int line) {
-    this.endLine = line;
+    this.depth = depth;
   }
 
   /**
-   * Return the address of this callframe as an {@link EWord}.
+   * Return the address of this CallFrame as an {@link EWord}.
    *
    * @return the address
    */

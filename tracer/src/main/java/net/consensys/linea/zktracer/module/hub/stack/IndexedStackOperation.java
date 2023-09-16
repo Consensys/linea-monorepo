@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.hub.stack;
 
 /**
  * An operation within a {@link StackLine}. This structure is useful because stack lines may be
- * sparse. TODO: replace with a map[int->StackOperation] within StackLine?
+ * sparse.
  *
  * @param i the index of the stack item within a stack line -- within [[1, 4]
  * @param it the details of the {@link StackOperation} to apply to a column of a stack line

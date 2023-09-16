@@ -93,7 +93,7 @@ public class MulOperation {
     arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    this.res = getRes(opCode, arg1, arg2); // TODO can we get this from the EVM
+    this.res = getRes(opCode, arg1, arg2);
 
     final BigInteger arg1BigInt = UInt256.fromBytes(arg1).toUnsignedBigInteger();
     final BigInteger arg2BigInt = UInt256.fromBytes(arg2).toUnsignedBigInteger();
@@ -266,7 +266,7 @@ public class MulOperation {
     // first round is special
     if (index == 0 && !squareAndMultiply) {
       squareAndMultiply = true;
-      resAcc = UInt256.valueOf(1); // TODO assuming this is what SetOne() does
+      resAcc = UInt256.valueOf(1);
       cBytes = BaseTheta.fromBytes32(arg1);
 
       return true;

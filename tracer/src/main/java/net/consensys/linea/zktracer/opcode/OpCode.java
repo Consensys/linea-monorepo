@@ -78,7 +78,7 @@ public enum OpCode {
   JUMP,
   JUMPI,
   PC,
-  MSIZE, // TODO
+  MSIZE,
   GAS,
   JUMPDEST,
   // PUSH0(

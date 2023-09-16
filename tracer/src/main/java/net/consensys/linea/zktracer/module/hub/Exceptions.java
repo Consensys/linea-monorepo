@@ -20,7 +20,6 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 /**
@@ -95,12 +94,13 @@ public record Exceptions(
         > 1024;
   }
 
-  private static boolean isOutOfMemoryExpansion(MessageFrame frame, OpCode opCode) {
-    return GasProjector.of(frame, opCode, new LondonGasCalculator()).largestOffset() > 0xffffffffL;
+  private static boolean isOutOfMemoryExpansion(
+      MessageFrame frame, OpCode opCode, GasProjector gp) {
+    return gp.of(frame, opCode).largestOffset() > 0xffffffffL;
   }
 
-  private static boolean isOutOfGas(MessageFrame frame, OpCode opCode) {
-    final long required = GasProjector.of(frame, opCode, new LondonGasCalculator()).total();
+  private static boolean isOutOfGas(MessageFrame frame, OpCode opCode, GasProjector gp) {
+    final long required = gp.of(frame, opCode).total();
     return required > frame.getRemainingGas();
   }
 
@@ -153,7 +153,7 @@ public record Exceptions(
    * @param frame the context from which to compute the putative exceptions
    * @return all {@link Exceptions} relative to the given frame
    */
-  public static Exceptions fromFrame(final MessageFrame frame) {
+  public static Exceptions fromFrame(final MessageFrame frame, GasProjector gp) {
     OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     OpCodeData opCodeData = opCode.getData();
 
@@ -161,8 +161,8 @@ public record Exceptions(
         isInvalidOpcode(opCode),
         isStackUnderflow(frame, opCodeData),
         isStackOverflow(frame, opCodeData),
-        isOutOfMemoryExpansion(frame, opCode),
-        isOutOfGas(frame, opCode),
+        isOutOfMemoryExpansion(frame, opCode, gp),
+        isOutOfGas(frame, opCode, gp),
         isReturnDataCopyFault(frame),
         isJumpFault(frame, opCode),
         isStaticFault(frame),

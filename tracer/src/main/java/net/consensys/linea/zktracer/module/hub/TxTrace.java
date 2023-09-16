@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class TxTrace {
   private final List<TraceSection> trace = new ArrayList<>();
@@ -39,23 +40,28 @@ public class TxTrace {
     this.trace.add(section);
   }
 
-  public void postTxRetcon(Hub hub) {
+  public long refundedGas() {
     long refundedGas = 0;
     for (TraceSection section : this.trace) {
       if (!section.hasReverted()) {
         refundedGas += section.refundDelta();
       }
-      section.postTxRetcon(hub, refundedGas);
     }
+    return refundedGas;
+  }
 
+  public void postTxRetcon(Hub hub) {
+    long leftoverGas = hub.frame().getRemainingGas();
+    long refundedGas = this.refundedGas();
     for (TraceSection section : this.trace) {
+      section.postTxRetcon(hub, leftoverGas, refundedGas);
       section.setFinalGasRefundCounter(refundedGas);
     }
   }
 
-  public void postConflationRetcon(Hub hub) {
+  public void postConflationRetcon(Hub hub, WorldView world) {
     for (TraceSection section : this.trace) {
-      section.postConflationRetcon(hub);
+      section.postConflationRetcon(hub, world);
     }
   }
 

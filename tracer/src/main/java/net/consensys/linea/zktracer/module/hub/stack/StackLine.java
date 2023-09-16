@@ -28,22 +28,13 @@ import net.consensys.linea.zktracer.module.hub.Hub;
  * hub, hence the name) of zero to four atomic {@link StackOperation}.
  *
  * @param items zero to four stack operations contained within this line
- * @param ct the index of this line within its parent {@link StackContext}
  * @param resultColumn if positive, in which item to store the expected retroactive result
  */
-public record StackLine(
-    List<IndexedStackOperation> items,
-    int ct, // TODO: could probably be inferred at trace-time
-    int resultColumn) {
+public record StackLine(List<IndexedStackOperation> items, int resultColumn) {
 
   /** The default constructor, an empty stack line. */
-  StackLine() {
-    this(new ArrayList<>(), 0, -1);
-  }
-
-  /** The default constructor, an empty stack line at a given counter. */
-  public StackLine(int ct) {
-    this(new ArrayList<>(), ct, -1);
+  public StackLine() {
+    this(new ArrayList<>(), -1);
   }
 
   /**
@@ -53,7 +44,7 @@ public record StackLine(
    * @param items the {@link IndexedStackOperation} to include in this line
    */
   StackLine(int ct, IndexedStackOperation... items) {
-    this(Arrays.stream(items).toList(), ct, -1);
+    this(Arrays.stream(items).toList(), -1);
   }
 
   /**
