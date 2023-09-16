@@ -13,19 +13,55 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.ContextExceptions;
+import net.consensys.linea.zktracer.module.hub.Exceptions;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.stack.Action;
 import net.consensys.linea.zktracer.module.hub.stack.Stack;
 import net.consensys.linea.zktracer.module.hub.stack.StackOperation;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
+import net.consensys.linea.zktracer.opcode.gas.MxpType;
 
-public record StackFragment(Stack stack, List<StackOperation> stackOps) implements TraceFragment {
+@Accessors(fluent = true)
+public final class StackFragment implements TraceFragment {
+  private final Stack stack;
+  @Getter private final List<StackOperation> stackOps;
+  private final Exceptions exceptions;
+  @Setter private ContextExceptions contextExceptions;
+  private final long staticGas;
+
+  private StackFragment(
+      Stack stack,
+      List<StackOperation> stackOps,
+      Exceptions exceptions,
+      ContextExceptions contextExceptions,
+      long staticGas) {
+    this.stack = stack;
+    this.stackOps = stackOps;
+    this.exceptions = exceptions;
+    this.contextExceptions = contextExceptions;
+    this.staticGas = staticGas;
+  }
+
+  public static StackFragment prepare(
+      final Stack stack,
+      final List<StackOperation> stackOperations,
+      final Exceptions exceptions,
+      long staticGas) {
+    return new StackFragment(
+        stack, stackOperations, exceptions, ContextExceptions.empty(), staticGas);
+  }
+
   @Override
   public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
     final List<Function<BigInteger, Trace.TraceBuilder>> valHiTracers =
@@ -70,9 +106,7 @@ public record StackFragment(Stack stack, List<StackOperation> stackOps) implemen
     var heightOver = 0;
 
     if (!stack.isUnderflow()) {
-      if (alpha == 1 && delta == 0 && stack.getHeight() == Stack.MAX_STACK_SIZE) {
-        heightOver = stack.getHeight() + alpha - delta - Stack.MAX_STACK_SIZE - 1;
-      } else {
+      if (!(alpha == 1 && delta == 0 && stack.getHeight() == Stack.MAX_STACK_SIZE)) {
         var overflow = stack.isOverflow() ? 1 : 0;
         heightOver = (2 * overflow - 1) * (heightUnder + alpha - Stack.MAX_STACK_SIZE) - overflow;
       }
@@ -101,23 +135,23 @@ public record StackFragment(Stack stack, List<StackOperation> stackOps) implemen
         .pStackHeightOver(BigInteger.valueOf(heightOver))
         // Instruction details
         .pStackInstruction(BigInteger.valueOf(this.stack.getCurrentOpcodeData().value()))
-        .pStackStaticGas(BigInteger.ZERO) // TODO
+        .pStackStaticGas(BigInteger.valueOf(staticGas))
         .pStackDecodedFlag1(this.stack.getCurrentOpcodeData().stackSettings().flag1())
         .pStackDecodedFlag2(this.stack.getCurrentOpcodeData().stackSettings().flag2())
         .pStackDecodedFlag3(this.stack.getCurrentOpcodeData().stackSettings().flag3())
         .pStackDecodedFlag4(this.stack.getCurrentOpcodeData().stackSettings().flag4())
         // Exception flag
-        .pStackOpcx(false) // TODO
-        .pStackSux(stack.isUnderflow())
-        .pStackSox(stack.isOverflow())
-        .pStackOogx(false) // TODO
-        .pStackMxpx(false) // TODO
-        .pStackRdcx(false) // TODO
-        .pStackJumpx(false) // TODO
-        .pStackStaticx(false) // TODO
-        .pStackSstorex(false) // TODO
-        .pStackInvprex(false) // TODO
-        .pStackMaxcsx(false) // TODO
+        .pStackOpcx(exceptions.invalidOpcode())
+        .pStackSux(exceptions.stackUnderflow())
+        .pStackSox(exceptions.stackOverflow())
+        .pStackOogx(exceptions.outOfGas())
+        .pStackMxpx(exceptions.outOfMemoryExpansion())
+        .pStackRdcx(exceptions.returnDataCopyFault())
+        .pStackJumpx(exceptions.jumpFault())
+        .pStackStaticx(exceptions.staticViolation())
+        .pStackSstorex(exceptions.outOfSStore())
+        .pStackInvprex(contextExceptions.invalidCodePrefix())
+        .pStackMaxcsx(contextExceptions.codeSizeOverflow())
         // Opcode families
         .pStackAddFlag(
             this.stack.getCurrentOpcodeData().instructionFamily() == InstructionFamily.ADD)
@@ -167,10 +201,10 @@ public record StackFragment(Stack stack, List<StackOperation> stackOps) implemen
             this.stack.getCurrentOpcodeData().instructionFamily() == InstructionFamily.HALT)
         .pStackInvalidFlag(
             this.stack.getCurrentOpcodeData().instructionFamily() == InstructionFamily.INVALID)
-        //      .pStackMxpFlag(this.stack.getCurrentOpcodeData().billing().type() != MxpType.NONE)
-        // // TODO: billing
-        // not yet specified
-        .pStackMxpFlag(false)
+        .pStackMxpFlag(
+            Optional.ofNullable(this.stack.getCurrentOpcodeData().billing())
+                .map(b -> b.type() != MxpType.NONE)
+                .orElse(false))
         .pStackTrmFlag(
             this.stack.getCurrentOpcodeData().stackSettings().addressTrimmingInstruction())
         .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().staticInstruction())

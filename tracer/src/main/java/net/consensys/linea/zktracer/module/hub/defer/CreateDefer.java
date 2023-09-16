@@ -16,9 +16,9 @@
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountSnapshot;
-import net.consensys.linea.zktracer.module.hub.chunks.ContextFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -44,16 +44,16 @@ public record CreateDefer(
         AccountSnapshot.fromAccount(
             frame.getWorldUpdater().getAccount(creatorAddress),
             true,
-            hub.deploymentNumber(creatorAddress),
-            hub.isDeploying(creatorAddress));
+            hub.conflation().deploymentInfo().number(creatorAddress),
+            hub.conflation().deploymentInfo().isDeploying(creatorAddress));
 
     Address createdAddress = oldCreatedSnapshot.address();
     AccountSnapshot newCreatedSnapshot =
         AccountSnapshot.fromAccount(
             frame.getWorldUpdater().getAccount(createdAddress),
             true,
-            hub.deploymentNumber(createdAddress),
-            hub.isDeploying(createdAddress));
+            hub.conflation().deploymentInfo().number(createdAddress),
+            hub.conflation().deploymentInfo().isDeploying(createdAddress));
 
     hub.addTraceSection(
         new net.consensys.linea.zktracer.module.hub.section.CreateSection(

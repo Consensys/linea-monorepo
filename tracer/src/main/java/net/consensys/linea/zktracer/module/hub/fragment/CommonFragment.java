@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 
@@ -112,10 +112,10 @@ public final class CommonFragment implements TraceFragment {
 
   @Override
   public void postTxRetcon(Hub hub) {
-    CallFrame frame = hub.getCallStack().get(this.contextNumber);
+    CallFrame frame = hub.callStack().get(this.contextNumber);
 
-    this.txEndStamp = hub.getStamp();
-    this.txReverts = hub.getTxResult();
+    this.txEndStamp = hub.stamp();
+    this.txReverts = hub.tx().status();
     this.selfReverts = frame.getSelfReverts() > 0;
     this.getsReverted = frame.getGetsReverted() > 0;
   }

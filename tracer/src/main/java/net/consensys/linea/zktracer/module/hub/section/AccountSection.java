@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.chunks.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class AccountSection extends TraceSection {
   public AccountSection(Hub hub, TraceFragment... chunks) {

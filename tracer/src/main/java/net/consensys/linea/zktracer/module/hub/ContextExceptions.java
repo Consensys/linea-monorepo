@@ -40,6 +40,10 @@ public record ContextExceptions(boolean invalidCodePrefix, boolean codeSizeOverf
     return deployedCode.size() > MAX_CODE_SIZE;
   }
 
+  public static ContextExceptions empty() {
+    return new ContextExceptions(false, false);
+  }
+
   public static ContextExceptions fromFrame(final CallFrame callFrame, final MessageFrame frame) {
     if (callFrame.isCodeDeploymentStatus()) {
       return new ContextExceptions(isInvalidCodePrefix(frame), isCodeSizeOverflow(frame));

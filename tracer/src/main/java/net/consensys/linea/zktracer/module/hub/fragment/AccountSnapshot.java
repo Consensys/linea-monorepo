@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.chunks;
+package net.consensys.linea.zktracer.module.hub.fragment;
 
 import net.consensys.linea.zktracer.module.hub.Bytecode;
 import org.hyperledger.besu.datatypes.Address;

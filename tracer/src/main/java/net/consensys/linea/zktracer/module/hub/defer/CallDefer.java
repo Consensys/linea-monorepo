@@ -16,9 +16,9 @@
 package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.chunks.AccountSnapshot;
-import net.consensys.linea.zktracer.module.hub.chunks.ContextFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.section.CallSection;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -45,16 +45,16 @@ public record CallDefer(
         AccountSnapshot.fromAccount(
             frame.getWorldUpdater().getAccount(callerAddress),
             true,
-            hub.deploymentNumber(callerAddress),
-            hub.isDeploying(callerAddress));
+            hub.conflation().deploymentInfo().number(callerAddress),
+            hub.conflation().deploymentInfo().isDeploying(callerAddress));
 
     Address calledAddress = oldCalledSnapshot.address();
     AccountSnapshot newCalledSnapshot =
         AccountSnapshot.fromAccount(
             frame.getWorldUpdater().getAccount(calledAddress),
             true,
-            hub.deploymentNumber(calledAddress),
-            hub.isDeploying(calledAddress));
+            hub.conflation().deploymentInfo().number(calledAddress),
+            hub.conflation().deploymentInfo().isDeploying(calledAddress));
 
     hub.addTraceSection(
         new CallSection(
@@ -67,6 +67,6 @@ public record CallDefer(
             new AccountFragment(oldCalledSnapshot, newCalledSnapshot, false, 0, false),
             new AccountFragment(oldCalledSnapshot, newCalledSnapshot, false, 0, false),
             // context -- only if not precompile
-            new ContextFragment(hub.getCallStack(), hub.currentFrame(), false)));
+            new ContextFragment(hub.callStack(), hub.currentFrame(), false)));
   }
 }

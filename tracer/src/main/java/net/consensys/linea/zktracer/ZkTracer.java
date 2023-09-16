@@ -70,6 +70,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   @Override
   public void traceStartConflation(final long numBlocksInConflation) {
+    hub.traceStartConflation(numBlocksInConflation);
     for (Module module : this.modules) {
       module.traceStartConflation(numBlocksInConflation);
     }
@@ -125,8 +126,6 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
       module.traceEndTx(worldView, tx, status, output, logs, gasUsed);
     }
   }
-
-  // TODO: missing ContextEnter/Exit
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
