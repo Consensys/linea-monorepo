@@ -164,7 +164,8 @@ public class Hub implements Module {
   }
 
   public List<Module> getModules() {
-    return List.of(add, ext, mod, mul, shf, trm, wcp);
+    List<Module> r = new ArrayList<>();
+    return r;
   }
 
   @Override
@@ -608,6 +609,11 @@ public class Hub implements Module {
   @Override
   public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     this.block.update(blockHeader);
+  }
+
+  @Override
+  public void traceEndBlock(BlockHeader blockHeader, BlockBody blockBody) {
+    Module.super.traceEndBlock(blockHeader, blockBody);
   }
 
   @Override

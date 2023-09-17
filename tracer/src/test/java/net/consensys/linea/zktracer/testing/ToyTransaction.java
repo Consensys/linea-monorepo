@@ -63,7 +63,7 @@ public class ToyTransaction {
     public Transaction build() {
 
       return Transaction.builder()
-          .to(to != null ? to.getAddress() : null)
+          .to(to.getAddress())
           //        .sender(sender != null ? sender.getAddress() : DEFAULT_SENDER.getAddress())
           //        .nonce(sender != null ? sender.getNonce() : DEFAULT_SENDER.getNonce())
           .nonce(sender.getNonce())

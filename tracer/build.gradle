@@ -28,8 +28,10 @@ dependencies {
   compileOnly 'com.google.auto.service:auto-service'
   compileOnly 'com.google.auto.service:auto-service-annotations'
 
-  implementation "org.hyperledger.besu:plugin-api"
-  implementation "org.hyperledger.besu:besu-datatypes"
+  implementation "org.hyperledger.besu:plugin-api:$besuVersion"
+  implementation "org.hyperledger.besu.internal:core:$besuVersion"
+  implementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+  implementation "org.hyperledger.besu.internal:rlp:$besuVersion"
   implementation "org.hyperledger.besu:evm:$besuVersion"
   implementation "org.hyperledger.besu.internal:algorithms:${besuVersion}"
 
@@ -48,8 +50,9 @@ dependencies {
 
   testImplementation "org.hyperledger.besu:evm:$besuVersion"
   testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
-  testImplementation "org.hyperledger.besu:besu-datatypes"
-
+  testImplementation "org.hyperledger.besu.internal:rlp:$besuVersion"
+  testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
+  testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
 }
 
 configurations {
