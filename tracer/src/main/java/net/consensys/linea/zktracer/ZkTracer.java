@@ -24,6 +24,7 @@ import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
+import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -41,6 +42,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 public class ZkTracer implements ZkBlockAwareOperationTracer {
   private final ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
   private final Hub hub;
+
   private final List<Module> modules;
 
   public ZkTracer() {
@@ -52,8 +54,11 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
     Trm trm = new Trm();
     Wcp wcp = new Wcp();
 
+    RlpTxn rlpTxn = new RlpTxn();
+
     this.hub = new Hub(add, ext, mod, mul, shf, trm, wcp);
     this.modules = hub.getModules();
+    this.modules.add(rlpTxn);
 
     // Load opcodes configured in src/main/resources/opcodes.yml.
     OpCodes.load();
