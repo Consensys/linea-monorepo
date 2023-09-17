@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.Bytecode;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
@@ -145,7 +146,7 @@ public final class CallStack {
    */
   public void exit(int currentLine, Bytes returnData) {
     this.depth -= 1;
-    assert this.depth >= 0;
+    Preconditions.checkState(this.depth >= 0);
 
     final int parent = this.top().getParentFrame();
     this.frames.get(parent).getChildFrames().add(this.current);

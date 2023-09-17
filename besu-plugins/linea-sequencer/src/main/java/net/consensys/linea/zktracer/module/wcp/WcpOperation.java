@@ -71,9 +71,9 @@ public class WcpOperation {
 
     this.isOneLineInstruction = isOneLineInstruction(opCode);
 
-    // maybe ?
-    // Bytes32[] args
-    // assert args.size() == opCode.numberOfArguments();
+    //     maybe ?
+    //     Bytes32[] args
+    //     Preconditions.checkArgument(args.size() == opCode.numberOfArguments());
 
     this.arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
     this.arg1Lo = Bytes16.wrap(arg1.slice(16));

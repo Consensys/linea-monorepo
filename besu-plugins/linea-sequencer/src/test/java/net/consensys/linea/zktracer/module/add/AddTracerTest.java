@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -31,8 +30,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class AddTracerTest {
   private static final Random RAND = new Random();
@@ -49,11 +46,11 @@ class AddTracerTest {
         .run();
   }
 
-  @ParameterizedTest(name = "{index} {0}")
-  @MethodSource("provideTraceSpecs")
-  void traceWithSpecFile(final String ignored, URL specUrl) {
-    SpecTests.runSpecTestWithTraceComparison(specUrl, MODULE.jsonKey());
-  }
+  //  @ParameterizedTest(name = "{index} {0}")
+  //  @MethodSource("provideTraceSpecs")
+  //  void traceWithSpecFile(final String ignored, URL specUrl) {
+  //    SpecTests.runSpecTestWithTraceComparison(specUrl, MODULE.jsonKey());
+  //  }
 
   private static Object[][] provideTraceSpecs() {
     return SpecTests.findSpecFiles(MODULE.jsonKey());

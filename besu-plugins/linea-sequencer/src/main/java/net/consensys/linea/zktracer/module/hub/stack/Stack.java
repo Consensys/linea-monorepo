@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.stack;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
@@ -329,7 +330,7 @@ public class Stack {
     this.currentOpcodeData = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
     callFrame.setPending(new StackContext(this.currentOpcodeData.mnemonic()));
 
-    assert this.height == frame.stackSize();
+    Preconditions.checkState(this.height == frame.stackSize());
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
     this.heightNew -= this.currentOpcodeData.stackSettings().nbRemoved();
 
