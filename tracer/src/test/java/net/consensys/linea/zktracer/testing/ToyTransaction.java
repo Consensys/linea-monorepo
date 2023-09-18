@@ -16,11 +16,14 @@
 package net.consensys.linea.zktracer.testing;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
@@ -41,6 +44,7 @@ public class ToyTransaction {
   private static final Wei DEFAULT_GAS_PRICE = Wei.of(10_000_000_000L);
   private static final BigInteger DEFAULT_CHAIN_ID = BigInteger.valueOf(23);
   private static final TransactionType DEFAULT_TX_TYPE = TransactionType.FRONTIER;
+  private static final List<AccessListEntry> DEFAULT_ACCESS_LIST = new ArrayList<>();
 
   private final ToyAccount to;
   private final ToyAccount sender;
@@ -51,6 +55,7 @@ public class ToyTransaction {
   private final Bytes payload;
   private final BigInteger chainId;
   private final KeyPair keyPair;
+  private final List<AccessListEntry> accessList;
 
   /** Customizations applied to the Lombok generated builder. */
   public static class ToyTransactionBuilder {
@@ -64,9 +69,8 @@ public class ToyTransaction {
 
       return Transaction.builder()
           .to(to != null ? to.getAddress() : null)
-          //        .sender(sender != null ? sender.getAddress() : DEFAULT_SENDER.getAddress())
-          //        .nonce(sender != null ? sender.getNonce() : DEFAULT_SENDER.getNonce())
           .nonce(sender.getNonce())
+          .accessList(accessList)
           .type(Optional.ofNullable(transactionType).orElse(DEFAULT_TX_TYPE))
           .gasPrice(Optional.ofNullable(gasPrice).orElse(DEFAULT_GAS_PRICE))
           .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
