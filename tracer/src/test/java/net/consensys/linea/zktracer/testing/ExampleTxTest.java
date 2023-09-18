@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.testing;
 import java.util.List;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -26,12 +25,13 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+@ExtendWith(EvmExtension.class)
 class ExampleTxTest {
 
   @Test
   void test() {
-    OpCodes.load();
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
@@ -52,7 +52,14 @@ class ExampleTxTest {
             .build();
 
     Transaction tx =
-        ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(receiverAccount)
+            //            .transactionType(TransactionType.ACCESS_LIST)
+            //            .accessList(List.of(new AccessListEntry(Address.fromHexString("0x00"),
+            // List.of())))
+            .keyPair(keyPair)
+            .build();
 
     ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
