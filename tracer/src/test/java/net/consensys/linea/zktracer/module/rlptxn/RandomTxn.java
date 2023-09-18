@@ -89,7 +89,7 @@ class RandomTxn {
         ToyTransaction.builder()
             .sender(senderAccount)
             .keyPair(keyPair)
-            .to(receiverAccount)
+            //            .to(receiverAccount)
 
             // Choose the type of transaction
             .transactionType(TransactionType.FRONTIER)
