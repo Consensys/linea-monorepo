@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import lombok.Getter;
@@ -73,6 +74,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.log.Log;
@@ -311,7 +313,12 @@ public class Hub implements Module {
     this.callStack.newBedrock(
         toAddress,
         isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
-        new Bytecode(world.get(toAddress).getCode()),
+        new Bytecode(
+            toAddress == null
+                ? this.tx.transaction().getData().orElse(Bytes.EMPTY)
+                : Optional.ofNullable(world.get(toAddress))
+                    .map(AccountState::getCode)
+                    .orElse(Bytes.EMPTY)), // TODO: see with Olivier
         Wei.of(this.tx.transaction().getValue().getAsBigInteger()),
         this.tx.transaction().getGasLimit(),
         this.tx.transaction().getData().orElse(Bytes.EMPTY),
