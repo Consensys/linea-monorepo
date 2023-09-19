@@ -15,21 +15,9 @@
 
 package net.consensys.linea.tracegeneration.rpc;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** FileTrace represents an execution trace. */
-public record FileTrace(String tracesEngineVersion, List<String> tracesFileName) {
-  @Override
-  @JsonProperty("tracesEngineVersion")
-  public String tracesEngineVersion() {
-    return tracesEngineVersion;
-  }
-
-  @Override
-  @JsonProperty("tracesFileName")
-  public List<String> tracesFileName() {
-    return tracesFileName;
-  }
-}
+public record FileTrace(
+    @JsonProperty("tracesEngineVersion") String tracesEngineVersion,
+    @JsonProperty("traceFileName") String traceFileName) {}
