@@ -22,9 +22,6 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import java.util.zip.GZIPOutputStream;
 
 import com.fasterxml.jackson.core.JsonEncoding;
@@ -32,8 +29,6 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
@@ -65,44 +60,49 @@ public class RollupGenerateConflatedTracesToFileV0 {
    */
   public FileTrace execute(final PluginRpcRequest request) {
     try {
+      final TraceService traceService = context.getService(TraceService.class).orElseThrow();
       TraceRequestParams params = TraceRequestParams.createTraceParams(request.getParams());
-      List<String> paths = new ArrayList<>();
 
       final long fromBlock = params.fromBlock();
       final long toBlock = params.toBlock();
       final ZkTracer tracer = new ZkTracer();
 
-      tracer.traceStartConflation(toBlock - fromBlock + 1);
-      getBlocks(fromBlock, toBlock)
-          .forEach(
-              blockContext ->
-                  paths.add(
-                      traceBlockAndReturnPath(blockContext, params.runtimeVersion(), tracer)));
-      tracer.traceEndConflation();
+      traceService.trace(
+          fromBlock,
+          toBlock,
+          worldStateBeforeTracing -> {
+            // before tracing
+            tracer.traceStartConflation(toBlock - fromBlock + 1);
+          },
+          worldStateAfterTracing -> {
+            // after tracing
+            tracer.traceEndConflation();
+          },
+          tracer);
 
-      return new FileTrace(params.runtimeVersion(), paths);
+      final String path = writeTraceToFile(tracer, params.runtimeVersion());
+
+      return new FileTrace(params.runtimeVersion(), path);
     } catch (Exception ex) {
       throw new PluginRpcEndpointException(ex.getMessage());
     }
   }
 
-  private String traceBlockAndReturnPath(
-      final BlockContext block, final String traceRuntimeVersion, final ZkTracer tracer) {
-    final TraceService traceService = context.getService(TraceService.class).orElseThrow();
+  private String writeTraceToFile(final ZkTracer tracer, final String traceRuntimeVersion) {
     final String dataDir = "traces";
-    final File file = generateOutputFile(dataDir, block, traceRuntimeVersion);
+    final File file = generateOutputFile(dataDir, traceRuntimeVersion);
     final OutputStream outputStream = createOutputStream(file);
 
     try (JsonGenerator jsonGenerator =
         jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
       jsonGenerator.useDefaultPrettyPrinter();
-      traceService.traceBlock(block.getBlockHeader().getNumber(), tracer);
       jsonGenerator.writeObject(tracer.getJsonTrace());
 
-      return file.getAbsolutePath();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+
+    return file.getAbsolutePath();
   }
 
   private OutputStream createOutputStream(final File file) {
@@ -118,20 +118,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
     }
   }
 
-  private List<BlockContext> getBlocks(final long fromBlock, final long toBlock) {
-    BlockchainService blockchainService = context.getService(BlockchainService.class).orElseThrow();
-    List<BlockContext> blockContexts = new ArrayList<>();
-
-    for (long blockNumber = fromBlock; blockNumber <= toBlock; blockNumber++) {
-      Optional<BlockContext> block = blockchainService.getBlockByNumber(blockNumber);
-      blockContexts.add(block.orElseThrow(() -> new RuntimeException("Block not found")));
-    }
-
-    return blockContexts;
-  }
-
-  private File generateOutputFile(
-      final String traceDir, final BlockContext block, final String tracesEngineVersion) {
+  private File generateOutputFile(final String traceDir, final String tracesEngineVersion) {
 
     Path path = Paths.get(traceDir);
     if (!Files.isDirectory(path) && !path.toFile().mkdirs()) {
@@ -142,12 +129,8 @@ public class RollupGenerateConflatedTracesToFileV0 {
 
     return path.resolve(
             String.format(
-                "%d-%s-%.10s-%s.traces.%s",
-                block.getBlockHeader().getNumber(),
-                block.getBlockHeader().getBlockHash(),
-                System.currentTimeMillis(),
-                tracesEngineVersion,
-                getFileFormat()))
+                "%.10s-%s.traces.%s",
+                System.currentTimeMillis(), tracesEngineVersion, getFileFormat()))
         .toFile();
   }
 
