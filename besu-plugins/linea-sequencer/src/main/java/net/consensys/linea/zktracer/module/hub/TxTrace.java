@@ -21,21 +21,39 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+/**
+ * Stores all the trace sections associated to the same transaction, stored in chronological order
+ * of creation.
+ */
 public class TxTrace {
+  /** The {@link TraceSection} of which this transaction trace is made of */
   private final List<TraceSection> trace = new ArrayList<>();
 
   public int size() {
     return this.trace.size();
   }
 
+  /**
+   * Returns the latest trace section, i.e. the most recent.
+   *
+   * @return the most recent trace section
+   */
   public TraceSection currentSection() {
     return this.trace.get(this.size() - 1);
   }
 
+  /**
+   * @return whether this trace is empty
+   */
   public boolean isEmpty() {
     return this.trace.isEmpty();
   }
 
+  /**
+   * Add a {@link TraceSection} to this transaction trace.
+   *
+   * @param section the section to append
+   */
   public void add(TraceSection section) {
     this.trace.add(section);
   }
@@ -50,6 +68,11 @@ public class TxTrace {
     return refundedGas;
   }
 
+  /**
+   * Run the action required at the end of the transaction to finish this trace.
+   *
+   * @param hub the exection context
+   */
   public void postTxRetcon(Hub hub) {
     long leftoverGas = hub.frame().getRemainingGas();
     long refundedGas = this.refundedGas();
@@ -59,12 +82,22 @@ public class TxTrace {
     }
   }
 
+  /**
+   * Run the action required at the end of the conflation to finish this trace.
+   *
+   * @param hub the exection context
+   */
   public void postConflationRetcon(Hub hub, WorldView world) {
     for (TraceSection section : this.trace) {
       section.postConflationRetcon(hub, world);
     }
   }
 
+  /**
+   * Generate the final numeric trace from the accumulated information.
+   *
+   * @param hubTrace where to materialize the trace
+   */
   public void commit(Trace.TraceBuilder hubTrace) {
     for (TraceSection opSection : this.trace) {
       for (TraceSection.TraceLine line : opSection.getLines()) {
@@ -73,6 +106,9 @@ public class TxTrace {
     }
   }
 
+  /**
+   * @return the line number in this transaction trace
+   */
   public int lineCount() {
     int count = 0;
     for (TraceSection opSection : this.trace) {

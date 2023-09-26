@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
+import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
@@ -24,11 +25,10 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public class GasProjector {
-  private final GasCalculator gc = new LondonGasCalculator();
+  private final GasCalculator gc = ZkTracer.gasCalculator;
 
   public GasProjection of(MessageFrame frame, OpCode opCode) {
     return switch (opCode) {
