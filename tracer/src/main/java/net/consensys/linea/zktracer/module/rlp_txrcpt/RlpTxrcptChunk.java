@@ -13,15 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlppatterns;
+package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import lombok.Getter;
+import org.hyperledger.besu.datatypes.TransactionType;
+import org.hyperledger.besu.evm.log.Log;
 
-@Getter
-public class RlpBitDecOutput {
-  @Getter private List<Boolean> bitDecList = new ArrayList<>();
-  @Getter private List<Integer> bitAccList = new ArrayList<>();
-}
+record RlpTxrcptChunk(TransactionType txType, Boolean status, Long gasUsed, List<Log> logs) {}

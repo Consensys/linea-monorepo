@@ -102,7 +102,7 @@ public class Hub implements Module {
   @Getter private Exceptions exceptions;
   @Getter int stamp = 0;
   @Getter private int pc;
-  @Getter private OpCode opCode;
+  @Getter private OpCode opCode = OpCode.STOP;
   private int maxContextNumber;
   @Getter private MessageFrame frame;
 
@@ -334,7 +334,7 @@ public class Hub implements Module {
   }
 
   public CallFrame currentFrame() {
-    return this.callStack.top();
+    return Optional.of(this.callStack.top()).orElse(CallFrame.empty());
   }
 
   private void handleStack(MessageFrame frame) {
@@ -418,7 +418,6 @@ public class Hub implements Module {
   }
 
   void processStateFinal(WorldView worldView, Transaction tx, boolean isSuccess) {
-    log.error("TX_FINAL");
     this.stamp++;
 
     Address fromAddress = this.tx.transaction().getSender();
@@ -454,6 +453,11 @@ public class Hub implements Module {
                   this.block.baseFee,
                   this.tx.initialGas())));
     } else {
+      // Trace the exceptions of a transaction that could not even start
+      if (this.exceptions == null) {
+        this.exceptions = Exceptions.fromOutOfGas();
+      }
+
       // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
       Address toAddress = this.tx.transaction().getSender();
       Account toAccount = worldView.get(toAddress);
@@ -487,6 +491,7 @@ public class Hub implements Module {
 
   @Override
   public void traceStartTx(final WorldView world, final Transaction tx) {
+    this.exceptions = null;
     this.tx.update(tx);
     this.createNewTxTrace();
 
@@ -616,11 +621,6 @@ public class Hub implements Module {
   @Override
   public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     this.block.update(blockHeader);
-  }
-
-  @Override
-  public void traceEndBlock(BlockHeader blockHeader, BlockBody blockBody) {
-    Module.super.traceEndBlock(blockHeader, blockBody);
   }
 
   @Override

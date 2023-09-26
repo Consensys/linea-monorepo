@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.rlp_txn;
 
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.byteCounting;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.outerRlpSize;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithRightZero;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -50,7 +50,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class RlpTxn implements Module {
   final Trace.TraceBuilder builder = Trace.builder();
   int llarge = TxnrlpTrace.LLARGE.intValue();
-  int llargemo = TxnrlpTrace.LLARGEMO.intValue();
   Bytes prefix_short_int = bigIntegerToBytes(BigInteger.valueOf(TxnrlpTrace.int_short.intValue()));
   Bytes prefix_long_int = bigIntegerToBytes(BigInteger.valueOf(TxnrlpTrace.int_long.intValue()));
   Bytes prefix_short_list =

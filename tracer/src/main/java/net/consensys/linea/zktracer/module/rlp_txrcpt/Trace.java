@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxrcpt;
+package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record Trace(
+public record Trace(
     @JsonProperty("ABS_LOG_NUM") List<BigInteger> absLogNum,
     @JsonProperty("ABS_LOG_NUM_MAX") List<BigInteger> absLogNumMax,
     @JsonProperty("ABS_TX_NUM") List<BigInteger> absTxNum,
@@ -43,7 +43,7 @@ record Trace(
     @JsonProperty("BYTE_2") List<UnsignedByte> byte2,
     @JsonProperty("BYTE_3") List<UnsignedByte> byte3,
     @JsonProperty("BYTE_4") List<UnsignedByte> byte4,
-    @JsonProperty("COUNTER") List<UnsignedByte> counter,
+    @JsonProperty("COUNTER") List<BigInteger> counter,
     @JsonProperty("DEPTH_1") List<Boolean> depth1,
     @JsonProperty("DONE") List<Boolean> done,
     @JsonProperty("INDEX") List<BigInteger> index,
@@ -61,7 +61,7 @@ record Trace(
     @JsonProperty("LOCAL_SIZE") List<BigInteger> localSize,
     @JsonProperty("LOG_ENTRY_SIZE") List<BigInteger> logEntrySize,
     @JsonProperty("nBYTES") List<UnsignedByte> nBytes,
-    @JsonProperty("nSTEP") List<UnsignedByte> nStep,
+    @JsonProperty("nSTEP") List<BigInteger> nStep,
     @JsonProperty("PHASE_0") List<Boolean> phase0,
     @JsonProperty("PHASE_1") List<Boolean> phase1,
     @JsonProperty("PHASE_2") List<Boolean> phase2,
@@ -124,7 +124,7 @@ record Trace(
     private final List<UnsignedByte> byte4 = new ArrayList<>();
 
     @JsonProperty("COUNTER")
-    private final List<UnsignedByte> counter = new ArrayList<>();
+    private final List<BigInteger> counter = new ArrayList<>();
 
     @JsonProperty("DEPTH_1")
     private final List<Boolean> depth1 = new ArrayList<>();
@@ -178,7 +178,7 @@ record Trace(
     private final List<UnsignedByte> nBytes = new ArrayList<>();
 
     @JsonProperty("nSTEP")
-    private final List<UnsignedByte> nStep = new ArrayList<>();
+    private final List<BigInteger> nStep = new ArrayList<>();
 
     @JsonProperty("PHASE_0")
     private final List<Boolean> phase0 = new ArrayList<>();
@@ -209,7 +209,7 @@ record Trace(
 
     private TraceBuilder() {}
 
-    int size() {
+    public int size() {
       if (!filled.isEmpty()) {
         throw new RuntimeException("Cannot measure a trace with a non-validated row.");
       }
@@ -217,11 +217,11 @@ record Trace(
       return this.absLogNum.size();
     }
 
-    TraceBuilder absLogNum(final BigInteger b) {
-      if (filled.get(39)) {
+    public TraceBuilder absLogNum(final BigInteger b) {
+      if (filled.get(0)) {
         throw new IllegalStateException("ABS_LOG_NUM already set");
       } else {
-        filled.set(39);
+        filled.set(0);
       }
 
       absLogNum.add(b);
@@ -229,11 +229,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder absLogNumMax(final BigInteger b) {
-      if (filled.get(2)) {
+    public TraceBuilder absLogNumMax(final BigInteger b) {
+      if (filled.get(1)) {
         throw new IllegalStateException("ABS_LOG_NUM_MAX already set");
       } else {
-        filled.set(2);
+        filled.set(1);
       }
 
       absLogNumMax.add(b);
@@ -241,11 +241,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder absTxNum(final BigInteger b) {
-      if (filled.get(11)) {
+    public TraceBuilder absTxNum(final BigInteger b) {
+      if (filled.get(2)) {
         throw new IllegalStateException("ABS_TX_NUM already set");
       } else {
-        filled.set(11);
+        filled.set(2);
       }
 
       absTxNum.add(b);
@@ -253,11 +253,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder absTxNumMax(final BigInteger b) {
-      if (filled.get(25)) {
+    public TraceBuilder absTxNumMax(final BigInteger b) {
+      if (filled.get(3)) {
         throw new IllegalStateException("ABS_TX_NUM_MAX already set");
       } else {
-        filled.set(25);
+        filled.set(3);
       }
 
       absTxNumMax.add(b);
@@ -265,11 +265,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc1(final BigInteger b) {
-      if (filled.get(21)) {
+    public TraceBuilder acc1(final BigInteger b) {
+      if (filled.get(4)) {
         throw new IllegalStateException("ACC_1 already set");
       } else {
-        filled.set(21);
+        filled.set(4);
       }
 
       acc1.add(b);
@@ -277,11 +277,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc2(final BigInteger b) {
-      if (filled.get(4)) {
+    public TraceBuilder acc2(final BigInteger b) {
+      if (filled.get(5)) {
         throw new IllegalStateException("ACC_2 already set");
       } else {
-        filled.set(4);
+        filled.set(5);
       }
 
       acc2.add(b);
@@ -289,11 +289,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc3(final BigInteger b) {
-      if (filled.get(9)) {
+    public TraceBuilder acc3(final BigInteger b) {
+      if (filled.get(6)) {
         throw new IllegalStateException("ACC_3 already set");
       } else {
-        filled.set(9);
+        filled.set(6);
       }
 
       acc3.add(b);
@@ -301,11 +301,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc4(final BigInteger b) {
-      if (filled.get(36)) {
+    public TraceBuilder acc4(final BigInteger b) {
+      if (filled.get(7)) {
         throw new IllegalStateException("ACC_4 already set");
       } else {
-        filled.set(36);
+        filled.set(7);
       }
 
       acc4.add(b);
@@ -313,11 +313,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder accSize(final BigInteger b) {
-      if (filled.get(16)) {
+    public TraceBuilder accSize(final BigInteger b) {
+      if (filled.get(8)) {
         throw new IllegalStateException("ACC_SIZE already set");
       } else {
-        filled.set(16);
+        filled.set(8);
       }
 
       accSize.add(b);
@@ -325,11 +325,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bit(final Boolean b) {
-      if (filled.get(10)) {
+    public TraceBuilder bit(final Boolean b) {
+      if (filled.get(9)) {
         throw new IllegalStateException("BIT already set");
       } else {
-        filled.set(10);
+        filled.set(9);
       }
 
       bit.add(b);
@@ -337,11 +337,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitAcc(final UnsignedByte b) {
-      if (filled.get(23)) {
+    public TraceBuilder bitAcc(final UnsignedByte b) {
+      if (filled.get(10)) {
         throw new IllegalStateException("BIT_ACC already set");
       } else {
-        filled.set(23);
+        filled.set(10);
       }
 
       bitAcc.add(b);
@@ -349,11 +349,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(29)) {
+    public TraceBuilder byte1(final UnsignedByte b) {
+      if (filled.get(11)) {
         throw new IllegalStateException("BYTE_1 already set");
       } else {
-        filled.set(29);
+        filled.set(11);
       }
 
       byte1.add(b);
@@ -361,11 +361,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte2(final UnsignedByte b) {
-      if (filled.get(34)) {
+    public TraceBuilder byte2(final UnsignedByte b) {
+      if (filled.get(12)) {
         throw new IllegalStateException("BYTE_2 already set");
       } else {
-        filled.set(34);
+        filled.set(12);
       }
 
       byte2.add(b);
@@ -373,11 +373,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte3(final UnsignedByte b) {
-      if (filled.get(19)) {
+    public TraceBuilder byte3(final UnsignedByte b) {
+      if (filled.get(13)) {
         throw new IllegalStateException("BYTE_3 already set");
       } else {
-        filled.set(19);
+        filled.set(13);
       }
 
       byte3.add(b);
@@ -385,11 +385,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte4(final UnsignedByte b) {
-      if (filled.get(22)) {
+    public TraceBuilder byte4(final UnsignedByte b) {
+      if (filled.get(14)) {
         throw new IllegalStateException("BYTE_4 already set");
       } else {
-        filled.set(22);
+        filled.set(14);
       }
 
       byte4.add(b);
@@ -397,11 +397,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder counter(final UnsignedByte b) {
-      if (filled.get(32)) {
+    public TraceBuilder counter(final BigInteger b) {
+      if (filled.get(15)) {
         throw new IllegalStateException("COUNTER already set");
       } else {
-        filled.set(32);
+        filled.set(15);
       }
 
       counter.add(b);
@@ -409,11 +409,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder depth1(final Boolean b) {
-      if (filled.get(24)) {
+    public TraceBuilder depth1(final Boolean b) {
+      if (filled.get(16)) {
         throw new IllegalStateException("DEPTH_1 already set");
       } else {
-        filled.set(24);
+        filled.set(16);
       }
 
       depth1.add(b);
@@ -421,11 +421,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder done(final Boolean b) {
-      if (filled.get(38)) {
+    public TraceBuilder done(final Boolean b) {
+      if (filled.get(17)) {
         throw new IllegalStateException("DONE already set");
       } else {
-        filled.set(38);
+        filled.set(17);
       }
 
       done.add(b);
@@ -433,11 +433,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder index(final BigInteger b) {
-      if (filled.get(27)) {
+    public TraceBuilder index(final BigInteger b) {
+      if (filled.get(18)) {
         throw new IllegalStateException("INDEX already set");
       } else {
-        filled.set(27);
+        filled.set(18);
       }
 
       index.add(b);
@@ -445,11 +445,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder indexLocal(final BigInteger b) {
-      if (filled.get(37)) {
+    public TraceBuilder indexLocal(final BigInteger b) {
+      if (filled.get(19)) {
         throw new IllegalStateException("INDEX_LOCAL already set");
       } else {
-        filled.set(37);
+        filled.set(19);
       }
 
       indexLocal.add(b);
@@ -457,11 +457,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder input1(final BigInteger b) {
-      if (filled.get(41)) {
+    public TraceBuilder input1(final BigInteger b) {
+      if (filled.get(20)) {
         throw new IllegalStateException("INPUT_1 already set");
       } else {
-        filled.set(41);
+        filled.set(20);
       }
 
       input1.add(b);
@@ -469,11 +469,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder input2(final BigInteger b) {
-      if (filled.get(7)) {
+    public TraceBuilder input2(final BigInteger b) {
+      if (filled.get(21)) {
         throw new IllegalStateException("INPUT_2 already set");
       } else {
-        filled.set(7);
+        filled.set(21);
       }
 
       input2.add(b);
@@ -481,11 +481,12 @@ record Trace(
       return this;
     }
 
-    TraceBuilder input3(final BigInteger b) {
-      if (filled.get(3)) {
+    public TraceBuilder input3(final BigInteger b) {
+      assert b.compareTo(BigInteger.ZERO) >= 0;
+      if (filled.get(22)) {
         throw new IllegalStateException("INPUT_3 already set");
       } else {
-        filled.set(3);
+        filled.set(22);
       }
 
       input3.add(b);
@@ -493,11 +494,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder input4(final BigInteger b) {
-      if (filled.get(8)) {
+    public TraceBuilder input4(final BigInteger b) {
+      if (filled.get(23)) {
         throw new IllegalStateException("INPUT_4 already set");
       } else {
-        filled.set(8);
+        filled.set(23);
       }
 
       input4.add(b);
@@ -505,11 +506,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder isData(final Boolean b) {
-      if (filled.get(6)) {
+    public TraceBuilder isData(final Boolean b) {
+      if (filled.get(24)) {
         throw new IllegalStateException("IS_DATA already set");
       } else {
-        filled.set(6);
+        filled.set(24);
       }
 
       isData.add(b);
@@ -517,11 +518,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder isPrefix(final Boolean b) {
-      if (filled.get(0)) {
+    public TraceBuilder isPrefix(final Boolean b) {
+      if (filled.get(25)) {
         throw new IllegalStateException("IS_PREFIX already set");
       } else {
-        filled.set(0);
+        filled.set(25);
       }
 
       isPrefix.add(b);
@@ -529,11 +530,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder isTopic(final Boolean b) {
-      if (filled.get(5)) {
+    public TraceBuilder isTopic(final Boolean b) {
+      if (filled.get(26)) {
         throw new IllegalStateException("IS_TOPIC already set");
       } else {
-        filled.set(5);
+        filled.set(26);
       }
 
       isTopic.add(b);
@@ -541,11 +542,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder lcCorrection(final Boolean b) {
-      if (filled.get(1)) {
+    public TraceBuilder lcCorrection(final Boolean b) {
+      if (filled.get(27)) {
         throw new IllegalStateException("LC_CORRECTION already set");
       } else {
-        filled.set(1);
+        filled.set(27);
       }
 
       lcCorrection.add(b);
@@ -553,11 +554,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder limb(final BigInteger b) {
-      if (filled.get(40)) {
+    public TraceBuilder limb(final BigInteger b) {
+      if (filled.get(28)) {
         throw new IllegalStateException("LIMB already set");
       } else {
-        filled.set(40);
+        filled.set(28);
       }
 
       limb.add(b);
@@ -565,11 +566,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder limbConstructed(final Boolean b) {
-      if (filled.get(18)) {
+    public TraceBuilder limbConstructed(final Boolean b) {
+      if (filled.get(29)) {
         throw new IllegalStateException("LIMB_CONSTRUCTED already set");
       } else {
-        filled.set(18);
+        filled.set(29);
       }
 
       limbConstructed.add(b);
@@ -577,11 +578,12 @@ record Trace(
       return this;
     }
 
-    TraceBuilder localSize(final BigInteger b) {
-      if (filled.get(13)) {
+    public TraceBuilder localSize(final BigInteger b) {
+      assert b.compareTo(BigInteger.ZERO) >= 0;
+      if (filled.get(30)) {
         throw new IllegalStateException("LOCAL_SIZE already set");
       } else {
-        filled.set(13);
+        filled.set(30);
       }
 
       localSize.add(b);
@@ -589,11 +591,12 @@ record Trace(
       return this;
     }
 
-    TraceBuilder logEntrySize(final BigInteger b) {
-      if (filled.get(28)) {
+    public TraceBuilder logEntrySize(final BigInteger b) {
+      assert b.compareTo(BigInteger.ZERO) >= 0;
+      if (filled.get(31)) {
         throw new IllegalStateException("LOG_ENTRY_SIZE already set");
       } else {
-        filled.set(28);
+        filled.set(31);
       }
 
       logEntrySize.add(b);
@@ -601,11 +604,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder nBytes(final UnsignedByte b) {
-      if (filled.get(12)) {
+    public TraceBuilder nBytes(final UnsignedByte b) {
+      if (filled.get(41)) {
         throw new IllegalStateException("nBYTES already set");
       } else {
-        filled.set(12);
+        filled.set(41);
       }
 
       nBytes.add(b);
@@ -613,11 +616,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder nStep(final UnsignedByte b) {
-      if (filled.get(15)) {
+    public TraceBuilder nStep(final BigInteger b) {
+      if (filled.get(42)) {
         throw new IllegalStateException("nSTEP already set");
       } else {
-        filled.set(15);
+        filled.set(42);
       }
 
       nStep.add(b);
@@ -625,11 +628,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phase0(final Boolean b) {
-      if (filled.get(14)) {
+    public TraceBuilder phase0(final Boolean b) {
+      if (filled.get(32)) {
         throw new IllegalStateException("PHASE_0 already set");
       } else {
-        filled.set(14);
+        filled.set(32);
       }
 
       phase0.add(b);
@@ -637,11 +640,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phase1(final Boolean b) {
-      if (filled.get(17)) {
+    public TraceBuilder phase1(final Boolean b) {
+      if (filled.get(33)) {
         throw new IllegalStateException("PHASE_1 already set");
       } else {
-        filled.set(17);
+        filled.set(33);
       }
 
       phase1.add(b);
@@ -649,11 +652,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phase2(final Boolean b) {
-      if (filled.get(35)) {
+    public TraceBuilder phase2(final Boolean b) {
+      if (filled.get(34)) {
         throw new IllegalStateException("PHASE_2 already set");
       } else {
-        filled.set(35);
+        filled.set(34);
       }
 
       phase2.add(b);
@@ -661,11 +664,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phase3(final Boolean b) {
-      if (filled.get(30)) {
+    public TraceBuilder phase3(final Boolean b) {
+      if (filled.get(35)) {
         throw new IllegalStateException("PHASE_3 already set");
       } else {
-        filled.set(30);
+        filled.set(35);
       }
 
       phase3.add(b);
@@ -673,11 +676,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phase4(final Boolean b) {
-      if (filled.get(31)) {
+    public TraceBuilder phase4(final Boolean b) {
+      if (filled.get(36)) {
         throw new IllegalStateException("PHASE_4 already set");
       } else {
-        filled.set(31);
+        filled.set(36);
       }
 
       phase4.add(b);
@@ -685,11 +688,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phaseEnd(final Boolean b) {
-      if (filled.get(42)) {
+    public TraceBuilder phaseEnd(final Boolean b) {
+      if (filled.get(37)) {
         throw new IllegalStateException("PHASE_END already set");
       } else {
-        filled.set(42);
+        filled.set(37);
       }
 
       phaseEnd.add(b);
@@ -697,11 +700,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder phaseSize(final BigInteger b) {
-      if (filled.get(20)) {
+    public TraceBuilder phaseSize(final BigInteger b) {
+      if (filled.get(38)) {
         throw new IllegalStateException("PHASE_SIZE already set");
       } else {
-        filled.set(20);
+        filled.set(38);
       }
 
       phaseSize.add(b);
@@ -709,11 +712,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder power(final BigInteger b) {
-      if (filled.get(26)) {
+    public TraceBuilder power(final BigInteger b) {
+      if (filled.get(39)) {
         throw new IllegalStateException("POWER already set");
       } else {
-        filled.set(26);
+        filled.set(39);
       }
 
       power.add(b);
@@ -721,11 +724,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder txrcptSize(final BigInteger b) {
-      if (filled.get(33)) {
+    public TraceBuilder txrcptSize(final BigInteger b) {
+      if (filled.get(40)) {
         throw new IllegalStateException("TXRCPT_SIZE already set");
       } else {
-        filled.set(33);
+        filled.set(40);
       }
 
       txrcptSize.add(b);
@@ -733,692 +736,692 @@ record Trace(
       return this;
     }
 
-    TraceBuilder setAbsLogNumAt(final BigInteger b, int i) {
+    public TraceBuilder setAbsLogNumAt(final BigInteger b, int i) {
       absLogNum.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsLogNumMaxAt(final BigInteger b, int i) {
+    public TraceBuilder setAbsLogNumMaxAt(final BigInteger b, int i) {
       absLogNumMax.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsTxNumAt(final BigInteger b, int i) {
+    public TraceBuilder setAbsTxNumAt(final BigInteger b, int i) {
       absTxNum.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsTxNumMaxAt(final BigInteger b, int i) {
+    public TraceBuilder setAbsTxNumMaxAt(final BigInteger b, int i) {
       absTxNumMax.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc1At(final BigInteger b, int i) {
+    public TraceBuilder setAcc1At(final BigInteger b, int i) {
       acc1.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc2At(final BigInteger b, int i) {
+    public TraceBuilder setAcc2At(final BigInteger b, int i) {
       acc2.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc3At(final BigInteger b, int i) {
+    public TraceBuilder setAcc3At(final BigInteger b, int i) {
       acc3.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc4At(final BigInteger b, int i) {
+    public TraceBuilder setAcc4At(final BigInteger b, int i) {
       acc4.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAccSizeAt(final BigInteger b, int i) {
+    public TraceBuilder setAccSizeAt(final BigInteger b, int i) {
       accSize.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setBitAt(final Boolean b, int i) {
+    public TraceBuilder setBitAt(final Boolean b, int i) {
       bit.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setBitAccAt(final UnsignedByte b, int i) {
+    public TraceBuilder setBitAccAt(final UnsignedByte b, int i) {
       bitAcc.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setByte1At(final UnsignedByte b, int i) {
+    public TraceBuilder setByte1At(final UnsignedByte b, int i) {
       byte1.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setByte2At(final UnsignedByte b, int i) {
+    public TraceBuilder setByte2At(final UnsignedByte b, int i) {
       byte2.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setByte3At(final UnsignedByte b, int i) {
+    public TraceBuilder setByte3At(final UnsignedByte b, int i) {
       byte3.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setByte4At(final UnsignedByte b, int i) {
+    public TraceBuilder setByte4At(final UnsignedByte b, int i) {
       byte4.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setCounterAt(final UnsignedByte b, int i) {
+    public TraceBuilder setCounterAt(final BigInteger b, int i) {
       counter.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setDepth1At(final Boolean b, int i) {
+    public TraceBuilder setDepth1At(final Boolean b, int i) {
       depth1.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setDoneAt(final Boolean b, int i) {
+    public TraceBuilder setDoneAt(final Boolean b, int i) {
       done.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setIndexAt(final BigInteger b, int i) {
+    public TraceBuilder setIndexAt(final BigInteger b, int i) {
       index.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setIndexLocalAt(final BigInteger b, int i) {
+    public TraceBuilder setIndexLocalAt(final BigInteger b, int i) {
       indexLocal.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setInput1At(final BigInteger b, int i) {
+    public TraceBuilder setInput1At(final BigInteger b, int i) {
       input1.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setInput2At(final BigInteger b, int i) {
+    public TraceBuilder setInput2At(final BigInteger b, int i) {
       input2.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setInput3At(final BigInteger b, int i) {
+    public TraceBuilder setInput3At(final BigInteger b, int i) {
       input3.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setInput4At(final BigInteger b, int i) {
+    public TraceBuilder setInput4At(final BigInteger b, int i) {
       input4.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setIsDataAt(final Boolean b, int i) {
+    public TraceBuilder setIsDataAt(final Boolean b, int i) {
       isData.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setIsPrefixAt(final Boolean b, int i) {
+    public TraceBuilder setIsPrefixAt(final Boolean b, int i) {
       isPrefix.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setIsTopicAt(final Boolean b, int i) {
+    public TraceBuilder setIsTopicAt(final Boolean b, int i) {
       isTopic.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setLcCorrectionAt(final Boolean b, int i) {
+    public TraceBuilder setLcCorrectionAt(final Boolean b, int i) {
       lcCorrection.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setLimbAt(final BigInteger b, int i) {
+    public TraceBuilder setLimbAt(final BigInteger b, int i) {
       limb.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setLimbConstructedAt(final Boolean b, int i) {
+    public TraceBuilder setLimbConstructedAt(final Boolean b, int i) {
       limbConstructed.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setLocalSizeAt(final BigInteger b, int i) {
+    public TraceBuilder setLocalSizeAt(final BigInteger b, int i) {
       localSize.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setLogEntrySizeAt(final BigInteger b, int i) {
+    public TraceBuilder setLogEntrySizeAt(final BigInteger b, int i) {
       logEntrySize.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setNBytesAt(final UnsignedByte b, int i) {
+    public TraceBuilder setNBytesAt(final UnsignedByte b, int i) {
       nBytes.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setNStepAt(final UnsignedByte b, int i) {
+    public TraceBuilder setNStepAt(final BigInteger b, int i) {
       nStep.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase0At(final Boolean b, int i) {
+    public TraceBuilder setPhase0At(final Boolean b, int i) {
       phase0.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase1At(final Boolean b, int i) {
+    public TraceBuilder setPhase1At(final Boolean b, int i) {
       phase1.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase2At(final Boolean b, int i) {
+    public TraceBuilder setPhase2At(final Boolean b, int i) {
       phase2.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase3At(final Boolean b, int i) {
+    public TraceBuilder setPhase3At(final Boolean b, int i) {
       phase3.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase4At(final Boolean b, int i) {
+    public TraceBuilder setPhase4At(final Boolean b, int i) {
       phase4.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhaseEndAt(final Boolean b, int i) {
+    public TraceBuilder setPhaseEndAt(final Boolean b, int i) {
       phaseEnd.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPhaseSizeAt(final BigInteger b, int i) {
+    public TraceBuilder setPhaseSizeAt(final BigInteger b, int i) {
       phaseSize.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setPowerAt(final BigInteger b, int i) {
+    public TraceBuilder setPowerAt(final BigInteger b, int i) {
       power.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setTxrcptSizeAt(final BigInteger b, int i) {
+    public TraceBuilder setTxrcptSizeAt(final BigInteger b, int i) {
       txrcptSize.set(i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsLogNumRelative(final BigInteger b, int i) {
+    public TraceBuilder setAbsLogNumRelative(final BigInteger b, int i) {
       absLogNum.set(absLogNum.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsLogNumMaxRelative(final BigInteger b, int i) {
+    public TraceBuilder setAbsLogNumMaxRelative(final BigInteger b, int i) {
       absLogNumMax.set(absLogNumMax.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsTxNumRelative(final BigInteger b, int i) {
+    public TraceBuilder setAbsTxNumRelative(final BigInteger b, int i) {
       absTxNum.set(absTxNum.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAbsTxNumMaxRelative(final BigInteger b, int i) {
+    public TraceBuilder setAbsTxNumMaxRelative(final BigInteger b, int i) {
       absTxNumMax.set(absTxNumMax.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc1Relative(final BigInteger b, int i) {
+    public TraceBuilder setAcc1Relative(final BigInteger b, int i) {
       acc1.set(acc1.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc2Relative(final BigInteger b, int i) {
+    public TraceBuilder setAcc2Relative(final BigInteger b, int i) {
       acc2.set(acc2.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc3Relative(final BigInteger b, int i) {
+    public TraceBuilder setAcc3Relative(final BigInteger b, int i) {
       acc3.set(acc3.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAcc4Relative(final BigInteger b, int i) {
+    public TraceBuilder setAcc4Relative(final BigInteger b, int i) {
       acc4.set(acc4.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setAccSizeRelative(final BigInteger b, int i) {
+    public TraceBuilder setAccSizeRelative(final BigInteger b, int i) {
       accSize.set(accSize.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setBitRelative(final Boolean b, int i) {
+    public TraceBuilder setBitRelative(final Boolean b, int i) {
       bit.set(bit.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setBitAccRelative(final UnsignedByte b, int i) {
+    public TraceBuilder setBitAccRelative(final UnsignedByte b, int i) {
       bitAcc.set(bitAcc.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setByte1Relative(final UnsignedByte b, int i) {
+    public TraceBuilder setByte1Relative(final UnsignedByte b, int i) {
       byte1.set(byte1.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setByte2Relative(final UnsignedByte b, int i) {
+    public TraceBuilder setByte2Relative(final UnsignedByte b, int i) {
       byte2.set(byte2.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setByte3Relative(final UnsignedByte b, int i) {
+    public TraceBuilder setByte3Relative(final UnsignedByte b, int i) {
       byte3.set(byte3.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setByte4Relative(final UnsignedByte b, int i) {
+    public TraceBuilder setByte4Relative(final UnsignedByte b, int i) {
       byte4.set(byte4.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setCounterRelative(final UnsignedByte b, int i) {
+    public TraceBuilder setCounterRelative(final BigInteger b, int i) {
       counter.set(counter.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setDepth1Relative(final Boolean b, int i) {
+    public TraceBuilder setDepth1Relative(final Boolean b, int i) {
       depth1.set(depth1.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setDoneRelative(final Boolean b, int i) {
+    public TraceBuilder setDoneRelative(final Boolean b, int i) {
       done.set(done.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setIndexRelative(final BigInteger b, int i) {
+    public TraceBuilder setIndexRelative(final BigInteger b, int i) {
       index.set(index.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setIndexLocalRelative(final BigInteger b, int i) {
+    public TraceBuilder setIndexLocalRelative(final BigInteger b, int i) {
       indexLocal.set(indexLocal.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setInput1Relative(final BigInteger b, int i) {
+    public TraceBuilder setInput1Relative(final BigInteger b, int i) {
       input1.set(input1.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setInput2Relative(final BigInteger b, int i) {
+    public TraceBuilder setInput2Relative(final BigInteger b, int i) {
       input2.set(input2.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setInput3Relative(final BigInteger b, int i) {
+    public TraceBuilder setInput3Relative(final BigInteger b, int i) {
       input3.set(input3.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setInput4Relative(final BigInteger b, int i) {
+    public TraceBuilder setInput4Relative(final BigInteger b, int i) {
       input4.set(input4.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setIsDataRelative(final Boolean b, int i) {
+    public TraceBuilder setIsDataRelative(final Boolean b, int i) {
       isData.set(isData.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setIsPrefixRelative(final Boolean b, int i) {
+    public TraceBuilder setIsPrefixRelative(final Boolean b, int i) {
       isPrefix.set(isPrefix.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setIsTopicRelative(final Boolean b, int i) {
+    public TraceBuilder setIsTopicRelative(final Boolean b, int i) {
       isTopic.set(isTopic.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setLcCorrectionRelative(final Boolean b, int i) {
+    public TraceBuilder setLcCorrectionRelative(final Boolean b, int i) {
       lcCorrection.set(lcCorrection.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setLimbRelative(final BigInteger b, int i) {
+    public TraceBuilder setLimbRelative(final BigInteger b, int i) {
       limb.set(limb.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setLimbConstructedRelative(final Boolean b, int i) {
+    public TraceBuilder setLimbConstructedRelative(final Boolean b, int i) {
       limbConstructed.set(limbConstructed.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setLocalSizeRelative(final BigInteger b, int i) {
+    public TraceBuilder setLocalSizeRelative(final BigInteger b, int i) {
       localSize.set(localSize.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setLogEntrySizeRelative(final BigInteger b, int i) {
+    public TraceBuilder setLogEntrySizeRelative(final BigInteger b, int i) {
       logEntrySize.set(logEntrySize.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setNBytesRelative(final UnsignedByte b, int i) {
+    public TraceBuilder setNBytesRelative(final UnsignedByte b, int i) {
       nBytes.set(nBytes.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setNStepRelative(final UnsignedByte b, int i) {
+    public TraceBuilder setNStepRelative(final BigInteger b, int i) {
       nStep.set(nStep.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase0Relative(final Boolean b, int i) {
+    public TraceBuilder setPhase0Relative(final Boolean b, int i) {
       phase0.set(phase0.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase1Relative(final Boolean b, int i) {
+    public TraceBuilder setPhase1Relative(final Boolean b, int i) {
       phase1.set(phase1.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase2Relative(final Boolean b, int i) {
+    public TraceBuilder setPhase2Relative(final Boolean b, int i) {
       phase2.set(phase2.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase3Relative(final Boolean b, int i) {
+    public TraceBuilder setPhase3Relative(final Boolean b, int i) {
       phase3.set(phase3.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhase4Relative(final Boolean b, int i) {
+    public TraceBuilder setPhase4Relative(final Boolean b, int i) {
       phase4.set(phase4.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhaseEndRelative(final Boolean b, int i) {
+    public TraceBuilder setPhaseEndRelative(final Boolean b, int i) {
       phaseEnd.set(phaseEnd.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPhaseSizeRelative(final BigInteger b, int i) {
+    public TraceBuilder setPhaseSizeRelative(final BigInteger b, int i) {
       phaseSize.set(phaseSize.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setPowerRelative(final BigInteger b, int i) {
+    public TraceBuilder setPowerRelative(final BigInteger b, int i) {
       power.set(power.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder setTxrcptSizeRelative(final BigInteger b, int i) {
+    public TraceBuilder setTxrcptSizeRelative(final BigInteger b, int i) {
       txrcptSize.set(txrcptSize.size() - 1 - i, b);
 
       return this;
     }
 
-    TraceBuilder validateRow() {
-      if (!filled.get(39)) {
+    public TraceBuilder validateRow() {
+      if (!filled.get(0)) {
         throw new IllegalStateException("ABS_LOG_NUM has not been filled");
       }
 
-      if (!filled.get(2)) {
+      if (!filled.get(1)) {
         throw new IllegalStateException("ABS_LOG_NUM_MAX has not been filled");
       }
 
-      if (!filled.get(11)) {
+      if (!filled.get(2)) {
         throw new IllegalStateException("ABS_TX_NUM has not been filled");
       }
 
-      if (!filled.get(25)) {
+      if (!filled.get(3)) {
         throw new IllegalStateException("ABS_TX_NUM_MAX has not been filled");
       }
 
-      if (!filled.get(21)) {
+      if (!filled.get(4)) {
         throw new IllegalStateException("ACC_1 has not been filled");
       }
 
-      if (!filled.get(4)) {
+      if (!filled.get(5)) {
         throw new IllegalStateException("ACC_2 has not been filled");
       }
 
-      if (!filled.get(9)) {
+      if (!filled.get(6)) {
         throw new IllegalStateException("ACC_3 has not been filled");
       }
 
-      if (!filled.get(36)) {
+      if (!filled.get(7)) {
         throw new IllegalStateException("ACC_4 has not been filled");
       }
 
-      if (!filled.get(16)) {
+      if (!filled.get(8)) {
         throw new IllegalStateException("ACC_SIZE has not been filled");
       }
 
-      if (!filled.get(10)) {
+      if (!filled.get(9)) {
         throw new IllegalStateException("BIT has not been filled");
       }
 
-      if (!filled.get(23)) {
+      if (!filled.get(10)) {
         throw new IllegalStateException("BIT_ACC has not been filled");
       }
 
-      if (!filled.get(29)) {
+      if (!filled.get(11)) {
         throw new IllegalStateException("BYTE_1 has not been filled");
       }
 
-      if (!filled.get(34)) {
+      if (!filled.get(12)) {
         throw new IllegalStateException("BYTE_2 has not been filled");
       }
 
-      if (!filled.get(19)) {
+      if (!filled.get(13)) {
         throw new IllegalStateException("BYTE_3 has not been filled");
       }
 
-      if (!filled.get(22)) {
+      if (!filled.get(14)) {
         throw new IllegalStateException("BYTE_4 has not been filled");
       }
 
-      if (!filled.get(32)) {
+      if (!filled.get(15)) {
         throw new IllegalStateException("COUNTER has not been filled");
       }
 
-      if (!filled.get(24)) {
+      if (!filled.get(16)) {
         throw new IllegalStateException("DEPTH_1 has not been filled");
       }
 
-      if (!filled.get(38)) {
+      if (!filled.get(17)) {
         throw new IllegalStateException("DONE has not been filled");
       }
 
-      if (!filled.get(27)) {
+      if (!filled.get(18)) {
         throw new IllegalStateException("INDEX has not been filled");
       }
 
-      if (!filled.get(37)) {
+      if (!filled.get(19)) {
         throw new IllegalStateException("INDEX_LOCAL has not been filled");
       }
 
-      if (!filled.get(41)) {
+      if (!filled.get(20)) {
         throw new IllegalStateException("INPUT_1 has not been filled");
       }
 
-      if (!filled.get(7)) {
+      if (!filled.get(21)) {
         throw new IllegalStateException("INPUT_2 has not been filled");
       }
 
-      if (!filled.get(3)) {
+      if (!filled.get(22)) {
         throw new IllegalStateException("INPUT_3 has not been filled");
       }
 
-      if (!filled.get(8)) {
+      if (!filled.get(23)) {
         throw new IllegalStateException("INPUT_4 has not been filled");
       }
 
-      if (!filled.get(6)) {
+      if (!filled.get(24)) {
         throw new IllegalStateException("IS_DATA has not been filled");
       }
 
-      if (!filled.get(0)) {
+      if (!filled.get(25)) {
         throw new IllegalStateException("IS_PREFIX has not been filled");
       }
 
-      if (!filled.get(5)) {
+      if (!filled.get(26)) {
         throw new IllegalStateException("IS_TOPIC has not been filled");
       }
 
-      if (!filled.get(1)) {
+      if (!filled.get(27)) {
         throw new IllegalStateException("LC_CORRECTION has not been filled");
       }
 
-      if (!filled.get(40)) {
+      if (!filled.get(28)) {
         throw new IllegalStateException("LIMB has not been filled");
       }
 
-      if (!filled.get(18)) {
+      if (!filled.get(29)) {
         throw new IllegalStateException("LIMB_CONSTRUCTED has not been filled");
       }
 
-      if (!filled.get(13)) {
+      if (!filled.get(30)) {
         throw new IllegalStateException("LOCAL_SIZE has not been filled");
       }
 
-      if (!filled.get(28)) {
+      if (!filled.get(31)) {
         throw new IllegalStateException("LOG_ENTRY_SIZE has not been filled");
       }
 
-      if (!filled.get(12)) {
+      if (!filled.get(41)) {
         throw new IllegalStateException("nBYTES has not been filled");
       }
 
-      if (!filled.get(15)) {
+      if (!filled.get(42)) {
         throw new IllegalStateException("nSTEP has not been filled");
       }
 
-      if (!filled.get(14)) {
+      if (!filled.get(32)) {
         throw new IllegalStateException("PHASE_0 has not been filled");
       }
 
-      if (!filled.get(17)) {
+      if (!filled.get(33)) {
         throw new IllegalStateException("PHASE_1 has not been filled");
       }
 
-      if (!filled.get(35)) {
+      if (!filled.get(34)) {
         throw new IllegalStateException("PHASE_2 has not been filled");
       }
 
-      if (!filled.get(30)) {
+      if (!filled.get(35)) {
         throw new IllegalStateException("PHASE_3 has not been filled");
       }
 
-      if (!filled.get(31)) {
+      if (!filled.get(36)) {
         throw new IllegalStateException("PHASE_4 has not been filled");
       }
 
-      if (!filled.get(42)) {
+      if (!filled.get(37)) {
         throw new IllegalStateException("PHASE_END has not been filled");
       }
 
-      if (!filled.get(20)) {
+      if (!filled.get(38)) {
         throw new IllegalStateException("PHASE_SIZE has not been filled");
       }
 
-      if (!filled.get(26)) {
+      if (!filled.get(39)) {
         throw new IllegalStateException("POWER has not been filled");
       }
 
-      if (!filled.get(33)) {
+      if (!filled.get(40)) {
         throw new IllegalStateException("TXRCPT_SIZE has not been filled");
       }
 
@@ -1427,178 +1430,178 @@ record Trace(
       return this;
     }
 
-    TraceBuilder fillAndValidateRow() {
-      if (!filled.get(39)) {
-        absLogNum.add(BigInteger.ZERO);
-        this.filled.set(39);
-      }
-      if (!filled.get(2)) {
-        absLogNumMax.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(11)) {
-        absTxNum.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(25)) {
-        absTxNumMax.add(BigInteger.ZERO);
-        this.filled.set(25);
-      }
-      if (!filled.get(21)) {
-        acc1.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(4)) {
-        acc2.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(9)) {
-        acc3.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(36)) {
-        acc4.add(BigInteger.ZERO);
-        this.filled.set(36);
-      }
-      if (!filled.get(16)) {
-        accSize.add(BigInteger.ZERO);
-        this.filled.set(16);
-      }
-      if (!filled.get(10)) {
-        bit.add(false);
-        this.filled.set(10);
-      }
-      if (!filled.get(23)) {
-        bitAcc.add(UnsignedByte.of(0));
-        this.filled.set(23);
-      }
-      if (!filled.get(29)) {
-        byte1.add(UnsignedByte.of(0));
-        this.filled.set(29);
-      }
-      if (!filled.get(34)) {
-        byte2.add(UnsignedByte.of(0));
-        this.filled.set(34);
-      }
-      if (!filled.get(19)) {
-        byte3.add(UnsignedByte.of(0));
-        this.filled.set(19);
-      }
-      if (!filled.get(22)) {
-        byte4.add(UnsignedByte.of(0));
-        this.filled.set(22);
-      }
-      if (!filled.get(32)) {
-        counter.add(UnsignedByte.of(0));
-        this.filled.set(32);
-      }
-      if (!filled.get(24)) {
-        depth1.add(false);
-        this.filled.set(24);
-      }
-      if (!filled.get(38)) {
-        done.add(false);
-        this.filled.set(38);
-      }
-      if (!filled.get(27)) {
-        index.add(BigInteger.ZERO);
-        this.filled.set(27);
-      }
-      if (!filled.get(37)) {
-        indexLocal.add(BigInteger.ZERO);
-        this.filled.set(37);
-      }
-      if (!filled.get(41)) {
-        input1.add(BigInteger.ZERO);
-        this.filled.set(41);
-      }
-      if (!filled.get(7)) {
-        input2.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(3)) {
-        input3.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(8)) {
-        input4.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(6)) {
-        isData.add(false);
-        this.filled.set(6);
-      }
+    public TraceBuilder fillAndValidateRow() {
       if (!filled.get(0)) {
-        isPrefix.add(false);
+        absLogNum.add(BigInteger.ZERO);
         this.filled.set(0);
       }
-      if (!filled.get(5)) {
-        isTopic.add(false);
-        this.filled.set(5);
-      }
       if (!filled.get(1)) {
-        lcCorrection.add(false);
+        absLogNumMax.add(BigInteger.ZERO);
         this.filled.set(1);
       }
-      if (!filled.get(40)) {
-        limb.add(BigInteger.ZERO);
-        this.filled.set(40);
+      if (!filled.get(2)) {
+        absTxNum.add(BigInteger.ZERO);
+        this.filled.set(2);
       }
-      if (!filled.get(18)) {
-        limbConstructed.add(false);
-        this.filled.set(18);
+      if (!filled.get(3)) {
+        absTxNumMax.add(BigInteger.ZERO);
+        this.filled.set(3);
       }
-      if (!filled.get(13)) {
-        localSize.add(BigInteger.ZERO);
-        this.filled.set(13);
+      if (!filled.get(4)) {
+        acc1.add(BigInteger.ZERO);
+        this.filled.set(4);
       }
-      if (!filled.get(28)) {
-        logEntrySize.add(BigInteger.ZERO);
-        this.filled.set(28);
+      if (!filled.get(5)) {
+        acc2.add(BigInteger.ZERO);
+        this.filled.set(5);
+      }
+      if (!filled.get(6)) {
+        acc3.add(BigInteger.ZERO);
+        this.filled.set(6);
+      }
+      if (!filled.get(7)) {
+        acc4.add(BigInteger.ZERO);
+        this.filled.set(7);
+      }
+      if (!filled.get(8)) {
+        accSize.add(BigInteger.ZERO);
+        this.filled.set(8);
+      }
+      if (!filled.get(9)) {
+        bit.add(false);
+        this.filled.set(9);
+      }
+      if (!filled.get(10)) {
+        bitAcc.add(UnsignedByte.of(0));
+        this.filled.set(10);
+      }
+      if (!filled.get(11)) {
+        byte1.add(UnsignedByte.of(0));
+        this.filled.set(11);
       }
       if (!filled.get(12)) {
-        nBytes.add(UnsignedByte.of(0));
+        byte2.add(UnsignedByte.of(0));
         this.filled.set(12);
       }
-      if (!filled.get(15)) {
-        nStep.add(UnsignedByte.of(0));
-        this.filled.set(15);
+      if (!filled.get(13)) {
+        byte3.add(UnsignedByte.of(0));
+        this.filled.set(13);
       }
       if (!filled.get(14)) {
-        phase0.add(false);
+        byte4.add(UnsignedByte.of(0));
         this.filled.set(14);
       }
+      if (!filled.get(15)) {
+        counter.add(BigInteger.ZERO);
+        this.filled.set(15);
+      }
+      if (!filled.get(16)) {
+        depth1.add(false);
+        this.filled.set(16);
+      }
       if (!filled.get(17)) {
-        phase1.add(false);
+        done.add(false);
         this.filled.set(17);
       }
-      if (!filled.get(35)) {
-        phase2.add(false);
-        this.filled.set(35);
+      if (!filled.get(18)) {
+        index.add(BigInteger.ZERO);
+        this.filled.set(18);
+      }
+      if (!filled.get(19)) {
+        indexLocal.add(BigInteger.ZERO);
+        this.filled.set(19);
+      }
+      if (!filled.get(20)) {
+        input1.add(BigInteger.ZERO);
+        this.filled.set(20);
+      }
+      if (!filled.get(21)) {
+        input2.add(BigInteger.ZERO);
+        this.filled.set(21);
+      }
+      if (!filled.get(22)) {
+        input3.add(BigInteger.ZERO);
+        this.filled.set(22);
+      }
+      if (!filled.get(23)) {
+        input4.add(BigInteger.ZERO);
+        this.filled.set(23);
+      }
+      if (!filled.get(24)) {
+        isData.add(false);
+        this.filled.set(24);
+      }
+      if (!filled.get(25)) {
+        isPrefix.add(false);
+        this.filled.set(25);
+      }
+      if (!filled.get(26)) {
+        isTopic.add(false);
+        this.filled.set(26);
+      }
+      if (!filled.get(27)) {
+        lcCorrection.add(false);
+        this.filled.set(27);
+      }
+      if (!filled.get(28)) {
+        limb.add(BigInteger.ZERO);
+        this.filled.set(28);
+      }
+      if (!filled.get(29)) {
+        limbConstructed.add(false);
+        this.filled.set(29);
       }
       if (!filled.get(30)) {
-        phase3.add(false);
+        localSize.add(BigInteger.ZERO);
         this.filled.set(30);
       }
       if (!filled.get(31)) {
-        phase4.add(false);
+        logEntrySize.add(BigInteger.ZERO);
         this.filled.set(31);
       }
+      if (!filled.get(41)) {
+        nBytes.add(UnsignedByte.of(0));
+        this.filled.set(41);
+      }
       if (!filled.get(42)) {
-        phaseEnd.add(false);
+        nStep.add(BigInteger.ZERO);
         this.filled.set(42);
       }
-      if (!filled.get(20)) {
-        phaseSize.add(BigInteger.ZERO);
-        this.filled.set(20);
-      }
-      if (!filled.get(26)) {
-        power.add(BigInteger.ZERO);
-        this.filled.set(26);
+      if (!filled.get(32)) {
+        phase0.add(false);
+        this.filled.set(32);
       }
       if (!filled.get(33)) {
-        txrcptSize.add(BigInteger.ZERO);
+        phase1.add(false);
         this.filled.set(33);
+      }
+      if (!filled.get(34)) {
+        phase2.add(false);
+        this.filled.set(34);
+      }
+      if (!filled.get(35)) {
+        phase3.add(false);
+        this.filled.set(35);
+      }
+      if (!filled.get(36)) {
+        phase4.add(false);
+        this.filled.set(36);
+      }
+      if (!filled.get(37)) {
+        phaseEnd.add(false);
+        this.filled.set(37);
+      }
+      if (!filled.get(38)) {
+        phaseSize.add(BigInteger.ZERO);
+        this.filled.set(38);
+      }
+      if (!filled.get(39)) {
+        power.add(BigInteger.ZERO);
+        this.filled.set(39);
+      }
+      if (!filled.get(40)) {
+        txrcptSize.add(BigInteger.ZERO);
+        this.filled.set(40);
       }
 
       return this.validateRow();

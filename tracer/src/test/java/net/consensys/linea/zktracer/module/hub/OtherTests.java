@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
-import net.consensys.linea.zktracer.testing.BytecodeExecutor;
+import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,25 +26,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class OtherTests {
   @Test
   public void testMul() {
-    BytecodeExecutor.builder()
-        .byteCode(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.MUL).compile())
-        .build()
+    BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.MUL).compile())
         .run();
   }
 
   @Test
   public void testDiv() {
-    BytecodeExecutor.builder()
-        .byteCode(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.DIV).compile())
-        .build()
+    BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.DIV).compile())
         .run();
   }
 
   @Test
   public void testSDiv() {
-    BytecodeExecutor.builder()
-        .byteCode(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.SDIV).compile())
-        .build()
+    BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.SDIV).compile())
         .run();
   }
 }

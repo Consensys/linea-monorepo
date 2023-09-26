@@ -15,13 +15,10 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
-import net.consensys.linea.zktracer.testing.BytecodeExecutor;
+import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -29,11 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class TwoPlusTwo {
   @Test
   void testAdd() {
-    BytecodeExecutor.builder()
-        .byteCode(BytecodeCompiler.newProgram().push(32).push(27).op(OpCode.ADD).compile())
-        .frameAssertions(
-            (frame) -> assertThat(frame.getState()).isEqualTo(MessageFrame.State.COMPLETED_SUCCESS))
-        .build()
+    BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(27).op(OpCode.ADD).compile())
         .run();
   }
 }
