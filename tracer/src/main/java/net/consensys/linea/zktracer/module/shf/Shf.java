@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.shf;
 
 import java.math.BigInteger;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
@@ -34,11 +33,6 @@ public class Shf implements Module {
   @Override
   public String jsonKey() {
     return "shf";
-  }
-
-  @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
   }
 
   @Override

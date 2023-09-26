@@ -22,8 +22,6 @@ plugins {
 web3j { generatedPackageName = 'org.hyperledger.besu.tests.web3j.generated' }
 
 solidity {
-  executable = '/nix/store/bmd4s1m7n4r6b1lcrb9wlzlazwdx4mc2-solc-0.8.19/bin/solc'
-  version = '0.8.19'
   resolvePackages = false
   optimizeRuns = 1
 }
