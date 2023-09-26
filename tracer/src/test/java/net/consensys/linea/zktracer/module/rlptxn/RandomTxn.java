@@ -58,7 +58,7 @@ class RandomTxn {
 
     ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(5))
+            .balance(Wei.fromEth(5))
 
             // Choose the value of the sender's nonce
             .nonce(0)
@@ -99,7 +99,8 @@ class RandomTxn {
             // Choose the value of GasLimit
             // .gasLimit(0L)
             // .gasLimit(randLongSmall)
-            .gasLimit(randLongLong)
+            //            .gasLimit(randLongLong)
+            .gasLimit(100_000L)
 
             // Choose the value of the value
             .value(Wei.of(BigInteger.ZERO))

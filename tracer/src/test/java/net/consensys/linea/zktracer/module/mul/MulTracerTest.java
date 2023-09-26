@@ -134,8 +134,7 @@ class MulTracerTest {
       Bytes32 bytes1 = Bytes32.ZERO;
       Bytes32 bytes2 = UInt256.valueOf(i);
 
-      testCases.add(new OpcodeCall(OpCode.MUL, List.of(bytes1)));
-      testCases.add(new OpcodeCall(OpCode.MUL, List.of(bytes2)));
+      testCases.add(new OpcodeCall(OpCode.MUL, List.of(bytes1, bytes2)));
     }
 
     return testCases;

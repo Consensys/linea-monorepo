@@ -90,6 +90,10 @@ public class CallFrame {
     this.type = CallFrameType.BEDROCK;
   }
 
+  public static CallFrame empty() {
+    return new CallFrame();
+  }
+
   /**
    * Create a normal (non-root) call frame.
    *

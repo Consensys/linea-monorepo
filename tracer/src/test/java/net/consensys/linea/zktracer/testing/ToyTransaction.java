@@ -40,9 +40,8 @@ public class ToyTransaction {
 
   private static final Wei DEFAULT_VALUE = Wei.ZERO;
   private static final Bytes DEFAULT_INPUT_DATA = Bytes.EMPTY;
-  private static final long DEFAULT_GAS_LIMIT = 21_000L;
-  private static final Wei DEFAULT_GAS_PRICE = Wei.of(10_000_000_000L);
-  private static final BigInteger DEFAULT_CHAIN_ID = BigInteger.valueOf(23);
+  private static final long DEFAULT_GAS_LIMIT = 50_000L; // i.e. 21 000 + a bit
+  private static final Wei DEFAULT_GAS_PRICE = Wei.of(10_000_000L);
   private static final TransactionType DEFAULT_TX_TYPE = TransactionType.FRONTIER;
   private static final List<AccessListEntry> DEFAULT_ACCESS_LIST = new ArrayList<>();
 
@@ -66,7 +65,6 @@ public class ToyTransaction {
      * @return an instance of {@link Transaction}
      */
     public Transaction build() {
-
       return Transaction.builder()
           .to(to != null ? to.getAddress() : null)
           .nonce(sender.getNonce())
@@ -76,7 +74,7 @@ public class ToyTransaction {
           .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
           .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
           .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-          .chainId(Optional.ofNullable(chainId).orElse(DEFAULT_CHAIN_ID))
+          .chainId(Optional.ofNullable(chainId).orElse(ToyExecutionEnvironment.CHAIN_ID))
           .signAndBuild(keyPair);
     }
   }

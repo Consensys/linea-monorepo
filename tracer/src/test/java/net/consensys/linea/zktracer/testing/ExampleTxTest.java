@@ -36,7 +36,7 @@ class ExampleTxTest {
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
     ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.of(5)).nonce(5).address(senderAddress).build();
+        ToyAccount.builder().balance(Wei.fromEth(1)).nonce(5).address(senderAddress).build();
 
     ToyAccount receiverAccount =
         ToyAccount.builder()
@@ -52,14 +52,7 @@ class ExampleTxTest {
             .build();
 
     Transaction tx =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(receiverAccount)
-            //            .transactionType(TransactionType.ACCESS_LIST)
-            //            .accessList(List.of(new AccessListEntry(Address.fromHexString("0x00"),
-            // List.of())))
-            .keyPair(keyPair)
-            .build();
+        ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
 
     ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();

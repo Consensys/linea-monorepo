@@ -13,15 +13,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlppatterns;
+package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import lombok.Getter;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.log.LogTopic;
+import org.hyperledger.besu.plugin.data.Log;
 
-@Getter
-public class RlpBitDecOutput {
-  @Getter private List<Boolean> bitDecList = new ArrayList<>();
-  @Getter private List<Integer> bitAccList = new ArrayList<>();
+public record LogWrapper(Address logger, Bytes data, List<LogTopic> topics) implements Log {
+  @Override
+  public Address getLogger() {
+    return logger;
+  }
+
+  @Override
+  public List<? extends Bytes32> getTopics() {
+    return topics;
+  }
+
+  @Override
+  public Bytes getData() {
+    return data;
+  }
 }
