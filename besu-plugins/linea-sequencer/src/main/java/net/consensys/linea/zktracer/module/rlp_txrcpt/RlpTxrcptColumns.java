@@ -13,13 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlptxrcpt;
+package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import java.math.BigInteger;
 
 import org.apache.tuweni.bytes.Bytes;
 
 class RlpTxrcptColumns {
+  int absTxNum;
   Bytes acc1;
   Bytes acc2;
   Bytes acc3;
@@ -43,7 +44,7 @@ class RlpTxrcptColumns {
   boolean isPrefix;
   boolean isTopic;
   boolean lcCorrection;
-  BigInteger limb;
+  Bytes limb;
   boolean limbConstructed;
   int localSize;
   int logEntrySize;
@@ -81,7 +82,7 @@ class RlpTxrcptColumns {
     this.isPrefix = false;
     this.isTopic = false;
     this.lcCorrection = false;
-    this.limb = BigInteger.ZERO;
+    this.limb = Bytes.ofUnsignedShort(0);
     this.limbConstructed = false;
     this.nBytes = 0;
     this.phaseEnd = false;

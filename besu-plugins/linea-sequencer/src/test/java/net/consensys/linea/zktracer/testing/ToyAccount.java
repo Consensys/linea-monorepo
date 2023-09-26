@@ -35,7 +35,6 @@ import org.hyperledger.besu.evm.account.AccountStorageEntry;
 import org.hyperledger.besu.evm.account.MutableAccount;
 
 public class ToyAccount implements MutableAccount {
-
   private final Account parent;
 
   private boolean mutable = true;

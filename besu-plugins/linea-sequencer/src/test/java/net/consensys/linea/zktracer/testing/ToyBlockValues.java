@@ -30,8 +30,8 @@ import org.hyperledger.besu.evm.frame.BlockValues;
 public class ToyBlockValues implements BlockValues {
   private static final Bytes DEFAULT_DIFFICULTY_BYTES = UInt256.ZERO;
   private static final long DEFAULT_NUMBER = 0L;
-  private static final long DEFAULT_GAS_LIMIT = 0L;
-  private static final long DEFAULT_TIMESTAMP = 0L;
+  private static final long DEFAULT_GAS_LIMIT = 30_000_000L;
+  private static final long DEFAULT_TIMESTAMP = 1234987L;
   private static final Optional<Wei> DEFAULT_BASE_FEE = Optional.empty();
 
   private final Long number;

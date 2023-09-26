@@ -25,7 +25,6 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
 import net.consensys.linea.zktracer.testing.OpcodeCall;
-import net.consensys.linea.zktracer.testing.SpecTests;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -49,16 +48,6 @@ class ModTracerTest {
         .testCase(
             "random negative divisible arguments test", provideRandomNegativeDivisibleArguments())
         .run();
-  }
-
-  //  @ParameterizedTest(name = "{index} {0}")
-  //  @MethodSource("provideTraceSpecs")
-  //  void traceWithSpecFile(final String ignored, URL specUrl) {
-  //    SpecTests.runSpecTestWithTraceComparison(specUrl, MODULE.jsonKey());
-  //  }
-
-  private static Object[][] provideTraceSpecs() {
-    return SpecTests.findSpecFiles(MODULE.jsonKey());
   }
 
   private List<OpcodeCall> provideRandomAluModArguments() {

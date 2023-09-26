@@ -21,7 +21,7 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
-import net.consensys.linea.zktracer.testing.BytecodeExecutor;
+import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -41,14 +41,12 @@ class ShfTracerTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideShiftOperators")
   void testFailingBlockchainBlock(final int opCodeValue) {
-    BytecodeExecutor.builder()
-        .byteCode(
+    BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
                 .push(Bytes32.fromHexString("0x01"))
                 .immediate(opCodeValue)
                 .compile())
-        .build()
         .run();
   }
 
@@ -58,27 +56,23 @@ class ShfTracerTest {
     log.info(
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
 
-    BytecodeExecutor.builder()
-        .byteCode(
+    BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .push(payload[1])
                 .push(payload[0])
                 .op(OpCode.SAR)
                 .compile())
-        .build()
         .run();
   }
 
   @Test
   void testTmp() {
-    BytecodeExecutor.builder()
-        .byteCode(
+    BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
                 .immediate(Bytes32.fromHexStringLenient("0xb5"))
                 .op(OpCode.SAR)
                 .compile())
-        .build()
         .run();
   }
 

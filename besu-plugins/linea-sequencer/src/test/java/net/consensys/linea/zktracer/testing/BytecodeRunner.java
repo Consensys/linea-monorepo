@@ -16,10 +16,8 @@
 package net.consensys.linea.zktracer.testing;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import com.google.common.base.Preconditions;
-import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -27,33 +25,28 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
-@Builder
-public class BytecodeExecutor {
-
-  private final Bytes byteCode;
-
-  private final Consumer<MessageFrame> frameAssertions;
+/**
+ * A BytecodeRunner takes bytecode, then run it in a single transaction in a single block, and
+ * ensures that it executed correctly.
+ *
+ * @param byteCode the byte code to test
+ */
+public record BytecodeRunner(Bytes byteCode) {
+  public static BytecodeRunner of(Bytes byteCode) {
+    return new BytecodeRunner(byteCode);
+  }
 
   public void run() {
-    buildExecEnvironment().run();
-  }
-
-  public String traceCode() {
-    return buildExecEnvironment().traceCode();
-  }
-
-  private ToyExecutionEnvironment buildExecEnvironment() {
     Preconditions.checkArgument(byteCode != null, "byteCode cannot be empty");
 
     KeyPair keyPair = new SECP256K1().generateKeyPair();
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
-    ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.of(5)).nonce(5).address(senderAddress).build();
+    final ToyAccount senderAccount =
+        ToyAccount.builder().balance(Wei.fromEth(1)).nonce(5).address(senderAddress).build();
 
-    ToyAccount receiverAccount =
+    final ToyAccount receiverAccount =
         ToyAccount.builder()
             .balance(Wei.ONE)
             .nonce(6)
@@ -61,16 +54,17 @@ public class BytecodeExecutor {
             .code(byteCode)
             .build();
 
-    Transaction tx =
-        ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(receiverAccount)
+            .keyPair(keyPair)
+            .gasLimit(1_000_000L)
+            .build();
 
-    ToyWorld toyWorld =
+    final ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
 
-    return ToyExecutionEnvironment.builder()
-        .toyWorld(toyWorld)
-        .frameAssertions(frameAssertions)
-        .transaction(tx)
-        .build();
+    ToyExecutionEnvironment.builder().toyWorld(toyWorld).transaction(tx).build().run();
   }
 }

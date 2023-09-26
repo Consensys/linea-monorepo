@@ -102,10 +102,8 @@ public class CorsetValidator {
                   "-t",
                   "2",
                   ZK_EVM_BIN)
-              // Default value is PIPE, leading for Corset indefinitely waiting for nothing on STDIN
               .redirectInput(ProcessBuilder.Redirect.INHERIT)
               .redirectErrorStream(true)
-              .redirectInput(ProcessBuilder.Redirect.INHERIT)
               .start();
     } catch (IOException e) {
       log.error("Corset validation has thrown an exception: %s".formatted(e.getMessage()));

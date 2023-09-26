@@ -168,4 +168,14 @@ public record Exceptions(
         isStaticFault(frame),
         isOutOfSStore(frame));
   }
+
+  /**
+   * Generate the exceptions for a transaction whose execution was skipped from the beginning.
+   * Should map to an OoG? TODO: cf. @Olivier
+   *
+   * @return an Exceptions encoding an out of gas
+   */
+  public static Exceptions fromOutOfGas() {
+    return new Exceptions(false, false, false, false, true, false, false, false, false);
+  }
 }

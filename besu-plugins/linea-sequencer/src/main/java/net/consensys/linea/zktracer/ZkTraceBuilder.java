@@ -27,8 +27,9 @@ import org.apache.tuweni.bytes.Bytes32;
 public class ZkTraceBuilder {
   private final Map<String, Object> traceResults = new HashMap<>();
 
-  public void addTrace(Module module) {
+  public ZkTraceBuilder addTrace(Module module) {
     Optional.ofNullable(module.commit()).ifPresent(v -> traceResults.put(module.jsonKey(), v));
+    return this;
   }
 
   public ZkTrace build() {

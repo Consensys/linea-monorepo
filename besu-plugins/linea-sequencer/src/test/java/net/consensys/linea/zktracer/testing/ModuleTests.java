@@ -33,19 +33,6 @@ public class ModuleTests {
   public static void runTestWithOpCodeArgs(final OpCode opCode, final List<Bytes32> arguments) {
     Bytes bytecode = BytecodeCompiler.newProgram().opAnd32ByteArgs(opCode, arguments).compile();
 
-    BytecodeExecutor.builder().byteCode(bytecode).build().run();
-  }
-
-  /**
-   * Generates a JSON trace based on an opcode and associated arguments.
-   *
-   * @param opCode opcode for which the trace should be generated
-   * @param arguments args of the opcode for which the trace should be generated
-   * @return a JSON string representation of the trace
-   */
-  public static String generateTrace(final OpCode opCode, final List<Bytes32> arguments) {
-    Bytes bytecode = BytecodeCompiler.newProgram().opAnd32ByteArgs(opCode, arguments).compile();
-
-    return BytecodeExecutor.builder().byteCode(bytecode).build().traceCode();
+    BytecodeRunner.of(bytecode).run();
   }
 }
