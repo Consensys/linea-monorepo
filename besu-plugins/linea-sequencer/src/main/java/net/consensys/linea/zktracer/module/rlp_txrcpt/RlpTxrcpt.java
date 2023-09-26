@@ -32,7 +32,6 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlppatterns.RlpBitDecOutput;
 import net.consensys.linea.zktracer.module.rlppatterns.RlpByteCountAndPowerOutput;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
@@ -54,11 +53,6 @@ public class RlpTxrcpt implements Module {
   @Override
   public String jsonKey() {
     return "rlpTxRcpt";
-  }
-
-  @Override
-  public List<OpCode> supportedOpCodes() {
-    return List.of();
   }
 
   @Override

@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.mul;
 
 import java.math.BigInteger;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
@@ -37,11 +36,6 @@ public class Mul implements Module {
   @Override
   public String jsonKey() {
     return "mul";
-  }
-
-  @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(OpCode.MUL, OpCode.EXP);
   }
 
   @SuppressWarnings("UnusedVariable")

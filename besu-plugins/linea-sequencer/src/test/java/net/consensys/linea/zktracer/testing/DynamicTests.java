@@ -24,6 +24,12 @@ import java.util.stream.Stream;
 
 import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.ext.Ext;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.mul.Mul;
+import net.consensys.linea.zktracer.module.shf.Shf;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -100,6 +106,24 @@ public class DynamicTests {
         .flatMap(e -> generateTestCases(e.name(), e.arguments(), e.customAssertions()));
   }
 
+  private List<OpCode> supportedOpCodes(Module module) {
+    if (module instanceof Add) {
+      return List.of(OpCode.ADD, OpCode.SUB);
+    } else if (module instanceof Ext) {
+      return List.of(OpCode.MULMOD, OpCode.ADDMOD);
+    } else if (module instanceof Mod) {
+      return List.of(OpCode.DIV, OpCode.SDIV, OpCode.MOD, OpCode.SMOD);
+    } else if (module instanceof Mul) {
+      return List.of(OpCode.MUL, OpCode.EXP);
+    } else if (module instanceof Shf) {
+      return List.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
+    } else if (module instanceof Wcp) {
+      return List.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
+    } else {
+      throw new RuntimeException("Unexpected module");
+    }
+  }
+
   /**
    * Abstracts away argument generation per module's supported opcodes.
    *
@@ -111,7 +135,7 @@ public class DynamicTests {
       final BiConsumer<List<OpcodeCall>, OpCode> argsGenerationFunc) {
     List<OpcodeCall> arguments = new ArrayList<>();
 
-    for (OpCode opCode : module.supportedOpCodes()) {
+    for (OpCode opCode : supportedOpCodes(module)) {
       argsGenerationFunc.accept(arguments, opCode);
     }
 
@@ -124,7 +148,7 @@ public class DynamicTests {
    * @return a random {@link OpCode} from the list of supported opcodes per module tracer.
    */
   public OpCode getRandomSupportedOpcode() {
-    List<OpCode> supportedOpCodes = module.supportedOpCodes();
+    List<OpCode> supportedOpCodes = supportedOpCodes(module);
     int index = RAND.nextInt(supportedOpCodes.size());
 
     return supportedOpCodes.get(index);

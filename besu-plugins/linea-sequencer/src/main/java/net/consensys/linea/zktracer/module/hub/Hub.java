@@ -175,12 +175,6 @@ public class Hub implements Module {
     return "hub_v2_off";
   }
 
-  @Override
-  public final List<OpCode> supportedOpCodes() {
-    // The Hub wants to catch all opcodes
-    return List.of(OpCode.values());
-  }
-
   public static boolean isPrecompile(Address to) {
     return List.of(
             Address.ECREC,
