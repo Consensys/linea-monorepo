@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module;
 
 import java.util.List;
 
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -28,8 +27,6 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 
 public interface Module {
   String jsonKey();
-
-  List<OpCode> supportedOpCodes();
 
   default void traceStartConflation(final long blockCount) {}
 

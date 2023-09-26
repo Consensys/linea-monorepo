@@ -15,34 +15,13 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import java.util.List;
-
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Trm implements Module {
   @Override
   public String jsonKey() {
     return "trm";
   }
-
-  @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of(
-        OpCode.BALANCE,
-        OpCode.EXTCODESIZE,
-        OpCode.EXTCODECOPY,
-        OpCode.EXTCODEHASH,
-        OpCode.CALL,
-        OpCode.CALLCODE,
-        OpCode.DELEGATECALL,
-        OpCode.STATICCALL,
-        OpCode.SELFDESTRUCT);
-  }
-
-  @Override
-  public void trace(MessageFrame frame) {}
 
   @Override
   public Object commit() {

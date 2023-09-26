@@ -33,7 +33,6 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlppatterns.RlpBitDecOutput;
 import net.consensys.linea.zktracer.module.rlppatterns.RlpByteCountAndPowerOutput;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -65,11 +64,6 @@ public class RlpTxn implements Module {
   @Override
   public String jsonKey() {
     return "rlpTxn";
-  }
-
-  @Override
-  public final List<OpCode> supportedOpCodes() {
-    return List.of();
   }
 
   @Override
@@ -110,7 +104,7 @@ public class RlpTxn implements Module {
 
     Bytes besuRlpLX = Bytes.EMPTY;
     switch (traceValue.txType) {
-      case 0:
+      case 0 -> {
         besuRlpLX =
             frontierPreimage(
                 chunk.tx().getNonce(),
@@ -121,9 +115,8 @@ public class RlpTxn implements Module {
                 chunk.tx().getPayload(),
                 chunk.tx().getChainId());
         traceValue.RLP_LX_BYTESIZE = innerRlpSize(besuRlpLX.size());
-        break;
-
-      case 1:
+      }
+      case 1 -> {
         List<AccessListEntry> accessList = null;
         if (chunk.tx().getAccessList().isPresent()) {
           accessList = chunk.tx().getAccessList().get();
@@ -140,9 +133,8 @@ public class RlpTxn implements Module {
                 chunk.tx().getChainId());
         traceValue.RLP_LX_BYTESIZE = innerRlpSize(besuRlpLX.size());
         besuRlpLX = Bytes.concatenate(Bytes.of(1), besuRlpLX);
-        break;
-
-      case 2:
+      }
+      case 2 -> {
         besuRlpLX =
             eip1559Preimage(
                 chunk.tx().getNonce(),
@@ -156,7 +148,7 @@ public class RlpTxn implements Module {
                 chunk.tx().getAccessList());
         traceValue.RLP_LX_BYTESIZE = innerRlpSize(besuRlpLX.size());
         besuRlpLX = Bytes.concatenate(Bytes.of(2), besuRlpLX);
-        break;
+      }
     }
 
     // Phase 0 : Global RLP prefix
@@ -369,7 +361,7 @@ public class RlpTxn implements Module {
           traceRow(traceValue);
         }
       }
-      /** Two rows of padding */
+      // Two rows of padding
       traceValue.partialReset(phase, 2, lt, lx);
       traceValue.LC_CORRECTION = true;
       traceRow(traceValue);
@@ -388,7 +380,7 @@ public class RlpTxn implements Module {
     boolean lt = true;
     boolean lx = true;
 
-    /** Trivial case */
+    // Trivial case
     if (tx.getAccessList().isEmpty()) {
       traceVoidList(traceValue, phase, lt, lx, true, false, false, true);
     } else {
@@ -542,7 +534,7 @@ public class RlpTxn implements Module {
     traceValue.DEPTH_2 = depth2;
 
     Bytes input1RightShift = padToGivenSizeWithLeftZero(traceValue.INPUT_1, 8);
-    long acc2LastRow = 0;
+    long acc2LastRow;
 
     if (length >= 56) {
       acc2LastRow = length - 56;
@@ -987,13 +979,13 @@ public class RlpTxn implements Module {
       }
     }
 
-    /** Decrement phaseByteSize and accessTupleByteSize for Phase 10 (AccessList) */
+    // Decrement phaseByteSize and accessTupleByteSize for Phase 10 (AccessList)
     if (traceValue.phase == 10) {
-      /** Decreases PhaseByteSize */
+      // Decreases PhaseByteSize
       if (traceValue.DEPTH_1 && traceValue.LIMB_CONSTRUCTED) {
         traceValue.PHASE_BYTESIZE -= traceValue.nBYTES;
       }
-      /** Decreases AccessTupleSize */
+      // Decreases AccessTupleSize
       if (traceValue.DEPTH_1
           && !(traceValue.IS_PREFIX && !traceValue.DEPTH_2)
           && traceValue.LIMB_CONSTRUCTED) {
