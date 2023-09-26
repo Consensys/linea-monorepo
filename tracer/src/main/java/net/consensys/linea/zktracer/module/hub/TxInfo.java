@@ -20,18 +20,18 @@ import java.math.BigInteger;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /** Stores transaction-specific information. */
 @Accessors(fluent = true)
 @Getter
 public class TxInfo {
-  private static final GasCalculator gc = new LondonGasCalculator();
+  private static final GasCalculator gc = ZkTracer.gasCalculator;
 
   private int number = 0;
   private Transaction transaction;

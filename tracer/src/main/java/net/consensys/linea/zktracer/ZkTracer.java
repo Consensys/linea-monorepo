@@ -33,6 +33,8 @@ import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -41,6 +43,9 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @RequiredArgsConstructor
 public class ZkTracer implements ZkBlockAwareOperationTracer {
+  /** The {@link GasCalculator} used in this version of the arithmetization */
+  public static final GasCalculator gasCalculator = new LondonGasCalculator();
+
   private final ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
   private final Hub hub;
 

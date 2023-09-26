@@ -43,7 +43,6 @@ import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.MainnetEVMs;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
 import org.hyperledger.besu.evm.precompile.PrecompileContractRegistry;
 import org.hyperledger.besu.evm.processor.ContractCreationProcessor;
@@ -64,7 +63,7 @@ public class ToyExecutionEnvironment {
   private static final ToyWorld DEFAULT_TOY_WORLD = ToyWorld.empty();
   private static final Wei DEFAULT_BASE_FEE = Wei.of(1_000_000L);
 
-  private static final GasCalculator gasCalculator = new LondonGasCalculator();
+  private static final GasCalculator gasCalculator = ZkTracer.gasCalculator;
   private static final Address minerAddress = Address.fromHexString("0x1234532342");
 
   private final ToyWorld toyWorld;
