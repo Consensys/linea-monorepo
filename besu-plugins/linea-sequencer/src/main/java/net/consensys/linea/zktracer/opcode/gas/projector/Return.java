@@ -19,33 +19,37 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
-public record Return(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class Return implements GasProjection {
+  private final MessageFrame frame;
+  private long offset = 0;
+  private long size = 0;
+
+  public Return(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 1) {
+      this.offset = clampedToLong(frame.getStackItem(0));
+      this.size = clampedToLong(frame.getStackItem(1));
+    }
+  }
+
   @Override
   public long memoryExpansion() {
-    final long offset = clampedToLong(frame.getStackItem(0));
-    final long length = clampedToLong(frame.getStackItem(1));
-
-    return gc.memoryExpansionGasCost(frame, offset, length);
+    return gc.memoryExpansionGasCost(this.frame, this.offset, this.size);
   }
 
   @Override
   public long largestOffset() {
-    final long offset = clampedToLong(frame.getStackItem(0));
-    final long length = clampedToLong(frame.getStackItem(1));
-    return Words.clampedAdd(offset, length);
+    return Words.clampedAdd(this.offset, this.size);
   }
 
   @Override
   public long deploymentCost() {
-    final long length = clampedToLong(frame.getStackItem(1));
-
-    if (length > 24_576) {
+    if (this.size > 24_576) {
       return 0L;
     } else {
-      return GasConstants.G_CODE_DEPOSIT.cost() * length;
+      return GasConstants.G_CODE_DEPOSIT.cost() * this.size;
     }
   }
 }

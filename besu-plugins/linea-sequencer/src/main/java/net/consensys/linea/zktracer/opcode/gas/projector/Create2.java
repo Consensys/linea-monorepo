@@ -15,14 +15,25 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
+
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
-public record Create2(
-    GasCalculator gc, MessageFrame frame, long initCodeOffset, long initCodeLength)
-    implements GasProjection {
+public final class Create2 implements GasProjection {
+  private final MessageFrame frame;
+  private long initCodeOffset = 0;
+  private long initCodeLength = 0;
+
+  public Create2(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 2) {
+      this.initCodeOffset = clampedToLong(frame.getStackItem(1));
+      this.initCodeLength = clampedToLong(frame.getStackItem(2));
+    }
+  }
+
   @Override
   public long staticGas() {
     return GasConstants.G_CREATE.cost();

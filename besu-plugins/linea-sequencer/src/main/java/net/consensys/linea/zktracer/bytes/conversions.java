@@ -13,29 +13,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txrcpt;
+package net.consensys.linea.zktracer.bytes;
 
-import java.util.List;
+import java.math.BigInteger;
 
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.log.LogTopic;
-import org.hyperledger.besu.plugin.data.Log;
 
-public record LogWrapper(Address logger, Bytes data, List<LogTopic> topics) implements Log {
-  @Override
-  public Address getLogger() {
-    return logger;
-  }
-
-  @Override
-  public List<? extends Bytes32> getTopics() {
-    return topics;
-  }
-
-  @Override
-  public Bytes getData() {
-    return data;
+public class conversions {
+  public static Bytes bigIntegerToBytes(BigInteger big) {
+    Bytes bytes;
+    if (big.equals(BigInteger.ZERO)) {
+      bytes = Bytes.of(0x00);
+    } else {
+      byte[] byteArray;
+      byteArray = big.toByteArray();
+      if (byteArray[0] == 0) {
+        Bytes tmp = Bytes.wrap(byteArray);
+        bytes = Bytes.wrap(tmp.slice(1, tmp.size() - 1));
+      } else {
+        bytes = Bytes.wrap(byteArray);
+      }
+    }
+    return bytes;
   }
 }

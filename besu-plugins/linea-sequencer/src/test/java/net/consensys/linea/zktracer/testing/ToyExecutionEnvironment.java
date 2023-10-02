@@ -119,7 +119,11 @@ public class ToyExecutionEnvironment {
                 gasCalculator,
                 new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0, Optional.empty())),
                 false,
-                Optional.of(CHAIN_ID)),
+                Optional.of(CHAIN_ID),
+                Set.of(
+                    TransactionType.FRONTIER,
+                    TransactionType.ACCESS_LIST,
+                    TransactionType.EIP1559)),
             contractCreationProcessor,
             messageCallProcessor,
             true,

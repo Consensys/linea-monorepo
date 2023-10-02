@@ -17,17 +17,28 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-public record SStore(
-    GasCalculator gc,
-    MessageFrame frame,
-    UInt256 key,
-    UInt256 originalValue,
-    UInt256 currentValue,
-    UInt256 newValue)
-    implements GasProjection {
+public final class SStore implements GasProjection {
+  private final MessageFrame frame;
+  private UInt256 key = UInt256.ZERO;
+  private UInt256 originalValue = UInt256.ZERO;
+  private UInt256 currentValue = UInt256.ZERO;
+  private UInt256 newValue = UInt256.ZERO;
+
+  public SStore(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 1) {
+      final Account account = frame.getWorldUpdater().getAccount(frame.getRecipientAddress());
+
+      this.key = UInt256.fromBytes(frame.getStackItem(0));
+      this.originalValue = account.getOriginalStorageValue(key);
+      this.currentValue = account.getStorageValue(key);
+      this.newValue = UInt256.fromBytes(frame.getStackItem(1));
+    }
+  }
+
   @Override
   public long storageWarmth() {
     if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {

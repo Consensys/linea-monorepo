@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlppatterns.pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlppatterns.pattern.outerRlpSize;
@@ -41,10 +41,15 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxrcpt implements Module {
   public static final int llarge = RlpTxrcptTrace.LLARGE.intValue();
-  public static final Bytes rlpIntShort = bigIntegerToBytes(RlpTxrcptTrace.INT_SHORT);
-  public static final Bytes rlpIntLong = bigIntegerToBytes(RlpTxrcptTrace.INT_LONG);
-  public static final Bytes rlpListShort = bigIntegerToBytes(RlpTxrcptTrace.LIST_SHORT);
-  public static final Bytes rlpListLong = bigIntegerToBytes(RlpTxrcptTrace.LIST_LONG);
+  public static final Bytes bytesRlpIntShort = bigIntegerToBytes(RlpTxrcptTrace.INT_SHORT);
+  public static final int intRlpIntShort = bytesRlpIntShort.toUnsignedBigInteger().intValueExact();
+  public static final Bytes bytesRlpIntLong = bigIntegerToBytes(RlpTxrcptTrace.INT_LONG);
+  public static final int intRlpIntLong = bytesRlpIntLong.toUnsignedBigInteger().intValueExact();
+  public static final Bytes bytesRlpListShort = bigIntegerToBytes(RlpTxrcptTrace.LIST_SHORT);
+  public static final int intRlpListShort =
+      bytesRlpListShort.toUnsignedBigInteger().intValueExact();
+  public static final Bytes bytesRlpListLong = bigIntegerToBytes(RlpTxrcptTrace.LIST_LONG);
+  public static final int intRlpListLong = bytesRlpListLong.toUnsignedBigInteger().intValueExact();
   private int absLogNumMax = 0;
   private int absLogNum = 0;
   private final Trace.TraceBuilder builder = Trace.builder();
@@ -120,7 +125,7 @@ public class RlpTxrcpt implements Module {
       traceValue.limb = traceValue.input1;
     } else {
       traceValue.input1 = Bytes.ofUnsignedShort(0);
-      traceValue.limb = rlpIntShort;
+      traceValue.limb = bytesRlpIntShort;
     }
 
     traceValue.nBytes = 1;
@@ -150,7 +155,7 @@ public class RlpTxrcpt implements Module {
     traceValue.limbConstructed = true;
     traceValue.limb =
         Bytes.concatenate(
-            bigIntegerToBytes(rlpIntLong.toUnsignedBigInteger().add(BigInteger.valueOf(2))),
+            bigIntegerToBytes(BigInteger.valueOf(intRlpIntLong + 2)),
             bigIntegerToBytes(BigInteger.valueOf(256)));
     traceValue.nBytes = 3;
     traceRow(traceValue);
@@ -251,8 +256,7 @@ public class RlpTxrcpt implements Module {
         traceValue.limbConstructed = true;
 
         traceValue.counter = 0;
-        traceValue.limb =
-            bigIntegerToBytes(rlpIntShort.toUnsignedBigInteger().add(BigInteger.valueOf(20)));
+        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpIntShort + 20));
         traceValue.nBytes = 1;
         traceRow(traceValue);
 
@@ -277,14 +281,14 @@ public class RlpTxrcpt implements Module {
         if (logList.get(i).getTopics().isEmpty() || logList.get(i).getTopics().size() == 1) {
           traceValue.limb =
               bigIntegerToBytes(
-                  rlpListShort
+                  bytesRlpListShort
                       .toUnsignedBigInteger()
                       .add(BigInteger.valueOf(traceValue.localSize)));
           traceValue.nBytes = 1;
         } else {
           traceValue.limb =
               Bytes.concatenate(
-                  bigIntegerToBytes(rlpListLong.toUnsignedBigInteger().add(BigInteger.ONE)),
+                  bigIntegerToBytes(BigInteger.valueOf(intRlpListLong + 1)),
                   bigIntegerToBytes(BigInteger.valueOf(traceValue.localSize)));
           traceValue.nBytes = 2;
         }
@@ -302,8 +306,7 @@ public class RlpTxrcpt implements Module {
             traceValue.limbConstructed = true;
 
             traceValue.counter = 0;
-            traceValue.limb =
-                bigIntegerToBytes(rlpIntShort.toUnsignedBigInteger().add(BigInteger.valueOf(32)));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpIntShort + 32));
             traceValue.nBytes = 1;
             traceValue.localSize -= traceValue.nBytes;
             traceRow(traceValue);
@@ -338,13 +341,12 @@ public class RlpTxrcpt implements Module {
             traceValue.isPrefix = true;
             traceValue.isData = true;
             traceValue.limbConstructed = true;
-            traceValue.limb = rlpIntShort;
+            traceValue.limb = bytesRlpIntShort;
             traceValue.nBytes = 1;
             traceValue.phaseEnd = (i == nbLog - 1);
             traceRow(traceValue);
           }
           case 1 -> { // Case with data is made of one byte
-            traceValue.partialReset(4, 8);
             rlpInt(
                 4,
                 logList.get(i).getData().toUnsignedBigInteger().longValueExact(),
@@ -420,7 +422,7 @@ public class RlpTxrcpt implements Module {
       RlpTxrcptColumns traceValue, int phase, boolean isPrefix, boolean endPhase) {
     traceValue.partialReset(phase, 1);
     traceValue.limbConstructed = true;
-    traceValue.limb = rlpListShort;
+    traceValue.limb = bytesRlpListShort;
     traceValue.nBytes = 1;
     traceValue.isPrefix = isPrefix;
     traceValue.phaseEnd = endPhase;
@@ -474,13 +476,9 @@ public class RlpTxrcpt implements Module {
           traceValue.limbConstructed = true;
           traceValue.nBytes = 1;
           if (isList) {
-            traceValue.limb =
-                bigIntegerToBytes(
-                    rlpListLong.toUnsignedBigInteger().add(BigInteger.valueOf(lengthSize)));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpListLong + lengthSize));
           } else {
-            traceValue.limb =
-                bigIntegerToBytes(
-                    rlpIntLong.toUnsignedBigInteger().add(BigInteger.valueOf(lengthSize)));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpIntLong + lengthSize));
           }
         }
 
@@ -496,13 +494,9 @@ public class RlpTxrcpt implements Module {
         if (ct == 7) {
           traceValue.limbConstructed = true;
           if (isList) {
-            traceValue.limb =
-                bigIntegerToBytes(
-                    rlpListShort.toUnsignedBigInteger().add(BigInteger.valueOf(length)));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpListShort + length));
           } else {
-            traceValue.limb =
-                bigIntegerToBytes(
-                    rlpIntShort.toUnsignedBigInteger().add(BigInteger.valueOf(length)));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpIntShort + length));
           }
           traceValue.nBytes = 1;
           traceValue.phaseEnd = endPhase;
@@ -548,9 +542,7 @@ public class RlpTxrcpt implements Module {
 
       if (input >= 128 && ct == 6) {
         traceValue.limbConstructed = true;
-        traceValue.limb =
-            bigIntegerToBytes(
-                rlpIntShort.toUnsignedBigInteger().add(BigInteger.valueOf(inputSize)));
+        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(intRlpIntShort + inputSize));
         traceValue.nBytes = 1;
       }
 

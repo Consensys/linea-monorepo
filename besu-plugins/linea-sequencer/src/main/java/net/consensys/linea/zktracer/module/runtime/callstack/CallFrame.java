@@ -50,9 +50,9 @@ public class CallFrame {
   @Getter private List<Integer> childFrames = new ArrayList<>();
 
   /** the {@link Address} of the account executing this {@link CallFrame}. */
-  @Getter private Address address;
+  @Getter private Address address = Address.ZERO; // TODO:
   /** the {@link Address} of the code executed in this {@link CallFrame}. */
-  @Getter private Address codeAddress;
+  @Getter private Address codeAddress = Address.ALTBN128_ADD;
 
   /** the {@link CallFrameType} of this frame. */
   @Getter private CallFrameType type;
@@ -68,13 +68,13 @@ public class CallFrame {
   /** the call data given to this frame. */
   @Getter private Bytes callData;
   /** the call data span in the parent memory. */
-  @Getter private MemorySpan callDataPointer;
+  @Getter private final MemorySpan callDataPointer = new MemorySpan(0, 0);
   /** the data returned by the latest callee. */
-  @Getter @Setter private Bytes returnData;
+  @Getter @Setter private Bytes returnData = Bytes.EMPTY;
   /** returnData position within the latest callee memory space. */
-  @Getter private MemorySpan returnDataPointer;
+  @Getter private MemorySpan returnDataPointer = new MemorySpan(0, 0);
   /** where this frame is expected to write its returnData within its parent's memory space. */
-  @Getter private MemorySpan returnDataTarget;
+  @Getter private MemorySpan returnDataTarget = new MemorySpan(0, 0);
 
   @Getter @Setter private int selfReverts = 0;
   @Getter @Setter private int getsReverted = 0;

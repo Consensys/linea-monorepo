@@ -20,10 +20,23 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
-public record SelfDestruct(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class SelfDestruct implements GasProjection {
+  private final MessageFrame frame;
+  private Address beneficiaryAddress = null;
+
+  public SelfDestruct(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 0) {
+      this.beneficiaryAddress = Words.toAddress(frame.getStackItem(0));
+    }
+  }
+
+  boolean isInvalid() {
+    return this.beneficiaryAddress == null;
+  }
+
   @Override
   public long staticGas() {
     return GasConstants.G_SELF_DESTRUCT.cost();
@@ -31,8 +44,11 @@ public record SelfDestruct(GasCalculator gc, MessageFrame frame) implements GasP
 
   @Override
   public long accountAccess() {
-    final Address beneficiaryAddress = Words.toAddress(frame.getStackItem(0));
-    if (frame.isAddressWarm(beneficiaryAddress)) {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
+    if (frame.isAddressWarm(this.beneficiaryAddress)) {
       return 0L;
     } else {
       return GasConstants.G_COLD_ACCOUNT_ACCESS.cost();
@@ -41,8 +57,11 @@ public record SelfDestruct(GasCalculator gc, MessageFrame frame) implements GasP
 
   @Override
   public long accountCreation() {
-    final Address beneficiaryAddress = Words.toAddress(frame.getStackItem(0));
-    final Account beneficiaryAccount = frame.getWorldUpdater().get(beneficiaryAddress);
+    if (this.isInvalid()) {
+      return 0;
+    }
+
+    final Account beneficiaryAccount = frame.getWorldUpdater().get(this.beneficiaryAddress);
     final Address me = frame.getRecipientAddress();
     final Wei balance = frame.getWorldUpdater().get(me).getBalance();
 

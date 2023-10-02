@@ -18,9 +18,18 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-public record MStore8(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class MStore8 implements GasProjection {
+  private final MessageFrame frame;
+  private long offset = 0;
+
+  public MStore8(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 0) {
+      this.offset = clampedToLong(frame.getStackItem(0));
+    }
+  }
+
   @Override
   public long staticGas() {
     return gc.getVeryLowTierGasCost();
@@ -28,12 +37,11 @@ public record MStore8(GasCalculator gc, MessageFrame frame) implements GasProjec
 
   @Override
   public long memoryExpansion() {
-    long offset = clampedToLong(frame.getStackItem(0));
-    return gc.memoryExpansionGasCost(frame, offset, 1);
+    return gc.memoryExpansionGasCost(this.frame, this.offset, 1);
   }
 
   @Override
   public long largestOffset() {
-    return clampedToLong(frame.getStackItem(0));
+    return this.offset;
   }
 }

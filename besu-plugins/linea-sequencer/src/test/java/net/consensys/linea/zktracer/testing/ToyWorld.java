@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -34,9 +33,13 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
-  @Getter private ToyWorld parent;
+  private ToyWorld parent;
   @Getter private List<ToyAccount> accounts;
   private Map<Address, ToyAccount> addressAccountMap;
+
+  private ToyWorld() {
+    this(null, new ArrayList<>());
+  }
 
   private ToyWorld(final ToyWorld parent) {
     this(parent, new ArrayList<>());
@@ -101,15 +104,7 @@ public class ToyWorld implements WorldUpdater {
     if (addressAccountMap.containsKey(address)) {
       return addressAccountMap.get(address);
     } else if (parent != null) {
-      Account parentAccount = parent.getAccount(address);
-      if (parentAccount != null) {
-        return createAccount(
-            parentAccount,
-            parentAccount.getAddress(),
-            parentAccount.getNonce(),
-            parentAccount.getBalance(),
-            parentAccount.getCode());
-      }
+      return parent.getAccount(address);
     }
 
     return null;
@@ -130,7 +125,7 @@ public class ToyWorld implements WorldUpdater {
     return addressAccountMap.entrySet().stream()
         .filter(e -> e.getValue() == null)
         .map(Map.Entry::getKey)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   @Override

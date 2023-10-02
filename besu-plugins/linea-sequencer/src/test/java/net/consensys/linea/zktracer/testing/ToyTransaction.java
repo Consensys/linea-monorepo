@@ -44,6 +44,8 @@ public class ToyTransaction {
   private static final Wei DEFAULT_GAS_PRICE = Wei.of(10_000_000L);
   private static final TransactionType DEFAULT_TX_TYPE = TransactionType.FRONTIER;
   private static final List<AccessListEntry> DEFAULT_ACCESS_LIST = new ArrayList<>();
+  private static final Wei DEFAULT_MAX_FEE_PER_GAS = Wei.of(37_000_000_000L);
+  private static final Wei DEFAULT_MAX_PRIORITY_FEE_PER_GAS = Wei.of(500_000_000L);
 
   private final ToyAccount to;
   private final ToyAccount sender;
@@ -55,6 +57,8 @@ public class ToyTransaction {
   private final BigInteger chainId;
   private final KeyPair keyPair;
   private final List<AccessListEntry> accessList;
+  private final Wei maxPriorityFeePerGas;
+  private final Wei maxFeePerGas;
 
   /** Customizations applied to the Lombok generated builder. */
   public static class ToyTransactionBuilder {
@@ -65,17 +69,25 @@ public class ToyTransaction {
      * @return an instance of {@link Transaction}
      */
     public Transaction build() {
-      return Transaction.builder()
-          .to(to != null ? to.getAddress() : null)
-          .nonce(sender.getNonce())
-          .accessList(accessList)
-          .type(Optional.ofNullable(transactionType).orElse(DEFAULT_TX_TYPE))
-          .gasPrice(Optional.ofNullable(gasPrice).orElse(DEFAULT_GAS_PRICE))
-          .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
-          .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
-          .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-          .chainId(Optional.ofNullable(chainId).orElse(ToyExecutionEnvironment.CHAIN_ID))
-          .signAndBuild(keyPair);
+      final Transaction.Builder builder =
+          Transaction.builder()
+              .to(to != null ? to.getAddress() : null)
+              .nonce(sender.getNonce())
+              .accessList(accessList)
+              .type(Optional.ofNullable(transactionType).orElse(DEFAULT_TX_TYPE))
+              .gasPrice(Optional.ofNullable(gasPrice).orElse(DEFAULT_GAS_PRICE))
+              .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
+              .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
+              .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
+              .chainId(Optional.ofNullable(chainId).orElse(ToyExecutionEnvironment.CHAIN_ID));
+
+      if (transactionType == TransactionType.EIP1559) {
+        builder.maxPriorityFeePerGas(
+            Optional.ofNullable(maxPriorityFeePerGas).orElse(DEFAULT_MAX_PRIORITY_FEE_PER_GAS));
+        builder.maxFeePerGas(Optional.ofNullable(maxFeePerGas).orElse(DEFAULT_MAX_FEE_PER_GAS));
+      }
+
+      return builder.signAndBuild(keyPair);
     }
   }
 }

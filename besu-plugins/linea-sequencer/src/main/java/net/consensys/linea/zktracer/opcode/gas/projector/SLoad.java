@@ -18,16 +18,28 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-public record SLoad(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class SLoad implements GasProjection {
+  private final MessageFrame frame;
+  private UInt256 key = null;
+
+  public SLoad(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 0) {
+      this.key = UInt256.fromBytes(frame.getStackItem(0));
+    }
+  }
+
   @Override
   public long storageWarmth() {
-    final UInt256 key = UInt256.fromBytes(frame.getStackItem(0));
-    if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {
-      return GasConstants.G_WARM_ACCESS.cost();
+    if (key == null) {
+      return 0;
     } else {
-      return GasConstants.G_COLD_S_LOAD.cost();
+      if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {
+        return GasConstants.G_WARM_ACCESS.cost();
+      } else {
+        return GasConstants.G_COLD_S_LOAD.cost();
+      }
     }
   }
 }
