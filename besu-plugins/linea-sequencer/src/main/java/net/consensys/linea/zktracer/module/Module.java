@@ -52,5 +52,7 @@ public interface Module {
 
   default void trace(MessageFrame frame) {}
 
+  int lineCount();
+
   Object commit();
 }

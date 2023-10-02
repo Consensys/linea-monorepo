@@ -93,6 +93,11 @@ public class Wcp implements Module {
     return new WcpTrace(builder.build());
   }
 
+  @Override
+  public int lineCount() {
+    return this.operations.stream().mapToInt(WcpOperation::maxCt).sum();
+  }
+
   public void callLT(Bytes32 arg1, Bytes32 arg2) {
     WcpOperation data = new WcpOperation(OpCode.LT, arg1, arg2);
     this.traceWcpOperation(data);

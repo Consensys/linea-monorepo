@@ -653,12 +653,9 @@ public class Hub implements Module {
     return this.frame.getRemainingGas();
   }
 
+  @Override
   public int lineCount() {
-    int count = 0;
-    for (TxTrace txSection : this.traceSections) {
-      count += txSection.lineCount();
-    }
-    return count;
+    return this.traceSections.stream().mapToInt(TxTrace::lineCount).sum();
   }
 
   void traceOperation(MessageFrame frame) {

@@ -129,6 +129,11 @@ public class Mod implements Module {
     return new ModTrace(builder.build());
   }
 
+  @Override
+  public int lineCount() {
+    return this.chunks.stream().mapToInt(ModOperation::maxCounter).sum();
+  }
+
   /**
    * Performs a context-free call to the DIV opcode in the current trace.
    *
