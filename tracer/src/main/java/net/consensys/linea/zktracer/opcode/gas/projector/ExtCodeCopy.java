@@ -20,29 +20,39 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
-public record ExtCodeCopy(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class ExtCodeCopy implements GasProjection {
+  private final MessageFrame frame;
+  private long offset = 0;
+  private long size = 0;
+  private long bitSize = 0;
+  private Address target = Address.ZERO;
+
+  public ExtCodeCopy(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() > 3) {
+      this.target = Address.wrap(frame.getStackItem(0));
+      this.offset = clampedToLong(frame.getStackItem(1));
+      this.size = clampedToLong(frame.getStackItem(3));
+      this.bitSize = frame.getStackItem(3).bitLength();
+    }
+  }
+
   @Override
   public long memoryExpansion() {
-    long offset = clampedToLong(frame.getStackItem(1));
-    long length = clampedToLong(frame.getStackItem(3));
-    return gc.memoryExpansionGasCost(frame, offset, length);
+
+    return gc.memoryExpansionGasCost(frame, offset, this.size);
   }
 
   @Override
   public long largestOffset() {
-    long offset = clampedToLong(frame.getStackItem(1));
-    long length = clampedToLong(frame.getStackItem(3));
-    return Words.clampedAdd(offset, length);
+    return Words.clampedAdd(this.offset, this.size);
   }
 
   @Override
   public long accountAccess() {
-    Address target = Address.wrap(frame.getStackItem(0));
-
-    if (frame.isAddressWarm(target)) {
+    if (frame.isAddressWarm(this.target)) {
       return gc.getWarmStorageReadCost();
     } else {
       return gc.getColdAccountAccessCost();
@@ -51,6 +61,6 @@ public record ExtCodeCopy(GasCalculator gc, MessageFrame frame) implements GasPr
 
   @Override
   public long linearPerWord() {
-    return linearCost(GasConstants.G_COPY.cost(), frame.getStackItem(3).bitLength(), 32);
+    return linearCost(GasConstants.G_COPY.cost(), this.bitSize, 32);
   }
 }

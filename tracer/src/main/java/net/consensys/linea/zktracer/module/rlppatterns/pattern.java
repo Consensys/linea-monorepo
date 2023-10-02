@@ -54,19 +54,6 @@ public class pattern {
     return Bytes.concatenate(Bytes.repeat(nullByte, wantedSize - input.size()), input);
   }
 
-  public static Bytes bigIntegerToBytes(BigInteger big) {
-    byte[] byteArray;
-    byteArray = big.toByteArray();
-    Bytes bytes;
-    if (byteArray[0] == 0) {
-      Bytes tmp = Bytes.wrap(byteArray);
-      bytes = Bytes.wrap(tmp.slice(1, tmp.size() - 1));
-    } else {
-      bytes = Bytes.wrap(byteArray);
-    }
-    return bytes;
-  }
-
   public static Bytes padToGivenSizeWithRightZero(Bytes input, int wantedSize) {
     Preconditions.checkArgument(
         wantedSize >= input.size(), "wantedSize can't be shorter than the input size");

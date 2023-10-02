@@ -74,8 +74,6 @@ public class RlpTxnColumnsValue {
     this.ACC_1 = Bytes.of(0);
     this.ACC_2 = Bytes.of(0);
     this.ACC_BYTESIZE = 0;
-    this.ADDR_HI = Bytes.ofUnsignedShort(0);
-    this.ADDR_LO = Bytes.ofUnsignedShort(0);
     this.BIT = false;
     this.BIT_ACC = 0;
     this.BYTE_1 = 0;

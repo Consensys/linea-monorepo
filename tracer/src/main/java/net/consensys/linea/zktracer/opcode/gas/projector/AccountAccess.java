@@ -17,14 +17,30 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.internal.Words;
 
-public record AccountAccess(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class AccountAccess implements GasProjection {
+  private final MessageFrame frame;
+  private Address target = null;
+
+  public AccountAccess(MessageFrame frame) {
+    if (frame.stackSize() > 0) {
+      this.target = Words.toAddress(frame.getStackItem(0));
+    }
+    this.frame = frame;
+  }
+
+  boolean isInvalid() {
+    return this.target == null;
+  }
+
   @Override
   public long accountAccess() {
-    Address target = Address.wrap(frame.getStackItem(0));
+    if (this.isInvalid()) {
+      return 0;
+    }
 
-    if (frame.isAddressWarm(target)) {
+    if (frame.isAddressWarm(this.target)) {
       return gc.getWarmStorageReadCost();
     } else {
       return gc.getColdAccountAccessCost();

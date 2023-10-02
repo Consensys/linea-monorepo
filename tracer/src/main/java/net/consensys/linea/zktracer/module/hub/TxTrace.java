@@ -74,7 +74,7 @@ public class TxTrace {
    * @param hub the exection context
    */
   public void postTxRetcon(Hub hub) {
-    long leftoverGas = hub.frame().getRemainingGas();
+    long leftoverGas = hub.getRemainingGas();
     long refundedGas = this.refundedGas();
     for (TraceSection section : this.trace) {
       section.postTxRetcon(hub, leftoverGas, refundedGas);
