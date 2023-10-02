@@ -57,11 +57,12 @@ import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
+import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
+import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.module.shf.Shf;
-import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -147,27 +148,23 @@ public class Hub implements Module {
     this.traceSections.add(new TxTrace());
   }
 
-  private final Module add;
-  private final Module ext;
-  private final Module mod;
-  private final Module mul;
-  private final Module shf;
-  private final Module trm;
-  private final Module wcp;
+  private final Module add = new Add();
+  private final Module ext = new Ext();
+  private final Module mod = new Mod();
+  private final Module mul = new Mul();
+  private final Module shf = new Shf();
+  private final Module wcp = new Wcp();
+  private final RlpTxn rlpTxn = new RlpTxn();
+  private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
 
-  public Hub(Add add, Ext ext, Mod mod, Mul mul, Shf shf, Trm trm, Wcp wcp) {
-    this.add = add;
-    this.ext = ext;
-    this.mod = mod;
-    this.mul = mul;
-    this.shf = shf;
-    this.trm = trm;
-    this.wcp = wcp;
-  }
+  public Hub() {}
 
-  public List<Module> getModules() {
-    List<Module> r = new ArrayList<>();
-    return r;
+  /**
+   * @return the list of modules that need to be triggered in a self-standing way by the {@link
+   *     net.consensys.linea.zktracer.ZkTracer}
+   */
+  public List<Module> getSelfStandingModules() {
+    return List.of(this.rlpTxn, rlpTxrcpt);
   }
 
   @Override
