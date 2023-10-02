@@ -193,4 +193,9 @@ public class Ext implements Module {
     }
     return new ExtTrace(trace.build());
   }
+
+  @Override
+  public int lineCount() {
+    return this.operations.stream().mapToInt(ExtOperation::maxCounter).sum();
+  }
 }

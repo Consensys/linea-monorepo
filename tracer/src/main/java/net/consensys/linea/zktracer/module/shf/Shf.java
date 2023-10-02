@@ -120,4 +120,9 @@ public class Shf implements Module {
 
     return new ShfTrace(trace.build());
   }
+
+  @Override
+  public int lineCount() {
+    return this.operations.stream().mapToInt(ShfOperation::maxCt).sum();
+  }
 }
