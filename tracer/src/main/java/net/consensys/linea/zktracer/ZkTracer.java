@@ -19,16 +19,7 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.add.Add;
-import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.mod.Mod;
-import net.consensys.linea.zktracer.module.mul.Mul;
-import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
-import net.consensys.linea.zktracer.module.shf.Shf;
-import net.consensys.linea.zktracer.module.trm.Trm;
-import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -52,20 +43,8 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   private final List<Module> modules;
 
   public ZkTracer() {
-    Add add = new Add();
-    Ext ext = new Ext();
-    Mod mod = new Mod();
-    Mul mul = new Mul();
-    Shf shf = new Shf();
-    Trm trm = new Trm();
-    Wcp wcp = new Wcp();
-    RlpTxn rlpTxn = new RlpTxn();
-    RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
-
-    this.hub = new Hub(add, ext, mod, mul, shf, trm, wcp);
-    this.modules = hub.getModules();
-    this.modules.add(rlpTxrcpt);
-    this.modules.add(rlpTxn);
+    this.hub = new Hub();
+    this.modules = hub.getSelfStandingModules();
 
     // Load opcodes configured in src/main/resources/opcodes.yml.
     OpCodes.load();
