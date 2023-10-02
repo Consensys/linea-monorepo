@@ -141,4 +141,32 @@ public class Mul implements Module {
         .bitNum(BigInteger.valueOf(op.getBitNum()))
         .validateRow();
   }
+
+  @Override
+  public int lineCount() {
+    return this.operations.stream()
+        .mapToInt(
+            op ->
+                switch (op.getRegime()) {
+                  case EXPONENT_ZERO_RESULT -> op.maxCt();
+
+                  case EXPONENT_NON_ZERO_RESULT -> {
+                    int r = 0;
+                    while (op.carryOn()) {
+                      op.update();
+                      r += op.maxCt();
+                    }
+                    yield r;
+                  }
+
+                  case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
+                    op.setHsAndBits(
+                        UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
+                    yield op.maxCt();
+                  }
+
+                  default -> throw new RuntimeException("regime not supported");
+                })
+        .sum();
+  }
 }

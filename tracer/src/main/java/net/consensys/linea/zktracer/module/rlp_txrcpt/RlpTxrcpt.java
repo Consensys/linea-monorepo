@@ -733,7 +733,8 @@ public class RlpTxrcpt implements Module {
     return rowSize;
   }
 
-  public int traceRowSize() {
+  @Override
+  public int lineCount() {
     int traceRowSize = 0;
     for (RlpTxrcptChunk chunk : this.chunkList) {
       traceRowSize += ChunkRowSize(chunk);

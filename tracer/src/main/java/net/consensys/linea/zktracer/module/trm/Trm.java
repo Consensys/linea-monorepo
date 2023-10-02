@@ -27,4 +27,9 @@ public class Trm implements Module {
   public Object commit() {
     return null;
   }
+
+  @Override
+  public int lineCount() {
+    throw new RuntimeException("not yet implemented");
+  }
 }
