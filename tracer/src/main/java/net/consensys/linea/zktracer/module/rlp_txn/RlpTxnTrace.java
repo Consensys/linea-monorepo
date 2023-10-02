@@ -21,4 +21,4 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record RlpTxnTrace(@JsonProperty("Trace") Trace trace) {}
+record RlpTxnTrace(@JsonProperty("Trace") Trace trace) {}

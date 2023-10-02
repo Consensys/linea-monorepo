@@ -40,7 +40,7 @@ public class Wcp implements Module {
   @Override
   public void trace(final MessageFrame frame) {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
-    final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =
         (opCode.mnemonic() != OpCode.ISZERO) ? Bytes32.wrap(frame.getStackItem(1)) : Bytes32.ZERO;
 

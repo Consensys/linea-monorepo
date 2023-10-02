@@ -20,11 +20,9 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public record Call(
-    GasCalculator gc,
     MessageFrame frame,
     long stipend,
     long inputDataOffset,
@@ -35,8 +33,20 @@ public record Call(
     Account recipient,
     Address to)
     implements GasProjection {
+  public static Call invalid() {
+    return new Call(null, 0, 0, 0, 0, 0, Wei.ZERO, null, null);
+  }
+
+  boolean isInvalid() {
+    return this.frame == null;
+  }
+
   @Override
   public long memoryExpansion() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     return Math.max(
         gc.memoryExpansionGasCost(frame, inputDataOffset, inputDataLength),
         gc.memoryExpansionGasCost(frame, returnDataOffset, returnDataLength));
@@ -44,6 +54,10 @@ public record Call(
 
   @Override
   public long largestOffset() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     return Math.max(
         Words.clampedAdd(inputDataOffset, inputDataLength),
         Words.clampedAdd(returnDataOffset, returnDataLength));
@@ -51,6 +65,10 @@ public record Call(
 
   @Override
   public long accountAccess() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     if (frame.isAddressWarm(to)) {
       return GasConstants.G_WARM_ACCESS.cost();
     } else {
@@ -60,6 +78,10 @@ public record Call(
 
   @Override
   public long accountCreation() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     if ((recipient == null || recipient.isEmpty()) && !value.isZero()) {
       return GasConstants.G_NEW_ACCOUNT.cost();
     } else {
@@ -69,6 +91,10 @@ public record Call(
 
   @Override
   public long transferValue() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     if (value.isZero()) {
       return 0L;
     } else {
@@ -78,6 +104,10 @@ public record Call(
 
   @Override
   public long rawStipend() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     final long cost = memoryExpansion() + accountAccess() + accountCreation() + transferValue();
     if (cost > frame.getRemainingGas()) {
       return 0L;
@@ -91,6 +121,10 @@ public record Call(
 
   @Override
   public long extraStipend() {
+    if (this.isInvalid()) {
+      return 0;
+    }
+
     if (value.isZero()) {
       return 0L;
     } else {

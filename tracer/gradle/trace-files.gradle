@@ -79,7 +79,7 @@ tasks.register("hub", TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme
 //
-['bin', 'ec_data', 'mxp', 'rom', 'shf', 'wcp', 'rlp_txrcpt'].each {moduleName ->
+['bin', 'ec_data', 'mxp', 'rom', 'shf', 'wcp', 'rlp_txrcpt', 'rlp_txn'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

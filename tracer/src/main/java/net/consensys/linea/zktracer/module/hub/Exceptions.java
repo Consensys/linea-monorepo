@@ -157,16 +157,32 @@ public record Exceptions(
     OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     OpCodeData opCodeData = opCode.getData();
 
+    final boolean invalidOpcode = isInvalidOpcode(opCode);
+    final boolean stackUnderflow = invalidOpcode ? false : isStackUnderflow(frame, opCodeData);
+    final boolean stackOverflow = invalidOpcode ? false : isStackOverflow(frame, opCodeData);
+    final boolean outOfMxp =
+        (stackUnderflow || stackOverflow) ? false : isOutOfMemoryExpansion(frame, opCode, gp);
+    final boolean oufOfGas =
+        (stackUnderflow || stackOverflow) ? false : isOutOfGas(frame, opCode, gp);
+    final boolean returnDataCopyFault =
+        (stackUnderflow || stackOverflow) ? false : isReturnDataCopyFault(frame);
+    final boolean jumpFault =
+        (stackUnderflow || stackOverflow) ? false : isJumpFault(frame, opCode);
+
     return new Exceptions(
-        isInvalidOpcode(opCode),
-        isStackUnderflow(frame, opCodeData),
-        isStackOverflow(frame, opCodeData),
-        isOutOfMemoryExpansion(frame, opCode, gp),
-        isOutOfGas(frame, opCode, gp),
-        isReturnDataCopyFault(frame),
-        isJumpFault(frame, opCode),
+        invalidOpcode,
+        stackUnderflow,
+        stackOverflow,
+        outOfMxp,
+        oufOfGas,
+        returnDataCopyFault,
+        jumpFault,
         isStaticFault(frame),
         isOutOfSStore(frame));
+  }
+
+  public static Exceptions empty() {
+    return new Exceptions(false, false, false, false, false, false, false, false, false);
   }
 
   /**

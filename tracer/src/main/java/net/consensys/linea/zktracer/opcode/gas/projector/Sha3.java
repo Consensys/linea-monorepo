@@ -19,10 +19,25 @@ import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-public record Sha3(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class Sha3 implements GasProjection {
+  private final MessageFrame frame;
+  private long offset = 0;
+  private long length = 0;
+  private int bitLength = 0;
+
+  public Sha3(MessageFrame frame) {
+    this.frame = frame;
+    if (frame.stackSize() >= 2) {
+      Bytes biLength = frame.getStackItem(1);
+      this.offset = clampedToLong(frame.getStackItem(0));
+      this.length = clampedToLong(biLength);
+      this.bitLength = biLength.bitLength();
+    }
+  }
+
   @Override
   public long staticGas() {
     return GasConstants.G_KECCAK_256.cost();
@@ -30,20 +45,17 @@ public record Sha3(GasCalculator gc, MessageFrame frame) implements GasProjectio
 
   @Override
   public long memoryExpansion() {
-    long offset = clampedToLong(frame.getStackItem(0));
-    long length = clampedToLong(frame.getStackItem(1));
+
     return gc.memoryExpansionGasCost(frame, offset, length);
   }
 
   @Override
   public long largestOffset() {
-    long offset = clampedToLong(frame.getStackItem(0));
-    long length = clampedToLong(frame.getStackItem(1));
-    return clampedAdd(offset, length);
+    return clampedAdd(this.offset, this.length);
   }
 
   @Override
   public long linearPerWord() {
-    return linearCost(GasConstants.G_KECCAK_256_WORD.cost(), frame.getStackItem(1).bitLength(), 32);
+    return linearCost(GasConstants.G_KECCAK_256_WORD.cost(), this.bitLength, 32);
   }
 }

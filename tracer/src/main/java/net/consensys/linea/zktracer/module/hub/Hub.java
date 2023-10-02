@@ -266,36 +266,42 @@ public class Hub implements Module {
         .getAccessList()
         .ifPresent(
             preWarmed -> {
-              Set<Address> seenAddresses = new HashSet<>();
-              Map<Address, Set<Bytes32>> seenKeys = new HashMap<>();
-              List<TraceFragment> fragments = new ArrayList<>();
+              if (!preWarmed.isEmpty()) {
+                Set<Address> seenAddresses = new HashSet<>();
+                Map<Address, Set<Bytes32>> seenKeys = new HashMap<>();
+                List<TraceFragment> fragments = new ArrayList<>();
 
-              for (AccessListEntry entry : preWarmed) {
-                Address address = entry.address();
-                AccountSnapshot snapshot =
-                    AccountSnapshot.fromAccount(
-                        world.get(address), seenAddresses.contains(address), 0, false);
-                fragments.add(new AccountFragment(snapshot, snapshot, false, 0, false));
-                seenAddresses.add(address);
+                for (AccessListEntry entry : preWarmed) {
+                  Address address = entry.address();
+                  AccountSnapshot snapshot =
+                      AccountSnapshot.fromAccount(
+                          world.get(address), seenAddresses.contains(address), 0, false);
+                  fragments.add(new AccountFragment(snapshot, snapshot, false, 0, false));
+                  seenAddresses.add(address);
 
-                List<Bytes32> keys = entry.storageKeys();
-                for (Bytes32 key_ : keys) {
-                  UInt256 key = UInt256.fromBytes(key_);
-                  EWord value = EWord.of(world.get(address).getStorageValue(key));
-                  fragments.add(
-                      new StorageFragment(
-                          address,
-                          this.conflation.deploymentInfo().number(address),
-                          EWord.of(key),
-                          value,
-                          value,
-                          value,
-                          seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
-                          true));
-                  seenKeys.get(address).add(key);
+                  List<Bytes32> keys = entry.storageKeys();
+                  for (Bytes32 key_ : keys) {
+                    UInt256 key = UInt256.fromBytes(key_);
+                    EWord value =
+                        Optional.ofNullable(world.get(address))
+                            .map(account -> EWord.of(account.getStorageValue(key)))
+                            .orElse(EWord.ZERO);
+                    fragments.add(
+                        new StorageFragment(
+                            address,
+                            this.conflation.deploymentInfo().number(address),
+                            EWord.of(key),
+                            value,
+                            value,
+                            value,
+                            seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
+                            true));
+                    seenKeys.get(address).add(key);
+                  }
                 }
+
+                this.addTraceSection(new WarmupSection(this, fragments));
               }
-              this.addTraceSection(new WarmupSection(this, fragments));
             });
     this.tx.state(TxState.TX_INIT);
   }
@@ -329,6 +335,10 @@ public class Hub implements Module {
 
   public CallFrame currentFrame() {
     return Optional.of(this.callStack.top()).orElse(CallFrame.empty());
+  }
+
+  public long getRemainingGas() {
+    return 0; // TODO:
   }
 
   private void handleStack(MessageFrame frame) {
@@ -485,7 +495,7 @@ public class Hub implements Module {
 
   @Override
   public void traceStartTx(final WorldView world, final Transaction tx) {
-    this.exceptions = null;
+    this.exceptions = Exceptions.empty();
     this.tx.update(tx);
     this.createNewTxTrace();
 
@@ -504,6 +514,7 @@ public class Hub implements Module {
   @Override
   public void traceEndTx(
       WorldView world, Transaction tx, boolean status, Bytes output, List<Log> logs, long gasUsed) {
+    this.opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     this.tx.state(TxState.TX_FINAL);
     this.tx.status(status);
     this.processStateFinal(world, tx, status);

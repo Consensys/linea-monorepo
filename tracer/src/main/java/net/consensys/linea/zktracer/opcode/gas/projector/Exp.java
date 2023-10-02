@@ -17,9 +17,16 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
-public record Exp(GasCalculator gc, MessageFrame frame) implements GasProjection {
+public final class Exp implements GasProjection {
+  private int bitSize = 0;
+
+  public Exp(MessageFrame frame) {
+    if (frame.stackSize() > 1) {
+      this.bitSize = frame.getStackItem(1).bitLength();
+    }
+  }
+
   @Override
   public long staticGas() {
     return GasConstants.G_EXP.cost();
@@ -27,6 +34,6 @@ public record Exp(GasCalculator gc, MessageFrame frame) implements GasProjection
 
   @Override
   public long expGas() {
-    return linearCost(GasConstants.G_EXP_BYTE.cost(), frame.getStackItem(1).bitLength(), 1);
+    return linearCost(GasConstants.G_EXP_BYTE.cost(), this.bitSize, 1);
   }
 }

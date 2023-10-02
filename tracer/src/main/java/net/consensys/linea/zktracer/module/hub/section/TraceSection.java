@@ -70,6 +70,11 @@ public abstract class TraceSection {
    */
   private CommonFragment traceCommon(Hub hub) {
     OpCode opCode = hub.opCode();
+    long refund = 0;
+    if (hub.exceptions().noStackException()) {
+      refund = Hub.gp.of(hub.frame(), opCode).refund();
+    }
+
     return new CommonFragment(
         hub.tx().number(),
         hub.conflation().number(),
@@ -94,7 +99,7 @@ public abstract class TraceSection {
         0,
         0,
         0,
-        Hub.gp.of(hub.frame(), opCode).refund(),
+        refund,
         0,
         hub.opCodeData().stackSettings().twoLinesInstruction(),
         this.stackRowsCounter == 1,

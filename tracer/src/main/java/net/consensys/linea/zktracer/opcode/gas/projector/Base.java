@@ -15,9 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-
-public record Base(GasCalculator gc) implements GasProjection {
+public final class Base implements GasProjection {
   @Override
   public long staticGas() {
     return gc.getBaseTierGasCost();
