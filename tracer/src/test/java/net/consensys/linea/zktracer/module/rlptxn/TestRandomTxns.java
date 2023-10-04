@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCAse.randBigInt;
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCAse.randData;
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCAse.randLong;
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randBigInt;
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randData;
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randLong;
 
 import java.util.ArrayList;
 import java.util.List;
