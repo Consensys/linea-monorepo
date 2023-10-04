@@ -116,7 +116,7 @@ public final class CommonFragment implements TraceFragment {
 
     this.txEndStamp = hub.stamp();
     this.txReverts = hub.tx().status();
-    this.selfReverts = frame.getSelfReverts() > 0;
-    this.getsReverted = frame.getGetsReverted() > 0;
+    this.selfReverts = frame.selfRevertsAt() > 0;
+    this.getsReverted = frame.getsRevertedAt() > 0;
   }
 }

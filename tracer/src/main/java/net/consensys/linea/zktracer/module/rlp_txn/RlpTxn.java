@@ -1200,21 +1200,17 @@ public class RlpTxn implements Module {
     }
 
     // Phase 9: Data
-    if (chunk.tx().getData().isEmpty() || chunk.tx().getInit().isEmpty()) {
-      rowSize += 1;
+    if (chunk.tx().getPayload().isEmpty()) {
+      rowSize += 2; // 1 for prefix + 1 for padding
     } else {
-      int dataSize = 0;
-      if (chunk.tx().getData().isPresent()) {
-        dataSize = chunk.tx().getData().get().size();
-      } else {
-        dataSize = chunk.tx().getInit().get().size();
-      }
-      rowSize += 8 + (dataSize - 1) / 16 + 1;
+      int dataSize = chunk.tx().getPayload().size();
+      rowSize += 8 + llarge * ((dataSize - 1) / llarge + 1);
+      rowSize += 2; // 2 lines of padding
     }
 
     // Phase 10: AccessList
     if (txType == 1 || txType == 2) {
-      if (chunk.tx().getAccessList().isEmpty()) {
+      if (chunk.tx().getAccessList().get().isEmpty()) {
         rowSize += 1;
       } else {
         // Rlp prefix of the AccessList list
@@ -1272,12 +1268,24 @@ public class RlpTxn implements Module {
 
   @Override
   public Object commit() {
+    int estTraceSize = 0;
     int absTxNum = 0;
     for (RlpTxnChunk chunk : this.chunkList) {
       absTxNum += 1;
       // TODO: recuperer les codeFragmentIndex ici
       int codeFragmentIndex = 0;
       traceChunk(chunk, absTxNum, codeFragmentIndex);
+
+      estTraceSize += ChunkRowSize(chunk);
+      if (this.builder.size() != estTraceSize) {
+        throw new RuntimeException(
+            "ChunkSize is not the right one, chunk n°: "
+                + absTxNum
+                + " estimated size ="
+                + estTraceSize
+                + " trace size ="
+                + this.builder.size());
+      }
     }
     return new RlpTxnTrace(builder.build());
   }

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCAse.randData;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
@@ -41,6 +42,8 @@ import org.hyperledger.besu.evm.log.LogTopic;
 import org.junit.jupiter.api.Test;
 
 public class RandomTxrcptTests {
+  private final Random rnd = new Random(666);
+
   @Test
   public void testRandomTxrcpt() {
     RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
@@ -75,19 +78,8 @@ public class RandomTxrcptTests {
         .isTrue();
   }
 
-  private final Random rnd = new Random(666);
-
-  private Log randomLog(int dataType, int nbTopic) {
-    Bytes data =
-        switch (dataType) {
-          case 0 -> Bytes.EMPTY;
-          case 1 -> Bytes.of(0x00);
-          case 2 -> Bytes.minimalBytes(rnd.nextInt(1, 128));
-          case 3 -> Bytes.minimalBytes(rnd.nextInt(128, 256));
-          case 4 -> Bytes.random(rnd.nextInt(2, 56));
-          case 5 -> Bytes.random(rnd.nextInt(56, 6666));
-          default -> null;
-        };
+  private Log randomLog(int nbTopic) {
+    Bytes data = randData(false);
 
     List<LogTopic> topics = new ArrayList<>();
     for (int i = 0; i < nbTopic; i++) {
@@ -99,7 +91,7 @@ public class RandomTxrcptTests {
   private List<Log> randomListLog(int nLog) {
     List<Log> logs = new java.util.ArrayList<>(List.of());
     for (int i = 0; i < nLog; i++) {
-      logs.add(randomLog(rnd.nextInt(0, 6), rnd.nextInt(0, 5)));
+      logs.add(randomLog(rnd.nextInt(0, 5)));
     }
     return logs;
   }

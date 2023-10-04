@@ -13,17 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.rlpAddr;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
-import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class CallSection extends TraceSection {
-  public CallSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, callFrame, chunks);
-  }
-
-  @Override
-  public void seal(Hub hub) {}
-}
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record RlpAddrTrace(@JsonProperty("Trace") Trace trace) {}

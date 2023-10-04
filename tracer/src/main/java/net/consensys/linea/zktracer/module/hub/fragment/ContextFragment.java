@@ -29,35 +29,35 @@ public record ContextFragment(CallStack callStack, CallFrame callFrame, boolean 
     EWord eAddress = callFrame.addressAsEWord();
     EWord eCodeAddress = callFrame.codeAddressAsEWord();
 
-    CallFrame parent = callStack.getParentOf(callFrame.getId());
+    CallFrame parent = callStack.getParentOf(callFrame.id());
     EWord parentAddress = parent.addressAsEWord();
 
     return trace
         .peekAtContext(true)
-        .pContextContextNumber(BigInteger.valueOf(callFrame.getContextNumber()))
-        .pContextCallStackDepth(BigInteger.valueOf(callFrame.getDepth()))
-        .pContextIsStatic(callFrame.getType().isStatic() ? BigInteger.ONE : BigInteger.ZERO)
+        .pContextContextNumber(BigInteger.valueOf(callFrame.contextNumber()))
+        .pContextCallStackDepth(BigInteger.valueOf(callFrame.depth()))
+        .pContextIsStatic(callFrame.type().isStatic() ? BigInteger.ONE : BigInteger.ZERO)
         .pContextAccountAddressHi(eAddress.hiBigInt())
         .pContextAccountAddressLo(eAddress.loBigInt())
         .pContextByteCodeAddressHi(eCodeAddress.hiBigInt())
         .pContextByteCodeAddressLo(eCodeAddress.loBigInt())
-        .pContextAccountDeploymentNumber(BigInteger.valueOf(callFrame.getAccountDeploymentNumber()))
-        .pContextByteCodeDeploymentNumber(BigInteger.valueOf(callFrame.getCodeDeploymentNumber()))
+        .pContextAccountDeploymentNumber(BigInteger.valueOf(callFrame.accountDeploymentNumber()))
+        .pContextByteCodeDeploymentNumber(BigInteger.valueOf(callFrame.codeDeploymentNumber()))
         .pContextByteCodeDeploymentStatus(
-            callFrame.isCodeDeploymentStatus() ? BigInteger.ONE : BigInteger.ZERO)
-        .pContextCallerContextNumber(BigInteger.valueOf(parent.getContextNumber()))
+            callFrame.codeDeploymentStatus() ? BigInteger.ONE : BigInteger.ZERO)
+        .pContextCallerContextNumber(BigInteger.valueOf(parent.contextNumber()))
         .pContextCallerAddressHi(parentAddress.hiBigInt())
         .pContextCallerAddressLo(parentAddress.loBigInt())
-        .pContextCallValue(callFrame.getValue().toUnsignedBigInteger())
-        .pContextCallDataOffset(BigInteger.valueOf(callFrame.getCallDataPointer().offset()))
-        .pContextCallDataSize(BigInteger.valueOf(callFrame.getCallDataPointer().length()))
-        .pContextReturnAtOffset(BigInteger.valueOf(callFrame.getReturnDataTarget().offset()))
-        .pContextReturnAtSize(BigInteger.valueOf(callFrame.getReturnDataTarget().length()))
+        .pContextCallValue(callFrame.value().toUnsignedBigInteger())
+        .pContextCallDataOffset(BigInteger.valueOf(callFrame.callDataPointer().offset()))
+        .pContextCallDataSize(BigInteger.valueOf(callFrame.callDataPointer().length()))
+        .pContextReturnAtOffset(BigInteger.valueOf(callFrame.returnDataTarget().offset()))
+        .pContextReturnAtSize(BigInteger.valueOf(callFrame.returnDataTarget().length()))
         .pContextUpdate(update)
         .pContextReturnerContextNumber(
             BigInteger.valueOf(
-                callFrame.lastCallee().map(c -> callStack.get(c).getContextNumber()).orElse(0)))
-        .pContextReturnDataOffset(BigInteger.valueOf(callFrame.getReturnDataPointer().offset()))
-        .pContextReturnDataSize(BigInteger.valueOf(callFrame.getReturnDataPointer().length()));
+                callFrame.lastCallee().map(c -> callStack.get(c).contextNumber()).orElse(0)))
+        .pContextReturnDataOffset(BigInteger.valueOf(callFrame.returnDataPointer().offset()))
+        .pContextReturnDataSize(BigInteger.valueOf(callFrame.returnDataPointer().length()));
   }
 }

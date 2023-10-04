@@ -19,6 +19,8 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
+import net.consensys.linea.zktracer.module.hub.section.CreateSection;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -26,7 +28,8 @@ import org.hyperledger.besu.evm.operation.Operation;
 public record CreateDefer(
     AccountSnapshot oldCreatorSnapshot,
     AccountSnapshot oldCreatedSnapshot,
-    ContextFragment preContext)
+    ContextFragment preContext,
+    CallFrame callerFrame)
     implements PostExecDefer, NextContextDefer {
   // PostExec defer
   @Override
@@ -56,8 +59,9 @@ public record CreateDefer(
             hub.conflation().deploymentInfo().isDeploying(createdAddress));
 
     hub.addTraceSection(
-        new net.consensys.linea.zktracer.module.hub.section.CreateSection(
+        new CreateSection(
             hub,
+            callerFrame,
             preContext,
             // 3× own account
             new AccountFragment(oldCreatorSnapshot, newCreatorSnapshot, false, 0, false),
