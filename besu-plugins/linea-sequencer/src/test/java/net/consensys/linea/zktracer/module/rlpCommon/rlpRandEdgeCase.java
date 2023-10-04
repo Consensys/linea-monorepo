@@ -20,7 +20,7 @@ import java.util.Random;
 
 import org.apache.tuweni.bytes.Bytes;
 
-public class rlpRandEdgeCAse {
+public class rlpRandEdgeCase {
   private static Random rnd = new Random(666);
 
   public static final BigInteger randBigInt(boolean onlySixteenByte) {

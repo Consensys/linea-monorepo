@@ -16,10 +16,10 @@
 package net.consensys.linea.zktracer.module.rlpAddr;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithRightZero;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
@@ -29,8 +29,8 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlppatterns.RlpBitDecOutput;
-import net.consensys.linea.zktracer.module.rlppatterns.RlpByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlpPatterns.RlpBitDecOutput;
+import net.consensys.linea.zktracer.module.rlpPatterns.RlpByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
