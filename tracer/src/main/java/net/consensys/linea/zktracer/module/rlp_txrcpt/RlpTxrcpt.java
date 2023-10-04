@@ -16,11 +16,11 @@
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlppatterns.pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.outerRlpSize;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithRightZero;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -30,8 +30,8 @@ import java.util.function.Function;
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlppatterns.RlpBitDecOutput;
-import net.consensys.linea.zktracer.module.rlppatterns.RlpByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlpPatterns.RlpBitDecOutput;
+import net.consensys.linea.zktracer.module.rlpPatterns.RlpByteCountAndPowerOutput;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;

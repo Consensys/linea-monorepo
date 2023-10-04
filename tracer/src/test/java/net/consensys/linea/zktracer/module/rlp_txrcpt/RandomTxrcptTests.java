@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCAse.randData;
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randData;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
