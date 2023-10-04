@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -68,11 +69,11 @@ public abstract class TraceSection {
    *
    * @return a chunk representing the share columns
    */
-  private CommonFragment traceCommon(Hub hub) {
-    OpCode opCode = hub.opCode();
+  private CommonFragment traceCommon(Hub hub, CallFrame callFrame) {
+    OpCode opCode = callFrame.opCode();
     long refund = 0;
     if (hub.exceptions().noStackException()) {
-      refund = Hub.gp.of(hub.frame(), opCode).refund();
+      refund = Hub.gp.of(callFrame.frame(), opCode).refund();
     }
 
     return new CommonFragment(
@@ -84,17 +85,17 @@ public abstract class TraceSection {
         false, // retconned
         hub.opCodeData().instructionFamily(),
         hub.exceptions().snapshot(),
-        hub.currentFrame().getContextNumber(),
-        hub.currentFrame().getContextNumber(),
+        callFrame.contextNumber(),
+        callFrame.contextNumber(),
         0, // retconned
         false, // retconned
         false, // retconned
-        hub.pc(),
-        hub.pc(), // retconned later on
-        hub.currentFrame().addressAsEWord(),
-        hub.currentFrame().getCodeDeploymentNumber(),
-        hub.currentFrame().isCodeDeploymentStatus(),
-        hub.currentFrame().getAccountDeploymentNumber(),
+        callFrame.pc(),
+        callFrame.pc(), // retconned later on
+        callFrame.addressAsEWord(),
+        callFrame.codeDeploymentNumber(),
+        callFrame.codeDeploymentStatus(),
+        callFrame.accountDeploymentNumber(),
         0,
         0,
         0,
@@ -116,7 +117,7 @@ public abstract class TraceSection {
    * @param hub the execution context
    * @param fragment the fragment to insert
    */
-  public final void addChunk(Hub hub, TraceFragment fragment) {
+  public final void addChunk(Hub hub, CallFrame callFrame, TraceFragment fragment) {
     assert !(fragment instanceof CommonFragment);
     if (fragment instanceof StackFragment) {
       this.stackRowsCounter++;
@@ -124,7 +125,20 @@ public abstract class TraceSection {
       this.nonStackRowsCounter++;
     }
 
-    this.lines.add(new TraceLine(traceCommon(hub), fragment));
+    this.lines.add(new TraceLine(traceCommon(hub, callFrame), fragment));
+  }
+
+  /**
+   * Create several {@link TraceLine} within this section for the specified fragments.
+   *
+   * @param hub the Hub linked to fragments execution
+   * @param fragments the fragments to add to the section
+   */
+  public final void addChunksWithoutStack(
+      Hub hub, CallFrame callFrame, TraceFragment... fragments) {
+    for (TraceFragment chunk : fragments) {
+      this.addChunk(hub, callFrame, chunk);
+    }
   }
 
   /**
@@ -135,7 +149,7 @@ public abstract class TraceSection {
    */
   public final void addChunksWithoutStack(Hub hub, TraceFragment... fragments) {
     for (TraceFragment chunk : fragments) {
-      this.addChunk(hub, chunk);
+      this.addChunk(hub, hub.currentFrame(), chunk);
     }
   }
 
@@ -144,13 +158,29 @@ public abstract class TraceSection {
    * fragments in a single swoop.
    *
    * @param hub the execution context
+   * @param callFrame the {@link CallFrame} containing the execution context; typically the current
+   *     one in the hub for most instructions, but may be the parent one for e.g. CREATE*
+   * @param fragments the fragments to insert
+   */
+  public final void addChunksAndStack(Hub hub, CallFrame callFrame, TraceFragment... fragments) {
+    for (var stackChunk : hub.makeStackChunks(callFrame)) {
+      this.addChunk(hub, callFrame, stackChunk);
+    }
+    this.addChunksWithoutStack(hub, callFrame, fragments);
+  }
+
+  /**
+   * Insert {@link TraceLine} related to the current state of the stack of the current {@link
+   * CallFrame}, then insert the provided fragments in a single swoop.
+   *
+   * @param hub the execution context
    * @param fragments the fragments to insert
    */
   public final void addChunksAndStack(Hub hub, TraceFragment... fragments) {
-    for (var stackChunk : hub.makeStackChunks()) {
-      this.addChunk(hub, stackChunk);
+    for (var stackChunk : hub.makeStackChunks(hub.currentFrame())) {
+      this.addChunk(hub, hub.currentFrame(), stackChunk);
     }
-    this.addChunksWithoutStack(hub, fragments);
+    this.addChunksWithoutStack(hub, hub.currentFrame(), fragments);
   }
 
   /**

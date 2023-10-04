@@ -45,7 +45,7 @@ public record ContextExceptions(boolean invalidCodePrefix, boolean codeSizeOverf
   }
 
   public static ContextExceptions fromFrame(final CallFrame callFrame, final MessageFrame frame) {
-    if (callFrame.isCodeDeploymentStatus()) {
+    if (callFrame.codeDeploymentStatus()) {
       return new ContextExceptions(isInvalidCodePrefix(frame), isCodeSizeOverflow(frame));
     } else {
       return new ContextExceptions(false, false);

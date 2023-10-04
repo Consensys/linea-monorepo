@@ -328,7 +328,7 @@ public class Stack {
     this.stamp = stackStamp;
     this.height = this.heightNew;
     this.currentOpcodeData = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
-    callFrame.setPending(new StackContext(this.currentOpcodeData.mnemonic()));
+    callFrame.pending(new StackContext(this.currentOpcodeData.mnemonic()));
 
     Preconditions.checkState(this.height == frame.stackSize());
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
@@ -345,29 +345,29 @@ public class Stack {
       this.heightNew = 0;
 
       if (this.currentOpcodeData.stackSettings().twoLinesInstruction()) {
-        this.stamp += callFrame.getPending().addEmptyLines(2);
+        this.stamp += callFrame.pending().addEmptyLines(2);
       } else {
-        this.stamp += callFrame.getPending().addEmptyLines(1);
+        this.stamp += callFrame.pending().addEmptyLines(1);
       }
 
       return false;
     }
 
     switch (this.currentOpcodeData.stackSettings().pattern()) {
-      case ZERO_ZERO -> this.stamp += callFrame.getPending().addEmptyLines(1);
-      case ONE_ZERO -> this.oneZero(frame, callFrame.getPending());
-      case TWO_ZERO -> this.twoZero(frame, callFrame.getPending());
-      case ZERO_ONE -> this.zeroOne(frame, callFrame.getPending());
-      case ONE_ONE -> this.oneOne(frame, callFrame.getPending());
-      case TWO_ONE -> this.twoOne(frame, callFrame.getPending());
-      case THREE_ONE -> this.threeOne(frame, callFrame.getPending());
-      case LOAD_STORE -> this.loadStore(frame, callFrame.getPending());
-      case DUP -> this.dup(frame, callFrame.getPending());
-      case SWAP -> this.swap(frame, callFrame.getPending());
-      case LOG -> this.log(frame, callFrame.getPending());
-      case COPY -> this.copy(frame, callFrame.getPending());
-      case CALL -> this.call(frame, callFrame.getPending());
-      case CREATE -> this.create(frame, callFrame.getPending());
+      case ZERO_ZERO -> this.stamp += callFrame.pending().addEmptyLines(1);
+      case ONE_ZERO -> this.oneZero(frame, callFrame.pending());
+      case TWO_ZERO -> this.twoZero(frame, callFrame.pending());
+      case ZERO_ONE -> this.zeroOne(frame, callFrame.pending());
+      case ONE_ONE -> this.oneOne(frame, callFrame.pending());
+      case TWO_ONE -> this.twoOne(frame, callFrame.pending());
+      case THREE_ONE -> this.threeOne(frame, callFrame.pending());
+      case LOAD_STORE -> this.loadStore(frame, callFrame.pending());
+      case DUP -> this.dup(frame, callFrame.pending());
+      case SWAP -> this.swap(frame, callFrame.pending());
+      case LOG -> this.log(frame, callFrame.pending());
+      case COPY -> this.copy(frame, callFrame.pending());
+      case CALL -> this.call(frame, callFrame.pending());
+      case CREATE -> this.create(frame, callFrame.pending());
     }
 
     return this.status == Status.NORMAL;

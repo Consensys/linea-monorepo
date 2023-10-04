@@ -17,10 +17,18 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 
 public class CreateSection extends TraceSection {
-  public CreateSection(Hub hub, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, chunks);
+  /**
+   * Create a new section in the trace related to CREATE* opcodes.
+   *
+   * @param hub the execution environment
+   * @param callFrame the execution context, which is typically the parent of the current one
+   * @param chunks the chunks to store in this section
+   */
+  public CreateSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
+    this.addChunksAndStack(hub, callFrame, chunks);
   }
 
   @Override
