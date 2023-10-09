@@ -15,6 +15,10 @@
 
 repositories {
   maven {
+    url "https://artifacts.consensys.net/public/linea-besu/maven/"
+    content { includeGroupByRegex('io\\.consensys\\..*') }
+  }
+  maven {
     url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
     content { includeGroupByRegex('org\\.hyperledger\\..*') }
   }
@@ -58,7 +62,7 @@ dependencyManagement {
     dependency 'com.google.guava:guava:32.1.2-jre'
 
     // Besu dependencies
-    dependency "org.hyperledger.besu:plugin-api:${besuVersion}"
+    dependency "$besuArtifactGroup:plugin-api:${besuVersion}"
 
     // Logging dependencies
     dependency 'org.slf4j:slf4j-api:2.0.7'
