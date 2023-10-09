@@ -24,16 +24,16 @@ apply from: rootProject.file("gradle/allprojects.gradle")
 dependencies {
   // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
   annotationProcessor 'com.google.auto.service:auto-service'
-  compileOnly "org.hyperledger.besu:evm:$besuVersion"
+  compileOnly "$besuArtifactGroup:evm:$besuVersion"
   compileOnly 'com.google.auto.service:auto-service'
   compileOnly 'com.google.auto.service:auto-service-annotations'
 
-  implementation "org.hyperledger.besu:plugin-api:$besuVersion"
-  implementation "org.hyperledger.besu.internal:core:$besuVersion"
-  implementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
-  implementation "org.hyperledger.besu.internal:rlp:$besuVersion"
-  implementation "org.hyperledger.besu:evm:$besuVersion"
-  implementation "org.hyperledger.besu.internal:algorithms:${besuVersion}"
+  implementation "$besuArtifactGroup:plugin-api:$besuVersion"
+  implementation "${besuArtifactGroup}.internal:core:$besuVersion"
+  implementation "$besuArtifactGroup:besu-datatypes:$besuVersion"
+  implementation "${besuArtifactGroup}.internal:rlp:$besuVersion"
+  implementation "$besuArtifactGroup:evm:$besuVersion"
+  implementation "${besuArtifactGroup}.internal:algorithms:$besuVersion"
 
 
   implementation 'info.picocli:picocli'
@@ -48,11 +48,11 @@ dependencies {
 
   implementation 'org.bouncycastle:bcprov-jdk18on'
 
-  testImplementation "org.hyperledger.besu:evm:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:rlp:$besuVersion"
-  testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
+  testImplementation "$besuArtifactGroup:evm:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:rlp:$besuVersion"
+  testImplementation "$besuArtifactGroup:besu-datatypes:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion"
 }
 
 configurations {
