@@ -27,13 +27,13 @@ solidity {
 }
 
 dependencies {
-  testImplementation "org.hyperledger.besu.internal:dsl:$besuVersion"
-  testImplementation "org.hyperledger.besu:besu-datatypes:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:eth:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:eth:$besuVersion:test-support"
-  testImplementation "org.hyperledger.besu.internal:core:$besuVersion"
-  testImplementation "org.hyperledger.besu.internal:core:$besuVersion:test-support"
-  testImplementation "org.hyperledger.besu:evm:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
+  testImplementation "$besuArtifactGroup:besu-datatypes:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion:test-support"
+  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion:test-support"
+  testImplementation "$besuArtifactGroup:evm:$besuVersion"
 
   testImplementation 'org.apache.tuweni:tuweni-bytes'
   testImplementation 'org.apache.tuweni:tuweni-units'

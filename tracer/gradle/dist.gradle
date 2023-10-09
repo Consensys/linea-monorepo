@@ -25,8 +25,8 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-tasks.register('downloadLatestBesu', Download) {
-  ext.besuIdentifier = "besu-" + besuVersion
+tasks.register('downloadLatestLineaBesu', Download) {
+  ext.besuIdentifier = "linea-besu-" + besuVersion
   def besuFilename = besuIdentifier + ".tar.gz"
   def besuUrl = distributionBaseUrl + besuVersion + "/" + besuFilename
 
@@ -38,7 +38,7 @@ tasks.register('downloadLatestBesu', Download) {
 ext.besuPluginsIdentifier = distributionIdentifier + "-" + version
 
 jar {
-  dependsOn downloadLatestBesu
+  dependsOn downloadLatestLineaBesu
 
   archiveBaseName = distributionIdentifier
 
@@ -90,10 +90,10 @@ def getCheckedOutGitCommitHash() {
 
 tasks.register('distTar', Tar) {
   dependsOn jar
-  dependsOn downloadLatestBesu
+  dependsOn downloadLatestLineaBesu
 
-  from(tarTree(downloadLatestBesu.dest), {
-    eachFile { path = path.replaceFirst(downloadLatestBesu.besuIdentifier, '') }
+  from(tarTree(downloadLatestLineaBesu.dest), {
+    eachFile { path = path.replaceFirst(downloadLatestLineaBesu.besuIdentifier, '') }
     includeEmptyDirs = false
     exclude "**/LICENSE"
   })
