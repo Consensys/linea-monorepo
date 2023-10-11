@@ -34,7 +34,7 @@ public class LineaCliOptions {
           "Maximum size for the calldata of a Transaction (default: "
               + DEFAULT_MAX_TX_CALLDATA_SIZE
               + ")")
-  private int maxTxCalldataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
+  private int maxTxCallDataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
 
   @CommandLine.Option(
       names = {MAX_BLOCK_CALLDATA_SIZE},
@@ -44,7 +44,7 @@ public class LineaCliOptions {
           "Maximum size for the calldata of a Block (default: "
               + DEFAULT_MAX_BLOCK_CALLDATA_SIZE
               + ")")
-  private int maxBlockCalldataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
+  private int maxBlockCallDataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
 
   private LineaCliOptions() {}
 
@@ -65,9 +65,8 @@ public class LineaCliOptions {
    */
   public static LineaCliOptions fromConfig(final LineaConfiguration config) {
     final LineaCliOptions options = create();
-    options.maxTxCalldataSize = config.maxTxCalldataSize();
-    options.maxBlockCalldataSize = config.maxBlockCalldataSize();
-
+    options.maxTxCallDataSize = config.maxTxCallDataSize();
+    options.maxBlockCallDataSize = config.maxBlockCallDataSize();
     return options;
   }
 
@@ -77,14 +76,17 @@ public class LineaCliOptions {
    * @return the Linea factory configuration
    */
   public LineaConfiguration toDomainObject() {
-    return new LineaConfiguration(maxTxCalldataSize, maxBlockCalldataSize);
+    return new LineaConfiguration.Builder()
+        .maxTxCallDataSize(maxTxCallDataSize)
+        .maxBlockCallDataSize(maxBlockCallDataSize)
+        .build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add(MAX_TX_CALLDATA_SIZE, maxTxCalldataSize)
-        .add(MAX_BLOCK_CALLDATA_SIZE, maxBlockCalldataSize)
+        .add(MAX_TX_CALLDATA_SIZE, maxTxCallDataSize)
+        .add(MAX_BLOCK_CALLDATA_SIZE, maxBlockCallDataSize)
         .toString();
   }
 }
