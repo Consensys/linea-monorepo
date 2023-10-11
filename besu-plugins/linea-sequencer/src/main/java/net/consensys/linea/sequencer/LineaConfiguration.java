@@ -15,10 +15,40 @@
 
 package net.consensys.linea.sequencer;
 
-/**
- * The Linea configuration.
- *
- * @param maxTxCalldataSize the maximum calldata size for a transaction.
- * @param maxBlockCalldataSize the maximum calldata size for a block.
- */
-public record LineaConfiguration(int maxTxCalldataSize, int maxBlockCalldataSize) {}
+/** The Linea configuration. */
+public final class LineaConfiguration {
+  private final int maxTxCallDataSize;
+  private final int maxBlockCallDataSize;
+
+  private LineaConfiguration(int maxTxCallDataSize, int maxBlockCallDataSize) {
+    this.maxTxCallDataSize = maxTxCallDataSize;
+    this.maxBlockCallDataSize = maxBlockCallDataSize;
+  }
+
+  public int maxTxCallDataSize() {
+    return maxTxCallDataSize;
+  }
+
+  public int maxBlockCallDataSize() {
+    return maxBlockCallDataSize;
+  }
+
+  public static class Builder {
+    private int maxTxCallDataSize;
+    private int maxBlockCallDataSize;
+
+    public Builder maxTxCallDataSize(int maxTxCallDataSize) {
+      this.maxTxCallDataSize = maxTxCallDataSize;
+      return this;
+    }
+
+    public Builder maxBlockCallDataSize(int maxBlockCallDataSize) {
+      this.maxBlockCallDataSize = maxBlockCallDataSize;
+      return this;
+    }
+
+    public LineaConfiguration build() {
+      return new LineaConfiguration(maxTxCallDataSize, maxBlockCallDataSize);
+    }
+  }
+}
