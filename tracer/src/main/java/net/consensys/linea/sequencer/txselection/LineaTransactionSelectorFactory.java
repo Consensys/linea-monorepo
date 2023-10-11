@@ -13,8 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer;
+package net.consensys.linea.sequencer.txselection;
 
+import net.consensys.linea.sequencer.LineaCliOptions;
+import net.consensys.linea.sequencer.LineaConfiguration;
+import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionSelectorFactory;
 
@@ -29,7 +32,6 @@ public class LineaTransactionSelectorFactory implements TransactionSelectorFacto
   @Override
   public TransactionSelector create() {
     final LineaConfiguration lineaConfiguration = options.toDomainObject();
-    return new LineaTransactionSelector(
-        lineaConfiguration.maxTxCalldataSize(), lineaConfiguration.maxBlockCalldataSize());
+    return new LineaTransactionSelector(lineaConfiguration);
   }
 }
