@@ -16,20 +16,21 @@
 package net.consensys.linea.zktracer.module.mul;
 
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Mul implements Module {
   final Trace.TraceBuilder trace = Trace.builder();
   /** A set of the operations to trace */
-  private final Set<MulOperation> operations = new HashSet<>();
+  private final StackedSet<MulOperation> operations = new StackedSet<>();
 
   private int stamp = 0;
 
@@ -38,14 +39,28 @@ public class Mul implements Module {
     return "mul";
   }
 
-  @SuppressWarnings("UnusedVariable")
   @Override
-  public void trace(MessageFrame frame) {
+  public void tracePreOpcode(MessageFrame frame) {
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
     operations.add(new MulOperation(opCode, arg1, arg2));
+  }
+
+  @Override
+  public void enterTransaction() {
+    this.operations.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.operations.pop();
+  }
+
+  @Override
+  public void traceStartTx(WorldView worldView, Transaction tx) {
+    this.operations.enter();
   }
 
   @Override

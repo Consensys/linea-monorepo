@@ -16,11 +16,11 @@
 package net.consensys.linea.zktracer.module.rlp_txn;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -32,9 +32,10 @@ import java.util.function.Function;
 
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpBitDecOutput;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
+import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -68,7 +69,7 @@ public class RlpTxn implements Module {
   public static final int intPrefixLongList =
       bytesPrefixLongList.toUnsignedBigInteger().intValueExact();
 
-  private final List<RlpTxnChunk> chunkList = new ArrayList<>();
+  private final StackedList<RlpTxnChunk> chunkList = new StackedList<>();
 
   // Used to check the reconstruction of RLPs
   Bytes reconstructedRlpLt;
@@ -77,6 +78,16 @@ public class RlpTxn implements Module {
   @Override
   public String jsonKey() {
     return "rlpTxn";
+  }
+
+  @Override
+  public void enterTransaction() {
+    this.chunkList.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.chunkList.pop();
   }
 
   @Override
@@ -562,7 +573,7 @@ public class RlpTxn implements Module {
       RlpTxnColumnsValue traceValue) {
     int lengthSize = bigIntegerToBytes(BigInteger.valueOf(length)).size();
 
-    RlpByteCountAndPowerOutput byteCountingOutput = byteCounting(lengthSize, 8);
+    ByteCountAndPowerOutput byteCountingOutput = byteCounting(lengthSize, 8);
 
     traceValue.partialReset(phase, 8, lt, lx);
     traceValue.INPUT_1 = bigIntegerToBytes(BigInteger.valueOf(length));
@@ -644,10 +655,10 @@ public class RlpTxn implements Module {
 
     Bytes inputByte = bigIntegerToBytes(input);
     int inputSize = inputByte.size();
-    RlpByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, nStep);
+    ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, nStep);
 
     Bytes inputBytePadded = padToGivenSizeWithLeftZero(inputByte, nStep);
-    RlpBitDecOutput bitDecOutput =
+    BitDecOutput bitDecOutput =
         bitDecomposition(0xff & inputBytePadded.get(inputBytePadded.size() - 1), nStep);
 
     traceValue.INPUT_1 = inputByte;
@@ -697,10 +708,10 @@ public class RlpTxn implements Module {
       traceValue.INPUT_1 = inputByte32.slice(0, llarge);
       traceValue.INPUT_2 = inputByte32.slice(llarge, llarge);
 
-      RlpByteCountAndPowerOutput byteCounting;
+      ByteCountAndPowerOutput byteCounting;
       if (inputLen <= traceValue.nSTEP) {
-        RlpByteCountAndPowerOutput byteCountingOutput = byteCounting(inputLen, traceValue.nSTEP);
-        RlpBitDecOutput bitDecOutput =
+        ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputLen, traceValue.nSTEP);
+        BitDecOutput bitDecOutput =
             bitDecomposition(inputByte.get(inputByte.size() - 1), traceValue.nSTEP);
 
         for (int ct = 0; ct < traceValue.nSTEP; ct++) {

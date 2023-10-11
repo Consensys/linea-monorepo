@@ -50,7 +50,16 @@ public interface Module {
 
   default void traceContextExit(MessageFrame frame) {}
 
-  default void trace(MessageFrame frame) {}
+  default void tracePreOpcode(MessageFrame frame) {}
+
+  /**
+   * Called at the eve of a new transaction; intended to create a new modification context for the
+   * stacked state of the module.
+   */
+  void enterTransaction();
+
+  /** Called when a transaction execution is cancelled; should revert the state of the module. */
+  void popTransaction();
 
   int lineCount();
 

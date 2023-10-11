@@ -13,15 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpPatterns;
+package net.consensys.linea.zktracer.module.add;
 
-import java.util.ArrayList;
-import java.util.List;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes32;
 
-import lombok.Getter;
-
-@Getter
-public class RlpBitDecOutput {
-  @Getter private List<Boolean> bitDecList = new ArrayList<>();
-  @Getter private List<Integer> bitAccList = new ArrayList<>();
-}
+public record AddOperation(OpCode opCodem, Bytes32 arg1, Bytes32 arg2) {}

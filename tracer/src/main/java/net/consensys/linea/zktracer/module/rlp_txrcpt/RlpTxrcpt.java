@@ -16,22 +16,22 @@
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpBitDecOutput;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
+import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
@@ -53,11 +53,21 @@ public class RlpTxrcpt implements Module {
   private int absLogNumMax = 0;
   private int absLogNum = 0;
   private final Trace.TraceBuilder builder = Trace.builder();
-  List<RlpTxrcptChunk> chunkList = new ArrayList<>();
+  StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
 
   @Override
   public String jsonKey() {
     return "rlpTxRcpt";
+  }
+
+  @Override
+  public void enterTransaction() {
+    this.chunkList.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.chunkList.pop();
   }
 
   @Override
@@ -360,7 +370,7 @@ public class RlpTxrcpt implements Module {
               // In INPUT_2 is stored the number of topics, stored in INDEX_LOCAL at the previous
               // row
               this.builder.setInput2Relative(BigInteger.valueOf(indexLocalEndTopic), k);
-              // In Input_1 is the Datasize, and in Input_3 the only byte of Data
+              // In Input_1 is the data size, and in Input_3 the only byte of Data
               this.builder.setInput1Relative(BigInteger.ONE, k);
               this.builder.setInput3Relative(logList.get(i).getData().toUnsignedBigInteger(), k);
             }
@@ -442,7 +452,7 @@ public class RlpTxrcpt implements Module {
         Bytes.ofUnsignedLong(length).size()
             - Bytes.ofUnsignedLong(length).numberOfLeadingZeroBytes();
 
-    RlpByteCountAndPowerOutput byteCountingOutput = byteCounting(lengthSize, 8);
+    ByteCountAndPowerOutput byteCountingOutput = byteCounting(lengthSize, 8);
 
     traceValue.partialReset(phase, 8);
     traceValue.input1 = bigIntegerToBytes(BigInteger.valueOf(length));
@@ -525,11 +535,10 @@ public class RlpTxrcpt implements Module {
     traceValue.input1 = bigIntegerToBytes(BigInteger.valueOf(input));
 
     int inputSize = traceValue.input1.size();
-    RlpByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, 8);
+    ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, 8);
 
     Bytes inputBytes = padToGivenSizeWithLeftZero(traceValue.input1, 8);
-    RlpBitDecOutput bitDecOutput =
-        bitDecomposition(0xff & inputBytes.get(inputBytes.size() - 1), 8);
+    BitDecOutput bitDecOutput = bitDecomposition(0xff & inputBytes.get(inputBytes.size() - 1), 8);
 
     for (int ct = 0; ct < 8; ct++) {
       traceValue.counter = ct;

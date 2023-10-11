@@ -13,14 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpPatterns;
+package net.consensys.linea.zktracer.module.rlputils;
 
 import java.math.BigInteger;
 
 import com.google.common.base.Preconditions;
 import org.apache.tuweni.bytes.Bytes;
 
-public class pattern {
+public class Pattern {
   /**
    * Returns the size of RLP(something) where something is of size inputSize (!=1) (it can be ZERO
    * though).
@@ -70,8 +70,8 @@ public class pattern {
    * @param nbStep
    * @return
    */
-  public static RlpByteCountAndPowerOutput byteCounting(int inputByteLen, int nbStep) {
-    RlpByteCountAndPowerOutput output = new RlpByteCountAndPowerOutput();
+  public static ByteCountAndPowerOutput byteCounting(int inputByteLen, int nbStep) {
+    ByteCountAndPowerOutput output = new ByteCountAndPowerOutput();
 
     BigInteger power;
     int accByteSize = 0;
@@ -107,10 +107,10 @@ public class pattern {
    * @param nbStep
    * @return
    */
-  public static RlpBitDecOutput bitDecomposition(int input, int nbStep) {
+  public static BitDecOutput bitDecomposition(int input, int nbStep) {
     Preconditions.checkArgument(nbStep >= 8, "Number of steps must be at least 8");
 
-    RlpBitDecOutput output = new RlpBitDecOutput();
+    BitDecOutput output = new BitDecOutput();
     // Set to zero first value
     for (int i = 0; i < nbStep; i++) {
       output.getBitAccList().add(i, 0);

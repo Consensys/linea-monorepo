@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
@@ -93,7 +94,7 @@ public class Hub implements Module {
 
   public final Trace.TraceBuilder trace = Trace.builder();
   // Tx -> Opcode -> TraceSection
-  private final List<TxTrace> traceSections = new ArrayList<>();
+  private final StackedList<TxTrace> traceSections = new StackedList<>();
 
   @Getter ConflationInfo conflation = new ConflationInfo();
   @Getter BlockInfo block = new BlockInfo();
@@ -103,6 +104,7 @@ public class Hub implements Module {
   private final DeferRegistry defers = new DeferRegistry();
   @Getter private Exceptions exceptions;
   @Getter int stamp = 0;
+  private int preTxStamp;
 
   public OpCodeData opCodeData() {
     return this.currentFrame().opCode().getData();
@@ -154,8 +156,21 @@ public class Hub implements Module {
   private final RlpTxn rlpTxn = new RlpTxn();
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final RlpAddr rlpAddr = new RlpAddr();
+  private final List<Module> modules;
 
-  public Hub() {}
+  public Hub() {
+    this.modules =
+        List.of(
+            this.add,
+            this.ext,
+            this.mod,
+            this.mul,
+            this.shf,
+            this.wcp,
+            this.rlpTxn,
+            this.rlpTxrcpt,
+            this.rlpAddr);
+  }
 
   /**
    * @return the list of modules that need to be triggered in a self-standing way by the {@link
@@ -361,33 +376,33 @@ public class Hub implements Module {
     switch (this.opCodeData().instructionFamily()) {
       case ADD -> {
         if (this.exceptions.noStackException()) {
-          this.add.trace(frame);
+          this.add.tracePreOpcode(frame);
         }
       }
       case MOD -> {
         if (this.exceptions.noStackException()) {
-          this.mod.trace(frame);
+          this.mod.tracePreOpcode(frame);
         }
       }
       case MUL -> {
         if (this.exceptions.noStackException()) {
-          this.mul.trace(frame);
+          this.mul.tracePreOpcode(frame);
         }
       }
       case EXT -> {
         if (this.exceptions.noStackException()) {
-          this.ext.trace(frame);
+          this.ext.tracePreOpcode(frame);
         }
       }
       case WCP -> {
         if (this.exceptions.noStackException()) {
-          this.wcp.trace(frame);
+          this.wcp.tracePreOpcode(frame);
         }
       }
       case BIN -> {}
       case SHF -> {
         if (this.exceptions.noStackException()) {
-          this.shf.trace(frame);
+          this.shf.tracePreOpcode(frame);
         }
       }
       case KEC -> {}
@@ -413,7 +428,7 @@ public class Hub implements Module {
               .getBalance()
               .toUInt256()
               .greaterOrEqualThan(value)) {
-            this.rlpAddr.trace(frame);
+            this.rlpAddr.tracePreOpcode(frame);
           }
         }
       }
@@ -515,7 +530,20 @@ public class Hub implements Module {
   }
 
   @Override
+  public void enterTransaction() {
+    this.preTxStamp = this.stamp;
+    this.tx.enter();
+    this.traceSections.enter();
+
+    for (Module m : this.modules) {
+      m.enterTransaction();
+    }
+  }
+
+  @Override
   public void traceStartTx(final WorldView world, final Transaction tx) {
+    this.enterTransaction();
+
     this.exceptions = Exceptions.empty();
     this.rlpAddr.traceStartTx(world, tx);
 
@@ -532,6 +560,16 @@ public class Hub implements Module {
 
     this.processStateWarm(world);
     this.processStateInit(world);
+  }
+
+  @Override
+  public void popTransaction() {
+    this.stamp = this.preTxStamp;
+    this.tx.pop();
+    this.traceSections.pop();
+    for (Module m : this.modules) {
+      m.popTransaction();
+    }
   }
 
   @Override
@@ -617,7 +655,7 @@ public class Hub implements Module {
   }
 
   @Override
-  public void trace(final MessageFrame frame) {
+  public void tracePreOpcode(final MessageFrame frame) {
     if (this.tx.state() == TxState.TX_SKIP) {
       return;
     }
