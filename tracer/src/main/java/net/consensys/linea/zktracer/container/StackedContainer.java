@@ -13,15 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpPatterns;
+package net.consensys.linea.zktracer.container;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
+/**
+ * A stacked container must behave as the container it emulates, all the while being able to enter
+ * nested modification contexts, that can be transparently reverted.
+ */
+public interface StackedContainer {
+  /** Enter a new modification context. */
+  void enter();
 
-import lombok.Getter;
-
-public class RlpByteCountAndPowerOutput {
-  @Getter private List<BigInteger> powerList = new ArrayList<>();
-  @Getter private List<Integer> accByteSizeList = new ArrayList<>();
+  /** Erase the modifications brought while in the latest modification context. */
+  void pop();
 }

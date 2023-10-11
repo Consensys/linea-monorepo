@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.container.StackedContainer;
 import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
@@ -30,8 +31,10 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 /** Stores transaction-specific information. */
 @Accessors(fluent = true)
 @Getter
-public class TxInfo {
+public class TxInfo implements StackedContainer {
   private static final GasCalculator gc = ZkTracer.gasCalculator;
+
+  private int preExecNumber = 0;
 
   private int number = 0;
   private Transaction transaction;
@@ -89,5 +92,15 @@ public class TxInfo {
     this.status = null;
     this.transaction = tx;
     this.initialGas = tx.getGasLimit();
+  }
+
+  @Override
+  public void enter() {
+    this.preExecNumber = this.number;
+  }
+
+  @Override
+  public void pop() {
+    this.number = this.preExecNumber;
   }
 }

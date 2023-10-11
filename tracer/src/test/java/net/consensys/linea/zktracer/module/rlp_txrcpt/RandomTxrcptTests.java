@@ -68,6 +68,7 @@ public class RandomTxrcptTests {
       final long gasUsed = rnd.nextLong(21000, 0xfffffffffffffffL);
 
       // Call the module
+      rlpTxrcpt.enterTransaction();
       rlpTxrcpt.traceEndTx(null, tx, status, output, logs, gasUsed);
     }
 

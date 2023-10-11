@@ -16,10 +16,9 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -29,7 +28,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Wcp implements Module {
   final Trace.TraceBuilder builder = Trace.builder();
-  private final Set<WcpOperation> operations = new HashSet<>();
+  private final StackedSet<WcpOperation> operations = new StackedSet<>();
   private int stamp = 0;
 
   @Override
@@ -38,7 +37,17 @@ public class Wcp implements Module {
   }
 
   @Override
-  public void trace(final MessageFrame frame) {
+  public void enterTransaction() {
+    this.operations.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.operations.pop();
+  }
+
+  @Override
+  public void tracePreOpcode(final MessageFrame frame) {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =

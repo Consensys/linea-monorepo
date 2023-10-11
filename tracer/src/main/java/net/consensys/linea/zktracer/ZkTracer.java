@@ -118,9 +118,8 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
-    this.hub.trace(frame);
+    this.hub.tracePreOpcode(frame);
   }
-  // TODO ADd RlpAddr module in trcaePreExecution
 
   @Override
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
@@ -135,5 +134,10 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   @Override
   public void traceContextExit(MessageFrame frame) {
     this.hub.traceContextExit(frame);
+  }
+
+  /** When called, erase all tracing related to the last included transaction. */
+  public void popTransaction() {
+    hub.popTransaction();
   }
 }
