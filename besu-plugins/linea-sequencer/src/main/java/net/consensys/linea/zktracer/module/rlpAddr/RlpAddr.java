@@ -16,21 +16,20 @@
 package net.consensys.linea.zktracer.module.rlpAddr;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlpPatterns.pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpBitDecOutput;
-import net.consensys.linea.zktracer.module.rlpPatterns.RlpByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
+import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -46,11 +45,21 @@ public class RlpAddr implements Module {
   private static final int LLARGE = 16;
 
   private final Trace.TraceBuilder builder = Trace.builder();
-  private final List<RlpAddrChunk> chunkList = new ArrayList<>();
+  private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
 
   @Override
   public String jsonKey() {
     return "rlpAddr";
+  }
+
+  @Override
+  public void enterTransaction() {
+    this.chunkList.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.chunkList.pop();
   }
 
   @Override
@@ -62,7 +71,7 @@ public class RlpAddr implements Module {
   }
 
   @Override
-  public void trace(MessageFrame frame) {
+  public void tracePreOpcode(MessageFrame frame) {
     OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
     if (opcode.equals(OpCode.CREATE)) {
       RlpAddrChunk chunk =
@@ -158,11 +167,11 @@ public class RlpAddr implements Module {
     if (nonce.equals(BigInteger.ZERO)) {
       nonceByteSize = 0;
     }
-    RlpByteCountAndPowerOutput byteCounting = byteCounting(nonceByteSize, RECIPE1_CT_MAX);
+    ByteCountAndPowerOutput byteCounting = byteCounting(nonceByteSize, RECIPE1_CT_MAX);
 
     // Compute the bit decomposition of the last input's byte
     final byte lastByte = nonceShifted.get(RECIPE1_CT_MAX - 1);
-    RlpBitDecOutput bitDecomposition = bitDecomposition(0xff & lastByte, RECIPE1_CT_MAX);
+    BitDecOutput bitDecomposition = bitDecomposition(0xff & lastByte, RECIPE1_CT_MAX);
 
     int size_rlp_nonce = nonceByteSize;
     if (!tinyNonZeroNonce) {

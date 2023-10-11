@@ -16,22 +16,23 @@
 package net.consensys.linea.zktracer.module.ext;
 
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Ext implements Module {
   final Trace.TraceBuilder trace = Trace.builder();
   private int stamp = 0;
 
   /** A set of the operations to trace */
-  private final Set<ExtOperation> operations = new HashSet<>();
+  private final StackedSet<ExtOperation> operations = new StackedSet<>();
 
   @Override
   public String jsonKey() {
@@ -39,7 +40,22 @@ public class Ext implements Module {
   }
 
   @Override
-  public void trace(final MessageFrame frame) {
+  public void traceStartTx(WorldView worldView, Transaction tx) {
+    this.operations.enter();
+  }
+
+  @Override
+  public void enterTransaction() {
+    this.operations.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.operations.pop();
+  }
+
+  @Override
+  public void tracePreOpcode(final MessageFrame frame) {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));

@@ -16,12 +16,11 @@
 package net.consensys.linea.zktracer.module.add;
 
 import java.math.BigInteger;
-import java.util.HashMap;
-import java.util.Map;
 
 import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
+import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -32,28 +31,36 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for addition/subtraction. */
 public class Add implements Module {
-  public static final String ADD_JSON_KEY = "add";
+  private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
+
   private int stamp = 0;
   final Trace.TraceBuilder trace = Trace.builder();
 
-  private final UInt256 twoToThe128 = UInt256.ONE.shiftLeft(128);
-
   /** A set of the operations to trace */
-  private final Map<OpCode, Map<Bytes32, Bytes32>> chunks = new HashMap<>();
+  private final StackedSet<AddOperation> chunks = new StackedSet<>();
 
   @Override
   public String jsonKey() {
-    return ADD_JSON_KEY;
+    return "add";
   }
 
   @Override
-  public void trace(MessageFrame frame) {
+  public void enterTransaction() {
+    this.chunks.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.chunks.pop();
+  }
+
+  @Override
+  public void tracePreOpcode(MessageFrame frame) {
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-    this.chunks
-        .computeIfAbsent(OpCode.of(frame.getCurrentOperation().getOpcode()), x -> new HashMap<>())
-        .put(arg1, arg2);
+    this.chunks.add(
+        new AddOperation(OpCode.of(frame.getCurrentOperation().getOpcode()), arg1, arg2));
   }
 
   /**
@@ -125,7 +132,7 @@ public class Add implements Module {
         addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
       }
 
-      overflowLo = (addRes.compareTo(twoToThe128) >= 0);
+      overflowLo = (addRes.compareTo(TWO_TO_THE_128) >= 0);
 
       trace
           .acc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
@@ -148,11 +155,8 @@ public class Add implements Module {
 
   @Override
   public Object commit() {
-    for (Map.Entry<OpCode, Map<Bytes32, Bytes32>> op : this.chunks.entrySet()) {
-      OpCode opCode = op.getKey();
-      for (Map.Entry<Bytes32, Bytes32> args : op.getValue().entrySet()) {
-        this.traceAddOperation(opCode, args.getKey(), args.getValue());
-      }
+    for (AddOperation op : this.chunks) {
+      this.traceAddOperation(op.opCodem(), op.arg1(), op.arg2());
     }
 
     return new AddTrace(trace.build());
@@ -160,12 +164,6 @@ public class Add implements Module {
 
   @Override
   public int lineCount() {
-    int r = 0;
-    for (Map.Entry<OpCode, Map<Bytes32, Bytes32>> op : this.chunks.entrySet()) {
-      for (Map.Entry<Bytes32, Bytes32> ignored : op.getValue().entrySet()) {
-        r += 16;
-      }
-    }
-    return r;
+    return this.chunks.size() * 16;
   }
 }

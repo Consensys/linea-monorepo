@@ -13,33 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.trm;
+package net.consensys.linea.zktracer.module.rlputils;
 
-import net.consensys.linea.zktracer.module.Module;
+import java.util.ArrayList;
+import java.util.List;
 
-public class Trm implements Module {
-  @Override
-  public String jsonKey() {
-    return "trm";
-  }
+import lombok.Getter;
 
-  @Override
-  public void enterTransaction() {
-    // TODO:
-  }
-
-  @Override
-  public void popTransaction() {
-    // TODO:
-  }
-
-  @Override
-  public Object commit() {
-    return null;
-  }
-
-  @Override
-  public int lineCount() {
-    throw new RuntimeException("not yet implemented");
-  }
+@Getter
+public class BitDecOutput {
+  @Getter private List<Boolean> bitDecList = new ArrayList<>();
+  @Getter private List<Integer> bitAccList = new ArrayList<>();
 }

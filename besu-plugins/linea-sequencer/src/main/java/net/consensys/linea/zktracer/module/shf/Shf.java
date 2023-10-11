@@ -16,10 +16,9 @@
 package net.consensys.linea.zktracer.module.shf;
 
 import java.math.BigInteger;
-import java.util.HashSet;
-import java.util.Set;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
@@ -28,7 +27,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public class Shf implements Module {
   final Trace.TraceBuilder trace = Trace.builder();
   private int stamp = 0;
-  private final Set<ShfOperation> operations = new HashSet<>();
+  private final StackedSet<ShfOperation> operations = new StackedSet<>();
 
   @Override
   public String jsonKey() {
@@ -36,7 +35,17 @@ public class Shf implements Module {
   }
 
   @Override
-  public void trace(MessageFrame frame) {
+  public void enterTransaction() {
+    this.operations.enter();
+  }
+
+  @Override
+  public void popTransaction() {
+    this.operations.pop();
+  }
+
+  @Override
+  public void tracePreOpcode(MessageFrame frame) {
     final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
     this.operations.add(
