@@ -41,6 +41,7 @@ public class rlpRandEdgeCase {
   }
 
   public static Bytes randData(boolean nonEmpty) {
+    final int maxDataSize = 1000;
     int selectorOrigin = 0;
     if (nonEmpty) {
       selectorOrigin += 1;
@@ -52,7 +53,7 @@ public class rlpRandEdgeCase {
       case 2 -> Bytes.minimalBytes(rnd.nextLong(1, 128));
       case 3 -> Bytes.minimalBytes(rnd.nextLong(128, 256));
       case 4 -> Bytes.random(rnd.nextInt(1, 56), rnd);
-      case 5 -> Bytes.random(rnd.nextInt(56, 666), rnd);
+      case 5 -> Bytes.random(rnd.nextInt(56, maxDataSize), rnd);
       default -> throw new IllegalStateException("Unexpected value: " + selector);
     };
   }

@@ -36,6 +36,7 @@ import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.romLex.RomLex;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -50,6 +51,17 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxn implements Module {
+  private final RomLex romLex;
+
+  public RlpTxn(RomLex _romLex) {
+    this.romLex = _romLex;
+  }
+
+  @Override
+  public String jsonKey() {
+    return "rlpTxn";
+  }
+
   final Trace.TraceBuilder builder = Trace.builder();
   public static final int llarge = TxnrlpTrace.LLARGE.intValue();
   public static final Bytes bytesPrefixShortInt =
@@ -66,6 +78,7 @@ public class RlpTxn implements Module {
       bytesPrefixShortList.toUnsignedBigInteger().intValueExact();
   public static final Bytes bytesPrefixLongList =
       bigIntegerToBytes(BigInteger.valueOf(TxnrlpTrace.list_long.intValue()));
+
   public static final int intPrefixLongList =
       bytesPrefixLongList.toUnsignedBigInteger().intValueExact();
 
@@ -73,12 +86,8 @@ public class RlpTxn implements Module {
 
   // Used to check the reconstruction of RLPs
   Bytes reconstructedRlpLt;
-  Bytes reconstructedRlpLx;
 
-  @Override
-  public String jsonKey() {
-    return "rlpTxn";
-  }
+  Bytes reconstructedRlpLx;
 
   @Override
   public void enterTransaction() {
@@ -92,13 +101,21 @@ public class RlpTxn implements Module {
 
   @Override
   public void traceStartTx(WorldView worldView, Transaction tx) {
-    boolean requiresEvmExecution;
-    if (tx.getTo().isEmpty()) {
-      requiresEvmExecution = tx.getInit().isPresent();
-    } else {
-      requiresEvmExecution = worldView.get(tx.getTo().get()).hasCode();
+
+    // Contract Creation
+    if (tx.getTo().isEmpty() && !tx.getInit().get().isEmpty()) {
+      this.chunkList.add(new RlpTxnChunk(tx, true, romLex.codeIdentifierBeforeLexOrder));
     }
-    this.chunkList.add(new RlpTxnChunk(tx, requiresEvmExecution));
+
+    // Call to a non-empty smart contract
+    else if (tx.getTo().isPresent() && worldView.get(tx.getTo().get()).hasCode()) {
+      this.chunkList.add(new RlpTxnChunk(tx, true));
+    }
+
+    // Contract doesn't require EVM execution
+    else {
+      this.chunkList.add(new RlpTxnChunk(tx, false));
+    }
   }
 
   public void traceChunk(RlpTxnChunk chunk, int absTxNum, int codeFragmentIndex) {
@@ -129,7 +146,7 @@ public class RlpTxn implements Module {
       traceValue.RLP_LT_BYTESIZE = innerRlpSize(besuRlpLt.size() - 1);
     }
 
-    Bytes besuRlpLx = Bytes.EMPTY;
+    Bytes besuRlpLx;
     switch (traceValue.txType) {
       case 0 -> {
         besuRlpLx =
@@ -855,7 +872,7 @@ public class RlpTxn implements Module {
       output -= 1;
     } else if (rlpSize == 57) {
       throw new RuntimeException("can't be of size 57");
-    } else if (57 < rlpSize && rlpSize < 258) {
+    } else if (rlpSize < 258) {
       output -= 2;
     } else if (rlpSize == 258) {
       throw new RuntimeException("can't be of size 258");
@@ -1283,8 +1300,8 @@ public class RlpTxn implements Module {
     int absTxNum = 0;
     for (RlpTxnChunk chunk : this.chunkList) {
       absTxNum += 1;
-      // TODO: recuperer les codeFragmentIndex ici
-      int codeFragmentIndex = 0;
+
+      final int codeFragmentIndex = chunk.id().map(romLex::getCFIById).orElse(0);
       traceChunk(chunk, absTxNum, codeFragmentIndex);
 
       estTraceSize += ChunkRowSize(chunk);
