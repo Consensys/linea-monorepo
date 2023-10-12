@@ -80,7 +80,15 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
   @NotNull
   @Override
   public Object[] toArray() {
-    throw new UnsupportedOperationException("toArray not supported");
+    int size = size();
+    Object[] array = new Object[size];
+
+    int i = 0;
+    for (E e : this) {
+      array[i] = e;
+      i++;
+    }
+    return array;
   }
 
   @NotNull

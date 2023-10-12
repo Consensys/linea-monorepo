@@ -13,18 +13,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txn;
+package net.consensys.linea.zktracer.module.romLex;
 
-import java.util.Optional;
+import java.util.Objects;
 
-import org.hyperledger.besu.datatypes.Transaction;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 
-public record RlpTxnChunk(Transaction tx, boolean requireEvmExecution, Optional<Integer> id) {
-  public RlpTxnChunk(Transaction tx, boolean requireEvmExecution) {
-    this(tx, requireEvmExecution, Optional.empty());
-  }
-
-  public RlpTxnChunk(Transaction tx, boolean requireEvmExecution, int codeIdentifierPreLexOrder) {
-    this(tx, requireEvmExecution, Optional.of(codeIdentifierPreLexOrder));
+public record RomChunk(
+    Address address,
+    int deploymentNumber,
+    boolean deploymentStatus,
+    boolean readFromTheState,
+    boolean commitToTheState,
+    int id,
+    Bytes byteCode) {
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.address, this.deploymentNumber, this.deploymentStatus);
   }
 }

@@ -15,14 +15,12 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
 /** A module responsible for addition operations. */
-@Slf4j
 public class Adder {
 
   /**
@@ -34,8 +32,6 @@ public class Adder {
    * @return {@link BaseBytes} - 256-bit (32-byte) blocks data.
    */
   public static BaseBytes addSub(final OpCode opCode, final Bytes32 arg1, final Bytes32 arg2) {
-    log.info("adding " + arg1 + " " + opCode.name() + " " + arg2);
-
     final BaseBytes resBytes = performOperation(opCode, arg1, arg2);
 
     // ensure result is correct length

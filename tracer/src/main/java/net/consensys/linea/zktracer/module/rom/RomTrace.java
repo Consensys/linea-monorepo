@@ -13,18 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txn;
+package net.consensys.linea.zktracer.module.rom;
 
-import java.util.Optional;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import org.hyperledger.besu.datatypes.Transaction;
-
-public record RlpTxnChunk(Transaction tx, boolean requireEvmExecution, Optional<Integer> id) {
-  public RlpTxnChunk(Transaction tx, boolean requireEvmExecution) {
-    this(tx, requireEvmExecution, Optional.empty());
-  }
-
-  public RlpTxnChunk(Transaction tx, boolean requireEvmExecution, int codeIdentifierPreLexOrder) {
-    this(tx, requireEvmExecution, Optional.of(codeIdentifierPreLexOrder));
-  }
-}
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record RomTrace(@JsonProperty("Trace") Trace trace) {}
