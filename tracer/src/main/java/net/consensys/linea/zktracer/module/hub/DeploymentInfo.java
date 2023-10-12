@@ -18,13 +18,9 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.HashMap;
 import java.util.Map;
 
-import lombok.Getter;
-import lombok.experimental.Accessors;
 import org.hyperledger.besu.datatypes.Address;
 
 /** Stores information relative to contract deployment. */
-@Accessors(fluent = true)
-@Getter
 public class DeploymentInfo {
   private final Map<Address, Integer> deploymentNumber = new HashMap<>();
   private final Map<Address, Boolean> isDeploying = new HashMap<>();
