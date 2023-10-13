@@ -18,11 +18,11 @@ package net.consensys.linea.sequencer.txselection;
 import net.consensys.linea.sequencer.LineaCliOptions;
 import net.consensys.linea.sequencer.LineaConfiguration;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelectorFactory;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelectorFactory;
 
 /** Represents a factory for creating transaction selectors. */
-public class LineaTransactionSelectorFactory implements TransactionSelectorFactory {
+public class LineaTransactionSelectorFactory implements PluginTransactionSelectorFactory {
   private final LineaCliOptions options;
 
   public LineaTransactionSelectorFactory(final LineaCliOptions options) {
@@ -30,7 +30,7 @@ public class LineaTransactionSelectorFactory implements TransactionSelectorFacto
   }
 
   @Override
-  public TransactionSelector create() {
+  public PluginTransactionSelector create() {
     final LineaConfiguration lineaConfiguration = options.toDomainObject();
     return new LineaTransactionSelector(lineaConfiguration);
   }
