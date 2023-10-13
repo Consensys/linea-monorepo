@@ -20,7 +20,7 @@ import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 
 /**
  * This class implements TransactionSelector and provides a specific implementation for evaluating
@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class MaxBlockCallDataTransactionSelector implements TransactionSelector {
+public class MaxBlockCallDataTransactionSelector implements PluginTransactionSelector {
 
   private final int maxBlockCallDataSize;
   private int blockCallDataSize;
@@ -81,7 +81,9 @@ public class MaxBlockCallDataTransactionSelector implements TransactionSelector 
    * @param pendingTransaction The selected transaction.
    */
   @Override
-  public void onTransactionSelected(PendingTransaction pendingTransaction) {
+  public void onTransactionSelected(
+      final PendingTransaction pendingTransaction,
+      final TransactionProcessingResult transactionProcessingResult) {
     final int transactionCallDataSize = pendingTransaction.getTransaction().getPayload().size();
     blockCallDataSize = Math.addExact(blockCallDataSize, transactionCallDataSize);
   }

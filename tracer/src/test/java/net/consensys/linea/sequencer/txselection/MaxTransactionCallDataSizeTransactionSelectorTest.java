@@ -24,13 +24,13 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class MaxTransactionCallDataSizeTransactionSelectorTest {
   private static final int MAX_TX_CALL_DATA_SIZE = 10;
-  private TransactionSelector transactionSelector;
+  private PluginTransactionSelector transactionSelector;
 
   @BeforeEach
   public void initialize() {
@@ -61,7 +61,7 @@ public class MaxTransactionCallDataSizeTransactionSelectorTest {
   }
 
   private void verifyTransactionSelection(
-      final TransactionSelector selector,
+      final PluginTransactionSelector selector,
       final PendingTransaction transaction,
       final TransactionSelectionResult expectedSelectionResult) {
     var selectionResult = selector.evaluateTransactionPreProcessing(transaction);

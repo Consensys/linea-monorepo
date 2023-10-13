@@ -20,7 +20,7 @@ import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 
 /**
  * This class implements TransactionSelector and is used to select transactions based on their call
@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
  */
 @Slf4j
 @RequiredArgsConstructor
-public class MaxTransactionCallDataTransactionSelector implements TransactionSelector {
+public class MaxTransactionCallDataTransactionSelector implements PluginTransactionSelector {
 
   private final int maxTxCallDataSize;
   /** The reason for invalidation if the call data size is too big. */
