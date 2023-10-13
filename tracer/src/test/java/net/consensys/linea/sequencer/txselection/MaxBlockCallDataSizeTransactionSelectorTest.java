@@ -22,8 +22,9 @@ import net.consensys.linea.sequencer.txselection.selectors.MaxBlockCallDataTrans
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.TransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,7 +32,7 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
   private static final int BLOCK_CALL_DATA_MAX_SIZE = 100;
   private static final int BLOCK_CALL_DATA_HALF_SIZE = 50;
   private static final int TX_CALL_DATA_SIZE = BLOCK_CALL_DATA_HALF_SIZE + 1;
-  private TransactionSelector transactionSelector;
+  private PluginTransactionSelector transactionSelector;
 
   @BeforeEach
   public void initialize() {
@@ -84,7 +85,7 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
   }
 
   private void verifyTransactionSelection(
-      final TransactionSelector selector,
+      final PluginTransactionSelector selector,
       final PendingTransaction transaction,
       final TransactionSelectionResult expectedSelectionResult) {
     var selectionResult = selector.evaluateTransactionPreProcessing(transaction);
@@ -93,11 +94,11 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
   }
 
   private void notifySelector(
-      final TransactionSelector selector,
+      final PluginTransactionSelector selector,
       final PendingTransaction transaction,
       final TransactionSelectionResult selectionResult) {
     if (selectionResult.equals(TransactionSelectionResult.SELECTED)) {
-      selector.onTransactionSelected(transaction);
+      selector.onTransactionSelected(transaction, mock(TransactionProcessingResult.class));
     } else {
       selector.onTransactionNotSelected(transaction, selectionResult);
     }
