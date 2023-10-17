@@ -31,6 +31,7 @@ public record Trace(
     @JsonProperty("ADDR_LO") List<BigInteger> addrLo,
     @JsonProperty("CODE_FRAGMENT_INDEX") List<BigInteger> codeFragmentIndex,
     @JsonProperty("CODE_FRAGMENT_INDEX_INFTY") List<BigInteger> codeFragmentIndexInfty,
+    @JsonProperty("CODE_SIZE") List<BigInteger> codeSize,
     @JsonProperty("COMMIT_TO_STATE") List<Boolean> commitToState,
     @JsonProperty("DEP_NUMBER") List<BigInteger> depNumber,
     @JsonProperty("DEP_STATUS") List<Boolean> depStatus,
@@ -53,6 +54,9 @@ public record Trace(
 
     @JsonProperty("CODE_FRAGMENT_INDEX_INFTY")
     private final List<BigInteger> codeFragmentIndexInfty = new ArrayList<>();
+
+    @JsonProperty("CODE_SIZE")
+    private final List<BigInteger> codeSize = new ArrayList<>();
 
     @JsonProperty("COMMIT_TO_STATE")
     private final List<Boolean> commitToState = new ArrayList<>();
@@ -124,11 +128,23 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder commitToState(final Boolean b) {
+    public TraceBuilder codeSize(final BigInteger b) {
       if (filled.get(4)) {
-        throw new IllegalStateException("COMMIT_TO_STATE already set");
+        throw new IllegalStateException("CODE_SIZE already set");
       } else {
         filled.set(4);
+      }
+
+      codeSize.add(b);
+
+      return this;
+    }
+
+    public TraceBuilder commitToState(final Boolean b) {
+      if (filled.get(5)) {
+        throw new IllegalStateException("COMMIT_TO_STATE already set");
+      } else {
+        filled.set(5);
       }
 
       commitToState.add(b);
@@ -137,10 +153,10 @@ public record Trace(
     }
 
     public TraceBuilder depNumber(final BigInteger b) {
-      if (filled.get(5)) {
+      if (filled.get(6)) {
         throw new IllegalStateException("DEP_NUMBER already set");
       } else {
-        filled.set(5);
+        filled.set(6);
       }
 
       depNumber.add(b);
@@ -149,10 +165,10 @@ public record Trace(
     }
 
     public TraceBuilder depStatus(final Boolean b) {
-      if (filled.get(6)) {
+      if (filled.get(7)) {
         throw new IllegalStateException("DEP_STATUS already set");
       } else {
-        filled.set(6);
+        filled.set(7);
       }
 
       depStatus.add(b);
@@ -161,10 +177,10 @@ public record Trace(
     }
 
     public TraceBuilder readFromState(final Boolean b) {
-      if (filled.get(7)) {
+      if (filled.get(8)) {
         throw new IllegalStateException("READ_FROM_STATE already set");
       } else {
-        filled.set(7);
+        filled.set(8);
       }
 
       readFromState.add(b);
@@ -190,18 +206,22 @@ public record Trace(
       }
 
       if (!filled.get(4)) {
-        throw new IllegalStateException("COMMIT_TO_STATE has not been filled");
+        throw new IllegalStateException("CODE_SIZE has not been filled");
       }
 
       if (!filled.get(5)) {
-        throw new IllegalStateException("DEP_NUMBER has not been filled");
+        throw new IllegalStateException("COMMIT_TO_STATE has not been filled");
       }
 
       if (!filled.get(6)) {
-        throw new IllegalStateException("DEP_STATUS has not been filled");
+        throw new IllegalStateException("DEP_NUMBER has not been filled");
       }
 
       if (!filled.get(7)) {
+        throw new IllegalStateException("DEP_STATUS has not been filled");
+      }
+
+      if (!filled.get(8)) {
         throw new IllegalStateException("READ_FROM_STATE has not been filled");
       }
 
@@ -228,20 +248,24 @@ public record Trace(
         this.filled.set(3);
       }
       if (!filled.get(4)) {
-        commitToState.add(false);
+        codeSize.add(BigInteger.ZERO);
         this.filled.set(4);
       }
       if (!filled.get(5)) {
-        depNumber.add(BigInteger.ZERO);
+        commitToState.add(false);
         this.filled.set(5);
       }
       if (!filled.get(6)) {
-        depStatus.add(false);
+        depNumber.add(BigInteger.ZERO);
         this.filled.set(6);
       }
       if (!filled.get(7)) {
-        readFromState.add(false);
+        depStatus.add(false);
         this.filled.set(7);
+      }
+      if (!filled.get(8)) {
+        readFromState.add(false);
+        this.filled.set(8);
       }
 
       return this.validateRow();
@@ -257,6 +281,7 @@ public record Trace(
           addrLo,
           codeFragmentIndex,
           codeFragmentIndexInfty,
+          codeSize,
           commitToState,
           depNumber,
           depStatus,

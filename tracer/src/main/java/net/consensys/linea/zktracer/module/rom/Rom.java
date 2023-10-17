@@ -31,7 +31,7 @@ public class Rom implements Module {
   private static final int LLARGE = 16;
   private static final int LLARGE_MO = 15;
   private static final int EVM_WORD_MO = 31;
-  private static final int PUSH_0 = OpCode.PUSH1.byteValue() - 1;
+  private static final int PUSH_1 = OpCode.PUSH1.byteValue();
   private static final int PUSH_32 = OpCode.PUSH32.byteValue();
   private static final UnsignedByte invalid = UnsignedByte.of(0xFE);
 
@@ -69,13 +69,16 @@ public class Rom implements Module {
     return LLARGE * nbSlice + nPaddingRow;
   }
 
-  private void traceChunk(RomChunk chunk, int cfi) {
+  private void traceChunk(RomChunk chunk, int cfi, int cfiInfty) {
     final int chunkRowSize = chunkRowSize(chunk);
     final int codeSize = chunk.byteCode().size();
-    final int nbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
+    final int nLimbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
     final Bytes dataPadded = padToGivenSizeWithRightZero(chunk.byteCode(), chunkRowSize);
-    final int nRowData = nbSlice * LLARGE;
-    final int nBytesLastRow = codeSize % LLARGE;
+    int nBytesLastRow = codeSize % LLARGE;
+    if (nBytesLastRow == 0) {
+      nBytesLastRow = LLARGE;
+    }
+
     int pushParameter = 0;
     int ctPush = 0;
     Bytes pushValueHigh = Bytes.minimalBytes(0);
@@ -83,39 +86,40 @@ public class Rom implements Module {
 
     for (int i = 0; i < chunkRowSize; i++) {
       boolean codeSizeReached = i >= codeSize;
-      int sliceNumber = i / 16 + 1;
-      if (sliceNumber == nbSlice + 2) {
-        sliceNumber = nbSlice + 1;
-      }
+      int sliceNumber = i / 16;
 
       // Fill Generic columns
       this.builder
           .codeFragmentIndex(BigInteger.valueOf(cfi))
+          .codeFragmentIndexInfty(BigInteger.valueOf(cfiInfty))
           .programmeCounter(BigInteger.valueOf(i))
-          .limb(dataPadded.slice(i / LLARGE, LLARGE).toUnsignedBigInteger())
-          .codesize(BigInteger.valueOf(codeSize))
+          .limb(dataPadded.slice(sliceNumber * LLARGE, LLARGE).toUnsignedBigInteger())
+          .codeSize(BigInteger.valueOf(codeSize))
           .paddedBytecodeByte(UnsignedByte.of(dataPadded.get(i)))
           .acc(dataPadded.slice(sliceNumber * LLARGE, (i % LLARGE) + 1).toUnsignedBigInteger())
           .codesizeReached(codeSizeReached)
-          .index(BigInteger.valueOf(sliceNumber))
-          .counterMax(BigInteger.valueOf(sliceNumber <= nbSlice ? LLARGE_MO : EVM_WORD_MO));
+          .index(BigInteger.valueOf(sliceNumber));
 
-      // Fill CT, nBYTES, nBYTES_ACC
-      if (i < nRowData) {
-        this.builder.counter(BigInteger.valueOf(i % LLARGE));
-        if (sliceNumber < nbSlice) {
+      // Fill CT, CTmax nBYTES, nBYTES_ACC
+      if (sliceNumber < nLimbSlice) {
+        this.builder
+            .counter(BigInteger.valueOf(i % LLARGE))
+            .counterMax(BigInteger.valueOf(LLARGE_MO));
+        if (sliceNumber < nLimbSlice - 1) {
           this.builder
               .nBytes(BigInteger.valueOf(LLARGE))
               .nBytesAcc(BigInteger.valueOf((i % LLARGE) + 1));
-        } else {
+        }
+        if (sliceNumber == nLimbSlice - 1) {
           this.builder
               .nBytes(BigInteger.valueOf(nBytesLastRow))
               .nBytesAcc(
                   BigInteger.valueOf(nBytesLastRow).min(BigInteger.valueOf((i % LLARGE) + 1)));
         }
-      } else {
+      } else if (sliceNumber == nLimbSlice || sliceNumber == nLimbSlice + 1) {
         this.builder
-            .counter(BigInteger.valueOf(i - nRowData))
+            .counter(BigInteger.valueOf(i - nLimbSlice * LLARGE))
+            .counterMax(BigInteger.valueOf(EVM_WORD_MO))
             .nBytes(BigInteger.ZERO)
             .nBytesAcc(BigInteger.ZERO);
       }
@@ -126,9 +130,9 @@ public class Rom implements Module {
         boolean isPush = false;
 
         // The OpCode is a PUSH instruction
-        if (PUSH_0 <= opCode.toInteger() && opCode.toInteger() < PUSH_32) {
+        if (PUSH_1 <= opCode.toInteger() && opCode.toInteger() < PUSH_32) {
           isPush = true;
-          pushParameter = opCode.toInteger() - PUSH_0 + 1;
+          pushParameter = opCode.toInteger() - PUSH_1 + 1;
           if (pushParameter > LLARGE) {
             pushValueHigh = dataPadded.slice(i + 1, pushParameter - LLARGE);
             pushValueLow = dataPadded.slice(i + 1 + pushParameter - LLARGE, LLARGE);
@@ -192,9 +196,10 @@ public class Rom implements Module {
   public Object commit() {
     int expectedTraceSize = 0;
     int cfi = 0;
+    final int cfiInfty = this.romLex.sortedChunks.size();
     for (RomChunk chunk : this.romLex.sortedChunks) {
       cfi += 1;
-      traceChunk(chunk, cfi);
+      traceChunk(chunk, cfi, cfiInfty);
       expectedTraceSize += chunkRowSize(chunk);
 
       if (this.builder.size() != expectedTraceSize) {

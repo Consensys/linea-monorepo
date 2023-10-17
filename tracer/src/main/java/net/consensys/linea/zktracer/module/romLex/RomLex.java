@@ -104,7 +104,7 @@ public class RomLex implements Module {
     int codeFragmentIndex = -1;
     for (int i = 0; i < this.sortedChunks.size(); i++) {
       if (this.sortedChunks.get(i).id() == value) {
-        codeFragmentIndex = i;
+        codeFragmentIndex = i + 1;
       }
     }
 
@@ -136,23 +136,20 @@ public class RomLex implements Module {
     }
 
     // Call to an account with bytecode
-    if (tx.getTo().isPresent()) {
-      if (worldView.get(tx.getTo().get()).hasCode()) {
-        codeIdentifierBeforeLexOrder += 1;
-        int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
-        boolean depStatus;
-        depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
+    if (tx.getTo().isPresent() && worldView.get(tx.getTo().get()).hasCode()) {
+      codeIdentifierBeforeLexOrder += 1;
+      int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
+      boolean depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
 
-        this.chunks.add(
-            new RomChunk(
-                tx.getTo().get(),
-                depNumber,
-                depStatus,
-                false,
-                true,
-                codeIdentifierBeforeLexOrder,
-                worldView.get(tx.getTo().get()).getCode()));
-      }
+      this.chunks.add(
+          new RomChunk(
+              tx.getTo().get(),
+              depNumber,
+              depStatus,
+              false,
+              true,
+              codeIdentifierBeforeLexOrder,
+              worldView.get(tx.getTo().get()).getCode()));
     }
   }
 
@@ -316,6 +313,7 @@ public class RomLex implements Module {
     this.builder
         .codeFragmentIndex(BigInteger.valueOf(cfi))
         .codeFragmentIndexInfty(BigInteger.valueOf(codeFragmentIndexInfinity))
+        .codeSize(BigInteger.valueOf(chunk.byteCode().size()))
         .addrHi(chunk.address().slice(0, 4).toUnsignedBigInteger())
         .addrLo(chunk.address().slice(4, LLARGE).toUnsignedBigInteger())
         .commitToState(chunk.commitToTheState())
