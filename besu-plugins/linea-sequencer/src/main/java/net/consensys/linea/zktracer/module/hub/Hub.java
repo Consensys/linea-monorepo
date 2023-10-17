@@ -170,6 +170,8 @@ public class Hub implements Module {
 
     this.modules =
         List.of(
+            this.romLex, // romLex must be traced before modules requiring CodeFragmentIndex, like
+            // RlpTxn, TxnData, etc
             this.add,
             this.ext,
             this.mod,
@@ -179,8 +181,7 @@ public class Hub implements Module {
             this.rlpTxn,
             this.rlpTxrcpt,
             this.rlpAddr,
-            this.rom,
-            this.romLex);
+            this.rom);
   }
 
   /**
@@ -189,6 +190,7 @@ public class Hub implements Module {
   public List<Module> getModulesToTrace() {
     return List.of(
         this,
+        this.romLex,
         this.add,
         this.ext,
         this.mod,
@@ -198,8 +200,7 @@ public class Hub implements Module {
         this.rlpTxn,
         this.rlpTxrcpt,
         this.rlpAddr,
-        this.rom,
-        this.romLex);
+        this.rom);
   }
 
   @Override
@@ -568,9 +569,6 @@ public class Hub implements Module {
     this.enterTransaction();
 
     this.exceptions = Exceptions.empty();
-    this.romLex.traceStartTx(world, tx);
-    this.rlpAddr.traceStartTx(world, tx);
-    // TODO: trigger the TxnData AFTER RomLex
 
     this.tx.update(tx);
     this.createNewTxTrace();
