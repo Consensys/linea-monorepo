@@ -1058,11 +1058,11 @@ public class RlpTxn implements Module {
         .addrHi(traceValue.ADDR_HI.toUnsignedBigInteger())
         .addrLo(traceValue.ADDR_LO.toUnsignedBigInteger())
         .bit(traceValue.BIT)
-        .bitAcc(UnsignedByte.of(traceValue.BIT_ACC))
+        .bitAcc(BigInteger.valueOf(traceValue.BIT_ACC))
         .byte1(UnsignedByte.of(traceValue.BYTE_1))
         .byte2(UnsignedByte.of(traceValue.BYTE_2))
         .codeFragmentIndex(BigInteger.valueOf(traceValue.codeFragmentIndex))
-        .counter(UnsignedByte.of(traceValue.COUNTER))
+        .counter(BigInteger.valueOf(traceValue.COUNTER))
         .dataHi(traceValue.DATA_HI)
         .dataLo(traceValue.DATA_LO)
         .datagascost(BigInteger.valueOf(traceValue.DATAGASCOST))
@@ -1086,11 +1086,11 @@ public class RlpTxn implements Module {
         .limbConstructed(traceValue.LIMB_CONSTRUCTED)
         .lt(traceValue.LT)
         .lx(traceValue.LX)
-        .nBytes(UnsignedByte.of(traceValue.nBYTES))
+        .nBytes(BigInteger.valueOf(traceValue.nBYTES))
         .nAddr(BigInteger.valueOf(traceValue.nb_Addr))
         .nKeys(BigInteger.valueOf(traceValue.nb_Sto))
         .nKeysPerAddr(BigInteger.valueOf(traceValue.nb_Sto_per_Addr))
-        .nStep(UnsignedByte.of(traceValue.nSTEP));
+        .nStep(BigInteger.valueOf(traceValue.nSTEP));
     List<Function<Boolean, Trace.TraceBuilder>> phaseColumns =
         List.of(
             this.builder::phase0,
@@ -1117,7 +1117,7 @@ public class RlpTxn implements Module {
         .requiresEvmExecution(traceValue.requiresEvmExecution)
         .rlpLtBytesize(BigInteger.valueOf(traceValue.RLP_LT_BYTESIZE))
         .rlpLxBytesize(BigInteger.valueOf(traceValue.RLP_LX_BYTESIZE))
-        .type(UnsignedByte.of(traceValue.txType));
+        .type(BigInteger.valueOf(traceValue.txType));
 
     // Increments Index
     if (traceValue.LIMB_CONSTRUCTED && traceValue.LT) {

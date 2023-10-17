@@ -37,11 +37,11 @@ public record Trace(
     @JsonProperty("ADDR_HI") List<BigInteger> addrHi,
     @JsonProperty("ADDR_LO") List<BigInteger> addrLo,
     @JsonProperty("BIT") List<Boolean> bit,
-    @JsonProperty("BIT_ACC") List<UnsignedByte> bitAcc,
+    @JsonProperty("BIT_ACC") List<BigInteger> bitAcc,
     @JsonProperty("BYTE_1") List<UnsignedByte> byte1,
     @JsonProperty("BYTE_2") List<UnsignedByte> byte2,
     @JsonProperty("CODE_FRAGMENT_INDEX") List<BigInteger> codeFragmentIndex,
-    @JsonProperty("COUNTER") List<UnsignedByte> counter,
+    @JsonProperty("COUNTER") List<BigInteger> counter,
     @JsonProperty("DATA_HI") List<BigInteger> dataHi,
     @JsonProperty("DATA_LO") List<BigInteger> dataLo,
     @JsonProperty("DATAGASCOST") List<BigInteger> datagascost,
@@ -60,10 +60,10 @@ public record Trace(
     @JsonProperty("LT") List<Boolean> lt,
     @JsonProperty("LX") List<Boolean> lx,
     @JsonProperty("nADDR") List<BigInteger> nAddr,
-    @JsonProperty("nBYTES") List<UnsignedByte> nBytes,
+    @JsonProperty("nBYTES") List<BigInteger> nBytes,
     @JsonProperty("nKEYS") List<BigInteger> nKeys,
     @JsonProperty("nKEYS_PER_ADDR") List<BigInteger> nKeysPerAddr,
-    @JsonProperty("nSTEP") List<UnsignedByte> nStep,
+    @JsonProperty("nSTEP") List<BigInteger> nStep,
     @JsonProperty("PHASE_0") List<Boolean> phase0,
     @JsonProperty("PHASE_1") List<Boolean> phase1,
     @JsonProperty("PHASE_10") List<Boolean> phase10,
@@ -85,7 +85,7 @@ public record Trace(
     @JsonProperty("REQUIRES_EVM_EXECUTION") List<Boolean> requiresEvmExecution,
     @JsonProperty("RLP_LT_BYTESIZE") List<BigInteger> rlpLtBytesize,
     @JsonProperty("RLP_LX_BYTESIZE") List<BigInteger> rlpLxBytesize,
-    @JsonProperty("TYPE") List<UnsignedByte> type) {
+    @JsonProperty("TYPE") List<BigInteger> type) {
   static TraceBuilder builder() {
     return new TraceBuilder();
   }
@@ -121,7 +121,7 @@ public record Trace(
     private final List<Boolean> bit = new ArrayList<>();
 
     @JsonProperty("BIT_ACC")
-    private final List<UnsignedByte> bitAcc = new ArrayList<>();
+    private final List<BigInteger> bitAcc = new ArrayList<>();
 
     @JsonProperty("BYTE_1")
     private final List<UnsignedByte> byte1 = new ArrayList<>();
@@ -133,7 +133,7 @@ public record Trace(
     private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
 
     @JsonProperty("COUNTER")
-    private final List<UnsignedByte> counter = new ArrayList<>();
+    private final List<BigInteger> counter = new ArrayList<>();
 
     @JsonProperty("DATA_HI")
     private final List<BigInteger> dataHi = new ArrayList<>();
@@ -190,7 +190,7 @@ public record Trace(
     private final List<BigInteger> nAddr = new ArrayList<>();
 
     @JsonProperty("nBYTES")
-    private final List<UnsignedByte> nBytes = new ArrayList<>();
+    private final List<BigInteger> nBytes = new ArrayList<>();
 
     @JsonProperty("nKEYS")
     private final List<BigInteger> nKeys = new ArrayList<>();
@@ -199,7 +199,7 @@ public record Trace(
     private final List<BigInteger> nKeysPerAddr = new ArrayList<>();
 
     @JsonProperty("nSTEP")
-    private final List<UnsignedByte> nStep = new ArrayList<>();
+    private final List<BigInteger> nStep = new ArrayList<>();
 
     @JsonProperty("PHASE_0")
     private final List<Boolean> phase0 = new ArrayList<>();
@@ -265,7 +265,7 @@ public record Trace(
     private final List<BigInteger> rlpLxBytesize = new ArrayList<>();
 
     @JsonProperty("TYPE")
-    private final List<UnsignedByte> type = new ArrayList<>();
+    private final List<BigInteger> type = new ArrayList<>();
 
     private TraceBuilder() {}
 
@@ -385,7 +385,7 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder bitAcc(final UnsignedByte b) {
+    public TraceBuilder bitAcc(final BigInteger b) {
       if (filled.get(9)) {
         throw new IllegalStateException("BIT_ACC already set");
       } else {
@@ -433,7 +433,7 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder counter(final UnsignedByte b) {
+    public TraceBuilder counter(final BigInteger b) {
       if (filled.get(13)) {
         throw new IllegalStateException("COUNTER already set");
       } else {
@@ -661,7 +661,7 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder nBytes(final UnsignedByte b) {
+    public TraceBuilder nBytes(final BigInteger b) {
       if (filled.get(54)) {
         throw new IllegalStateException("nBYTES already set");
       } else {
@@ -697,7 +697,7 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder nStep(final UnsignedByte b) {
+    public TraceBuilder nStep(final BigInteger b) {
       if (filled.get(57)) {
         throw new IllegalStateException("nSTEP already set");
       } else {
@@ -961,7 +961,7 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder type(final UnsignedByte b) {
+    public TraceBuilder type(final BigInteger b) {
       if (filled.get(52)) {
         throw new IllegalStateException("TYPE already set");
       } else {
@@ -1249,7 +1249,7 @@ public record Trace(
         this.filled.set(8);
       }
       if (!filled.get(9)) {
-        bitAcc.add(UnsignedByte.of(0));
+        bitAcc.add(BigInteger.ZERO);
         this.filled.set(9);
       }
       if (!filled.get(10)) {
@@ -1265,7 +1265,7 @@ public record Trace(
         this.filled.set(12);
       }
       if (!filled.get(13)) {
-        counter.add(UnsignedByte.of(0));
+        counter.add(BigInteger.ZERO);
         this.filled.set(13);
       }
       if (!filled.get(15)) {
@@ -1341,7 +1341,7 @@ public record Trace(
         this.filled.set(53);
       }
       if (!filled.get(54)) {
-        nBytes.add(UnsignedByte.of(0));
+        nBytes.add(BigInteger.ZERO);
         this.filled.set(54);
       }
       if (!filled.get(55)) {
@@ -1353,7 +1353,7 @@ public record Trace(
         this.filled.set(56);
       }
       if (!filled.get(57)) {
-        nStep.add(UnsignedByte.of(0));
+        nStep.add(BigInteger.ZERO);
         this.filled.set(57);
       }
       if (!filled.get(31)) {
@@ -1441,7 +1441,7 @@ public record Trace(
         this.filled.set(51);
       }
       if (!filled.get(52)) {
-        type.add(UnsignedByte.of(0));
+        type.add(BigInteger.ZERO);
         this.filled.set(52);
       }
 
