@@ -664,11 +664,11 @@ opcodes:
     value: 0x57
     instructionFamily: JUMP
     stackSettings:
-      pattern: ONE_ZERO
+      pattern: TWO_ZERO
       alpha: 0
-      delta: 1
+      delta: 2
       nbAdded: 0
-      nbRemoved: 1
+      nbRemoved: 2
       staticGas: G_MID
       oobFlag: true
       flag1: true
