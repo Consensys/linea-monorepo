@@ -129,7 +129,7 @@ public class RomLex implements Module {
               deployementAddress,
               depNumber,
               depStatus,
-              true,
+              false,
               false,
               codeIdentifierBeforeLexOrder,
               tx.getInit().get()));
@@ -146,8 +146,8 @@ public class RomLex implements Module {
               tx.getTo().get(),
               depNumber,
               depStatus,
-              false,
               true,
+              false,
               codeIdentifierBeforeLexOrder,
               worldView.get(tx.getTo().get()).getCode()));
     }
@@ -216,9 +216,9 @@ public class RomLex implements Module {
       }
 
       case EXTCODECOPY -> {
-        final int destOffset = frame.getStackItem(1).toUnsignedBigInteger().intValueExact();
-        final int length = frame.getStackItem(3).toUnsignedBigInteger().intValueExact();
-        final Bytes code = frame.readMemory(destOffset, length);
+        final long offset = clampedToLong(frame.getStackItem(2));
+        final long length = clampedToLong(frame.getStackItem(3));
+        final Bytes code = frame.readMemory(offset, length);
 
         if (!code.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
@@ -232,8 +232,8 @@ public class RomLex implements Module {
                   sourceAddress,
                   depNumber,
                   deploymentStatus,
-                  false,
                   true,
+                  false,
                   codeIdentifierBeforeLexOrder,
                   code));
         }
@@ -241,9 +241,9 @@ public class RomLex implements Module {
 
       case RETURN -> {
         // TODO: check we get the right code
-        final int destOffset = frame.getStackItem(1).toUnsignedBigInteger().intValueExact();
-        final int length = frame.getStackItem(2).toUnsignedBigInteger().intValueExact();
-        final Bytes code = frame.readMemory(destOffset, length);
+        final long offset = clampedToLong(frame.getStackItem(0));
+        final long length = clampedToLong(frame.getStackItem(1));
+        final Bytes code = frame.readMemory(offset, length);
         final boolean depStatus =
             hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
         if (!code.isEmpty() && depStatus) {
