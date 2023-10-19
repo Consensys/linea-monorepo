@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.zip.GZIPOutputStream;
 
 import com.fasterxml.jackson.core.JsonEncoding;
@@ -29,6 +28,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
@@ -36,12 +36,15 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 /** Responsible for conflated file traces generation. */
 public class RollupGenerateConflatedTracesToFileV0 {
 
-  private final BesuContext context;
+  private final BesuContext besuContext;
   private final JsonFactory jsonFactory = new JsonFactory();
   private final boolean isGzipEnabled = true;
 
-  public RollupGenerateConflatedTracesToFileV0(final BesuContext context) {
-    this.context = context;
+  private Path tracesPath;
+  private TraceService traceService;
+
+  public RollupGenerateConflatedTracesToFileV0(final BesuContext besuContext) {
+    this.besuContext = besuContext;
   }
 
   public String getNamespace() {
@@ -59,8 +62,15 @@ public class RollupGenerateConflatedTracesToFileV0 {
    * @return an execution file trace.
    */
   public FileTrace execute(final PluginRpcRequest request) {
+    if (traceService == null) {
+      traceService = initTraceService();
+    }
+
+    if (tracesPath == null) {
+      tracesPath = initTracesPath();
+    }
+
     try {
-      final TraceService traceService = context.getService(TraceService.class).orElseThrow();
       TraceRequestParams params = TraceRequestParams.createTraceParams(request.getParams());
 
       final long fromBlock = params.fromBlock();
@@ -88,9 +98,30 @@ public class RollupGenerateConflatedTracesToFileV0 {
     }
   }
 
+  private Path initTracesPath() {
+    final Path dataPath =
+        besuContext
+            .getService(BesuConfiguration.class)
+            .map(BesuConfiguration::getDataPath)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Unable to find data path. Please ensure BesuConfiguration is registered."));
+
+    return dataPath.resolve("traces");
+  }
+
+  private TraceService initTraceService() {
+    return besuContext
+        .getService(TraceService.class)
+        .orElseThrow(
+            () ->
+                new RuntimeException(
+                    "Unable to find trace service. Please ensure TraceService is registered."));
+  }
+
   private String writeTraceToFile(final ZkTracer tracer, final String traceRuntimeVersion) {
-    final String dataDir = "traces";
-    final File file = generateOutputFile(dataDir, traceRuntimeVersion);
+    final File file = generateOutputFile(traceRuntimeVersion);
     final OutputStream outputStream = createOutputStream(file);
 
     try (JsonGenerator jsonGenerator =
@@ -118,16 +149,17 @@ public class RollupGenerateConflatedTracesToFileV0 {
     }
   }
 
-  private File generateOutputFile(final String traceDir, final String tracesEngineVersion) {
+  private File generateOutputFile(final String tracesEngineVersion) {
 
-    Path path = Paths.get(traceDir);
-    if (!Files.isDirectory(path) && !path.toFile().mkdirs()) {
+    if (!Files.isDirectory(tracesPath) && !tracesPath.toFile().mkdirs()) {
       throw new RuntimeException(
           String.format(
-              "Trace directory '%s' does not exist and could not be made.", path.toAbsolutePath()));
+              "Trace directory '%s' does not exist and could not be made.",
+              tracesPath.toAbsolutePath()));
     }
 
-    return path.resolve(
+    return tracesPath
+        .resolve(
             String.format(
                 "%.10s-%s.traces.%s",
                 System.currentTimeMillis(), tracesEngineVersion, getFileFormat()))

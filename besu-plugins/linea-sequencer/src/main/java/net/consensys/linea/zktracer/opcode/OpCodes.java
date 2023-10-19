@@ -38,12 +38,11 @@ public class OpCodes {
   /** Loads all opcode metadata from src/main/resources/opcodes.yml. */
   @SneakyThrows(IOException.class)
   public static void load() {
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
     JsonNode rootNode =
         YAML_CONVERTER
             .getObjectMapper()
-            .readTree(classLoader.getResourceAsStream("opcodes.yml"))
+            .readTree(OpCodes.class.getClassLoader().getResourceAsStream("opcodes.yml"))
             .get("opcodes");
 
     CollectionType typeReference =
