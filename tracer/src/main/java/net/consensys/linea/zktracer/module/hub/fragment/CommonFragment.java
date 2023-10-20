@@ -40,6 +40,7 @@ public final class CommonFragment implements TraceFragment {
   @Getter @Setter private boolean txReverts;
   private final InstructionFamily instructionFamily;
   private final Exceptions exceptions;
+  private final int callFrameId;
   @Getter private final int contextNumber;
   @Setter private int newContextNumber;
   private final int revertStamp;
@@ -73,8 +74,8 @@ public final class CommonFragment implements TraceFragment {
         .txExec(this.txState == TxState.TX_EXEC)
         .txFinl(this.txState == TxState.TX_FINAL)
         .hubStamp(BigInteger.valueOf(this.stamp))
-        .transactionEndStamp(BigInteger.valueOf(txEndStamp))
-        .transactionReverts(BigInteger.valueOf(txReverts ? 1 : 0))
+        .hubStampTransactionEnd(BigInteger.valueOf(txEndStamp))
+        .transactionReverts(txReverts)
         .contextMayChangeFlag(
             (instructionFamily == InstructionFamily.CALL
                     || instructionFamily == InstructionFamily.CREATE
@@ -88,8 +89,8 @@ public final class CommonFragment implements TraceFragment {
         .contextNumberNew(BigInteger.valueOf(newContextNumber))
         .contextRevertStamp(BigInteger.valueOf(revertStamp))
         .contextWillRevertFlag(getsReverted || selfReverts)
-        .contextGetsRevrtdFlag(getsReverted)
-        .contextSelfRevrtsFlag(selfReverts)
+        .contextGetsRevertedFlag(getsReverted)
+        .contextSelfRevertsFlag(selfReverts)
         .programCounter(BigInteger.valueOf(pc))
         .programCounterNew(BigInteger.valueOf(newPc))
 
@@ -112,7 +113,7 @@ public final class CommonFragment implements TraceFragment {
 
   @Override
   public void postTxRetcon(Hub hub) {
-    CallFrame frame = hub.callStack().get(this.contextNumber);
+    CallFrame frame = hub.callStack().get(this.callFrameId);
 
     this.txEndStamp = hub.stamp();
     this.txReverts = hub.tx().status();

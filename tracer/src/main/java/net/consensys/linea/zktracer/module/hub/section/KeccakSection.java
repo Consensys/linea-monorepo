@@ -13,11 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.defer;
+package net.consensys.linea.zktracer.module.hub.section;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import org.hyperledger.besu.evm.frame.MessageFrame;
+import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 
-public interface NextContextDefer {
-  void runNextContext(Hub hub, MessageFrame frame);
+public class KeccakSection extends TraceSection {
+  public KeccakSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
+    this.addChunksAndStack(hub, callFrame, chunks);
+  }
 }

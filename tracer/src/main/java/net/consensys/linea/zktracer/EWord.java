@@ -175,4 +175,8 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
   public static EWord ofQuantity(final Quantity quantity) {
     return EWord.of((Bytes) quantity);
   }
+
+  public int byteLength() {
+    return (this.bitLength() + 7) / 8;
+  }
 }

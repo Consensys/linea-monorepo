@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import org.hyperledger.besu.datatypes.Address;
@@ -36,6 +37,10 @@ public final class AccountFragment implements TraceFragment {
   private final boolean createAddress;
   @Setter private int deploymentNumberInfnty;
   @Setter private boolean existsInfinity;
+
+  public AccountFragment(AccountSnapshot oldState, AccountSnapshot newState) {
+    this(oldState, newState, false, 0, false);
+  }
 
   public AccountFragment(
       AccountSnapshot oldState,
@@ -62,8 +67,8 @@ public final class AccountFragment implements TraceFragment {
 
     return trace
         .peekAtAccount(true)
-        .pAccountAddressHi(eWho.hiBigInt())
-        .pAccountAddressLo(eWho.loBigInt())
+        .pAccountAddrHi(eWho.hiBigInt())
+        .pAccountAddrLo(eWho.loBigInt())
         .pAccountIsPrecompile(Hub.isPrecompile(who))
         .pAccountNonce(BigInteger.valueOf(oldState.nonce()))
         .pAccountNonceNew(BigInteger.valueOf(newState.nonce()))
@@ -87,13 +92,12 @@ public final class AccountFragment implements TraceFragment {
                 || !newState.balance().isZero())
         .pAccountWarm(oldState.warm())
         .pAccountWarmNew(newState.warm())
-        .pAccountDeploymentNumber(BigInteger.valueOf(oldState.deploymentNumber()))
-        .pAccountDeploymentNumberNew(BigInteger.valueOf(newState.deploymentNumber()))
-        .pAccountDeploymentStatus(oldState.deploymentStatus() ? BigInteger.ONE : BigInteger.ZERO)
-        .pAccountDeploymentStatusNew(newState.deploymentStatus() ? BigInteger.ONE : BigInteger.ZERO)
+        .pAccountDepNum(BigInteger.valueOf(oldState.deploymentNumber()))
+        .pAccountDepNumNew(BigInteger.valueOf(newState.deploymentNumber()))
+        .pAccountDepStatus(oldState.deploymentStatus())
+        .pAccountDepStatusNew(newState.deploymentStatus())
         //      .pAccountDebit(debit)
         //      .pAccountCost(cost)
-        .pAccountSufficientBalance(!debit || cost <= oldState.balance().toLong()) //
         //      .pAccountCreateAddress(createAddress)
         .pAccountDeploymentNumberInfty(BigInteger.valueOf(deploymentNumberInfnty))
     //    .pAccountExistsInfty(existsInfinity)

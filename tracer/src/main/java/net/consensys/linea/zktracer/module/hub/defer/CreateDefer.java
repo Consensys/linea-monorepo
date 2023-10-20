@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.defer;
 
+import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.section.CreateSection;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
@@ -33,15 +33,15 @@ public record CreateDefer(
     implements PostExecDefer, NextContextDefer {
   // PostExec defer
   @Override
-  public void run(Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
+  public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
     // The post-exec behaves identically to the new context defer; albeit with different global
     // state
-    this.run(hub, frame);
+    this.runNextContext(hub, frame);
   }
 
   // Context defer
   @Override
-  public void run(Hub hub, MessageFrame frame) {
+  public void runNextContext(Hub hub, MessageFrame frame) {
     Address creatorAddress = oldCreatorSnapshot.address();
     AccountSnapshot newCreatorSnapshot =
         AccountSnapshot.fromAccount(

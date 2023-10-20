@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.defer;
 
+import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.TxSkippedSection;
 import org.hyperledger.besu.datatypes.Address;
@@ -27,22 +27,22 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * SkippedTransaction latches data at the pre-execution of the transaction data that will be used
- * later, through a {@link TransactionDefer}, to generate the trace chunks required for the proving
- * of a pure transaction.
+ * later, through a {@link PostTransactionDefer}, to generate the trace chunks required for the
+ * proving of a pure transaction.
  *
  * @param oldFromAccount
  * @param oldToAccount
  * @param oldMinerAccount
  */
-public record SkippedTransactionDefer(
+public record SkippedPostTransactionDefer(
     AccountSnapshot oldFromAccount,
     AccountSnapshot oldToAccount,
     AccountSnapshot oldMinerAccount,
     Wei gasPrice,
     Wei baseFee)
-    implements TransactionDefer {
+    implements PostTransactionDefer {
   @Override
-  public void run(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
     Address fromAddress = this.oldFromAccount.address();
     Address toAddress = this.oldToAccount.address();
     Address minerAddress = this.oldMinerAccount.address();
