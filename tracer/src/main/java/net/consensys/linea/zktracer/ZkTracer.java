@@ -41,10 +41,10 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   private final Hub hub;
 
   public ZkTracer() {
-    this.hub = new Hub();
-
     // Load opcodes configured in src/main/resources/opcodes.yml.
     OpCodes.load();
+
+    this.hub = new Hub();
   }
 
   public ZkTrace getTrace() {
