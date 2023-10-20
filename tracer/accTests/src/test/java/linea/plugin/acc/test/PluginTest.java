@@ -20,19 +20,20 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
+import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.assertj.core.api.Assertions;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
-import org.hyperledger.besu.tests.web3j.generated.SimpleStorage;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
+import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.protocol.exceptions.TransactionException;
 import org.web3j.tx.RawTransactionManager;
@@ -40,20 +41,39 @@ import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.tx.response.TransactionReceiptProcessor;
+import org.web3j.utils.Convert;
 
-public class MiningTest extends AcceptanceTestBase {
+public class PluginTest extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1092; // contract has a call data size of 979
   private BesuNode minerNode;
 
-  @BeforeEach
-  public void setUp() throws Exception {
-    final String pluginDir = System.getProperty("besu.plugins.dir");
-    System.out.println("****************************" + pluginDir);
-    System.setProperty("besu.plugins.dir", pluginDir);
+  private void setUpWithMaxCalldata() throws Exception {
+
+    // to debug into besu:
+    // System.setProperty("acctests.runBesuAsProcess", "false");
+
     final List<String> cliOptions =
         List.of(
+            "--plugin-linea-deny-list-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/emptyDenyList.txt"))
+                    .getPath(),
             "--plugin-linea-max-tx-calldata-size=" + MAX_CALLDATA_SIZE,
             "--plugin-linea-max-block-calldata-size=" + MAX_CALLDATA_SIZE);
+    minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
+    cluster.start(minerNode);
+  }
+
+  private void setUpWithDenyList() throws Exception {
+
+    // To debug into besu:
+    // System.setProperty("acctests.runBesuAsProcess", "false");
+
+    final List<String> cliOptions =
+        List.of(
+            "--plugin-linea-deny-list-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/denyList.txt")).getPath(),
+            "--plugin-linea-max-tx-calldata-size=2000000",
+            "--plugin-linea-max-block-calldata-size=2000000");
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -65,7 +85,8 @@ public class MiningTest extends AcceptanceTestBase {
   }
 
   @Test
-  public void shouldMineTransactions() {
+  public void shouldMineTransactions() throws Exception {
+    setUpWithMaxCalldata();
     final SimpleStorage simpleStorage =
         minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
     List<String> accounts =
@@ -79,7 +100,8 @@ public class MiningTest extends AcceptanceTestBase {
   }
 
   @Test
-  public void transactionIsNotMinedWhenTooBig() throws IOException, TransactionException {
+  public void transactionIsNotMinedWhenTooBig() throws Exception {
+    setUpWithMaxCalldata();
     final SimpleStorage simpleStorage =
         minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
     final Web3j web3j = minerNode.nodeRequests().eth();
@@ -128,6 +150,54 @@ public class MiningTest extends AcceptanceTestBase {
 
     final EthGetTransactionReceipt receipt = web3j.ethGetTransactionReceipt(hashTooBig).send();
     Assertions.assertThat(receipt.getTransactionReceipt()).isEmpty();
+  }
+
+  @Test
+  public void deniedTransactionNotAddedToTxPool() throws Exception {
+    setUpWithDenyList();
+
+    final Credentials notDenied = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    final Credentials denied = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
+    final Web3j miner = minerNode.nodeRequests().eth();
+
+    BigInteger gasPrice = Convert.toWei("20", Convert.Unit.GWEI).toBigInteger();
+    BigInteger gasLimit = BigInteger.valueOf(210000);
+
+    // Make sure a sender on the deny list cannot add transactions to the pool
+    RawTransactionManager transactionManager = new RawTransactionManager(miner, denied);
+    EthSendTransaction transactionResponse =
+        transactionManager.sendTransaction(
+            gasPrice, gasLimit, notDenied.getAddress(), "", BigInteger.ONE); // 1 wei
+
+    Assertions.assertThat(transactionResponse.getTransactionHash()).isNull();
+    Assertions.assertThat(transactionResponse.getError().getMessage())
+        .isEqualTo(
+            "sender 0x627306090abab3a6e1400e9345bc60c78a8bef57 is blocked as appearing on the SDN or other legally prohibited list");
+
+    // Make sure a transaction with a recipient on the deny list cannot be added to the pool
+    transactionManager = new RawTransactionManager(miner, notDenied);
+    transactionResponse =
+        transactionManager.sendTransaction(
+            gasPrice, gasLimit, denied.getAddress(), "", BigInteger.ONE); // 1 wei
+
+    Assertions.assertThat(transactionResponse.getTransactionHash()).isNull();
+    Assertions.assertThat(transactionResponse.getError().getMessage())
+        .isEqualTo(
+            "recipient 0x627306090abab3a6e1400e9345bc60c78a8bef57 is blocked as appearing on the SDN or other legally prohibited list");
+
+    // Make sure a transaction calling a contract on the deny list (e.g. precompile) is not added to
+    // the pool
+    transactionResponse =
+        transactionManager.sendTransaction(
+            gasPrice,
+            gasLimit,
+            "0x000000000000000000000000000000000000000a",
+            "0xdeadbeef",
+            BigInteger.ONE); // 1 wei
+
+    Assertions.assertThat(transactionResponse.getTransactionHash()).isNull();
+    Assertions.assertThat(transactionResponse.getError().getMessage())
+        .isEqualTo("destination address is a precompile address and cannot receive transactions");
   }
 
   private void sendTransactionsWithGivenLengthPayload(
