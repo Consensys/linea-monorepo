@@ -25,7 +25,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
  * @param invalidCodePrefix trying to deploy a contract starting with 0xEF
  * @param codeSizeOverflow trying to deploy a contract larger than 24KB
  */
-public record ContextExceptions(boolean invalidCodePrefix, boolean codeSizeOverflow) {
+public record DeploymentExceptions(boolean invalidCodePrefix, boolean codeSizeOverflow) {
   private static final byte EIP_3541_MARKER = (byte) 0xEF;
   private static final int MAX_CODE_SIZE = 24576;
 
@@ -40,19 +40,24 @@ public record ContextExceptions(boolean invalidCodePrefix, boolean codeSizeOverf
     return deployedCode.size() > MAX_CODE_SIZE;
   }
 
-  public static ContextExceptions empty() {
-    return new ContextExceptions(false, false);
+  public static DeploymentExceptions empty() {
+    return new DeploymentExceptions(false, false);
   }
 
-  public static ContextExceptions fromFrame(final CallFrame callFrame, final MessageFrame frame) {
+  public static DeploymentExceptions fromFrame(
+      final CallFrame callFrame, final MessageFrame frame) {
     if (callFrame.codeDeploymentStatus()) {
-      return new ContextExceptions(isInvalidCodePrefix(frame), isCodeSizeOverflow(frame));
+      return new DeploymentExceptions(isInvalidCodePrefix(frame), isCodeSizeOverflow(frame));
     } else {
-      return new ContextExceptions(false, false);
+      return new DeploymentExceptions(false, false);
     }
   }
 
   public boolean any() {
     return this.invalidCodePrefix || this.codeSizeOverflow;
+  }
+
+  public boolean none() {
+    return !this.any();
   }
 }

@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import lombok.Getter;
-import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -35,8 +34,6 @@ public final class StackContext {
   OpCode opCode;
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
   @Getter List<StackLine> lines;
-  /** At which line in the {@link Hub} trace this stack operation is to be found. */
-  @Getter @Setter int startInTrace;
 
   /**
    * The default constructor for a valid, albeit empty line.
@@ -46,7 +43,6 @@ public final class StackContext {
   StackContext(OpCode opCode) {
     this.opCode = opCode;
     this.lines = new ArrayList<>();
-    this.startInTrace = 0;
   }
 
   /**

@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
-import net.consensys.linea.zktracer.module.hub.ContextExceptions;
+import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.CommonFragment;
@@ -85,6 +85,7 @@ public abstract class TraceSection {
         false, // retconned
         hub.opCodeData().instructionFamily(),
         hub.exceptions().snapshot(),
+        callFrame.id(),
         callFrame.contextNumber(),
         callFrame.contextNumber(),
         0, // retconned
@@ -267,11 +268,11 @@ public abstract class TraceSection {
   }
 
   /**
-   * Update the stack fragments of the section with the provided {@link ContextExceptions}.
+   * Update the stack fragments of the section with the provided {@link DeploymentExceptions}.
    *
    * @param contEx the computed exceptions
    */
-  public void setContextExceptions(ContextExceptions contEx) {
+  public void setContextExceptions(DeploymentExceptions contEx) {
     for (TraceLine chunk : lines) {
       if (chunk.specific instanceof StackFragment fragment) {
         fragment.contextExceptions(contEx);

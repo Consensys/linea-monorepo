@@ -52,4 +52,9 @@ public final class Return implements GasProjection {
       return GasConstants.G_CODE_DEPOSIT.cost() * this.size;
     }
   }
+
+  @Override
+  public long messageSize() {
+    return this.size;
+  }
 }

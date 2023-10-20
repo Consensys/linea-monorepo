@@ -41,6 +41,8 @@ public class CallFrame {
    * number in the {@link Hub}.
    */
   @Getter private int id;
+  /** the context number of the frame, i.e. the hub stamp at its creation */
+  @Getter private final int contextNumber;
   /** the depth of this CallFrame within its call hierarchy. */
   @Getter private int depth;
   /** */
@@ -52,7 +54,7 @@ public class CallFrame {
   /** the position of this {@link CallFrame} parent in the {@link CallStack}. */
   @Getter private int parentFrame;
   /** all the {@link CallFrame} that have been called by this frame. */
-  @Getter private List<Integer> childFrames = new ArrayList<>();
+  @Getter private final List<Integer> childFrames = new ArrayList<>();
 
   /** the {@link Address} of the account executing this {@link CallFrame}. */
   @Getter private Address address = Address.ZERO; // TODO:
@@ -60,7 +62,7 @@ public class CallFrame {
   @Getter private Address codeAddress = Address.ALTBN128_ADD;
 
   /** the {@link CallFrameType} of this frame. */
-  @Getter private CallFrameType type;
+  @Getter private final CallFrameType type;
 
   /** the {@link Bytecode} executing within this frame. */
   private Bytecode code;
@@ -97,6 +99,7 @@ public class CallFrame {
   /** Create a root call frame. */
   CallFrame() {
     this.type = CallFrameType.BEDROCK;
+    this.contextNumber = 0;
   }
 
   public static CallFrame empty() {
@@ -110,6 +113,7 @@ public class CallFrame {
    * @param codeDeploymentNumber the DN of this frame in the {@link Hub}
    * @param isDeployment whether the executing code is initcode
    * @param id the ID of this frame in the {@link CallStack}
+   * @param hubStamp the hub stamp at the frame creation
    * @param address the {@link Address} of this frame executor
    * @param type the {@link CallFrameType} of this frame
    * @param caller the ID of this frame caller in the {@link CallStack}
@@ -122,6 +126,7 @@ public class CallFrame {
       int codeDeploymentNumber,
       boolean isDeployment,
       int id,
+      int hubStamp,
       Address address,
       Bytecode code,
       CallFrameType type,
@@ -134,6 +139,7 @@ public class CallFrame {
     this.codeDeploymentNumber = codeDeploymentNumber;
     this.codeDeploymentStatus = isDeployment;
     this.id = id;
+    this.contextNumber = hubStamp + 1;
     this.address = address;
     this.code = code;
     this.type = type;
@@ -201,10 +207,5 @@ public class CallFrame {
     this.frame = frame;
     this.opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     this.pc = frame.getPC();
-  }
-
-  // TODO: remove me when we ensured that ID == contextNumber
-  public int contextNumber() {
-    return this.id;
   }
 }

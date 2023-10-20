@@ -65,4 +65,9 @@ public final class Create2 implements GasProjection {
       return currentGas - currentGas / 64;
     }
   }
+
+  @Override
+  public long messageSize() {
+    return this.initCodeLength;
+  }
 }

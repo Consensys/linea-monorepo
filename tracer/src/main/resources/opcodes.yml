@@ -456,6 +456,7 @@ opcodes:
       delta: 3
       nbAdded: 0
       nbRemoved: 3
+      oobFlag: true
       staticGas: S_MXP
       flag2: true
       flag3: true
@@ -645,6 +646,7 @@ opcodes:
       delta: 1
       nbAdded: 1
       nbRemoved: 1
+      oobFlag: true
       staticGas: S_HUB
       staticInstruction: true
       flag1: true
@@ -671,7 +673,7 @@ opcodes:
       nbRemoved: 2
       staticGas: G_MID
       oobFlag: true
-      flag1: true
+      flag2: true
   - mnemonic: PC
     value: 0x58
     instructionFamily: MACHINE_STATE
@@ -1478,6 +1480,7 @@ opcodes:
       delta: 3
       nbAdded: 1
       nbRemoved: 3
+      oobFlag: true
       staticGas: G_CREATE
       twoLinesInstruction: true
       staticInstruction: true
@@ -1493,6 +1496,7 @@ opcodes:
       delta: 7
       nbAdded: 1
       nbRemoved: 7
+      oobFlag: true
       staticGas: S_CALL
       twoLinesInstruction: true
       staticInstruction: true
@@ -1510,6 +1514,7 @@ opcodes:
       delta: 7
       nbAdded: 1
       nbRemoved: 7
+      oobFlag: true
       staticGas: S_CALL
       twoLinesInstruction: true
       addressTrimmingInstruction: true
@@ -1526,6 +1531,7 @@ opcodes:
       delta: 2
       nbAdded: 0
       nbRemoved: 2
+      oobFlag: true
       staticGas: S_MXP
       flag1: true
     billing:
@@ -1556,6 +1562,7 @@ opcodes:
       delta: 4
       nbAdded: 1
       nbRemoved: 4
+      oobFlag: true
       staticGas: G_CREATE
       twoLinesInstruction: true
       staticInstruction: true

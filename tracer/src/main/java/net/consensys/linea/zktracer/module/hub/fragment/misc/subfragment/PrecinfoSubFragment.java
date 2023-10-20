@@ -13,11 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.defer;
+package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
-import org.hyperledger.besu.evm.frame.MessageFrame;
+import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
+import org.apache.commons.lang3.NotImplementedException;
 
-public interface NextContextDefer {
-  void runNextContext(Hub hub, MessageFrame frame);
+public record PrecinfoSubFragment() implements TraceSubFragment {
+  @Override
+  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+    throw new NotImplementedException("Soon");
+  }
 }

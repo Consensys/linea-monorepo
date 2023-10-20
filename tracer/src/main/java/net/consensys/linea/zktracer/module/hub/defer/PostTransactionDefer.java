@@ -23,7 +23,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * A TransactionDefer represents an object, whose execution will be deferred until after the current
  * transaction has been executed.
  */
-public interface TransactionDefer {
+public interface PostTransactionDefer {
   /**
    * This method will be triggered as soon as the current transaction has finished its execution.
    *
@@ -31,5 +31,5 @@ public interface TransactionDefer {
    * @param state a view onto the current blockchain state
    * @param tx the {@link Transaction} that just executed
    */
-  void run(Hub hub, WorldView state, Transaction tx);
+  void runPostTx(Hub hub, WorldView state, Transaction tx);
 }

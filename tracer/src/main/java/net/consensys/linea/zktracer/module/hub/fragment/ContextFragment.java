@@ -22,7 +22,8 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallStack;
 
-public record ContextFragment(CallStack callStack, CallFrame callFrame, boolean update)
+public record ContextFragment(
+    CallStack callStack, CallFrame callFrame, boolean updateCallerReturndata)
     implements TraceFragment {
   @Override
   public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
@@ -53,7 +54,7 @@ public record ContextFragment(CallStack callStack, CallFrame callFrame, boolean 
         .pContextCallDataSize(BigInteger.valueOf(callFrame.callDataPointer().length()))
         .pContextReturnAtOffset(BigInteger.valueOf(callFrame.returnDataTarget().offset()))
         .pContextReturnAtSize(BigInteger.valueOf(callFrame.returnDataTarget().length()))
-        .pContextUpdate(update)
+        .pContextUpdate(updateCallerReturndata)
         .pContextReturnerContextNumber(
             BigInteger.valueOf(
                 callFrame.lastCallee().map(c -> callStack.get(c).contextNumber()).orElse(0)))
