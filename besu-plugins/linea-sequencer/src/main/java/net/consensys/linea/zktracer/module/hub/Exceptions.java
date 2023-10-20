@@ -52,6 +52,11 @@ public record Exceptions(
     return !this.stackOverflow() && !this.stackUnderflow();
   }
 
+  /**
+   * Creates a snapshot (a copy) of the given Exceptions object.
+   *
+   * @return a new Exceptions
+   */
   public Exceptions snapshot() {
     return new Exceptions(
         invalidOpcode,
@@ -64,6 +69,7 @@ public record Exceptions(
         staticViolation,
         outOfSStore);
   }
+
   /**
    * @return true if any exception flag has been raised
    */
@@ -77,6 +83,13 @@ public record Exceptions(
         || this.jumpFault
         || this.staticViolation
         || this.outOfSStore;
+  }
+
+  /**
+   * @return true if no exception flag has been raised
+   */
+  public boolean none() {
+    return !this.any();
   }
 
   private static boolean isInvalidOpcode(final OpCode opCode) {
@@ -94,7 +107,7 @@ public record Exceptions(
         > 1024;
   }
 
-  private static boolean isOutOfMemoryExpansion(
+  private static boolean isMemoryExpansionFault(
       MessageFrame frame, OpCode opCode, GasProjector gp) {
     return gp.of(frame, opCode).largestOffset() > 0xffffffffL;
   }
@@ -153,7 +166,7 @@ public record Exceptions(
    * @param frame the context from which to compute the putative exceptions
    * @return all {@link Exceptions} relative to the given frame
    */
-  public static Exceptions fromFrame(final MessageFrame frame, GasProjector gp) {
+  public static Exceptions forFrame(final MessageFrame frame, GasProjector gp) {
     OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     OpCodeData opCodeData = opCode.getData();
 
@@ -161,7 +174,7 @@ public record Exceptions(
     final boolean stackUnderflow = invalidOpcode ? false : isStackUnderflow(frame, opCodeData);
     final boolean stackOverflow = invalidOpcode ? false : isStackOverflow(frame, opCodeData);
     final boolean outOfMxp =
-        (stackUnderflow || stackOverflow) ? false : isOutOfMemoryExpansion(frame, opCode, gp);
+        (stackUnderflow || stackOverflow) ? false : isMemoryExpansionFault(frame, opCode, gp);
     final boolean oufOfGas =
         (stackUnderflow || stackOverflow) ? false : isOutOfGas(frame, opCode, gp);
     final boolean returnDataCopyFault =

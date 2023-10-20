@@ -58,4 +58,9 @@ public final class Sha3 implements GasProjection {
   public long linearPerWord() {
     return linearCost(GasConstants.G_KECCAK_256_WORD.cost(), this.bitLength, 32);
   }
+
+  @Override
+  public long messageSize() {
+    return (this.bitLength + 7) / 8;
+  }
 }

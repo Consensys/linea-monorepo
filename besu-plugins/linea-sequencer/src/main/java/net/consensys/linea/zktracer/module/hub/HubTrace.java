@@ -21,4 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record HubTrace(@JsonProperty("Trace") Trace trace) {}
+record HubTrace(@JsonProperty("Trace") Trace trace) {
+  static final int N_FAILURE = 4;
+  static final int N_SUCCESS = 4;
+}

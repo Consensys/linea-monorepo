@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.apache.commons.lang3.tuple.Pair;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -30,15 +31,15 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public class DeferRegistry {
   /** A list of actions deferred until the end of the current transaction */
-  private final List<TransactionDefer> txDefers = new ArrayList<>();
+  private final List<PostTransactionDefer> txDefers = new ArrayList<>();
   /** A list of actions deferred until the end of the current opcode execution */
   private final List<PostExecDefer> postExecDefers = new ArrayList<>();
   /** A list of actions deferred until the end of the current opcode execution */
-  private final List<NextContextDefer> nextContextDefers = new ArrayList<>();
+  private final List<Pair<Integer, NextContextDefer>> contextReentry = new ArrayList<>();
 
   /** Schedule an action to be executed after the completion of the current opcode. */
-  public void nextContext(NextContextDefer latch) {
-    this.nextContextDefers.add(latch);
+  public void nextContext(NextContextDefer latch, int frameId) {
+    this.contextReentry.add(Pair.of(frameId, latch));
   }
 
   /** Schedule an action to be executed after the completion of the current opcode. */
@@ -47,7 +48,7 @@ public class DeferRegistry {
   }
 
   /** Schedule an action to be executed at the end of the current transaction. */
-  public void postTx(TransactionDefer defer) {
+  public void postTx(PostTransactionDefer defer) {
     this.txDefers.add(defer);
   }
 
@@ -58,10 +59,12 @@ public class DeferRegistry {
    * @param frame the new context {@link MessageFrame}
    */
   public void runNextContext(Hub hub, MessageFrame frame) {
-    for (NextContextDefer defer : this.nextContextDefers) {
-      defer.run(hub, frame);
+    for (Pair<Integer, NextContextDefer> defer : this.contextReentry) {
+      if (hub.currentFrame().parentFrame() == defer.getLeft()) {
+        defer.getRight().runNextContext(hub, frame);
+      }
     }
-    this.nextContextDefers.clear();
+    this.contextReentry.clear();
   }
 
   /**
@@ -72,8 +75,8 @@ public class DeferRegistry {
    * @param tx the current {@link Transaction}
    */
   public void runPostTx(Hub hub, WorldView world, Transaction tx) {
-    for (TransactionDefer defer : this.txDefers) {
-      defer.run(hub, world, tx);
+    for (PostTransactionDefer defer : this.txDefers) {
+      defer.runPostTx(hub, world, tx);
     }
     this.txDefers.clear();
   }
@@ -87,7 +90,7 @@ public class DeferRegistry {
    */
   public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult result) {
     for (PostExecDefer defer : this.postExecDefers) {
-      defer.run(hub, frame, result);
+      defer.runPostExec(hub, frame, result);
     }
     this.postExecDefers.clear();
   }

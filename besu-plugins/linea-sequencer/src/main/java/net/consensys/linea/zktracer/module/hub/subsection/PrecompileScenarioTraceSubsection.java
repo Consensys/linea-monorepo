@@ -13,17 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.subsection;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
+import java.util.List;
+
+import net.consensys.linea.zktracer.module.hub.fragment.SubSection;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
-import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 
-public class CallSection extends TraceSection {
-  public CallSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, callFrame, chunks);
-  }
-
+public class PrecompileScenarioTraceSubsection implements SubSection {
   @Override
-  public void seal(Hub hub) {}
+  public List<TraceFragment> generate() {
+    return null;
+  }
 }

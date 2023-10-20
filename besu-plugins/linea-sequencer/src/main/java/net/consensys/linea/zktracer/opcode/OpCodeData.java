@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.opcode;
 
 import net.consensys.linea.zktracer.opcode.gas.Billing;
+import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.stack.StackSettings;
 
 /**
@@ -71,5 +72,9 @@ public record OpCodeData(
    */
   public boolean isInvalid() {
     return this.instructionFamily == InstructionFamily.INVALID;
+  }
+
+  public boolean isMxp() {
+    return this.billing.type() != MxpType.NONE;
   }
 }

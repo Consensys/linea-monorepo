@@ -36,7 +36,7 @@ import org.hyperledger.besu.evm.Code;
  */
 public final class CallStack {
   /** the maximal depth of the call stack (as defined by Ethereum) */
-  static final int CALLSTACK_SIZE = 1024;
+  static final int MAX_CALLSTACK_SIZE = 1024;
   /** a never-pruned-tree of the {@link CallFrame} executed by the {@link Hub} */
   private final List<CallFrame> frames = new ArrayList<>();
   /** the current depth of the call stack. */
@@ -45,6 +45,7 @@ public final class CallStack {
   private int current;
 
   public void newBedrock(
+      int hubStamp,
       Address to,
       CallFrameType type,
       Bytecode toCode,
@@ -57,6 +58,7 @@ public final class CallStack {
     this.depth = 0;
     this.frames.add(new CallFrame());
     this.enter(
+        hubStamp,
         to,
         toCode == null ? Bytecode.EMPTY : toCode,
         type,
@@ -72,17 +74,29 @@ public final class CallStack {
   /**
    * @return the currently executing {@link CallFrame}
    */
-  public CallFrame top() {
+  public CallFrame current() {
     return this.frames.get(this.current);
   }
 
-  public Optional<CallFrame> maybeTop() {
-    return this.frames.isEmpty() ? Optional.empty() : Optional.of(this.top());
+  public int futureId() {
+    return this.frames.size();
+  }
+
+  /**
+   * @return the parent {@link CallFrame} of the current frame
+   */
+  public CallFrame parent() {
+    return this.frames.get(this.current().parentFrame());
+  }
+
+  public Optional<CallFrame> maybeCurrent() {
+    return this.frames.isEmpty() ? Optional.empty() : Optional.of(this.current());
   }
 
   /**
    * Creates a new call frame.
    *
+   * @param hubStamp the hub stamp at the time of entry in the new frame
    * @param address the {@link Address} of the bytecode being executed
    * @param code the {@link Code} being executed
    * @param type the execution type of call frame
@@ -94,6 +108,7 @@ public final class CallStack {
    * @param isDeployment
    */
   public void enter(
+      int hubStamp,
       Address address,
       Bytecode code,
       CallFrameType type,
@@ -119,6 +134,7 @@ public final class CallStack {
             codeDeploymentNumber,
             isDeployment,
             newTop,
+            hubStamp,
             address,
             code,
             type,
@@ -144,7 +160,7 @@ public final class CallStack {
     this.depth -= 1;
     Preconditions.checkState(this.depth >= 0);
 
-    final int parent = this.top().parentFrame();
+    final int parent = this.current().parentFrame();
     this.frames.get(parent).childFrames().add(this.current);
     this.frames.get(parent).returnData(returnData);
     this.current = parent;
@@ -154,14 +170,21 @@ public final class CallStack {
    * @return whether the call stack is in an overflow state
    */
   public boolean isOverflow() {
-    return this.depth > CALLSTACK_SIZE;
+    return this.depth > MAX_CALLSTACK_SIZE;
+  }
+
+  /**
+   * @return whether the call stack is at its maximum capacity and a new frame would overflow it
+   */
+  public boolean wouldOverflow() {
+    return this.depth >= MAX_CALLSTACK_SIZE;
   }
 
   /**
    * @return whether the current frame is a static context
    */
   public boolean isStatic() {
-    return this.top().type() == CallFrameType.STATIC;
+    return this.current().type() == CallFrameType.STATIC;
   }
 
   /**
@@ -170,7 +193,7 @@ public final class CallStack {
    * @return the caller of the current frame
    */
   public CallFrame caller() {
-    return this.frames.get(this.top().parentFrame());
+    return this.frames.get(this.current().parentFrame());
   }
 
   /**
@@ -196,6 +219,6 @@ public final class CallStack {
   }
 
   public void revert(int stamp) {
-    this.top().revert(this, stamp);
+    this.current().revert(this, stamp);
   }
 }
