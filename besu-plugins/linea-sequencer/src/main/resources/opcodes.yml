@@ -389,7 +389,7 @@ opcodes:
       nbAdded: 0
       nbRemoved: 3
       staticGas: S_MXP
-      flag1: true
+      flag3: true
     billing:
       byWord:
         type: TYPE_4
@@ -429,8 +429,7 @@ opcodes:
       nbRemoved: 4
       staticGas: S_MXP
       addressTrimmingInstruction: true
-      flag1: true
-      flag2: true
+      flag4: true
     billing:
       byWord:
         type: TYPE_4
@@ -459,7 +458,6 @@ opcodes:
       oobFlag: true
       staticGas: S_MXP
       flag2: true
-      flag3: true
     billing:
       byWord:
         type: TYPE_4
