@@ -27,7 +27,7 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record Trace(
+public record Trace(
     @JsonProperty("ACC_1") List<BigInteger> acc1,
     @JsonProperty("ACC_2") List<BigInteger> acc2,
     @JsonProperty("ACC_3") List<BigInteger> acc3,
@@ -83,68 +83,181 @@ record Trace(
     return new TraceBuilder();
   }
 
+  public int size() {
+    return this.acc1.size();
+  }
+
   static class TraceBuilder {
     private final BitSet filled = new BitSet();
 
+    @JsonProperty("ACC_1")
     private final List<BigInteger> acc1 = new ArrayList<>();
+
+    @JsonProperty("ACC_2")
     private final List<BigInteger> acc2 = new ArrayList<>();
+
+    @JsonProperty("ACC_3")
     private final List<BigInteger> acc3 = new ArrayList<>();
+
+    @JsonProperty("ACC_4")
     private final List<BigInteger> acc4 = new ArrayList<>();
+
+    @JsonProperty("ACC_5")
     private final List<BigInteger> acc5 = new ArrayList<>();
+
+    @JsonProperty("ARG_1_HI")
     private final List<BigInteger> arg1Hi = new ArrayList<>();
+
+    @JsonProperty("ARG_1_LO")
     private final List<BigInteger> arg1Lo = new ArrayList<>();
+
+    @JsonProperty("ARG_2_HI")
     private final List<BigInteger> arg2Hi = new ArrayList<>();
+
+    @JsonProperty("ARG_2_LO")
     private final List<BigInteger> arg2Lo = new ArrayList<>();
+
+    @JsonProperty("BIT_1")
     private final List<Boolean> bit1 = new ArrayList<>();
+
+    @JsonProperty("BIT_2")
     private final List<Boolean> bit2 = new ArrayList<>();
+
+    @JsonProperty("BIT_3")
     private final List<Boolean> bit3 = new ArrayList<>();
+
+    @JsonProperty("BIT_4")
     private final List<Boolean> bit4 = new ArrayList<>();
+
+    @JsonProperty("BIT_B_3")
     private final List<Boolean> bitB3 = new ArrayList<>();
+
+    @JsonProperty("BIT_B_4")
     private final List<Boolean> bitB4 = new ArrayList<>();
+
+    @JsonProperty("BIT_B_5")
     private final List<Boolean> bitB5 = new ArrayList<>();
+
+    @JsonProperty("BIT_B_6")
     private final List<Boolean> bitB6 = new ArrayList<>();
+
+    @JsonProperty("BIT_B_7")
     private final List<Boolean> bitB7 = new ArrayList<>();
+
+    @JsonProperty("BITS")
     private final List<Boolean> bits = new ArrayList<>();
+
+    @JsonProperty("BYTE_1")
     private final List<UnsignedByte> byte1 = new ArrayList<>();
+
+    @JsonProperty("BYTE_2")
     private final List<UnsignedByte> byte2 = new ArrayList<>();
+
+    @JsonProperty("BYTE_3")
     private final List<UnsignedByte> byte3 = new ArrayList<>();
+
+    @JsonProperty("BYTE_4")
     private final List<UnsignedByte> byte4 = new ArrayList<>();
+
+    @JsonProperty("BYTE_5")
     private final List<UnsignedByte> byte5 = new ArrayList<>();
+
+    @JsonProperty("COUNTER")
     private final List<BigInteger> counter = new ArrayList<>();
+
+    @JsonProperty("INST")
     private final List<BigInteger> inst = new ArrayList<>();
+
+    @JsonProperty("IS_DATA")
     private final List<Boolean> isData = new ArrayList<>();
+
+    @JsonProperty("KNOWN")
     private final List<Boolean> known = new ArrayList<>();
+
+    @JsonProperty("LEFT_ALIGNED_SUFFIX_HIGH")
     private final List<BigInteger> leftAlignedSuffixHigh = new ArrayList<>();
+
+    @JsonProperty("LEFT_ALIGNED_SUFFIX_LOW")
     private final List<BigInteger> leftAlignedSuffixLow = new ArrayList<>();
+
+    @JsonProperty("LOW_3")
     private final List<BigInteger> low3 = new ArrayList<>();
+
+    @JsonProperty("MICRO_SHIFT_PARAMETER")
     private final List<BigInteger> microShiftParameter = new ArrayList<>();
+
+    @JsonProperty("NEG")
     private final List<Boolean> neg = new ArrayList<>();
+
+    @JsonProperty("ONE_LINE_INSTRUCTION")
     private final List<Boolean> oneLineInstruction = new ArrayList<>();
+
+    @JsonProperty("ONES")
     private final List<BigInteger> ones = new ArrayList<>();
+
+    @JsonProperty("RES_HI")
     private final List<BigInteger> resHi = new ArrayList<>();
+
+    @JsonProperty("RES_LO")
     private final List<BigInteger> resLo = new ArrayList<>();
+
+    @JsonProperty("RIGHT_ALIGNED_PREFIX_HIGH")
     private final List<BigInteger> rightAlignedPrefixHigh = new ArrayList<>();
+
+    @JsonProperty("RIGHT_ALIGNED_PREFIX_LOW")
     private final List<BigInteger> rightAlignedPrefixLow = new ArrayList<>();
+
+    @JsonProperty("SHB_3_HI")
     private final List<BigInteger> shb3Hi = new ArrayList<>();
+
+    @JsonProperty("SHB_3_LO")
     private final List<BigInteger> shb3Lo = new ArrayList<>();
+
+    @JsonProperty("SHB_4_HI")
     private final List<BigInteger> shb4Hi = new ArrayList<>();
+
+    @JsonProperty("SHB_4_LO")
     private final List<BigInteger> shb4Lo = new ArrayList<>();
+
+    @JsonProperty("SHB_5_HI")
     private final List<BigInteger> shb5Hi = new ArrayList<>();
+
+    @JsonProperty("SHB_5_LO")
     private final List<BigInteger> shb5Lo = new ArrayList<>();
+
+    @JsonProperty("SHB_6_HI")
     private final List<BigInteger> shb6Hi = new ArrayList<>();
+
+    @JsonProperty("SHB_6_LO")
     private final List<BigInteger> shb6Lo = new ArrayList<>();
+
+    @JsonProperty("SHB_7_HI")
     private final List<BigInteger> shb7Hi = new ArrayList<>();
+
+    @JsonProperty("SHB_7_LO")
     private final List<BigInteger> shb7Lo = new ArrayList<>();
+
+    @JsonProperty("SHIFT_DIRECTION")
     private final List<Boolean> shiftDirection = new ArrayList<>();
+
+    @JsonProperty("SHIFT_STAMP")
     private final List<BigInteger> shiftStamp = new ArrayList<>();
 
     private TraceBuilder() {}
 
-    TraceBuilder acc1(final BigInteger b) {
-      if (filled.get(47)) {
+    public int size() {
+      if (!filled.isEmpty()) {
+        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+      }
+
+      return this.acc1.size();
+    }
+
+    public TraceBuilder acc1(final BigInteger b) {
+      if (filled.get(0)) {
         throw new IllegalStateException("ACC_1 already set");
       } else {
-        filled.set(47);
+        filled.set(0);
       }
 
       acc1.add(b);
@@ -152,11 +265,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc2(final BigInteger b) {
-      if (filled.get(19)) {
+    public TraceBuilder acc2(final BigInteger b) {
+      if (filled.get(1)) {
         throw new IllegalStateException("ACC_2 already set");
       } else {
-        filled.set(19);
+        filled.set(1);
       }
 
       acc2.add(b);
@@ -164,11 +277,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc3(final BigInteger b) {
-      if (filled.get(32)) {
+    public TraceBuilder acc3(final BigInteger b) {
+      if (filled.get(2)) {
         throw new IllegalStateException("ACC_3 already set");
       } else {
-        filled.set(32);
+        filled.set(2);
       }
 
       acc3.add(b);
@@ -176,11 +289,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc4(final BigInteger b) {
-      if (filled.get(26)) {
+    public TraceBuilder acc4(final BigInteger b) {
+      if (filled.get(3)) {
         throw new IllegalStateException("ACC_4 already set");
       } else {
-        filled.set(26);
+        filled.set(3);
       }
 
       acc4.add(b);
@@ -188,11 +301,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder acc5(final BigInteger b) {
-      if (filled.get(41)) {
+    public TraceBuilder acc5(final BigInteger b) {
+      if (filled.get(4)) {
         throw new IllegalStateException("ACC_5 already set");
       } else {
-        filled.set(41);
+        filled.set(4);
       }
 
       acc5.add(b);
@@ -200,11 +313,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder arg1Hi(final BigInteger b) {
-      if (filled.get(11)) {
+    public TraceBuilder arg1Hi(final BigInteger b) {
+      if (filled.get(5)) {
         throw new IllegalStateException("ARG_1_HI already set");
       } else {
-        filled.set(11);
+        filled.set(5);
       }
 
       arg1Hi.add(b);
@@ -212,11 +325,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder arg1Lo(final BigInteger b) {
-      if (filled.get(45)) {
+    public TraceBuilder arg1Lo(final BigInteger b) {
+      if (filled.get(6)) {
         throw new IllegalStateException("ARG_1_LO already set");
       } else {
-        filled.set(45);
+        filled.set(6);
       }
 
       arg1Lo.add(b);
@@ -224,11 +337,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder arg2Hi(final BigInteger b) {
-      if (filled.get(25)) {
+    public TraceBuilder arg2Hi(final BigInteger b) {
+      if (filled.get(7)) {
         throw new IllegalStateException("ARG_2_HI already set");
       } else {
-        filled.set(25);
+        filled.set(7);
       }
 
       arg2Hi.add(b);
@@ -236,11 +349,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder arg2Lo(final BigInteger b) {
-      if (filled.get(15)) {
+    public TraceBuilder arg2Lo(final BigInteger b) {
+      if (filled.get(8)) {
         throw new IllegalStateException("ARG_2_LO already set");
       } else {
-        filled.set(15);
+        filled.set(8);
       }
 
       arg2Lo.add(b);
@@ -248,23 +361,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bits(final Boolean b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("BITS already set");
-      } else {
-        filled.set(8);
-      }
-
-      bits.add(b);
-
-      return this;
-    }
-
-    TraceBuilder bit1(final Boolean b) {
-      if (filled.get(16)) {
+    public TraceBuilder bit1(final Boolean b) {
+      if (filled.get(10)) {
         throw new IllegalStateException("BIT_1 already set");
       } else {
-        filled.set(16);
+        filled.set(10);
       }
 
       bit1.add(b);
@@ -272,11 +373,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bit2(final Boolean b) {
-      if (filled.get(7)) {
+    public TraceBuilder bit2(final Boolean b) {
+      if (filled.get(11)) {
         throw new IllegalStateException("BIT_2 already set");
       } else {
-        filled.set(7);
+        filled.set(11);
       }
 
       bit2.add(b);
@@ -284,11 +385,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bit3(final Boolean b) {
-      if (filled.get(28)) {
+    public TraceBuilder bit3(final Boolean b) {
+      if (filled.get(12)) {
         throw new IllegalStateException("BIT_3 already set");
       } else {
-        filled.set(28);
+        filled.set(12);
       }
 
       bit3.add(b);
@@ -296,11 +397,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bit4(final Boolean b) {
-      if (filled.get(37)) {
+    public TraceBuilder bit4(final Boolean b) {
+      if (filled.get(13)) {
         throw new IllegalStateException("BIT_4 already set");
       } else {
-        filled.set(37);
+        filled.set(13);
       }
 
       bit4.add(b);
@@ -308,11 +409,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitB3(final Boolean b) {
-      if (filled.get(33)) {
+    public TraceBuilder bitB3(final Boolean b) {
+      if (filled.get(14)) {
         throw new IllegalStateException("BIT_B_3 already set");
       } else {
-        filled.set(33);
+        filled.set(14);
       }
 
       bitB3.add(b);
@@ -320,11 +421,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitB4(final Boolean b) {
-      if (filled.get(4)) {
+    public TraceBuilder bitB4(final Boolean b) {
+      if (filled.get(15)) {
         throw new IllegalStateException("BIT_B_4 already set");
       } else {
-        filled.set(4);
+        filled.set(15);
       }
 
       bitB4.add(b);
@@ -332,11 +433,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitB5(final Boolean b) {
-      if (filled.get(27)) {
+    public TraceBuilder bitB5(final Boolean b) {
+      if (filled.get(16)) {
         throw new IllegalStateException("BIT_B_5 already set");
       } else {
-        filled.set(27);
+        filled.set(16);
       }
 
       bitB5.add(b);
@@ -344,11 +445,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitB6(final Boolean b) {
-      if (filled.get(46)) {
+    public TraceBuilder bitB6(final Boolean b) {
+      if (filled.get(17)) {
         throw new IllegalStateException("BIT_B_6 already set");
       } else {
-        filled.set(46);
+        filled.set(17);
       }
 
       bitB6.add(b);
@@ -356,7 +457,7 @@ record Trace(
       return this;
     }
 
-    TraceBuilder bitB7(final Boolean b) {
+    public TraceBuilder bitB7(final Boolean b) {
       if (filled.get(18)) {
         throw new IllegalStateException("BIT_B_7 already set");
       } else {
@@ -368,11 +469,23 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(12)) {
+    public TraceBuilder bits(final Boolean b) {
+      if (filled.get(9)) {
+        throw new IllegalStateException("BITS already set");
+      } else {
+        filled.set(9);
+      }
+
+      bits.add(b);
+
+      return this;
+    }
+
+    public TraceBuilder byte1(final UnsignedByte b) {
+      if (filled.get(19)) {
         throw new IllegalStateException("BYTE_1 already set");
       } else {
-        filled.set(12);
+        filled.set(19);
       }
 
       byte1.add(b);
@@ -380,11 +493,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte2(final UnsignedByte b) {
-      if (filled.get(49)) {
+    public TraceBuilder byte2(final UnsignedByte b) {
+      if (filled.get(20)) {
         throw new IllegalStateException("BYTE_2 already set");
       } else {
-        filled.set(49);
+        filled.set(20);
       }
 
       byte2.add(b);
@@ -392,11 +505,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte3(final UnsignedByte b) {
-      if (filled.get(48)) {
+    public TraceBuilder byte3(final UnsignedByte b) {
+      if (filled.get(21)) {
         throw new IllegalStateException("BYTE_3 already set");
       } else {
-        filled.set(48);
+        filled.set(21);
       }
 
       byte3.add(b);
@@ -404,11 +517,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte4(final UnsignedByte b) {
-      if (filled.get(35)) {
+    public TraceBuilder byte4(final UnsignedByte b) {
+      if (filled.get(22)) {
         throw new IllegalStateException("BYTE_4 already set");
       } else {
-        filled.set(35);
+        filled.set(22);
       }
 
       byte4.add(b);
@@ -416,11 +529,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder byte5(final UnsignedByte b) {
-      if (filled.get(5)) {
+    public TraceBuilder byte5(final UnsignedByte b) {
+      if (filled.get(23)) {
         throw new IllegalStateException("BYTE_5 already set");
       } else {
-        filled.set(5);
+        filled.set(23);
       }
 
       byte5.add(b);
@@ -428,11 +541,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder counter(final BigInteger b) {
-      if (filled.get(44)) {
+    public TraceBuilder counter(final BigInteger b) {
+      if (filled.get(24)) {
         throw new IllegalStateException("COUNTER already set");
       } else {
-        filled.set(44);
+        filled.set(24);
       }
 
       counter.add(b);
@@ -440,11 +553,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder inst(final BigInteger b) {
-      if (filled.get(6)) {
+    public TraceBuilder inst(final BigInteger b) {
+      if (filled.get(25)) {
         throw new IllegalStateException("INST already set");
       } else {
-        filled.set(6);
+        filled.set(25);
       }
 
       inst.add(b);
@@ -452,11 +565,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder isData(final Boolean b) {
-      if (filled.get(38)) {
+    public TraceBuilder isData(final Boolean b) {
+      if (filled.get(26)) {
         throw new IllegalStateException("IS_DATA already set");
       } else {
-        filled.set(38);
+        filled.set(26);
       }
 
       isData.add(b);
@@ -464,11 +577,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder known(final Boolean b) {
-      if (filled.get(2)) {
+    public TraceBuilder known(final Boolean b) {
+      if (filled.get(27)) {
         throw new IllegalStateException("KNOWN already set");
       } else {
-        filled.set(2);
+        filled.set(27);
       }
 
       known.add(b);
@@ -476,11 +589,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder leftAlignedSuffixHigh(final BigInteger b) {
-      if (filled.get(14)) {
+    public TraceBuilder leftAlignedSuffixHigh(final BigInteger b) {
+      if (filled.get(28)) {
         throw new IllegalStateException("LEFT_ALIGNED_SUFFIX_HIGH already set");
       } else {
-        filled.set(14);
+        filled.set(28);
       }
 
       leftAlignedSuffixHigh.add(b);
@@ -488,7 +601,7 @@ record Trace(
       return this;
     }
 
-    TraceBuilder leftAlignedSuffixLow(final BigInteger b) {
+    public TraceBuilder leftAlignedSuffixLow(final BigInteger b) {
       if (filled.get(29)) {
         throw new IllegalStateException("LEFT_ALIGNED_SUFFIX_LOW already set");
       } else {
@@ -500,11 +613,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder low3(final BigInteger b) {
-      if (filled.get(21)) {
+    public TraceBuilder low3(final BigInteger b) {
+      if (filled.get(30)) {
         throw new IllegalStateException("LOW_3 already set");
       } else {
-        filled.set(21);
+        filled.set(30);
       }
 
       low3.add(b);
@@ -512,11 +625,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder microShiftParameter(final BigInteger b) {
-      if (filled.get(23)) {
+    public TraceBuilder microShiftParameter(final BigInteger b) {
+      if (filled.get(31)) {
         throw new IllegalStateException("MICRO_SHIFT_PARAMETER already set");
       } else {
-        filled.set(23);
+        filled.set(31);
       }
 
       microShiftParameter.add(b);
@@ -524,11 +637,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder neg(final Boolean b) {
-      if (filled.get(50)) {
+    public TraceBuilder neg(final Boolean b) {
+      if (filled.get(32)) {
         throw new IllegalStateException("NEG already set");
       } else {
-        filled.set(50);
+        filled.set(32);
       }
 
       neg.add(b);
@@ -536,23 +649,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder ones(final BigInteger b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("ONES already set");
-      } else {
-        filled.set(20);
-      }
-
-      ones.add(b);
-
-      return this;
-    }
-
-    TraceBuilder oneLineInstruction(final Boolean b) {
-      if (filled.get(36)) {
+    public TraceBuilder oneLineInstruction(final Boolean b) {
+      if (filled.get(34)) {
         throw new IllegalStateException("ONE_LINE_INSTRUCTION already set");
       } else {
-        filled.set(36);
+        filled.set(34);
       }
 
       oneLineInstruction.add(b);
@@ -560,11 +661,23 @@ record Trace(
       return this;
     }
 
-    TraceBuilder resHi(final BigInteger b) {
-      if (filled.get(42)) {
+    public TraceBuilder ones(final BigInteger b) {
+      if (filled.get(33)) {
+        throw new IllegalStateException("ONES already set");
+      } else {
+        filled.set(33);
+      }
+
+      ones.add(b);
+
+      return this;
+    }
+
+    public TraceBuilder resHi(final BigInteger b) {
+      if (filled.get(35)) {
         throw new IllegalStateException("RES_HI already set");
       } else {
-        filled.set(42);
+        filled.set(35);
       }
 
       resHi.add(b);
@@ -572,11 +685,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder resLo(final BigInteger b) {
-      if (filled.get(1)) {
+    public TraceBuilder resLo(final BigInteger b) {
+      if (filled.get(36)) {
         throw new IllegalStateException("RES_LO already set");
       } else {
-        filled.set(1);
+        filled.set(36);
       }
 
       resLo.add(b);
@@ -584,11 +697,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder rightAlignedPrefixHigh(final BigInteger b) {
-      if (filled.get(40)) {
+    public TraceBuilder rightAlignedPrefixHigh(final BigInteger b) {
+      if (filled.get(37)) {
         throw new IllegalStateException("RIGHT_ALIGNED_PREFIX_HIGH already set");
       } else {
-        filled.set(40);
+        filled.set(37);
       }
 
       rightAlignedPrefixHigh.add(b);
@@ -596,11 +709,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder rightAlignedPrefixLow(final BigInteger b) {
-      if (filled.get(22)) {
+    public TraceBuilder rightAlignedPrefixLow(final BigInteger b) {
+      if (filled.get(38)) {
         throw new IllegalStateException("RIGHT_ALIGNED_PREFIX_LOW already set");
       } else {
-        filled.set(22);
+        filled.set(38);
       }
 
       rightAlignedPrefixLow.add(b);
@@ -608,11 +721,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb3Hi(final BigInteger b) {
-      if (filled.get(17)) {
+    public TraceBuilder shb3Hi(final BigInteger b) {
+      if (filled.get(39)) {
         throw new IllegalStateException("SHB_3_HI already set");
       } else {
-        filled.set(17);
+        filled.set(39);
       }
 
       shb3Hi.add(b);
@@ -620,11 +733,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb3Lo(final BigInteger b) {
-      if (filled.get(24)) {
+    public TraceBuilder shb3Lo(final BigInteger b) {
+      if (filled.get(40)) {
         throw new IllegalStateException("SHB_3_LO already set");
       } else {
-        filled.set(24);
+        filled.set(40);
       }
 
       shb3Lo.add(b);
@@ -632,11 +745,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb4Hi(final BigInteger b) {
-      if (filled.get(10)) {
+    public TraceBuilder shb4Hi(final BigInteger b) {
+      if (filled.get(41)) {
         throw new IllegalStateException("SHB_4_HI already set");
       } else {
-        filled.set(10);
+        filled.set(41);
       }
 
       shb4Hi.add(b);
@@ -644,11 +757,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb4Lo(final BigInteger b) {
-      if (filled.get(13)) {
+    public TraceBuilder shb4Lo(final BigInteger b) {
+      if (filled.get(42)) {
         throw new IllegalStateException("SHB_4_LO already set");
       } else {
-        filled.set(13);
+        filled.set(42);
       }
 
       shb4Lo.add(b);
@@ -656,11 +769,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb5Hi(final BigInteger b) {
-      if (filled.get(31)) {
+    public TraceBuilder shb5Hi(final BigInteger b) {
+      if (filled.get(43)) {
         throw new IllegalStateException("SHB_5_HI already set");
       } else {
-        filled.set(31);
+        filled.set(43);
       }
 
       shb5Hi.add(b);
@@ -668,11 +781,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb5Lo(final BigInteger b) {
-      if (filled.get(30)) {
+    public TraceBuilder shb5Lo(final BigInteger b) {
+      if (filled.get(44)) {
         throw new IllegalStateException("SHB_5_LO already set");
       } else {
-        filled.set(30);
+        filled.set(44);
       }
 
       shb5Lo.add(b);
@@ -680,11 +793,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb6Hi(final BigInteger b) {
-      if (filled.get(39)) {
+    public TraceBuilder shb6Hi(final BigInteger b) {
+      if (filled.get(45)) {
         throw new IllegalStateException("SHB_6_HI already set");
       } else {
-        filled.set(39);
+        filled.set(45);
       }
 
       shb6Hi.add(b);
@@ -692,11 +805,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb6Lo(final BigInteger b) {
-      if (filled.get(43)) {
+    public TraceBuilder shb6Lo(final BigInteger b) {
+      if (filled.get(46)) {
         throw new IllegalStateException("SHB_6_LO already set");
       } else {
-        filled.set(43);
+        filled.set(46);
       }
 
       shb6Lo.add(b);
@@ -704,11 +817,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb7Hi(final BigInteger b) {
-      if (filled.get(0)) {
+    public TraceBuilder shb7Hi(final BigInteger b) {
+      if (filled.get(47)) {
         throw new IllegalStateException("SHB_7_HI already set");
       } else {
-        filled.set(0);
+        filled.set(47);
       }
 
       shb7Hi.add(b);
@@ -716,11 +829,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shb7Lo(final BigInteger b) {
-      if (filled.get(34)) {
+    public TraceBuilder shb7Lo(final BigInteger b) {
+      if (filled.get(48)) {
         throw new IllegalStateException("SHB_7_LO already set");
       } else {
-        filled.set(34);
+        filled.set(48);
       }
 
       shb7Lo.add(b);
@@ -728,11 +841,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shiftDirection(final Boolean b) {
-      if (filled.get(9)) {
+    public TraceBuilder shiftDirection(final Boolean b) {
+      if (filled.get(49)) {
         throw new IllegalStateException("SHIFT_DIRECTION already set");
       } else {
-        filled.set(9);
+        filled.set(49);
       }
 
       shiftDirection.add(b);
@@ -740,11 +853,11 @@ record Trace(
       return this;
     }
 
-    TraceBuilder shiftStamp(final BigInteger b) {
-      if (filled.get(3)) {
+    public TraceBuilder shiftStamp(final BigInteger b) {
+      if (filled.get(50)) {
         throw new IllegalStateException("SHIFT_STAMP already set");
       } else {
-        filled.set(3);
+        filled.set(50);
       }
 
       shiftStamp.add(b);
@@ -752,684 +865,72 @@ record Trace(
       return this;
     }
 
-    TraceBuilder setAcc1At(final BigInteger b, int i) {
-      acc1.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc2At(final BigInteger b, int i) {
-      acc2.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc3At(final BigInteger b, int i) {
-      acc3.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc4At(final BigInteger b, int i) {
-      acc4.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc5At(final BigInteger b, int i) {
-      acc5.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg1HiAt(final BigInteger b, int i) {
-      arg1Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg1LoAt(final BigInteger b, int i) {
-      arg1Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg2HiAt(final BigInteger b, int i) {
-      arg2Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg2LoAt(final BigInteger b, int i) {
-      arg2Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitsAt(final Boolean b, int i) {
-      bits.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit1At(final Boolean b, int i) {
-      bit1.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit2At(final Boolean b, int i) {
-      bit2.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit3At(final Boolean b, int i) {
-      bit3.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit4At(final Boolean b, int i) {
-      bit4.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB3At(final Boolean b, int i) {
-      bitB3.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB4At(final Boolean b, int i) {
-      bitB4.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB5At(final Boolean b, int i) {
-      bitB5.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB6At(final Boolean b, int i) {
-      bitB6.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB7At(final Boolean b, int i) {
-      bitB7.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte1At(final UnsignedByte b, int i) {
-      byte1.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte2At(final UnsignedByte b, int i) {
-      byte2.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte3At(final UnsignedByte b, int i) {
-      byte3.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte4At(final UnsignedByte b, int i) {
-      byte4.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte5At(final UnsignedByte b, int i) {
-      byte5.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setCounterAt(final BigInteger b, int i) {
-      counter.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setInstAt(final BigInteger b, int i) {
-      inst.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setIsDataAt(final Boolean b, int i) {
-      isData.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setKnownAt(final Boolean b, int i) {
-      known.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLeftAlignedSuffixHighAt(final BigInteger b, int i) {
-      leftAlignedSuffixHigh.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLeftAlignedSuffixLowAt(final BigInteger b, int i) {
-      leftAlignedSuffixLow.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLow3At(final BigInteger b, int i) {
-      low3.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setMicroShiftParameterAt(final BigInteger b, int i) {
-      microShiftParameter.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setNegAt(final Boolean b, int i) {
-      neg.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setOnesAt(final BigInteger b, int i) {
-      ones.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setOneLineInstructionAt(final Boolean b, int i) {
-      oneLineInstruction.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setResHiAt(final BigInteger b, int i) {
-      resHi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setResLoAt(final BigInteger b, int i) {
-      resLo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setRightAlignedPrefixHighAt(final BigInteger b, int i) {
-      rightAlignedPrefixHigh.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setRightAlignedPrefixLowAt(final BigInteger b, int i) {
-      rightAlignedPrefixLow.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb3HiAt(final BigInteger b, int i) {
-      shb3Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb3LoAt(final BigInteger b, int i) {
-      shb3Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb4HiAt(final BigInteger b, int i) {
-      shb4Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb4LoAt(final BigInteger b, int i) {
-      shb4Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb5HiAt(final BigInteger b, int i) {
-      shb5Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb5LoAt(final BigInteger b, int i) {
-      shb5Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb6HiAt(final BigInteger b, int i) {
-      shb6Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb6LoAt(final BigInteger b, int i) {
-      shb6Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb7HiAt(final BigInteger b, int i) {
-      shb7Hi.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb7LoAt(final BigInteger b, int i) {
-      shb7Lo.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShiftDirectionAt(final Boolean b, int i) {
-      shiftDirection.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShiftStampAt(final BigInteger b, int i) {
-      shiftStamp.set(i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc1Relative(final BigInteger b, int i) {
-      acc1.set(acc1.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc2Relative(final BigInteger b, int i) {
-      acc2.set(acc2.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc3Relative(final BigInteger b, int i) {
-      acc3.set(acc3.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc4Relative(final BigInteger b, int i) {
-      acc4.set(acc4.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setAcc5Relative(final BigInteger b, int i) {
-      acc5.set(acc5.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg1HiRelative(final BigInteger b, int i) {
-      arg1Hi.set(arg1Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg1LoRelative(final BigInteger b, int i) {
-      arg1Lo.set(arg1Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg2HiRelative(final BigInteger b, int i) {
-      arg2Hi.set(arg2Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setArg2LoRelative(final BigInteger b, int i) {
-      arg2Lo.set(arg2Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitsRelative(final Boolean b, int i) {
-      bits.set(bits.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit1Relative(final Boolean b, int i) {
-      bit1.set(bit1.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit2Relative(final Boolean b, int i) {
-      bit2.set(bit2.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit3Relative(final Boolean b, int i) {
-      bit3.set(bit3.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBit4Relative(final Boolean b, int i) {
-      bit4.set(bit4.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB3Relative(final Boolean b, int i) {
-      bitB3.set(bitB3.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB4Relative(final Boolean b, int i) {
-      bitB4.set(bitB4.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB5Relative(final Boolean b, int i) {
-      bitB5.set(bitB5.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB6Relative(final Boolean b, int i) {
-      bitB6.set(bitB6.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setBitB7Relative(final Boolean b, int i) {
-      bitB7.set(bitB7.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte1Relative(final UnsignedByte b, int i) {
-      byte1.set(byte1.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte2Relative(final UnsignedByte b, int i) {
-      byte2.set(byte2.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte3Relative(final UnsignedByte b, int i) {
-      byte3.set(byte3.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte4Relative(final UnsignedByte b, int i) {
-      byte4.set(byte4.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setByte5Relative(final UnsignedByte b, int i) {
-      byte5.set(byte5.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setCounterRelative(final BigInteger b, int i) {
-      counter.set(counter.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setInstRelative(final BigInteger b, int i) {
-      inst.set(inst.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setIsDataRelative(final Boolean b, int i) {
-      isData.set(isData.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setKnownRelative(final Boolean b, int i) {
-      known.set(known.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLeftAlignedSuffixHighRelative(final BigInteger b, int i) {
-      leftAlignedSuffixHigh.set(leftAlignedSuffixHigh.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLeftAlignedSuffixLowRelative(final BigInteger b, int i) {
-      leftAlignedSuffixLow.set(leftAlignedSuffixLow.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setLow3Relative(final BigInteger b, int i) {
-      low3.set(low3.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setMicroShiftParameterRelative(final BigInteger b, int i) {
-      microShiftParameter.set(microShiftParameter.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setNegRelative(final Boolean b, int i) {
-      neg.set(neg.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setOnesRelative(final BigInteger b, int i) {
-      ones.set(ones.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setOneLineInstructionRelative(final Boolean b, int i) {
-      oneLineInstruction.set(oneLineInstruction.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setResHiRelative(final BigInteger b, int i) {
-      resHi.set(resHi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setResLoRelative(final BigInteger b, int i) {
-      resLo.set(resLo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setRightAlignedPrefixHighRelative(final BigInteger b, int i) {
-      rightAlignedPrefixHigh.set(rightAlignedPrefixHigh.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setRightAlignedPrefixLowRelative(final BigInteger b, int i) {
-      rightAlignedPrefixLow.set(rightAlignedPrefixLow.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb3HiRelative(final BigInteger b, int i) {
-      shb3Hi.set(shb3Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb3LoRelative(final BigInteger b, int i) {
-      shb3Lo.set(shb3Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb4HiRelative(final BigInteger b, int i) {
-      shb4Hi.set(shb4Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb4LoRelative(final BigInteger b, int i) {
-      shb4Lo.set(shb4Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb5HiRelative(final BigInteger b, int i) {
-      shb5Hi.set(shb5Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb5LoRelative(final BigInteger b, int i) {
-      shb5Lo.set(shb5Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb6HiRelative(final BigInteger b, int i) {
-      shb6Hi.set(shb6Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb6LoRelative(final BigInteger b, int i) {
-      shb6Lo.set(shb6Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb7HiRelative(final BigInteger b, int i) {
-      shb7Hi.set(shb7Hi.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShb7LoRelative(final BigInteger b, int i) {
-      shb7Lo.set(shb7Lo.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShiftDirectionRelative(final Boolean b, int i) {
-      shiftDirection.set(shiftDirection.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder setShiftStampRelative(final BigInteger b, int i) {
-      shiftStamp.set(shiftStamp.size() - 1 - i, b);
-
-      return this;
-    }
-
-    TraceBuilder validateRow() {
-      if (!filled.get(47)) {
+    public TraceBuilder validateRow() {
+      if (!filled.get(0)) {
         throw new IllegalStateException("ACC_1 has not been filled");
       }
 
-      if (!filled.get(19)) {
+      if (!filled.get(1)) {
         throw new IllegalStateException("ACC_2 has not been filled");
       }
 
-      if (!filled.get(32)) {
+      if (!filled.get(2)) {
         throw new IllegalStateException("ACC_3 has not been filled");
       }
 
-      if (!filled.get(26)) {
+      if (!filled.get(3)) {
         throw new IllegalStateException("ACC_4 has not been filled");
       }
 
-      if (!filled.get(41)) {
+      if (!filled.get(4)) {
         throw new IllegalStateException("ACC_5 has not been filled");
       }
 
-      if (!filled.get(11)) {
+      if (!filled.get(5)) {
         throw new IllegalStateException("ARG_1_HI has not been filled");
       }
 
-      if (!filled.get(45)) {
+      if (!filled.get(6)) {
         throw new IllegalStateException("ARG_1_LO has not been filled");
       }
 
-      if (!filled.get(25)) {
+      if (!filled.get(7)) {
         throw new IllegalStateException("ARG_2_HI has not been filled");
       }
 
-      if (!filled.get(15)) {
+      if (!filled.get(8)) {
         throw new IllegalStateException("ARG_2_LO has not been filled");
       }
 
-      if (!filled.get(16)) {
+      if (!filled.get(10)) {
         throw new IllegalStateException("BIT_1 has not been filled");
       }
 
-      if (!filled.get(7)) {
+      if (!filled.get(11)) {
         throw new IllegalStateException("BIT_2 has not been filled");
       }
 
-      if (!filled.get(28)) {
+      if (!filled.get(12)) {
         throw new IllegalStateException("BIT_3 has not been filled");
       }
 
-      if (!filled.get(37)) {
+      if (!filled.get(13)) {
         throw new IllegalStateException("BIT_4 has not been filled");
       }
 
-      if (!filled.get(33)) {
+      if (!filled.get(14)) {
         throw new IllegalStateException("BIT_B_3 has not been filled");
       }
 
-      if (!filled.get(4)) {
+      if (!filled.get(15)) {
         throw new IllegalStateException("BIT_B_4 has not been filled");
       }
 
-      if (!filled.get(27)) {
+      if (!filled.get(16)) {
         throw new IllegalStateException("BIT_B_5 has not been filled");
       }
 
-      if (!filled.get(46)) {
+      if (!filled.get(17)) {
         throw new IllegalStateException("BIT_B_6 has not been filled");
       }
 
@@ -1437,47 +938,47 @@ record Trace(
         throw new IllegalStateException("BIT_B_7 has not been filled");
       }
 
-      if (!filled.get(8)) {
+      if (!filled.get(9)) {
         throw new IllegalStateException("BITS has not been filled");
       }
 
-      if (!filled.get(12)) {
+      if (!filled.get(19)) {
         throw new IllegalStateException("BYTE_1 has not been filled");
       }
 
-      if (!filled.get(49)) {
+      if (!filled.get(20)) {
         throw new IllegalStateException("BYTE_2 has not been filled");
       }
 
-      if (!filled.get(48)) {
+      if (!filled.get(21)) {
         throw new IllegalStateException("BYTE_3 has not been filled");
       }
 
-      if (!filled.get(35)) {
+      if (!filled.get(22)) {
         throw new IllegalStateException("BYTE_4 has not been filled");
       }
 
-      if (!filled.get(5)) {
+      if (!filled.get(23)) {
         throw new IllegalStateException("BYTE_5 has not been filled");
       }
 
-      if (!filled.get(44)) {
+      if (!filled.get(24)) {
         throw new IllegalStateException("COUNTER has not been filled");
       }
 
-      if (!filled.get(6)) {
+      if (!filled.get(25)) {
         throw new IllegalStateException("INST has not been filled");
       }
 
-      if (!filled.get(38)) {
+      if (!filled.get(26)) {
         throw new IllegalStateException("IS_DATA has not been filled");
       }
 
-      if (!filled.get(2)) {
+      if (!filled.get(27)) {
         throw new IllegalStateException("KNOWN has not been filled");
       }
 
-      if (!filled.get(14)) {
+      if (!filled.get(28)) {
         throw new IllegalStateException("LEFT_ALIGNED_SUFFIX_HIGH has not been filled");
       }
 
@@ -1485,93 +986,302 @@ record Trace(
         throw new IllegalStateException("LEFT_ALIGNED_SUFFIX_LOW has not been filled");
       }
 
-      if (!filled.get(21)) {
+      if (!filled.get(30)) {
         throw new IllegalStateException("LOW_3 has not been filled");
       }
 
-      if (!filled.get(23)) {
+      if (!filled.get(31)) {
         throw new IllegalStateException("MICRO_SHIFT_PARAMETER has not been filled");
       }
 
-      if (!filled.get(50)) {
+      if (!filled.get(32)) {
         throw new IllegalStateException("NEG has not been filled");
       }
 
-      if (!filled.get(36)) {
+      if (!filled.get(34)) {
         throw new IllegalStateException("ONE_LINE_INSTRUCTION has not been filled");
       }
 
-      if (!filled.get(20)) {
+      if (!filled.get(33)) {
         throw new IllegalStateException("ONES has not been filled");
       }
 
-      if (!filled.get(42)) {
+      if (!filled.get(35)) {
         throw new IllegalStateException("RES_HI has not been filled");
       }
 
-      if (!filled.get(1)) {
+      if (!filled.get(36)) {
         throw new IllegalStateException("RES_LO has not been filled");
       }
 
-      if (!filled.get(40)) {
+      if (!filled.get(37)) {
         throw new IllegalStateException("RIGHT_ALIGNED_PREFIX_HIGH has not been filled");
       }
 
-      if (!filled.get(22)) {
+      if (!filled.get(38)) {
         throw new IllegalStateException("RIGHT_ALIGNED_PREFIX_LOW has not been filled");
       }
 
-      if (!filled.get(17)) {
+      if (!filled.get(39)) {
         throw new IllegalStateException("SHB_3_HI has not been filled");
       }
 
-      if (!filled.get(24)) {
+      if (!filled.get(40)) {
         throw new IllegalStateException("SHB_3_LO has not been filled");
       }
 
-      if (!filled.get(10)) {
+      if (!filled.get(41)) {
         throw new IllegalStateException("SHB_4_HI has not been filled");
       }
 
-      if (!filled.get(13)) {
+      if (!filled.get(42)) {
         throw new IllegalStateException("SHB_4_LO has not been filled");
       }
 
-      if (!filled.get(31)) {
+      if (!filled.get(43)) {
         throw new IllegalStateException("SHB_5_HI has not been filled");
       }
 
-      if (!filled.get(30)) {
+      if (!filled.get(44)) {
         throw new IllegalStateException("SHB_5_LO has not been filled");
       }
 
-      if (!filled.get(39)) {
+      if (!filled.get(45)) {
         throw new IllegalStateException("SHB_6_HI has not been filled");
       }
 
-      if (!filled.get(43)) {
+      if (!filled.get(46)) {
         throw new IllegalStateException("SHB_6_LO has not been filled");
       }
 
-      if (!filled.get(0)) {
+      if (!filled.get(47)) {
         throw new IllegalStateException("SHB_7_HI has not been filled");
       }
 
-      if (!filled.get(34)) {
+      if (!filled.get(48)) {
         throw new IllegalStateException("SHB_7_LO has not been filled");
       }
 
-      if (!filled.get(9)) {
+      if (!filled.get(49)) {
         throw new IllegalStateException("SHIFT_DIRECTION has not been filled");
       }
 
-      if (!filled.get(3)) {
+      if (!filled.get(50)) {
         throw new IllegalStateException("SHIFT_STAMP has not been filled");
       }
 
       filled.clear();
 
       return this;
+    }
+
+    public TraceBuilder fillAndValidateRow() {
+      if (!filled.get(0)) {
+        acc1.add(BigInteger.ZERO);
+        this.filled.set(0);
+      }
+      if (!filled.get(1)) {
+        acc2.add(BigInteger.ZERO);
+        this.filled.set(1);
+      }
+      if (!filled.get(2)) {
+        acc3.add(BigInteger.ZERO);
+        this.filled.set(2);
+      }
+      if (!filled.get(3)) {
+        acc4.add(BigInteger.ZERO);
+        this.filled.set(3);
+      }
+      if (!filled.get(4)) {
+        acc5.add(BigInteger.ZERO);
+        this.filled.set(4);
+      }
+      if (!filled.get(5)) {
+        arg1Hi.add(BigInteger.ZERO);
+        this.filled.set(5);
+      }
+      if (!filled.get(6)) {
+        arg1Lo.add(BigInteger.ZERO);
+        this.filled.set(6);
+      }
+      if (!filled.get(7)) {
+        arg2Hi.add(BigInteger.ZERO);
+        this.filled.set(7);
+      }
+      if (!filled.get(8)) {
+        arg2Lo.add(BigInteger.ZERO);
+        this.filled.set(8);
+      }
+      if (!filled.get(10)) {
+        bit1.add(false);
+        this.filled.set(10);
+      }
+      if (!filled.get(11)) {
+        bit2.add(false);
+        this.filled.set(11);
+      }
+      if (!filled.get(12)) {
+        bit3.add(false);
+        this.filled.set(12);
+      }
+      if (!filled.get(13)) {
+        bit4.add(false);
+        this.filled.set(13);
+      }
+      if (!filled.get(14)) {
+        bitB3.add(false);
+        this.filled.set(14);
+      }
+      if (!filled.get(15)) {
+        bitB4.add(false);
+        this.filled.set(15);
+      }
+      if (!filled.get(16)) {
+        bitB5.add(false);
+        this.filled.set(16);
+      }
+      if (!filled.get(17)) {
+        bitB6.add(false);
+        this.filled.set(17);
+      }
+      if (!filled.get(18)) {
+        bitB7.add(false);
+        this.filled.set(18);
+      }
+      if (!filled.get(9)) {
+        bits.add(false);
+        this.filled.set(9);
+      }
+      if (!filled.get(19)) {
+        byte1.add(UnsignedByte.of(0));
+        this.filled.set(19);
+      }
+      if (!filled.get(20)) {
+        byte2.add(UnsignedByte.of(0));
+        this.filled.set(20);
+      }
+      if (!filled.get(21)) {
+        byte3.add(UnsignedByte.of(0));
+        this.filled.set(21);
+      }
+      if (!filled.get(22)) {
+        byte4.add(UnsignedByte.of(0));
+        this.filled.set(22);
+      }
+      if (!filled.get(23)) {
+        byte5.add(UnsignedByte.of(0));
+        this.filled.set(23);
+      }
+      if (!filled.get(24)) {
+        counter.add(BigInteger.ZERO);
+        this.filled.set(24);
+      }
+      if (!filled.get(25)) {
+        inst.add(BigInteger.ZERO);
+        this.filled.set(25);
+      }
+      if (!filled.get(26)) {
+        isData.add(false);
+        this.filled.set(26);
+      }
+      if (!filled.get(27)) {
+        known.add(false);
+        this.filled.set(27);
+      }
+      if (!filled.get(28)) {
+        leftAlignedSuffixHigh.add(BigInteger.ZERO);
+        this.filled.set(28);
+      }
+      if (!filled.get(29)) {
+        leftAlignedSuffixLow.add(BigInteger.ZERO);
+        this.filled.set(29);
+      }
+      if (!filled.get(30)) {
+        low3.add(BigInteger.ZERO);
+        this.filled.set(30);
+      }
+      if (!filled.get(31)) {
+        microShiftParameter.add(BigInteger.ZERO);
+        this.filled.set(31);
+      }
+      if (!filled.get(32)) {
+        neg.add(false);
+        this.filled.set(32);
+      }
+      if (!filled.get(34)) {
+        oneLineInstruction.add(false);
+        this.filled.set(34);
+      }
+      if (!filled.get(33)) {
+        ones.add(BigInteger.ZERO);
+        this.filled.set(33);
+      }
+      if (!filled.get(35)) {
+        resHi.add(BigInteger.ZERO);
+        this.filled.set(35);
+      }
+      if (!filled.get(36)) {
+        resLo.add(BigInteger.ZERO);
+        this.filled.set(36);
+      }
+      if (!filled.get(37)) {
+        rightAlignedPrefixHigh.add(BigInteger.ZERO);
+        this.filled.set(37);
+      }
+      if (!filled.get(38)) {
+        rightAlignedPrefixLow.add(BigInteger.ZERO);
+        this.filled.set(38);
+      }
+      if (!filled.get(39)) {
+        shb3Hi.add(BigInteger.ZERO);
+        this.filled.set(39);
+      }
+      if (!filled.get(40)) {
+        shb3Lo.add(BigInteger.ZERO);
+        this.filled.set(40);
+      }
+      if (!filled.get(41)) {
+        shb4Hi.add(BigInteger.ZERO);
+        this.filled.set(41);
+      }
+      if (!filled.get(42)) {
+        shb4Lo.add(BigInteger.ZERO);
+        this.filled.set(42);
+      }
+      if (!filled.get(43)) {
+        shb5Hi.add(BigInteger.ZERO);
+        this.filled.set(43);
+      }
+      if (!filled.get(44)) {
+        shb5Lo.add(BigInteger.ZERO);
+        this.filled.set(44);
+      }
+      if (!filled.get(45)) {
+        shb6Hi.add(BigInteger.ZERO);
+        this.filled.set(45);
+      }
+      if (!filled.get(46)) {
+        shb6Lo.add(BigInteger.ZERO);
+        this.filled.set(46);
+      }
+      if (!filled.get(47)) {
+        shb7Hi.add(BigInteger.ZERO);
+        this.filled.set(47);
+      }
+      if (!filled.get(48)) {
+        shb7Lo.add(BigInteger.ZERO);
+        this.filled.set(48);
+      }
+      if (!filled.get(49)) {
+        shiftDirection.add(false);
+        this.filled.set(49);
+      }
+      if (!filled.get(50)) {
+        shiftStamp.add(BigInteger.ZERO);
+        this.filled.set(50);
+      }
+
+      return this.validateRow();
     }
 
     public Trace build() {

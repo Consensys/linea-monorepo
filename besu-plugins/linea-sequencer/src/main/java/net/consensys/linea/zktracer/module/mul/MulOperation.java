@@ -118,6 +118,10 @@ public class MulOperation {
     }
   }
 
+  public MulOperation clone() {
+    return new MulOperation(this.opCode, this.arg1, this.arg2);
+  }
+
   private static BaseBytes getRes(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     return switch (opCode) {
       case MUL -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).multiply(UInt256.fromBytes(arg2)));

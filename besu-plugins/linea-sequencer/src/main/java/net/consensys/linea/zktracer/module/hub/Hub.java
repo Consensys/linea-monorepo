@@ -28,6 +28,7 @@ import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.defer.*;
@@ -745,7 +746,7 @@ public class Hub implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     return new HubTrace(this.state.commit(this.trace).build());
   }
 

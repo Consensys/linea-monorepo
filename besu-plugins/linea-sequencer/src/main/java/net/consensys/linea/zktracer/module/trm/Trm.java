@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.trm;
 
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
 public class Trm implements Module {
   @Override
@@ -34,7 +35,7 @@ public class Trm implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     return null;
   }
 

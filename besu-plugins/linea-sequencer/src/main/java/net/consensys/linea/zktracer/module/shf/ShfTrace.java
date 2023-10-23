@@ -15,18 +15,17 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import java.math.BigInteger;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record ShfTrace(@JsonProperty("Trace") Trace trace) {
-  static final BigInteger LIMB_SIZE = new BigInteger("16");
-  static final BigInteger LIMB_SIZE_MINUS_ONE = new BigInteger("15");
-  static final BigInteger SAR = new BigInteger("29");
-  static final BigInteger SHL = new BigInteger("27");
-  static final BigInteger SHR = new BigInteger("28");
+record ShfTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+
+  @Override
+  public int length() {
+    return this.trace.size();
+  }
 }

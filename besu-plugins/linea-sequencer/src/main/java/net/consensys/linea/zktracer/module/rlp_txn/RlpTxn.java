@@ -34,6 +34,7 @@ import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
@@ -1295,7 +1296,7 @@ public class RlpTxn implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     int estTraceSize = 0;
     int absTxNum = 0;
     for (RlpTxnChunk chunk : this.chunkList) {

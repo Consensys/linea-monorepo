@@ -63,5 +63,5 @@ public interface Module {
 
   int lineCount();
 
-  Object commit();
+  ModuleTrace commit();
 }

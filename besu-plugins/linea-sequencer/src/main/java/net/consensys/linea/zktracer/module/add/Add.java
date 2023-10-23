@@ -22,6 +22,7 @@ import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -154,7 +155,7 @@ public class Add implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     for (AddOperation op : this.chunks) {
       this.traceAddOperation(op.opCodem(), op.arg1(), op.arg2());
     }
