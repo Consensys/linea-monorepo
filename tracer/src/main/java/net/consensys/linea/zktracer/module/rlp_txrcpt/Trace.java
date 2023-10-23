@@ -75,6 +75,10 @@ public record Trace(
     return new TraceBuilder();
   }
 
+  public int size() {
+    return this.absLogNum.size();
+  }
+
   static class TraceBuilder {
     private final BitSet filled = new BitSet();
 

@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -64,7 +65,7 @@ public class Mul implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     for (var op : this.operations) {
       this.traceMulOperation(op);
     }
@@ -159,29 +160,31 @@ public class Mul implements Module {
 
   @Override
   public int lineCount() {
-    return this.operations.stream()
-        .mapToInt(
-            op ->
-                switch (op.getRegime()) {
-                  case EXPONENT_ZERO_RESULT -> op.maxCt();
+    return 1
+        + this.operations.stream()
+            .map(MulOperation::clone) // The counting operation is destructive, hence the clone
+            .mapToInt(
+                op ->
+                    switch (op.getRegime()) {
+                      case EXPONENT_ZERO_RESULT -> op.maxCt();
 
-                  case EXPONENT_NON_ZERO_RESULT -> {
-                    int r = 0;
-                    while (op.carryOn()) {
-                      op.update();
-                      r += op.maxCt();
-                    }
-                    yield r;
-                  }
+                      case EXPONENT_NON_ZERO_RESULT -> {
+                        int r = 0;
+                        while (op.carryOn()) {
+                          op.update();
+                          r += op.maxCt();
+                        }
+                        yield r;
+                      }
 
-                  case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
-                    op.setHsAndBits(
-                        UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
-                    yield op.maxCt();
-                  }
+                      case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
+                        op.setHsAndBits(
+                            UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
+                        yield op.maxCt();
+                      }
 
-                  default -> throw new RuntimeException("regime not supported");
-                })
-        .sum();
+                      default -> throw new RuntimeException("regime not supported");
+                    })
+            .sum();
   }
 }

@@ -16,9 +16,16 @@
 package net.consensys.linea.zktracer.module.rlpAddr;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record RlpAddrTrace(@JsonProperty("Trace") Trace trace) {}
+record RlpAddrTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+
+  @Override
+  public int length() {
+    return this.trace.size();
+  }
+}

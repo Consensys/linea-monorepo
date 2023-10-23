@@ -26,6 +26,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -335,7 +336,7 @@ public class RomLex implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     final int codeFragmentIndexInfinity = chunks.size();
     int cfi = 0;
     for (RomChunk chunk : sortedChunks) {

@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -294,7 +295,7 @@ public class RlpAddr implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     int expectedTraceSize = 0;
     for (int i = 0; i < this.chunkList.size(); i++) {
       traceChunks(chunkList.get(i), i + 1);
