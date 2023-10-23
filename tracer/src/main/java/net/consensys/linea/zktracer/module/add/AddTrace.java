@@ -15,17 +15,17 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import java.math.BigInteger;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record AddTrace(@JsonProperty("Trace") Trace trace) {
-  static final BigInteger ADD = new BigInteger("1");
-  static final BigInteger LLARGEMO = new BigInteger("15");
-  static final BigInteger SUB = new BigInteger("3");
-  static final BigInteger THETA = new BigInteger("340282366920938463463374607431768211456");
+record AddTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+
+  @Override
+  public int length() {
+    return this.trace.size();
+  }
 }

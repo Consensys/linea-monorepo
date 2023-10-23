@@ -18,16 +18,21 @@ package net.consensys.linea.zktracer.module.rlp_txrcpt;
 import java.math.BigInteger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record RlpTxrcptTrace(@JsonProperty("Trace") Trace trace) {
+record RlpTxrcptTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
   static final BigInteger LLARGE = new BigInteger("16");
   static final BigInteger LLARGEMO = new BigInteger("15");
   static final BigInteger INT_LONG = new BigInteger("183");
   static final BigInteger INT_SHORT = new BigInteger("128");
   static final BigInteger LIST_LONG = new BigInteger("247");
   static final BigInteger LIST_SHORT = new BigInteger("192");
+
+  public int length() {
+    return this.trace.size();
+  }
 }

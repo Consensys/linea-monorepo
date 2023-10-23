@@ -30,6 +30,7 @@ import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import org.apache.tuweni.bytes.Bytes;
@@ -752,7 +753,7 @@ public class RlpTxrcpt implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     int absTxNum = 0;
     int estTraceSize = 0;
     for (RlpTxrcptChunk chunk : this.chunkList) {

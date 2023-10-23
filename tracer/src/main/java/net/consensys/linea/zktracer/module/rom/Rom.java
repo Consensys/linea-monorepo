@@ -21,6 +21,7 @@ import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.romLex.RomChunk;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -193,7 +194,7 @@ public class Rom implements Module {
   }
 
   @Override
-  public Object commit() {
+  public ModuleTrace commit() {
     int expectedTraceSize = 0;
     int cfi = 0;
     final int cfiInfty = this.romLex.sortedChunks.size();
