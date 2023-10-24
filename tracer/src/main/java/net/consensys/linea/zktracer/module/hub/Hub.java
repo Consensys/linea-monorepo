@@ -40,6 +40,7 @@ import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
+import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.rlpAddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
@@ -134,6 +135,7 @@ public class Hub implements Module {
   private final Module shf = new Shf();
   private final Module wcp = new Wcp();
   private final RlpTxn rlpTxn;
+  private final Module mxp;
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final RlpAddr rlpAddr = new RlpAddr();
   private final Rom rom;
@@ -142,6 +144,7 @@ public class Hub implements Module {
   private final List<Module> modules;
 
   public Hub() {
+    this.mxp = new Mxp(this);
     this.romLex = new RomLex(this);
     this.rom = new Rom(this.romLex);
     this.rlpTxn = new RlpTxn(this.romLex);
@@ -154,6 +157,7 @@ public class Hub implements Module {
             this.ext,
             this.mod,
             this.mul,
+            this.mxp,
             this.shf,
             this.wcp,
             this.rlpTxn,
@@ -175,6 +179,7 @@ public class Hub implements Module {
         this.mul,
         this.shf,
         this.wcp,
+        this.mxp,
         this.rlpTxn,
         this.rlpTxrcpt,
         this.rlpAddr,
@@ -333,6 +338,7 @@ public class Hub implements Module {
     Address toAddress = effectiveToAddress(this.tx.transaction());
     this.callStack.newBedrock(
         this.state.stamps().hub(),
+        this.tx.transaction().getSender(),
         toAddress,
         isDeployment ? CallFrameType.INIT_CODE : CallFrameType.STANDARD,
         new Bytecode(
@@ -351,7 +357,7 @@ public class Hub implements Module {
   }
 
   public CallFrame currentFrame() {
-    return Optional.of(this.callStack.current()).orElse(CallFrame.empty());
+    return this.callStack.current();
   }
 
   public MessageFrame messageFrame() {
@@ -401,26 +407,55 @@ public class Hub implements Module {
           this.shf.tracePreOpcode(frame);
         }
       }
-      case KEC -> {}
+      case KEC -> {
+        if (this.exceptions.noStackException()) {
+          this.mxp.tracePreOpcode(frame);
+        }
+      }
       case CONTEXT -> {}
       case ACCOUNT -> {}
       case COPY -> {
-        // TODO: check this is the right exception
+        if (this.exceptions.noStackException()) {
+          if (this.currentFrame().opCode() == OpCode.RETURNDATACOPY) {
+            if (!this.exceptions.returnDataCopyFault()) {
+              this.mxp.tracePreOpcode(frame);
+            }
+          } else {
+            this.mxp.tracePreOpcode(frame);
+          }
+        }
         if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
           this.romLex.tracePreOpcode(frame);
         }
       }
       case TRANSACTION -> {}
       case BATCH -> {}
-      case STACK_RAM -> {}
+      case STACK_RAM -> {
+        if (this.exceptions.noStackException()
+            && this.currentFrame().opCode() != OpCode.CALLDATALOAD) {
+          this.mxp.tracePreOpcode(frame);
+        }
+      }
       case STORAGE -> {}
       case JUMP -> {}
-      case MACHINE_STATE -> {}
+      case MACHINE_STATE -> {
+        if (this.exceptions.noStackException() && this.currentFrame().opCode() == OpCode.MSIZE) {
+          this.mxp.tracePreOpcode(frame);
+        }
+      }
       case PUSH_POP -> {}
       case DUP -> {}
       case SWAP -> {}
-      case LOG -> {}
+      case LOG -> {
+        if (this.exceptions.noStackException() && !this.exceptions.staticViolation()) {
+          this.mxp.tracePreOpcode(frame);
+        }
+      }
       case CREATE -> {
+        if (this.exceptions.noStackException() && !this.exceptions.staticViolation()) {
+          this.mxp.tracePreOpcode(frame); // TODO: trigger in OoG
+        }
+
         if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
           // TODO: check for failure: non empty byte code or non zero nonce (for the Deployed
           // Address)
@@ -437,15 +472,18 @@ public class Hub implements Module {
         }
       }
       case CALL -> {
-        // TODO: check this is the right exception
         if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
           this.romLex.tracePreOpcode(frame);
         }
       }
       case HALT -> {
-        // TODO: check this is the right exception
         if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
           this.romLex.tracePreOpcode(frame);
+        }
+        if (this.exceptions.noStackException()
+            && this.currentFrame().opCode() != OpCode.STOP
+            && this.currentFrame().opCode() != OpCode.SELFDESTRUCT) {
+          this.mxp.tracePreOpcode(frame);
         }
       }
       case INVALID -> {}
@@ -608,6 +646,10 @@ public class Hub implements Module {
   }
 
   private void unlatchStack(MessageFrame frame) {
+    this.unlatchStack(frame, this.currentTraceSection());
+  }
+
+  public void unlatchStack(MessageFrame frame, TraceSection section) {
     if (this.currentFrame().pending() == null) {
       return;
     }
@@ -623,7 +665,7 @@ public class Hub implements Module {
         }
 
         // This works because we are certain that the stack chunks are the first.
-        ((StackFragment) this.currentTraceSection().getLines().get(i).specific())
+        ((StackFragment) section.getLines().get(i).specific())
             .stackOps()
             .get(line.resultColumn() - 1)
             .setValue(result);
@@ -631,7 +673,7 @@ public class Hub implements Module {
     }
 
     if (this.exceptions.none()) {
-      for (TraceSection.TraceLine line : this.currentTraceSection().getLines()) {
+      for (TraceSection.TraceLine line : section.getLines()) {
         if (line.specific() instanceof StackFragment stackFragment) {
           stackFragment.feedHashedValue(frame);
         }
@@ -651,6 +693,7 @@ public class Hub implements Module {
     final int codeDeploymentNumber = this.conflation.deploymentInfo().number(codeAddress);
     this.callStack.enter(
         this.state.stamps().hub(),
+        frame.getOriginatorAddress(), // TODO: check for all call types that it is correct
         frame.getContractAddress(),
         new Bytecode(frame.getCode().getBytes()),
         frameType,
@@ -665,6 +708,13 @@ public class Hub implements Module {
 
     for (Module m : this.modules) {
       m.traceContextEnter(frame);
+    }
+  }
+
+  public void traceContextReEnter(MessageFrame frame) {
+    if (this.currentFrame().needsUnlatchingAtReEntry() != null) {
+      this.unlatchStack(frame, this.currentFrame().needsUnlatchingAtReEntry());
+      this.currentFrame().needsUnlatchingAtReEntry(null);
     }
   }
 
@@ -699,7 +749,6 @@ public class Hub implements Module {
     if (this.tx.state() == TxState.TX_SKIP) {
       return;
     }
-
     this.processStateExec(frame);
   }
 
@@ -714,7 +763,66 @@ public class Hub implements Module {
 
     this.defers.runPostExec(this, frame, operationResult);
 
-    this.unlatchStack(frame);
+    if (this.currentFrame().needsUnlatchingAtReEntry() == null) {
+      this.unlatchStack(frame);
+    }
+
+    switch (this.opCodeData().instructionFamily()) {
+      case ADD -> {
+        if (this.exceptions.noStackException()) {
+          this.add.tracePostOp(frame);
+        }
+      }
+      case MOD -> {
+        if (this.exceptions.noStackException()) {
+          this.mod.tracePostOp(frame);
+        }
+      }
+      case MUL -> {
+        if (this.exceptions.noStackException()) {
+          this.mul.tracePostOp(frame);
+        }
+      }
+      case EXT -> {
+        if (this.exceptions.noStackException()) {
+          this.ext.tracePostOp(frame);
+        }
+      }
+      case WCP -> {
+        if (this.exceptions.noStackException()) {
+          this.wcp.tracePostOp(frame);
+        }
+      }
+      case BIN -> {}
+      case SHF -> {
+        if (this.exceptions.noStackException()) {
+          this.shf.tracePostOp(frame);
+        }
+      }
+      case KEC -> {}
+      case CONTEXT -> {}
+      case ACCOUNT -> {}
+      case COPY -> {}
+      case TRANSACTION -> {}
+      case BATCH -> {}
+      case STACK_RAM -> {
+        if (this.exceptions.noStackException()) {
+          this.mxp.tracePostOp(frame);
+        }
+      }
+      case STORAGE -> {}
+      case JUMP -> {}
+      case MACHINE_STATE -> {}
+      case PUSH_POP -> {}
+      case DUP -> {}
+      case SWAP -> {}
+      case LOG -> {}
+      case CREATE -> {}
+      case CALL -> {}
+      case HALT -> {}
+      case INVALID -> {}
+      default -> {}
+    }
   }
 
   private void handleCreate(Address target) {
@@ -945,15 +1053,13 @@ public class Hub implements Module {
                 this.conflation.deploymentInfo().number(createdAddress),
                 this.conflation.deploymentInfo().isDeploying(createdAddress));
 
-        CreateDefer protoCreateSection =
-            new CreateDefer(
-                myAccountSnapshot,
-                createdAccountSnapshot,
-                new ContextFragment(this.callStack, this.currentFrame(), updateReturnData),
-                this.currentFrame());
+        CreateSection createSection =
+            new CreateSection(this, myAccountSnapshot, createdAccountSnapshot);
         // Will be traced in one (and only one!) of these depending on the success of the operation
-        this.defers.postExec(protoCreateSection);
-        this.defers.nextContext(protoCreateSection, currentFrame().id());
+        this.defers.postExec(createSection);
+        this.defers.nextContext(createSection, currentFrame().id());
+        this.addTraceSection(createSection);
+        this.currentFrame().needsUnlatchingAtReEntry(createSection);
       }
 
       case CALL -> {
@@ -1042,6 +1148,8 @@ public class Hub implements Module {
               this.defers.postExec(section);
               this.defers.nextContext(section, currentFrame().id());
               this.defers.postTx(section);
+              this.addTraceSection(section);
+              this.currentFrame().needsUnlatchingAtReEntry(section);
             } else {
               final NoCodeCallSection section =
                   new NoCodeCallSection(
@@ -1053,6 +1161,9 @@ public class Hub implements Module {
               this.defers.postExec(section);
               this.defers.postTx(section);
               this.addTraceSection(section);
+              this.currentFrame()
+                  .needsUnlatchingAtReEntry(
+                      section); // TODO: not sure there -- will we switch context?
             }
           }
         }
@@ -1066,7 +1177,7 @@ public class Hub implements Module {
                 frame.getWorldUpdater().getAccount(this.currentFrame().codeAddress()),
                 true,
                 this.conflation.deploymentInfo().number(this.currentFrame().codeAddress()),
-                this.currentFrame().codeDeploymentStatus());
+                this.currentFrame().underDeployment());
 
         JumpSection jumpSection =
             new JumpSection(
@@ -1100,7 +1211,7 @@ public class Hub implements Module {
                 this.exceptions.snapshot(),
                 this.aborts.snapshot(),
                 gp.of(f.frame(), f.opCode()),
-                f.codeDeploymentStatus()));
+                f.underDeployment()));
       }
     } else {
       for (StackLine line : f.pending().getLines()) {
@@ -1111,7 +1222,7 @@ public class Hub implements Module {
                 this.exceptions.snapshot(),
                 this.aborts.snapshot(),
                 gp.of(f.frame(), f.opCode()),
-                f.codeDeploymentStatus()));
+                f.underDeployment()));
       }
     }
     return r;

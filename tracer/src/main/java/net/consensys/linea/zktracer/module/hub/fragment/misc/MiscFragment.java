@@ -81,7 +81,7 @@ public class MiscFragment implements TraceFragment, PostExecDefer {
       subFragment.trace(trace);
     }
 
-    return trace.fillAndValidateRow();
+    return trace;
   }
 
   @Override

@@ -52,7 +52,9 @@ public class Wcp implements Module {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =
-        (opCode.mnemonic() != OpCode.ISZERO) ? Bytes32.wrap(frame.getStackItem(1)) : Bytes32.ZERO;
+        (opCode.mnemonic() != OpCode.ISZERO)
+            ? Bytes32.leftPad(frame.getStackItem(1))
+            : Bytes32.ZERO;
 
     this.operations.add(new WcpOperation(opCode, arg1, arg2));
   }

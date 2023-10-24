@@ -59,8 +59,8 @@ public record Call(
     }
 
     return Math.max(
-        Words.clampedAdd(inputDataOffset, inputDataLength),
-        Words.clampedAdd(returnDataOffset, returnDataLength));
+        inputDataLength == 0 ? 0 : Words.clampedAdd(inputDataOffset, inputDataLength),
+        returnDataLength == 0 ? 0 : Words.clampedAdd(returnDataOffset, returnDataLength));
   }
 
   @Override

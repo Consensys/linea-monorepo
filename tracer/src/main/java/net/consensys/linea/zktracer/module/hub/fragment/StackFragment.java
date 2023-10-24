@@ -32,8 +32,10 @@ import net.consensys.linea.zktracer.module.hub.stack.Action;
 import net.consensys.linea.zktracer.module.hub.stack.Stack;
 import net.consensys.linea.zktracer.module.hub.stack.StackOperation;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Accessors(fluent = true)
@@ -46,6 +48,7 @@ public final class StackFragment implements TraceFragment {
   private EWord hashInfoKeccak = EWord.ZERO;
   private final long hashInfoSize;
   private final boolean hashInfoFlag;
+  private final OpCode opCode;
 
   private StackFragment(
       Stack stack,
@@ -59,8 +62,9 @@ public final class StackFragment implements TraceFragment {
     this.stackOps = stackOps;
     this.exceptions = exceptions;
     this.contextExceptions = contextExceptions;
+    this.opCode = stack.getCurrentOpcodeData().mnemonic();
     this.hashInfoFlag =
-        switch (stack.getCurrentOpcodeData().mnemonic()) {
+        switch (this.opCode) {
           case SHA3 -> exceptions.none() && gp.messageSize() > 0;
           case RETURN -> exceptions.none() && gp.messageSize() > 0 && isDeploying;
           case CREATE2 -> exceptions.none()
@@ -86,7 +90,15 @@ public final class StackFragment implements TraceFragment {
 
   public void feedHashedValue(MessageFrame frame) {
     if (hashInfoFlag) {
-      this.hashInfoKeccak = EWord.of(frame.getStackItem(0));
+      switch (this.opCode) {
+        case SHA3 -> this.hashInfoKeccak = EWord.of(frame.getStackItem(0));
+        case RETURN -> this.hashInfoKeccak = EWord.ZERO; // TODO: fixme
+        case CREATE2 -> {
+          Address newAddress = EWord.of(frame.getStackItem(0)).toAddress();
+          this.hashInfoKeccak = EWord.of(frame.getWorldUpdater().get(newAddress).getCodeHash());
+        }
+        default -> throw new IllegalStateException("unexpected opcode");
+      }
     }
   }
 
@@ -235,7 +247,7 @@ public final class StackFragment implements TraceFragment {
                 .orElse(false))
         .pStackTrmFlag(
             this.stack.getCurrentOpcodeData().stackSettings().addressTrimmingInstruction())
-        .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().staticInstruction())
+        .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackOobFlag(this.stack.getCurrentOpcodeData().stackSettings().oobFlag())
         // Hash data
         .pStackHashInfoSize(BigInteger.valueOf(hashInfoSize))

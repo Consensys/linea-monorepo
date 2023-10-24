@@ -26,6 +26,7 @@ import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Bytecode;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.memory.MemorySpan;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.stack.Stack;
 import net.consensys.linea.zktracer.module.hub.stack.StackContext;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -50,42 +51,45 @@ public class CallFrame {
   /** */
   @Getter private int codeDeploymentNumber;
   /** */
-  @Getter private boolean codeDeploymentStatus;
+  @Getter private boolean underDeployment;
+
+  @Getter @Setter private TraceSection needsUnlatchingAtReEntry = null;
+
   /** the position of this {@link CallFrame} parent in the {@link CallStack}. */
   @Getter private int parentFrame;
   /** all the {@link CallFrame} that have been called by this frame. */
   @Getter private final List<Integer> childFrames = new ArrayList<>();
 
   /** the {@link Address} of the account executing this {@link CallFrame}. */
-  @Getter private Address address = Address.ZERO; // TODO:
+  @Getter private final Address address;
   /** the {@link Address} of the code executed in this {@link CallFrame}. */
-  @Getter private Address codeAddress = Address.ALTBN128_ADD;
+  @Getter private Address codeAddress = Address.ZERO;
 
   /** the {@link CallFrameType} of this frame. */
   @Getter private final CallFrameType type;
 
   /** the {@link Bytecode} executing within this frame. */
-  private Bytecode code;
+  private Bytecode code = Bytecode.EMPTY;
 
   @Getter @Setter private int pc;
   @Getter @Setter private OpCode opCode = OpCode.STOP;
   @Getter private MessageFrame frame;
 
   /** the ether amount given to this frame. */
-  @Getter private Wei value;
+  @Getter private Wei value = Wei.fromHexString("0xbadf00d"); // Marker for debugging
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
 
   /** the call data given to this frame. */
-  @Getter private Bytes callData;
+  @Getter private Bytes callData = Bytes.EMPTY;
   /** the call data span in the parent memory. */
-  @Getter private final MemorySpan callDataPointer = new MemorySpan(0, 0);
+  @Getter private final MemorySpan callDataPointer;
   /** the data returned by the latest callee. */
   @Getter @Setter private Bytes returnData = Bytes.EMPTY;
   /** returnData position within the latest callee memory space. */
-  @Getter private MemorySpan returnDataPointer = new MemorySpan(0, 0);
+  @Getter @Setter private MemorySpan returnDataPointer = new MemorySpan(0, 0);
   /** where this frame is expected to write its returnData within its parent's memory space. */
-  @Getter private MemorySpan returnDataTarget = new MemorySpan(0, 0);
+  @Getter private final MemorySpan returnDataTarget;
 
   @Getter @Setter private int selfRevertsAt = 0;
   @Getter @Setter private int getsRevertedAt = 0;
@@ -97,13 +101,16 @@ public class CallFrame {
   @Getter @Setter private StackContext pending;
 
   /** Create a root call frame. */
-  CallFrame() {
+  CallFrame(Address address) {
     this.type = CallFrameType.BEDROCK;
     this.contextNumber = 0;
+    this.address = address;
+    this.callDataPointer = new MemorySpan(0, 0);
+    this.returnDataTarget = new MemorySpan(0, 0);
   }
 
   public static CallFrame empty() {
-    return new CallFrame();
+    return new CallFrame(Address.ZERO);
   }
 
   /**
@@ -128,6 +135,7 @@ public class CallFrame {
       int id,
       int hubStamp,
       Address address,
+      Address codeAddress,
       Bytecode code,
       CallFrameType type,
       int caller,
@@ -137,17 +145,21 @@ public class CallFrame {
       int depth) {
     this.accountDeploymentNumber = accountDeploymentNumber;
     this.codeDeploymentNumber = codeDeploymentNumber;
-    this.codeDeploymentStatus = isDeployment;
+    this.underDeployment = isDeployment;
     this.id = id;
     this.contextNumber = hubStamp + 1;
     this.address = address;
+    this.codeAddress = codeAddress;
     this.code = code;
     this.type = type;
     this.parentFrame = caller;
     this.value = value;
     this.gasEndowment = gas;
     this.callData = callData;
+    this.callDataPointer = new MemorySpan(0, callData.size());
     this.depth = depth;
+    this.returnDataPointer = new MemorySpan(0, 0);
+    this.returnDataTarget = new MemorySpan(0, 0); // TODO: fix me Franklin
   }
 
   /**
@@ -194,7 +206,7 @@ public class CallFrame {
     if (this.selfRevertsAt == 0) {
       this.selfRevertsAt = stamp;
       this.revertChildren(callStack, stamp);
-    } else {
+    } else if (stamp != this.selfRevertsAt) {
       throw new RuntimeException("a context can not self-reverse twice");
     }
   }

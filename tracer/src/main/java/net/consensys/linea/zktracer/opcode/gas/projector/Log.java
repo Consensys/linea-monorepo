@@ -65,7 +65,7 @@ public final class Log implements GasProjection {
 
   @Override
   public long largestOffset() {
-    return Words.clampedAdd(offset, size);
+    return size == 0 ? 0 : Words.clampedAdd(offset, size);
   }
 
   @Override

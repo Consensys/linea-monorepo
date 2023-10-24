@@ -48,7 +48,7 @@ public record BytecodeRunner(Bytes byteCode) {
 
     final ToyAccount receiverAccount =
         ToyAccount.builder()
-            .balance(Wei.ONE)
+            .balance(Wei.fromEth(1))
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
             .code(byteCode)
@@ -59,12 +59,17 @@ public record BytecodeRunner(Bytes byteCode) {
             .sender(senderAccount)
             .to(receiverAccount)
             .keyPair(keyPair)
-            .gasLimit(1_000_000L)
+            .gasLimit(100_000_000L)
             .build();
 
     final ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
 
-    ToyExecutionEnvironment.builder().toyWorld(toyWorld).transaction(tx).build().run();
+    ToyExecutionEnvironment.builder()
+        .testValidator(x -> {})
+        .toyWorld(toyWorld)
+        .transaction(tx)
+        .build()
+        .run();
   }
 }

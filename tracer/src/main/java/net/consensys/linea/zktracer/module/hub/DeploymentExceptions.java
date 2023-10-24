@@ -46,7 +46,7 @@ public record DeploymentExceptions(boolean invalidCodePrefix, boolean codeSizeOv
 
   public static DeploymentExceptions fromFrame(
       final CallFrame callFrame, final MessageFrame frame) {
-    if (callFrame.codeDeploymentStatus()) {
+    if (callFrame.underDeployment()) {
       return new DeploymentExceptions(isInvalidCodePrefix(frame), isCodeSizeOverflow(frame));
     } else {
       return new DeploymentExceptions(false, false);

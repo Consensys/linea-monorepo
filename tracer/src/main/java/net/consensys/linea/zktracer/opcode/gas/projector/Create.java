@@ -46,7 +46,7 @@ public final class Create implements GasProjection {
 
   @Override
   public long largestOffset() {
-    return Words.clampedAdd(initCodeOffset, initCodeLength);
+    return initCodeLength == 0 ? 0 : Words.clampedAdd(initCodeOffset, initCodeLength);
   }
 
   @Override

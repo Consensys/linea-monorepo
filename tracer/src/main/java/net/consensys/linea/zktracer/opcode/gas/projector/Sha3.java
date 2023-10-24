@@ -51,7 +51,7 @@ public final class Sha3 implements GasProjection {
 
   @Override
   public long largestOffset() {
-    return clampedAdd(this.offset, this.length);
+    return this.length == 0 ? 0 : clampedAdd(this.offset, this.length);
   }
 
   @Override
