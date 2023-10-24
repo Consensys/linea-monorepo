@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode;
 
-import java.util.Optional;
+import java.util.Objects;
 
 import net.consensys.linea.zktracer.opcode.gas.Billing;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
@@ -50,7 +50,7 @@ public record OpCodeData(
   }
 
   public RamSettings ramSettings() {
-    return Optional.ofNullable(this.ramSettings).orElse(RamSettings.DEFAULT);
+    return Objects.requireNonNullElse(this.ramSettings, RamSettings.DEFAULT);
   }
 
   /**
