@@ -50,7 +50,7 @@ public final class DataCopy implements GasProjection {
 
   @Override
   public long largestOffset() {
-    return Words.clampedAdd(this.offset, this.size);
+    return this.size == 0 ? 0 : Words.clampedAdd(this.offset, this.size);
   }
 
   @Override

@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
+import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -119,6 +120,30 @@ public class DynamicTests {
       return List.of(OpCode.SHR, OpCode.SHL, OpCode.SAR);
     } else if (module instanceof Wcp) {
       return List.of(OpCode.LT, OpCode.GT, OpCode.SLT, OpCode.SGT, OpCode.EQ, OpCode.ISZERO);
+    } else if (module instanceof Mxp) {
+      return List.of(
+          OpCode.SHA3,
+          OpCode.LOG0,
+          OpCode.LOG1,
+          OpCode.LOG2,
+          OpCode.LOG3,
+          OpCode.LOG4,
+          OpCode.RETURN,
+          OpCode.REVERT,
+          OpCode.MSIZE,
+          OpCode.CALLDATACOPY,
+          OpCode.CODECOPY,
+          OpCode.RETURNDATACOPY,
+          OpCode.EXTCODECOPY,
+          OpCode.MLOAD,
+          OpCode.MSTORE,
+          OpCode.MSTORE8,
+          OpCode.CREATE,
+          OpCode.CREATE2,
+          OpCode.CALL,
+          OpCode.CALLCODE,
+          OpCode.DELEGATECALL,
+          OpCode.STATICCALL);
     } else {
       throw new RuntimeException("Unexpected module");
     }

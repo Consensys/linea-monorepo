@@ -57,9 +57,7 @@ public class WithCodeCallSection extends TraceSection
     this.preCallCallerAccountSnapshot = preCallCallerAccountSnapshot;
     this.preCallCalledAccountSnapshot = preCallCalledAccountSnapshot;
     this.miscFragment = miscFragment;
-    for (var stackChunk : hub.makeStackChunks(hub.currentFrame())) {
-      this.addChunk(hub, hub.currentFrame(), stackChunk);
-    }
+    this.addStack(hub);
   }
 
   @Override

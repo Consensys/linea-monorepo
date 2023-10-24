@@ -51,8 +51,8 @@ public record JumpSubFragment(
     }
 
     return new JumpSubFragment(
-        EWord.of(frame.getStackItem(0)),
-        EWord.of(frame.getStackItem(1)),
+        EWord.of(BigInteger.valueOf(targetPc)),
+        EWord.of(BigInteger.valueOf(jumpCondition)),
         frame.getWorldUpdater().get(hub.currentFrame().codeAddress()).getCode().size(),
         opCode,
         event1,

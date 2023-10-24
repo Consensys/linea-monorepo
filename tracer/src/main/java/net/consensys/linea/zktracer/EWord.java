@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.BaseUInt256Value;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Quantity;
 
 public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
@@ -123,6 +124,10 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
   @Override
   public String toHexString() {
     return super.toHexString();
+  }
+
+  public Address toAddress() {
+    return Address.wrap(this.slice(12, 20));
   }
 
   @Override

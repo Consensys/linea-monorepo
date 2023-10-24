@@ -13,10 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.gas;
+package net.consensys.linea.zktracer.module.mxp;
 
-/** The unit used to bill the gas usage of an instruction. */
-public enum BillingRate {
-  BY_WORD,
-  BY_BYTE
+import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
+
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record MxpTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+
+  @Override
+  public int length() {
+    return this.trace.size();
+  }
 }

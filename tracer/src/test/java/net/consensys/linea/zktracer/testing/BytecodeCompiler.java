@@ -15,9 +15,11 @@
 
 package net.consensys.linea.zktracer.testing;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.consensys.linea.zktracer.bytes.conversions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -127,6 +129,16 @@ public class BytecodeCompiler {
     int pushNOpCode = OpCode.PUSH1.byteValue() + xs.size() - 1;
 
     return this.immediate(pushNOpCode).immediate(xs);
+  }
+
+  /**
+   * Add a {@link OpCode#PUSH1} and a {@link BigInteger} argument.
+   *
+   * @param xs BigInteger argument
+   * @return current instance
+   */
+  public BytecodeCompiler push(final BigInteger xs) {
+    return this.push(conversions.bigIntegerToBytes(xs));
   }
 
   /**
