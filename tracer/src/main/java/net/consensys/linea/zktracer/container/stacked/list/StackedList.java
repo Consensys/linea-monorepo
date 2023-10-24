@@ -34,6 +34,8 @@ import org.jetbrains.annotations.NotNull;
  */
 public class StackedList<E> implements List<E>, StackedContainer {
   private final Stack<List<E>> lists = new Stack<>();
+  /** The cached number of elements in this container */
+  private int totalSize;
 
   @Override
   public void enter() {
@@ -45,22 +47,17 @@ public class StackedList<E> implements List<E>, StackedContainer {
     if (this.lists.isEmpty()) {
       throw new RuntimeException("asymmetric pop");
     }
-    this.lists.pop();
+    this.totalSize -= this.lists.pop().size();
   }
 
   @Override
   public int size() {
-    return this.lists.stream().mapToInt(List::size).sum();
+    return this.totalSize;
   }
 
   @Override
   public boolean isEmpty() {
-    for (List<E> l : this.lists) {
-      if (!l.isEmpty()) {
-        return false;
-      }
-    }
-    return true;
+    return this.totalSize == 0;
   }
 
   @Override
@@ -93,6 +90,7 @@ public class StackedList<E> implements List<E>, StackedContainer {
 
   @Override
   public boolean add(E e) {
+    this.totalSize++;
     return this.lists.get(this.lists.size() - 1).add(e);
   }
 
@@ -142,6 +140,7 @@ public class StackedList<E> implements List<E>, StackedContainer {
   @Override
   public void clear() {
     this.lists.clear();
+    this.totalSize = 0;
   }
 
   @Override
