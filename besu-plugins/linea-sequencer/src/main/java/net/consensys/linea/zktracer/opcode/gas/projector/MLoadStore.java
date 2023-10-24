@@ -43,8 +43,6 @@ public final class MLoadStore implements GasProjection {
 
   @Override
   public long largestOffset() {
-    long offset = clampedToLong(frame.getStackItem(0));
-
-    return Words.clampedAdd(offset, 32);
+    return Words.clampedAdd(this.offset, 32);
   }
 }

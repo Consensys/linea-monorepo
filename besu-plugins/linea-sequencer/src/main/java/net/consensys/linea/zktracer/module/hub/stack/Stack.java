@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.stack;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
@@ -102,7 +101,8 @@ public class Stack {
   }
 
   private void loadStore(MessageFrame frame, StackContext pending) {
-    if (this.currentOpcodeData.stackSettings().flag1()) {
+    if (this.currentOpcodeData.stackSettings().flag3()
+        || this.currentOpcodeData.stackSettings().flag4()) {
       EWord val1 = getStack(frame, 0);
       EWord val2 = getStack(frame, 1);
 
@@ -324,13 +324,12 @@ public class Stack {
     return this.status == Status.OVERFLOW;
   }
 
-  public boolean processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
+  public void processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
     this.stamp = stackStamp;
     this.height = this.heightNew;
     this.currentOpcodeData = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
     callFrame.pending(new StackContext(this.currentOpcodeData.mnemonic()));
 
-    Preconditions.checkState(this.height == frame.stackSize());
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
     this.heightNew -= this.currentOpcodeData.stackSettings().nbRemoved();
 
@@ -350,7 +349,7 @@ public class Stack {
         this.stamp += callFrame.pending().addEmptyLines(1);
       }
 
-      return false;
+      return;
     }
 
     switch (this.currentOpcodeData.stackSettings().pattern()) {
@@ -369,7 +368,5 @@ public class Stack {
       case CALL -> this.call(frame, callFrame.pending());
       case CREATE -> this.create(frame, callFrame.pending());
     }
-
-    return this.status == Status.NORMAL;
   }
 }

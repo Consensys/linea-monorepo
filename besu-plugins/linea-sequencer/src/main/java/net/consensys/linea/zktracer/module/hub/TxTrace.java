@@ -42,6 +42,10 @@ public class TxTrace {
     return this.trace.get(this.size() - 1);
   }
 
+  public TraceSection getSection(int i) {
+    return this.trace.get(i);
+  }
+
   /**
    * @return whether this trace is empty
    */
@@ -110,10 +114,6 @@ public class TxTrace {
    * @return the line number in this transaction trace
    */
   public int lineCount() {
-    int count = 0;
-    for (TraceSection opSection : this.trace) {
-      count += opSection.getLines().size();
-    }
-    return count;
+    return this.trace.stream().mapToInt(section -> section.getLines().size()).sum();
   }
 }

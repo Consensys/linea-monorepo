@@ -111,6 +111,8 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
     // We only want to trigger on creation of new contexts, not on re-entry in existing contexts
     if (frame.getState() == MessageFrame.State.NOT_STARTED) {
       this.hub.traceContextEnter(frame);
+    } else {
+      this.hub.traceContextReEnter(frame);
     }
   }
 

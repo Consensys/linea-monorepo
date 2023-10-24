@@ -95,7 +95,7 @@ public abstract class TraceSection {
         callFrame.pc(), // retconned later on
         callFrame.addressAsEWord(),
         callFrame.codeDeploymentNumber(),
-        callFrame.codeDeploymentStatus(),
+        callFrame.underDeployment(),
         callFrame.accountDeploymentNumber(),
         0,
         0,
@@ -127,6 +127,17 @@ public abstract class TraceSection {
     }
 
     this.lines.add(new TraceLine(traceCommon(hub, callFrame), fragment));
+  }
+
+  /**
+   * Add the fragments containing the stack lines.
+   *
+   * @param hub the execution context
+   */
+  public final void addStack(Hub hub) {
+    for (var stackChunk : hub.makeStackChunks(hub.currentFrame())) {
+      this.addChunk(hub, hub.currentFrame(), stackChunk);
+    }
   }
 
   /**
@@ -164,9 +175,7 @@ public abstract class TraceSection {
    * @param fragments the fragments to insert
    */
   public final void addChunksAndStack(Hub hub, CallFrame callFrame, TraceFragment... fragments) {
-    for (var stackChunk : hub.makeStackChunks(callFrame)) {
-      this.addChunk(hub, callFrame, stackChunk);
-    }
+    this.addStack(hub);
     this.addChunksWithoutStack(hub, callFrame, fragments);
   }
 
@@ -178,9 +187,7 @@ public abstract class TraceSection {
    * @param fragments the fragments to insert
    */
   public final void addChunksAndStack(Hub hub, TraceFragment... fragments) {
-    for (var stackChunk : hub.makeStackChunks(hub.currentFrame())) {
-      this.addChunk(hub, hub.currentFrame(), stackChunk);
-    }
+    this.addStack(hub);
     this.addChunksWithoutStack(hub, hub.currentFrame(), fragments);
   }
 

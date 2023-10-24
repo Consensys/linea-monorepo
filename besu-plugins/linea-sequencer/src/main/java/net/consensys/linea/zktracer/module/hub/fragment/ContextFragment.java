@@ -45,7 +45,7 @@ public record ContextFragment(
         .pContextAccountDeploymentNumber(BigInteger.valueOf(callFrame.accountDeploymentNumber()))
         .pContextByteCodeDeploymentNumber(BigInteger.valueOf(callFrame.codeDeploymentNumber()))
         .pContextByteCodeDeploymentStatus(
-            callFrame.codeDeploymentStatus() ? BigInteger.ONE : BigInteger.ZERO)
+            callFrame.underDeployment() ? BigInteger.ONE : BigInteger.ZERO)
         .pContextCallerContextNumber(BigInteger.valueOf(parent.contextNumber()))
         .pContextCallerAddressHi(parentAddress.hiBigInt())
         .pContextCallerAddressLo(parentAddress.loBigInt())

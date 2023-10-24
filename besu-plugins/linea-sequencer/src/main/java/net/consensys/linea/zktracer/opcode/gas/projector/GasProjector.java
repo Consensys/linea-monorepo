@@ -152,9 +152,8 @@ public class GasProjector {
       case CALL -> {
         if (frame.stackSize() > 6) {
           final long stipend = clampedToLong(frame.getStackItem(0));
-          final Account recipient =
-              frame.getWorldUpdater().get(Words.toAddress(frame.getStackItem(1)));
-          final Address to = recipient.getAddress();
+          final Address to = Words.toAddress(frame.getStackItem(1));
+          final Account recipient = frame.getWorldUpdater().get(to);
           final Wei value = Wei.wrap(frame.getStackItem(2));
           final long inputDataOffset = clampedToLong(frame.getStackItem(3));
           final long inputDataLength = clampedToLong(frame.getStackItem(4));
@@ -224,9 +223,8 @@ public class GasProjector {
       case STATICCALL -> {
         if (frame.stackSize() > 5) {
           final long stipend = clampedToLong(frame.getStackItem(0));
-          final Account recipient =
-              frame.getWorldUpdater().get(Words.toAddress(frame.getStackItem(1)));
-          final Address to = recipient.getAddress();
+          final Address to = Words.toAddress(frame.getStackItem(1));
+          final Account recipient = frame.getWorldUpdater().get(to);
           final long inputDataOffset = clampedToLong(frame.getStackItem(2));
           final long inputDataLength = clampedToLong(frame.getStackItem(3));
           final long returnDataOffset = clampedToLong(frame.getStackItem(4));
