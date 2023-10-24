@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.opcode;
 
 public record RamSettings(boolean enabled, DataLocation source, DataLocation target) {
+  public static final RamSettings DEFAULT = new RamSettings();
+
   public RamSettings() {
     this(false, DataLocation.NONE, DataLocation.NONE);
   }

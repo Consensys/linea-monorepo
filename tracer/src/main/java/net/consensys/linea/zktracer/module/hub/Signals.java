@@ -181,9 +181,7 @@ public class Signals {
   }
 
   private boolean canMmu() {
-    // TODO: not enabled in the instruction decoding
-    // return opCodeData.ramSettings().enabled() &&
-    return hub.exceptions().none();
+    return opCodeData.ramSettings().enabled() && hub.exceptions().none();
   }
 
   private boolean canMxp() {
