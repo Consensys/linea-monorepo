@@ -13,8 +13,10 @@
     "berlinBlock": 0,
     "londonBlock": 0,
     "clique": {
-      "blockperiodseconds": 2,
-      "epochlength": 30000
+      "blockperiodseconds": 12,
+      "epochlength": 30000,
+      "builderapiendpoint": "http://mev-builder:28545",
+      "proposerpubkey": "0xa22717a0b5fb8b21dced64abb9207cd628453eaf549217eb13a0f93eeff071d3d9046274ba4323d60818024ab7e5ca24"
     }
   },
   "coinbase": "0x0000000000000000000000000000000000000000",

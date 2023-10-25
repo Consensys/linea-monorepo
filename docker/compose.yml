@@ -22,12 +22,40 @@ networks:
 # docker run --rm -it --network=docker_linea -v=linea-local-dev:/data -v=linea-logs:/logs weibeld/ubuntu-networking bash
 
 services:
+  mev-builder:
+    hostname: mev-builder
+    container_name: mev-builder
+    image: jinmel/builder:latest
+    platform: linux/amd64
+    profiles: ["mev", "mev-builder", "besu-sequencer", "l2"]
+    ports:
+      - "8580:8545"  # this is the http json rpc port for tx submission.
+    restart: "no"
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    environment:
+      DATA_DIR: "/data/mev-builder/"
+      BOOTNODES: enode://be1c3f9aa22ecf9e274040606cc530bb99153997e8dce77a9ea9e85802a0adb80bf78b24d67b0823cf7dca17efdf7f7e5e507b3376224484fa053ac7c2fb8a8b@11.11.11.101:30301
+      NETRESTRICT: "11.11.11.0/24"
+      NAT: "extip:11.11.11.201"
+    entrypoint: ""
+    command: ["sh", "/scripts/builder.sh", "1337", "/genesis.json", "0x0", "0x1C9C380"]
+    volumes:
+      - ./geth/scripts:/scripts:ro
+      - ./config/linea-local-dev-genesis-PoA.json:/genesis.json:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.201
+
   sequencer:
     hostname: sequencer
     container_name: sequencer
     image: hyperledger/besu:23.7.4-SNAPSHOT
+    user: besu
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug" ]
+    profiles: [ "l2", "l2-bc", "debug", "besu-sequencer" ]
     ports:
       - "8545:8545"
       - "8546:8546"
@@ -36,7 +64,7 @@ services:
       - "9545:9545"
     restart: "no"
     environment:
-      DATA_DIR: "/l2-besu-sequencer/"
+      DATA_DIR: "/opt/besu/data/"
       BOOTNODE_PORT: '30301'
       # NETRESTRICT: "11.11.11.0/24"
       # ZKGETH_COUNT_ONLY: "true"
@@ -51,13 +79,13 @@ services:
       # MAX_TXDATA_BYTES: 30000 #30 KBytes
       ETHSTATS_URL: "linea-sequencer:${WS_SECRET:-dummy-secret}@l2-ethstats:3000"
     entrypoint: ""
-    command: [ "sh", "/scripts/sequencer.sh", "1337", "/genesis.json", "0x0", "0x1C9C380", "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484" ]
+    command: [ "sh", "/scripts/sequencer.sh", "1337", "/genesis.json", "0", "30000000", "0x6d976c9b8ceee705d4fe8699b44e5eb58242f484" ]
     volumes:
       - ./besu/scripts:/scripts:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json:/genesis.json:ro
       - ../config/common/traces-limits-v1.toml:/config/limits.toml:ro
       # - ./config/jwt-secret.hex:/jwt-secret.hex:ro
-      - ./config/besu-linea-sequencer/key:/l2-besu-sequencer/key:ro
+      - ./config/besu-linea-sequencer/key:/boot.key:ro
       - ./keystore/L2:/keystore:ro
       - local-dev:/data/
     networks:

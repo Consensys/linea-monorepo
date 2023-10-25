@@ -7,7 +7,6 @@ if [ $# -lt 4 ]; then
     exit
 fi
 
-source ./scripts/functions.sh
 networkid=$1
 genesisfile=$2
 gasprice=$3
@@ -24,18 +23,21 @@ echo gasprice=$gasprice
 echo gaslimit=$gaslimit
 echo BOOTNODES=$BOOTNODES
 echo ETHSTATS_URL=$ETHSTATS_URL
-echo NETRESTRICT=$NETRESTRICT
+# echo NETRESTRICT=$NETRESTRICT
 echo etherbase=$etherbase
 
 mkdir -p /data/traces/raw
 mkdir -p $DATA_DIR
+ls -lah $DATA_DIR
 # prepareDatadir $DATA_DIR $genesisfile
 
 #cat /jwt-secret.hex
 
+find $DATA_DIR
+
 if [ ${#BOOTNODES} -ge 1 ]; then
 #    bootnode=$(getent hosts $bootnodehost | awk '{print $1}')
-    echo "Starting geth connecting to $BOOTNODES"
+    echo "Starting besu connecting to $BOOTNODES"
     besu --data-dir $DATA_DIR \
       --genesis-file $genesisfile \
       --network-id $networkid \
@@ -56,16 +58,15 @@ if [ ${#BOOTNODES} -ge 1 ]; then
       --logging 'DEBUG' \
       --syncmode "full"
 else
-    echo "Starting geth VALIDATOR with BOOTNODE enabled on port '$BOOTNODE_PORT' with '/boot.key'"
+    echo "Starting besu VALIDATOR with BOOTNODE enabled on port '$BOOTNODE_PORT' with '/boot.key'"
     # mkdir -p $DATA_DIR/keystore
     # cp /keystore/$etherbase.json $DATA_DIR/keystore
     besu --data-path $DATA_DIR \
      --genesis-file $genesisfile \
      --network-id $networkid \
      --miner-coinbase $etherbase \
-	   --miner-gas-price $gasprice \
-     --min-gas-price 0 \
-     --target-gas-price $gaslimit \
+     --min-gas-price $gasprice \
+     --target-gas-limit $gaslimit \
      --rpc-http-enabled \
      --rpc-http-host '11.11.11.101' \
      --rpc-http-port 8545 \
@@ -82,12 +83,12 @@ else
      --metrics-port 9545 \
      --engine-rpc-port 8550 \
      --engine-host-allowlist '*' \
-     --node-private-key-file "${DATA_DIR}/key"
+     --node-private-key-file "/boot.key" \
      --p2p-host $(hostname -i) \
      --p2p-port $BOOTNODE_PORT \
      --ethstats "$ETHSTATS_URL" \
-     --host-allowlist '*' \ # netrestrict
-     --logging 'DEBUG' \
+     --host-allowlist '*' \
+     --logging 'INFO' \
      --miner-enabled \
-     --syncmode "full"
+     --sync-mode "full"
 fi

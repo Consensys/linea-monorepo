@@ -4,6 +4,9 @@ version: "3.9"
 # docker compose -f compose.yml -f compose-local-dev.overrides.yml --profile l2 --profile l1 up
 
 services:
+  sequencer:
+    volumes:
+      - ../tmp/local/:/data/
   traces-node:
     volumes:
       - ../tmp/local/:/data/
