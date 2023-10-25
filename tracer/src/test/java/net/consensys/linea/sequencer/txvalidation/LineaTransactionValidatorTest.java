@@ -16,6 +16,7 @@
 package net.consensys.linea.sequencer.txvalidation;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,13 +35,26 @@ public class LineaTransactionValidatorTest {
   public static final Address NOT_DENIED =
       Address.fromHexString("0x0000000000000000000000000000000000001001");
   public static final Address PRECOMPILED = Address.precompiled(0xa);
+  public static final int MAX_TX_GAS_LIMIT = 9000000;
   private LineaTransactionValidator lineaTransactionValidator;
 
   @BeforeEach
   public void initialize() {
     ArrayList<Address> denied = new ArrayList<>();
     denied.add(DENIED);
-    lineaTransactionValidator = new LineaTransactionValidator(denied);
+    lineaTransactionValidator =
+        new LineaTransactionValidator(
+            new LineaTransactionValidatorConfiguration("", MAX_TX_GAS_LIMIT), denied);
+  }
+
+  @Test
+  public void validatedIfNoneOnList() {
+    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
+        org.hyperledger.besu.ethereum.core.Transaction.builder();
+    final org.hyperledger.besu.ethereum.core.Transaction transaction =
+        builder.sender(NOT_DENIED).to(NOT_DENIED).gasPrice(Wei.ZERO).build();
+    Assertions.assertEquals(
+        lineaTransactionValidator.validateTransaction(transaction), Optional.empty());
   }
 
   @Test
@@ -74,5 +88,36 @@ public class LineaTransactionValidatorTest {
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
         "destination address is a precompile address and cannot receive transactions");
+  }
+
+  @Test
+  public void validatedWithValidGasLimit() {
+    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
+        org.hyperledger.besu.ethereum.core.Transaction.builder();
+    final org.hyperledger.besu.ethereum.core.Transaction transaction =
+        builder
+            .sender(NOT_DENIED)
+            .to(NOT_DENIED)
+            .gasLimit(MAX_TX_GAS_LIMIT)
+            .gasPrice(Wei.ZERO)
+            .build();
+    Assertions.assertEquals(
+        lineaTransactionValidator.validateTransaction(transaction), Optional.empty());
+  }
+
+  @Test
+  public void rejectedWithMaxGasLimitPlusOne() {
+    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
+        org.hyperledger.besu.ethereum.core.Transaction.builder();
+    final org.hyperledger.besu.ethereum.core.Transaction transaction =
+        builder
+            .sender(NOT_DENIED)
+            .to(NOT_DENIED)
+            .gasLimit(MAX_TX_GAS_LIMIT + 1)
+            .gasPrice(Wei.ZERO)
+            .build();
+    Assertions.assertEquals(
+        lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
+        "Gas limit of transaction is greater than the allowed max of " + MAX_TX_GAS_LIMIT);
   }
 }

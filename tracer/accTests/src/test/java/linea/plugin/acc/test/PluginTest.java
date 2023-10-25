@@ -45,6 +45,8 @@ import org.web3j.utils.Convert;
 
 public class PluginTest extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1092; // contract has a call data size of 979
+
+  public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
   private BesuNode minerNode;
 
   private void setUpWithMaxCalldata() throws Exception {
@@ -58,7 +60,8 @@ public class PluginTest extends AcceptanceTestBase {
                 + Objects.requireNonNull(PluginTest.class.getResource("/emptyDenyList.txt"))
                     .getPath(),
             "--plugin-linea-max-tx-calldata-size=" + MAX_CALLDATA_SIZE,
-            "--plugin-linea-max-block-calldata-size=" + MAX_CALLDATA_SIZE);
+            "--plugin-linea-max-block-calldata-size=" + MAX_CALLDATA_SIZE,
+            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT);
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -73,7 +76,25 @@ public class PluginTest extends AcceptanceTestBase {
             "--plugin-linea-deny-list-path="
                 + Objects.requireNonNull(PluginTest.class.getResource("/denyList.txt")).getPath(),
             "--plugin-linea-max-tx-calldata-size=2000000",
-            "--plugin-linea-max-block-calldata-size=2000000");
+            "--plugin-linea-max-block-calldata-size=2000000",
+            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT);
+    minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
+    cluster.start(minerNode);
+  }
+
+  private void setUpWithMaxTxGasLimit() throws Exception {
+
+    // To debug into besu:
+    // System.setProperty("acctests.runBesuAsProcess", "false");
+
+    final List<String> cliOptions =
+        List.of(
+            "--plugin-linea-deny-list-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/emptyDenyList.txt"))
+                    .getPath(),
+            "--plugin-linea-max-tx-calldata-size=2000000",
+            "--plugin-linea-max-block-calldata-size=2000000",
+            "--plugin-linea-max-tx-gas-limit=" + MAX_TX_GAS_LIMIT);
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -82,6 +103,52 @@ public class PluginTest extends AcceptanceTestBase {
   public void stop() {
     cluster.stop();
     cluster.close();
+  }
+
+  @Test
+  public void shouldLimitTxGas() throws Exception {
+    setUpWithMaxTxGasLimit();
+    final SimpleStorage simpleStorage =
+        minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
+
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final String contractAddress = simpleStorage.getContractAddress();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager = new RawTransactionManager(web3j, credentials);
+
+    final String txData = simpleStorage.set("hello").encodeFunctionCall();
+
+    final String hashGood =
+        txManager
+            .sendTransaction(
+                DefaultGasProvider.GAS_PRICE,
+                BigInteger.valueOf(MAX_TX_GAS_LIMIT),
+                contractAddress,
+                txData,
+                BigInteger.ZERO)
+            .getTransactionHash();
+
+    final String hashTooBig =
+        txManager
+            .sendTransaction(
+                DefaultGasProvider.GAS_PRICE,
+                BigInteger.valueOf(MAX_TX_GAS_LIMIT + 1),
+                contractAddress,
+                txData,
+                BigInteger.ZERO)
+            .getTransactionHash();
+
+    TransactionReceiptProcessor receiptProcessor =
+        new PollingTransactionReceiptProcessor(
+            web3j, 4000L, TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+
+    // make sure that a transaction that is not too big was mined
+    final TransactionReceipt transactionReceipt =
+        receiptProcessor.waitForTransactionReceipt(hashGood);
+    Assertions.assertThat(transactionReceipt).isNotNull();
+
+    final EthGetTransactionReceipt receipt = web3j.ethGetTransactionReceipt(hashTooBig).send();
+    Assertions.assertThat(receipt.getTransactionReceipt()).isEmpty();
   }
 
   @Test
@@ -139,9 +206,7 @@ public class PluginTest extends AcceptanceTestBase {
 
     TransactionReceiptProcessor receiptProcessor =
         new PollingTransactionReceiptProcessor(
-            web3j,
-            TransactionManager.DEFAULT_POLLING_FREQUENCY,
-            TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+            web3j, 4000L, TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
 
     // make sure that a transaction that is not too big was mined
     final TransactionReceipt transactionReceipt =
