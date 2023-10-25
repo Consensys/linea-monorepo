@@ -16,7 +16,6 @@
 package net.consensys.linea.sequencer.txvalidation;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -36,8 +35,7 @@ import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 public class LineaTransactionValidatorPlugin implements BesuPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionValidatorCliOptions options;
-  private ArrayList<Address> denied = new ArrayList<>();
-  ;
+  private final ArrayList<Address> denied = new ArrayList<>();
 
   public LineaTransactionValidatorPlugin() {
     options = LineaTransactionValidatorCliOptions.create();
@@ -71,9 +69,8 @@ public class LineaTransactionValidatorPlugin implements BesuPlugin {
   @Override
   public void start() {
     final LineaTransactionValidatorConfiguration config = options.toDomainObject();
-    Path filePath = Paths.get(config.denyListPath());
 
-    try (Stream<String> lines = Files.lines(filePath)) {
+    try (Stream<String> lines = Files.lines(Paths.get(config.denyListPath()))) {
       lines.forEach(
           l -> {
             final Address address = Address.fromHexString(l.trim());
@@ -92,6 +89,6 @@ public class LineaTransactionValidatorPlugin implements BesuPlugin {
   private void createAndRegister(
       final PluginTransactionValidatorService transactionValidationService) {
     transactionValidationService.registerTransactionValidatorFactory(
-        new LineaTransactionValidatorFactory(denied));
+        new LineaTransactionValidatorFactory(options, denied));
   }
 }

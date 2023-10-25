@@ -24,6 +24,9 @@ public class LineaTransactionValidatorCliOptions {
   public static final String DENY_LIST_PATH = "--plugin-linea-deny-list-path";
   public static final String DEFAULT_DENY_LIST_PATH = "lineaDenyList.txt";
 
+  public static final String MAX_TX_GAS_LIMIT_OPTION = "--plugin-linea-max-tx-gas-limit";
+  public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
+
   @CommandLine.Option(
       names = {DENY_LIST_PATH},
       hidden = true,
@@ -31,6 +34,16 @@ public class LineaTransactionValidatorCliOptions {
       description =
           "Path to the file containing the deny list (default: " + DEFAULT_DENY_LIST_PATH + ")")
   private String denyListPath = DEFAULT_DENY_LIST_PATH;
+
+  @CommandLine.Option(
+      names = {MAX_TX_GAS_LIMIT_OPTION},
+      hidden = true,
+      paramLabel = "<INT>",
+      description =
+          "Maximum gas limit for a transaction (default: "
+              + DEFAULT_MAX_TRANSACTION_GAS_LIMIT
+              + ")")
+  private int maxTxGasLimit = DEFAULT_MAX_TRANSACTION_GAS_LIMIT;
 
   private LineaTransactionValidatorCliOptions() {}
 
@@ -53,6 +66,7 @@ public class LineaTransactionValidatorCliOptions {
       final LineaTransactionValidatorConfiguration config) {
     final LineaTransactionValidatorCliOptions options = create();
     options.denyListPath = config.denyListPath();
+    options.maxTxGasLimit = config.maxTxGasLimit();
 
     return options;
   }
@@ -63,11 +77,14 @@ public class LineaTransactionValidatorCliOptions {
    * @return the Linea factory configuration
    */
   public LineaTransactionValidatorConfiguration toDomainObject() {
-    return new LineaTransactionValidatorConfiguration(denyListPath);
+    return new LineaTransactionValidatorConfiguration(denyListPath, maxTxGasLimit);
   }
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this).add(DENY_LIST_PATH, denyListPath).toString();
+    return MoreObjects.toStringHelper(this)
+        .add(DENY_LIST_PATH, denyListPath)
+        .add(MAX_TX_GAS_LIMIT_OPTION, maxTxGasLimit)
+        .toString();
   }
 }

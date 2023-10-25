@@ -32,6 +32,7 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionValidat
 @Slf4j
 @RequiredArgsConstructor
 public class LineaTransactionValidator implements PluginTransactionValidator {
+  private final LineaTransactionValidatorConfiguration config;
   private final List<Address> denied;
 
   private static final List<Address> precompiles =
@@ -72,6 +73,12 @@ public class LineaTransactionValidator implements PluginTransactionValidator {
         log.debug(errMsg);
         return Optional.of(errMsg);
       }
+    }
+    if (transaction.getGasLimit() > config.maxTxGasLimit()) {
+      final String errMsg =
+          "Gas limit of transaction is greater than the allowed max of " + config.maxTxGasLimit();
+      log.debug(errMsg);
+      return Optional.of(errMsg);
     }
     return Optional.empty(); // returning empty indicates that the transaction is valid
   }
