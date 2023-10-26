@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import java.math.BigInteger;
+import java.util.Optional;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -59,7 +60,9 @@ public class TxInfo implements StackedContainer {
 
   boolean shouldSkip(WorldView world) {
     return (this.transaction.getTo().isPresent()
-            && world.get(this.transaction.getTo().get()).getCode().isEmpty()) // pure transaction
+            && Optional.ofNullable(world.get(this.transaction.getTo().get()))
+                .map(a -> a.getCode().isEmpty())
+                .orElse(true)) // pure transaction
         || (this.transaction.getTo().isEmpty()
             && this.transaction.getInit().isEmpty()); // contract creation without init code
   }

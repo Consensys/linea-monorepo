@@ -23,6 +23,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 public class PrecompileScenarioTraceSubsection implements SubSection {
   @Override
   public List<TraceFragment> generate() {
-    return null;
+    return List.of(); // TODO:
   }
 }
