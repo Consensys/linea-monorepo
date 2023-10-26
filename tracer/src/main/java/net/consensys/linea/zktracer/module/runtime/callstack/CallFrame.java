@@ -37,10 +37,8 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Accessors(fluent = true)
 public class CallFrame {
-  /**
-   * the position of this {@link CallFrame} in the {@link CallStack}, also its associated context
-   * number in the {@link Hub}.
-   */
+  public static final CallFrame EMPTY = new CallFrame(Address.ZERO);
+  /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
   /** the context number of the frame, i.e. the hub stamp at its creation */
   @Getter private final int contextNumber;
@@ -107,10 +105,6 @@ public class CallFrame {
     this.address = address;
     this.callDataPointer = new MemorySpan(0, 0);
     this.returnDataTarget = new MemorySpan(0, 0);
-  }
-
-  public static CallFrame empty() {
-    return new CallFrame(Address.ZERO);
   }
 
   /**
