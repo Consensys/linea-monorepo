@@ -242,7 +242,7 @@ public class RomLex implements Module {
       }
 
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
-        final Address calledAddress = Address.wrap(frame.getStackItem(1).slice(0, 20));
+        final Address calledAddress = Words.toAddress(frame.getStackItem(1));
         final boolean depStatus =
             hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
         final int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
@@ -264,7 +264,7 @@ public class RomLex implements Module {
       }
 
       case EXTCODECOPY -> {
-        final Address calledAddress = Address.wrap(frame.getStackItem(1).slice(0, 20));
+        final Address calledAddress = Words.toAddress(frame.getStackItem(1));
         final long size = Words.clampedToLong(frame.getStackItem(3));
         final boolean isDeploying =
             hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());

@@ -58,9 +58,9 @@ public class Ext implements Module {
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
-    final Bytes32 arg1 = Bytes32.wrap(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.wrap(frame.getStackItem(1));
-    final Bytes32 arg3 = Bytes32.wrap(frame.getStackItem(2));
+    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
+    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
+    final Bytes32 arg3 = Bytes32.leftPad(frame.getStackItem(2));
 
     this.operations.add(new ExtOperation(opCode, arg1, arg2, arg3));
   }

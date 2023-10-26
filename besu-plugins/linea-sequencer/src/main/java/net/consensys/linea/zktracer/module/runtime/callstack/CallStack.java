@@ -209,6 +209,12 @@ public final class CallStack {
    * @throws IndexOutOfBoundsException if the index is out of range
    */
   public CallFrame get(int i) {
+    // The case where the CF #0 is called on an empty stack stems from a skipped transaction, where
+    // no CF of interest is available to trace.
+    // TODO: use an explicit -1 as marker
+    if (i == 0 && this.frames.isEmpty()) {
+      return CallFrame.EMPTY;
+    }
     return this.frames.get(i);
   }
 
