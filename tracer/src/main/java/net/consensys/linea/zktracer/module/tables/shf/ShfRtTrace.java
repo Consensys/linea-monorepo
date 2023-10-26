@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.lookuptable;
+package net.consensys.linea.zktracer.module.tables.shf;
 
 import java.math.BigInteger;
 import java.util.ArrayList;

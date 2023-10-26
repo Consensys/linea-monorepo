@@ -20,7 +20,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.lookuptable.ShfRtTrace;
+import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
+import net.consensys.linea.zktracer.module.tables.shf.ShfRtTrace;
 
 public class ZkTraceBuilder {
   private final Map<String, Object> traceResults = new HashMap<>();
@@ -46,9 +47,8 @@ public class ZkTraceBuilder {
 
   public ZkTrace build() {
     // TODO: add other reference tables
-    if (!traceResults.containsKey("shfRT")) {
-      traceResults.put("shfRT", ShfRtTrace.generate());
-    }
+    traceResults.put("shfRT", ShfRtTrace.generate());
+    traceResults.put("instruction-decoder", InstructionDecoder.generate());
 
     return new ZkTrace(traceResults);
   }

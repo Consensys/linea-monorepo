@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode.gas;
 
+import java.util.Objects;
+
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 /**
@@ -25,8 +27,23 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
  */
 @JsonDeserialize(using = BillingDeserializer.class)
 public record Billing(GasConstants perUnit, BillingRate billingRate, MxpType type) {
+  public static final Billing DEFAULT =
+      new Billing(GasConstants.G_ZERO, BillingRate.NONE, MxpType.NONE);
+
   public Billing() {
-    this(null, null, MxpType.NONE);
+    this(GasConstants.G_ZERO, BillingRate.NONE, MxpType.NONE);
+  }
+
+  public GasConstants perUnit() {
+    return Objects.requireNonNullElse(this.perUnit, GasConstants.G_ZERO);
+  }
+
+  public BillingRate billingRate() {
+    return Objects.requireNonNullElse(this.billingRate, BillingRate.NONE);
+  }
+
+  public MxpType type() {
+    return Objects.requireNonNullElse(this.type, MxpType.NONE);
   }
 
   /**

@@ -32,7 +32,7 @@ import net.consensys.linea.zktracer.json.JsonConverter;
 public class OpCodes {
   private static final JsonConverter YAML_CONVERTER = JsonConverter.builder().enableYaml().build();
 
-  private static Map<Long, OpCodeData> valueToOpCodeDataMap;
+  private static Map<Integer, OpCodeData> valueToOpCodeDataMap;
   private static Map<OpCode, OpCodeData> opCodeToOpCodeDataMap;
 
   /** Loads all opcode metadata from src/main/resources/opcodes.yml. */
@@ -62,7 +62,7 @@ public class OpCodes {
    * @param value opcode long value.
    * @return an instance of {@link OpCodeData} corresponding to the numeric (long) value.
    */
-  public static OpCodeData of(final long value) {
+  public static OpCodeData of(final int value) {
     if (value < 0 || value > 255) {
       throw new IllegalArgumentException("No OpCode with value %s is defined.".formatted(value));
     }

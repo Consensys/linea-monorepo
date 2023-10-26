@@ -182,15 +182,6 @@ public enum OpCode {
    *
    * @return the {@link OpCode}
    */
-  public static OpCode of(final long value) {
-    return OpCodes.of(value).mnemonic();
-  }
-
-  /**
-   * Retrieves the {@link OpCode} corresponding to a given value.
-   *
-   * @return the {@link OpCode}
-   */
   public static OpCode of(final int value) {
     return OpCodes.of(value).mnemonic();
   }
@@ -201,7 +192,7 @@ public enum OpCode {
    * @return the {@link OpCode}'s value as a byte
    */
   public byte byteValue() {
-    return this.getData().value().byteValue();
+    return (byte) this.getData().value();
   }
 
   /** Returns whether the {@link OpCode} entails a contract creation. */

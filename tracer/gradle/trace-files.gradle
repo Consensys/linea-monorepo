@@ -77,6 +77,18 @@ tasks.register("hub", TraceFilesTask) {
 }
 
 //
+// Reference table
+//
+tasks.register('instructionDecoder', TraceFilesTask) {
+    group "Trace files generation"
+    dependsOn corsetExists
+
+    moduleDir = "tables/instructionDecoder"
+    module = "instructionDecoder"
+    files = ["lookup_tables/tables/instruction_decoder.lisp"]
+}
+
+//
 // Put here modules following the conventional MODULE/columns.lisp naming scheme
 //
 ['bin', 'ec_data', 'mxp', 'shf', 'wcp', 'rlp_txrcpt', 'rlp_txn', 'rlpAddr', 'rom', 'romLex'].each {moduleName ->
