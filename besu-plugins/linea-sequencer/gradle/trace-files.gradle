@@ -91,12 +91,12 @@ tasks.register('instructionDecoder', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme
 //
-['bin', 'ec_data', 'mxp', 'shf', 'wcp', 'rlp_txrcpt', 'rlp_txn', 'rlpAddr', 'rom', 'romLex'].each {moduleName ->
+['bin', 'ec_data', 'mxp', 'shf', 'wcp', 'rlp_txrcpt', 'rlp_txn', 'rlpAddr', 'rom', 'romLex', 'txn_data'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
 
         module = moduleName
-        files = ["${moduleName}/columns.lisp"]
+        files = ["${moduleName}/columns.lisp", "${moduleName}/constraints.lisp", "library/constant.lisp", "library/rlp_constraints_pattern.lisp"]
     }
 }

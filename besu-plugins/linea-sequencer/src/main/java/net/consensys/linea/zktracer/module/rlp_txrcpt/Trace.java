@@ -62,11 +62,11 @@ public record Trace(
     @JsonProperty("LOG_ENTRY_SIZE") List<BigInteger> logEntrySize,
     @JsonProperty("nBYTES") List<UnsignedByte> nBytes,
     @JsonProperty("nSTEP") List<BigInteger> nStep,
-    @JsonProperty("PHASE_0") List<Boolean> phase0,
     @JsonProperty("PHASE_1") List<Boolean> phase1,
     @JsonProperty("PHASE_2") List<Boolean> phase2,
     @JsonProperty("PHASE_3") List<Boolean> phase3,
     @JsonProperty("PHASE_4") List<Boolean> phase4,
+    @JsonProperty("PHASE_5") List<Boolean> phase5,
     @JsonProperty("PHASE_END") List<Boolean> phaseEnd,
     @JsonProperty("PHASE_SIZE") List<BigInteger> phaseSize,
     @JsonProperty("POWER") List<BigInteger> power,
@@ -184,9 +184,6 @@ public record Trace(
     @JsonProperty("nSTEP")
     private final List<BigInteger> nStep;
 
-    @JsonProperty("PHASE_0")
-    private final List<Boolean> phase0;
-
     @JsonProperty("PHASE_1")
     private final List<Boolean> phase1;
 
@@ -198,6 +195,9 @@ public record Trace(
 
     @JsonProperty("PHASE_4")
     private final List<Boolean> phase4;
+
+    @JsonProperty("PHASE_5")
+    private final List<Boolean> phase5;
 
     @JsonProperty("PHASE_END")
     private final List<Boolean> phaseEnd;
@@ -246,11 +246,11 @@ public record Trace(
       this.logEntrySize = new ArrayList<>(length);
       this.nBytes = new ArrayList<>(length);
       this.nStep = new ArrayList<>(length);
-      this.phase0 = new ArrayList<>(length);
       this.phase1 = new ArrayList<>(length);
       this.phase2 = new ArrayList<>(length);
       this.phase3 = new ArrayList<>(length);
       this.phase4 = new ArrayList<>(length);
+      this.phase5 = new ArrayList<>(length);
       this.phaseEnd = new ArrayList<>(length);
       this.phaseSize = new ArrayList<>(length);
       this.power = new ArrayList<>(length);
@@ -530,7 +530,6 @@ public record Trace(
     }
 
     public TraceBuilder input3(final BigInteger b) {
-      assert b.compareTo(BigInteger.ZERO) >= 0;
       if (filled.get(22)) {
         throw new IllegalStateException("INPUT_3 already set");
       } else {
@@ -694,23 +693,11 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder phase0(final Boolean b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("PHASE_0 already set");
-      } else {
-        filled.set(32);
-      }
-
-      phase0.add(b);
-
-      return this;
-    }
-
     public TraceBuilder phase1(final Boolean b) {
-      if (filled.get(33)) {
+      if (filled.get(32)) {
         throw new IllegalStateException("PHASE_1 already set");
       } else {
-        filled.set(33);
+        filled.set(32);
       }
 
       phase1.add(b);
@@ -719,10 +706,10 @@ public record Trace(
     }
 
     public TraceBuilder phase2(final Boolean b) {
-      if (filled.get(34)) {
+      if (filled.get(33)) {
         throw new IllegalStateException("PHASE_2 already set");
       } else {
-        filled.set(34);
+        filled.set(33);
       }
 
       phase2.add(b);
@@ -731,10 +718,10 @@ public record Trace(
     }
 
     public TraceBuilder phase3(final Boolean b) {
-      if (filled.get(35)) {
+      if (filled.get(34)) {
         throw new IllegalStateException("PHASE_3 already set");
       } else {
-        filled.set(35);
+        filled.set(34);
       }
 
       phase3.add(b);
@@ -743,13 +730,25 @@ public record Trace(
     }
 
     public TraceBuilder phase4(final Boolean b) {
-      if (filled.get(36)) {
+      if (filled.get(35)) {
         throw new IllegalStateException("PHASE_4 already set");
+      } else {
+        filled.set(35);
+      }
+
+      phase4.add(b);
+
+      return this;
+    }
+
+    public TraceBuilder phase5(final Boolean b) {
+      if (filled.get(36)) {
+        throw new IllegalStateException("PHASE_5 already set");
       } else {
         filled.set(36);
       }
 
-      phase4.add(b);
+      phase5.add(b);
 
       return this;
     }
@@ -940,23 +939,23 @@ public record Trace(
       }
 
       if (!filled.get(32)) {
-        throw new IllegalStateException("PHASE_0 has not been filled");
-      }
-
-      if (!filled.get(33)) {
         throw new IllegalStateException("PHASE_1 has not been filled");
       }
 
-      if (!filled.get(34)) {
+      if (!filled.get(33)) {
         throw new IllegalStateException("PHASE_2 has not been filled");
       }
 
-      if (!filled.get(35)) {
+      if (!filled.get(34)) {
         throw new IllegalStateException("PHASE_3 has not been filled");
       }
 
-      if (!filled.get(36)) {
+      if (!filled.get(35)) {
         throw new IllegalStateException("PHASE_4 has not been filled");
+      }
+
+      if (!filled.get(36)) {
+        throw new IllegalStateException("PHASE_5 has not been filled");
       }
 
       if (!filled.get(37)) {
@@ -1118,23 +1117,23 @@ public record Trace(
         this.filled.set(42);
       }
       if (!filled.get(32)) {
-        phase0.add(false);
+        phase1.add(false);
         this.filled.set(32);
       }
       if (!filled.get(33)) {
-        phase1.add(false);
+        phase2.add(false);
         this.filled.set(33);
       }
       if (!filled.get(34)) {
-        phase2.add(false);
+        phase3.add(false);
         this.filled.set(34);
       }
       if (!filled.get(35)) {
-        phase3.add(false);
+        phase4.add(false);
         this.filled.set(35);
       }
       if (!filled.get(36)) {
-        phase4.add(false);
+        phase5.add(false);
         this.filled.set(36);
       }
       if (!filled.get(37)) {
@@ -1197,11 +1196,11 @@ public record Trace(
           logEntrySize,
           nBytes,
           nStep,
-          phase0,
           phase1,
           phase2,
           phase3,
           phase4,
+          phase5,
           phaseEnd,
           phaseSize,
           power,
