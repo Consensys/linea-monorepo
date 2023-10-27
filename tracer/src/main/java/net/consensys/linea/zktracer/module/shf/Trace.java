@@ -79,8 +79,8 @@ public record Trace(
     @JsonProperty("SHB_7_LO") List<BigInteger> shb7Lo,
     @JsonProperty("SHIFT_DIRECTION") List<Boolean> shiftDirection,
     @JsonProperty("SHIFT_STAMP") List<BigInteger> shiftStamp) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -91,159 +91,211 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1 = new ArrayList<>();
+    private final List<BigInteger> acc1;
 
     @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2 = new ArrayList<>();
+    private final List<BigInteger> acc2;
 
     @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3 = new ArrayList<>();
+    private final List<BigInteger> acc3;
 
     @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4 = new ArrayList<>();
+    private final List<BigInteger> acc4;
 
     @JsonProperty("ACC_5")
-    private final List<BigInteger> acc5 = new ArrayList<>();
+    private final List<BigInteger> acc5;
 
     @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi = new ArrayList<>();
+    private final List<BigInteger> arg1Hi;
 
     @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo = new ArrayList<>();
+    private final List<BigInteger> arg1Lo;
 
     @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi = new ArrayList<>();
+    private final List<BigInteger> arg2Hi;
 
     @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo = new ArrayList<>();
+    private final List<BigInteger> arg2Lo;
 
     @JsonProperty("BIT_1")
-    private final List<Boolean> bit1 = new ArrayList<>();
+    private final List<Boolean> bit1;
 
     @JsonProperty("BIT_2")
-    private final List<Boolean> bit2 = new ArrayList<>();
+    private final List<Boolean> bit2;
 
     @JsonProperty("BIT_3")
-    private final List<Boolean> bit3 = new ArrayList<>();
+    private final List<Boolean> bit3;
 
     @JsonProperty("BIT_4")
-    private final List<Boolean> bit4 = new ArrayList<>();
+    private final List<Boolean> bit4;
 
     @JsonProperty("BIT_B_3")
-    private final List<Boolean> bitB3 = new ArrayList<>();
+    private final List<Boolean> bitB3;
 
     @JsonProperty("BIT_B_4")
-    private final List<Boolean> bitB4 = new ArrayList<>();
+    private final List<Boolean> bitB4;
 
     @JsonProperty("BIT_B_5")
-    private final List<Boolean> bitB5 = new ArrayList<>();
+    private final List<Boolean> bitB5;
 
     @JsonProperty("BIT_B_6")
-    private final List<Boolean> bitB6 = new ArrayList<>();
+    private final List<Boolean> bitB6;
 
     @JsonProperty("BIT_B_7")
-    private final List<Boolean> bitB7 = new ArrayList<>();
+    private final List<Boolean> bitB7;
 
     @JsonProperty("BITS")
-    private final List<Boolean> bits = new ArrayList<>();
+    private final List<Boolean> bits;
 
     @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2 = new ArrayList<>();
+    private final List<UnsignedByte> byte2;
 
     @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3 = new ArrayList<>();
+    private final List<UnsignedByte> byte3;
 
     @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4 = new ArrayList<>();
+    private final List<UnsignedByte> byte4;
 
     @JsonProperty("BYTE_5")
-    private final List<UnsignedByte> byte5 = new ArrayList<>();
+    private final List<UnsignedByte> byte5;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("INST")
-    private final List<BigInteger> inst = new ArrayList<>();
+    private final List<BigInteger> inst;
 
     @JsonProperty("IS_DATA")
-    private final List<Boolean> isData = new ArrayList<>();
+    private final List<Boolean> isData;
 
     @JsonProperty("KNOWN")
-    private final List<Boolean> known = new ArrayList<>();
+    private final List<Boolean> known;
 
     @JsonProperty("LEFT_ALIGNED_SUFFIX_HIGH")
-    private final List<BigInteger> leftAlignedSuffixHigh = new ArrayList<>();
+    private final List<BigInteger> leftAlignedSuffixHigh;
 
     @JsonProperty("LEFT_ALIGNED_SUFFIX_LOW")
-    private final List<BigInteger> leftAlignedSuffixLow = new ArrayList<>();
+    private final List<BigInteger> leftAlignedSuffixLow;
 
     @JsonProperty("LOW_3")
-    private final List<BigInteger> low3 = new ArrayList<>();
+    private final List<BigInteger> low3;
 
     @JsonProperty("MICRO_SHIFT_PARAMETER")
-    private final List<BigInteger> microShiftParameter = new ArrayList<>();
+    private final List<BigInteger> microShiftParameter;
 
     @JsonProperty("NEG")
-    private final List<Boolean> neg = new ArrayList<>();
+    private final List<Boolean> neg;
 
     @JsonProperty("ONE_LINE_INSTRUCTION")
-    private final List<Boolean> oneLineInstruction = new ArrayList<>();
+    private final List<Boolean> oneLineInstruction;
 
     @JsonProperty("ONES")
-    private final List<BigInteger> ones = new ArrayList<>();
+    private final List<BigInteger> ones;
 
     @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi = new ArrayList<>();
+    private final List<BigInteger> resHi;
 
     @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo = new ArrayList<>();
+    private final List<BigInteger> resLo;
 
     @JsonProperty("RIGHT_ALIGNED_PREFIX_HIGH")
-    private final List<BigInteger> rightAlignedPrefixHigh = new ArrayList<>();
+    private final List<BigInteger> rightAlignedPrefixHigh;
 
     @JsonProperty("RIGHT_ALIGNED_PREFIX_LOW")
-    private final List<BigInteger> rightAlignedPrefixLow = new ArrayList<>();
+    private final List<BigInteger> rightAlignedPrefixLow;
 
     @JsonProperty("SHB_3_HI")
-    private final List<BigInteger> shb3Hi = new ArrayList<>();
+    private final List<BigInteger> shb3Hi;
 
     @JsonProperty("SHB_3_LO")
-    private final List<BigInteger> shb3Lo = new ArrayList<>();
+    private final List<BigInteger> shb3Lo;
 
     @JsonProperty("SHB_4_HI")
-    private final List<BigInteger> shb4Hi = new ArrayList<>();
+    private final List<BigInteger> shb4Hi;
 
     @JsonProperty("SHB_4_LO")
-    private final List<BigInteger> shb4Lo = new ArrayList<>();
+    private final List<BigInteger> shb4Lo;
 
     @JsonProperty("SHB_5_HI")
-    private final List<BigInteger> shb5Hi = new ArrayList<>();
+    private final List<BigInteger> shb5Hi;
 
     @JsonProperty("SHB_5_LO")
-    private final List<BigInteger> shb5Lo = new ArrayList<>();
+    private final List<BigInteger> shb5Lo;
 
     @JsonProperty("SHB_6_HI")
-    private final List<BigInteger> shb6Hi = new ArrayList<>();
+    private final List<BigInteger> shb6Hi;
 
     @JsonProperty("SHB_6_LO")
-    private final List<BigInteger> shb6Lo = new ArrayList<>();
+    private final List<BigInteger> shb6Lo;
 
     @JsonProperty("SHB_7_HI")
-    private final List<BigInteger> shb7Hi = new ArrayList<>();
+    private final List<BigInteger> shb7Hi;
 
     @JsonProperty("SHB_7_LO")
-    private final List<BigInteger> shb7Lo = new ArrayList<>();
+    private final List<BigInteger> shb7Lo;
 
     @JsonProperty("SHIFT_DIRECTION")
-    private final List<Boolean> shiftDirection = new ArrayList<>();
+    private final List<Boolean> shiftDirection;
 
     @JsonProperty("SHIFT_STAMP")
-    private final List<BigInteger> shiftStamp = new ArrayList<>();
+    private final List<BigInteger> shiftStamp;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.acc1 = new ArrayList<>(length);
+      this.acc2 = new ArrayList<>(length);
+      this.acc3 = new ArrayList<>(length);
+      this.acc4 = new ArrayList<>(length);
+      this.acc5 = new ArrayList<>(length);
+      this.arg1Hi = new ArrayList<>(length);
+      this.arg1Lo = new ArrayList<>(length);
+      this.arg2Hi = new ArrayList<>(length);
+      this.arg2Lo = new ArrayList<>(length);
+      this.bit1 = new ArrayList<>(length);
+      this.bit2 = new ArrayList<>(length);
+      this.bit3 = new ArrayList<>(length);
+      this.bit4 = new ArrayList<>(length);
+      this.bitB3 = new ArrayList<>(length);
+      this.bitB4 = new ArrayList<>(length);
+      this.bitB5 = new ArrayList<>(length);
+      this.bitB6 = new ArrayList<>(length);
+      this.bitB7 = new ArrayList<>(length);
+      this.bits = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.byte2 = new ArrayList<>(length);
+      this.byte3 = new ArrayList<>(length);
+      this.byte4 = new ArrayList<>(length);
+      this.byte5 = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.inst = new ArrayList<>(length);
+      this.isData = new ArrayList<>(length);
+      this.known = new ArrayList<>(length);
+      this.leftAlignedSuffixHigh = new ArrayList<>(length);
+      this.leftAlignedSuffixLow = new ArrayList<>(length);
+      this.low3 = new ArrayList<>(length);
+      this.microShiftParameter = new ArrayList<>(length);
+      this.neg = new ArrayList<>(length);
+      this.oneLineInstruction = new ArrayList<>(length);
+      this.ones = new ArrayList<>(length);
+      this.resHi = new ArrayList<>(length);
+      this.resLo = new ArrayList<>(length);
+      this.rightAlignedPrefixHigh = new ArrayList<>(length);
+      this.rightAlignedPrefixLow = new ArrayList<>(length);
+      this.shb3Hi = new ArrayList<>(length);
+      this.shb3Lo = new ArrayList<>(length);
+      this.shb4Hi = new ArrayList<>(length);
+      this.shb4Lo = new ArrayList<>(length);
+      this.shb5Hi = new ArrayList<>(length);
+      this.shb5Lo = new ArrayList<>(length);
+      this.shb6Hi = new ArrayList<>(length);
+      this.shb6Lo = new ArrayList<>(length);
+      this.shb7Hi = new ArrayList<>(length);
+      this.shb7Lo = new ArrayList<>(length);
+      this.shiftDirection = new ArrayList<>(length);
+      this.shiftStamp = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

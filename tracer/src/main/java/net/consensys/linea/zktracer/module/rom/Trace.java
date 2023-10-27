@@ -51,8 +51,8 @@ public record Trace(
     @JsonProperty("PUSH_VALUE_HIGH") List<BigInteger> pushValueHigh,
     @JsonProperty("PUSH_VALUE_LOW") List<BigInteger> pushValueLow,
     @JsonProperty("VALID_JUMP_DESTINATION") List<Boolean> validJumpDestination) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -63,75 +63,99 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC")
-    private final List<BigInteger> acc = new ArrayList<>();
+    private final List<BigInteger> acc;
 
     @JsonProperty("CODE_FRAGMENT_INDEX")
-    private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndex;
 
     @JsonProperty("CODE_FRAGMENT_INDEX_INFTY")
-    private final List<BigInteger> codeFragmentIndexInfty = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndexInfty;
 
     @JsonProperty("CODE_SIZE")
-    private final List<BigInteger> codeSize = new ArrayList<>();
+    private final List<BigInteger> codeSize;
 
     @JsonProperty("CODESIZE_REACHED")
-    private final List<Boolean> codesizeReached = new ArrayList<>();
+    private final List<Boolean> codesizeReached;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("COUNTER_MAX")
-    private final List<BigInteger> counterMax = new ArrayList<>();
+    private final List<BigInteger> counterMax;
 
     @JsonProperty("COUNTER_PUSH")
-    private final List<BigInteger> counterPush = new ArrayList<>();
+    private final List<BigInteger> counterPush;
 
     @JsonProperty("INDEX")
-    private final List<BigInteger> index = new ArrayList<>();
+    private final List<BigInteger> index;
 
     @JsonProperty("IS_PUSH")
-    private final List<Boolean> isPush = new ArrayList<>();
+    private final List<Boolean> isPush;
 
     @JsonProperty("IS_PUSH_DATA")
-    private final List<Boolean> isPushData = new ArrayList<>();
+    private final List<Boolean> isPushData;
 
     @JsonProperty("LIMB")
-    private final List<BigInteger> limb = new ArrayList<>();
+    private final List<BigInteger> limb;
 
     @JsonProperty("nBYTES")
-    private final List<BigInteger> nBytes = new ArrayList<>();
+    private final List<BigInteger> nBytes;
 
     @JsonProperty("nBYTES_ACC")
-    private final List<BigInteger> nBytesAcc = new ArrayList<>();
+    private final List<BigInteger> nBytesAcc;
 
     @JsonProperty("OPCODE")
-    private final List<UnsignedByte> opcode = new ArrayList<>();
+    private final List<UnsignedByte> opcode;
 
     @JsonProperty("PADDED_BYTECODE_BYTE")
-    private final List<UnsignedByte> paddedBytecodeByte = new ArrayList<>();
+    private final List<UnsignedByte> paddedBytecodeByte;
 
     @JsonProperty("PROGRAMME_COUNTER")
-    private final List<BigInteger> programmeCounter = new ArrayList<>();
+    private final List<BigInteger> programmeCounter;
 
     @JsonProperty("PUSH_FUNNEL_BIT")
-    private final List<Boolean> pushFunnelBit = new ArrayList<>();
+    private final List<Boolean> pushFunnelBit;
 
     @JsonProperty("PUSH_PARAMETER")
-    private final List<BigInteger> pushParameter = new ArrayList<>();
+    private final List<BigInteger> pushParameter;
 
     @JsonProperty("PUSH_VALUE_ACC")
-    private final List<BigInteger> pushValueAcc = new ArrayList<>();
+    private final List<BigInteger> pushValueAcc;
 
     @JsonProperty("PUSH_VALUE_HIGH")
-    private final List<BigInteger> pushValueHigh = new ArrayList<>();
+    private final List<BigInteger> pushValueHigh;
 
     @JsonProperty("PUSH_VALUE_LOW")
-    private final List<BigInteger> pushValueLow = new ArrayList<>();
+    private final List<BigInteger> pushValueLow;
 
     @JsonProperty("VALID_JUMP_DESTINATION")
-    private final List<Boolean> validJumpDestination = new ArrayList<>();
+    private final List<Boolean> validJumpDestination;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.acc = new ArrayList<>(length);
+      this.codeFragmentIndex = new ArrayList<>(length);
+      this.codeFragmentIndexInfty = new ArrayList<>(length);
+      this.codeSize = new ArrayList<>(length);
+      this.codesizeReached = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.counterMax = new ArrayList<>(length);
+      this.counterPush = new ArrayList<>(length);
+      this.index = new ArrayList<>(length);
+      this.isPush = new ArrayList<>(length);
+      this.isPushData = new ArrayList<>(length);
+      this.limb = new ArrayList<>(length);
+      this.nBytes = new ArrayList<>(length);
+      this.nBytesAcc = new ArrayList<>(length);
+      this.opcode = new ArrayList<>(length);
+      this.paddedBytecodeByte = new ArrayList<>(length);
+      this.programmeCounter = new ArrayList<>(length);
+      this.pushFunnelBit = new ArrayList<>(length);
+      this.pushParameter = new ArrayList<>(length);
+      this.pushValueAcc = new ArrayList<>(length);
+      this.pushValueHigh = new ArrayList<>(length);
+      this.pushValueLow = new ArrayList<>(length);
+      this.validJumpDestination = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

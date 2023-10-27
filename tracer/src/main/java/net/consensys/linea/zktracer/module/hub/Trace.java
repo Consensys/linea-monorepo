@@ -270,8 +270,8 @@ public record Trace(
     @JsonProperty("WARM_xor_IDENTITY_xor_JUMP_DESTINATION_VETTING_REQUIRED")
         List<Boolean> warmXorIdentityXorJumpDestinationVettingRequired,
     @JsonProperty("WCP_FLAG") List<Boolean> wcpFlag) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -282,540 +282,698 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ABSOLUTE_TRANSACTION_NUMBER")
-    private final List<BigInteger> absoluteTransactionNumber = new ArrayList<>();
+    private final List<BigInteger> absoluteTransactionNumber;
 
     @JsonProperty(
         "ADDR_HI_xor_ACCOUNT_ADDRESS_HI_xor_CCRS_STAMP_xor_HASH_INFO___KEC_HI_xor_ADDRESS_HI_xor_BASEFEE")
     private final List<BigInteger>
-        addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee =
-            new ArrayList<>();
+        addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee;
 
     @JsonProperty(
         "ADDR_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP___DYNCOST_xor_HASH_INFO___KEC_LO_xor_ADDRESS_LO_xor_CALL_DATA_SIZE")
     private final List<BigInteger>
-        addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize =
-            new ArrayList<>();
+        addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize;
 
     @JsonProperty(
         "BALANCE_NEW_xor_BYTE_CODE_ADDRESS_HI_xor_EXP___EXPONENT_LO_xor_HEIGHT_xor_STORAGE_KEY_HI_xor_COINBASE_ADDRESS_LO")
     private final List<BigInteger>
-        balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo =
-            new ArrayList<>();
+        balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo;
 
     @JsonProperty(
         "BALANCE_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP___EXPONENT_HI_xor_HASH_INFO___SIZE_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI")
     private final List<BigInteger>
-        balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi =
-            new ArrayList<>();
+        balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi;
 
     @JsonProperty("BATCH_NUMBER")
-    private final List<BigInteger> batchNumber = new ArrayList<>();
+    private final List<BigInteger> batchNumber;
 
     @JsonProperty("CALLER_CONTEXT_NUMBER")
-    private final List<BigInteger> callerContextNumber = new ArrayList<>();
+    private final List<BigInteger> callerContextNumber;
 
     @JsonProperty("CODE_ADDRESS_HI")
-    private final List<BigInteger> codeAddressHi = new ArrayList<>();
+    private final List<BigInteger> codeAddressHi;
 
     @JsonProperty("CODE_ADDRESS_LO")
-    private final List<BigInteger> codeAddressLo = new ArrayList<>();
+    private final List<BigInteger> codeAddressLo;
 
     @JsonProperty("CODE_DEPLOYMENT_NUMBER")
-    private final List<BigInteger> codeDeploymentNumber = new ArrayList<>();
+    private final List<BigInteger> codeDeploymentNumber;
 
     @JsonProperty("CODE_DEPLOYMENT_STATUS")
-    private final List<Boolean> codeDeploymentStatus = new ArrayList<>();
+    private final List<Boolean> codeDeploymentStatus;
 
     @JsonProperty("CODE_FRAGMENT_INDEX")
-    private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndex;
 
     @JsonProperty(
         "CODE_HASH_HI_NEW_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_MMU___INST_xor_HEIGHT_OVER_xor_VAL_CURR_HI_xor_FROM_ADDRESS_LO")
     private final List<BigInteger>
-        codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo =
-            new ArrayList<>();
+        codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo;
 
     @JsonProperty(
         "CODE_HASH_HI_xor_BYTE_CODE_ADDRESS_LO_xor_MMU___EXO_SUM_xor_HEIGHT_NEW_xor_STORAGE_KEY_LO_xor_FROM_ADDRESS_HI")
     private final List<BigInteger>
-        codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi =
-            new ArrayList<>();
+        codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi;
 
     @JsonProperty(
         "CODE_HASH_LO_NEW_xor_CALLER_ADDRESS_HI_xor_MMU___OFFSET_2_HI_xor_INST_xor_VAL_NEXT_HI_xor_GAS_PRICE")
     private final List<BigInteger>
-        codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice =
-            new ArrayList<>();
+        codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice;
 
     @JsonProperty(
         "CODE_HASH_LO_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU___OFFSET_1_LO_xor_HEIGHT_UNDER_xor_VAL_CURR_LO_xor_GAS_LIMIT")
     private final List<BigInteger>
-        codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit =
-            new ArrayList<>();
+        codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit;
 
     @JsonProperty(
         "CODE_SIZE_NEW_xor_CALLER_CONTEXT_NUMBER_xor_MMU___PARAM_1_xor_PUSH_VALUE_LO_xor_VAL_ORIG_HI_xor_GAS_REFUND_COUNTER_FINAL")
     private final List<BigInteger>
-        codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal =
-            new ArrayList<>();
+        codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal;
 
     @JsonProperty(
         "CODE_SIZE_xor_CALLER_ADDRESS_LO_xor_MMU___OFFSET_2_LO_xor_PUSH_VALUE_HI_xor_VAL_NEXT_LO_xor_GAS_REFUND_AMOUNT")
     private final List<BigInteger>
-        codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount =
-            new ArrayList<>();
+        codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount;
 
     @JsonProperty("CONTEXT_GETS_REVERTED_FLAG")
-    private final List<Boolean> contextGetsRevertedFlag = new ArrayList<>();
+    private final List<Boolean> contextGetsRevertedFlag;
 
     @JsonProperty("CONTEXT_MAY_CHANGE_FLAG")
-    private final List<Boolean> contextMayChangeFlag = new ArrayList<>();
+    private final List<Boolean> contextMayChangeFlag;
 
     @JsonProperty("CONTEXT_NUMBER")
-    private final List<BigInteger> contextNumber = new ArrayList<>();
+    private final List<BigInteger> contextNumber;
 
     @JsonProperty("CONTEXT_NUMBER_NEW")
-    private final List<BigInteger> contextNumberNew = new ArrayList<>();
+    private final List<BigInteger> contextNumberNew;
 
     @JsonProperty("CONTEXT_REVERT_STAMP")
-    private final List<BigInteger> contextRevertStamp = new ArrayList<>();
+    private final List<BigInteger> contextRevertStamp;
 
     @JsonProperty("CONTEXT_SELF_REVERTS_FLAG")
-    private final List<Boolean> contextSelfRevertsFlag = new ArrayList<>();
+    private final List<Boolean> contextSelfRevertsFlag;
 
     @JsonProperty("CONTEXT_WILL_REVERT_FLAG")
-    private final List<Boolean> contextWillRevertFlag = new ArrayList<>();
+    private final List<Boolean> contextWillRevertFlag;
 
     @JsonProperty("COUNTER_NSR")
-    private final List<BigInteger> counterNsr = new ArrayList<>();
+    private final List<BigInteger> counterNsr;
 
     @JsonProperty("COUNTER_TLI")
-    private final List<Boolean> counterTli = new ArrayList<>();
+    private final List<Boolean> counterTli;
 
     @JsonProperty(
         "DEP_NUM_NEW_xor_CALL_STACK_DEPTH_xor_MMU___REF_SIZE_xor_STACK_ITEM_HEIGHT_3_xor_INIT_GAS")
     private final List<BigInteger>
-        depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas = new ArrayList<>();
+        depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas;
 
     @JsonProperty(
         "DEP_NUM_xor_CALL_DATA_SIZE_xor_MMU___REF_OFFSET_xor_STACK_ITEM_HEIGHT_2_xor_INIT_CODE_SIZE")
     private final List<BigInteger>
-        depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize = new ArrayList<>();
+        depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize;
 
     @JsonProperty(
         "DEP_STATUS_NEW_xor_EXP___FLAG_xor_CALL_EOA_SUCCESS_CALLER_WILL_REVERT_xor_BIN_FLAG_xor_VAL_CURR_IS_ZERO_xor_STATUS_CODE")
     private final List<Boolean>
-        depStatusNewXorExpFlagXorCallEoaSuccessCallerWillRevertXorBinFlagXorValCurrIsZeroXorStatusCode =
-            new ArrayList<>();
+        depStatusNewXorExpFlagXorCallEoaSuccessCallerWillRevertXorBinFlagXorValCurrIsZeroXorStatusCode;
 
     @JsonProperty(
         "DEP_STATUS_xor_CCSR_FLAG_xor_CALL_ABORT_xor_ADD_FLAG_xor_VAL_CURR_IS_ORIG_xor_IS_EIP1559")
     private final List<Boolean>
-        depStatusXorCcsrFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559 = new ArrayList<>();
+        depStatusXorCcsrFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559;
 
     @JsonProperty(
         "DEPLOYMENT_NUMBER_INFTY_xor_CALL_DATA_OFFSET_xor_MMU___PARAM_2_xor_STACK_ITEM_HEIGHT_1_xor_VAL_ORIG_LO_xor_INITIAL_BALANCE")
     private final List<BigInteger>
-        deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance =
-            new ArrayList<>();
+        deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance;
 
     @JsonProperty(
         "DEPLOYMENT_STATUS_INFTY_xor_UPDATE_xor_ABORT_FLAG_xor_BLAKE2f_xor_ACC_FLAG_xor_VAL_CURR_CHANGES_xor_IS_DEPLOYMENT")
     private final List<Boolean>
-        deploymentStatusInftyXorUpdateXorAbortFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment =
-            new ArrayList<>();
+        deploymentStatusInftyXorUpdateXorAbortFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment;
 
     @JsonProperty("DOM_STAMP")
-    private final List<BigInteger> domStamp = new ArrayList<>();
+    private final List<BigInteger> domStamp;
 
     @JsonProperty("EXCEPTION_AHOY_FLAG")
-    private final List<Boolean> exceptionAhoyFlag = new ArrayList<>();
+    private final List<Boolean> exceptionAhoyFlag;
 
     @JsonProperty(
         "EXISTS_NEW_xor_MMU___FLAG_xor_CALL_PRC_FAILURE_CALLER_WILL_REVERT_xor_CALL_FLAG_xor_VAL_NEXT_IS_ORIG")
     private final List<Boolean>
-        existsNewXorMmuFlagXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig =
-            new ArrayList<>();
+        existsNewXorMmuFlagXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig;
 
     @JsonProperty(
         "EXISTS_xor_FCOND_FLAG_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VAL_NEXT_IS_CURR_xor_TXN_REQUIRES_EVM_EXECUTION")
     private final List<Boolean>
-        existsXorFcondFlagXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution =
-            new ArrayList<>();
+        existsXorFcondFlagXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution;
 
     @JsonProperty("GAS_ACTUAL")
-    private final List<BigInteger> gasActual = new ArrayList<>();
+    private final List<BigInteger> gasActual;
 
     @JsonProperty("GAS_COST")
-    private final List<BigInteger> gasCost = new ArrayList<>();
+    private final List<BigInteger> gasCost;
 
     @JsonProperty("GAS_EXPECTED")
-    private final List<BigInteger> gasExpected = new ArrayList<>();
+    private final List<BigInteger> gasExpected;
 
     @JsonProperty("GAS_NEXT")
-    private final List<BigInteger> gasNext = new ArrayList<>();
+    private final List<BigInteger> gasNext;
 
     @JsonProperty("GAS_REFUND")
-    private final List<BigInteger> gasRefund = new ArrayList<>();
+    private final List<BigInteger> gasRefund;
 
     @JsonProperty("GAS_REFUND_NEW")
-    private final List<BigInteger> gasRefundNew = new ArrayList<>();
+    private final List<BigInteger> gasRefundNew;
 
     @JsonProperty(
         "HAS_CODE_NEW_xor_MXP___DEPLOYS_xor_CALL_PRC_SUCCESS_CALLER_WILL_REVERT_xor_COPY_FLAG_xor_VAL_ORIG_IS_ZERO")
     private final List<Boolean>
-        hasCodeNewXorMxpDeploysXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero =
-            new ArrayList<>();
+        hasCodeNewXorMxpDeploysXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero;
 
     @JsonProperty(
         "HAS_CODE_xor_MMU___INFO_xor_CALL_PRC_FAILURE_CALLER_WONT_REVERT_xor_CON_FLAG_xor_VAL_NEXT_IS_ZERO")
     private final List<Boolean>
-        hasCodeXorMmuInfoXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero =
-            new ArrayList<>();
+        hasCodeXorMmuInfoXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero;
 
     @JsonProperty("HASH_INFO_STAMP")
-    private final List<BigInteger> hashInfoStamp = new ArrayList<>();
+    private final List<BigInteger> hashInfoStamp;
 
     @JsonProperty("HUB_STAMP")
-    private final List<BigInteger> hubStamp = new ArrayList<>();
+    private final List<BigInteger> hubStamp;
 
     @JsonProperty("HUB_STAMP_TRANSACTION_END")
-    private final List<BigInteger> hubStampTransactionEnd = new ArrayList<>();
+    private final List<BigInteger> hubStampTransactionEnd;
 
     @JsonProperty(
         "IS_BLAKE2f_xor_MXP___FLAG_xor_CALL_PRC_SUCCESS_CALLER_WONT_REVERT_xor_CREATE_FLAG_xor_WARM")
     private final List<Boolean>
-        isBlake2FXorMxpFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm =
-            new ArrayList<>();
+        isBlake2FXorMxpFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm;
 
     @JsonProperty(
         "IS_ECADD_xor_MXP___MXPX_xor_CALL_SMC_FAILURE_CALLER_WILL_REVERT_xor_DECODED_FLAG_1_xor_WARM_NEW")
     private final List<Boolean>
-        isEcaddXorMxpMxpxXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew =
-            new ArrayList<>();
+        isEcaddXorMxpMxpxXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew;
 
     @JsonProperty(
         "IS_ECMUL_xor_OOB___EVENT_1_xor_CALL_SMC_FAILURE_CALLER_WONT_REVERT_xor_DECODED_FLAG_2")
-    private final List<Boolean>
-        isEcmulXorOobEvent1XorCallSmcFailureCallerWontRevertXorDecodedFlag2 = new ArrayList<>();
+    private final List<Boolean> isEcmulXorOobEvent1XorCallSmcFailureCallerWontRevertXorDecodedFlag2;
 
     @JsonProperty(
         "IS_ECPAIRING_xor_OOB___EVENT_2_xor_CALL_SMC_SUCCESS_CALLER_WILL_REVERT_xor_DECODED_FLAG_3")
     private final List<Boolean>
-        isEcpairingXorOobEvent2XorCallSmcSuccessCallerWillRevertXorDecodedFlag3 = new ArrayList<>();
+        isEcpairingXorOobEvent2XorCallSmcSuccessCallerWillRevertXorDecodedFlag3;
 
     @JsonProperty(
         "IS_ECRECOVER_xor_OOB___FLAG_xor_CALL_SMC_SUCCESS_CALLER_WONT_REVERT_xor_DECODED_FLAG_4")
     private final List<Boolean>
-        isEcrecoverXorOobFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4 = new ArrayList<>();
+        isEcrecoverXorOobFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4;
 
     @JsonProperty("IS_IDENTITY_xor_PRECINFO___FLAG_xor_CODEDEPOSIT_xor_DUP_FLAG")
-    private final List<Boolean> isIdentityXorPrecinfoFlagXorCodedepositXorDupFlag =
-        new ArrayList<>();
+    private final List<Boolean> isIdentityXorPrecinfoFlagXorCodedepositXorDupFlag;
 
     @JsonProperty("IS_MODEXP_xor_STP___EXISTS_xor_CODEDEPOSIT_INVALID_CODE_PREFIX_xor_EXT_FLAG")
-    private final List<Boolean> isModexpXorStpExistsXorCodedepositInvalidCodePrefixXorExtFlag =
-        new ArrayList<>();
+    private final List<Boolean> isModexpXorStpExistsXorCodedepositInvalidCodePrefixXorExtFlag;
 
     @JsonProperty("IS_PRECOMPILE_xor_STP___FLAG_xor_CODEDEPOSIT_VALID_CODE_PREFIX_xor_HALT_FLAG")
-    private final List<Boolean> isPrecompileXorStpFlagXorCodedepositValidCodePrefixXorHaltFlag =
-        new ArrayList<>();
+    private final List<Boolean> isPrecompileXorStpFlagXorCodedepositValidCodePrefixXorHaltFlag;
 
     @JsonProperty("IS_RIPEMDsub160_xor_STP___OOGX_xor_ECADD_xor_HASH_INFO_FLAG")
-    private final List<Boolean> isRipemDsub160XorStpOogxXorEcaddXorHashInfoFlag = new ArrayList<>();
+    private final List<Boolean> isRipemDsub160XorStpOogxXorEcaddXorHashInfoFlag;
 
     @JsonProperty("IS_SHA2sub256_xor_STP___WARM_xor_ECMUL_xor_INVALID_FLAG")
-    private final List<Boolean> isSha2Sub256XorStpWarmXorEcmulXorInvalidFlag = new ArrayList<>();
+    private final List<Boolean> isSha2Sub256XorStpWarmXorEcmulXorInvalidFlag;
 
     @JsonProperty("MMU_STAMP")
-    private final List<BigInteger> mmuStamp = new ArrayList<>();
+    private final List<BigInteger> mmuStamp;
 
     @JsonProperty("MXP___SIZE_1_HI_xor_STACK_ITEM_VALUE_LO_2")
-    private final List<BigInteger> mxpSize1HiXorStackItemValueLo2 = new ArrayList<>();
+    private final List<BigInteger> mxpSize1HiXorStackItemValueLo2;
 
     @JsonProperty("MXP___SIZE_1_LO_xor_STACK_ITEM_VALUE_LO_3")
-    private final List<BigInteger> mxpSize1LoXorStackItemValueLo3 = new ArrayList<>();
+    private final List<BigInteger> mxpSize1LoXorStackItemValueLo3;
 
     @JsonProperty("MXP___SIZE_2_HI_xor_STACK_ITEM_VALUE_LO_4")
-    private final List<BigInteger> mxpSize2HiXorStackItemValueLo4 = new ArrayList<>();
+    private final List<BigInteger> mxpSize2HiXorStackItemValueLo4;
 
     @JsonProperty("MXP___SIZE_2_LO_xor_STATIC_GAS")
-    private final List<BigInteger> mxpSize2LoXorStaticGas = new ArrayList<>();
+    private final List<BigInteger> mxpSize2LoXorStaticGas;
 
     @JsonProperty("MXP_STAMP")
-    private final List<BigInteger> mxpStamp = new ArrayList<>();
+    private final List<BigInteger> mxpStamp;
 
     @JsonProperty("MXP___WORDS")
-    private final List<BigInteger> mxpWords = new ArrayList<>();
+    private final List<BigInteger> mxpWords;
 
     @JsonProperty("NONCE_NEW_xor_CONTEXT_NUMBER_xor_MMU___SIZE_xor_STACK_ITEM_STAMP_1_xor_NONCE")
-    private final List<BigInteger> nonceNewXorContextNumberXorMmuSizeXorStackItemStamp1XorNonce =
-        new ArrayList<>();
+    private final List<BigInteger> nonceNewXorContextNumberXorMmuSizeXorStackItemStamp1XorNonce;
 
     @JsonProperty(
         "NONCE_xor_CALL_VALUE_xor_MMU___RETURNER_xor_STACK_ITEM_HEIGHT_4_xor_LEFTOVER_GAS")
-    private final List<BigInteger>
-        nonceXorCallValueXorMmuReturnerXorStackItemHeight4XorLeftoverGas = new ArrayList<>();
+    private final List<BigInteger> nonceXorCallValueXorMmuReturnerXorStackItemHeight4XorLeftoverGas;
 
     @JsonProperty("NUMBER_OF_NON_STACK_ROWS")
-    private final List<BigInteger> numberOfNonStackRows = new ArrayList<>();
+    private final List<BigInteger> numberOfNonStackRows;
 
     @JsonProperty("OOB___INST")
-    private final List<BigInteger> oobInst = new ArrayList<>();
+    private final List<BigInteger> oobInst;
 
     @JsonProperty("OOB___OUTGOING_DATA_1")
-    private final List<BigInteger> oobOutgoingData1 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData1;
 
     @JsonProperty("OOB___OUTGOING_DATA_2")
-    private final List<BigInteger> oobOutgoingData2 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData2;
 
     @JsonProperty("OOB___OUTGOING_DATA_3")
-    private final List<BigInteger> oobOutgoingData3 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData3;
 
     @JsonProperty("OOB___OUTGOING_DATA_4")
-    private final List<BigInteger> oobOutgoingData4 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData4;
 
     @JsonProperty("OOB___OUTGOING_DATA_5")
-    private final List<BigInteger> oobOutgoingData5 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData5;
 
     @JsonProperty("OOB___OUTGOING_DATA_6")
-    private final List<BigInteger> oobOutgoingData6 = new ArrayList<>();
+    private final List<BigInteger> oobOutgoingData6;
 
     @JsonProperty("PEEK_AT_ACCOUNT")
-    private final List<Boolean> peekAtAccount = new ArrayList<>();
+    private final List<Boolean> peekAtAccount;
 
     @JsonProperty("PEEK_AT_CONTEXT")
-    private final List<Boolean> peekAtContext = new ArrayList<>();
+    private final List<Boolean> peekAtContext;
 
     @JsonProperty("PEEK_AT_MISCELLANEOUS")
-    private final List<Boolean> peekAtMiscellaneous = new ArrayList<>();
+    private final List<Boolean> peekAtMiscellaneous;
 
     @JsonProperty("PEEK_AT_SCENARIO")
-    private final List<Boolean> peekAtScenario = new ArrayList<>();
+    private final List<Boolean> peekAtScenario;
 
     @JsonProperty("PEEK_AT_STACK")
-    private final List<Boolean> peekAtStack = new ArrayList<>();
+    private final List<Boolean> peekAtStack;
 
     @JsonProperty("PEEK_AT_STORAGE")
-    private final List<Boolean> peekAtStorage = new ArrayList<>();
+    private final List<Boolean> peekAtStorage;
 
     @JsonProperty("PEEK_AT_TRANSACTION")
-    private final List<Boolean> peekAtTransaction = new ArrayList<>();
+    private final List<Boolean> peekAtTransaction;
 
     @JsonProperty("PRECINFO___ADDR_LO")
-    private final List<BigInteger> precinfoAddrLo = new ArrayList<>();
+    private final List<BigInteger> precinfoAddrLo;
 
     @JsonProperty("PRECINFO___CDS")
-    private final List<BigInteger> precinfoCds = new ArrayList<>();
+    private final List<BigInteger> precinfoCds;
 
     @JsonProperty("PRECINFO___EXEC_COST")
-    private final List<BigInteger> precinfoExecCost = new ArrayList<>();
+    private final List<BigInteger> precinfoExecCost;
 
     @JsonProperty("PRECINFO___PROVIDES_RETURN_DATA")
-    private final List<BigInteger> precinfoProvidesReturnData = new ArrayList<>();
+    private final List<BigInteger> precinfoProvidesReturnData;
 
     @JsonProperty("PRECINFO___RDS")
-    private final List<BigInteger> precinfoRds = new ArrayList<>();
+    private final List<BigInteger> precinfoRds;
 
     @JsonProperty("PRECINFO___SUCCESS")
-    private final List<BigInteger> precinfoSuccess = new ArrayList<>();
+    private final List<BigInteger> precinfoSuccess;
 
     @JsonProperty("PRECINFO___TOUCHES_RAM")
-    private final List<BigInteger> precinfoTouchesRam = new ArrayList<>();
+    private final List<BigInteger> precinfoTouchesRam;
 
     @JsonProperty("PROGRAM_COUNTER")
-    private final List<BigInteger> programCounter = new ArrayList<>();
+    private final List<BigInteger> programCounter;
 
     @JsonProperty("PROGRAM_COUNTER_NEW")
-    private final List<BigInteger> programCounterNew = new ArrayList<>();
+    private final List<BigInteger> programCounterNew;
 
     @JsonProperty("PUSHPOP_FLAG")
-    private final List<Boolean> pushpopFlag = new ArrayList<>();
+    private final List<Boolean> pushpopFlag;
 
     @JsonProperty("RDCX")
-    private final List<Boolean> rdcx = new ArrayList<>();
+    private final List<Boolean> rdcx;
 
     @JsonProperty("RIPEMDsub160_xor_KEC_FLAG")
-    private final List<Boolean> ripemDsub160XorKecFlag = new ArrayList<>();
+    private final List<Boolean> ripemDsub160XorKecFlag;
 
     @JsonProperty(
         "RLPADDR___DEP_ADDR_HI_xor_IS_STATIC_xor_MMU___STACK_VAL_HI_xor_STACK_ITEM_STAMP_2_xor_TO_ADDRESS_HI")
     private final List<BigInteger>
-        rlpaddrDepAddrHiXorIsStaticXorMmuStackValHiXorStackItemStamp2XorToAddressHi =
-            new ArrayList<>();
+        rlpaddrDepAddrHiXorIsStaticXorMmuStackValHiXorStackItemStamp2XorToAddressHi;
 
     @JsonProperty(
         "RLPADDR___DEP_ADDR_LO_xor_RETURNER_CONTEXT_NUMBER_xor_MMU___STACK_VAL_LO_xor_STACK_ITEM_STAMP_3_xor_TO_ADDRESS_LO")
     private final List<BigInteger>
-        rlpaddrDepAddrLoXorReturnerContextNumberXorMmuStackValLoXorStackItemStamp3XorToAddressLo =
-            new ArrayList<>();
+        rlpaddrDepAddrLoXorReturnerContextNumberXorMmuStackValLoXorStackItemStamp3XorToAddressLo;
 
     @JsonProperty("RLPADDR___FLAG_xor_ECPAIRING_xor_INVPREX")
-    private final List<Boolean> rlpaddrFlagXorEcpairingXorInvprex = new ArrayList<>();
+    private final List<Boolean> rlpaddrFlagXorEcpairingXorInvprex;
 
     @JsonProperty(
         "RLPADDR___KEC_HI_xor_RETURNER_IS_PRECOMPILE_xor_MXP___GAS_MXP_xor_STACK_ITEM_STAMP_4_xor_VALUE")
     private final List<BigInteger>
-        rlpaddrKecHiXorReturnerIsPrecompileXorMxpGasMxpXorStackItemStamp4XorValue =
-            new ArrayList<>();
+        rlpaddrKecHiXorReturnerIsPrecompileXorMxpGasMxpXorStackItemStamp4XorValue;
 
     @JsonProperty("RLPADDR___KEC_LO_xor_RETURN_AT_OFFSET_xor_MXP___INST_xor_STACK_ITEM_VALUE_HI_1")
-    private final List<BigInteger> rlpaddrKecLoXorReturnAtOffsetXorMxpInstXorStackItemValueHi1 =
-        new ArrayList<>();
+    private final List<BigInteger> rlpaddrKecLoXorReturnAtOffsetXorMxpInstXorStackItemValueHi1;
 
     @JsonProperty(
         "RLPADDR___RECIPE_xor_RETURN_AT_SIZE_xor_MXP___OFFSET_1_HI_xor_STACK_ITEM_VALUE_HI_2")
-    private final List<BigInteger> rlpaddrRecipeXorReturnAtSizeXorMxpOffset1HiXorStackItemValueHi2 =
-        new ArrayList<>();
+    private final List<BigInteger> rlpaddrRecipeXorReturnAtSizeXorMxpOffset1HiXorStackItemValueHi2;
 
     @JsonProperty(
         "RLPADDR___SALT_HI_xor_RETURN_DATA_OFFSET_xor_MXP___OFFSET_1_LO_xor_STACK_ITEM_VALUE_HI_3")
     private final List<BigInteger>
-        rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset1LoXorStackItemValueHi3 = new ArrayList<>();
+        rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset1LoXorStackItemValueHi3;
 
     @JsonProperty(
         "RLPADDR___SALT_LO_xor_RETURN_DATA_SIZE_xor_MXP___OFFSET_2_HI_xor_STACK_ITEM_VALUE_HI_4")
     private final List<BigInteger>
-        rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2HiXorStackItemValueHi4 = new ArrayList<>();
+        rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2HiXorStackItemValueHi4;
 
     @JsonProperty("SCN_FAILURE_1_xor_LOG_FLAG")
-    private final List<Boolean> scnFailure1XorLogFlag = new ArrayList<>();
+    private final List<Boolean> scnFailure1XorLogFlag;
 
     @JsonProperty("SCN_FAILURE_2_xor_MACHINE_STATE_FLAG")
-    private final List<Boolean> scnFailure2XorMachineStateFlag = new ArrayList<>();
+    private final List<Boolean> scnFailure2XorMachineStateFlag;
 
     @JsonProperty("SCN_FAILURE_3_xor_MAXCSX")
-    private final List<Boolean> scnFailure3XorMaxcsx = new ArrayList<>();
+    private final List<Boolean> scnFailure3XorMaxcsx;
 
     @JsonProperty("SCN_FAILURE_4_xor_MOD_FLAG")
-    private final List<Boolean> scnFailure4XorModFlag = new ArrayList<>();
+    private final List<Boolean> scnFailure4XorModFlag;
 
     @JsonProperty("SCN_SUCCESS_1_xor_MUL_FLAG")
-    private final List<Boolean> scnSuccess1XorMulFlag = new ArrayList<>();
+    private final List<Boolean> scnSuccess1XorMulFlag;
 
     @JsonProperty("SCN_SUCCESS_2_xor_MXPX")
-    private final List<Boolean> scnSuccess2XorMxpx = new ArrayList<>();
+    private final List<Boolean> scnSuccess2XorMxpx;
 
     @JsonProperty("SCN_SUCCESS_3_xor_MXP_FLAG")
-    private final List<Boolean> scnSuccess3XorMxpFlag = new ArrayList<>();
+    private final List<Boolean> scnSuccess3XorMxpFlag;
 
     @JsonProperty("SCN_SUCCESS_4_xor_OOB_FLAG")
-    private final List<Boolean> scnSuccess4XorOobFlag = new ArrayList<>();
+    private final List<Boolean> scnSuccess4XorOobFlag;
 
     @JsonProperty("SELFDESTRUCT_xor_OOGX")
-    private final List<Boolean> selfdestructXorOogx = new ArrayList<>();
+    private final List<Boolean> selfdestructXorOogx;
 
     @JsonProperty("SHA2sub256_xor_OPCX")
-    private final List<Boolean> sha2Sub256XorOpcx = new ArrayList<>();
+    private final List<Boolean> sha2Sub256XorOpcx;
 
     @JsonProperty("SHF_FLAG")
-    private final List<Boolean> shfFlag = new ArrayList<>();
+    private final List<Boolean> shfFlag;
 
     @JsonProperty("SOX")
-    private final List<Boolean> sox = new ArrayList<>();
+    private final List<Boolean> sox;
 
     @JsonProperty("SSTOREX")
-    private final List<Boolean> sstorex = new ArrayList<>();
+    private final List<Boolean> sstorex;
 
     @JsonProperty("STACK_ITEM_POP_1")
-    private final List<Boolean> stackItemPop1 = new ArrayList<>();
+    private final List<Boolean> stackItemPop1;
 
     @JsonProperty("STACK_ITEM_POP_2")
-    private final List<Boolean> stackItemPop2 = new ArrayList<>();
+    private final List<Boolean> stackItemPop2;
 
     @JsonProperty("STACK_ITEM_POP_3")
-    private final List<Boolean> stackItemPop3 = new ArrayList<>();
+    private final List<Boolean> stackItemPop3;
 
     @JsonProperty("STACK_ITEM_POP_4")
-    private final List<Boolean> stackItemPop4 = new ArrayList<>();
+    private final List<Boolean> stackItemPop4;
 
     @JsonProperty("STACKRAM_FLAG")
-    private final List<Boolean> stackramFlag = new ArrayList<>();
+    private final List<Boolean> stackramFlag;
 
     @JsonProperty("STATIC_FLAG")
-    private final List<Boolean> staticFlag = new ArrayList<>();
+    private final List<Boolean> staticFlag;
 
     @JsonProperty("STATICX")
-    private final List<Boolean> staticx = new ArrayList<>();
+    private final List<Boolean> staticx;
 
     @JsonProperty("STO_FLAG")
-    private final List<Boolean> stoFlag = new ArrayList<>();
+    private final List<Boolean> stoFlag;
 
     @JsonProperty("STP___GAS_HI")
-    private final List<BigInteger> stpGasHi = new ArrayList<>();
+    private final List<BigInteger> stpGasHi;
 
     @JsonProperty("STP___GAS_LO")
-    private final List<BigInteger> stpGasLo = new ArrayList<>();
+    private final List<BigInteger> stpGasLo;
 
     @JsonProperty("STP___GAS_OOPKT")
-    private final List<BigInteger> stpGasOopkt = new ArrayList<>();
+    private final List<BigInteger> stpGasOopkt;
 
     @JsonProperty("STP___GAS_STPD")
-    private final List<BigInteger> stpGasStpd = new ArrayList<>();
+    private final List<BigInteger> stpGasStpd;
 
     @JsonProperty("STP___INST")
-    private final List<BigInteger> stpInst = new ArrayList<>();
+    private final List<BigInteger> stpInst;
 
     @JsonProperty("STP___VAL_HI")
-    private final List<BigInteger> stpValHi = new ArrayList<>();
+    private final List<BigInteger> stpValHi;
 
     @JsonProperty("STP___VAL_LO")
-    private final List<BigInteger> stpValLo = new ArrayList<>();
+    private final List<BigInteger> stpValLo;
 
     @JsonProperty("SUB_STAMP")
-    private final List<BigInteger> subStamp = new ArrayList<>();
+    private final List<BigInteger> subStamp;
 
     @JsonProperty("SUX")
-    private final List<Boolean> sux = new ArrayList<>();
+    private final List<Boolean> sux;
 
     @JsonProperty("SWAP_FLAG")
-    private final List<Boolean> swapFlag = new ArrayList<>();
+    private final List<Boolean> swapFlag;
 
     @JsonProperty("TRANSACTION_REVERTS")
-    private final List<Boolean> transactionReverts = new ArrayList<>();
+    private final List<Boolean> transactionReverts;
 
     @JsonProperty("TRM_FLAG")
-    private final List<Boolean> trmFlag = new ArrayList<>();
+    private final List<Boolean> trmFlag;
 
     @JsonProperty("TRM___FLAG_xor_ECRECOVER_xor_JUMPX")
-    private final List<Boolean> trmFlagXorEcrecoverXorJumpx = new ArrayList<>();
+    private final List<Boolean> trmFlagXorEcrecoverXorJumpx;
 
     @JsonProperty("TRM___RAW_ADDR_HI_xor_MXP___OFFSET_2_LO_xor_STACK_ITEM_VALUE_LO_1")
-    private final List<BigInteger> trmRawAddrHiXorMxpOffset2LoXorStackItemValueLo1 =
-        new ArrayList<>();
+    private final List<BigInteger> trmRawAddrHiXorMxpOffset2LoXorStackItemValueLo1;
 
     @JsonProperty("TWO_LINE_INSTRUCTION")
-    private final List<Boolean> twoLineInstruction = new ArrayList<>();
+    private final List<Boolean> twoLineInstruction;
 
     @JsonProperty("TX_EXEC")
-    private final List<Boolean> txExec = new ArrayList<>();
+    private final List<Boolean> txExec;
 
     @JsonProperty("TX_FINL")
-    private final List<Boolean> txFinl = new ArrayList<>();
+    private final List<Boolean> txFinl;
 
     @JsonProperty("TX_INIT")
-    private final List<Boolean> txInit = new ArrayList<>();
+    private final List<Boolean> txInit;
 
     @JsonProperty("TX_SKIP")
-    private final List<Boolean> txSkip = new ArrayList<>();
+    private final List<Boolean> txSkip;
 
     @JsonProperty("TX_WARM")
-    private final List<Boolean> txWarm = new ArrayList<>();
+    private final List<Boolean> txWarm;
 
     @JsonProperty("TXN_FLAG")
-    private final List<Boolean> txnFlag = new ArrayList<>();
+    private final List<Boolean> txnFlag;
 
     @JsonProperty("WARM_NEW_xor_MODEXP_xor_JUMP_FLAG")
-    private final List<Boolean> warmNewXorModexpXorJumpFlag = new ArrayList<>();
+    private final List<Boolean> warmNewXorModexpXorJumpFlag;
 
     @JsonProperty("WARM_xor_IDENTITY_xor_JUMP_DESTINATION_VETTING_REQUIRED")
-    private final List<Boolean> warmXorIdentityXorJumpDestinationVettingRequired =
-        new ArrayList<>();
+    private final List<Boolean> warmXorIdentityXorJumpDestinationVettingRequired;
 
     @JsonProperty("WCP_FLAG")
-    private final List<Boolean> wcpFlag = new ArrayList<>();
+    private final List<Boolean> wcpFlag;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.absoluteTransactionNumber = new ArrayList<>(length);
+      this.addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee =
+          new ArrayList<>(length);
+      this.addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize =
+          new ArrayList<>(length);
+      this
+              .balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo =
+          new ArrayList<>(length);
+      this
+              .balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi =
+          new ArrayList<>(length);
+      this.batchNumber = new ArrayList<>(length);
+      this.callerContextNumber = new ArrayList<>(length);
+      this.codeAddressHi = new ArrayList<>(length);
+      this.codeAddressLo = new ArrayList<>(length);
+      this.codeDeploymentNumber = new ArrayList<>(length);
+      this.codeDeploymentStatus = new ArrayList<>(length);
+      this.codeFragmentIndex = new ArrayList<>(length);
+      this
+              .codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo =
+          new ArrayList<>(length);
+      this.codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi =
+          new ArrayList<>(length);
+      this.codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice =
+          new ArrayList<>(length);
+      this
+              .codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit =
+          new ArrayList<>(length);
+      this
+              .codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal =
+          new ArrayList<>(length);
+      this.codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount =
+          new ArrayList<>(length);
+      this.contextGetsRevertedFlag = new ArrayList<>(length);
+      this.contextMayChangeFlag = new ArrayList<>(length);
+      this.contextNumber = new ArrayList<>(length);
+      this.contextNumberNew = new ArrayList<>(length);
+      this.contextRevertStamp = new ArrayList<>(length);
+      this.contextSelfRevertsFlag = new ArrayList<>(length);
+      this.contextWillRevertFlag = new ArrayList<>(length);
+      this.counterNsr = new ArrayList<>(length);
+      this.counterTli = new ArrayList<>(length);
+      this.depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas =
+          new ArrayList<>(length);
+      this.depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize =
+          new ArrayList<>(length);
+      this
+              .depStatusNewXorExpFlagXorCallEoaSuccessCallerWillRevertXorBinFlagXorValCurrIsZeroXorStatusCode =
+          new ArrayList<>(length);
+      this.depStatusXorCcsrFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559 =
+          new ArrayList<>(length);
+      this
+              .deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance =
+          new ArrayList<>(length);
+      this
+              .deploymentStatusInftyXorUpdateXorAbortFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment =
+          new ArrayList<>(length);
+      this.domStamp = new ArrayList<>(length);
+      this.exceptionAhoyFlag = new ArrayList<>(length);
+      this.existsNewXorMmuFlagXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig =
+          new ArrayList<>(length);
+      this
+              .existsXorFcondFlagXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution =
+          new ArrayList<>(length);
+      this.gasActual = new ArrayList<>(length);
+      this.gasCost = new ArrayList<>(length);
+      this.gasExpected = new ArrayList<>(length);
+      this.gasNext = new ArrayList<>(length);
+      this.gasRefund = new ArrayList<>(length);
+      this.gasRefundNew = new ArrayList<>(length);
+      this.hasCodeNewXorMxpDeploysXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero =
+          new ArrayList<>(length);
+      this.hasCodeXorMmuInfoXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero =
+          new ArrayList<>(length);
+      this.hashInfoStamp = new ArrayList<>(length);
+      this.hubStamp = new ArrayList<>(length);
+      this.hubStampTransactionEnd = new ArrayList<>(length);
+      this.isBlake2FXorMxpFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm =
+          new ArrayList<>(length);
+      this.isEcaddXorMxpMxpxXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew =
+          new ArrayList<>(length);
+      this.isEcmulXorOobEvent1XorCallSmcFailureCallerWontRevertXorDecodedFlag2 =
+          new ArrayList<>(length);
+      this.isEcpairingXorOobEvent2XorCallSmcSuccessCallerWillRevertXorDecodedFlag3 =
+          new ArrayList<>(length);
+      this.isEcrecoverXorOobFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4 =
+          new ArrayList<>(length);
+      this.isIdentityXorPrecinfoFlagXorCodedepositXorDupFlag = new ArrayList<>(length);
+      this.isModexpXorStpExistsXorCodedepositInvalidCodePrefixXorExtFlag = new ArrayList<>(length);
+      this.isPrecompileXorStpFlagXorCodedepositValidCodePrefixXorHaltFlag = new ArrayList<>(length);
+      this.isRipemDsub160XorStpOogxXorEcaddXorHashInfoFlag = new ArrayList<>(length);
+      this.isSha2Sub256XorStpWarmXorEcmulXorInvalidFlag = new ArrayList<>(length);
+      this.mmuStamp = new ArrayList<>(length);
+      this.mxpSize1HiXorStackItemValueLo2 = new ArrayList<>(length);
+      this.mxpSize1LoXorStackItemValueLo3 = new ArrayList<>(length);
+      this.mxpSize2HiXorStackItemValueLo4 = new ArrayList<>(length);
+      this.mxpSize2LoXorStaticGas = new ArrayList<>(length);
+      this.mxpStamp = new ArrayList<>(length);
+      this.mxpWords = new ArrayList<>(length);
+      this.nonceNewXorContextNumberXorMmuSizeXorStackItemStamp1XorNonce = new ArrayList<>(length);
+      this.nonceXorCallValueXorMmuReturnerXorStackItemHeight4XorLeftoverGas =
+          new ArrayList<>(length);
+      this.numberOfNonStackRows = new ArrayList<>(length);
+      this.oobInst = new ArrayList<>(length);
+      this.oobOutgoingData1 = new ArrayList<>(length);
+      this.oobOutgoingData2 = new ArrayList<>(length);
+      this.oobOutgoingData3 = new ArrayList<>(length);
+      this.oobOutgoingData4 = new ArrayList<>(length);
+      this.oobOutgoingData5 = new ArrayList<>(length);
+      this.oobOutgoingData6 = new ArrayList<>(length);
+      this.peekAtAccount = new ArrayList<>(length);
+      this.peekAtContext = new ArrayList<>(length);
+      this.peekAtMiscellaneous = new ArrayList<>(length);
+      this.peekAtScenario = new ArrayList<>(length);
+      this.peekAtStack = new ArrayList<>(length);
+      this.peekAtStorage = new ArrayList<>(length);
+      this.peekAtTransaction = new ArrayList<>(length);
+      this.precinfoAddrLo = new ArrayList<>(length);
+      this.precinfoCds = new ArrayList<>(length);
+      this.precinfoExecCost = new ArrayList<>(length);
+      this.precinfoProvidesReturnData = new ArrayList<>(length);
+      this.precinfoRds = new ArrayList<>(length);
+      this.precinfoSuccess = new ArrayList<>(length);
+      this.precinfoTouchesRam = new ArrayList<>(length);
+      this.programCounter = new ArrayList<>(length);
+      this.programCounterNew = new ArrayList<>(length);
+      this.pushpopFlag = new ArrayList<>(length);
+      this.rdcx = new ArrayList<>(length);
+      this.ripemDsub160XorKecFlag = new ArrayList<>(length);
+      this.rlpaddrDepAddrHiXorIsStaticXorMmuStackValHiXorStackItemStamp2XorToAddressHi =
+          new ArrayList<>(length);
+      this
+              .rlpaddrDepAddrLoXorReturnerContextNumberXorMmuStackValLoXorStackItemStamp3XorToAddressLo =
+          new ArrayList<>(length);
+      this.rlpaddrFlagXorEcpairingXorInvprex = new ArrayList<>(length);
+      this.rlpaddrKecHiXorReturnerIsPrecompileXorMxpGasMxpXorStackItemStamp4XorValue =
+          new ArrayList<>(length);
+      this.rlpaddrKecLoXorReturnAtOffsetXorMxpInstXorStackItemValueHi1 = new ArrayList<>(length);
+      this.rlpaddrRecipeXorReturnAtSizeXorMxpOffset1HiXorStackItemValueHi2 =
+          new ArrayList<>(length);
+      this.rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset1LoXorStackItemValueHi3 =
+          new ArrayList<>(length);
+      this.rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2HiXorStackItemValueHi4 =
+          new ArrayList<>(length);
+      this.scnFailure1XorLogFlag = new ArrayList<>(length);
+      this.scnFailure2XorMachineStateFlag = new ArrayList<>(length);
+      this.scnFailure3XorMaxcsx = new ArrayList<>(length);
+      this.scnFailure4XorModFlag = new ArrayList<>(length);
+      this.scnSuccess1XorMulFlag = new ArrayList<>(length);
+      this.scnSuccess2XorMxpx = new ArrayList<>(length);
+      this.scnSuccess3XorMxpFlag = new ArrayList<>(length);
+      this.scnSuccess4XorOobFlag = new ArrayList<>(length);
+      this.selfdestructXorOogx = new ArrayList<>(length);
+      this.sha2Sub256XorOpcx = new ArrayList<>(length);
+      this.shfFlag = new ArrayList<>(length);
+      this.sox = new ArrayList<>(length);
+      this.sstorex = new ArrayList<>(length);
+      this.stackItemPop1 = new ArrayList<>(length);
+      this.stackItemPop2 = new ArrayList<>(length);
+      this.stackItemPop3 = new ArrayList<>(length);
+      this.stackItemPop4 = new ArrayList<>(length);
+      this.stackramFlag = new ArrayList<>(length);
+      this.staticFlag = new ArrayList<>(length);
+      this.staticx = new ArrayList<>(length);
+      this.stoFlag = new ArrayList<>(length);
+      this.stpGasHi = new ArrayList<>(length);
+      this.stpGasLo = new ArrayList<>(length);
+      this.stpGasOopkt = new ArrayList<>(length);
+      this.stpGasStpd = new ArrayList<>(length);
+      this.stpInst = new ArrayList<>(length);
+      this.stpValHi = new ArrayList<>(length);
+      this.stpValLo = new ArrayList<>(length);
+      this.subStamp = new ArrayList<>(length);
+      this.sux = new ArrayList<>(length);
+      this.swapFlag = new ArrayList<>(length);
+      this.transactionReverts = new ArrayList<>(length);
+      this.trmFlag = new ArrayList<>(length);
+      this.trmFlagXorEcrecoverXorJumpx = new ArrayList<>(length);
+      this.trmRawAddrHiXorMxpOffset2LoXorStackItemValueLo1 = new ArrayList<>(length);
+      this.twoLineInstruction = new ArrayList<>(length);
+      this.txExec = new ArrayList<>(length);
+      this.txFinl = new ArrayList<>(length);
+      this.txInit = new ArrayList<>(length);
+      this.txSkip = new ArrayList<>(length);
+      this.txWarm = new ArrayList<>(length);
+      this.txnFlag = new ArrayList<>(length);
+      this.warmNewXorModexpXorJumpFlag = new ArrayList<>(length);
+      this.warmXorIdentityXorJumpDestinationVettingRequired = new ArrayList<>(length);
+      this.wcpFlag = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

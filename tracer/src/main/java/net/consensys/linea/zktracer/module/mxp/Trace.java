@@ -79,8 +79,8 @@ public record Trace(
     @JsonProperty("STAMP") List<BigInteger> stamp,
     @JsonProperty("WORDS") List<BigInteger> words,
     @JsonProperty("WORDS_NEW") List<BigInteger> wordsNew) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -91,159 +91,211 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1 = new ArrayList<>();
+    private final List<BigInteger> acc1;
 
     @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2 = new ArrayList<>();
+    private final List<BigInteger> acc2;
 
     @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3 = new ArrayList<>();
+    private final List<BigInteger> acc3;
 
     @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4 = new ArrayList<>();
+    private final List<BigInteger> acc4;
 
     @JsonProperty("ACC_A")
-    private final List<BigInteger> accA = new ArrayList<>();
+    private final List<BigInteger> accA;
 
     @JsonProperty("ACC_Q")
-    private final List<BigInteger> accQ = new ArrayList<>();
+    private final List<BigInteger> accQ;
 
     @JsonProperty("ACC_W")
-    private final List<BigInteger> accW = new ArrayList<>();
+    private final List<BigInteger> accW;
 
     @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2 = new ArrayList<>();
+    private final List<UnsignedByte> byte2;
 
     @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3 = new ArrayList<>();
+    private final List<UnsignedByte> byte3;
 
     @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4 = new ArrayList<>();
+    private final List<UnsignedByte> byte4;
 
     @JsonProperty("BYTE_A")
-    private final List<UnsignedByte> byteA = new ArrayList<>();
+    private final List<UnsignedByte> byteA;
 
     @JsonProperty("BYTE_Q")
-    private final List<UnsignedByte> byteQ = new ArrayList<>();
+    private final List<UnsignedByte> byteQ;
 
     @JsonProperty("BYTE_QQ")
-    private final List<BigInteger> byteQq = new ArrayList<>();
+    private final List<BigInteger> byteQq;
 
     @JsonProperty("BYTE_R")
-    private final List<BigInteger> byteR = new ArrayList<>();
+    private final List<BigInteger> byteR;
 
     @JsonProperty("BYTE_W")
-    private final List<UnsignedByte> byteW = new ArrayList<>();
+    private final List<UnsignedByte> byteW;
 
     @JsonProperty("C_MEM")
-    private final List<BigInteger> cMem = new ArrayList<>();
+    private final List<BigInteger> cMem;
 
     @JsonProperty("C_MEM_NEW")
-    private final List<BigInteger> cMemNew = new ArrayList<>();
+    private final List<BigInteger> cMemNew;
 
     @JsonProperty("CN")
-    private final List<BigInteger> cn = new ArrayList<>();
+    private final List<BigInteger> cn;
 
     @JsonProperty("COMP")
-    private final List<Boolean> comp = new ArrayList<>();
+    private final List<Boolean> comp;
 
     @JsonProperty("CT")
-    private final List<BigInteger> ct = new ArrayList<>();
+    private final List<BigInteger> ct;
 
     @JsonProperty("DEPLOYS")
-    private final List<Boolean> deploys = new ArrayList<>();
+    private final List<Boolean> deploys;
 
     @JsonProperty("EXPANDS")
-    private final List<Boolean> expands = new ArrayList<>();
+    private final List<Boolean> expands;
 
     @JsonProperty("GAS_MXP")
-    private final List<BigInteger> gasMxp = new ArrayList<>();
+    private final List<BigInteger> gasMxp;
 
     @JsonProperty("GBYTE")
-    private final List<BigInteger> gbyte = new ArrayList<>();
+    private final List<BigInteger> gbyte;
 
     @JsonProperty("GWORD")
-    private final List<BigInteger> gword = new ArrayList<>();
+    private final List<BigInteger> gword;
 
     @JsonProperty("INST")
-    private final List<BigInteger> inst = new ArrayList<>();
+    private final List<BigInteger> inst;
 
     @JsonProperty("LIN_COST")
-    private final List<BigInteger> linCost = new ArrayList<>();
+    private final List<BigInteger> linCost;
 
     @JsonProperty("MAX_OFFSET")
-    private final List<BigInteger> maxOffset = new ArrayList<>();
+    private final List<BigInteger> maxOffset;
 
     @JsonProperty("MAX_OFFSET_1")
-    private final List<BigInteger> maxOffset1 = new ArrayList<>();
+    private final List<BigInteger> maxOffset1;
 
     @JsonProperty("MAX_OFFSET_2")
-    private final List<BigInteger> maxOffset2 = new ArrayList<>();
+    private final List<BigInteger> maxOffset2;
 
     @JsonProperty("MXP_TYPE_1")
-    private final List<Boolean> mxpType1 = new ArrayList<>();
+    private final List<Boolean> mxpType1;
 
     @JsonProperty("MXP_TYPE_2")
-    private final List<Boolean> mxpType2 = new ArrayList<>();
+    private final List<Boolean> mxpType2;
 
     @JsonProperty("MXP_TYPE_3")
-    private final List<Boolean> mxpType3 = new ArrayList<>();
+    private final List<Boolean> mxpType3;
 
     @JsonProperty("MXP_TYPE_4")
-    private final List<Boolean> mxpType4 = new ArrayList<>();
+    private final List<Boolean> mxpType4;
 
     @JsonProperty("MXP_TYPE_5")
-    private final List<Boolean> mxpType5 = new ArrayList<>();
+    private final List<Boolean> mxpType5;
 
     @JsonProperty("MXPX")
-    private final List<Boolean> mxpx = new ArrayList<>();
+    private final List<Boolean> mxpx;
 
     @JsonProperty("NOOP")
-    private final List<Boolean> noop = new ArrayList<>();
+    private final List<Boolean> noop;
 
     @JsonProperty("OFFSET_1_HI")
-    private final List<BigInteger> offset1Hi = new ArrayList<>();
+    private final List<BigInteger> offset1Hi;
 
     @JsonProperty("OFFSET_1_LO")
-    private final List<BigInteger> offset1Lo = new ArrayList<>();
+    private final List<BigInteger> offset1Lo;
 
     @JsonProperty("OFFSET_2_HI")
-    private final List<BigInteger> offset2Hi = new ArrayList<>();
+    private final List<BigInteger> offset2Hi;
 
     @JsonProperty("OFFSET_2_LO")
-    private final List<BigInteger> offset2Lo = new ArrayList<>();
+    private final List<BigInteger> offset2Lo;
 
     @JsonProperty("QUAD_COST")
-    private final List<BigInteger> quadCost = new ArrayList<>();
+    private final List<BigInteger> quadCost;
 
     @JsonProperty("ROOB")
-    private final List<Boolean> roob = new ArrayList<>();
+    private final List<Boolean> roob;
 
     @JsonProperty("SIZE_1_HI")
-    private final List<BigInteger> size1Hi = new ArrayList<>();
+    private final List<BigInteger> size1Hi;
 
     @JsonProperty("SIZE_1_LO")
-    private final List<BigInteger> size1Lo = new ArrayList<>();
+    private final List<BigInteger> size1Lo;
 
     @JsonProperty("SIZE_2_HI")
-    private final List<BigInteger> size2Hi = new ArrayList<>();
+    private final List<BigInteger> size2Hi;
 
     @JsonProperty("SIZE_2_LO")
-    private final List<BigInteger> size2Lo = new ArrayList<>();
+    private final List<BigInteger> size2Lo;
 
     @JsonProperty("STAMP")
-    private final List<BigInteger> stamp = new ArrayList<>();
+    private final List<BigInteger> stamp;
 
     @JsonProperty("WORDS")
-    private final List<BigInteger> words = new ArrayList<>();
+    private final List<BigInteger> words;
 
     @JsonProperty("WORDS_NEW")
-    private final List<BigInteger> wordsNew = new ArrayList<>();
+    private final List<BigInteger> wordsNew;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.acc1 = new ArrayList<>(length);
+      this.acc2 = new ArrayList<>(length);
+      this.acc3 = new ArrayList<>(length);
+      this.acc4 = new ArrayList<>(length);
+      this.accA = new ArrayList<>(length);
+      this.accQ = new ArrayList<>(length);
+      this.accW = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.byte2 = new ArrayList<>(length);
+      this.byte3 = new ArrayList<>(length);
+      this.byte4 = new ArrayList<>(length);
+      this.byteA = new ArrayList<>(length);
+      this.byteQ = new ArrayList<>(length);
+      this.byteQq = new ArrayList<>(length);
+      this.byteR = new ArrayList<>(length);
+      this.byteW = new ArrayList<>(length);
+      this.cMem = new ArrayList<>(length);
+      this.cMemNew = new ArrayList<>(length);
+      this.cn = new ArrayList<>(length);
+      this.comp = new ArrayList<>(length);
+      this.ct = new ArrayList<>(length);
+      this.deploys = new ArrayList<>(length);
+      this.expands = new ArrayList<>(length);
+      this.gasMxp = new ArrayList<>(length);
+      this.gbyte = new ArrayList<>(length);
+      this.gword = new ArrayList<>(length);
+      this.inst = new ArrayList<>(length);
+      this.linCost = new ArrayList<>(length);
+      this.maxOffset = new ArrayList<>(length);
+      this.maxOffset1 = new ArrayList<>(length);
+      this.maxOffset2 = new ArrayList<>(length);
+      this.mxpType1 = new ArrayList<>(length);
+      this.mxpType2 = new ArrayList<>(length);
+      this.mxpType3 = new ArrayList<>(length);
+      this.mxpType4 = new ArrayList<>(length);
+      this.mxpType5 = new ArrayList<>(length);
+      this.mxpx = new ArrayList<>(length);
+      this.noop = new ArrayList<>(length);
+      this.offset1Hi = new ArrayList<>(length);
+      this.offset1Lo = new ArrayList<>(length);
+      this.offset2Hi = new ArrayList<>(length);
+      this.offset2Lo = new ArrayList<>(length);
+      this.quadCost = new ArrayList<>(length);
+      this.roob = new ArrayList<>(length);
+      this.size1Hi = new ArrayList<>(length);
+      this.size1Lo = new ArrayList<>(length);
+      this.size2Hi = new ArrayList<>(length);
+      this.size2Lo = new ArrayList<>(length);
+      this.stamp = new ArrayList<>(length);
+      this.words = new ArrayList<>(length);
+      this.wordsNew = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

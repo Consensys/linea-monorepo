@@ -36,8 +36,8 @@ public record Trace(
     @JsonProperty("DEP_NUMBER") List<BigInteger> depNumber,
     @JsonProperty("DEP_STATUS") List<Boolean> depStatus,
     @JsonProperty("READ_FROM_STATE") List<Boolean> readFromState) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -48,33 +48,43 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ADDR_HI")
-    private final List<BigInteger> addrHi = new ArrayList<>();
+    private final List<BigInteger> addrHi;
 
     @JsonProperty("ADDR_LO")
-    private final List<BigInteger> addrLo = new ArrayList<>();
+    private final List<BigInteger> addrLo;
 
     @JsonProperty("CODE_FRAGMENT_INDEX")
-    private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndex;
 
     @JsonProperty("CODE_FRAGMENT_INDEX_INFTY")
-    private final List<BigInteger> codeFragmentIndexInfty = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndexInfty;
 
     @JsonProperty("CODE_SIZE")
-    private final List<BigInteger> codeSize = new ArrayList<>();
+    private final List<BigInteger> codeSize;
 
     @JsonProperty("COMMIT_TO_STATE")
-    private final List<Boolean> commitToState = new ArrayList<>();
+    private final List<Boolean> commitToState;
 
     @JsonProperty("DEP_NUMBER")
-    private final List<BigInteger> depNumber = new ArrayList<>();
+    private final List<BigInteger> depNumber;
 
     @JsonProperty("DEP_STATUS")
-    private final List<Boolean> depStatus = new ArrayList<>();
+    private final List<Boolean> depStatus;
 
     @JsonProperty("READ_FROM_STATE")
-    private final List<Boolean> readFromState = new ArrayList<>();
+    private final List<Boolean> readFromState;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.addrHi = new ArrayList<>(length);
+      this.addrLo = new ArrayList<>(length);
+      this.codeFragmentIndex = new ArrayList<>(length);
+      this.codeFragmentIndexInfty = new ArrayList<>(length);
+      this.codeSize = new ArrayList<>(length);
+      this.commitToState = new ArrayList<>(length);
+      this.depNumber = new ArrayList<>(length);
+      this.depStatus = new ArrayList<>(length);
+      this.readFromState = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

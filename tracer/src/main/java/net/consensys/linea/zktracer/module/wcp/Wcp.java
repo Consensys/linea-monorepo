@@ -28,7 +28,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Wcp implements Module {
-  final Trace.TraceBuilder builder = Trace.builder();
   private final StackedSet<WcpOperation> operations = new StackedSet<>();
   private int stamp = 0;
 
@@ -59,10 +58,10 @@ public class Wcp implements Module {
     this.operations.add(new WcpOperation(opCode, arg1, arg2));
   }
 
-  public void traceWcpOperation(WcpOperation op) {
+  public void traceWcpOperation(WcpOperation op, Trace.TraceBuilder trace) {
     this.stamp++;
     for (int i = 0; i < op.maxCt(); i++) {
-      builder
+      trace
           .wordComparisonStamp(BigInteger.valueOf(stamp))
           .oneLineInstruction(op.isOneLineInstruction())
           .counter(BigInteger.valueOf(i))
@@ -98,11 +97,13 @@ public class Wcp implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+
     for (WcpOperation operation : this.operations) {
-      this.traceWcpOperation(operation);
+      this.traceWcpOperation(operation, trace);
     }
 
-    return new WcpTrace(builder.build());
+    return new WcpTrace(trace.build());
   }
 
   @Override
@@ -111,18 +112,14 @@ public class Wcp implements Module {
   }
 
   public void callLT(Bytes32 arg1, Bytes32 arg2) {
-    WcpOperation data = new WcpOperation(OpCode.LT, arg1, arg2);
-    this.traceWcpOperation(data);
+    this.operations.add(new WcpOperation(OpCode.LT, arg1, arg2));
   }
 
   public void callEQ(Bytes32 arg1, Bytes32 arg2) {
-    WcpOperation data = new WcpOperation(OpCode.EQ, arg1, arg2);
-    this.traceWcpOperation(data);
+    this.operations.add(new WcpOperation(OpCode.EQ, arg1, arg2));
   }
 
   public void callISZERO(Bytes32 arg1) {
-    Bytes32 zero = Bytes32.repeat((byte) 0x00);
-    WcpOperation data = new WcpOperation(OpCode.ISZERO, arg1, zero);
-    this.traceWcpOperation(data);
+    this.operations.add(new WcpOperation(OpCode.ISZERO, arg1, Bytes32.ZERO));
   }
 }

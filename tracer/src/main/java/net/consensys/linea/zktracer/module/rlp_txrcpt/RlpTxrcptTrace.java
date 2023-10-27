@@ -32,6 +32,7 @@ record RlpTxrcptTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace
   static final BigInteger LIST_LONG = new BigInteger("247");
   static final BigInteger LIST_SHORT = new BigInteger("192");
 
+  @Override
   public int length() {
     return this.trace.size();
   }

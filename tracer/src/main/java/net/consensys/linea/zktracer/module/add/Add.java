@@ -35,7 +35,6 @@ public class Add implements Module {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
 
   private int stamp = 0;
-  final Trace.TraceBuilder trace = Trace.builder();
 
   /** A set of the operations to trace */
   private final StackedSet<AddOperation> chunks = new StackedSet<>();
@@ -92,7 +91,8 @@ public class Add implements Module {
    * @param arg1 first operand
    * @param arg2 second operand
    */
-  private void traceAddOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+  private void traceAddOperation(
+      OpCode opCode, Bytes32 arg1, Bytes32 arg2, Trace.TraceBuilder trace) {
     this.stamp++;
 
     final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
@@ -156,8 +156,9 @@ public class Add implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = new Trace.TraceBuilder(this.lineCount());
     for (AddOperation op : this.chunks) {
-      this.traceAddOperation(op.opCodem(), op.arg1(), op.arg2());
+      this.traceAddOperation(op.opCodem(), op.arg1(), op.arg2(), trace);
     }
 
     return new AddTrace(trace.build());
