@@ -7,6 +7,9 @@ services:
   sequencer:
     volumes:
       - ../tmp/local/:/data/
+  mev-builder:
+    volumes:
+      - ../tmp/local/:/data/
   traces-node:
     volumes:
       - ../tmp/local/:/data/

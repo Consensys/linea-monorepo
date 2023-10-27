@@ -52,7 +52,7 @@ if [ ${#BOOTNODES} -ge 1 ]; then
       --builder \
       --builder.local_relay \
       --builder.seconds_in_slot 12 \
-      --builder.submission_offset=1s \
+      --builder.submission_offset=6s \
       --builder.algotype greedy
 else
     echo "Builder needs at least one bootnodes to start"
