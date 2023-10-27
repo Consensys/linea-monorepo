@@ -48,6 +48,7 @@ import net.consensys.linea.zktracer.module.rom.Rom;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.module.runtime.callstack.*;
 import net.consensys.linea.zktracer.module.shf.Shf;
+import net.consensys.linea.zktracer.module.txn_data.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.*;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
@@ -131,13 +132,14 @@ public class Hub implements Module {
   private final Module mod = new Mod();
   private final Module mul = new Mul();
   private final Module shf = new Shf();
-  private final Module wcp = new Wcp();
+  private final Wcp wcp = new Wcp();
   private final RlpTxn rlpTxn;
   private final Module mxp;
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final RlpAddr rlpAddr = new RlpAddr();
   private final Rom rom;
   private final RomLex romLex;
+  private final TxnData txnData;
 
   private final List<Module> modules;
 
@@ -146,6 +148,7 @@ public class Hub implements Module {
     this.romLex = new RomLex(this);
     this.rom = new Rom(this.romLex);
     this.rlpTxn = new RlpTxn(this.romLex);
+    this.txnData = new TxnData(this, this.romLex, this.wcp);
 
     this.modules =
         List.of(
@@ -161,7 +164,8 @@ public class Hub implements Module {
             this.rlpTxn,
             this.rlpTxrcpt,
             this.rlpAddr,
-            this.rom);
+            this.rom,
+            this.txnData);
   }
 
   /**
@@ -181,7 +185,8 @@ public class Hub implements Module {
         this.rlpTxn,
         this.rlpTxrcpt,
         this.rlpAddr,
-        this.rom);
+        this.rom,
+        this.txnData);
   }
 
   @Override
@@ -240,6 +245,9 @@ public class Hub implements Module {
 
     // To account information
     Address toAddress = effectiveToAddress(this.tx.transaction());
+    if (isDeployment) {
+      this.conflation().deploymentInfo().deploy(toAddress);
+    }
     boolean toIsWarm =
         (fromAddress == toAddress)
             || isPrecompile(toAddress); // should never happen – no TX to PC allowed
@@ -263,10 +271,6 @@ public class Hub implements Module {
             false);
 
     // Putatively updateCallerReturndata deployment number
-    if (isDeployment) {
-      this.conflation.deploymentInfo().deploy(toAddress);
-    }
-
     this.defers.postTx(
         new SkippedPostTransactionDefer(
             oldFromAccount, oldToAccount, oldMinerAccount, this.tx.gasPrice(), this.block.baseFee));
@@ -333,6 +337,9 @@ public class Hub implements Module {
     this.state.stamps().stampHub();
     boolean isDeployment = this.tx.transaction().getTo().isEmpty();
     Address toAddress = effectiveToAddress(this.tx.transaction());
+    if (isDeployment) {
+      this.conflation().deploymentInfo().deploy(toAddress);
+    }
     this.callStack.newBedrock(
         this.state.stamps().hub(),
         this.tx.transaction().getSender(),
@@ -458,7 +465,8 @@ public class Hub implements Module {
         }
 
         if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
-          // TODO: check for failure: non empty byte code or non zero nonce (for the Deployed
+          // TODO: check for failure: non empty byte code or non zero nonce (for the
+          // Deployed
           // Address)
           UInt256 value = UInt256.fromBytes(frame.getStackItem(0));
           if (frame
@@ -759,6 +767,7 @@ public class Hub implements Module {
     }
 
     this.defers.runPostExec(this, frame, operationResult);
+    this.romLex.tracePostExecution(frame, operationResult);
 
     if (this.currentFrame().needsUnlatchingAtReEntry() == null) {
       this.unlatchStack(frame);

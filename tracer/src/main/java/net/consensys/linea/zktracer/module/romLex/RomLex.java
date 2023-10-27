@@ -37,6 +37,8 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RomLex implements Module {
@@ -49,6 +51,8 @@ public class RomLex implements Module {
 
   public final StackedSet<RomChunk> chunks = new StackedSet<>();
   public final List<RomChunk> sortedChunks = new ArrayList<>();
+  private Bytes byteCode = Bytes.EMPTY;
+  private Address address = Address.ZERO;
 
   //  public final SortedMap<RomChunk, Integer> chunkMap = new TreeMap<>(romChunkComparator);
 
@@ -69,11 +73,7 @@ public class RomLex implements Module {
           if (chunk1.deploymentStatus() == chunk2.deploymentStatus()) {
             return 0;
           } else {
-            if (chunk1.deploymentStatus()) {
-              return 1;
-            } else {
-              return -1;
-            }
+            return chunk1.deploymentStatus() ? -1 : 1;
           }
         }
       }
@@ -121,25 +121,13 @@ public class RomLex implements Module {
   @Override
   public void traceStartTx(WorldView worldView, Transaction tx) {
     // Contract creation with InitCode
-    if (tx.getInit().isPresent() && !tx.getInit().get().isEmpty()) {
+    if (tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()) {
       codeIdentifierBeforeLexOrder += 1;
-      final Address deployementAddress = Address.contractAddress(tx.getSender(), tx.getNonce() - 1);
-      int depNumber = hub.conflation().deploymentInfo().number(deployementAddress);
-      boolean depStatus = hub.conflation().deploymentInfo().isDeploying(deployementAddress);
-
-      this.chunks.add(
-          new RomChunk(
-              deployementAddress,
-              depNumber,
-              depStatus,
-              false,
-              false,
-              codeIdentifierBeforeLexOrder,
-              tx.getInit().get()));
+      this.address = Address.contractAddress(tx.getSender(), tx.getNonce());
     }
 
     // Call to an account with bytecode
-    if (tx.getTo().isPresent() && worldView.get(tx.getTo().get()).hasCode()) {
+    if (tx.getTo().isPresent() && worldView.get(tx.getTo().orElseThrow()).hasCode()) {
       codeIdentifierBeforeLexOrder += 1;
       int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
       boolean depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
@@ -162,64 +150,36 @@ public class RomLex implements Module {
 
     switch (opcode) {
       case CREATE -> {
-        final Address deployementAddress =
+        this.address =
             Address.contractAddress(
                 frame.getSenderAddress(),
                 frame.getWorldUpdater().getSenderAccount(frame).getNonce());
 
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
-        final Bytes initCode = frame.readMemory(offset, length);
-        if (!initCode.isEmpty()) {
+        this.byteCode = frame.readMemory(offset, length);
+        if (!this.byteCode.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
-          final int depNumber = hub.conflation().deploymentInfo().number(deployementAddress);
-          final boolean depStatus =
-              hub.conflation().deploymentInfo().isDeploying(deployementAddress);
-
-          this.chunks.add(
-              new RomChunk(
-                  deployementAddress,
-                  depNumber,
-                  depStatus,
-                  true,
-                  false,
-                  codeIdentifierBeforeLexOrder,
-                  initCode));
         }
       }
 
       case CREATE2 -> {
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
-        final Bytes initCode = frame.readMemory(offset, length);
+        this.byteCode = frame.readMemory(offset, length);
 
-        if (!initCode.isEmpty()) {
+        if (!this.byteCode.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
-          // TODO: take the depAddress from the evm ?
           final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-          final Bytes32 hash = keccak256(initCode);
-          final Address deployementAddress =
+          final Bytes32 hash = keccak256(this.byteCode);
+          this.address =
               Address.extract(
                   keccak256(
                       Bytes.concatenate(CREATE2_SHIFT, frame.getSenderAddress(), salt, hash)));
-          final int depNumber = hub.conflation().deploymentInfo().number(deployementAddress);
-          final boolean depStatus =
-              hub.conflation().deploymentInfo().isDeploying(deployementAddress);
-
-          this.chunks.add(
-              new RomChunk(
-                  deployementAddress,
-                  depNumber,
-                  depStatus,
-                  true,
-                  false,
-                  codeIdentifierBeforeLexOrder,
-                  initCode));
         }
       }
 
       case RETURN -> {
-        // TODO: check we get the right code
         final long offset = clampedToLong(frame.getStackItem(0));
         final long length = clampedToLong(frame.getStackItem(1));
         final Bytes code = frame.readMemory(offset, length);
@@ -289,6 +249,60 @@ public class RomLex implements Module {
                   }
                 });
       }
+    }
+  }
+
+  @Override
+  public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
+    OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    switch (opcode) {
+      case CREATE, CREATE2 -> {
+        final int depNumber = hub.conflation().deploymentInfo().number(this.address);
+        final boolean depStatus = hub.conflation().deploymentInfo().isDeploying(this.address);
+
+        this.chunks.add(
+            new RomChunk(
+                this.address,
+                depNumber,
+                depStatus,
+                true,
+                false,
+                codeIdentifierBeforeLexOrder,
+                this.byteCode));
+      }
+      case RETURN -> {
+        // TODO: get the right DepNumber & DepStatus once implemented in the HUB
+      }
+    }
+  }
+
+  @Override
+  public void traceEndTx(
+      WorldView worldView,
+      Transaction tx,
+      boolean status,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed) {
+    if (tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()) {
+      int depNumber =
+          hub.conflation()
+              .deploymentInfo()
+              .number(this.address); // should be 1 (constrained by lookup from TxnData)
+      boolean depStatus =
+          hub.conflation()
+              .deploymentInfo()
+              .isDeploying(this.address); // should be true (constrained by lookup from TxnData)
+
+      this.chunks.add(
+          new RomChunk(
+              this.address,
+              depNumber,
+              depStatus,
+              false,
+              false,
+              codeIdentifierBeforeLexOrder,
+              tx.getInit().orElseThrow()));
     }
   }
 
