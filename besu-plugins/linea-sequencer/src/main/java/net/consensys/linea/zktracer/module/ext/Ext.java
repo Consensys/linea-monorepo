@@ -29,7 +29,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Ext implements Module {
-  final Trace.TraceBuilder trace = Trace.builder();
   private int stamp = 0;
 
   /** A set of the operations to trace */
@@ -65,7 +64,7 @@ public class Ext implements Module {
     this.operations.add(new ExtOperation(opCode, arg1, arg2, arg3));
   }
 
-  public void traceExtOperation(ExtOperation op) {
+  public void traceExtOperation(ExtOperation op, Trace.TraceBuilder trace) {
     this.stamp++;
 
     for (int i = 0; i < op.maxCounter(); i++) {
@@ -205,8 +204,9 @@ public class Ext implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
     for (ExtOperation operation : this.operations) {
-      this.traceExtOperation(operation);
+      this.traceExtOperation(operation, trace);
     }
     return new ExtTrace(trace.build());
   }

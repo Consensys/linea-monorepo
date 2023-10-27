@@ -74,8 +74,6 @@ public class Hub implements Module {
   private static final int TAU = 8;
   public static final GasProjector gp = new GasProjector();
 
-  public final Trace.TraceBuilder trace = Trace.builder();
-
   // Revertible state of the hub
   private final State state = new State();
 
@@ -736,7 +734,7 @@ public class Hub implements Module {
       this.callStack.revert(this.state.stamps().hub());
     }
 
-    this.callStack.exit(this.trace.size() - 1, frame.getOutputData());
+    this.callStack.exit(frame.getOutputData());
 
     for (Module m : this.modules) {
       m.traceContextExit(frame);
@@ -854,7 +852,8 @@ public class Hub implements Module {
 
   @Override
   public ModuleTrace commit() {
-    return new HubTrace(this.state.commit(this.trace).build());
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+    return new HubTrace(this.state.commit(trace).build());
   }
 
   public long refundedGas() {

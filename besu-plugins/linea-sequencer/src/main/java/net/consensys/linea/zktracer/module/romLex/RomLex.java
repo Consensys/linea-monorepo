@@ -40,7 +40,6 @@ import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RomLex implements Module {
-  final Trace.TraceBuilder builder = Trace.builder();
   private static final int LLARGE = 16;
   private static final Bytes CREATE2_SHIFT = bigIntegerToBytes(BigInteger.valueOf(0xff));
   private static final RomChunkComparator romChunkComparator = new RomChunkComparator();
@@ -293,8 +292,9 @@ public class RomLex implements Module {
     }
   }
 
-  private void traceChunk(final RomChunk chunk, int cfi, int codeFragmentIndexInfinity) {
-    this.builder
+  private void traceChunk(
+      final RomChunk chunk, int cfi, int codeFragmentIndexInfinity, Trace.TraceBuilder trace) {
+    trace
         .codeFragmentIndex(BigInteger.valueOf(cfi))
         .codeFragmentIndexInfty(BigInteger.valueOf(codeFragmentIndexInfinity))
         .codeSize(BigInteger.valueOf(chunk.byteCode().size()))
@@ -320,12 +320,14 @@ public class RomLex implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
     final int codeFragmentIndexInfinity = chunks.size();
+
     int cfi = 0;
     for (RomChunk chunk : sortedChunks) {
       cfi += 1;
-      traceChunk(chunk, cfi, codeFragmentIndexInfinity);
+      traceChunk(chunk, cfi, codeFragmentIndexInfinity, trace);
     }
-    return new RomLexTrace(builder.build());
+    return new RomLexTrace(trace.build());
   }
 }

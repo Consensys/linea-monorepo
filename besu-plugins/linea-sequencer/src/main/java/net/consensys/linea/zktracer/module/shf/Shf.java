@@ -26,7 +26,6 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Shf implements Module {
-  final Trace.TraceBuilder trace = Trace.builder();
   private int stamp = 0;
   private final StackedSet<ShfOperation> operations = new StackedSet<>();
 
@@ -53,7 +52,7 @@ public class Shf implements Module {
         new ShfOperation(OpCode.of(frame.getCurrentOperation().getOpcode()), arg1, arg2));
   }
 
-  private void traceShfOperation(ShfOperation op) {
+  private void traceShfOperation(ShfOperation op, Trace.TraceBuilder trace) {
     this.stamp++;
 
     for (int i = 0; i < op.maxCt(); i++) {
@@ -124,8 +123,10 @@ public class Shf implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+
     for (ShfOperation op : this.operations) {
-      this.traceShfOperation(op);
+      this.traceShfOperation(op, trace);
     }
 
     return new ShfTrace(trace.build());

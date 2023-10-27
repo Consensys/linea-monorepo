@@ -146,8 +146,8 @@ public record Trace(
     @JsonProperty("RES_HI") List<BigInteger> resHi,
     @JsonProperty("RES_LO") List<BigInteger> resLo,
     @JsonProperty("STAMP") List<BigInteger> stamp) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -158,360 +158,479 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_A_0")
-    private final List<BigInteger> accA0 = new ArrayList<>();
+    private final List<BigInteger> accA0;
 
     @JsonProperty("ACC_A_1")
-    private final List<BigInteger> accA1 = new ArrayList<>();
+    private final List<BigInteger> accA1;
 
     @JsonProperty("ACC_A_2")
-    private final List<BigInteger> accA2 = new ArrayList<>();
+    private final List<BigInteger> accA2;
 
     @JsonProperty("ACC_A_3")
-    private final List<BigInteger> accA3 = new ArrayList<>();
+    private final List<BigInteger> accA3;
 
     @JsonProperty("ACC_B_0")
-    private final List<BigInteger> accB0 = new ArrayList<>();
+    private final List<BigInteger> accB0;
 
     @JsonProperty("ACC_B_1")
-    private final List<BigInteger> accB1 = new ArrayList<>();
+    private final List<BigInteger> accB1;
 
     @JsonProperty("ACC_B_2")
-    private final List<BigInteger> accB2 = new ArrayList<>();
+    private final List<BigInteger> accB2;
 
     @JsonProperty("ACC_B_3")
-    private final List<BigInteger> accB3 = new ArrayList<>();
+    private final List<BigInteger> accB3;
 
     @JsonProperty("ACC_C_0")
-    private final List<BigInteger> accC0 = new ArrayList<>();
+    private final List<BigInteger> accC0;
 
     @JsonProperty("ACC_C_1")
-    private final List<BigInteger> accC1 = new ArrayList<>();
+    private final List<BigInteger> accC1;
 
     @JsonProperty("ACC_C_2")
-    private final List<BigInteger> accC2 = new ArrayList<>();
+    private final List<BigInteger> accC2;
 
     @JsonProperty("ACC_C_3")
-    private final List<BigInteger> accC3 = new ArrayList<>();
+    private final List<BigInteger> accC3;
 
     @JsonProperty("ACC_DELTA_0")
-    private final List<BigInteger> accDelta0 = new ArrayList<>();
+    private final List<BigInteger> accDelta0;
 
     @JsonProperty("ACC_DELTA_1")
-    private final List<BigInteger> accDelta1 = new ArrayList<>();
+    private final List<BigInteger> accDelta1;
 
     @JsonProperty("ACC_DELTA_2")
-    private final List<BigInteger> accDelta2 = new ArrayList<>();
+    private final List<BigInteger> accDelta2;
 
     @JsonProperty("ACC_DELTA_3")
-    private final List<BigInteger> accDelta3 = new ArrayList<>();
+    private final List<BigInteger> accDelta3;
 
     @JsonProperty("ACC_H_0")
-    private final List<BigInteger> accH0 = new ArrayList<>();
+    private final List<BigInteger> accH0;
 
     @JsonProperty("ACC_H_1")
-    private final List<BigInteger> accH1 = new ArrayList<>();
+    private final List<BigInteger> accH1;
 
     @JsonProperty("ACC_H_2")
-    private final List<BigInteger> accH2 = new ArrayList<>();
+    private final List<BigInteger> accH2;
 
     @JsonProperty("ACC_H_3")
-    private final List<BigInteger> accH3 = new ArrayList<>();
+    private final List<BigInteger> accH3;
 
     @JsonProperty("ACC_H_4")
-    private final List<BigInteger> accH4 = new ArrayList<>();
+    private final List<BigInteger> accH4;
 
     @JsonProperty("ACC_H_5")
-    private final List<BigInteger> accH5 = new ArrayList<>();
+    private final List<BigInteger> accH5;
 
     @JsonProperty("ACC_I_0")
-    private final List<BigInteger> accI0 = new ArrayList<>();
+    private final List<BigInteger> accI0;
 
     @JsonProperty("ACC_I_1")
-    private final List<BigInteger> accI1 = new ArrayList<>();
+    private final List<BigInteger> accI1;
 
     @JsonProperty("ACC_I_2")
-    private final List<BigInteger> accI2 = new ArrayList<>();
+    private final List<BigInteger> accI2;
 
     @JsonProperty("ACC_I_3")
-    private final List<BigInteger> accI3 = new ArrayList<>();
+    private final List<BigInteger> accI3;
 
     @JsonProperty("ACC_I_4")
-    private final List<BigInteger> accI4 = new ArrayList<>();
+    private final List<BigInteger> accI4;
 
     @JsonProperty("ACC_I_5")
-    private final List<BigInteger> accI5 = new ArrayList<>();
+    private final List<BigInteger> accI5;
 
     @JsonProperty("ACC_I_6")
-    private final List<BigInteger> accI6 = new ArrayList<>();
+    private final List<BigInteger> accI6;
 
     @JsonProperty("ACC_J_0")
-    private final List<BigInteger> accJ0 = new ArrayList<>();
+    private final List<BigInteger> accJ0;
 
     @JsonProperty("ACC_J_1")
-    private final List<BigInteger> accJ1 = new ArrayList<>();
+    private final List<BigInteger> accJ1;
 
     @JsonProperty("ACC_J_2")
-    private final List<BigInteger> accJ2 = new ArrayList<>();
+    private final List<BigInteger> accJ2;
 
     @JsonProperty("ACC_J_3")
-    private final List<BigInteger> accJ3 = new ArrayList<>();
+    private final List<BigInteger> accJ3;
 
     @JsonProperty("ACC_J_4")
-    private final List<BigInteger> accJ4 = new ArrayList<>();
+    private final List<BigInteger> accJ4;
 
     @JsonProperty("ACC_J_5")
-    private final List<BigInteger> accJ5 = new ArrayList<>();
+    private final List<BigInteger> accJ5;
 
     @JsonProperty("ACC_J_6")
-    private final List<BigInteger> accJ6 = new ArrayList<>();
+    private final List<BigInteger> accJ6;
 
     @JsonProperty("ACC_J_7")
-    private final List<BigInteger> accJ7 = new ArrayList<>();
+    private final List<BigInteger> accJ7;
 
     @JsonProperty("ACC_Q_0")
-    private final List<BigInteger> accQ0 = new ArrayList<>();
+    private final List<BigInteger> accQ0;
 
     @JsonProperty("ACC_Q_1")
-    private final List<BigInteger> accQ1 = new ArrayList<>();
+    private final List<BigInteger> accQ1;
 
     @JsonProperty("ACC_Q_2")
-    private final List<BigInteger> accQ2 = new ArrayList<>();
+    private final List<BigInteger> accQ2;
 
     @JsonProperty("ACC_Q_3")
-    private final List<BigInteger> accQ3 = new ArrayList<>();
+    private final List<BigInteger> accQ3;
 
     @JsonProperty("ACC_Q_4")
-    private final List<BigInteger> accQ4 = new ArrayList<>();
+    private final List<BigInteger> accQ4;
 
     @JsonProperty("ACC_Q_5")
-    private final List<BigInteger> accQ5 = new ArrayList<>();
+    private final List<BigInteger> accQ5;
 
     @JsonProperty("ACC_Q_6")
-    private final List<BigInteger> accQ6 = new ArrayList<>();
+    private final List<BigInteger> accQ6;
 
     @JsonProperty("ACC_Q_7")
-    private final List<BigInteger> accQ7 = new ArrayList<>();
+    private final List<BigInteger> accQ7;
 
     @JsonProperty("ACC_R_0")
-    private final List<BigInteger> accR0 = new ArrayList<>();
+    private final List<BigInteger> accR0;
 
     @JsonProperty("ACC_R_1")
-    private final List<BigInteger> accR1 = new ArrayList<>();
+    private final List<BigInteger> accR1;
 
     @JsonProperty("ACC_R_2")
-    private final List<BigInteger> accR2 = new ArrayList<>();
+    private final List<BigInteger> accR2;
 
     @JsonProperty("ACC_R_3")
-    private final List<BigInteger> accR3 = new ArrayList<>();
+    private final List<BigInteger> accR3;
 
     @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi = new ArrayList<>();
+    private final List<BigInteger> arg1Hi;
 
     @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo = new ArrayList<>();
+    private final List<BigInteger> arg1Lo;
 
     @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi = new ArrayList<>();
+    private final List<BigInteger> arg2Hi;
 
     @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo = new ArrayList<>();
+    private final List<BigInteger> arg2Lo;
 
     @JsonProperty("ARG_3_HI")
-    private final List<BigInteger> arg3Hi = new ArrayList<>();
+    private final List<BigInteger> arg3Hi;
 
     @JsonProperty("ARG_3_LO")
-    private final List<BigInteger> arg3Lo = new ArrayList<>();
+    private final List<BigInteger> arg3Lo;
 
     @JsonProperty("BIT_1")
-    private final List<Boolean> bit1 = new ArrayList<>();
+    private final List<Boolean> bit1;
 
     @JsonProperty("BIT_2")
-    private final List<Boolean> bit2 = new ArrayList<>();
+    private final List<Boolean> bit2;
 
     @JsonProperty("BIT_3")
-    private final List<Boolean> bit3 = new ArrayList<>();
+    private final List<Boolean> bit3;
 
     @JsonProperty("BYTE_A_0")
-    private final List<UnsignedByte> byteA0 = new ArrayList<>();
+    private final List<UnsignedByte> byteA0;
 
     @JsonProperty("BYTE_A_1")
-    private final List<UnsignedByte> byteA1 = new ArrayList<>();
+    private final List<UnsignedByte> byteA1;
 
     @JsonProperty("BYTE_A_2")
-    private final List<UnsignedByte> byteA2 = new ArrayList<>();
+    private final List<UnsignedByte> byteA2;
 
     @JsonProperty("BYTE_A_3")
-    private final List<UnsignedByte> byteA3 = new ArrayList<>();
+    private final List<UnsignedByte> byteA3;
 
     @JsonProperty("BYTE_B_0")
-    private final List<UnsignedByte> byteB0 = new ArrayList<>();
+    private final List<UnsignedByte> byteB0;
 
     @JsonProperty("BYTE_B_1")
-    private final List<UnsignedByte> byteB1 = new ArrayList<>();
+    private final List<UnsignedByte> byteB1;
 
     @JsonProperty("BYTE_B_2")
-    private final List<UnsignedByte> byteB2 = new ArrayList<>();
+    private final List<UnsignedByte> byteB2;
 
     @JsonProperty("BYTE_B_3")
-    private final List<UnsignedByte> byteB3 = new ArrayList<>();
+    private final List<UnsignedByte> byteB3;
 
     @JsonProperty("BYTE_C_0")
-    private final List<UnsignedByte> byteC0 = new ArrayList<>();
+    private final List<UnsignedByte> byteC0;
 
     @JsonProperty("BYTE_C_1")
-    private final List<UnsignedByte> byteC1 = new ArrayList<>();
+    private final List<UnsignedByte> byteC1;
 
     @JsonProperty("BYTE_C_2")
-    private final List<UnsignedByte> byteC2 = new ArrayList<>();
+    private final List<UnsignedByte> byteC2;
 
     @JsonProperty("BYTE_C_3")
-    private final List<UnsignedByte> byteC3 = new ArrayList<>();
+    private final List<UnsignedByte> byteC3;
 
     @JsonProperty("BYTE_DELTA_0")
-    private final List<UnsignedByte> byteDelta0 = new ArrayList<>();
+    private final List<UnsignedByte> byteDelta0;
 
     @JsonProperty("BYTE_DELTA_1")
-    private final List<UnsignedByte> byteDelta1 = new ArrayList<>();
+    private final List<UnsignedByte> byteDelta1;
 
     @JsonProperty("BYTE_DELTA_2")
-    private final List<UnsignedByte> byteDelta2 = new ArrayList<>();
+    private final List<UnsignedByte> byteDelta2;
 
     @JsonProperty("BYTE_DELTA_3")
-    private final List<UnsignedByte> byteDelta3 = new ArrayList<>();
+    private final List<UnsignedByte> byteDelta3;
 
     @JsonProperty("BYTE_H_0")
-    private final List<UnsignedByte> byteH0 = new ArrayList<>();
+    private final List<UnsignedByte> byteH0;
 
     @JsonProperty("BYTE_H_1")
-    private final List<UnsignedByte> byteH1 = new ArrayList<>();
+    private final List<UnsignedByte> byteH1;
 
     @JsonProperty("BYTE_H_2")
-    private final List<UnsignedByte> byteH2 = new ArrayList<>();
+    private final List<UnsignedByte> byteH2;
 
     @JsonProperty("BYTE_H_3")
-    private final List<UnsignedByte> byteH3 = new ArrayList<>();
+    private final List<UnsignedByte> byteH3;
 
     @JsonProperty("BYTE_H_4")
-    private final List<UnsignedByte> byteH4 = new ArrayList<>();
+    private final List<UnsignedByte> byteH4;
 
     @JsonProperty("BYTE_H_5")
-    private final List<UnsignedByte> byteH5 = new ArrayList<>();
+    private final List<UnsignedByte> byteH5;
 
     @JsonProperty("BYTE_I_0")
-    private final List<UnsignedByte> byteI0 = new ArrayList<>();
+    private final List<UnsignedByte> byteI0;
 
     @JsonProperty("BYTE_I_1")
-    private final List<UnsignedByte> byteI1 = new ArrayList<>();
+    private final List<UnsignedByte> byteI1;
 
     @JsonProperty("BYTE_I_2")
-    private final List<UnsignedByte> byteI2 = new ArrayList<>();
+    private final List<UnsignedByte> byteI2;
 
     @JsonProperty("BYTE_I_3")
-    private final List<UnsignedByte> byteI3 = new ArrayList<>();
+    private final List<UnsignedByte> byteI3;
 
     @JsonProperty("BYTE_I_4")
-    private final List<UnsignedByte> byteI4 = new ArrayList<>();
+    private final List<UnsignedByte> byteI4;
 
     @JsonProperty("BYTE_I_5")
-    private final List<UnsignedByte> byteI5 = new ArrayList<>();
+    private final List<UnsignedByte> byteI5;
 
     @JsonProperty("BYTE_I_6")
-    private final List<UnsignedByte> byteI6 = new ArrayList<>();
+    private final List<UnsignedByte> byteI6;
 
     @JsonProperty("BYTE_J_0")
-    private final List<UnsignedByte> byteJ0 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ0;
 
     @JsonProperty("BYTE_J_1")
-    private final List<UnsignedByte> byteJ1 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ1;
 
     @JsonProperty("BYTE_J_2")
-    private final List<UnsignedByte> byteJ2 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ2;
 
     @JsonProperty("BYTE_J_3")
-    private final List<UnsignedByte> byteJ3 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ3;
 
     @JsonProperty("BYTE_J_4")
-    private final List<UnsignedByte> byteJ4 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ4;
 
     @JsonProperty("BYTE_J_5")
-    private final List<UnsignedByte> byteJ5 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ5;
 
     @JsonProperty("BYTE_J_6")
-    private final List<UnsignedByte> byteJ6 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ6;
 
     @JsonProperty("BYTE_J_7")
-    private final List<UnsignedByte> byteJ7 = new ArrayList<>();
+    private final List<UnsignedByte> byteJ7;
 
     @JsonProperty("BYTE_Q_0")
-    private final List<UnsignedByte> byteQ0 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ0;
 
     @JsonProperty("BYTE_Q_1")
-    private final List<UnsignedByte> byteQ1 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ1;
 
     @JsonProperty("BYTE_Q_2")
-    private final List<UnsignedByte> byteQ2 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ2;
 
     @JsonProperty("BYTE_Q_3")
-    private final List<UnsignedByte> byteQ3 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ3;
 
     @JsonProperty("BYTE_Q_4")
-    private final List<UnsignedByte> byteQ4 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ4;
 
     @JsonProperty("BYTE_Q_5")
-    private final List<UnsignedByte> byteQ5 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ5;
 
     @JsonProperty("BYTE_Q_6")
-    private final List<UnsignedByte> byteQ6 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ6;
 
     @JsonProperty("BYTE_Q_7")
-    private final List<UnsignedByte> byteQ7 = new ArrayList<>();
+    private final List<UnsignedByte> byteQ7;
 
     @JsonProperty("BYTE_R_0")
-    private final List<UnsignedByte> byteR0 = new ArrayList<>();
+    private final List<UnsignedByte> byteR0;
 
     @JsonProperty("BYTE_R_1")
-    private final List<UnsignedByte> byteR1 = new ArrayList<>();
+    private final List<UnsignedByte> byteR1;
 
     @JsonProperty("BYTE_R_2")
-    private final List<UnsignedByte> byteR2 = new ArrayList<>();
+    private final List<UnsignedByte> byteR2;
 
     @JsonProperty("BYTE_R_3")
-    private final List<UnsignedByte> byteR3 = new ArrayList<>();
+    private final List<UnsignedByte> byteR3;
 
     @JsonProperty("CMP")
-    private final List<Boolean> cmp = new ArrayList<>();
+    private final List<Boolean> cmp;
 
     @JsonProperty("CT")
-    private final List<BigInteger> ct = new ArrayList<>();
+    private final List<BigInteger> ct;
 
     @JsonProperty("INST")
-    private final List<BigInteger> inst = new ArrayList<>();
+    private final List<BigInteger> inst;
 
     @JsonProperty("OF_H")
-    private final List<Boolean> ofH = new ArrayList<>();
+    private final List<Boolean> ofH;
 
     @JsonProperty("OF_I")
-    private final List<Boolean> ofI = new ArrayList<>();
+    private final List<Boolean> ofI;
 
     @JsonProperty("OF_J")
-    private final List<Boolean> ofJ = new ArrayList<>();
+    private final List<Boolean> ofJ;
 
     @JsonProperty("OF_RES")
-    private final List<Boolean> ofRes = new ArrayList<>();
+    private final List<Boolean> ofRes;
 
     @JsonProperty("OLI")
-    private final List<Boolean> oli = new ArrayList<>();
+    private final List<Boolean> oli;
 
     @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi = new ArrayList<>();
+    private final List<BigInteger> resHi;
 
     @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo = new ArrayList<>();
+    private final List<BigInteger> resLo;
 
     @JsonProperty("STAMP")
-    private final List<BigInteger> stamp = new ArrayList<>();
+    private final List<BigInteger> stamp;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.accA0 = new ArrayList<>(length);
+      this.accA1 = new ArrayList<>(length);
+      this.accA2 = new ArrayList<>(length);
+      this.accA3 = new ArrayList<>(length);
+      this.accB0 = new ArrayList<>(length);
+      this.accB1 = new ArrayList<>(length);
+      this.accB2 = new ArrayList<>(length);
+      this.accB3 = new ArrayList<>(length);
+      this.accC0 = new ArrayList<>(length);
+      this.accC1 = new ArrayList<>(length);
+      this.accC2 = new ArrayList<>(length);
+      this.accC3 = new ArrayList<>(length);
+      this.accDelta0 = new ArrayList<>(length);
+      this.accDelta1 = new ArrayList<>(length);
+      this.accDelta2 = new ArrayList<>(length);
+      this.accDelta3 = new ArrayList<>(length);
+      this.accH0 = new ArrayList<>(length);
+      this.accH1 = new ArrayList<>(length);
+      this.accH2 = new ArrayList<>(length);
+      this.accH3 = new ArrayList<>(length);
+      this.accH4 = new ArrayList<>(length);
+      this.accH5 = new ArrayList<>(length);
+      this.accI0 = new ArrayList<>(length);
+      this.accI1 = new ArrayList<>(length);
+      this.accI2 = new ArrayList<>(length);
+      this.accI3 = new ArrayList<>(length);
+      this.accI4 = new ArrayList<>(length);
+      this.accI5 = new ArrayList<>(length);
+      this.accI6 = new ArrayList<>(length);
+      this.accJ0 = new ArrayList<>(length);
+      this.accJ1 = new ArrayList<>(length);
+      this.accJ2 = new ArrayList<>(length);
+      this.accJ3 = new ArrayList<>(length);
+      this.accJ4 = new ArrayList<>(length);
+      this.accJ5 = new ArrayList<>(length);
+      this.accJ6 = new ArrayList<>(length);
+      this.accJ7 = new ArrayList<>(length);
+      this.accQ0 = new ArrayList<>(length);
+      this.accQ1 = new ArrayList<>(length);
+      this.accQ2 = new ArrayList<>(length);
+      this.accQ3 = new ArrayList<>(length);
+      this.accQ4 = new ArrayList<>(length);
+      this.accQ5 = new ArrayList<>(length);
+      this.accQ6 = new ArrayList<>(length);
+      this.accQ7 = new ArrayList<>(length);
+      this.accR0 = new ArrayList<>(length);
+      this.accR1 = new ArrayList<>(length);
+      this.accR2 = new ArrayList<>(length);
+      this.accR3 = new ArrayList<>(length);
+      this.arg1Hi = new ArrayList<>(length);
+      this.arg1Lo = new ArrayList<>(length);
+      this.arg2Hi = new ArrayList<>(length);
+      this.arg2Lo = new ArrayList<>(length);
+      this.arg3Hi = new ArrayList<>(length);
+      this.arg3Lo = new ArrayList<>(length);
+      this.bit1 = new ArrayList<>(length);
+      this.bit2 = new ArrayList<>(length);
+      this.bit3 = new ArrayList<>(length);
+      this.byteA0 = new ArrayList<>(length);
+      this.byteA1 = new ArrayList<>(length);
+      this.byteA2 = new ArrayList<>(length);
+      this.byteA3 = new ArrayList<>(length);
+      this.byteB0 = new ArrayList<>(length);
+      this.byteB1 = new ArrayList<>(length);
+      this.byteB2 = new ArrayList<>(length);
+      this.byteB3 = new ArrayList<>(length);
+      this.byteC0 = new ArrayList<>(length);
+      this.byteC1 = new ArrayList<>(length);
+      this.byteC2 = new ArrayList<>(length);
+      this.byteC3 = new ArrayList<>(length);
+      this.byteDelta0 = new ArrayList<>(length);
+      this.byteDelta1 = new ArrayList<>(length);
+      this.byteDelta2 = new ArrayList<>(length);
+      this.byteDelta3 = new ArrayList<>(length);
+      this.byteH0 = new ArrayList<>(length);
+      this.byteH1 = new ArrayList<>(length);
+      this.byteH2 = new ArrayList<>(length);
+      this.byteH3 = new ArrayList<>(length);
+      this.byteH4 = new ArrayList<>(length);
+      this.byteH5 = new ArrayList<>(length);
+      this.byteI0 = new ArrayList<>(length);
+      this.byteI1 = new ArrayList<>(length);
+      this.byteI2 = new ArrayList<>(length);
+      this.byteI3 = new ArrayList<>(length);
+      this.byteI4 = new ArrayList<>(length);
+      this.byteI5 = new ArrayList<>(length);
+      this.byteI6 = new ArrayList<>(length);
+      this.byteJ0 = new ArrayList<>(length);
+      this.byteJ1 = new ArrayList<>(length);
+      this.byteJ2 = new ArrayList<>(length);
+      this.byteJ3 = new ArrayList<>(length);
+      this.byteJ4 = new ArrayList<>(length);
+      this.byteJ5 = new ArrayList<>(length);
+      this.byteJ6 = new ArrayList<>(length);
+      this.byteJ7 = new ArrayList<>(length);
+      this.byteQ0 = new ArrayList<>(length);
+      this.byteQ1 = new ArrayList<>(length);
+      this.byteQ2 = new ArrayList<>(length);
+      this.byteQ3 = new ArrayList<>(length);
+      this.byteQ4 = new ArrayList<>(length);
+      this.byteQ5 = new ArrayList<>(length);
+      this.byteQ6 = new ArrayList<>(length);
+      this.byteQ7 = new ArrayList<>(length);
+      this.byteR0 = new ArrayList<>(length);
+      this.byteR1 = new ArrayList<>(length);
+      this.byteR2 = new ArrayList<>(length);
+      this.byteR3 = new ArrayList<>(length);
+      this.cmp = new ArrayList<>(length);
+      this.ct = new ArrayList<>(length);
+      this.inst = new ArrayList<>(length);
+      this.ofH = new ArrayList<>(length);
+      this.ofI = new ArrayList<>(length);
+      this.ofJ = new ArrayList<>(length);
+      this.ofRes = new ArrayList<>(length);
+      this.oli = new ArrayList<>(length);
+      this.resHi = new ArrayList<>(length);
+      this.resLo = new ArrayList<>(length);
+      this.stamp = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

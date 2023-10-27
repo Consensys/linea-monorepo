@@ -42,8 +42,8 @@ public record Trace(
     @JsonProperty("RES_HI") List<BigInteger> resHi,
     @JsonProperty("RES_LO") List<BigInteger> resLo,
     @JsonProperty("STAMP") List<BigInteger> stamp) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -54,48 +54,63 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1 = new ArrayList<>();
+    private final List<BigInteger> acc1;
 
     @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2 = new ArrayList<>();
+    private final List<BigInteger> acc2;
 
     @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi = new ArrayList<>();
+    private final List<BigInteger> arg1Hi;
 
     @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo = new ArrayList<>();
+    private final List<BigInteger> arg1Lo;
 
     @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi = new ArrayList<>();
+    private final List<BigInteger> arg2Hi;
 
     @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo = new ArrayList<>();
+    private final List<BigInteger> arg2Lo;
 
     @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2 = new ArrayList<>();
+    private final List<UnsignedByte> byte2;
 
     @JsonProperty("CT")
-    private final List<BigInteger> ct = new ArrayList<>();
+    private final List<BigInteger> ct;
 
     @JsonProperty("INST")
-    private final List<BigInteger> inst = new ArrayList<>();
+    private final List<BigInteger> inst;
 
     @JsonProperty("OVERFLOW")
-    private final List<Boolean> overflow = new ArrayList<>();
+    private final List<Boolean> overflow;
 
     @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi = new ArrayList<>();
+    private final List<BigInteger> resHi;
 
     @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo = new ArrayList<>();
+    private final List<BigInteger> resLo;
 
     @JsonProperty("STAMP")
-    private final List<BigInteger> stamp = new ArrayList<>();
+    private final List<BigInteger> stamp;
 
-    private TraceBuilder() {}
+    TraceBuilder(int length) {
+      this.acc1 = new ArrayList<>(length);
+      this.acc2 = new ArrayList<>(length);
+      this.arg1Hi = new ArrayList<>(length);
+      this.arg1Lo = new ArrayList<>(length);
+      this.arg2Hi = new ArrayList<>(length);
+      this.arg2Lo = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.byte2 = new ArrayList<>(length);
+      this.ct = new ArrayList<>(length);
+      this.inst = new ArrayList<>(length);
+      this.overflow = new ArrayList<>(length);
+      this.resHi = new ArrayList<>(length);
+      this.resLo = new ArrayList<>(length);
+      this.stamp = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

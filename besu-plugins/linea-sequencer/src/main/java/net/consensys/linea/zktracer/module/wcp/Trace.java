@@ -57,8 +57,8 @@ public record Trace(
     @JsonProperty("RESULT_HI") List<BigInteger> resultHi,
     @JsonProperty("RESULT_LO") List<BigInteger> resultLo,
     @JsonProperty("WORD_COMPARISON_STAMP") List<BigInteger> wordComparisonStamp) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -69,93 +69,123 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1 = new ArrayList<>();
+    private final List<BigInteger> acc1;
 
     @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2 = new ArrayList<>();
+    private final List<BigInteger> acc2;
 
     @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3 = new ArrayList<>();
+    private final List<BigInteger> acc3;
 
     @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4 = new ArrayList<>();
+    private final List<BigInteger> acc4;
 
     @JsonProperty("ACC_5")
-    private final List<BigInteger> acc5 = new ArrayList<>();
+    private final List<BigInteger> acc5;
 
     @JsonProperty("ACC_6")
-    private final List<BigInteger> acc6 = new ArrayList<>();
+    private final List<BigInteger> acc6;
 
     @JsonProperty("ARGUMENT_1_HI")
-    private final List<BigInteger> argument1Hi = new ArrayList<>();
+    private final List<BigInteger> argument1Hi;
 
     @JsonProperty("ARGUMENT_1_LO")
-    private final List<BigInteger> argument1Lo = new ArrayList<>();
+    private final List<BigInteger> argument1Lo;
 
     @JsonProperty("ARGUMENT_2_HI")
-    private final List<BigInteger> argument2Hi = new ArrayList<>();
+    private final List<BigInteger> argument2Hi;
 
     @JsonProperty("ARGUMENT_2_LO")
-    private final List<BigInteger> argument2Lo = new ArrayList<>();
+    private final List<BigInteger> argument2Lo;
 
     @JsonProperty("BIT_1")
-    private final List<Boolean> bit1 = new ArrayList<>();
+    private final List<Boolean> bit1;
 
     @JsonProperty("BIT_2")
-    private final List<Boolean> bit2 = new ArrayList<>();
+    private final List<Boolean> bit2;
 
     @JsonProperty("BIT_3")
-    private final List<Boolean> bit3 = new ArrayList<>();
+    private final List<Boolean> bit3;
 
     @JsonProperty("BIT_4")
-    private final List<Boolean> bit4 = new ArrayList<>();
+    private final List<Boolean> bit4;
 
     @JsonProperty("BITS")
-    private final List<Boolean> bits = new ArrayList<>();
+    private final List<Boolean> bits;
 
     @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2 = new ArrayList<>();
+    private final List<UnsignedByte> byte2;
 
     @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3 = new ArrayList<>();
+    private final List<UnsignedByte> byte3;
 
     @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4 = new ArrayList<>();
+    private final List<UnsignedByte> byte4;
 
     @JsonProperty("BYTE_5")
-    private final List<UnsignedByte> byte5 = new ArrayList<>();
+    private final List<UnsignedByte> byte5;
 
     @JsonProperty("BYTE_6")
-    private final List<UnsignedByte> byte6 = new ArrayList<>();
+    private final List<UnsignedByte> byte6;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("INST")
-    private final List<BigInteger> inst = new ArrayList<>();
+    private final List<BigInteger> inst;
 
     @JsonProperty("NEG_1")
-    private final List<Boolean> neg1 = new ArrayList<>();
+    private final List<Boolean> neg1;
 
     @JsonProperty("NEG_2")
-    private final List<Boolean> neg2 = new ArrayList<>();
+    private final List<Boolean> neg2;
 
     @JsonProperty("ONE_LINE_INSTRUCTION")
-    private final List<Boolean> oneLineInstruction = new ArrayList<>();
+    private final List<Boolean> oneLineInstruction;
 
     @JsonProperty("RESULT_HI")
-    private final List<BigInteger> resultHi = new ArrayList<>();
+    private final List<BigInteger> resultHi;
 
     @JsonProperty("RESULT_LO")
-    private final List<BigInteger> resultLo = new ArrayList<>();
+    private final List<BigInteger> resultLo;
 
     @JsonProperty("WORD_COMPARISON_STAMP")
-    private final List<BigInteger> wordComparisonStamp = new ArrayList<>();
+    private final List<BigInteger> wordComparisonStamp;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.acc1 = new ArrayList<>(length);
+      this.acc2 = new ArrayList<>(length);
+      this.acc3 = new ArrayList<>(length);
+      this.acc4 = new ArrayList<>(length);
+      this.acc5 = new ArrayList<>(length);
+      this.acc6 = new ArrayList<>(length);
+      this.argument1Hi = new ArrayList<>(length);
+      this.argument1Lo = new ArrayList<>(length);
+      this.argument2Hi = new ArrayList<>(length);
+      this.argument2Lo = new ArrayList<>(length);
+      this.bit1 = new ArrayList<>(length);
+      this.bit2 = new ArrayList<>(length);
+      this.bit3 = new ArrayList<>(length);
+      this.bit4 = new ArrayList<>(length);
+      this.bits = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.byte2 = new ArrayList<>(length);
+      this.byte3 = new ArrayList<>(length);
+      this.byte4 = new ArrayList<>(length);
+      this.byte5 = new ArrayList<>(length);
+      this.byte6 = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.inst = new ArrayList<>(length);
+      this.neg1 = new ArrayList<>(length);
+      this.neg2 = new ArrayList<>(length);
+      this.oneLineInstruction = new ArrayList<>(length);
+      this.resultHi = new ArrayList<>(length);
+      this.resultLo = new ArrayList<>(length);
+      this.wordComparisonStamp = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

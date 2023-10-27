@@ -53,8 +53,8 @@ public record Trace(
     @JsonProperty("SALT_LO") List<BigInteger> saltLo,
     @JsonProperty("STAMP") List<BigInteger> stamp,
     @JsonProperty("TINY_NON_ZERO_NONCE") List<Boolean> tinyNonZeroNonce) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -65,81 +65,107 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC")
-    private final List<BigInteger> acc = new ArrayList<>();
+    private final List<BigInteger> acc;
 
     @JsonProperty("ACC_BYTESIZE")
-    private final List<BigInteger> accBytesize = new ArrayList<>();
+    private final List<BigInteger> accBytesize;
 
     @JsonProperty("ADDR_HI")
-    private final List<BigInteger> addrHi = new ArrayList<>();
+    private final List<BigInteger> addrHi;
 
     @JsonProperty("ADDR_LO")
-    private final List<BigInteger> addrLo = new ArrayList<>();
+    private final List<BigInteger> addrLo;
 
     @JsonProperty("BIT1")
-    private final List<Boolean> bit1 = new ArrayList<>();
+    private final List<Boolean> bit1;
 
     @JsonProperty("BIT_ACC")
-    private final List<UnsignedByte> bitAcc = new ArrayList<>();
+    private final List<UnsignedByte> bitAcc;
 
     @JsonProperty("BYTE1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("DEP_ADDR_HI")
-    private final List<BigInteger> depAddrHi = new ArrayList<>();
+    private final List<BigInteger> depAddrHi;
 
     @JsonProperty("DEP_ADDR_LO")
-    private final List<BigInteger> depAddrLo = new ArrayList<>();
+    private final List<BigInteger> depAddrLo;
 
     @JsonProperty("INDEX")
-    private final List<BigInteger> index = new ArrayList<>();
+    private final List<BigInteger> index;
 
     @JsonProperty("KEC_HI")
-    private final List<BigInteger> kecHi = new ArrayList<>();
+    private final List<BigInteger> kecHi;
 
     @JsonProperty("KEC_LO")
-    private final List<BigInteger> kecLo = new ArrayList<>();
+    private final List<BigInteger> kecLo;
 
     @JsonProperty("LC")
-    private final List<Boolean> lc = new ArrayList<>();
+    private final List<Boolean> lc;
 
     @JsonProperty("LIMB")
-    private final List<BigInteger> limb = new ArrayList<>();
+    private final List<BigInteger> limb;
 
     @JsonProperty("nBYTES")
-    private final List<BigInteger> nBytes = new ArrayList<>();
+    private final List<BigInteger> nBytes;
 
     @JsonProperty("NONCE")
-    private final List<BigInteger> nonce = new ArrayList<>();
+    private final List<BigInteger> nonce;
 
     @JsonProperty("POWER")
-    private final List<BigInteger> power = new ArrayList<>();
+    private final List<BigInteger> power;
 
     @JsonProperty("RECIPE")
-    private final List<BigInteger> recipe = new ArrayList<>();
+    private final List<BigInteger> recipe;
 
     @JsonProperty("RECIPE_1")
-    private final List<Boolean> recipe1 = new ArrayList<>();
+    private final List<Boolean> recipe1;
 
     @JsonProperty("RECIPE_2")
-    private final List<Boolean> recipe2 = new ArrayList<>();
+    private final List<Boolean> recipe2;
 
     @JsonProperty("SALT_HI")
-    private final List<BigInteger> saltHi = new ArrayList<>();
+    private final List<BigInteger> saltHi;
 
     @JsonProperty("SALT_LO")
-    private final List<BigInteger> saltLo = new ArrayList<>();
+    private final List<BigInteger> saltLo;
 
     @JsonProperty("STAMP")
-    private final List<BigInteger> stamp = new ArrayList<>();
+    private final List<BigInteger> stamp;
 
     @JsonProperty("TINY_NON_ZERO_NONCE")
-    private final List<Boolean> tinyNonZeroNonce = new ArrayList<>();
+    private final List<Boolean> tinyNonZeroNonce;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.acc = new ArrayList<>(length);
+      this.accBytesize = new ArrayList<>(length);
+      this.addrHi = new ArrayList<>(length);
+      this.addrLo = new ArrayList<>(length);
+      this.bit1 = new ArrayList<>(length);
+      this.bitAcc = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.depAddrHi = new ArrayList<>(length);
+      this.depAddrLo = new ArrayList<>(length);
+      this.index = new ArrayList<>(length);
+      this.kecHi = new ArrayList<>(length);
+      this.kecLo = new ArrayList<>(length);
+      this.lc = new ArrayList<>(length);
+      this.limb = new ArrayList<>(length);
+      this.nBytes = new ArrayList<>(length);
+      this.nonce = new ArrayList<>(length);
+      this.power = new ArrayList<>(length);
+      this.recipe = new ArrayList<>(length);
+      this.recipe1 = new ArrayList<>(length);
+      this.recipe2 = new ArrayList<>(length);
+      this.saltHi = new ArrayList<>(length);
+      this.saltLo = new ArrayList<>(length);
+      this.stamp = new ArrayList<>(length);
+      this.tinyNonZeroNonce = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

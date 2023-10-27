@@ -29,7 +29,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Mul implements Module {
-  final Trace.TraceBuilder trace = Trace.builder();
   /** A set of the operations to trace */
   private final StackedSet<MulOperation> operations = new StackedSet<>();
 
@@ -66,43 +65,44 @@ public class Mul implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount() + 16);
     for (var op : this.operations) {
-      this.traceMulOperation(op);
+      this.traceMulOperation(op, trace);
     }
-    this.traceMulOperation(new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO));
+    this.traceMulOperation(new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO), trace);
 
     return new MulTrace(trace.build());
   }
 
-  private void traceMulOperation(final MulOperation op) {
+  private void traceMulOperation(final MulOperation op, Trace.TraceBuilder trace) {
     this.stamp++;
 
     switch (op.getRegime()) {
-      case EXPONENT_ZERO_RESULT -> traceSubOp(op);
+      case EXPONENT_ZERO_RESULT -> traceSubOp(op, trace);
 
       case EXPONENT_NON_ZERO_RESULT -> {
         while (op.carryOn()) {
           op.update();
-          traceSubOp(op);
+          traceSubOp(op, trace);
         }
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
         op.setHsAndBits(UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
-        traceSubOp(op);
+        traceSubOp(op, trace);
       }
 
       default -> throw new RuntimeException("regime not supported");
     }
   }
 
-  private void traceSubOp(final MulOperation data) {
+  private void traceSubOp(final MulOperation data, Trace.TraceBuilder trace) {
     for (int ct = 0; ct < data.maxCt(); ct++) {
-      traceRow(data, ct);
+      traceRow(data, ct, trace);
     }
   }
 
-  private void traceRow(final MulOperation op, final int i) {
+  private void traceRow(final MulOperation op, final int i, Trace.TraceBuilder trace) {
     trace
         .mulStamp(BigInteger.valueOf(stamp))
         .counter(BigInteger.valueOf(i))

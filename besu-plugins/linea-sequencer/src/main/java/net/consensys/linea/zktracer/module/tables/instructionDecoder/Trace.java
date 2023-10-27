@@ -112,8 +112,8 @@ public record Trace(
     @JsonProperty("RAM_TARGET_TXN_DATA") List<Boolean> ramTargetTxnData,
     @JsonProperty("STATIC_GAS") List<BigInteger> staticGas,
     @JsonProperty("TWO_LINES_INSTRUCTION") List<Boolean> twoLinesInstruction) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -124,258 +124,343 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ADDRESS_TRIMMING_INSTRUCTION")
-    private final List<Boolean> addressTrimmingInstruction = new ArrayList<>();
+    private final List<Boolean> addressTrimmingInstruction;
 
     @JsonProperty("ALPHA")
-    private final List<UnsignedByte> alpha = new ArrayList<>();
+    private final List<UnsignedByte> alpha;
 
     @JsonProperty("BILLING_PER_BYTE")
-    private final List<BigInteger> billingPerByte = new ArrayList<>();
+    private final List<BigInteger> billingPerByte;
 
     @JsonProperty("BILLING_PER_WORD")
-    private final List<BigInteger> billingPerWord = new ArrayList<>();
+    private final List<BigInteger> billingPerWord;
 
     @JsonProperty("DELTA")
-    private final List<UnsignedByte> delta = new ArrayList<>();
+    private final List<UnsignedByte> delta;
 
     @JsonProperty("FAMILY_ACCOUNT")
-    private final List<Boolean> familyAccount = new ArrayList<>();
+    private final List<Boolean> familyAccount;
 
     @JsonProperty("FAMILY_ADD")
-    private final List<Boolean> familyAdd = new ArrayList<>();
+    private final List<Boolean> familyAdd;
 
     @JsonProperty("FAMILY_BATCH")
-    private final List<Boolean> familyBatch = new ArrayList<>();
+    private final List<Boolean> familyBatch;
 
     @JsonProperty("FAMILY_BIN")
-    private final List<Boolean> familyBin = new ArrayList<>();
+    private final List<Boolean> familyBin;
 
     @JsonProperty("FAMILY_CALL")
-    private final List<Boolean> familyCall = new ArrayList<>();
+    private final List<Boolean> familyCall;
 
     @JsonProperty("FAMILY_CONTEXT")
-    private final List<Boolean> familyContext = new ArrayList<>();
+    private final List<Boolean> familyContext;
 
     @JsonProperty("FAMILY_COPY")
-    private final List<Boolean> familyCopy = new ArrayList<>();
+    private final List<Boolean> familyCopy;
 
     @JsonProperty("FAMILY_CREATE")
-    private final List<Boolean> familyCreate = new ArrayList<>();
+    private final List<Boolean> familyCreate;
 
     @JsonProperty("FAMILY_DUP")
-    private final List<Boolean> familyDup = new ArrayList<>();
+    private final List<Boolean> familyDup;
 
     @JsonProperty("FAMILY_EXT")
-    private final List<Boolean> familyExt = new ArrayList<>();
+    private final List<Boolean> familyExt;
 
     @JsonProperty("FAMILY_HALT")
-    private final List<Boolean> familyHalt = new ArrayList<>();
+    private final List<Boolean> familyHalt;
 
     @JsonProperty("FAMILY_INVALID")
-    private final List<Boolean> familyInvalid = new ArrayList<>();
+    private final List<Boolean> familyInvalid;
 
     @JsonProperty("FAMILY_JUMP")
-    private final List<Boolean> familyJump = new ArrayList<>();
+    private final List<Boolean> familyJump;
 
     @JsonProperty("FAMILY_KEC")
-    private final List<Boolean> familyKec = new ArrayList<>();
+    private final List<Boolean> familyKec;
 
     @JsonProperty("FAMILY_LOG")
-    private final List<Boolean> familyLog = new ArrayList<>();
+    private final List<Boolean> familyLog;
 
     @JsonProperty("FAMILY_MACHINE_STATE")
-    private final List<Boolean> familyMachineState = new ArrayList<>();
+    private final List<Boolean> familyMachineState;
 
     @JsonProperty("FAMILY_MOD")
-    private final List<Boolean> familyMod = new ArrayList<>();
+    private final List<Boolean> familyMod;
 
     @JsonProperty("FAMILY_MUL")
-    private final List<Boolean> familyMul = new ArrayList<>();
+    private final List<Boolean> familyMul;
 
     @JsonProperty("FAMILY_PUSH_POP")
-    private final List<Boolean> familyPushPop = new ArrayList<>();
+    private final List<Boolean> familyPushPop;
 
     @JsonProperty("FAMILY_SHF")
-    private final List<Boolean> familyShf = new ArrayList<>();
+    private final List<Boolean> familyShf;
 
     @JsonProperty("FAMILY_STACK_RAM")
-    private final List<Boolean> familyStackRam = new ArrayList<>();
+    private final List<Boolean> familyStackRam;
 
     @JsonProperty("FAMILY_STORAGE")
-    private final List<Boolean> familyStorage = new ArrayList<>();
+    private final List<Boolean> familyStorage;
 
     @JsonProperty("FAMILY_SWAP")
-    private final List<Boolean> familySwap = new ArrayList<>();
+    private final List<Boolean> familySwap;
 
     @JsonProperty("FAMILY_TRANSACTION")
-    private final List<Boolean> familyTransaction = new ArrayList<>();
+    private final List<Boolean> familyTransaction;
 
     @JsonProperty("FAMILY_WCP")
-    private final List<Boolean> familyWcp = new ArrayList<>();
+    private final List<Boolean> familyWcp;
 
     @JsonProperty("FLAG1")
-    private final List<Boolean> flag1 = new ArrayList<>();
+    private final List<Boolean> flag1;
 
     @JsonProperty("FLAG2")
-    private final List<Boolean> flag2 = new ArrayList<>();
+    private final List<Boolean> flag2;
 
     @JsonProperty("FLAG3")
-    private final List<Boolean> flag3 = new ArrayList<>();
+    private final List<Boolean> flag3;
 
     @JsonProperty("FLAG4")
-    private final List<Boolean> flag4 = new ArrayList<>();
+    private final List<Boolean> flag4;
 
     @JsonProperty("FORBIDDEN_IN_STATIC")
-    private final List<Boolean> forbiddenInStatic = new ArrayList<>();
+    private final List<Boolean> forbiddenInStatic;
 
     @JsonProperty("IS_JUMPDEST")
-    private final List<Boolean> isJumpdest = new ArrayList<>();
+    private final List<Boolean> isJumpdest;
 
     @JsonProperty("IS_PUSH")
-    private final List<Boolean> isPush = new ArrayList<>();
+    private final List<Boolean> isPush;
 
     @JsonProperty("MXP_TYPE_1")
-    private final List<Boolean> mxpType1 = new ArrayList<>();
+    private final List<Boolean> mxpType1;
 
     @JsonProperty("MXP_TYPE_2")
-    private final List<Boolean> mxpType2 = new ArrayList<>();
+    private final List<Boolean> mxpType2;
 
     @JsonProperty("MXP_TYPE_3")
-    private final List<Boolean> mxpType3 = new ArrayList<>();
+    private final List<Boolean> mxpType3;
 
     @JsonProperty("MXP_TYPE_4")
-    private final List<Boolean> mxpType4 = new ArrayList<>();
+    private final List<Boolean> mxpType4;
 
     @JsonProperty("MXP_TYPE_5")
-    private final List<Boolean> mxpType5 = new ArrayList<>();
+    private final List<Boolean> mxpType5;
 
     @JsonProperty("NB_ADDED")
-    private final List<UnsignedByte> nbAdded = new ArrayList<>();
+    private final List<UnsignedByte> nbAdded;
 
     @JsonProperty("NB_REMOVED")
-    private final List<UnsignedByte> nbRemoved = new ArrayList<>();
+    private final List<UnsignedByte> nbRemoved;
 
     @JsonProperty("OPCODE")
-    private final List<BigInteger> opcode = new ArrayList<>();
+    private final List<BigInteger> opcode;
 
     @JsonProperty("PATTERN_CALL")
-    private final List<Boolean> patternCall = new ArrayList<>();
+    private final List<Boolean> patternCall;
 
     @JsonProperty("PATTERN_COPY")
-    private final List<Boolean> patternCopy = new ArrayList<>();
+    private final List<Boolean> patternCopy;
 
     @JsonProperty("PATTERN_CREATE")
-    private final List<Boolean> patternCreate = new ArrayList<>();
+    private final List<Boolean> patternCreate;
 
     @JsonProperty("PATTERN_DUP")
-    private final List<Boolean> patternDup = new ArrayList<>();
+    private final List<Boolean> patternDup;
 
     @JsonProperty("PATTERN_LOAD_STORE")
-    private final List<Boolean> patternLoadStore = new ArrayList<>();
+    private final List<Boolean> patternLoadStore;
 
     @JsonProperty("PATTERN_LOG")
-    private final List<Boolean> patternLog = new ArrayList<>();
+    private final List<Boolean> patternLog;
 
     @JsonProperty("PATTERN_ONE_ONE")
-    private final List<Boolean> patternOneOne = new ArrayList<>();
+    private final List<Boolean> patternOneOne;
 
     @JsonProperty("PATTERN_ONE_ZERO")
-    private final List<Boolean> patternOneZero = new ArrayList<>();
+    private final List<Boolean> patternOneZero;
 
     @JsonProperty("PATTERN_SWAP")
-    private final List<Boolean> patternSwap = new ArrayList<>();
+    private final List<Boolean> patternSwap;
 
     @JsonProperty("PATTERN_THREE_ONE")
-    private final List<Boolean> patternThreeOne = new ArrayList<>();
+    private final List<Boolean> patternThreeOne;
 
     @JsonProperty("PATTERN_TWO_ONE")
-    private final List<Boolean> patternTwoOne = new ArrayList<>();
+    private final List<Boolean> patternTwoOne;
 
     @JsonProperty("PATTERN_TWO_ZERO")
-    private final List<Boolean> patternTwoZero = new ArrayList<>();
+    private final List<Boolean> patternTwoZero;
 
     @JsonProperty("PATTERN_ZERO_ONE")
-    private final List<Boolean> patternZeroOne = new ArrayList<>();
+    private final List<Boolean> patternZeroOne;
 
     @JsonProperty("PATTERN_ZERO_ZERO")
-    private final List<Boolean> patternZeroZero = new ArrayList<>();
+    private final List<Boolean> patternZeroZero;
 
     @JsonProperty("RAM_ENABLED")
-    private final List<Boolean> ramEnabled = new ArrayList<>();
+    private final List<Boolean> ramEnabled;
 
     @JsonProperty("RAM_SOURCE_BLAKE_DATA")
-    private final List<Boolean> ramSourceBlakeData = new ArrayList<>();
+    private final List<Boolean> ramSourceBlakeData;
 
     @JsonProperty("RAM_SOURCE_EC_DATA")
-    private final List<Boolean> ramSourceEcData = new ArrayList<>();
+    private final List<Boolean> ramSourceEcData;
 
     @JsonProperty("RAM_SOURCE_EC_INFO")
-    private final List<Boolean> ramSourceEcInfo = new ArrayList<>();
+    private final List<Boolean> ramSourceEcInfo;
 
     @JsonProperty("RAM_SOURCE_HASH_DATA")
-    private final List<Boolean> ramSourceHashData = new ArrayList<>();
+    private final List<Boolean> ramSourceHashData;
 
     @JsonProperty("RAM_SOURCE_HASH_INFO")
-    private final List<Boolean> ramSourceHashInfo = new ArrayList<>();
+    private final List<Boolean> ramSourceHashInfo;
 
     @JsonProperty("RAM_SOURCE_LOG_DATA")
-    private final List<Boolean> ramSourceLogData = new ArrayList<>();
+    private final List<Boolean> ramSourceLogData;
 
     @JsonProperty("RAM_SOURCE_MODEXP_DATA")
-    private final List<Boolean> ramSourceModexpData = new ArrayList<>();
+    private final List<Boolean> ramSourceModexpData;
 
     @JsonProperty("RAM_SOURCE_RAM")
-    private final List<Boolean> ramSourceRam = new ArrayList<>();
+    private final List<Boolean> ramSourceRam;
 
     @JsonProperty("RAM_SOURCE_ROM")
-    private final List<Boolean> ramSourceRom = new ArrayList<>();
+    private final List<Boolean> ramSourceRom;
 
     @JsonProperty("RAM_SOURCE_STACK")
-    private final List<Boolean> ramSourceStack = new ArrayList<>();
+    private final List<Boolean> ramSourceStack;
 
     @JsonProperty("RAM_SOURCE_TXN_DATA")
-    private final List<Boolean> ramSourceTxnData = new ArrayList<>();
+    private final List<Boolean> ramSourceTxnData;
 
     @JsonProperty("RAM_TARGET_BLAKE_DATA")
-    private final List<Boolean> ramTargetBlakeData = new ArrayList<>();
+    private final List<Boolean> ramTargetBlakeData;
 
     @JsonProperty("RAM_TARGET_EC_DATA")
-    private final List<Boolean> ramTargetEcData = new ArrayList<>();
+    private final List<Boolean> ramTargetEcData;
 
     @JsonProperty("RAM_TARGET_EC_INFO")
-    private final List<Boolean> ramTargetEcInfo = new ArrayList<>();
+    private final List<Boolean> ramTargetEcInfo;
 
     @JsonProperty("RAM_TARGET_HASH_DATA")
-    private final List<Boolean> ramTargetHashData = new ArrayList<>();
+    private final List<Boolean> ramTargetHashData;
 
     @JsonProperty("RAM_TARGET_HASH_INFO")
-    private final List<Boolean> ramTargetHashInfo = new ArrayList<>();
+    private final List<Boolean> ramTargetHashInfo;
 
     @JsonProperty("RAM_TARGET_LOG_DATA")
-    private final List<Boolean> ramTargetLogData = new ArrayList<>();
+    private final List<Boolean> ramTargetLogData;
 
     @JsonProperty("RAM_TARGET_MODEXP_DATA")
-    private final List<Boolean> ramTargetModexpData = new ArrayList<>();
+    private final List<Boolean> ramTargetModexpData;
 
     @JsonProperty("RAM_TARGET_RAM")
-    private final List<Boolean> ramTargetRam = new ArrayList<>();
+    private final List<Boolean> ramTargetRam;
 
     @JsonProperty("RAM_TARGET_ROM")
-    private final List<Boolean> ramTargetRom = new ArrayList<>();
+    private final List<Boolean> ramTargetRom;
 
     @JsonProperty("RAM_TARGET_STACK")
-    private final List<Boolean> ramTargetStack = new ArrayList<>();
+    private final List<Boolean> ramTargetStack;
 
     @JsonProperty("RAM_TARGET_TXN_DATA")
-    private final List<Boolean> ramTargetTxnData = new ArrayList<>();
+    private final List<Boolean> ramTargetTxnData;
 
     @JsonProperty("STATIC_GAS")
-    private final List<BigInteger> staticGas = new ArrayList<>();
+    private final List<BigInteger> staticGas;
 
     @JsonProperty("TWO_LINES_INSTRUCTION")
-    private final List<Boolean> twoLinesInstruction = new ArrayList<>();
+    private final List<Boolean> twoLinesInstruction;
 
-    TraceBuilder() {}
+    TraceBuilder(int length) {
+      this.addressTrimmingInstruction = new ArrayList<>(length);
+      this.alpha = new ArrayList<>(length);
+      this.billingPerByte = new ArrayList<>(length);
+      this.billingPerWord = new ArrayList<>(length);
+      this.delta = new ArrayList<>(length);
+      this.familyAccount = new ArrayList<>(length);
+      this.familyAdd = new ArrayList<>(length);
+      this.familyBatch = new ArrayList<>(length);
+      this.familyBin = new ArrayList<>(length);
+      this.familyCall = new ArrayList<>(length);
+      this.familyContext = new ArrayList<>(length);
+      this.familyCopy = new ArrayList<>(length);
+      this.familyCreate = new ArrayList<>(length);
+      this.familyDup = new ArrayList<>(length);
+      this.familyExt = new ArrayList<>(length);
+      this.familyHalt = new ArrayList<>(length);
+      this.familyInvalid = new ArrayList<>(length);
+      this.familyJump = new ArrayList<>(length);
+      this.familyKec = new ArrayList<>(length);
+      this.familyLog = new ArrayList<>(length);
+      this.familyMachineState = new ArrayList<>(length);
+      this.familyMod = new ArrayList<>(length);
+      this.familyMul = new ArrayList<>(length);
+      this.familyPushPop = new ArrayList<>(length);
+      this.familyShf = new ArrayList<>(length);
+      this.familyStackRam = new ArrayList<>(length);
+      this.familyStorage = new ArrayList<>(length);
+      this.familySwap = new ArrayList<>(length);
+      this.familyTransaction = new ArrayList<>(length);
+      this.familyWcp = new ArrayList<>(length);
+      this.flag1 = new ArrayList<>(length);
+      this.flag2 = new ArrayList<>(length);
+      this.flag3 = new ArrayList<>(length);
+      this.flag4 = new ArrayList<>(length);
+      this.forbiddenInStatic = new ArrayList<>(length);
+      this.isJumpdest = new ArrayList<>(length);
+      this.isPush = new ArrayList<>(length);
+      this.mxpType1 = new ArrayList<>(length);
+      this.mxpType2 = new ArrayList<>(length);
+      this.mxpType3 = new ArrayList<>(length);
+      this.mxpType4 = new ArrayList<>(length);
+      this.mxpType5 = new ArrayList<>(length);
+      this.nbAdded = new ArrayList<>(length);
+      this.nbRemoved = new ArrayList<>(length);
+      this.opcode = new ArrayList<>(length);
+      this.patternCall = new ArrayList<>(length);
+      this.patternCopy = new ArrayList<>(length);
+      this.patternCreate = new ArrayList<>(length);
+      this.patternDup = new ArrayList<>(length);
+      this.patternLoadStore = new ArrayList<>(length);
+      this.patternLog = new ArrayList<>(length);
+      this.patternOneOne = new ArrayList<>(length);
+      this.patternOneZero = new ArrayList<>(length);
+      this.patternSwap = new ArrayList<>(length);
+      this.patternThreeOne = new ArrayList<>(length);
+      this.patternTwoOne = new ArrayList<>(length);
+      this.patternTwoZero = new ArrayList<>(length);
+      this.patternZeroOne = new ArrayList<>(length);
+      this.patternZeroZero = new ArrayList<>(length);
+      this.ramEnabled = new ArrayList<>(length);
+      this.ramSourceBlakeData = new ArrayList<>(length);
+      this.ramSourceEcData = new ArrayList<>(length);
+      this.ramSourceEcInfo = new ArrayList<>(length);
+      this.ramSourceHashData = new ArrayList<>(length);
+      this.ramSourceHashInfo = new ArrayList<>(length);
+      this.ramSourceLogData = new ArrayList<>(length);
+      this.ramSourceModexpData = new ArrayList<>(length);
+      this.ramSourceRam = new ArrayList<>(length);
+      this.ramSourceRom = new ArrayList<>(length);
+      this.ramSourceStack = new ArrayList<>(length);
+      this.ramSourceTxnData = new ArrayList<>(length);
+      this.ramTargetBlakeData = new ArrayList<>(length);
+      this.ramTargetEcData = new ArrayList<>(length);
+      this.ramTargetEcInfo = new ArrayList<>(length);
+      this.ramTargetHashData = new ArrayList<>(length);
+      this.ramTargetHashInfo = new ArrayList<>(length);
+      this.ramTargetLogData = new ArrayList<>(length);
+      this.ramTargetModexpData = new ArrayList<>(length);
+      this.ramTargetRam = new ArrayList<>(length);
+      this.ramTargetRom = new ArrayList<>(length);
+      this.ramTargetStack = new ArrayList<>(length);
+      this.ramTargetTxnData = new ArrayList<>(length);
+      this.staticGas = new ArrayList<>(length);
+      this.twoLinesInstruction = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {
