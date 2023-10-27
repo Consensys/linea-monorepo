@@ -86,8 +86,8 @@ public record Trace(
     @JsonProperty("RLP_LT_BYTESIZE") List<BigInteger> rlpLtBytesize,
     @JsonProperty("RLP_LX_BYTESIZE") List<BigInteger> rlpLxBytesize,
     @JsonProperty("TYPE") List<BigInteger> type) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -98,180 +98,239 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ABS_TX_NUM")
-    private final List<BigInteger> absTxNum = new ArrayList<>();
+    private final List<BigInteger> absTxNum;
 
     @JsonProperty("ABS_TX_NUM_INFINY")
-    private final List<BigInteger> absTxNumInfiny = new ArrayList<>();
+    private final List<BigInteger> absTxNumInfiny;
 
     @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1 = new ArrayList<>();
+    private final List<BigInteger> acc1;
 
     @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2 = new ArrayList<>();
+    private final List<BigInteger> acc2;
 
     @JsonProperty("ACC_BYTESIZE")
-    private final List<BigInteger> accBytesize = new ArrayList<>();
+    private final List<BigInteger> accBytesize;
 
     @JsonProperty("ACCESS_TUPLE_BYTESIZE")
-    private final List<BigInteger> accessTupleBytesize = new ArrayList<>();
+    private final List<BigInteger> accessTupleBytesize;
 
     @JsonProperty("ADDR_HI")
-    private final List<BigInteger> addrHi = new ArrayList<>();
+    private final List<BigInteger> addrHi;
 
     @JsonProperty("ADDR_LO")
-    private final List<BigInteger> addrLo = new ArrayList<>();
+    private final List<BigInteger> addrLo;
 
     @JsonProperty("BIT")
-    private final List<Boolean> bit = new ArrayList<>();
+    private final List<Boolean> bit;
 
     @JsonProperty("BIT_ACC")
-    private final List<BigInteger> bitAcc = new ArrayList<>();
+    private final List<BigInteger> bitAcc;
 
     @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1 = new ArrayList<>();
+    private final List<UnsignedByte> byte1;
 
     @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2 = new ArrayList<>();
+    private final List<UnsignedByte> byte2;
 
     @JsonProperty("CODE_FRAGMENT_INDEX")
-    private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
+    private final List<BigInteger> codeFragmentIndex;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("DATA_HI")
-    private final List<BigInteger> dataHi = new ArrayList<>();
+    private final List<BigInteger> dataHi;
 
     @JsonProperty("DATA_LO")
-    private final List<BigInteger> dataLo = new ArrayList<>();
+    private final List<BigInteger> dataLo;
 
     @JsonProperty("DATAGASCOST")
-    private final List<BigInteger> datagascost = new ArrayList<>();
+    private final List<BigInteger> datagascost;
 
     @JsonProperty("DEPTH_1")
-    private final List<Boolean> depth1 = new ArrayList<>();
+    private final List<Boolean> depth1;
 
     @JsonProperty("DEPTH_2")
-    private final List<Boolean> depth2 = new ArrayList<>();
+    private final List<Boolean> depth2;
 
     @JsonProperty("DONE")
-    private final List<Boolean> done = new ArrayList<>();
+    private final List<Boolean> done;
 
     @JsonProperty("INDEX_DATA")
-    private final List<BigInteger> indexData = new ArrayList<>();
+    private final List<BigInteger> indexData;
 
     @JsonProperty("INDEX_LT")
-    private final List<BigInteger> indexLt = new ArrayList<>();
+    private final List<BigInteger> indexLt;
 
     @JsonProperty("INDEX_LX")
-    private final List<BigInteger> indexLx = new ArrayList<>();
+    private final List<BigInteger> indexLx;
 
     @JsonProperty("INPUT_1")
-    private final List<BigInteger> input1 = new ArrayList<>();
+    private final List<BigInteger> input1;
 
     @JsonProperty("INPUT_2")
-    private final List<BigInteger> input2 = new ArrayList<>();
+    private final List<BigInteger> input2;
 
     @JsonProperty("IS_PREFIX")
-    private final List<Boolean> isPrefix = new ArrayList<>();
+    private final List<Boolean> isPrefix;
 
     @JsonProperty("LC_CORRECTION")
-    private final List<Boolean> lcCorrection = new ArrayList<>();
+    private final List<Boolean> lcCorrection;
 
     @JsonProperty("LIMB")
-    private final List<BigInteger> limb = new ArrayList<>();
+    private final List<BigInteger> limb;
 
     @JsonProperty("LIMB_CONSTRUCTED")
-    private final List<Boolean> limbConstructed = new ArrayList<>();
+    private final List<Boolean> limbConstructed;
 
     @JsonProperty("LT")
-    private final List<Boolean> lt = new ArrayList<>();
+    private final List<Boolean> lt;
 
     @JsonProperty("LX")
-    private final List<Boolean> lx = new ArrayList<>();
+    private final List<Boolean> lx;
 
     @JsonProperty("nADDR")
-    private final List<BigInteger> nAddr = new ArrayList<>();
+    private final List<BigInteger> nAddr;
 
     @JsonProperty("nBYTES")
-    private final List<BigInteger> nBytes = new ArrayList<>();
+    private final List<BigInteger> nBytes;
 
     @JsonProperty("nKEYS")
-    private final List<BigInteger> nKeys = new ArrayList<>();
+    private final List<BigInteger> nKeys;
 
     @JsonProperty("nKEYS_PER_ADDR")
-    private final List<BigInteger> nKeysPerAddr = new ArrayList<>();
+    private final List<BigInteger> nKeysPerAddr;
 
     @JsonProperty("nSTEP")
-    private final List<BigInteger> nStep = new ArrayList<>();
+    private final List<BigInteger> nStep;
 
     @JsonProperty("PHASE_0")
-    private final List<Boolean> phase0 = new ArrayList<>();
+    private final List<Boolean> phase0;
 
     @JsonProperty("PHASE_1")
-    private final List<Boolean> phase1 = new ArrayList<>();
+    private final List<Boolean> phase1;
 
     @JsonProperty("PHASE_10")
-    private final List<Boolean> phase10 = new ArrayList<>();
+    private final List<Boolean> phase10;
 
     @JsonProperty("PHASE_11")
-    private final List<Boolean> phase11 = new ArrayList<>();
+    private final List<Boolean> phase11;
 
     @JsonProperty("PHASE_12")
-    private final List<Boolean> phase12 = new ArrayList<>();
+    private final List<Boolean> phase12;
 
     @JsonProperty("PHASE_13")
-    private final List<Boolean> phase13 = new ArrayList<>();
+    private final List<Boolean> phase13;
 
     @JsonProperty("PHASE_14")
-    private final List<Boolean> phase14 = new ArrayList<>();
+    private final List<Boolean> phase14;
 
     @JsonProperty("PHASE_2")
-    private final List<Boolean> phase2 = new ArrayList<>();
+    private final List<Boolean> phase2;
 
     @JsonProperty("PHASE_3")
-    private final List<Boolean> phase3 = new ArrayList<>();
+    private final List<Boolean> phase3;
 
     @JsonProperty("PHASE_4")
-    private final List<Boolean> phase4 = new ArrayList<>();
+    private final List<Boolean> phase4;
 
     @JsonProperty("PHASE_5")
-    private final List<Boolean> phase5 = new ArrayList<>();
+    private final List<Boolean> phase5;
 
     @JsonProperty("PHASE_6")
-    private final List<Boolean> phase6 = new ArrayList<>();
+    private final List<Boolean> phase6;
 
     @JsonProperty("PHASE_7")
-    private final List<Boolean> phase7 = new ArrayList<>();
+    private final List<Boolean> phase7;
 
     @JsonProperty("PHASE_8")
-    private final List<Boolean> phase8 = new ArrayList<>();
+    private final List<Boolean> phase8;
 
     @JsonProperty("PHASE_9")
-    private final List<Boolean> phase9 = new ArrayList<>();
+    private final List<Boolean> phase9;
 
     @JsonProperty("PHASE_END")
-    private final List<Boolean> phaseEnd = new ArrayList<>();
+    private final List<Boolean> phaseEnd;
 
     @JsonProperty("PHASE_SIZE")
-    private final List<BigInteger> phaseSize = new ArrayList<>();
+    private final List<BigInteger> phaseSize;
 
     @JsonProperty("POWER")
-    private final List<BigInteger> power = new ArrayList<>();
+    private final List<BigInteger> power;
 
     @JsonProperty("REQUIRES_EVM_EXECUTION")
-    private final List<Boolean> requiresEvmExecution = new ArrayList<>();
+    private final List<Boolean> requiresEvmExecution;
 
     @JsonProperty("RLP_LT_BYTESIZE")
-    private final List<BigInteger> rlpLtBytesize = new ArrayList<>();
+    private final List<BigInteger> rlpLtBytesize;
 
     @JsonProperty("RLP_LX_BYTESIZE")
-    private final List<BigInteger> rlpLxBytesize = new ArrayList<>();
+    private final List<BigInteger> rlpLxBytesize;
 
     @JsonProperty("TYPE")
-    private final List<BigInteger> type = new ArrayList<>();
+    private final List<BigInteger> type;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.absTxNum = new ArrayList<>(length);
+      this.absTxNumInfiny = new ArrayList<>(length);
+      this.acc1 = new ArrayList<>(length);
+      this.acc2 = new ArrayList<>(length);
+      this.accBytesize = new ArrayList<>(length);
+      this.accessTupleBytesize = new ArrayList<>(length);
+      this.addrHi = new ArrayList<>(length);
+      this.addrLo = new ArrayList<>(length);
+      this.bit = new ArrayList<>(length);
+      this.bitAcc = new ArrayList<>(length);
+      this.byte1 = new ArrayList<>(length);
+      this.byte2 = new ArrayList<>(length);
+      this.codeFragmentIndex = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.dataHi = new ArrayList<>(length);
+      this.dataLo = new ArrayList<>(length);
+      this.datagascost = new ArrayList<>(length);
+      this.depth1 = new ArrayList<>(length);
+      this.depth2 = new ArrayList<>(length);
+      this.done = new ArrayList<>(length);
+      this.indexData = new ArrayList<>(length);
+      this.indexLt = new ArrayList<>(length);
+      this.indexLx = new ArrayList<>(length);
+      this.input1 = new ArrayList<>(length);
+      this.input2 = new ArrayList<>(length);
+      this.isPrefix = new ArrayList<>(length);
+      this.lcCorrection = new ArrayList<>(length);
+      this.limb = new ArrayList<>(length);
+      this.limbConstructed = new ArrayList<>(length);
+      this.lt = new ArrayList<>(length);
+      this.lx = new ArrayList<>(length);
+      this.nAddr = new ArrayList<>(length);
+      this.nBytes = new ArrayList<>(length);
+      this.nKeys = new ArrayList<>(length);
+      this.nKeysPerAddr = new ArrayList<>(length);
+      this.nStep = new ArrayList<>(length);
+      this.phase0 = new ArrayList<>(length);
+      this.phase1 = new ArrayList<>(length);
+      this.phase10 = new ArrayList<>(length);
+      this.phase11 = new ArrayList<>(length);
+      this.phase12 = new ArrayList<>(length);
+      this.phase13 = new ArrayList<>(length);
+      this.phase14 = new ArrayList<>(length);
+      this.phase2 = new ArrayList<>(length);
+      this.phase3 = new ArrayList<>(length);
+      this.phase4 = new ArrayList<>(length);
+      this.phase5 = new ArrayList<>(length);
+      this.phase6 = new ArrayList<>(length);
+      this.phase7 = new ArrayList<>(length);
+      this.phase8 = new ArrayList<>(length);
+      this.phase9 = new ArrayList<>(length);
+      this.phaseEnd = new ArrayList<>(length);
+      this.phaseSize = new ArrayList<>(length);
+      this.power = new ArrayList<>(length);
+      this.requiresEvmExecution = new ArrayList<>(length);
+      this.rlpLtBytesize = new ArrayList<>(length);
+      this.rlpLxBytesize = new ArrayList<>(length);
+      this.type = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

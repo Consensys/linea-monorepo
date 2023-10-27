@@ -45,7 +45,6 @@ public class RlpAddr implements Module {
   private static final int LIST_SHORT = 0xc0;
   private static final int LLARGE = 16;
 
-  private final Trace.TraceBuilder builder = Trace.builder();
   private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
 
   @Override
@@ -93,12 +92,13 @@ public class RlpAddr implements Module {
     }
   }
 
-  private void traceCreate2(int stamp, Address address, Bytes32 salt, Bytes32 keccak) {
+  private void traceCreate2(
+      int stamp, Address address, Bytes32 salt, Bytes32 keccak, Trace.TraceBuilder trace) {
     final Address deployementAddress =
         Address.extract(keccak256(Bytes.concatenate(CREATE2_SHIFT, address, salt, keccak)));
 
     for (int ct = 0; ct < 6; ct++) {
-      this.builder
+      trace
           .stamp(BigInteger.valueOf(stamp))
           .recipe(BigInteger.valueOf(2))
           .recipe1(false)
@@ -117,31 +117,31 @@ public class RlpAddr implements Module {
 
       switch (ct) {
         case 0 -> {
-          this.builder.limb(
+          trace.limb(
               padToGivenSizeWithRightZero(
                       Bytes.concatenate(CREATE2_SHIFT, address.slice(0, 4)), LLARGE)
                   .toUnsignedBigInteger());
-          this.builder.nBytes(BigInteger.valueOf(5));
+          trace.nBytes(BigInteger.valueOf(5));
         }
-        case 1 -> this.builder
+        case 1 -> trace
             .limb(address.slice(4, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(LLARGE));
-        case 2 -> this.builder
+        case 2 -> trace
             .limb(salt.slice(0, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(LLARGE));
-        case 3 -> this.builder
+        case 3 -> trace
             .limb(salt.slice(LLARGE, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(LLARGE));
-        case 4 -> this.builder
+        case 4 -> trace
             .limb(keccak.slice(0, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(LLARGE));
-        case 5 -> this.builder
+        case 5 -> trace
             .limb(keccak.slice(LLARGE, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(LLARGE));
       }
 
       // Columns unused for Recipe2
-      this.builder
+      trace
           .nonce(BigInteger.ZERO)
           .byte1(UnsignedByte.of(0))
           .acc(BigInteger.ZERO)
@@ -151,11 +151,11 @@ public class RlpAddr implements Module {
           .bitAcc(UnsignedByte.of(0))
           .tinyNonZeroNonce(false);
 
-      this.builder.validateRow();
+      trace.validateRow();
     }
   }
 
-  private void traceCreate(int stamp, BigInteger nonce, Address addr) {
+  private void traceCreate(int stamp, BigInteger nonce, Address addr, Trace.TraceBuilder trace) {
     final int RECIPE1_CT_MAX = 8;
 
     Bytes nonceShifted = padToGivenSizeWithLeftZero(bigIntegerToBytes(nonce), RECIPE1_CT_MAX);
@@ -200,7 +200,7 @@ public class RlpAddr implements Module {
     final Address deployementAddress = Address.contractAddress(addr, nonce.longValueExact());
 
     for (int ct = 0; ct < 8; ct++) {
-      this.builder
+      trace
           .stamp(BigInteger.valueOf(stamp))
           .recipe(BigInteger.ONE)
           .recipe1(true)
@@ -220,12 +220,12 @@ public class RlpAddr implements Module {
           .tinyNonZeroNonce(tinyNonZeroNonce);
 
       switch (ct) {
-        case 0, 1, 2, 3 -> this.builder
+        case 0, 1, 2, 3 -> trace
             .lc(false)
             .limb(BigInteger.ZERO)
             .nBytes(BigInteger.ZERO)
             .index(BigInteger.ZERO);
-        case 4 -> this.builder
+        case 4 -> trace
             .lc(true)
             .limb(
                 padToGivenSizeWithRightZero(
@@ -237,7 +237,7 @@ public class RlpAddr implements Module {
                     .toUnsignedBigInteger())
             .nBytes(BigInteger.ONE)
             .index(BigInteger.ZERO);
-        case 5 -> this.builder
+        case 5 -> trace
             .lc(true)
             .limb(
                 padToGivenSizeWithRightZero(
@@ -247,12 +247,12 @@ public class RlpAddr implements Module {
                     .toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(5))
             .index(BigInteger.ONE);
-        case 6 -> this.builder
+        case 6 -> trace
             .lc(true)
             .limb(addr.slice(4, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(16))
             .index(BigInteger.valueOf(2));
-        case 7 -> this.builder
+        case 7 -> trace
             .lc(true)
             .limb(padToGivenSizeWithRightZero(rlpNonce, LLARGE).toUnsignedBigInteger())
             .nBytes(BigInteger.valueOf(size_rlp_nonce))
@@ -260,20 +260,20 @@ public class RlpAddr implements Module {
       }
 
       // Column not used fo recipe 1:
-      this.builder
+      trace
           .saltHi(BigInteger.ZERO)
           .saltLo(BigInteger.ZERO)
           .kecHi(BigInteger.ZERO)
-          .kecLo(BigInteger.ZERO);
-      this.builder.validateRow();
+          .kecLo(BigInteger.ZERO)
+          .validateRow();
     }
   }
 
-  private void traceChunks(RlpAddrChunk chunk, int stamp) {
+  private void traceChunks(RlpAddrChunk chunk, int stamp, Trace.TraceBuilder trace) {
     if (chunk.opCode().equals(OpCode.CREATE)) {
-      traceCreate(stamp, BigInteger.valueOf(chunk.nonce().get()), chunk.address());
+      traceCreate(stamp, BigInteger.valueOf(chunk.nonce().get()), chunk.address(), trace);
     } else {
-      traceCreate2(stamp, chunk.address(), chunk.salt().get(), chunk.keccak().get());
+      traceCreate2(stamp, chunk.address(), chunk.salt().get(), chunk.keccak().get(), trace);
     }
   }
 
@@ -296,20 +296,11 @@ public class RlpAddr implements Module {
 
   @Override
   public ModuleTrace commit() {
-    int expectedTraceSize = 0;
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+
     for (int i = 0; i < this.chunkList.size(); i++) {
-      traceChunks(chunkList.get(i), i + 1);
-      expectedTraceSize += chunkRowSize(chunkList.get(i));
-      if (this.builder.size() != expectedTraceSize) {
-        throw new RuntimeException(
-            "ChunkSize is not the right one, chunk n°: "
-                + i
-                + " calculated size ="
-                + expectedTraceSize
-                + " trace size ="
-                + this.builder.size());
-      }
+      traceChunks(chunkList.get(i), i + 1, trace);
     }
-    return new RlpAddrTrace(builder.build());
+    return new RlpAddrTrace(trace.build());
   }
 }

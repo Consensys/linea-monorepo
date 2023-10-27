@@ -79,8 +79,8 @@ public record Trace(
     @JsonProperty("SQUARE_AND_MULTIPLY") List<Boolean> squareAndMultiply,
     @JsonProperty("TINY_BASE") List<Boolean> tinyBase,
     @JsonProperty("TINY_EXPONENT") List<Boolean> tinyExponent) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+  static TraceBuilder builder(int length) {
+    return new TraceBuilder(length);
   }
 
   public int size() {
@@ -91,159 +91,211 @@ public record Trace(
     private final BitSet filled = new BitSet();
 
     @JsonProperty("ACC_A_0")
-    private final List<BigInteger> accA0 = new ArrayList<>();
+    private final List<BigInteger> accA0;
 
     @JsonProperty("ACC_A_1")
-    private final List<BigInteger> accA1 = new ArrayList<>();
+    private final List<BigInteger> accA1;
 
     @JsonProperty("ACC_A_2")
-    private final List<BigInteger> accA2 = new ArrayList<>();
+    private final List<BigInteger> accA2;
 
     @JsonProperty("ACC_A_3")
-    private final List<BigInteger> accA3 = new ArrayList<>();
+    private final List<BigInteger> accA3;
 
     @JsonProperty("ACC_B_0")
-    private final List<BigInteger> accB0 = new ArrayList<>();
+    private final List<BigInteger> accB0;
 
     @JsonProperty("ACC_B_1")
-    private final List<BigInteger> accB1 = new ArrayList<>();
+    private final List<BigInteger> accB1;
 
     @JsonProperty("ACC_B_2")
-    private final List<BigInteger> accB2 = new ArrayList<>();
+    private final List<BigInteger> accB2;
 
     @JsonProperty("ACC_B_3")
-    private final List<BigInteger> accB3 = new ArrayList<>();
+    private final List<BigInteger> accB3;
 
     @JsonProperty("ACC_C_0")
-    private final List<BigInteger> accC0 = new ArrayList<>();
+    private final List<BigInteger> accC0;
 
     @JsonProperty("ACC_C_1")
-    private final List<BigInteger> accC1 = new ArrayList<>();
+    private final List<BigInteger> accC1;
 
     @JsonProperty("ACC_C_2")
-    private final List<BigInteger> accC2 = new ArrayList<>();
+    private final List<BigInteger> accC2;
 
     @JsonProperty("ACC_C_3")
-    private final List<BigInteger> accC3 = new ArrayList<>();
+    private final List<BigInteger> accC3;
 
     @JsonProperty("ACC_H_0")
-    private final List<BigInteger> accH0 = new ArrayList<>();
+    private final List<BigInteger> accH0;
 
     @JsonProperty("ACC_H_1")
-    private final List<BigInteger> accH1 = new ArrayList<>();
+    private final List<BigInteger> accH1;
 
     @JsonProperty("ACC_H_2")
-    private final List<BigInteger> accH2 = new ArrayList<>();
+    private final List<BigInteger> accH2;
 
     @JsonProperty("ACC_H_3")
-    private final List<BigInteger> accH3 = new ArrayList<>();
+    private final List<BigInteger> accH3;
 
     @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi = new ArrayList<>();
+    private final List<BigInteger> arg1Hi;
 
     @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo = new ArrayList<>();
+    private final List<BigInteger> arg1Lo;
 
     @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi = new ArrayList<>();
+    private final List<BigInteger> arg2Hi;
 
     @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo = new ArrayList<>();
+    private final List<BigInteger> arg2Lo;
 
     @JsonProperty("BIT_NUM")
-    private final List<BigInteger> bitNum = new ArrayList<>();
+    private final List<BigInteger> bitNum;
 
     @JsonProperty("BITS")
-    private final List<Boolean> bits = new ArrayList<>();
+    private final List<Boolean> bits;
 
     @JsonProperty("BYTE_A_0")
-    private final List<UnsignedByte> byteA0 = new ArrayList<>();
+    private final List<UnsignedByte> byteA0;
 
     @JsonProperty("BYTE_A_1")
-    private final List<UnsignedByte> byteA1 = new ArrayList<>();
+    private final List<UnsignedByte> byteA1;
 
     @JsonProperty("BYTE_A_2")
-    private final List<UnsignedByte> byteA2 = new ArrayList<>();
+    private final List<UnsignedByte> byteA2;
 
     @JsonProperty("BYTE_A_3")
-    private final List<UnsignedByte> byteA3 = new ArrayList<>();
+    private final List<UnsignedByte> byteA3;
 
     @JsonProperty("BYTE_B_0")
-    private final List<UnsignedByte> byteB0 = new ArrayList<>();
+    private final List<UnsignedByte> byteB0;
 
     @JsonProperty("BYTE_B_1")
-    private final List<UnsignedByte> byteB1 = new ArrayList<>();
+    private final List<UnsignedByte> byteB1;
 
     @JsonProperty("BYTE_B_2")
-    private final List<UnsignedByte> byteB2 = new ArrayList<>();
+    private final List<UnsignedByte> byteB2;
 
     @JsonProperty("BYTE_B_3")
-    private final List<UnsignedByte> byteB3 = new ArrayList<>();
+    private final List<UnsignedByte> byteB3;
 
     @JsonProperty("BYTE_C_0")
-    private final List<UnsignedByte> byteC0 = new ArrayList<>();
+    private final List<UnsignedByte> byteC0;
 
     @JsonProperty("BYTE_C_1")
-    private final List<UnsignedByte> byteC1 = new ArrayList<>();
+    private final List<UnsignedByte> byteC1;
 
     @JsonProperty("BYTE_C_2")
-    private final List<UnsignedByte> byteC2 = new ArrayList<>();
+    private final List<UnsignedByte> byteC2;
 
     @JsonProperty("BYTE_C_3")
-    private final List<UnsignedByte> byteC3 = new ArrayList<>();
+    private final List<UnsignedByte> byteC3;
 
     @JsonProperty("BYTE_H_0")
-    private final List<UnsignedByte> byteH0 = new ArrayList<>();
+    private final List<UnsignedByte> byteH0;
 
     @JsonProperty("BYTE_H_1")
-    private final List<UnsignedByte> byteH1 = new ArrayList<>();
+    private final List<UnsignedByte> byteH1;
 
     @JsonProperty("BYTE_H_2")
-    private final List<UnsignedByte> byteH2 = new ArrayList<>();
+    private final List<UnsignedByte> byteH2;
 
     @JsonProperty("BYTE_H_3")
-    private final List<UnsignedByte> byteH3 = new ArrayList<>();
+    private final List<UnsignedByte> byteH3;
 
     @JsonProperty("COUNTER")
-    private final List<BigInteger> counter = new ArrayList<>();
+    private final List<BigInteger> counter;
 
     @JsonProperty("EXPONENT_BIT")
-    private final List<Boolean> exponentBit = new ArrayList<>();
+    private final List<Boolean> exponentBit;
 
     @JsonProperty("EXPONENT_BIT_ACCUMULATOR")
-    private final List<BigInteger> exponentBitAccumulator = new ArrayList<>();
+    private final List<BigInteger> exponentBitAccumulator;
 
     @JsonProperty("EXPONENT_BIT_SOURCE")
-    private final List<Boolean> exponentBitSource = new ArrayList<>();
+    private final List<Boolean> exponentBitSource;
 
     @JsonProperty("INSTRUCTION")
-    private final List<BigInteger> instruction = new ArrayList<>();
+    private final List<BigInteger> instruction;
 
     @JsonProperty("MUL_STAMP")
-    private final List<BigInteger> mulStamp = new ArrayList<>();
+    private final List<BigInteger> mulStamp;
 
     @JsonProperty("OLI")
-    private final List<Boolean> oli = new ArrayList<>();
+    private final List<Boolean> oli;
 
     @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi = new ArrayList<>();
+    private final List<BigInteger> resHi;
 
     @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo = new ArrayList<>();
+    private final List<BigInteger> resLo;
 
     @JsonProperty("RESULT_VANISHES")
-    private final List<Boolean> resultVanishes = new ArrayList<>();
+    private final List<Boolean> resultVanishes;
 
     @JsonProperty("SQUARE_AND_MULTIPLY")
-    private final List<Boolean> squareAndMultiply = new ArrayList<>();
+    private final List<Boolean> squareAndMultiply;
 
     @JsonProperty("TINY_BASE")
-    private final List<Boolean> tinyBase = new ArrayList<>();
+    private final List<Boolean> tinyBase;
 
     @JsonProperty("TINY_EXPONENT")
-    private final List<Boolean> tinyExponent = new ArrayList<>();
+    private final List<Boolean> tinyExponent;
 
-    private TraceBuilder() {}
+    private TraceBuilder(int length) {
+      this.accA0 = new ArrayList<>(length);
+      this.accA1 = new ArrayList<>(length);
+      this.accA2 = new ArrayList<>(length);
+      this.accA3 = new ArrayList<>(length);
+      this.accB0 = new ArrayList<>(length);
+      this.accB1 = new ArrayList<>(length);
+      this.accB2 = new ArrayList<>(length);
+      this.accB3 = new ArrayList<>(length);
+      this.accC0 = new ArrayList<>(length);
+      this.accC1 = new ArrayList<>(length);
+      this.accC2 = new ArrayList<>(length);
+      this.accC3 = new ArrayList<>(length);
+      this.accH0 = new ArrayList<>(length);
+      this.accH1 = new ArrayList<>(length);
+      this.accH2 = new ArrayList<>(length);
+      this.accH3 = new ArrayList<>(length);
+      this.arg1Hi = new ArrayList<>(length);
+      this.arg1Lo = new ArrayList<>(length);
+      this.arg2Hi = new ArrayList<>(length);
+      this.arg2Lo = new ArrayList<>(length);
+      this.bitNum = new ArrayList<>(length);
+      this.bits = new ArrayList<>(length);
+      this.byteA0 = new ArrayList<>(length);
+      this.byteA1 = new ArrayList<>(length);
+      this.byteA2 = new ArrayList<>(length);
+      this.byteA3 = new ArrayList<>(length);
+      this.byteB0 = new ArrayList<>(length);
+      this.byteB1 = new ArrayList<>(length);
+      this.byteB2 = new ArrayList<>(length);
+      this.byteB3 = new ArrayList<>(length);
+      this.byteC0 = new ArrayList<>(length);
+      this.byteC1 = new ArrayList<>(length);
+      this.byteC2 = new ArrayList<>(length);
+      this.byteC3 = new ArrayList<>(length);
+      this.byteH0 = new ArrayList<>(length);
+      this.byteH1 = new ArrayList<>(length);
+      this.byteH2 = new ArrayList<>(length);
+      this.byteH3 = new ArrayList<>(length);
+      this.counter = new ArrayList<>(length);
+      this.exponentBit = new ArrayList<>(length);
+      this.exponentBitAccumulator = new ArrayList<>(length);
+      this.exponentBitSource = new ArrayList<>(length);
+      this.instruction = new ArrayList<>(length);
+      this.mulStamp = new ArrayList<>(length);
+      this.oli = new ArrayList<>(length);
+      this.resHi = new ArrayList<>(length);
+      this.resLo = new ArrayList<>(length);
+      this.resultVanishes = new ArrayList<>(length);
+      this.squareAndMultiply = new ArrayList<>(length);
+      this.tinyBase = new ArrayList<>(length);
+      this.tinyExponent = new ArrayList<>(length);
+    }
 
     public int size() {
       if (!filled.isEmpty()) {

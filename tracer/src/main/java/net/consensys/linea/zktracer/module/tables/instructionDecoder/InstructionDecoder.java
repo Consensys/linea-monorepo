@@ -136,7 +136,7 @@ public final class InstructionDecoder {
   }
 
   public static ModuleTrace generate() {
-    Trace.TraceBuilder trace = new Trace.TraceBuilder();
+    Trace.TraceBuilder trace = new Trace.TraceBuilder(256);
     for (OpCode opCode : OpCode.values()) {
       final OpCodeData op = opCode.getData();
 

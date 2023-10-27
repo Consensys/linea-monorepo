@@ -33,8 +33,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class Mod implements Module {
   private int stamp = 0;
 
-  final Trace.TraceBuilder builder = Trace.builder();
-
   @Override
   public String jsonKey() {
     return "mod";
@@ -66,12 +64,12 @@ public class Mod implements Module {
     this.chunks.enter();
   }
 
-  public void traceModOperation(ModOperation op) {
+  public void traceModOperation(ModOperation op, Trace.TraceBuilder trace) {
     this.stamp++;
 
     for (int i = 0; i < op.maxCounter(); i++) {
       final int accLength = i + 1;
-      builder
+      trace
           .stamp(BigInteger.valueOf(stamp))
           .oli(op.isOli())
           .ct(BigInteger.valueOf(i))
@@ -140,10 +138,11 @@ public class Mod implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
     for (ModOperation op : this.chunks) {
-      this.traceModOperation(op);
+      this.traceModOperation(op, trace);
     }
-    return new ModTrace(builder.build());
+    return new ModTrace(trace.build());
   }
 
   @Override
@@ -158,8 +157,7 @@ public class Mod implements Module {
    * @param arg2 the dividend
    */
   public void callDiv(Bytes32 arg1, Bytes32 arg2) {
-    ModOperation data = new ModOperation(OpCode.DIV, arg1, arg2);
-    this.traceModOperation(data);
+    this.chunks.add(new ModOperation(OpCode.DIV, arg1, arg2));
   }
 
   /**
@@ -169,7 +167,6 @@ public class Mod implements Module {
    * @param arg2 the module
    */
   public void callMod(Bytes32 arg1, Bytes32 arg2) {
-    ModOperation data = new ModOperation(OpCode.MOD, arg1, arg2);
-    this.traceModOperation(data);
+    this.chunks.add(new ModOperation(OpCode.MOD, arg1, arg2));
   }
 }

@@ -33,8 +33,6 @@ public class Mxp implements Module {
   /** A list of the operations to trace */
   private final StackedList<MxpData> chunks = new StackedList<>();
 
-  final Trace.TraceBuilder trace = Trace.builder();
-
   private Hub hub;
 
   @Override
@@ -72,7 +70,7 @@ public class Mxp implements Module {
     //    sanityCheck(opCode, scope, mxpData);
   }
 
-  final void traceChunk(final MxpData chunk, int stamp) {
+  final void traceChunk(final MxpData chunk, int stamp, Trace.TraceBuilder trace) {
     Bytes32 acc1Bytes32 = Bytes32.leftPad(bigIntegerToBytes(chunk.getAcc1()));
     Bytes32 acc2Bytes32 = Bytes32.leftPad(bigIntegerToBytes(chunk.getAcc2()));
     Bytes32 acc3Bytes32 = Bytes32.leftPad(bigIntegerToBytes(chunk.getAcc3()));
@@ -168,8 +166,9 @@ public class Mxp implements Module {
 
   @Override
   public ModuleTrace commit() {
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
     for (int i = 0; i < this.chunks.size(); i++) {
-      this.traceChunk(this.chunks.get(i), i + 1);
+      this.traceChunk(this.chunks.get(i), i + 1, trace);
     }
     return new MxpTrace(trace.build());
   }

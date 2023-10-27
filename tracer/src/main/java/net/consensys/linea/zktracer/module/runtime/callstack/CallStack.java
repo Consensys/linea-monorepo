@@ -158,10 +158,9 @@ public final class CallStack {
    * Exit the current context, sets it return data for the caller to read, and marks its last
    * position in the hub traces.
    *
-   * @param currentLine the current line in the hub trace
    * @param returnData the return data of the current frame
    */
-  public void exit(int currentLine, Bytes returnData) {
+  public void exit(Bytes returnData) {
     this.depth -= 1;
     Preconditions.checkState(this.depth >= 0);
     this.current().returnDataPointer(new MemorySpan(0, 0)); // TODO: fix me Franklin

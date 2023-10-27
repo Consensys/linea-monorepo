@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Rom implements Module {
-  final Trace.TraceBuilder builder = Trace.builder();
   private static final int LLARGE = 16;
   private static final int LLARGE_MO = 15;
   private static final int EVM_WORD_MO = 31;
@@ -70,7 +69,7 @@ public class Rom implements Module {
     return LLARGE * nbSlice + nPaddingRow;
   }
 
-  private void traceChunk(RomChunk chunk, int cfi, int cfiInfty) {
+  private void traceChunk(RomChunk chunk, int cfi, int cfiInfty, Trace.TraceBuilder trace) {
     final int chunkRowSize = chunkRowSize(chunk);
     final int codeSize = chunk.byteCode().size();
     final int nLimbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
@@ -90,7 +89,7 @@ public class Rom implements Module {
       int sliceNumber = i / 16;
 
       // Fill Generic columns
-      this.builder
+      trace
           .codeFragmentIndex(BigInteger.valueOf(cfi))
           .codeFragmentIndexInfty(BigInteger.valueOf(cfiInfty))
           .programmeCounter(BigInteger.valueOf(i))
@@ -103,22 +102,18 @@ public class Rom implements Module {
 
       // Fill CT, CTmax nBYTES, nBYTES_ACC
       if (sliceNumber < nLimbSlice) {
-        this.builder
-            .counter(BigInteger.valueOf(i % LLARGE))
-            .counterMax(BigInteger.valueOf(LLARGE_MO));
+        trace.counter(BigInteger.valueOf(i % LLARGE)).counterMax(BigInteger.valueOf(LLARGE_MO));
         if (sliceNumber < nLimbSlice - 1) {
-          this.builder
-              .nBytes(BigInteger.valueOf(LLARGE))
-              .nBytesAcc(BigInteger.valueOf((i % LLARGE) + 1));
+          trace.nBytes(BigInteger.valueOf(LLARGE)).nBytesAcc(BigInteger.valueOf((i % LLARGE) + 1));
         }
         if (sliceNumber == nLimbSlice - 1) {
-          this.builder
+          trace
               .nBytes(BigInteger.valueOf(nBytesLastRow))
               .nBytesAcc(
                   BigInteger.valueOf(nBytesLastRow).min(BigInteger.valueOf((i % LLARGE) + 1)));
         }
       } else if (sliceNumber == nLimbSlice || sliceNumber == nLimbSlice + 1) {
-        this.builder
+        trace
             .counter(BigInteger.valueOf(i - nLimbSlice * LLARGE))
             .counterMax(BigInteger.valueOf(EVM_WORD_MO))
             .nBytes(BigInteger.ZERO)
@@ -142,7 +137,7 @@ public class Rom implements Module {
           }
         }
 
-        this.builder
+        trace
             .isPush(isPush)
             .isPushData(false)
             .opcode(opCode)
@@ -158,7 +153,7 @@ public class Rom implements Module {
       // Deal when in a PUSH instruction
       else {
         ctPush += 1;
-        this.builder
+        trace
             .isPush(false)
             .isPushData(true)
             .opcode(invalid)
@@ -170,12 +165,12 @@ public class Rom implements Module {
             .validJumpDestination(false);
 
         if (pushParameter <= LLARGE) {
-          this.builder.pushValueAcc(pushValueLow.slice(0, ctPush).toUnsignedBigInteger());
+          trace.pushValueAcc(pushValueLow.slice(0, ctPush).toUnsignedBigInteger());
         } else {
           if (ctPush <= pushParameter - LLARGE) {
-            this.builder.pushValueAcc(pushValueHigh.slice(0, ctPush).toUnsignedBigInteger());
+            trace.pushValueAcc(pushValueHigh.slice(0, ctPush).toUnsignedBigInteger());
           } else {
-            this.builder.pushValueAcc(
+            trace.pushValueAcc(
                 pushValueLow.slice(0, ctPush + LLARGE - pushParameter).toUnsignedBigInteger());
           }
         }
@@ -189,31 +184,21 @@ public class Rom implements Module {
         }
       }
 
-      this.builder.validateRow();
+      trace.validateRow();
     }
   }
 
   @Override
   public ModuleTrace commit() {
-    int expectedTraceSize = 0;
+    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+
     int cfi = 0;
     final int cfiInfty = this.romLex.sortedChunks.size();
     for (RomChunk chunk : this.romLex.sortedChunks) {
       cfi += 1;
-      traceChunk(chunk, cfi, cfiInfty);
-      expectedTraceSize += chunkRowSize(chunk);
-
-      if (this.builder.size() != expectedTraceSize) {
-        throw new RuntimeException(
-            "ChunkSize is not the right one, chunk n°: "
-                + cfi
-                + " calculated size ="
-                + expectedTraceSize
-                + " trace size ="
-                + this.builder.size());
-      }
+      traceChunk(chunk, cfi, cfiInfty, trace);
     }
 
-    return new RomTrace(builder.build());
+    return new RomTrace(trace.build());
   }
 }
