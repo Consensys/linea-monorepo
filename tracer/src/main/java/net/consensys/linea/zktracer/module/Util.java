@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.datatypes.TransactionType;
 
 /** Utility class that provides various helper methods. */
 public class Util {
@@ -148,5 +149,21 @@ public class Util {
       return y;
     }
     return x;
+  }
+
+  /**
+   * Return the type of transaction as an int
+   *
+   * @param txType
+   * @return transaction type
+   */
+  public static int getTxTypeAsInt(TransactionType txType) {
+    return switch (txType) {
+      case FRONTIER -> 0;
+      case ACCESS_LIST -> 1;
+      case EIP1559 -> 2;
+      case BLOB -> 3;
+      default -> throw new RuntimeException("Transaction type not supported:" + txType);
+    };
   }
 }

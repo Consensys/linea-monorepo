@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlp_txn;
 
 import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
@@ -103,12 +104,12 @@ public class RlpTxn implements Module {
   public void traceStartTx(WorldView worldView, Transaction tx) {
 
     // Contract Creation
-    if (tx.getTo().isEmpty() && !tx.getInit().get().isEmpty()) {
+    if (tx.getTo().isEmpty() && !tx.getInit().orElseThrow().isEmpty()) {
       this.chunkList.add(new RlpTxnChunk(tx, true, romLex.codeIdentifierBeforeLexOrder));
     }
 
     // Call to a non-empty smart contract
-    else if (tx.getTo().isPresent() && worldView.get(tx.getTo().get()).hasCode()) {
+    else if (tx.getTo().isPresent() && worldView.get(tx.getTo().orElseThrow()).hasCode()) {
       this.chunkList.add(new RlpTxnChunk(tx, true));
     }
 
@@ -129,11 +130,7 @@ public class RlpTxn implements Module {
     traceValue.absTxNum = absTxNum;
     traceValue.requiresEvmExecution = chunk.requireEvmExecution();
     traceValue.codeFragmentIndex = codeFragmentIndex;
-    if (chunk.tx().getType() == TransactionType.FRONTIER) {
-      traceValue.txType = 0;
-    } else {
-      traceValue.txType = chunk.tx().getType().getSerializedType();
-    }
+    traceValue.txType = getTxTypeAsInt(chunk.tx().getType());
 
     // Initialise RLP_LT and RLP_LX byte size + verify that we construct the right RLP
     this.reconstructedRlpLt = Bytes.EMPTY;
@@ -153,7 +150,7 @@ public class RlpTxn implements Module {
         besuRlpLx =
             frontierPreimage(
                 chunk.tx().getNonce(),
-                (Wei) chunk.tx().getGasPrice().get(),
+                (Wei) chunk.tx().getGasPrice().orElseThrow(),
                 chunk.tx().getGasLimit(),
                 chunk.tx().getTo().map(x -> (Address) x),
                 (Wei) chunk.tx().getValue(),
@@ -164,12 +161,12 @@ public class RlpTxn implements Module {
       case 1 -> {
         List<AccessListEntry> accessList = null;
         if (chunk.tx().getAccessList().isPresent()) {
-          accessList = chunk.tx().getAccessList().get();
+          accessList = chunk.tx().getAccessList().orElseThrow();
         }
         besuRlpLx =
             accessListPreimage(
                 chunk.tx().getNonce(),
-                (Wei) chunk.tx().getGasPrice().get(),
+                (Wei) chunk.tx().getGasPrice().orElseThrow(),
                 chunk.tx().getGasLimit(),
                 chunk.tx().getTo().map(x -> (Address) x),
                 (Wei) chunk.tx().getValue(),
@@ -183,8 +180,8 @@ public class RlpTxn implements Module {
         besuRlpLx =
             eip1559Preimage(
                 chunk.tx().getNonce(),
-                (Wei) chunk.tx().getMaxPriorityFeePerGas().get(),
-                (Wei) chunk.tx().getMaxFeePerGas().get(),
+                (Wei) chunk.tx().getMaxPriorityFeePerGas().orElseThrow(),
+                (Wei) chunk.tx().getMaxFeePerGas().orElseThrow(),
                 chunk.tx().getGasLimit(),
                 chunk.tx().getTo().map(x -> (Address) x),
                 (Wei) chunk.tx().getValue(),
@@ -205,7 +202,7 @@ public class RlpTxn implements Module {
     // Phase 1 : ChainId
     if (traceValue.txType == 1 || traceValue.txType == 2) {
       Preconditions.checkArgument(
-          bigIntegerToBytes(chunk.tx().getChainId().get()).size() <= 8,
+          bigIntegerToBytes(chunk.tx().getChainId().orElseThrow()).size() <= 8,
           "ChainId is longer than 8 bytes");
       handlePhaseInteger(traceValue, 1, chunk.tx().getChainId().get(), 8, trace);
     }
@@ -217,7 +214,7 @@ public class RlpTxn implements Module {
 
     // Phase 3 : GasPrice
     if (traceValue.txType == 0 || traceValue.txType == 1) {
-      BigInteger gasPrice = chunk.tx().getGasPrice().get().getAsBigInteger();
+      BigInteger gasPrice = chunk.tx().getGasPrice().orElseThrow().getAsBigInteger();
       Preconditions.checkArgument(
           bigIntegerToBytes(gasPrice).size() <= 8, "GasPrice is longer than 8 bytes");
       traceValue.DATA_LO = gasPrice;
@@ -227,7 +224,7 @@ public class RlpTxn implements Module {
     // Phase 4 : max priority fee per gas (GasTipCap)
     if (traceValue.txType == 2) {
       BigInteger maxPriorityFeePerGas =
-          chunk.tx().getMaxPriorityFeePerGas().get().getAsBigInteger();
+          chunk.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
       Preconditions.checkArgument(
           bigIntegerToBytes(maxPriorityFeePerGas).size() <= 8,
           "Max Priority Fee per Gas is longer than 8 bytes");
@@ -236,8 +233,8 @@ public class RlpTxn implements Module {
 
     // Phase 5 : max fee per gas (GasFeeCap)
     if (traceValue.txType == 2) {
-      traceValue.DATA_HI = chunk.tx().getMaxPriorityFeePerGas().get().getAsBigInteger();
-      BigInteger maxFeePerGas = chunk.tx().getMaxFeePerGas().get().getAsBigInteger();
+      traceValue.DATA_HI = chunk.tx().getMaxPriorityFeePerGas().orElseThrow().getAsBigInteger();
+      BigInteger maxFeePerGas = chunk.tx().getMaxFeePerGas().orElseThrow().getAsBigInteger();
       Preconditions.checkArgument(
           bigIntegerToBytes(maxFeePerGas).size() <= 8, "Max Fee per Gas is longer than 8 bytes");
       traceValue.DATA_LO = maxFeePerGas;
@@ -251,8 +248,8 @@ public class RlpTxn implements Module {
 
     // Phase 7 : To
     if (chunk.tx().getTo().isPresent()) {
-      traceValue.DATA_HI = chunk.tx().getTo().get().slice(0, 4).toUnsignedBigInteger();
-      traceValue.DATA_LO = chunk.tx().getTo().get().slice(4, 16).toUnsignedBigInteger();
+      traceValue.DATA_HI = chunk.tx().getTo().orElseThrow().slice(0, 4).toUnsignedBigInteger();
+      traceValue.DATA_LO = chunk.tx().getTo().orElseThrow().slice(4, 16).toUnsignedBigInteger();
     } else {
       traceValue.DATA_HI = BigInteger.ZERO;
       traceValue.DATA_LO = BigInteger.ZERO;
@@ -484,12 +481,12 @@ public class RlpTxn implements Module {
       List<Integer> nbStoPerAddrList = new ArrayList<>();
       List<Integer> accessTupleByteSizeList = new ArrayList<>();
       int phaseByteSize = 0;
-      for (int i = 0; i < tx.getAccessList().get().size(); i++) {
+      for (int i = 0; i < tx.getAccessList().orElseThrow().size(); i++) {
         nbAddr += 1;
-        nbSto += tx.getAccessList().get().get(i).storageKeys().size();
-        nbStoPerAddrList.add(tx.getAccessList().get().get(i).storageKeys().size());
+        nbSto += tx.getAccessList().orElseThrow().get(i).storageKeys().size();
+        nbStoPerAddrList.add(tx.getAccessList().orElseThrow().get(i).storageKeys().size());
         accessTupleByteSizeList.add(
-            21 + outerRlpSize(33 * tx.getAccessList().get().get(i).storageKeys().size()));
+            21 + outerRlpSize(33 * tx.getAccessList().orElseThrow().get(i).storageKeys().size()));
         phaseByteSize += outerRlpSize(accessTupleByteSizeList.get(i));
       }
 
@@ -520,8 +517,8 @@ public class RlpTxn implements Module {
         // Update columns at the beginning of an AccessTuple entry
         traceValue.nb_Addr -= 1;
         traceValue.nb_Sto_per_Addr = nbStoPerAddrList.get(i);
-        traceValue.ADDR_HI = tx.getAccessList().get().get(i).address().slice(0, 4);
-        traceValue.ADDR_LO = tx.getAccessList().get().get(i).address().slice(4, llarge);
+        traceValue.ADDR_HI = tx.getAccessList().orElseThrow().get(i).address().slice(0, 4);
+        traceValue.ADDR_LO = tx.getAccessList().orElseThrow().get(i).address().slice(4, llarge);
         traceValue.ACCESS_TUPLE_BYTESIZE = accessTupleByteSizeList.get(i);
 
         // Rlp(AccessTupleByteSize)
@@ -969,7 +966,7 @@ public class RlpTxn implements Module {
           rlpOutput.writeUInt256Scalar(value);
           rlpOutput.writeBytes(payload);
           if (chainId.isPresent()) {
-            rlpOutput.writeBigIntegerScalar(chainId.get());
+            rlpOutput.writeBigIntegerScalar(chainId.orElseThrow());
             rlpOutput.writeUInt256Scalar(UInt256.ZERO);
             rlpOutput.writeUInt256Scalar(UInt256.ZERO);
           }
@@ -1237,7 +1234,7 @@ public class RlpTxn implements Module {
 
     // Phase 1: chainID
     if (txType == 1 || txType == 2) {
-      if (chunk.tx().getChainId().get().equals(BigInteger.ZERO)) {
+      if (chunk.tx().getChainId().orElseThrow().equals(BigInteger.ZERO)) {
         rowSize += 1;
       } else {
         rowSize += 8;
@@ -1258,7 +1255,12 @@ public class RlpTxn implements Module {
 
     // Phase 4: MaxPriorityFeeperGas
     if (txType == 2) {
-      if (chunk.tx().getMaxPriorityFeePerGas().get().getAsBigInteger().equals(BigInteger.ZERO)) {
+      if (chunk
+          .tx()
+          .getMaxPriorityFeePerGas()
+          .orElseThrow()
+          .getAsBigInteger()
+          .equals(BigInteger.ZERO)) {
         rowSize += 1;
       } else {
         rowSize += 8;
@@ -1267,7 +1269,7 @@ public class RlpTxn implements Module {
 
     // Phase 5: MaxFeePerGas
     if (txType == 2) {
-      if (chunk.tx().getMaxFeePerGas().get().getAsBigInteger().equals(BigInteger.ZERO)) {
+      if (chunk.tx().getMaxFeePerGas().orElseThrow().getAsBigInteger().equals(BigInteger.ZERO)) {
         rowSize += 1;
       } else {
         rowSize += 8;
@@ -1302,17 +1304,18 @@ public class RlpTxn implements Module {
 
     // Phase 10: AccessList
     if (txType == 1 || txType == 2) {
-      if (chunk.tx().getAccessList().get().isEmpty()) {
+      if (chunk.tx().getAccessList().orElseThrow().isEmpty()) {
         rowSize += 1;
       } else {
         // Rlp prefix of the AccessList list
         rowSize += 8;
-        for (int i = 0; i < chunk.tx().getAccessList().get().size(); i++) {
+        for (int i = 0; i < chunk.tx().getAccessList().orElseThrow().size(); i++) {
           rowSize += 8 + 16;
-          if (chunk.tx().getAccessList().get().get(i).storageKeys().isEmpty()) {
+          if (chunk.tx().getAccessList().orElseThrow().get(i).storageKeys().isEmpty()) {
             rowSize += 1;
           } else {
-            rowSize += 8 + 16 * chunk.tx().getAccessList().get().get(i).storageKeys().size();
+            rowSize +=
+                8 + 16 * chunk.tx().getAccessList().orElseThrow().get(i).storageKeys().size();
           }
         }
       }
@@ -1321,7 +1324,7 @@ public class RlpTxn implements Module {
     // Phase 11: beta
     if (txType == 0) {
       rowSize += 8;
-      if (chunk.tx().getChainId().get().equals(BigInteger.ZERO)) {
+      if (chunk.tx().getChainId().orElseThrow().equals(BigInteger.ZERO)) {
         rowSize += 1;
       } else {
         rowSize += 9;

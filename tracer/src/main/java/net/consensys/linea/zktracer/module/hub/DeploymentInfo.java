@@ -38,6 +38,7 @@ public class DeploymentInfo {
 
   void deploy(Address address) {
     this.deploymentNumber.put(address, this.number(address) + 1);
+    this.markDeploying(address);
   }
 
   public final boolean isDeploying(Address address) {
@@ -45,7 +46,6 @@ public class DeploymentInfo {
   }
 
   public final void markDeploying(Address address) {
-    this.deploy(address);
     this.isDeploying.put(address, true);
   }
 

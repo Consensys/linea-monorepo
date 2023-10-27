@@ -21,6 +21,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
@@ -64,6 +65,12 @@ public interface Module {
   void popTransaction();
 
   int lineCount();
+
+  default void tracePreExecution(
+      final MessageFrame frame, final Operation.OperationResult operationResult) {}
+
+  default void tracePostExecution(
+      final MessageFrame frame, final Operation.OperationResult operationResult) {}
 
   ModuleTrace commit();
 }
