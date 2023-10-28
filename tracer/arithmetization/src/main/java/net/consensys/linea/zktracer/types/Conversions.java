@@ -1,0 +1,59 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package net.consensys.linea.zktracer.types;
+
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
+import org.apache.tuweni.bytes.Bytes;
+
+public class Conversions {
+  public static Bytes bigIntegerToBytes(final BigInteger input) {
+    Bytes bytes;
+    if (input.equals(BigInteger.ZERO)) {
+      bytes = Bytes.of(0x00);
+    } else {
+      byte[] byteArray = input.toByteArray();
+      if (byteArray[0] == 0) {
+        Bytes tmp = Bytes.wrap(byteArray);
+        bytes = Bytes.wrap(tmp.slice(1, tmp.size() - 1));
+      } else {
+        bytes = Bytes.wrap(byteArray);
+      }
+    }
+
+    return bytes;
+  }
+
+  public static BigInteger unsignedBytesToUnsignedBigInteger(final UnsignedByte[] input) {
+    return Bytes.concatenate(Arrays.stream(input).map(i -> Bytes.of(i.toInteger())).toList())
+        .toUnsignedBigInteger();
+  }
+
+  public static EWord unsignedBytesToEWord(final UnsignedByte[] input) {
+    return EWord.of(unsignedBytesToUnsignedBigInteger(input));
+  }
+
+  public static UnsignedByte[] bytesToUnsignedBytes(final byte[] bytes) {
+    return (UnsignedByte[])
+        IntStream.range(0, bytes.length).mapToObj(i -> UnsignedByte.of(bytes[i])).toArray();
+  }
+
+  public static BigInteger booleanToBigInteger(final boolean input) {
+    return input ? BigInteger.ONE : BigInteger.ZERO;
+  }
+}

@@ -15,23 +15,23 @@
 
 package net.consensys.linea.zktracer.module.rlpAddr;
 
-import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -143,12 +143,12 @@ public class RlpAddr implements Module {
       // Columns unused for Recipe2
       trace
           .nonce(BigInteger.ZERO)
-          .byte1(UnsignedByte.of(0))
+          .byte1(UnsignedByte.ZERO)
           .acc(BigInteger.ZERO)
           .accBytesize(BigInteger.ZERO)
           .power(BigInteger.ZERO)
           .bit1(false)
-          .bitAcc(UnsignedByte.of(0))
+          .bitAcc(UnsignedByte.ZERO)
           .tinyNonZeroNonce(false);
 
       trace.validateRow();

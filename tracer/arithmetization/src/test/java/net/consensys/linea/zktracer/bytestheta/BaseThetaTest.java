@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.bytestheta;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.consensys.linea.zktracer.bytes.Bytes16;
+import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;

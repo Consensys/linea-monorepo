@@ -26,8 +26,8 @@ import net.consensys.linea.zktracer.module.hub.fragment.CommonFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
-import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /** A TraceSection gather the trace lines linked to a single operation */

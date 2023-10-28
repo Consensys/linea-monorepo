@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.romLex;
 
-import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 

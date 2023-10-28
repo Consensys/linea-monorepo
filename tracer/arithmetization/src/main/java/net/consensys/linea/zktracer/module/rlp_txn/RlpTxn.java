@@ -15,13 +15,13 @@
 
 package net.consensys.linea.zktracer.module.rlp_txn;
 
-import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -32,13 +32,13 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import com.google.common.base.Preconditions;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -1118,11 +1118,11 @@ public class RlpTxn implements Module {
         .addrHi(traceValue.ADDR_HI.toUnsignedBigInteger())
         .addrLo(traceValue.ADDR_LO.toUnsignedBigInteger())
         .bit(traceValue.BIT)
-        .bitAcc(BigInteger.valueOf(traceValue.BIT_ACC))
+        .bitAcc(UnsignedByte.of(traceValue.BIT_ACC))
         .byte1(UnsignedByte.of(traceValue.BYTE_1))
         .byte2(UnsignedByte.of(traceValue.BYTE_2))
         .codeFragmentIndex(BigInteger.valueOf(traceValue.codeFragmentIndex))
-        .counter(BigInteger.valueOf(traceValue.COUNTER))
+        .counter(UnsignedByte.of(traceValue.COUNTER))
         .dataHi(traceValue.DATA_HI)
         .dataLo(traceValue.DATA_LO)
         .datagascost(BigInteger.valueOf(traceValue.DATAGASCOST))
@@ -1146,11 +1146,11 @@ public class RlpTxn implements Module {
         .limbConstructed(traceValue.LIMB_CONSTRUCTED)
         .lt(traceValue.LT)
         .lx(traceValue.LX)
-        .nBytes(BigInteger.valueOf(traceValue.nBYTES))
+        .nBytes(UnsignedByte.of(traceValue.nBYTES))
         .nAddr(BigInteger.valueOf(traceValue.nb_Addr))
         .nKeys(BigInteger.valueOf(traceValue.nb_Sto))
         .nKeysPerAddr(BigInteger.valueOf(traceValue.nb_Sto_per_Addr))
-        .nStep(BigInteger.valueOf(traceValue.nSTEP));
+        .nStep(UnsignedByte.of(traceValue.nSTEP));
     List<Function<Boolean, Trace.TraceBuilder>> phaseColumns =
         List.of(
             builder::phase0,
@@ -1177,7 +1177,7 @@ public class RlpTxn implements Module {
         .requiresEvmExecution(traceValue.requiresEvmExecution)
         .rlpLtBytesize(BigInteger.valueOf(traceValue.RLP_LT_BYTESIZE))
         .rlpLxBytesize(BigInteger.valueOf(traceValue.RLP_LX_BYTESIZE))
-        .type(BigInteger.valueOf(traceValue.txType));
+        .type(UnsignedByte.of(traceValue.txType));
 
     // Increments Index
     if (traceValue.LIMB_CONSTRUCTED && traceValue.LT) {

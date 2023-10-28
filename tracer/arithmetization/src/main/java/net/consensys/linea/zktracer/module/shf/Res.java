@@ -17,8 +17,8 @@ package net.consensys.linea.zktracer.module.shf;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.bytes.Bytes16;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes32;
 
 @RequiredArgsConstructor

@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.consensys.linea.zktracer.EWord;
+import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 
 public class StorageInfo {

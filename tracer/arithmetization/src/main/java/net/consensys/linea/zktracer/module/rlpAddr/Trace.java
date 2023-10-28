@@ -21,7 +21,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
@@ -603,11 +603,11 @@ public record Trace(
         this.filled.set(4);
       }
       if (!filled.get(5)) {
-        bitAcc.add(UnsignedByte.of(0));
+        bitAcc.add(UnsignedByte.ZERO);
         this.filled.set(5);
       }
       if (!filled.get(6)) {
-        byte1.add(UnsignedByte.of(0));
+        byte1.add(UnsignedByte.ZERO);
         this.filled.set(6);
       }
       if (!filled.get(7)) {

@@ -15,10 +15,10 @@
 
 package net.consensys.linea.zktracer.module.rlpAddr;
 
-import static net.consensys.linea.zktracer.bytes.conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randBigInt;
 import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randData;
 import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randLong;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
 import java.util.ArrayList;

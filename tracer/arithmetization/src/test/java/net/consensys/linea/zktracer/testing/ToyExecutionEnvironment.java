@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.testing;
 
-import static net.consensys.linea.zktracer.module.hub.stack.Stack.MAX_STACK_SIZE;
+import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
@@ -108,32 +108,11 @@ public class ToyExecutionEnvironment {
         BlockHeaderBuilder.createDefault().baseFee(DEFAULT_BASE_FEE).buildBlockHeader();
     BlockBody mockBlockBody = new BlockBody(transactions, new ArrayList<>());
 
-    final MessageCallProcessor messageCallProcessor =
-        new MessageCallProcessor(evm, new PrecompileContractRegistry());
-    final ContractCreationProcessor contractCreationProcessor =
-        new ContractCreationProcessor(evm.getGasCalculator(), evm, false, List.of(), 0);
-    final MainnetTransactionProcessor transactionProcessor =
-        new MainnetTransactionProcessor(
-            gasCalculator,
-            new TransactionValidatorFactory(
-                gasCalculator,
-                new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0, Optional.empty())),
-                false,
-                Optional.of(CHAIN_ID),
-                Set.of(
-                    TransactionType.FRONTIER,
-                    TransactionType.ACCESS_LIST,
-                    TransactionType.EIP1559)),
-            contractCreationProcessor,
-            messageCallProcessor,
-            true,
-            true,
-            MAX_STACK_SIZE,
-            feeMarket,
-            CoinbaseFeePriceCalculator.eip1559());
+    final MainnetTransactionProcessor transactionProcessor = getMainnetTransactionProcessor();
 
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(header, mockBlockBody);
+
     for (Transaction tx : mockBlockBody.getTransactions()) {
       tracer.traceStartTransaction(toyWorld.updater(), tx);
 
@@ -152,6 +131,7 @@ public class ToyExecutionEnvironment {
               Wei.ZERO);
 
       long transactionGasUsed = tx.getGasLimit() - result.getGasRemaining();
+
       tracer.traceEndTransaction(
           toyWorld.updater(),
           tx,
@@ -163,8 +143,33 @@ public class ToyExecutionEnvironment {
 
       this.testValidator.accept(result);
     }
+
     tracer.traceEndBlock(header, mockBlockBody);
     tracer.traceEndConflation();
+  }
+
+  private MainnetTransactionProcessor getMainnetTransactionProcessor() {
+    final MessageCallProcessor messageCallProcessor =
+        new MessageCallProcessor(evm, new PrecompileContractRegistry());
+
+    final ContractCreationProcessor contractCreationProcessor =
+        new ContractCreationProcessor(evm.getGasCalculator(), evm, false, List.of(), 0);
+
+    return new MainnetTransactionProcessor(
+        gasCalculator,
+        new TransactionValidatorFactory(
+            gasCalculator,
+            new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0, Optional.empty())),
+            false,
+            Optional.of(CHAIN_ID),
+            Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559)),
+        contractCreationProcessor,
+        messageCallProcessor,
+        true,
+        true,
+        MAX_STACK_SIZE,
+        feeMarket,
+        CoinbaseFeePriceCalculator.eip1559());
   }
 
   private static Transaction defaultTransaction() {
