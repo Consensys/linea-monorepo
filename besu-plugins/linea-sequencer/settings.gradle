@@ -23,4 +23,6 @@
  */
 
 rootProject.name = 'linea-besu-plugin'
-include 'accTests'
+include 'arithmetization'
+include 'acceptance-tests'
+include 'reference-tests'

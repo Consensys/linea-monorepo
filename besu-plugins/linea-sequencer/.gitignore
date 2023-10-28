@@ -30,3 +30,5 @@ out/
 site/
 /.direnv/
 /.envrc
+reference-tests/src/test/java/net/consensys/linea/generated/*
+!reference-tests/src/test/java/net/consensys/linea/generated/.gitkeep

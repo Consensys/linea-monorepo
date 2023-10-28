@@ -157,11 +157,11 @@ downloadLicenses {
 
 tasks.register('checkLicenses') {
   description "Verify that all dependencies use white-listed licenses."
-  dependsOn ':downloadLicenses'
+  dependsOn 'downloadLicenses'
 
   def bads = ""
   doLast {
-    def xml = new XmlParser().parse("${rootProject.buildDir}/reports/license/license-dependency.xml")
+    def xml = new groovy.xml.XmlParser().parse("${project.buildDir}/reports/license/license-dependency.xml")
     xml.each { license ->
       if (!acceptedLicenses.contains((license.@name).toLowerCase())) {
         def depStrings = []
