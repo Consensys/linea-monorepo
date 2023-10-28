@@ -38,6 +38,17 @@ public class StackedList<E> implements List<E>, StackedContainer {
   private int totalSize;
 
   @Override
+  public String toString() {
+    StringBuffer r = new StringBuffer();
+    r.append("[[");
+    for (var l : this.lists) {
+      r.append(l.toString());
+    }
+    r.append("]]");
+    return r.toString();
+  }
+
+  @Override
   public void enter() {
     this.lists.push(new ArrayList<>());
   }
