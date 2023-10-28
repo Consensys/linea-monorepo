@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.testing;
 
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.consensys.linea.zktracer.bytes.conversions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -138,7 +139,7 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler push(final BigInteger xs) {
-    return this.push(conversions.bigIntegerToBytes(xs));
+    return this.push(bigIntegerToBytes(xs));
   }
 
   /**

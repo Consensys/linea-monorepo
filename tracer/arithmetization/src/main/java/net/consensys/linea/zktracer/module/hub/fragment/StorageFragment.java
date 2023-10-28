@@ -17,8 +17,8 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 
 /**

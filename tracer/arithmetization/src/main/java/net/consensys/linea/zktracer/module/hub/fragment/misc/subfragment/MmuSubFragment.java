@@ -18,12 +18,12 @@ package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment;
 import java.math.BigInteger;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.PostExecDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -55,7 +55,7 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
       }
       case CALLDATALOAD -> {
         this.param1 = hub.tx().number();
-        this.info = hub.callStack().getDepth() == 1;
+        this.info = hub.callStack().depth() == 1;
         this.referenceOffset = hub.currentFrame().callDataPointer().offset();
         this.referenceSize = hub.currentFrame().callDataPointer().length();
         this.offset1 = EWord.of(frame.getStackItem(0));

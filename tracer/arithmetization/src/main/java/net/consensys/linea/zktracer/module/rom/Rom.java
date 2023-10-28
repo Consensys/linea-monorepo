@@ -19,11 +19,11 @@ import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSiz
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.romLex.RomChunk;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Rom implements Module {

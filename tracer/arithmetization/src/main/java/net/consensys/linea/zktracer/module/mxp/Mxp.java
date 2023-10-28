@@ -15,16 +15,17 @@
 
 package net.consensys.linea.zktracer.module.mxp;
 
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -46,20 +47,6 @@ public class Mxp implements Module {
 
   // TODO: update tests and eliminate this constructor
   public Mxp() {}
-
-  // TODO: use the one defined here instead zktracer/bytes/conversions.java
-  public static Bytes bigIntegerToBytes(BigInteger big) {
-    byte[] byteArray;
-    byteArray = big.toByteArray();
-    Bytes bytes;
-    if (byteArray[0] == 0) {
-      Bytes tmp = Bytes.wrap(byteArray);
-      bytes = Bytes.wrap(tmp.slice(1, tmp.size() - 1));
-    } else {
-      bytes = Bytes.wrap(byteArray);
-    }
-    return bytes;
-  }
 
   @Override
   public void tracePreOpcode(MessageFrame frame) { // This will be renamed to tracePreOp

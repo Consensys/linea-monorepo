@@ -20,7 +20,7 @@ abstract class TraceFilesTask extends Exec {
   protected void exec() {
     def arguments = ["besu",
                      "-P", module.get(),
-                     "-o", "${project}/src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}"
+                     "-o", "${project.projectDir}/src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}"
     ]
     arguments.addAll(files.get().collect({"zkevm-constraints/${it}"}))
 

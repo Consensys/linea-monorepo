@@ -17,11 +17,11 @@ package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.EWord;
 
 public record MxpSubFragment(
     boolean mxpException,
