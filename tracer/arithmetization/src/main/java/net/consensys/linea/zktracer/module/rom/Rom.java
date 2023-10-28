@@ -24,16 +24,16 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.romLex.RomChunk;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Rom implements Module {
   private static final int LLARGE = 16;
   private static final int LLARGE_MO = 15;
   private static final int EVM_WORD_MO = 31;
-  private static final int PUSH_1 = OpCode.PUSH1.byteValue();
-  private static final int PUSH_32 = OpCode.PUSH32.byteValue();
-  private static final UnsignedByte invalid = UnsignedByte.of(0xFE);
+  private static final int PUSH_1 = 0x60;
+  private static final int PUSH_32 = 0x7f;
+  private static final UnsignedByte INVALID = UnsignedByte.of(0xFE);
+  private static final int JUMPDEST = 0x5b;
 
   private final RomLex romLex;
 
@@ -123,11 +123,10 @@ public class Rom implements Module {
       // Deal when not in a PUSH instruction
       if (pushParameter == 0) {
         UnsignedByte opCode = UnsignedByte.of(dataPadded.get(i));
-        boolean isPush = false;
+        final boolean isPush = PUSH_1 <= opCode.toInteger() && opCode.toInteger() <= PUSH_32;
 
         // The OpCode is a PUSH instruction
-        if (PUSH_1 <= opCode.toInteger() && opCode.toInteger() < PUSH_32) {
-          isPush = true;
+        if (isPush) {
           pushParameter = opCode.toInteger() - PUSH_1 + 1;
           if (pushParameter > LLARGE) {
             pushValueHigh = dataPadded.slice(i + 1, pushParameter - LLARGE);
@@ -147,16 +146,15 @@ public class Rom implements Module {
             .pushValueHigh(pushValueHigh.toUnsignedBigInteger())
             .pushValueLow(pushValueLow.toUnsignedBigInteger())
             .pushFunnelBit(false)
-            .validJumpDestination(opCode == invalid);
+            .validJumpDestination(opCode.toInteger() == JUMPDEST);
       }
-
       // Deal when in a PUSH instruction
       else {
         ctPush += 1;
         trace
             .isPush(false)
             .isPushData(true)
-            .opcode(invalid)
+            .opcode(INVALID)
             .pushParameter(BigInteger.valueOf(pushParameter))
             .pushValueHigh(pushValueHigh.toUnsignedBigInteger())
             .pushValueLow(pushValueLow.toUnsignedBigInteger())
