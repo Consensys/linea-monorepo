@@ -68,15 +68,28 @@ tasks.register('unitTests', Test) {
   }
 }
 
+tasks.register('referenceTests', Test) {
+  useJUnitPlatform {
+    includeTags("ReferenceTest")
+  }
+
+  description = 'Runs ETH reference tests.'
+}
+
+test {
+  exclude '**/**ReferenceTest*'
+}
+
 tasks.register('acceptanceTest', Test) {
-  dependsOn rootProject.copyPluginJar
+  dependsOn project(":arithmetization").copyPluginJar
   inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
   include '**'
 
   useJUnitPlatform {}
 
   doFirst {
-    systemProperty "besu.plugins.dir", rootProject.ext.pluginDir
+    systemProperty "besu.plugins.dir", project(":arithmetization").ext.pluginDir
   }
-}
 
+  unitTests.enabled = false
+}

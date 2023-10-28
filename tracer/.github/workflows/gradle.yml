@@ -56,7 +56,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle
 
       - name: Run acceptanceTest
-        run: ./gradlew accTests:acceptanceTest --info
+        run: ./gradlew :acceptance-tests:acceptanceTest
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
@@ -101,8 +101,8 @@ jobs:
       - name: Install corset
         run: cargo install --git ssh://git@github.com/Consensys/corset.git --locked
 
-      - name: Run corset tests
-        run: ./gradlew test
+      - name: Run tests
+        run: ./gradlew :arithmetization:test
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 

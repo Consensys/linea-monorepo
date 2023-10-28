@@ -63,11 +63,12 @@ def calculateVersion() {
   if (version.endsWith("-SNAPSHOT")) {
     version = version.replace("-SNAPSHOT", "-dev-" + getCheckedOutGitCommitHash())
   }
+
   return version
 }
 
 def getCheckedOutGitCommitHash() {
-  def gitFolder = "$projectDir/.git/"
+  def gitFolder = "$projectDir/../.git/"
   if (!file(gitFolder).isDirectory()) {
     // We are in a submodule.  The file's contents are `gitdir: <gitFolder>\n`.
     // Read the file, cut off the front, and trim the whitespace.
@@ -129,7 +130,7 @@ tasks.register('distZip', Zip) {
   archiveBaseName = distributionIdentifier
   from installDist.outputs.getFiles()
   archiveBaseName
-  extension 'zip'
+  setArchiveExtension 'zip'
   duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 

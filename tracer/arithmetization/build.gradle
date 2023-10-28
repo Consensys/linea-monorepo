@@ -1,0 +1,76 @@
+/*
+ * Copyright Consensys Software Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+plugins {
+  id 'java'
+  id 'common-plugins'
+  id 'com.github.hierynomus.license'
+  id "de.undercouch.download"
+}
+
+group = 'net.consensys.linea.besu.plugin'
+version = rootProject.version
+
+apply from: rootProject.file("gradle/java.gradle")
+apply from: rootProject.file("gradle/dependency-management.gradle")
+apply from: rootProject.file('gradle/common-dependencies.gradle')
+apply from: rootProject.file("gradle/corset.gradle")
+apply from: rootProject.file("gradle/tests.gradle")
+apply from: rootProject.file("gradle/build-aliases.gradle")
+apply from: rootProject.file("gradle/check-licenses.gradle")
+apply from: rootProject.file("gradle/lint.gradle")
+apply from: rootProject.file("gradle/trace-files.gradle")
+
+dependencies {
+  // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin
+  annotationProcessor 'com.google.auto.service:auto-service'
+  compileOnly "${besuArtifactGroup}:evm"
+  compileOnly 'com.google.auto.service:auto-service'
+  compileOnly 'com.google.auto.service:auto-service-annotations'
+
+  implementation "${besuArtifactGroup}:evm"
+  implementation "${besuArtifactGroup}:plugin-api"
+  implementation "${besuArtifactGroup}:besu-datatypes"
+  implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
+  implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
+  implementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
+
+  implementation 'info.picocli:picocli'
+
+  compileOnly 'io.vertx:vertx-core'
+
+  implementation 'com.fasterxml.jackson.core:jackson-databind'
+  implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
+  implementation 'org.apache.tuweni:tuweni-bytes'
+  implementation 'org.apache.tuweni:tuweni-units'
+
+  implementation 'org.bouncycastle:bcprov-jdk18on'
+
+  testImplementation "${besuArtifactGroup}:evm"
+  testImplementation "${besuArtifactGroup}:besu-datatypes"
+  testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
+  testImplementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
+  testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
+}
+
+configurations {
+  installedJars {
+    transitive = false
+  }
+}
+
+apply from: rootProject.file("gradle/dist.gradle")
+apply from: rootProject.file("gradle/publishing.gradle")
