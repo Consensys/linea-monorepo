@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.DataLocation;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
@@ -26,6 +25,7 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.stack.Pattern;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 public final class InstructionDecoder {
   private static void traceFamily(OpCodeData op, Trace.TraceBuilder trace) {

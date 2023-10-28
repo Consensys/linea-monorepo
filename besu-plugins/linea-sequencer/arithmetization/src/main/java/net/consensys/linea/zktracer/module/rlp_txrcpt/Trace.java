@@ -21,7 +21,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
@@ -1021,23 +1021,23 @@ public record Trace(
         this.filled.set(9);
       }
       if (!filled.get(10)) {
-        bitAcc.add(UnsignedByte.of(0));
+        bitAcc.add(UnsignedByte.ZERO);
         this.filled.set(10);
       }
       if (!filled.get(11)) {
-        byte1.add(UnsignedByte.of(0));
+        byte1.add(UnsignedByte.ZERO);
         this.filled.set(11);
       }
       if (!filled.get(12)) {
-        byte2.add(UnsignedByte.of(0));
+        byte2.add(UnsignedByte.ZERO);
         this.filled.set(12);
       }
       if (!filled.get(13)) {
-        byte3.add(UnsignedByte.of(0));
+        byte3.add(UnsignedByte.ZERO);
         this.filled.set(13);
       }
       if (!filled.get(14)) {
-        byte4.add(UnsignedByte.of(0));
+        byte4.add(UnsignedByte.ZERO);
         this.filled.set(14);
       }
       if (!filled.get(15)) {
@@ -1109,7 +1109,7 @@ public record Trace(
         this.filled.set(31);
       }
       if (!filled.get(41)) {
-        nBytes.add(UnsignedByte.of(0));
+        nBytes.add(UnsignedByte.ZERO);
         this.filled.set(41);
       }
       if (!filled.get(42)) {

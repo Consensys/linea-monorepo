@@ -17,10 +17,10 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.runtime.callstack.CallFrame;
-import net.consensys.linea.zktracer.module.runtime.callstack.CallStack;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.runtime.callstack.CallStack;
+import net.consensys.linea.zktracer.types.EWord;
 
 public record ContextFragment(
     CallStack callStack, CallFrame callFrame, boolean updateCallerReturndata)

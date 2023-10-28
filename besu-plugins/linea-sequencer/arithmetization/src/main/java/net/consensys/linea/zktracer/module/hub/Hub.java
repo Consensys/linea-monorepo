@@ -26,7 +26,6 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.add.Add;
@@ -35,9 +34,6 @@ import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
 import net.consensys.linea.zktracer.module.hub.fragment.misc.MiscFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
-import net.consensys.linea.zktracer.module.hub.stack.ConflationInfo;
-import net.consensys.linea.zktracer.module.hub.stack.StackContext;
-import net.consensys.linea.zktracer.module.hub.stack.StackLine;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.mxp.Mxp;
@@ -46,12 +42,18 @@ import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
 import net.consensys.linea.zktracer.module.rom.Rom;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
-import net.consensys.linea.zktracer.module.runtime.callstack.*;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.txn_data.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.*;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
+import net.consensys.linea.zktracer.runtime.callstack.CallStack;
+import net.consensys.linea.zktracer.runtime.stack.ConflationInfo;
+import net.consensys.linea.zktracer.runtime.stack.StackContext;
+import net.consensys.linea.zktracer.runtime.stack.StackLine;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -415,7 +417,7 @@ public class Hub implements Module {
             this.mxp.tracePreOpcode(frame);
           }
         }
-        if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
+        if (!this.exceptions.any() && this.callStack().depth() < 1024) {
           this.romLex.tracePreOpcode(frame);
         }
       }
@@ -447,7 +449,7 @@ public class Hub implements Module {
           this.mxp.tracePreOpcode(frame); // TODO: trigger in OoG
         }
 
-        if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
+        if (!this.exceptions.any() && this.callStack().depth() < 1024) {
           // TODO: check for failure: non empty byte code or non zero nonce (for the
           // Deployed
           // Address)
@@ -464,12 +466,12 @@ public class Hub implements Module {
         }
       }
       case CALL -> {
-        if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
+        if (!this.exceptions.any() && this.callStack().depth() < 1024) {
           this.romLex.tracePreOpcode(frame);
         }
       }
       case HALT -> {
-        if (!this.exceptions.any() && this.callStack().getDepth() < 1024) {
+        if (!this.exceptions.any() && this.callStack().depth() < 1024) {
           this.romLex.tracePreOpcode(frame);
         }
         if (this.exceptions.noStackException()

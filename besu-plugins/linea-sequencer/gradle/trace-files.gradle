@@ -78,12 +78,19 @@ tasks.register('instructionDecoder', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme
 //
-['bin', 'ec_data', 'mxp', 'shf', 'wcp', 'rom', 'romLex'].each {moduleName ->
+['bin', 'ec_data', 'mmu', 'mxp', 'shf', 'wcp', 'rom', 'romLex'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
 
         module = moduleName
         files = ["${moduleName}/columns.lisp", "${moduleName}/constraints.lisp", "library/constant.lisp", "library/rlp_constraints_pattern.lisp"]
+        def columnsFilePath = "${moduleName}/columns.lisp"
+        def constantsFilePath = "${moduleName}/constants.lisp"
+        files = [columnsFilePath]
+
+        if (new File("zkevm-constraints/${constantsFilePath}").exists()) {
+            files.add(constantsFilePath)
+        }
     }
 }

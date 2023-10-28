@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 public record ByteChunks(UnsignedByte ra, UnsignedByte la, UnsignedByte ones) {
 

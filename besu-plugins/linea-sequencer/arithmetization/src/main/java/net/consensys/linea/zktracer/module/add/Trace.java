@@ -21,7 +21,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.consensys.linea.zktracer.bytes.UnsignedByte;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten

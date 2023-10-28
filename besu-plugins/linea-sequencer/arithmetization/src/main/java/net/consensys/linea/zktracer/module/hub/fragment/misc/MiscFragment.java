@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.module.hub.fragment.misc;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.consensys.linea.zktracer.EWord;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Signals;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -30,6 +29,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment.MmuSubF
 import net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment.MxpSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment.oob.CalldataloadSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment.oob.JumpSubFragment;
+import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 
