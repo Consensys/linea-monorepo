@@ -137,15 +137,16 @@ public final class InstructionDecoder {
 
   public static ModuleTrace generate() {
     Trace.TraceBuilder trace = new Trace.TraceBuilder(256);
-    for (OpCode opCode : OpCode.values()) {
-      final OpCodeData op = opCode.getData();
+
+    for (int i = 0; i < 256; i++) {
+      final OpCodeData op = OpCode.of(i).getData();
 
       traceFamily(op, trace);
       traceStackSettings(op, trace);
       traceRamSettings(op, trace);
       traceBillingSettings(op, trace);
       trace
-          .opcode(BigInteger.valueOf(op.value()))
+          .opcode(BigInteger.valueOf(i))
           .isPush(op.pushFlag())
           .isJumpdest(op.jumpFlag())
           .validateRow();
