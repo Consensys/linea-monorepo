@@ -65,6 +65,7 @@ tasks.test.dependsOn(buildZkevmBin)
 tasks.register('unitTests', Test) {
   useJUnitPlatform {
     excludeTags("AcceptanceTest")
+    excludeTags("ReferenceTest")
   }
 }
 
@@ -80,7 +81,7 @@ test {
   exclude '**/**ReferenceTest*'
 }
 
-tasks.register('acceptanceTest', Test) {
+tasks.register('acceptanceTests', Test) {
   dependsOn project(":arithmetization").copyPluginJar
   inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
   include '**'
