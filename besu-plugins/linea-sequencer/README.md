@@ -47,7 +47,7 @@ cargo install --git ssh://git@github.com/ConsenSys/corset
 ### Update Constraints [Submodule](https://github.com/ConsenSys/zkevm-constraints/)
 
 ```shell
-git submodule update --init
+git submodule update --init --recursive
 ```
 
 ### Install [pre-commit](https://pre-commit.com/)
@@ -90,11 +90,21 @@ ______________________________________________________________________
 ./gradlew generalStateReferenceTests
 
 # Run all EVM test suite reference tests
-./gradlew referenceTests
+./gradlew clean referenceTests
 
 # Run single reference test via gradle, e.g for net.consensys.linea.generated.blockchain.BlockchainReferenceTest_583
 ./gradlew :reference-tests:referenceTests --tests "net.consensys.linea.generated.blockchain.BlockchainReferenceTest_583"
 ```
+
+______________________________________________________________________
+
+NOTE
+
+> Please be aware if the reference test code generation tasks `blockchainReferenceTests` and
+> `generalStateReferenceTests` do not generate any java code, than probably you are missing the Ethereum tests
+> submodule which you can clone via `git submodule update --init --recursive`.
+
+______________________________________________________________________
 
 ## IntelliJ IDEA Setup
 
