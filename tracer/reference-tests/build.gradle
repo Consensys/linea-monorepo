@@ -64,6 +64,6 @@ dependencies {
   testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
 
-clean.doFirst {
-  delete "src/test/java/net/consensys/linea/generated"
-}
+//clean.doFirst {
+//  delete "src/test/java/net/consensys/linea/generated"
+//}
