@@ -27,7 +27,7 @@ services:
     container_name: mev-builder
     image: jinmel/builder:latest
     platform: linux/amd64
-    profiles: ["mev", "mev-builder", "besu-sequencer", "l2"]
+    profiles: ["mev", "besu-sequencer"]
     ports:
       - "8580:8545"  # this is the http json rpc port for tx submission.
     restart: "no"
@@ -55,13 +55,12 @@ services:
     image: hyperledger/besu:23.7.4-SNAPSHOT
     user: besu
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug", "besu-sequencer" ]
+    profiles: ["l2", "l2-bc", "debug", "besu-sequencer"]
     ports:
       - "8545:8545"
       - "8546:8546"
       - "8550:8550"
       - "30301:30301"
-      - "9545:9545"
     restart: "no"
     environment:
       DATA_DIR: "/opt/besu/data/"
@@ -98,6 +97,9 @@ services:
     image: consensys/linea-geth:${ZKGETH_TAG:-59f0967}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
+    depends_on:
+      sequencer:
+        condition: service_healthy
     ports:
       - "8845:8545"
       - "8846:8546"

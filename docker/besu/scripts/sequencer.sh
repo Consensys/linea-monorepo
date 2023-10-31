@@ -26,7 +26,7 @@ echo ETHSTATS_URL=$ETHSTATS_URL
 # echo NETRESTRICT=$NETRESTRICT
 echo etherbase=$etherbase
 
-mkdir -p /data/traces/raw
+# mkdir -p /data/traces/raw
 mkdir -p $DATA_DIR
 ls -lah $DATA_DIR
 # prepareDatadir $DATA_DIR $genesisfile

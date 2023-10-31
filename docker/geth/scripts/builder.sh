@@ -44,7 +44,7 @@ if [ ${#BOOTNODES} -ge 1 ]; then
       --ethstats "$ETHSTATS_URL" \
       --netrestrict "$NETRESTRICT" \
       --ipcdisable \
-      --verbosity 4 \
+      --verbosity 3 \
       --txpool.nolocals \
       --syncmode "full" \
       --gcmode "archive" \
@@ -52,7 +52,7 @@ if [ ${#BOOTNODES} -ge 1 ]; then
       --builder \
       --builder.local_relay \
       --builder.seconds_in_slot 12 \
-      --builder.submission_offset=6s \
+      --builder.submission_offset=3s \
       --builder.algotype greedy
 else
     echo "Builder needs at least one bootnodes to start"

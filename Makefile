@@ -14,7 +14,7 @@ clean-testnet-folders:
 		rm -rf tmp/testnet/*
 
 clean-environment:
-		docker-compose -f docker/compose.yml --profile l1 --profile l2 --profile debug down || true
+		docker-compose -f docker/compose.yml --profile l1 --profile l2 --profile debug --profile mev down || true
 		make clean-local-folders
 		docker network prune -f
 		docker volume rm linea-local-dev linea-logs || true # ignore failure if volumes do not exist already
@@ -45,6 +45,9 @@ start-whole-environment:
 
 start-whole-environment-ci:
 		docker-compose -f docker/compose.yml -f docker/compose-ci.overrides.yml --profile l1 --profile l2 up -d
+
+start-l2-mev:
+		docker-compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml --profile l1 --profile l2 --profile mev up -d
 
 pull-all-images-ci:
 		docker-compose -f docker/compose.yml -f docker/compose-ci.overrides.yml --profile l1 --profile l2 pull
@@ -124,6 +127,11 @@ send-some-transactions-to-l2:
 		cd ../zkevm-deployment/smart_contract/scripts; \
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		./txHelper.js transfer --blockchainNode http://localhost:8845 --privKey 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --wei 1 --transfers 1 --mode WAITEXEC --maxFeePerGas 1000000000 --maxPriorityFeePerGas 1000000000
+
+send-some-transactions-to-builder:
+		cd ../zkevm-deployment/smart_contract/scripts; \
+		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
+		./txHelper.js transfer --blockchainNode http://localhost:8580 --privKey 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --wei 1 --transfers 1 --mode WAITEXEC --maxFeePerGas 1000000000 --maxPriorityFeePerGas 1000000000
 
 testnet-start-l2:
 		docker-compose -f docker/compose.yml -f docker/compose-testnet-sync.overrides.yml --profile l2 up -d
