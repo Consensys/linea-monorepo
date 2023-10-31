@@ -127,21 +127,25 @@ public class RomLex implements Module {
     }
 
     // Call to an account with bytecode
-    if (tx.getTo().isPresent() && worldView.get(tx.getTo().orElseThrow()).hasCode()) {
-      codeIdentifierBeforeLexOrder += 1;
-      int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
-      boolean depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
+    tx.getTo()
+        .map(worldView::get)
+        .map(AccountState::getCode)
+        .ifPresent(
+            code -> {
+              codeIdentifierBeforeLexOrder += 1;
+              int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
+              boolean depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
 
-      this.chunks.add(
-          new RomChunk(
-              tx.getTo().get(),
-              depNumber,
-              depStatus,
-              true,
-              false,
-              codeIdentifierBeforeLexOrder,
-              worldView.get(tx.getTo().get()).getCode()));
-    }
+              this.chunks.add(
+                  new RomChunk(
+                      tx.getTo().get(),
+                      depNumber,
+                      depStatus,
+                      true,
+                      false,
+                      codeIdentifierBeforeLexOrder,
+                      code));
+            });
   }
 
   @Override
