@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -79,7 +81,10 @@ public class TxnData implements Module {
   public void traceStartTx(WorldView worldView, Transaction tx) {
     int codeIdBeforeLex = 0;
     if ((tx.getTo().isEmpty() && tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()
-        || tx.getTo().isPresent() && worldView.get(tx.getTo().orElseThrow()).hasCode())) {
+        || tx.getTo().isPresent()
+            && Optional.ofNullable(worldView.get(tx.getTo().orElseThrow()))
+                .map(AccountState::hasCode)
+                .orElse(false))) {
       codeIdBeforeLex = this.romLex.codeIdentifierBeforeLexOrder;
     }
     this.currentBlock().captureTx(codeIdBeforeLex, worldView, tx);

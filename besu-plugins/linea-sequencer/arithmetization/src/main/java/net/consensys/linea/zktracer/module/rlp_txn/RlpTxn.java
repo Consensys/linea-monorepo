@@ -50,6 +50,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.encoding.AccessListTransactionEncoder;
 import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.rlp.RLPOutput;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxn implements Module {
@@ -108,7 +109,10 @@ public class RlpTxn implements Module {
     }
 
     // Call to a non-empty smart contract
-    else if (tx.getTo().isPresent() && worldView.get(tx.getTo().orElseThrow()).hasCode()) {
+    else if (tx.getTo().isPresent()
+        && Optional.ofNullable(worldView.get(tx.getTo().orElseThrow()))
+            .map(AccountState::hasCode)
+            .orElse(false)) {
       this.chunkList.add(new RlpTxnChunk(tx, true));
     }
 
