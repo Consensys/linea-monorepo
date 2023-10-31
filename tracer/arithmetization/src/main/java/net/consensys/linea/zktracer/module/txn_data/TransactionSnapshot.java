@@ -29,6 +29,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.feemarket.TransactionPriceCalculator;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /** Gathers all the information required to trace a {@link Transaction} in {@link TxnData}. */
@@ -125,7 +126,7 @@ public final class TransactionSnapshot {
                         .sum())
             .orElse(0),
         tx.getTo().isEmpty(),
-        tx.getTo().map(to -> world.get(to).hasCode()).orElse(!tx.getPayload().isEmpty()),
+        tx.getTo().map(world::get).map(AccountState::hasCode).orElse(!tx.getPayload().isEmpty()),
         tx.getType(),
         codeIdBeforeLex,
         world.get(tx.getSender()).getBalance().getAsBigInteger(),
