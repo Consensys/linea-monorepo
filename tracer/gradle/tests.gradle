@@ -1,3 +1,5 @@
+import java.time.LocalTime
+
 /*
  * Copyright Consensys Software Inc.
  *
@@ -63,6 +65,8 @@ test {
 tasks.test.dependsOn(buildZkevmBin)
 
 tasks.register('unitTests', Test) {
+  description = 'Runs unit tests.'
+
   useJUnitPlatform {
     excludeTags("AcceptanceTest")
     excludeTags("ReferenceTest")
@@ -70,27 +74,29 @@ tasks.register('unitTests', Test) {
 }
 
 tasks.register('referenceTests', Test) {
+  description = 'Runs ETH reference tests.'
+
   useJUnitPlatform {
     includeTags("ReferenceTest")
   }
-
-  description = 'Runs ETH reference tests.'
 }
 
 test {
-  exclude '**/**ReferenceTest*'
+  exclude('**/**ReferenceTest*')
 }
 
 tasks.register('acceptanceTests', Test) {
-  dependsOn project(":arithmetization").copyPluginJar
-  inputs.property "integration.date", LocalTime.now() // so it runs at every invocation
-  include '**'
+  description = 'Runs acceptance tests.'
 
-  useJUnitPlatform {}
+  dependsOn(project(":arithmetization").copyPluginJar)
 
-  doFirst {
-    systemProperty "besu.plugins.dir", project(":arithmetization").ext.pluginDir
+  inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
+
+  useJUnitPlatform {
+    includeTags("AcceptanceTest")
   }
 
-  unitTests.enabled = false
+  doFirst {
+    systemProperty("besu.plugins.dir", rootProject.besuPluginDir)
+  }
 }

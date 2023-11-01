@@ -35,6 +35,7 @@ solidity {
   optimizeRuns = 1
 }
 
+
 dependencies {
   testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
   testImplementation "${besuArtifactGroup}:besu-datatypes:$besuVersion"
