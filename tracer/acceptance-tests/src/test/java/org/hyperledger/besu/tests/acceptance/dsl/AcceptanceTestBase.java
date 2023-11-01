@@ -60,12 +60,14 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransa
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.web3.Web3Transactions;
 import org.junit.After;
 import org.junit.Rule;
+import org.junit.jupiter.api.Tag;
 import org.junit.rules.TestName;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 import org.slf4j.MDC;
 
 /** Base class for acceptance tests. */
+@Tag("AcceptanceTest")
 @Slf4j
 public class AcceptanceTestBase {
   protected final Accounts accounts;

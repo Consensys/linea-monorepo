@@ -1,3 +1,5 @@
+import de.undercouch.gradle.tasks.download.Download
+
 /*
  * Copyright Consensys Software Inc.
  *
@@ -26,16 +28,10 @@ tasks.register('javadocJar', Jar) {
 }
 
 tasks.register('downloadLatestLineaBesu', Download) {
-  ext.besuIdentifier = "linea-besu-" + besuVersion
-  def besuFilename = besuIdentifier + ".tar.gz"
-  def besuUrl = distributionBaseUrl + besuVersion + "/" + besuFilename
-
-  src besuUrl
-  dest new File(buildDir, besuFilename)
+  src rootProject.besuUrl
+  dest new File(buildDir, rootProject.besuFilename)
   onlyIfModified true
 }
-
-ext.besuPluginsIdentifier = distributionIdentifier + "-" + version
 
 jar {
   dependsOn downloadLatestLineaBesu
@@ -61,7 +57,7 @@ jar {
 def calculateVersion() {
   String version = rootProject.version
   if (version.endsWith("-SNAPSHOT")) {
-    version = version.replace("-SNAPSHOT", "-dev-" + getCheckedOutGitCommitHash())
+    version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
   }
 
   return version
@@ -77,7 +73,7 @@ tasks.register('distTar', Tar) {
   dependsOn downloadLatestLineaBesu
 
   from(tarTree(downloadLatestLineaBesu.dest), {
-    eachFile { path = path.replaceFirst(downloadLatestLineaBesu.besuIdentifier, '') }
+    eachFile { path = path.replaceFirst(rootProject.besuIdentifier, '') }
     includeEmptyDirs = false
     exclude "**/LICENSE"
   })
@@ -121,9 +117,8 @@ tasks.register("copyPluginJar") {
   dependsOn installDist
 
   doLast {
-    def copyInto = File.createTempDir("plugins")
-    def copyFrom = new File(getRootDir().toString() + "/build/libs")
-    project.ext.pluginDir = copyInto.toString()
+    def copyInto = rootProject.besuPluginDir
+    def copyFrom = new File("${project(":arithmetization").buildDir}/libs")
 
     copy {
       from copyFrom.toString()
