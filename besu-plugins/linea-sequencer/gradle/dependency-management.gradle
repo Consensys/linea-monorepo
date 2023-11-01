@@ -93,7 +93,8 @@ dependencyManagement {
     }
 
     dependency 'junit:junit:4.13.2'
-    dependencySet(group: 'org.junit.jupiter', version: '5.9.3') {
+    dependency 'org.junit.vintage:junit-vintage-engine:5.10.0'
+    dependencySet(group: 'org.junit.jupiter', version: '5.10.0') {
       entry 'junit-jupiter-api'
       entry 'junit-jupiter-engine'
       entry 'junit-jupiter-params'
