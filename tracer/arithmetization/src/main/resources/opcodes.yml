@@ -1540,7 +1540,6 @@ opcodes:
       oobFlag: true
       staticGas: S_CALL
       twoLinesInstruction: true
-      forbiddenInStatic: true
       addressTrimmingInstruction: true
       flag1: true
     billing:
@@ -1585,9 +1584,9 @@ opcodes:
     stackSettings:
       pattern: CALL
       alpha: 1
-      delta: 7
+      delta: 6
       nbAdded: 1
-      nbRemoved: 7
+      nbRemoved: 6
       staticGas: S_CALL
       twoLinesInstruction: true
       addressTrimmingInstruction: true

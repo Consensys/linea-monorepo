@@ -33,7 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** The blockchain test operation testing framework entry point. */
-@Tag("ReferenceTest")
+@Tag("BlockchainReferenceTest")
 @ExtendWith(EvmExtension.class)
 public class %%TESTS_NAME%% {
 

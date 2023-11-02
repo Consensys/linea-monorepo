@@ -31,6 +31,7 @@ import org.hyperledger.besu.ethereum.BlockProcessingResult;
 import org.hyperledger.besu.ethereum.bonsai.worldview.BonsaiWorldState;
 import org.hyperledger.besu.ethereum.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
 import org.hyperledger.besu.ethereum.chain.Blockchain;
+import org.hyperledger.besu.ethereum.core.BlockBody;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.Deposit;
 import org.hyperledger.besu.ethereum.core.MutableWorldState;
@@ -87,6 +88,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final PrivateMetadataUpdater privateMetadataUpdater) {
     final List<TransactionReceipt> receipts = new ArrayList<>();
     long currentGasUsed = 0;
+    BlockBody blockBody = new BlockBody(transactions, new ArrayList<>());
 
     final ProtocolSpec protocolSpec = protocolSchedule.getByBlockHeader(blockHeader);
 
@@ -120,6 +122,9 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
                               calculateExcessBlobGasForParent(protocolSpec, parentHeader)))
               .orElse(Wei.ZERO);
 
+      zkTracer.traceStartConflation(1);
+      zkTracer.traceStartBlock(blockHeader, blockBody);
+      zkTracer.traceStartTransaction(worldState, transaction);
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
               blockchain,
@@ -133,6 +138,15 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
               TransactionValidationParams.processingBlock(),
               privateMetadataUpdater,
               blobGasPrice);
+      zkTracer.traceEndTransaction(
+          worldState,
+          transaction,
+          result.isSuccessful(),
+          result.getOutput(),
+          result.getLogs(),
+          transaction.getGasLimit() - result.getGasRemaining(),
+          0);
+
       if (result.isInvalid()) {
         String errorMessage =
             MessageFormat.format(
@@ -187,6 +201,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       log.error("failed persisting block", e);
       return new BlockProcessingResult(Optional.empty(), e);
     }
+    zkTracer.traceEndBlock(blockHeader, blockBody);
+    zkTracer.traceEndConflation();
 
     return new BlockProcessingResult(Optional.of(new BlockProcessingOutputs(worldState, receipts)));
   }

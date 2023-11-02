@@ -153,6 +153,13 @@ public record Exceptions(
 
   private static boolean isStaticFault(final MessageFrame frame) {
     final OpCodeData opCode = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
+    if (frame.isStatic() && opCode.mnemonic() == OpCode.CALL && frame.stackSize() > 2) {
+      final long value = Words.clampedToLong(frame.getStackItem(2));
+      if (value > 0) {
+        return true;
+      }
+    }
+
     return frame.isStatic() && opCode.stackSettings().forbiddenInStatic();
   }
 
