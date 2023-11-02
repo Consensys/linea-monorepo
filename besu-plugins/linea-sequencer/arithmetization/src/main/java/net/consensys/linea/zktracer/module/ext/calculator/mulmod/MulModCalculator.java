@@ -23,8 +23,12 @@ import org.apache.tuweni.units.bigints.UInt256;
 
 public class MulModCalculator extends AbstractExtCalculator {
   @Override
-  public UInt256 computeResult(Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
-    return UInt256.fromBytes(arg1).multiplyMod(UInt256.fromBytes(arg2), UInt256.fromBytes(arg3));
+  public UInt256 computeResult(Bytes32 arg1, Bytes32 arg2, Bytes32 modulo) {
+    if (modulo.isZero()) {
+      return UInt256.ZERO;
+    }
+
+    return UInt256.fromBytes(arg1).multiplyMod(UInt256.fromBytes(arg2), UInt256.fromBytes(modulo));
   }
 
   /**

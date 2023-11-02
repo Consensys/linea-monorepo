@@ -26,6 +26,10 @@ public class AddModCalculator extends AbstractExtCalculator {
 
   @Override
   public UInt256 computeResult(final Bytes32 arg1, final Bytes32 arg2, final Bytes32 arg3) {
+    if (arg3.isZero()) {
+      return UInt256.ZERO;
+    }
+
     return UInt256.fromBytes(arg1).addMod(UInt256.fromBytes(arg2), UInt256.fromBytes(arg3));
   }
 

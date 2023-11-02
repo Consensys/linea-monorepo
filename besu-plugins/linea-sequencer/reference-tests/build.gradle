@@ -24,7 +24,7 @@ apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
 apply from: rootProject.file("gradle/lint.gradle")
 
-tasks.register("blockchainReferenceTests", RefTestGenerationTask) {
+tasks.register("generateBlockchainReferenceTests", RefTestGenerationTask) {
   refTestTemplateFilePath = "src/test/resources/templates/BlockchainReferenceTest.java.template"
   refTests = "src/test/resources/ethereum-tests/BlockchainTests"
   refTestJsonParamsDirectory = "BlockchainTests"
@@ -33,7 +33,7 @@ tasks.register("blockchainReferenceTests", RefTestGenerationTask) {
   generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/blockchain"
 }
 
-tasks.register("generalStateReferenceTests", RefTestGenerationTask) {
+tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
   refTestTemplateFilePath = "src/test/resources/templates/GeneralStateReferenceTest.java.template"
   refTests = "src/test/resources/ethereum-tests/GeneralStateTests"
   refTestJsonParamsDirectory = "ethereum-tests/GeneralStateTests"

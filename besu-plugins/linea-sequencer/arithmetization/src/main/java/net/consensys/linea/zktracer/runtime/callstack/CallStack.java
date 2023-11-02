@@ -83,6 +83,10 @@ public final class CallStack {
     return this.frames.get(this.current);
   }
 
+  public boolean isEmpty() {
+    return this.frames.isEmpty();
+  }
+
   public int futureId() {
     return this.frames.size();
   }
