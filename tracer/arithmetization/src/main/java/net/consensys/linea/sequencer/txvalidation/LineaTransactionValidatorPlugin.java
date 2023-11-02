@@ -23,16 +23,17 @@ import java.util.stream.Stream;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.LineaRequiredPlugin;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 
-/** Implementation of the base {@link BesuPlugin} interfaces for Linea. */
+/** Implementation of the base {@link BesuPlugin} interface for Linea Transaction Validation. */
 @Slf4j
 @AutoService(BesuPlugin.class)
-public class LineaTransactionValidatorPlugin implements BesuPlugin {
+public class LineaTransactionValidatorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionValidatorCliOptions options;
   private final ArrayList<Address> denied = new ArrayList<>();
@@ -47,23 +48,22 @@ public class LineaTransactionValidatorPlugin implements BesuPlugin {
   }
 
   @Override
-  public void register(final BesuContext context) {
+  public void doRegister(final BesuContext context) {
     final Optional<PicoCLIOptions> cmdlineOptions = context.getService(PicoCLIOptions.class);
 
     if (cmdlineOptions.isEmpty()) {
-      throw new IllegalStateException(
-          "Expecting a PicoCLI options to be available, but none found.");
+      throw new IllegalStateException("Failed to obtain PicoCLI options from the BesuContext");
     }
 
     cmdlineOptions.get().addPicoCLIOptions(NAME, options);
 
     Optional<PluginTransactionValidatorService> service =
         context.getService(PluginTransactionValidatorService.class);
-    if (service.isEmpty()) {
-      log.error(
-          "Failed to register TransactionValidatorService because it is not available from the BesuContext.");
-    }
-    createAndRegister(service.orElseThrow());
+    createAndRegister(
+        service.orElseThrow(
+            () ->
+                new RuntimeException(
+                    "Failed to obtain TransactionValidationService from the BesuContext.")));
   }
 
   @Override
@@ -82,9 +82,6 @@ public class LineaTransactionValidatorPlugin implements BesuPlugin {
 
     log.debug("Starting {} with configuration: {}", NAME, options);
   }
-
-  @Override
-  public void stop() {}
 
   private void createAndRegister(
       final PluginTransactionValidatorService transactionValidationService) {
