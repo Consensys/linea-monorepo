@@ -54,8 +54,6 @@ public class RomLex implements Module {
   private Bytes byteCode = Bytes.EMPTY;
   private Address address = Address.ZERO;
 
-  //  public final SortedMap<RomChunk, Integer> chunkMap = new TreeMap<>(romChunkComparator);
-
   static class RomChunkComparator implements Comparator<RomChunk> {
     // Initialize the ChunkList
     public int compare(RomChunk chunk1, RomChunk chunk2) {
@@ -273,9 +271,6 @@ public class RomLex implements Module {
                 false,
                 codeIdentifierBeforeLexOrder,
                 this.byteCode));
-      }
-      case RETURN -> {
-        // TODO: get the right DepNumber & DepStatus once implemented in the HUB
       }
     }
   }

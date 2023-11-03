@@ -199,4 +199,12 @@ public enum OpCode {
   public boolean isCreate() {
     return this == OpCode.CREATE || this == OpCode.CREATE2;
   }
+
+  /** Returns whether the {@link OpCode} is one of the CALL opcodes */
+  public boolean isCall() {
+    return this == OpCode.CALL
+        || this == OpCode.CALLCODE
+        || this == OpCode.DELEGATECALL
+        || this == OpCode.STATICCALL;
+  }
 }

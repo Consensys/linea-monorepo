@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
+import static net.consensys.linea.zktracer.types.Address.isPrecompile;
+
 import java.math.BigInteger;
 
 import lombok.Getter;
@@ -69,7 +71,7 @@ public final class AccountFragment implements TraceFragment {
         .peekAtAccount(true)
         .pAccountAddrHi(eWho.hiBigInt())
         .pAccountAddrLo(eWho.loBigInt())
-        .pAccountIsPrecompile(Hub.isPrecompile(who))
+        .pAccountIsPrecompile(isPrecompile(who))
         .pAccountNonce(BigInteger.valueOf(oldState.nonce()))
         .pAccountNonceNew(BigInteger.valueOf(newState.nonce()))
         .pAccountBalance(oldState.balance().getAsBigInteger())

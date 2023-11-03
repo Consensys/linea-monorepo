@@ -16,12 +16,6 @@
 package net.consensys.linea.zktracer.module.rlputils;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 
-import lombok.Getter;
-
-public class ByteCountAndPowerOutput {
-  @Getter private List<BigInteger> powerList = new ArrayList<>();
-  @Getter private List<Integer> accByteSizeList = new ArrayList<>();
-}
+public record ByteCountAndPowerOutput(List<BigInteger> powerList, List<Integer> accByteSizeList) {}

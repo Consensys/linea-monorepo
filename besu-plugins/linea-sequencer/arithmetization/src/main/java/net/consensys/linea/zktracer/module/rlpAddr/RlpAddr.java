@@ -191,7 +191,7 @@ public class RlpAddr implements Module {
             Bytes.concatenate(
                 bigIntegerToBytes(
                     BigInteger.valueOf(
-                        128 + byteCounting.getAccByteSizeList().get(RECIPE1_CT_MAX - 1))),
+                        128 + byteCounting.accByteSizeList().get(RECIPE1_CT_MAX - 1))),
                 bigIntegerToBytes(nonce));
       }
     }
@@ -213,10 +213,10 @@ public class RlpAddr implements Module {
           .counter(BigInteger.valueOf(ct))
           .byte1(UnsignedByte.of(nonceShifted.get(ct)))
           .acc(nonceShifted.slice(0, ct + 1).toUnsignedBigInteger())
-          .accBytesize(BigInteger.valueOf(byteCounting.getAccByteSizeList().get(ct)))
-          .power(byteCounting.getPowerList().get(ct).divide(BigInteger.valueOf(256)))
-          .bit1(bitDecomposition.getBitDecList().get(ct))
-          .bitAcc(UnsignedByte.of(bitDecomposition.getBitAccList().get(ct)))
+          .accBytesize(BigInteger.valueOf(byteCounting.accByteSizeList().get(ct)))
+          .power(byteCounting.powerList().get(ct).divide(BigInteger.valueOf(256)))
+          .bit1(bitDecomposition.bitDecList().get(ct))
+          .bitAcc(UnsignedByte.of(bitDecomposition.bitAccList().get(ct)))
           .tinyNonZeroNonce(tinyNonZeroNonce);
 
       switch (ct) {
