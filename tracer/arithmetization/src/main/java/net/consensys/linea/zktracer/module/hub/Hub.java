@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.types.Address.isPrecompile;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,6 +55,7 @@ import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
 import net.consensys.linea.zktracer.module.rom.Rom;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.module.shf.Shf;
+import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.module.txn_data.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.*;
@@ -109,7 +112,8 @@ public class Hub implements Module {
   @Getter CallStack callStack = new CallStack();
   private final DeferRegistry defers = new DeferRegistry();
 
-  // These attributes are transient (opcode-specific) and do not need to be reversed.
+  // These attributes are transient (opcode-specific) and do not need to be
+  // reversed.
   @Getter private Exceptions exceptions;
   @Getter private Aborts aborts;
   @Getter private Signals signals;
@@ -175,6 +179,8 @@ public class Hub implements Module {
   private final EcpairingWeightedCall ecpairingWeightedCall =
       new EcpairingWeightedCall(ecpairingCall);
   private final Blake2f blake2 = new Blake2f();
+  private final Trm trm = new Trm();
+
   private final List<Module> modules;
 
   private final List<Module>
@@ -216,7 +222,8 @@ public class Hub implements Module {
                     this.rlpTxrcpt,
                     this.rlpAddr,
                     this.rom,
-                    this.txnData),
+                    this.txnData,
+                    this.trm),
                 this.precompileModules.stream())
             .toList();
   }
@@ -239,7 +246,8 @@ public class Hub implements Module {
         this.rlpTxrcpt,
         this.rlpAddr,
         this.rom,
-        this.txnData);
+        this.txnData,
+        this.trm);
   }
 
   @Override
@@ -446,7 +454,11 @@ public class Hub implements Module {
         }
       }
       case CONTEXT -> {}
-      case ACCOUNT -> {}
+      case ACCOUNT -> {
+        if (this.exceptions.noStackException()) {
+          this.trm.tracePreOpcode(frame); // TODO refine the trigger
+        }
+      }
       case COPY -> {
         if (this.exceptions.noStackException()) {
           if (this.currentFrame().opCode() == OpCode.RETURNDATACOPY) {
@@ -459,6 +471,9 @@ public class Hub implements Module {
         }
         if (!this.exceptions.any() && this.callStack().depth() < 1024) {
           this.romLex.tracePreOpcode(frame);
+          if (this.exceptions.noStackException()) {
+            this.trm.tracePreOpcode(frame); // TODO refine the trigger
+          }
         }
       }
       case TRANSACTION -> {}
@@ -515,6 +530,9 @@ public class Hub implements Module {
         if (!this.exceptions().stackUnderflow() && !this.exceptions().staticViolation()) {
           this.mxp.tracePreOpcode(frame);
         }
+        if (this.exceptions.noStackException()) {
+          this.trm.tracePreOpcode(frame); // TODO refine the trigger
+        }
       }
       case HALT -> {
         if (!this.exceptions.any() && this.callStack().depth() < 1024) {
@@ -524,6 +542,9 @@ public class Hub implements Module {
             && this.currentFrame().opCode() != OpCode.STOP
             && this.currentFrame().opCode() != OpCode.SELFDESTRUCT) {
           this.mxp.tracePreOpcode(frame);
+        }
+        if (this.exceptions.noStackException()) {
+          this.trm.tracePreOpcode(frame); // TODO refine the trigger
         }
       }
       case INVALID -> {}
@@ -1117,7 +1138,8 @@ public class Hub implements Module {
 
         CreateSection createSection =
             new CreateSection(this, myAccountSnapshot, createdAccountSnapshot);
-        // Will be traced in one (and only one!) of these depending on the success of the operation
+        // Will be traced in one (and only one!) of these depending on the success of
+        // the operation
         this.defers.postExec(createSection);
         this.defers.nextContext(createSection, currentFrame().id());
         this.addTraceSection(createSection);

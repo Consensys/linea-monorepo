@@ -667,8 +667,8 @@ public class RlpTxn implements Module {
 
     for (int ct = 0; ct < 8; ct++) {
       traceValue.COUNTER = ct;
-      traceValue.ACC_BYTESIZE = byteCountingOutput.getAccByteSizeList().get(ct);
-      traceValue.POWER = byteCountingOutput.getPowerList().get(ct);
+      traceValue.ACC_BYTESIZE = byteCountingOutput.accByteSizeList().get(ct);
+      traceValue.POWER = byteCountingOutput.powerList().get(ct);
       traceValue.BYTE_1 = input1RightShift.get(ct);
       traceValue.ACC_1 = input1RightShift.slice(0, ct + 1);
       traceValue.BYTE_2 = acc2LastRowShift.get(ct);
@@ -741,10 +741,10 @@ public class RlpTxn implements Module {
       traceValue.COUNTER = ct;
       traceValue.BYTE_1 = inputBytePadded.get(ct);
       traceValue.ACC_1 = inputBytePadded.slice(0, ct + 1);
-      traceValue.POWER = byteCountingOutput.getPowerList().get(ct);
-      traceValue.ACC_BYTESIZE = byteCountingOutput.getAccByteSizeList().get(ct);
-      traceValue.BIT = bitDecOutput.getBitDecList().get(ct);
-      traceValue.BIT_ACC = bitDecOutput.getBitAccList().get(ct);
+      traceValue.POWER = byteCountingOutput.powerList().get(ct);
+      traceValue.ACC_BYTESIZE = byteCountingOutput.accByteSizeList().get(ct);
+      traceValue.BIT = bitDecOutput.bitDecList().get(ct);
+      traceValue.BIT_ACC = bitDecOutput.bitAccList().get(ct);
 
       if (input.compareTo(BigInteger.valueOf(128)) >= 0 && ct == nStep - 2) {
         traceValue.LIMB_CONSTRUCTED = true;
@@ -793,10 +793,10 @@ public class RlpTxn implements Module {
           traceValue.COUNTER = ct;
           traceValue.BYTE_2 = traceValue.INPUT_2.get(ct);
           traceValue.ACC_2 = traceValue.INPUT_2.slice(0, ct + 1);
-          traceValue.ACC_BYTESIZE = byteCountingOutput.getAccByteSizeList().get(ct);
-          traceValue.POWER = byteCountingOutput.getPowerList().get(ct);
-          traceValue.BIT = bitDecOutput.getBitDecList().get(ct);
-          traceValue.BIT_ACC = bitDecOutput.getBitAccList().get(ct);
+          traceValue.ACC_BYTESIZE = byteCountingOutput.accByteSizeList().get(ct);
+          traceValue.POWER = byteCountingOutput.powerList().get(ct);
+          traceValue.BIT = bitDecOutput.bitDecList().get(ct);
+          traceValue.BIT_ACC = bitDecOutput.bitAccList().get(ct);
 
           // if input >= 128, there is a RLP prefix, nothing if 0 < input < 128
           if (ct == traceValue.nSTEP - 2 && input.compareTo(BigInteger.valueOf(128)) >= 0) {
@@ -822,8 +822,8 @@ public class RlpTxn implements Module {
           traceValue.ACC_1 = traceValue.INPUT_1.slice(0, ct + 1);
           traceValue.BYTE_2 = traceValue.INPUT_2.get(ct);
           traceValue.ACC_2 = traceValue.INPUT_2.slice(0, ct + 1);
-          traceValue.ACC_BYTESIZE = byteCounting.getAccByteSizeList().get(ct);
-          traceValue.POWER = byteCounting.getPowerList().get(ct);
+          traceValue.ACC_BYTESIZE = byteCounting.accByteSizeList().get(ct);
+          traceValue.POWER = byteCounting.powerList().get(ct);
 
           if (ct == traceValue.nSTEP - 3) {
             traceValue.LIMB_CONSTRUCTED = true;
