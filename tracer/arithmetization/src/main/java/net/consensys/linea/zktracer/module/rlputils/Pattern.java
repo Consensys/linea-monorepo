@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlputils;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 
 import com.google.common.base.Preconditions;
 import org.apache.tuweni.bytes.Bytes;
@@ -71,7 +72,10 @@ public class Pattern {
    * @return
    */
   public static ByteCountAndPowerOutput byteCounting(int inputByteLen, int nbStep) {
-    ByteCountAndPowerOutput output = new ByteCountAndPowerOutput();
+
+    ArrayList<BigInteger> powerInit = new ArrayList<>(nbStep);
+    ArrayList<Integer> acc = new ArrayList<>(nbStep);
+    ByteCountAndPowerOutput output = new ByteCountAndPowerOutput(powerInit, acc);
 
     BigInteger power;
     int accByteSize = 0;
@@ -85,8 +89,8 @@ public class Pattern {
       power = BigInteger.valueOf(256).pow(offset);
     }
 
-    output.getPowerList().add(0, power);
-    output.getAccByteSizeList().add(0, accByteSize);
+    output.powerList().add(0, power);
+    output.accByteSizeList().add(0, accByteSize);
 
     for (int i = 1; i < nbStep; i++) {
       if (inputByteLen + i < nbStep) {
@@ -94,8 +98,8 @@ public class Pattern {
       } else {
         accByteSize += 1;
       }
-      output.getPowerList().add(i, power);
-      output.getAccByteSizeList().add(i, accByteSize);
+      output.powerList().add(i, power);
+      output.accByteSizeList().add(i, accByteSize);
     }
     return output;
   }
@@ -108,20 +112,23 @@ public class Pattern {
    * @return
    */
   public static BitDecOutput bitDecomposition(int input, int nbStep) {
-    Preconditions.checkArgument(nbStep >= 8, "Number of steps must be at least 8");
+    final int nbStepMin = 8;
+    Preconditions.checkArgument(
+        nbStep >= nbStepMin, "Number of steps must be at least " + nbStepMin);
 
-    BitDecOutput output = new BitDecOutput();
-    // Set to zero first value
-    for (int i = 0; i < nbStep; i++) {
-      output.getBitAccList().add(i, 0);
-      output.getBitDecList().add(i, false);
+    ArrayList<Boolean> bit = new ArrayList<>(nbStep);
+    ArrayList<Integer> acc = new ArrayList<>(nbStep);
+    for (int i = 0; i < nbStep - nbStepMin; i++) {
+      bit.add(i, false);
+      acc.add(i, 0);
     }
+    BitDecOutput output = new BitDecOutput(bit, acc);
 
     int bitAcc = 0;
     boolean bitDec = false;
     double div = 0;
 
-    for (int i = 7; i >= 0; i--) {
+    for (int i = nbStepMin - 1; i >= 0; i--) {
       div = Math.pow(2, i);
       bitAcc *= 2;
 
@@ -133,8 +140,8 @@ public class Pattern {
         bitDec = false;
       }
 
-      output.getBitDecList().add(nbStep - i - 1, bitDec);
-      output.getBitAccList().add(nbStep - i - 1, bitAcc);
+      output.bitDecList().add(nbStep - i - 1, bitDec);
+      output.bitAccList().add(nbStep - i - 1, bitAcc);
     }
     return output;
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,8 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlputils;
+package net.consensys.linea.zktracer.module.trm;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.module.ModuleTrace;
 
-public record BitDecOutput(List<Boolean> bitDecList, List<Integer> bitAccList) {}
+/**
+ * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
+ * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ */
+record TrmTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+
+  @Override
+  public int length() {
+    return this.trace.size();
+  }
+}

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.types.Address.isPrecompile;
+
 import java.math.BigInteger;
 import java.util.Optional;
 
@@ -86,7 +88,7 @@ public class TxInfo implements StackedContainer {
    * @param tx the new transaction
    */
   void update(final Transaction tx) {
-    if (tx.getTo().isPresent() && Hub.isPrecompile(tx.getTo().get())) {
+    if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
     } else {
       this.number++;
