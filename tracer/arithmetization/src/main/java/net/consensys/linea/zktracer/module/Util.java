@@ -16,9 +16,11 @@
 package net.consensys.linea.zktracer.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 
 import java.math.BigInteger;
 
+import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -165,5 +167,29 @@ public class Util {
       case BLOB -> 3;
       default -> throw new RuntimeException("Transaction type not supported:" + txType);
     };
+  }
+
+  /**
+   * Return the
+   *
+   * @param size Bytes of
+   * @param data, right-padded with 0's if needed, starting from
+   * @param positionStart
+   */
+  public static Bytes slice(Bytes data, int positionStart, int size) {
+
+    final int dataSize = data.size();
+    Bytes output = Bytes.repeat((byte) 0x0, size);
+
+    if (dataSize >= positionStart) {
+      if (dataSize >= (positionStart + size)) {
+        output = EWord.of(data.slice(positionStart, size));
+      } else {
+        final int nbPresentBytes = dataSize - positionStart;
+        output =
+            EWord.of(padToGivenSizeWithRightZero(data.slice(positionStart, nbPresentBytes), size));
+      }
+    }
+    return output;
   }
 }
