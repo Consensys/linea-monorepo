@@ -14,10 +14,10 @@ an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
 
 ```shell
   curl --location --request POST 'http://localhost:8545' --data-raw '{
-  "jsonrpc": "2.0",
-  "method": "rollup_generateConflatedTracesToFileV0",
-  "params": [0, 0, "6.16.0"],
-  "id": 1
+    "jsonrpc": "2.0",
+    "method": "rollup_generateConflatedTracesToFileV0",
+    "params": [0, 0, "6.16.0"],
+    "id": 1
   }'
 ```
 
@@ -84,10 +84,11 @@ ______________________________________________________________________
 # Run only acceptance tests
 ./gradlew clean acceptanceTests
 
-# Generate EVM test suite BlockchainTests
-./gradlew generateBlockchainReferenceTests
-# Generate EVM test suite GeneralStateTests
-./gradlew generateGeneralStateReferenceTests
+# Run EVM test suite BlockchainTests
+./gradlew clean referenceBlockchainTests
+
+# Run EVM test suite GeneralStateTests
+./gradlew clean referenceGeneralStateTests
 
 # Run all EVM test suite reference tests
 ./gradlew clean referenceTests

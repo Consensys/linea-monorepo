@@ -48,6 +48,10 @@ abstract class RefTestGenerationTask extends DefaultTask {
     def refTestNamePrefix = getRefTestNamePrefix().get()
     def excludedPath = getRefTestJsonParamsExcludedPath().get() // exclude test for test filling tool
 
+    // Delete directory with generated tests from previous run.
+    project.delete(generatedTestsFilePath)
+
+    // Create directory to generate the tests before executing them.
     project.mkdir(generatedTestsFilePath)
 
     def referenceTestTemplate = refTestTemplateFile.text

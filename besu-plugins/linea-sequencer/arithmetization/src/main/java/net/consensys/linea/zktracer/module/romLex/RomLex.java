@@ -37,7 +37,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
-import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -110,7 +109,7 @@ public class RomLex implements Module {
     }
 
     if (codeFragmentIndex < 0) {
-      throw new RuntimeException("RomChunk not found");
+      throw new RuntimeException("RomChunk n°" + value + " not found");
     }
 
     return codeFragmentIndex;
@@ -121,7 +120,15 @@ public class RomLex implements Module {
     // Contract creation with InitCode
     if (tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()) {
       codeIdentifierBeforeLexOrder += 1;
-      this.address = Address.contractAddress(tx.getSender(), tx.getNonce());
+      this.chunks.add(
+          new RomChunk(
+              Address.contractAddress(tx.getSender(), tx.getNonce()),
+              1,
+              true,
+              false,
+              false,
+              codeIdentifierBeforeLexOrder,
+              tx.getInit().get()));
     }
 
     // Call to an account with bytecode
@@ -152,10 +159,14 @@ public class RomLex implements Module {
 
     switch (opcode) {
       case CREATE -> {
+        final Address currentAddress = frame.getRecipientAddress();
         this.address =
             Address.contractAddress(
-                frame.getSenderAddress(),
-                frame.getWorldUpdater().getSenderAccount(frame).getNonce());
+                currentAddress,
+                frame
+                    .getWorldUpdater()
+                    .getAccount(currentAddress)
+                    .getNonce()); // TODO: use the method done by @Lorenzo in OOB module
 
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
@@ -177,7 +188,7 @@ public class RomLex implements Module {
           this.address =
               Address.extract(
                   keccak256(
-                      Bytes.concatenate(CREATE2_SHIFT, frame.getSenderAddress(), salt, hash)));
+                      Bytes.concatenate(CREATE2_SHIFT, frame.getRecipientAddress(), salt, hash)));
         }
       }
 
@@ -272,36 +283,6 @@ public class RomLex implements Module {
                 codeIdentifierBeforeLexOrder,
                 this.byteCode));
       }
-    }
-  }
-
-  @Override
-  public void traceEndTx(
-      WorldView worldView,
-      Transaction tx,
-      boolean status,
-      Bytes output,
-      List<Log> logs,
-      long gasUsed) {
-    if (tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()) {
-      int depNumber =
-          hub.conflation()
-              .deploymentInfo()
-              .number(this.address); // should be 1 (constrained by lookup from TxnData)
-      boolean depStatus =
-          hub.conflation()
-              .deploymentInfo()
-              .isDeploying(this.address); // should be true (constrained by lookup from TxnData)
-
-      this.chunks.add(
-          new RomChunk(
-              this.address,
-              depNumber,
-              depStatus,
-              false,
-              false,
-              codeIdentifierBeforeLexOrder,
-              tx.getInit().orElseThrow()));
     }
   }
 

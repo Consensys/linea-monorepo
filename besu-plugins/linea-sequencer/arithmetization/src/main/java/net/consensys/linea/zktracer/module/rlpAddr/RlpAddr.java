@@ -73,22 +73,30 @@ public class RlpAddr implements Module {
   @Override
   public void tracePreOpcode(MessageFrame frame) {
     OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    if (opcode.equals(OpCode.CREATE)) {
-      RlpAddrChunk chunk =
-          new RlpAddrChunk(
-              OpCode.CREATE,
-              frame.getWorldUpdater().getSenderAccount(frame).getNonce() - 1,
-              frame.getSenderAddress());
-      this.chunkList.add(chunk);
-    } else if (opcode.equals(OpCode.CREATE2)) {
-      final long offset = clampedToLong(frame.getStackItem(1));
-      final long length = clampedToLong(frame.getStackItem(2));
-      final Bytes initCode = frame.readMutableMemory(offset, length);
-      final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-      final Bytes32 hash = keccak256(initCode);
+    switch (opcode) {
+      case CREATE -> {
+        final Address currentAddress = frame.getRecipientAddress();
+        RlpAddrChunk chunk =
+            new RlpAddrChunk(
+                OpCode.CREATE,
+                frame
+                    .getWorldUpdater()
+                    .getAccount(currentAddress)
+                    .getNonce(), // TODO: use the method done by @Lorenzo in OOB module
+                currentAddress);
+        this.chunkList.add(chunk);
+      }
+      case CREATE2 -> {
+        final long offset = clampedToLong(frame.getStackItem(1));
+        final long length = clampedToLong(frame.getStackItem(2));
+        final Bytes initCode = frame.shadowReadMemory(offset, length);
+        final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
+        final Bytes32 hash = keccak256(initCode);
 
-      RlpAddrChunk chunk = new RlpAddrChunk(OpCode.CREATE2, frame.getSenderAddress(), salt, hash);
-      this.chunkList.add(chunk);
+        RlpAddrChunk chunk =
+            new RlpAddrChunk(OpCode.CREATE2, frame.getRecipientAddress(), salt, hash);
+        this.chunkList.add(chunk);
+      }
     }
   }
 
