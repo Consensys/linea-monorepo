@@ -18,12 +18,11 @@ package net.consensys.linea.generated.blockchain;
 import static net.consensys.linea.BlockchainReferenceTestTools.executeTest;
 import static net.consensys.linea.BlockchainReferenceTestTools.generateTestParametersForConfig;
 
-import net.consensys.linea.BlockchainReferenceTestCaseSpec;
-
 import java.util.stream.Stream;
 
 import net.consensys.linea.EvmExtension;
 
+import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
