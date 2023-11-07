@@ -1,7 +1,7 @@
-# Besu zkBesu/tracer Plugin
+# Besu Plugins relating to tracer and sequencer functionality
 
 A Linea tracing implementation for [Hyperledger Besu](https://github.com/hyperledger/besu) based on
-an [existing implementation in Go](https://github.com/ConsenSys/zk-evm/).
+an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
 
 ## Quickstart - Running Besu with Linea Plugins
 
@@ -41,10 +41,10 @@ echo "net.git-fetch-with-cli=true" >> .cargo/config.toml
 ### Install Corset
 
 ```shell
-cargo install --git ssh://git@github.com/ConsenSys/corset
+cargo install --git ssh://git@github.com/Consensys/corset
 ```
 
-### Update Constraints [Submodule](https://github.com/ConsenSys/zkevm-constraints/)
+### Update Constraints [Submodule](https://github.com/Consensys/zkevm-constraints/)
 
 ```shell
 git submodule update --init --recursive
