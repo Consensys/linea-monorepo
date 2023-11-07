@@ -20,10 +20,10 @@ import static net.consensys.linea.GeneralStateReferenceTestTools.generateTestPar
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import net.consensys.linea.EvmExtension;
-import net.consensys.linea.GeneralStateTestCaseEipSpec;
 
 import java.util.stream.Stream;
 
+import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
