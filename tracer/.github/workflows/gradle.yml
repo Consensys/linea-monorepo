@@ -65,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: test-report
-          path: build/reports/tests/
+          path: acceptance-tests/build/reports/tests/
 
   tests:
     runs-on: ubuntu-latest
