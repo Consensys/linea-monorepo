@@ -620,9 +620,9 @@ public class RlpTxn implements Module {
   private void handlePhaseY(
       RlpTxnColumnsValue traceValue, Transaction tx, Trace.TraceBuilder trace) {
     traceValue.partialReset(12, 1, true, false);
-    traceValue.INPUT_1 = bigIntegerToBytes(tx.getV());
+    traceValue.INPUT_1 = bigIntegerToBytes(tx.getYParity());
     traceValue.LIMB_CONSTRUCTED = true;
-    if (tx.getV().equals(BigInteger.ZERO)) {
+    if (tx.getYParity().equals(BigInteger.ZERO)) {
       traceValue.LIMB = bytesPrefixShortInt;
     } else {
       traceValue.LIMB = bigIntegerToBytes(BigInteger.ONE);

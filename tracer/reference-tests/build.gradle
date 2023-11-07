@@ -42,6 +42,35 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
   generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/generalstate"
 }
 
+tasks.register('referenceBlockchainTests', Test) {
+  description = 'Runs ETH reference blockchain tests.'
+
+  dependsOn generateBlockchainReferenceTests
+
+  useJUnitPlatform {
+    includeTags("BlockchainReferenceTest")
+  }
+}
+
+tasks.register('referenceGeneralStateTests', Test) {
+  description = 'Runs ETH reference general state tests.'
+
+  dependsOn generateGeneralStateReferenceTests
+
+  useJUnitPlatform {
+    includeTags("GeneralStateReferenceTest")
+  }
+}
+
+tasks.register('referenceTests', Test) {
+  description = 'Runs ETH reference tests.'
+
+  useJUnitPlatform {
+    includeTags("BlockchainReferenceTest")
+    includeTags("GeneralStateReferenceTest")
+  }
+}
+
 dependencies {
   testImplementation project(":arithmetization")
   testImplementation "${besuArtifactGroup}:besu-datatypes"
@@ -63,7 +92,3 @@ dependencies {
   testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
   testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
-
-//clean.doFirst {
-//  delete "src/test/java/net/consensys/linea/generated"
-//}
