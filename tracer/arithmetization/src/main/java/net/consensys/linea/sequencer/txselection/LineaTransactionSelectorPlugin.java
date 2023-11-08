@@ -15,12 +15,17 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import java.io.File;
+import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.LineaRequiredPlugin;
 import net.consensys.linea.sequencer.LineaCliOptions;
+import net.consensys.linea.sequencer.LineaConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -33,6 +38,7 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaCliOptions options;
   private Optional<TransactionSelectionService> service;
+  private Map<String, Integer> limitsMap;
 
   public LineaTransactionSelectorPlugin() {
     options = LineaCliOptions.create();
@@ -61,13 +67,31 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
                     "Failed to obtain TransactionSelectionService from the BesuContext.")));
   }
 
-  private void createAndRegister(final TransactionSelectionService transactionSelectionService) {
-    transactionSelectionService.registerTransactionSelectorFactory(
-        new LineaTransactionSelectorFactory(options));
-  }
-
   @Override
   public void start() {
     log.debug("Starting {} with configuration: {}", NAME, options);
+    final LineaConfiguration lineaConfiguration = options.toDomainObject();
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    try {
+      limitsMap =
+          objectMapper.readValue(
+              new File(lineaConfiguration.moduleLimitsFilePath()),
+              new TypeReference<Map<String, Integer>>() {});
+    } catch (final Exception e) {
+      final String errorMsg =
+          "Problem reading the json file containing the limits for the modules: "
+              + lineaConfiguration.moduleLimitsFilePath();
+      log.error(errorMsg);
+      throw new RuntimeException(errorMsg, e);
+    }
+  }
+
+  @Override
+  public void stop() {}
+
+  private void createAndRegister(final TransactionSelectionService transactionSelectionService) {
+    transactionSelectionService.registerTransactionSelectorFactory(
+        new LineaTransactionSelectorFactory(options, () -> this.limitsMap));
   }
 }

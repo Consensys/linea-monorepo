@@ -71,4 +71,9 @@ public class MaxTransactionCallDataTransactionSelector implements PluginTransact
     // Evaluation done in pre-processing, no action needed here.
     return TransactionSelectionResult.SELECTED;
   }
+
+  @Override
+  public void onTransactionNotSelected(
+      final PendingTransaction pendingTransaction,
+      final TransactionSelectionResult transactionSelectionResult) {}
 }

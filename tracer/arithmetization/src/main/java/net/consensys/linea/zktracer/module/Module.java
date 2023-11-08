@@ -25,6 +25,7 @@ import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public interface Module {
   String jsonKey();
@@ -32,6 +33,8 @@ public interface Module {
   default void traceStartConflation(final long blockCount) {}
 
   default void traceEndConflation() {}
+
+  default void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {}
 
   default void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
 
