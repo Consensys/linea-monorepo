@@ -40,8 +40,6 @@ import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.data.BlockBody;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
@@ -75,11 +73,6 @@ public class TxnData implements Module {
 
   @Override
   public final void traceStartBlock(final ProcessableBlockHeader blockHeader) {
-    this.blocks.add(new BlockSnapshot(this.blocks.size() + 1, blockHeader));
-  }
-
-  @Override
-  public final void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
     this.blocks.add(new BlockSnapshot(this.blocks.size() + 1, blockHeader));
   }
 

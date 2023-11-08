@@ -36,7 +36,10 @@ public interface Module {
 
   default void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {}
 
-  default void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
+  default void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    // Keep this one for compatibility purpose, but redirect it to the other one.
+    this.traceStartBlock(blockHeader);
+  }
 
   default void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {}
 
