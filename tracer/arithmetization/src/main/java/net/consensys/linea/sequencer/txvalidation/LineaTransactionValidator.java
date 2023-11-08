@@ -15,9 +15,8 @@
 
 package net.consensys.linea.sequencer.txvalidation;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +32,10 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionValidat
 @RequiredArgsConstructor
 public class LineaTransactionValidator implements PluginTransactionValidator {
   private final LineaTransactionValidatorConfiguration config;
-  private final List<Address> denied;
+  private final Set<Address> denied;
 
-  private static final List<Address> precompiles =
-      Arrays.asList(
+  private static final Set<Address> precompiles =
+      Set.of(
           Address.fromHexString("0x0000000000000000000000000000000000000001"),
           Address.fromHexString("0x0000000000000000000000000000000000000002"),
           Address.fromHexString("0x0000000000000000000000000000000000000003"),
@@ -50,14 +49,22 @@ public class LineaTransactionValidator implements PluginTransactionValidator {
 
   @Override
   public Optional<String> validateTransaction(final Transaction transaction) {
-    if (denied.contains(transaction.getSender())) {
-      final String errMsg =
-          String.format(
-              "sender %s is blocked as appearing on the SDN or other legally prohibited list",
-              transaction.getSender());
-      log.debug(errMsg);
-      return Optional.of(errMsg);
-    }
+    Optional<String> senderError = validateSender(transaction);
+    if (senderError.isPresent()) return senderError;
+
+    Optional<String> recipientError = validateRecipient(transaction);
+    if (recipientError.isPresent()) return recipientError;
+
+    Optional<String> gasLimitError = validateGasLimit(transaction);
+    if (gasLimitError.isPresent()) return gasLimitError;
+
+    Optional<String> calldataError = validateCalldata(transaction);
+    if (calldataError.isPresent()) return calldataError;
+
+    return Optional.empty(); // returning empty indicates that the transaction is valid
+  }
+
+  private Optional<String> validateRecipient(final Transaction transaction) {
     if (transaction.getTo().isPresent()) {
       final Address to = transaction.getTo().get();
       if (denied.contains(to)) {
@@ -74,12 +81,39 @@ public class LineaTransactionValidator implements PluginTransactionValidator {
         return Optional.of(errMsg);
       }
     }
+    return Optional.empty();
+  }
+
+  private Optional<String> validateSender(final Transaction transaction) {
+    if (denied.contains(transaction.getSender())) {
+      final String errMsg =
+          String.format(
+              "sender %s is blocked as appearing on the SDN or other legally prohibited list",
+              transaction.getSender());
+      log.debug(errMsg);
+      return Optional.of(errMsg);
+    }
+    return Optional.empty();
+  }
+
+  private Optional<String> validateGasLimit(final Transaction transaction) {
     if (transaction.getGasLimit() > config.maxTxGasLimit()) {
       final String errMsg =
           "Gas limit of transaction is greater than the allowed max of " + config.maxTxGasLimit();
       log.debug(errMsg);
       return Optional.of(errMsg);
     }
-    return Optional.empty(); // returning empty indicates that the transaction is valid
+    return Optional.empty();
+  }
+
+  private Optional<String> validateCalldata(final Transaction transaction) {
+    if (transaction.getPayload().size() > config.maxTxCalldataSize()) {
+      final String errMsg =
+          "Calldata of transaction is greater than the allowed max of "
+              + config.maxTxCalldataSize();
+      log.debug(errMsg);
+      return Optional.of(errMsg);
+    }
+    return Optional.empty();
   }
 }

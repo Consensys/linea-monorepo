@@ -17,8 +17,9 @@ package net.consensys.linea.sequencer.txvalidation;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import com.google.auto.service.AutoService;
@@ -36,7 +37,7 @@ import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 public class LineaTransactionValidatorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionValidatorCliOptions options;
-  private final ArrayList<Address> denied = new ArrayList<>();
+  private final Set<Address> denied = new HashSet<>();
 
   public LineaTransactionValidatorPlugin() {
     options = LineaTransactionValidatorCliOptions.create();
