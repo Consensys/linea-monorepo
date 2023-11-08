@@ -22,9 +22,11 @@ import picocli.CommandLine;
 public class LineaCliOptions {
   public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 60000;
   public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 70000;
+  private static final String DEFAULT_MODULE_LIMIT_FILE_PATH = "moduleLimitFile.json";
 
   private static final String MAX_TX_CALLDATA_SIZE = "--plugin-linea-max-tx-calldata-size";
   private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
+  private static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
 
   @CommandLine.Option(
       names = {MAX_TX_CALLDATA_SIZE},
@@ -45,6 +47,16 @@ public class LineaCliOptions {
               + DEFAULT_MAX_BLOCK_CALLDATA_SIZE
               + ")")
   private int maxBlockCallDataSize = DEFAULT_MAX_BLOCK_CALLDATA_SIZE;
+
+  @CommandLine.Option(
+      names = {MODULE_LIMIT_FILE_PATH},
+      hidden = true,
+      paramLabel = "<STRING>",
+      description =
+          "Path to the json file containing the module limits (default: "
+              + DEFAULT_MODULE_LIMIT_FILE_PATH
+              + ")")
+  private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
 
   private LineaCliOptions() {}
 
@@ -67,6 +79,7 @@ public class LineaCliOptions {
     final LineaCliOptions options = create();
     options.maxTxCallDataSize = config.maxTxCallDataSize();
     options.maxBlockCallDataSize = config.maxBlockCallDataSize();
+    options.moduleLimitFilePath = config.moduleLimitsFilePath();
     return options;
   }
 
@@ -79,6 +92,7 @@ public class LineaCliOptions {
     return new LineaConfiguration.Builder()
         .maxTxCallDataSize(maxTxCallDataSize)
         .maxBlockCallDataSize(maxBlockCallDataSize)
+        .moduleLimits(moduleLimitFilePath)
         .build();
   }
 
@@ -87,6 +101,7 @@ public class LineaCliOptions {
     return MoreObjects.toStringHelper(this)
         .add(MAX_TX_CALLDATA_SIZE, maxTxCallDataSize)
         .add(MAX_BLOCK_CALLDATA_SIZE, maxBlockCallDataSize)
+        .add(MODULE_LIMIT_FILE_PATH, moduleLimitFilePath)
         .toString();
   }
 }

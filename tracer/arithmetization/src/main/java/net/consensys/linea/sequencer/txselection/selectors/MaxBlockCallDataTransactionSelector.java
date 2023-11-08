@@ -67,12 +67,7 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
    * @return true if the total call data size would be too big, false otherwise.
    */
   private boolean isTransactionExceedingBlockCallDataSizeLimit(int transactionCallDataSize) {
-    try {
-      return Math.addExact(blockCallDataSize, transactionCallDataSize) > maxBlockCallDataSize;
-    } catch (final ArithmeticException e) {
-      // Overflow won't occur as blockCallDataSize won't exceed Integer.MAX_VALUE
-      return true;
-    }
+    return Math.addExact(blockCallDataSize, transactionCallDataSize) > maxBlockCallDataSize;
   }
 
   /**
