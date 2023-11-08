@@ -13,23 +13,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer;
+package net.consensys.linea.sequencer.txselection;
 
 /** The Linea configuration. */
-public final class LineaConfiguration {
-  private final int maxTxCallDataSize;
+public final class LineaTransactionSelectorConfiguration {
   private final int maxBlockCallDataSize;
   private final String moduleLimitsFilePath;
 
-  private LineaConfiguration(
-      int maxTxCallDataSize, int maxBlockCallDataSize, final String moduleLimitsFilePath) {
-    this.maxTxCallDataSize = maxTxCallDataSize;
+  private LineaTransactionSelectorConfiguration(
+      int maxBlockCallDataSize, final String moduleLimitsFilePath) {
     this.maxBlockCallDataSize = maxBlockCallDataSize;
     this.moduleLimitsFilePath = moduleLimitsFilePath;
-  }
-
-  public int maxTxCallDataSize() {
-    return maxTxCallDataSize;
   }
 
   public int maxBlockCallDataSize() {
@@ -41,14 +35,8 @@ public final class LineaConfiguration {
   }
 
   public static class Builder {
-    private int maxTxCallDataSize;
     private int maxBlockCallDataSize;
     private String moduleLimitsFilePath;
-
-    public Builder maxTxCallDataSize(final int maxTxCallDataSize) {
-      this.maxTxCallDataSize = maxTxCallDataSize;
-      return this;
-    }
 
     public Builder maxBlockCallDataSize(final int maxBlockCallDataSize) {
       this.maxBlockCallDataSize = maxBlockCallDataSize;
@@ -60,8 +48,8 @@ public final class LineaConfiguration {
       return this;
     }
 
-    public LineaConfiguration build() {
-      return new LineaConfiguration(maxTxCallDataSize, maxBlockCallDataSize, moduleLimitsFilePath);
+    public LineaTransactionSelectorConfiguration build() {
+      return new LineaTransactionSelectorConfiguration(maxBlockCallDataSize, moduleLimitsFilePath);
     }
   }
 }

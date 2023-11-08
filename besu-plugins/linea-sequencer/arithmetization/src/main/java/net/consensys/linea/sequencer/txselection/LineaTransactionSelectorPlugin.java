@@ -24,8 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.LineaRequiredPlugin;
-import net.consensys.linea.sequencer.LineaCliOptions;
-import net.consensys.linea.sequencer.LineaConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -36,12 +34,12 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
-  private final LineaCliOptions options;
+  private final LineaTransactionSelectorCliOptions options;
   private Optional<TransactionSelectionService> service;
   private Map<String, Integer> limitsMap;
 
   public LineaTransactionSelectorPlugin() {
-    options = LineaCliOptions.create();
+    options = LineaTransactionSelectorCliOptions.create();
   }
 
   @Override
@@ -70,7 +68,7 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
   @Override
   public void start() {
     log.debug("Starting {} with configuration: {}", NAME, options);
-    final LineaConfiguration lineaConfiguration = options.toDomainObject();
+    final LineaTransactionSelectorConfiguration lineaConfiguration = options.toDomainObject();
     ObjectMapper objectMapper = new ObjectMapper();
 
     try {

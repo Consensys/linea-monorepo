@@ -27,6 +27,9 @@ public class LineaTransactionValidatorCliOptions {
   public static final String MAX_TX_GAS_LIMIT_OPTION = "--plugin-linea-max-tx-gas-limit";
   public static final int DEFAULT_MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
 
+  public static final String MAX_TX_CALLDATA_SIZE = "--plugin-linea-max-tx-calldata-size";
+  public static final int DEFAULT_MAX_TX_CALLDATA_SIZE = 60_000;
+
   @CommandLine.Option(
       names = {DENY_LIST_PATH},
       hidden = true,
@@ -44,6 +47,16 @@ public class LineaTransactionValidatorCliOptions {
               + DEFAULT_MAX_TRANSACTION_GAS_LIMIT
               + ")")
   private int maxTxGasLimit = DEFAULT_MAX_TRANSACTION_GAS_LIMIT;
+
+  @CommandLine.Option(
+      names = {MAX_TX_CALLDATA_SIZE},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "Maximum size for the calldata of a Transaction (default: "
+              + DEFAULT_MAX_TX_CALLDATA_SIZE
+              + ")")
+  private int maxTxCallDataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
 
   private LineaTransactionValidatorCliOptions() {}
 
@@ -77,7 +90,8 @@ public class LineaTransactionValidatorCliOptions {
    * @return the Linea factory configuration
    */
   public LineaTransactionValidatorConfiguration toDomainObject() {
-    return new LineaTransactionValidatorConfiguration(denyListPath, maxTxGasLimit);
+    return new LineaTransactionValidatorConfiguration(
+        denyListPath, maxTxGasLimit, maxTxCallDataSize);
   }
 
   @Override
