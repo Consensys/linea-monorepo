@@ -15,11 +15,13 @@
 
 package net.consensys.linea.sequencer.txvalidation;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Assertions;
@@ -35,16 +37,18 @@ public class LineaTransactionValidatorTest {
   public static final Address NOT_DENIED =
       Address.fromHexString("0x0000000000000000000000000000000000001001");
   public static final Address PRECOMPILED = Address.precompiled(0xa);
-  public static final int MAX_TX_GAS_LIMIT = 9000000;
+  public static final int MAX_TX_GAS_LIMIT = 9_000_000;
+  public static final int MAX_TX_CALLDATA_SIZE = 10_000;
   private LineaTransactionValidator lineaTransactionValidator;
 
   @BeforeEach
   public void initialize() {
-    ArrayList<Address> denied = new ArrayList<>();
+    Set<Address> denied = new HashSet<>();
     denied.add(DENIED);
     lineaTransactionValidator =
         new LineaTransactionValidator(
-            new LineaTransactionValidatorConfiguration("", MAX_TX_GAS_LIMIT), denied);
+            new LineaTransactionValidatorConfiguration("", MAX_TX_GAS_LIMIT, MAX_TX_CALLDATA_SIZE),
+            denied);
   }
 
   @Test
@@ -52,7 +56,7 @@ public class LineaTransactionValidatorTest {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.sender(NOT_DENIED).to(NOT_DENIED).gasPrice(Wei.ZERO).build();
+        builder.sender(NOT_DENIED).to(NOT_DENIED).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction), Optional.empty());
   }
@@ -62,7 +66,7 @@ public class LineaTransactionValidatorTest {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.sender(DENIED).to(NOT_DENIED).gasPrice(Wei.ZERO).build();
+        builder.sender(DENIED).to(NOT_DENIED).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
         "sender 0x0000000000000000000000000000000000001000 is blocked as appearing on the SDN or other legally prohibited list");
@@ -73,7 +77,7 @@ public class LineaTransactionValidatorTest {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.sender(NOT_DENIED).to(DENIED).gasPrice(Wei.ZERO).build();
+        builder.sender(NOT_DENIED).to(DENIED).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
         "recipient 0x0000000000000000000000000000000000001000 is blocked as appearing on the SDN or other legally prohibited list");
@@ -84,7 +88,7 @@ public class LineaTransactionValidatorTest {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.sender(NOT_DENIED).to(PRECOMPILED).gasPrice(Wei.ZERO).build();
+        builder.sender(NOT_DENIED).to(PRECOMPILED).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
         "destination address is a precompile address and cannot receive transactions");
@@ -100,6 +104,7 @@ public class LineaTransactionValidatorTest {
             .to(NOT_DENIED)
             .gasLimit(MAX_TX_GAS_LIMIT)
             .gasPrice(Wei.ZERO)
+            .payload(Bytes.EMPTY)
             .build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction), Optional.empty());
@@ -115,9 +120,43 @@ public class LineaTransactionValidatorTest {
             .to(NOT_DENIED)
             .gasLimit(MAX_TX_GAS_LIMIT + 1)
             .gasPrice(Wei.ZERO)
+            .payload(Bytes.EMPTY)
             .build();
     Assertions.assertEquals(
         lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
         "Gas limit of transaction is greater than the allowed max of " + MAX_TX_GAS_LIMIT);
+  }
+
+  @Test
+  public void validatedWithValidCalldata() {
+    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
+        org.hyperledger.besu.ethereum.core.Transaction.builder();
+    final org.hyperledger.besu.ethereum.core.Transaction transaction =
+        builder
+            .sender(NOT_DENIED)
+            .to(NOT_DENIED)
+            .gasLimit(MAX_TX_GAS_LIMIT)
+            .gasPrice(Wei.ZERO)
+            .payload(Bytes.random(MAX_TX_CALLDATA_SIZE))
+            .build();
+    Assertions.assertEquals(
+        lineaTransactionValidator.validateTransaction(transaction), Optional.empty());
+  }
+
+  @Test
+  public void rejectedWithTooBigCalldata() {
+    final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
+        org.hyperledger.besu.ethereum.core.Transaction.builder();
+    final org.hyperledger.besu.ethereum.core.Transaction transaction =
+        builder
+            .sender(NOT_DENIED)
+            .to(NOT_DENIED)
+            .gasLimit(MAX_TX_GAS_LIMIT)
+            .gasPrice(Wei.ZERO)
+            .payload(Bytes.random(MAX_TX_CALLDATA_SIZE + 1))
+            .build();
+    Assertions.assertEquals(
+        lineaTransactionValidator.validateTransaction(transaction).orElseThrow(),
+        "Calldata of transaction is greater than the allowed max of " + MAX_TX_CALLDATA_SIZE);
   }
 }

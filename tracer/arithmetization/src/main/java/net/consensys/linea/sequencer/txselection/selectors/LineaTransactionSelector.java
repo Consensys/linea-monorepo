@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.sequencer.LineaConfiguration;
+import net.consensys.linea.sequencer.txselection.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
@@ -34,7 +34,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   List<PluginTransactionSelector> selectors;
 
   public LineaTransactionSelector(
-      LineaConfiguration lineaConfiguration,
+      LineaTransactionSelectorConfiguration lineaConfiguration,
       final Supplier<Map<String, Integer>> limitsMapSupplier) {
     this.selectors = createTransactionSelectors(lineaConfiguration, limitsMapSupplier);
   }
@@ -47,14 +47,13 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @return A list of selectors.
    */
   private static List<PluginTransactionSelector> createTransactionSelectors(
-      final LineaConfiguration lineaConfiguration,
+      final LineaTransactionSelectorConfiguration lineaConfiguration,
       final Supplier<Map<String, Integer>> limitsMapSupplier) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
             limitsMapSupplier, lineaConfiguration.moduleLimitsFilePath());
     return List.of(
-        new MaxTransactionCallDataTransactionSelector(lineaConfiguration.maxTxCallDataSize()),
         new MaxBlockCallDataTransactionSelector(lineaConfiguration.maxBlockCallDataSize()),
         traceLineLimitTransactionSelector);
   }
