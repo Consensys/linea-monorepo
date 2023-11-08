@@ -15,13 +15,17 @@
 
 package net.consensys.linea.zktracer;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
@@ -31,6 +35,7 @@ import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
 public class ZkTracer implements ZkBlockAwareOperationTracer {
@@ -39,6 +44,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   private final ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
   private final Hub hub;
+  private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   public ZkTracer() {
     // Load opcodes configured in src/main/resources/opcodes.yml.
@@ -70,8 +76,13 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   }
 
   @Override
+  public void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {
+    this.hub.traceStartBlock(processableBlockHeader);
+  }
+
+  @Override
   public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    this.hub.traceStartBlock(blockHeader, blockBody);
+    this.hub.traceStartBlock(blockHeader);
   }
 
   @Override
@@ -81,6 +92,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   @Override
   public void traceStartTransaction(WorldView worldView, Transaction transaction) {
+    hashOfLastTransactionTraced = transaction.getHash();
     this.hub.traceStartTx(worldView, transaction);
   }
 
@@ -126,7 +138,16 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   }
 
   /** When called, erase all tracing related to the last included transaction. */
-  public void popTransaction() {
-    hub.popTransaction();
+  public void popTransaction(final PendingTransaction pendingTransaction) {
+    if (hashOfLastTransactionTraced.equals(pendingTransaction.getTransaction().getHash())) {
+      hub.popTransaction();
+    }
+  }
+
+  public Map<String, Integer> getModulesLineCount() {
+    final HashMap<String, Integer> modulesLineCount = new HashMap<>();
+    hub.getModulesToTrace()
+        .forEach(m -> modulesLineCount.put(m.getClass().getSimpleName(), m.lineCount()));
+    return modulesLineCount;
   }
 }

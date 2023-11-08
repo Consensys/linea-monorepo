@@ -15,35 +15,48 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.sequencer.LineaConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 
 /** Class for transaction selection using a list of selectors. */
+@Slf4j
 public class LineaTransactionSelector implements PluginTransactionSelector {
 
-  final LineaConfiguration lineaConfiguration;
+  private static TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
   List<PluginTransactionSelector> selectors;
 
-  public LineaTransactionSelector(LineaConfiguration lineaConfiguration) {
-    this.lineaConfiguration = lineaConfiguration;
-    this.selectors = createTransactionSelectors(lineaConfiguration);
+  public LineaTransactionSelector(
+      LineaConfiguration lineaConfiguration,
+      final Supplier<Map<String, Integer>> limitsMapSupplier) {
+    this.selectors = createTransactionSelectors(lineaConfiguration, limitsMapSupplier);
   }
 
   /**
    * Creates a list of selectors based on Linea configuration.
    *
    * @param lineaConfiguration The configuration to use.
+   * @param limitsMapSupplier The supplier for the limits map.
    * @return A list of selectors.
    */
   private static List<PluginTransactionSelector> createTransactionSelectors(
-      final LineaConfiguration lineaConfiguration) {
+      final LineaConfiguration lineaConfiguration,
+      final Supplier<Map<String, Integer>> limitsMapSupplier) {
+
+    traceLineLimitTransactionSelector =
+        new TraceLineLimitTransactionSelector(
+            limitsMapSupplier, lineaConfiguration.moduleLimitsFilePath());
     return List.of(
         new MaxTransactionCallDataTransactionSelector(lineaConfiguration.maxTxCallDataSize()),
-        new MaxBlockCallDataTransactionSelector(lineaConfiguration.maxBlockCallDataSize()));
+        new MaxBlockCallDataTransactionSelector(lineaConfiguration.maxBlockCallDataSize()),
+        traceLineLimitTransactionSelector);
   }
 
   /**
@@ -56,14 +69,11 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       PendingTransaction pendingTransaction) {
-    for (var selector : selectors) {
-      TransactionSelectionResult result =
-          selector.evaluateTransactionPreProcessing(pendingTransaction);
-      if (!result.equals(TransactionSelectionResult.SELECTED)) {
-        return result;
-      }
-    }
-    return TransactionSelectionResult.SELECTED;
+    return selectors.stream()
+        .map(selector -> selector.evaluateTransactionPreProcessing(pendingTransaction))
+        .filter(result -> !result.equals(TransactionSelectionResult.SELECTED))
+        .findFirst()
+        .orElse(TransactionSelectionResult.SELECTED);
   }
 
   /**
@@ -91,15 +101,14 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * Notifies all selectors when a transaction is selected.
    *
    * @param pendingTransaction The selected transaction.
-   * @param transactionProcessingResult The transaction processing result.
+   * @param processingResult The transaction processing result.
    */
   @Override
   public void onTransactionSelected(
       final PendingTransaction pendingTransaction,
-      final TransactionProcessingResult transactionProcessingResult) {
+      final TransactionProcessingResult processingResult) {
     selectors.forEach(
-        selector ->
-            selector.onTransactionSelected(pendingTransaction, transactionProcessingResult));
+        selector -> selector.onTransactionSelected(pendingTransaction, processingResult));
   }
 
   /**
@@ -115,5 +124,15 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     selectors.forEach(
         selector ->
             selector.onTransactionNotSelected(pendingTransaction, transactionSelectionResult));
+  }
+
+  /**
+   * Returns the operation tracer to be used while processing the transactions for the block.
+   *
+   * @return the operation tracer
+   */
+  @Override
+  public BlockAwareOperationTracer getOperationTracer() {
+    return traceLineLimitTransactionSelector.getOperationTracer();
   }
 }

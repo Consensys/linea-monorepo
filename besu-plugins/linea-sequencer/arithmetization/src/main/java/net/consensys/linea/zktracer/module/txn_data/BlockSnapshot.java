@@ -23,7 +23,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 /**
  * This class gathers the block-related information required to trace the {@link TxnData} module.
@@ -38,7 +38,7 @@ public class BlockSnapshot {
   /** The coinbase of this block */
   @Getter private final Address coinbaseAddress;
 
-  BlockSnapshot(int id, BlockHeader header) {
+  BlockSnapshot(int id, ProcessableBlockHeader header) {
     this.id = id;
     this.baseFee = header.getBaseFee().map(x -> (Wei) x);
     this.coinbaseAddress = header.getCoinbase();

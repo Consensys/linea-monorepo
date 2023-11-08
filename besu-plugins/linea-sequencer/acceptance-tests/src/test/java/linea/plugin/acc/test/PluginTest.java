@@ -21,18 +21,23 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.assertj.core.api.Assertions;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
+import org.web3j.crypto.RawTransaction;
+import org.web3j.crypto.TransactionEncoder;
 import org.web3j.protocol.Web3j;
+import org.web3j.protocol.core.RemoteCall;
 import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -43,11 +48,13 @@ import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.tx.response.PollingTransactionReceiptProcessor;
 import org.web3j.tx.response.TransactionReceiptProcessor;
 import org.web3j.utils.Convert;
+import org.web3j.utils.Numeric;
 
 public class PluginTest extends AcceptanceTestBase {
-  public static final int MAX_CALLDATA_SIZE = 1092; // contract has a call data size of 979
+  public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
 
   public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
+  public static final long CHAIN_ID = 1337L;
   private BesuNode minerNode;
 
   private void setUpWithMaxCalldata() throws Exception {
@@ -62,7 +69,10 @@ public class PluginTest extends AcceptanceTestBase {
                     .getPath(),
             "--plugin-linea-max-tx-calldata-size=" + MAX_CALLDATA_SIZE,
             "--plugin-linea-max-block-calldata-size=" + MAX_CALLDATA_SIZE,
-            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT);
+            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT,
+            "--plugin-linea-module-limit-file-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/noModuleLimits.json"))
+                    .getPath());
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -78,7 +88,10 @@ public class PluginTest extends AcceptanceTestBase {
                 + Objects.requireNonNull(PluginTest.class.getResource("/denyList.txt")).getPath(),
             "--plugin-linea-max-tx-calldata-size=2000000",
             "--plugin-linea-max-block-calldata-size=2000000",
-            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT);
+            "--plugin-linea-max-tx-gas-limit=" + DefaultGasProvider.GAS_LIMIT,
+            "--plugin-linea-module-limit-file-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/noModuleLimits.json"))
+                    .getPath());
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -95,7 +108,30 @@ public class PluginTest extends AcceptanceTestBase {
                     .getPath(),
             "--plugin-linea-max-tx-calldata-size=2000000",
             "--plugin-linea-max-block-calldata-size=2000000",
-            "--plugin-linea-max-tx-gas-limit=" + MAX_TX_GAS_LIMIT);
+            "--plugin-linea-max-tx-gas-limit=" + MAX_TX_GAS_LIMIT,
+            "--plugin-linea-module-limit-file-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/noModuleLimits.json"))
+                    .getPath());
+    minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
+    cluster.start(minerNode);
+  }
+
+  private void setUpWithModuleLimits() throws Exception {
+
+    // To debug into besu:
+    // System.setProperty("acctests.runBesuAsProcess", "false");
+
+    final List<String> cliOptions =
+        List.of(
+            "--plugin-linea-deny-list-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/emptyDenyList.txt"))
+                    .getPath(),
+            "--plugin-linea-max-tx-calldata-size=2000000",
+            "--plugin-linea-max-block-calldata-size=2000000",
+            "--plugin-linea-max-tx-gas-limit=" + MAX_TX_GAS_LIMIT,
+            "--plugin-linea-module-limit-file-path="
+                + Objects.requireNonNull(PluginTest.class.getResource("/moduleLimits.json"))
+                    .getPath());
     minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", cliOptions);
     cluster.start(minerNode);
   }
@@ -109,13 +145,12 @@ public class PluginTest extends AcceptanceTestBase {
   @Test
   public void shouldLimitTxGas() throws Exception {
     setUpWithMaxTxGasLimit();
-    final SimpleStorage simpleStorage =
-        minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
+    final SimpleStorage simpleStorage = deploySimpleStorage();
 
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = simpleStorage.getContractAddress();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    TransactionManager txManager = new RawTransactionManager(web3j, credentials);
+    TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
 
     final String txData = simpleStorage.set("hello").encodeFunctionCall();
 
@@ -155,8 +190,8 @@ public class PluginTest extends AcceptanceTestBase {
   @Test
   public void shouldMineTransactions() throws Exception {
     setUpWithMaxCalldata();
-    final SimpleStorage simpleStorage =
-        minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
+    final SimpleStorage simpleStorage = deploySimpleStorage();
+
     List<String> accounts =
         List.of(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY, Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
 
@@ -170,17 +205,13 @@ public class PluginTest extends AcceptanceTestBase {
   @Test
   public void transactionIsNotMinedWhenTooBig() throws Exception {
     setUpWithMaxCalldata();
-    final SimpleStorage simpleStorage =
-        minerNode.execute(contractTransactions.createSmartContract(SimpleStorage.class));
+    final SimpleStorage simpleStorage = deploySimpleStorage();
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = simpleStorage.getContractAddress();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    TransactionManager txManager = new RawTransactionManager(web3j, credentials);
+    TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
 
-    final String txDataGood =
-        simpleStorage
-            .set(RandomStringUtils.randomAlphabetic(MAX_CALLDATA_SIZE - 68))
-            .encodeFunctionCall();
+    final String txDataGood = simpleStorage.set("a".repeat(1200 - 80)).encodeFunctionCall();
     final String hashGood =
         txManager
             .sendTransaction(
@@ -191,10 +222,7 @@ public class PluginTest extends AcceptanceTestBase {
                 BigInteger.ZERO)
             .getTransactionHash();
 
-    final String txDataTooBig =
-        simpleStorage
-            .set(RandomStringUtils.randomAlphabetic(MAX_CALLDATA_SIZE - 67))
-            .encodeFunctionCall();
+    final String txDataTooBig = simpleStorage.set("a".repeat(1200 - 79)).encodeFunctionCall();
     final String hashTooBig =
         txManager
             .sendTransaction(
@@ -230,7 +258,7 @@ public class PluginTest extends AcceptanceTestBase {
     BigInteger gasLimit = BigInteger.valueOf(210000);
 
     // Make sure a sender on the deny list cannot add transactions to the pool
-    RawTransactionManager transactionManager = new RawTransactionManager(miner, denied);
+    RawTransactionManager transactionManager = new RawTransactionManager(miner, denied, CHAIN_ID);
     EthSendTransaction transactionResponse =
         transactionManager.sendTransaction(
             gasPrice, gasLimit, notDenied.getAddress(), "", BigInteger.ONE); // 1 wei
@@ -241,7 +269,7 @@ public class PluginTest extends AcceptanceTestBase {
             "sender 0x627306090abab3a6e1400e9345bc60c78a8bef57 is blocked as appearing on the SDN or other legally prohibited list");
 
     // Make sure a transaction with a recipient on the deny list cannot be added to the pool
-    transactionManager = new RawTransactionManager(miner, notDenied);
+    transactionManager = new RawTransactionManager(miner, notDenied, CHAIN_ID);
     transactionResponse =
         transactionManager.sendTransaction(
             gasPrice, gasLimit, denied.getAddress(), "", BigInteger.ONE); // 1 wei
@@ -266,6 +294,50 @@ public class PluginTest extends AcceptanceTestBase {
         .isEqualTo("destination address is a precompile address and cannot receive transactions");
   }
 
+  @Test
+  public void transactionIsNotMinedWhenTooManyTraceLines() throws Exception {
+    setUpWithModuleLimits();
+    final SimpleStorage simpleStorage = deploySimpleStorage();
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final String contractAddress = simpleStorage.getContractAddress();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
+
+    final ArrayList<String> hashes = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      final RawTransaction transaction =
+          RawTransaction.createTransaction(
+              CHAIN_ID,
+              BigInteger.valueOf(i + 1),
+              DefaultGasProvider.GAS_LIMIT,
+              contractAddress,
+              BigInteger.ZERO,
+              txData,
+              BigInteger.ONE,
+              BigInteger.ONE);
+      final byte[] signedTransaction = TransactionEncoder.signMessage(transaction, credentials);
+      final EthSendTransaction response =
+          web3j.ethSendRawTransaction(Numeric.toHexString(signedTransaction)).send();
+      hashes.add(response.getTransactionHash());
+    }
+
+    TransactionReceiptProcessor receiptProcessor =
+        new PollingTransactionReceiptProcessor(
+            web3j,
+            TransactionManager.DEFAULT_POLLING_FREQUENCY,
+            TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+
+    // make sure that there are no more than one transaction per block, because the limit for the
+    // add module only allows for one of these transactions.
+    final HashSet<Long> blockNumbers = new HashSet<>();
+    for (String h : hashes) {
+      Assertions.assertThat(
+              blockNumbers.add(
+                  receiptProcessor.waitForTransactionReceipt(h).getBlockNumber().longValue()))
+          .isEqualTo(true);
+    }
+  }
+
   private void sendTransactionsWithGivenLengthPayload(
       final SimpleStorage simpleStorage,
       final List<String> accounts,
@@ -278,7 +350,7 @@ public class PluginTest extends AcceptanceTestBase {
     accounts.forEach(
         a -> {
           final Credentials credentials = Credentials.create(a);
-          TransactionManager txManager = new RawTransactionManager(web3j, credentials);
+          TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
           for (int i = 0; i < 5; i++) {
             try {
               hashes.add(
@@ -333,5 +405,15 @@ public class PluginTest extends AcceptanceTestBase {
         });
     // make sure that at least one block has maxTxs
     assertThat(txMap).containsValue(maxTxs);
+  }
+
+  private SimpleStorage deploySimpleStorage() throws Exception {
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
+
+    final RemoteCall<SimpleStorage> deploy =
+        SimpleStorage.deploy(web3j, txManager, new DefaultGasProvider());
+    return deploy.send();
   }
 }

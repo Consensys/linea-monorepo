@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 /** Stores block-specific information. */
 @Accessors(fluent = true)
@@ -32,11 +32,11 @@ public class BlockInfo {
   /**
    * Update block-specific information on new block entrance.
    *
-   * @param blockHeader the new block header
+   * @param processableBlockHeader the processable block header
    */
-  void update(final BlockHeader blockHeader) {
+  public void update(final ProcessableBlockHeader processableBlockHeader) {
     this.blockNumber++;
-    this.minerAddress = blockHeader.getCoinbase();
-    this.baseFee = Wei.of(blockHeader.getBaseFee().get().getAsBigInteger());
+    this.minerAddress = processableBlockHeader.getCoinbase();
+    this.baseFee = Wei.fromQuantity(processableBlockHeader.getBaseFee().orElseThrow());
   }
 }
