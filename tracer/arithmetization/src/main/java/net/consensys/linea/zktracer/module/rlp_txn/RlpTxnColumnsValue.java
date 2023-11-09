@@ -19,80 +19,80 @@ import java.math.BigInteger;
 
 import org.apache.tuweni.bytes.Bytes;
 
-public class RlpTxnColumnsValue {
-  public Bytes ACC_1;
-  public Bytes ACC_2;
-  public int ACC_BYTESIZE;
-  public int ACCESS_TUPLE_BYTESIZE;
-  public Bytes ADDR_HI;
-  public Bytes ADDR_LO;
-  public boolean BIT;
-  public int BIT_ACC;
-  public byte BYTE_1;
-  public byte BYTE_2;
-  public int COUNTER;
-  public BigInteger DATA_HI;
-  public BigInteger DATA_LO;
-  public int DATAGASCOST;
-  public boolean DEPTH_1;
-  public boolean DEPTH_2;
-  public boolean PHASE_END;
-  public int INDEX_DATA;
-  public int INDEX_LT;
-  public int INDEX_LX;
-  public Bytes INPUT_1;
-  public Bytes INPUT_2;
-  public boolean LC_CORRECTION;
-  public boolean IS_PREFIX;
-  public Bytes LIMB;
-  public boolean LIMB_CONSTRUCTED;
-  public boolean LT;
-  public boolean LX;
-  public int nBYTES;
-  public int nb_Addr;
-  public int nb_Sto;
-  public int nb_Sto_per_Addr;
-  public int nSTEP;
-  public int phase;
-  public int PHASE_BYTESIZE;
-  public BigInteger POWER;
-  public int RLP_LT_BYTESIZE;
-  public int RLP_LX_BYTESIZE;
-  public boolean requiresEvmExecution;
-  public int absTxNum;
-  public int codeFragmentIndex;
-  public int txType;
+class RlpTxnColumnsValue {
+  Bytes acc1;
+  Bytes acc2;
+  int accByteSize;
+  int accessTupleByteSize;
+  Bytes addrHi;
+  Bytes addrLo;
+  boolean bit;
+  int bitAcc;
+  byte byte1;
+  byte byte2;
+  int counter;
+  BigInteger dataHi;
+  BigInteger dataLo;
+  int dataGasCost;
+  boolean depth1;
+  boolean depth2;
+  boolean phaseEnd;
+  int indexData;
+  int indexLt;
+  int indexLx;
+  Bytes input1;
+  Bytes input2;
+  boolean lcCorrection;
+  boolean isPrefix;
+  Bytes limb;
+  boolean limbConstructed;
+  boolean lt;
+  boolean lx;
+  int nBytes;
+  int nbAddr;
+  int nbSto;
+  int nbStoPerAddr;
+  int nStep;
+  int phase;
+  int phaseByteSize;
+  BigInteger power;
+  int rlpLtByteSize;
+  int rlpLxByteSize;
+  boolean requiresEvmExecution;
+  int absTxNum;
+  int codeFragmentIndex;
+  int txType;
 
-  public void partialReset(int phase, int number_step, boolean LT, boolean LX) {
+  void partialReset(int phase, int numberStep, boolean lt, boolean lx) {
     this.phase = phase;
-    this.nSTEP = number_step;
-    this.LT = LT;
-    this.LX = LX;
+    this.nStep = numberStep;
+    this.lt = lt;
+    this.lx = lx;
 
     // Set to default local values
-    this.LIMB_CONSTRUCTED = false;
-    this.ACC_1 = Bytes.of(0);
-    this.ACC_2 = Bytes.of(0);
-    this.ACC_BYTESIZE = 0;
-    this.BIT = false;
-    this.BIT_ACC = 0;
-    this.BYTE_1 = 0;
-    this.BYTE_2 = 0;
-    this.COUNTER = 0;
-    this.DEPTH_1 = false;
-    this.DEPTH_2 = false;
-    this.PHASE_END = false;
-    this.INPUT_1 = Bytes.of(0);
-    this.INPUT_2 = Bytes.of(0);
-    this.LC_CORRECTION = false;
-    this.IS_PREFIX = false;
-    this.LIMB = Bytes.of(0);
-    this.nBYTES = 0;
-    this.POWER = BigInteger.ZERO;
+    this.limbConstructed = false;
+    this.acc1 = Bytes.of(0);
+    this.acc2 = Bytes.of(0);
+    this.accByteSize = 0;
+    this.bit = false;
+    this.bitAcc = 0;
+    this.byte1 = 0;
+    this.byte2 = 0;
+    this.counter = 0;
+    this.depth1 = false;
+    this.depth2 = false;
+    this.phaseEnd = false;
+    this.input1 = Bytes.of(0);
+    this.input2 = Bytes.of(0);
+    this.lcCorrection = false;
+    this.isPrefix = false;
+    this.limb = Bytes.of(0);
+    this.nBytes = 0;
+    this.power = BigInteger.ZERO;
   }
 
-  public void DataHiLoReset() {
-    this.DATA_HI = BigInteger.ZERO;
-    this.DATA_LO = BigInteger.ZERO;
+  void resetDataHiLo() {
+    this.dataHi = BigInteger.ZERO;
+    this.dataLo = BigInteger.ZERO;
   }
 }
