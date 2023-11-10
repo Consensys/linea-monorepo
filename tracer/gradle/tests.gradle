@@ -76,19 +76,3 @@ tasks.register('unitTests', Test) {
 test {
   exclude('**/**ReferenceTest*')
 }
-
-tasks.register('acceptanceTests', Test) {
-  description = 'Runs acceptance tests.'
-
-  dependsOn(project(":arithmetization").copyPluginJar)
-
-  inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
-
-  useJUnitPlatform {
-    includeTags("AcceptanceTest")
-  }
-
-  doFirst {
-    systemProperty("besu.plugins.dir", rootProject.besuPluginDir)
-  }
-}

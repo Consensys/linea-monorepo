@@ -57,7 +57,7 @@ abstract class RefTestGenerationTask extends DefaultTask {
     def referenceTestTemplate = refTestTemplateFile.text
 
     // This is how many json files to include in each test file
-    def fileSets = refTests.getFiles().collate(5)
+    def fileSets = refTests.getFiles().sort().collate(5)
 
     fileSets.eachWithIndex { fileSet, idx ->
       def paths = []
