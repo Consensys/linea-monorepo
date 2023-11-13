@@ -44,7 +44,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
   }
 
   @Test
-  public void sendTransactions() throws Exception {
+  public void transactionsMinedInSeparateBlocksTest() throws Exception {
     final SimpleStorage simpleStorage = deploySimpleStorage();
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = simpleStorage.getContractAddress();
@@ -71,6 +71,6 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
 
     // make sure that there are no more than one transaction per block, because the limit for the
     // add module only allows for one of these transactions.
-    assertTransactionsInSeparateBlocks(web3j, hashes);
+    assertTransactionsMinedInSeparateBlocks(web3j, hashes);
   }
 }

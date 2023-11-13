@@ -24,10 +24,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.assertj.core.api.Assertions;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
@@ -47,6 +49,7 @@ import org.web3j.tx.response.TransactionReceiptProcessor;
 /** Base class for plugin tests. */
 public class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
+  public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
   public static final long CHAIN_ID = 1337L;
   protected BesuNode minerNode;
 
@@ -101,11 +104,8 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
 
   private void assertTransactionsInCorrectBlocks(Web3j web3j, List<String> hashes, int num) {
     final HashMap<Long, Integer> txMap = new HashMap<>();
-    TransactionReceiptProcessor receiptProcessor =
-        new PollingTransactionReceiptProcessor(
-            web3j,
-            TransactionManager.DEFAULT_POLLING_FREQUENCY,
-            TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+    TransactionReceiptProcessor receiptProcessor = createReceiptProcessor(web3j);
+
     // CallData for the transaction for empty String is 68 and grows in steps of 32 with (String
     // size / 32)
     final int maxTxs = MAX_CALLDATA_SIZE / (68 + ((num + 31) / 32) * 32);
@@ -144,20 +144,57 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     return Objects.requireNonNull(LineaPluginTestBase.class.getResource(resource)).getPath();
   }
 
-  protected void assertTransactionsInSeparateBlocks(Web3j web3j, ArrayList<String> hashes)
+  protected void assertTransactionsMinedInSeparateBlocks(Web3j web3j, List<String> hashes)
       throws Exception {
-    TransactionReceiptProcessor receiptProcessor =
-        new PollingTransactionReceiptProcessor(
-            web3j,
-            TransactionManager.DEFAULT_POLLING_FREQUENCY,
-            TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+    TransactionReceiptProcessor receiptProcessor = createReceiptProcessor(web3j);
 
     final HashSet<Long> blockNumbers = new HashSet<>();
-    for (String h : hashes) {
-      Assertions.assertThat(
-              blockNumbers.add(
-                  receiptProcessor.waitForTransactionReceipt(h).getBlockNumber().longValue()))
-          .isEqualTo(true);
+    for (String hash : hashes) {
+      TransactionReceipt receipt = receiptProcessor.waitForTransactionReceipt(hash);
+      assertThat(receipt).isNotNull();
+      boolean isAdded = blockNumbers.add(receipt.getBlockNumber().longValue());
+      assertThat(isAdded).isEqualTo(true);
     }
+  }
+
+  protected void assertTransactionsMinedInSameBlock(Web3j web3j, List<String> hashes) {
+    TransactionReceiptProcessor receiptProcessor = createReceiptProcessor(web3j);
+    Set<Long> blockNumbers =
+        hashes.stream()
+            .map(
+                hash -> {
+                  try {
+                    TransactionReceipt receipt = receiptProcessor.waitForTransactionReceipt(hash);
+                    assertThat(receipt).isNotNull();
+                    return receipt.getBlockNumber().longValue();
+                  } catch (IOException | TransactionException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toSet());
+
+    assertThat(blockNumbers.size()).isEqualTo(1);
+  }
+
+  private TransactionReceiptProcessor createReceiptProcessor(Web3j web3j) {
+    return new PollingTransactionReceiptProcessor(
+        web3j,
+        TransactionManager.DEFAULT_POLLING_FREQUENCY,
+        TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
+  }
+
+  protected String sendTransactionWithGivenLengthPayload(
+      final String account, final Web3j web3j, final int num) throws IOException {
+    String to = Address.fromHexString("fe3b557e8fb62b89f4916b721be55ceb828dbd73").toString();
+    TransactionManager txManager = new RawTransactionManager(web3j, Credentials.create(account));
+
+    return txManager
+        .sendTransaction(
+            DefaultGasProvider.GAS_PRICE,
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT),
+            to,
+            RandomStringUtils.randomAlphabetic(num),
+            BigInteger.ZERO)
+        .getTransactionHash();
   }
 }
