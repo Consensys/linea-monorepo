@@ -36,6 +36,7 @@ public class TestCommandLineOptionsBuilder {
     cliOptions.setProperty("--plugin-linea-deny-list-path=", getResourcePath("/emptyDenyList.txt"));
     cliOptions.setProperty(
         "--plugin-linea-module-limit-file-path=", getResourcePath("/noModuleLimits.json"));
+    cliOptions.setProperty("--plugin-linea-max-block-gas=", MAX_VALUE);
   }
 
   public TestCommandLineOptionsBuilder set(String option, String value) {
