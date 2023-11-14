@@ -49,8 +49,6 @@ public class RlpTxrcpt implements Module {
   private static final int INT_RLP_LIST_SHORT = RlpTxrcptTrace.LIST_SHORT;
   private static final int INT_RLP_LIST_LONG = RlpTxrcptTrace.LIST_LONG;
 
-  // TODO: this must be in the stacked state
-  private int absLogNumMax = 0;
   private int absLogNum = 0;
   StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
 
@@ -77,15 +75,16 @@ public class RlpTxrcpt implements Module {
       Bytes output,
       List<Log> logList,
       long gasUsed) {
-    this.absLogNumMax += logList.size();
     RlpTxrcptChunk chunk = new RlpTxrcptChunk(tx.getType(), status, gasUsed, logList);
     this.chunkList.add(chunk);
   }
 
-  public void traceChunk(final RlpTxrcptChunk chunk, int absTxNum, Trace.TraceBuilder trace) {
+  public void traceChunk(
+      final RlpTxrcptChunk chunk, int absTxNum, int absLogNumMax, Trace.TraceBuilder trace) {
     RlpTxrcptColumns traceValue = new RlpTxrcptColumns();
     traceValue.txrcptSize = txRcptSize(chunk);
     traceValue.absTxNum = absTxNum;
+    traceValue.absLogNumMax = absLogNumMax;
 
     // PHASE 1: RLP Prefix.
     phase1(traceValue, chunk.txType(), trace);
@@ -122,7 +121,8 @@ public class RlpTxrcpt implements Module {
     traceRow(traceValue, trace);
 
     // RLP prefix of the txRcpt list.
-    rlpByteString(phase, traceValue.txrcptSize, true, false, false, false, true, traceValue, trace);
+    rlpByteString(
+        phase, traceValue.txrcptSize, true, false, false, false, true, false, 0, traceValue, trace);
   }
 
   private void phase2(RlpTxrcptColumns traceValue, Boolean status, Trace.TraceBuilder trace) {
@@ -148,7 +148,8 @@ public class RlpTxrcpt implements Module {
       RlpTxrcptColumns traceValue, Long cumulativeGasUsed, Trace.TraceBuilder trace) {
     final int phase = 3;
     Preconditions.checkArgument(cumulativeGasUsed != 0, "Cumulative Gas Used can't be 0");
-    rlpInt(phase, cumulativeGasUsed, false, false, false, true, false, traceValue, trace);
+    rlpInt(
+        1, phase, cumulativeGasUsed, false, false, false, true, false, false, 0, traceValue, trace);
   }
 
   public static void insertLog(LogsBloomFilter.Builder bloomBuilder, final Log log) {
@@ -251,7 +252,17 @@ public class RlpTxrcpt implements Module {
       }
       traceValue.partialReset(phase, 8);
       rlpByteString(
-          phase, traceValue.phaseSize, true, true, false, false, false, traceValue, trace);
+          phase,
+          traceValue.phaseSize,
+          true,
+          true,
+          false,
+          false,
+          false,
+          false,
+          0,
+          traceValue,
+          trace);
 
       // Trace each Log Entry.
       for (int i = 0; i < nbLog; i++) {
@@ -261,7 +272,17 @@ public class RlpTxrcpt implements Module {
         // Log Entry RLP Prefix.
         traceValue.logEntrySize = logSize(logList.get(i));
         rlpByteString(
-            phase, traceValue.logEntrySize, true, true, true, false, false, traceValue, trace);
+            phase,
+            traceValue.logEntrySize,
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+            0,
+            traceValue,
+            trace);
 
         // Logger's Address.
         // Common values for CT=0 tp CT=2
@@ -341,7 +362,7 @@ public class RlpTxrcpt implements Module {
           }
         }
         // Reset the value of IndexLocal at the end of the Topic
-        int indexLocalEndTopic = traceValue.indexLocal;
+        final int indexLocalEndTopic = traceValue.indexLocal;
         traceValue.indexLocal = 0;
 
         // RLP Prefix of the Data.
@@ -362,42 +383,34 @@ public class RlpTxrcpt implements Module {
             traceValue.phaseEnd = (i == nbLog - 1);
             traceRow(traceValue, trace);
           }
-          case 1 -> { // Case with data is made of one byte
-            rlpInt(
-                phase,
-                logList.get(i).getData().toUnsignedBigInteger().longValueExact(),
-                true,
-                true,
-                true,
-                false,
-                true,
-                traceValue,
-                trace);
-            for (int k = 0; k < 8; k++) {
-              // In INPUT_2 is stored the number of topics, stored in INDEX_LOCAL at the previous
-              // row
-              trace.setInput2Relative(BigInteger.valueOf(indexLocalEndTopic), k);
-              // In Input_1 is the data size, and in Input_3 the only byte of Data
-              trace.setInput1Relative(BigInteger.ONE, k);
-              trace.setInput3Relative(logList.get(i).getData().toUnsignedBigInteger(), k);
-            }
-          }
-          default -> { // Default case, data is made of >= 2 bytes
-            rlpByteString(
-                phase,
-                logList.get(i).getData().size(),
-                false,
-                true,
-                true,
-                true,
-                false,
-                traceValue,
-                trace);
-            // In INPUT_2 is stored the number of topics, stored in INDEX_LOCAL at the previous row
-            for (int k = 0; k < 8; k++) {
-              trace.setInput2Relative(BigInteger.valueOf(indexLocalEndTopic), k);
-            }
-          }
+          case 1 -> // Case with data is made of one byte
+          rlpInt(
+              3,
+              phase,
+              logList.get(i).getData().toUnsignedBigInteger().longValueExact(),
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              indexLocalEndTopic,
+              traceValue,
+              trace);
+
+          default -> // Default case, data is made of >= 2 bytes
+          rlpByteString(
+              phase,
+              logList.get(i).getData().size(),
+              false,
+              true,
+              true,
+              true,
+              false,
+              true,
+              indexLocalEndTopic,
+              traceValue,
+              trace);
         }
 
         // Tracing the Data
@@ -466,6 +479,8 @@ public class RlpTxrcpt implements Module {
       boolean depth1,
       boolean isData,
       boolean endPhase,
+      boolean writeInput2,
+      int valueInput2,
       RlpTxrcptColumns traceValue,
       Trace.TraceBuilder trace) {
     int lengthSize =
@@ -479,6 +494,9 @@ public class RlpTxrcpt implements Module {
     traceValue.isPrefix = isPrefix;
     traceValue.depth1 = depth1;
     traceValue.isData = isData;
+    if (writeInput2) {
+      traceValue.input2 = Bytes.minimalBytes(valueInput2);
+    }
 
     Bytes input1RightShift = padToGivenSizeWithLeftZero(traceValue.input1, traceValue.nStep);
     long acc2LastRow;
@@ -538,6 +556,7 @@ public class RlpTxrcpt implements Module {
   }
 
   private void rlpInt(
+      int inputToWrite,
       int phase,
       long input,
       boolean isPrefix,
@@ -545,26 +564,44 @@ public class RlpTxrcpt implements Module {
       boolean isData,
       boolean endPhase,
       boolean onlyPrefix,
+      boolean writeInput2,
+      int valueInput2,
       RlpTxrcptColumns traceValue,
       Trace.TraceBuilder trace) {
+
+    final Bytes inputBytes = bigIntegerToBytes(BigInteger.valueOf(input));
 
     traceValue.partialReset(phase, 8);
 
     traceValue.isPrefix = isPrefix;
     traceValue.depth1 = depth1;
     traceValue.isData = isData;
-    traceValue.input1 = bigIntegerToBytes(BigInteger.valueOf(input));
+    switch (inputToWrite) {
+      case 1 -> {
+        traceValue.input1 = inputBytes;
+      }
+      case 3 -> {
+        traceValue.input1 = Bytes.minimalBytes(1);
+        traceValue.input3 = inputBytes;
+      }
+      default -> throw new IllegalArgumentException(
+          "should be called only to write Input1 or Input3, not Input" + inputToWrite);
+    }
+    if (writeInput2) {
+      traceValue.input2 = Bytes.minimalBytes(valueInput2);
+    }
 
-    int inputSize = traceValue.input1.size();
+    final int inputSize = inputBytes.size();
     ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, 8);
 
-    Bytes inputBytes = padToGivenSizeWithLeftZero(traceValue.input1, 8);
-    BitDecOutput bitDecOutput = bitDecomposition(0xff & inputBytes.get(inputBytes.size() - 1), 8);
+    Bytes inputBytesPadded = padToGivenSizeWithLeftZero(inputBytes, 8);
+    BitDecOutput bitDecOutput =
+        bitDecomposition(0xff & inputBytesPadded.get(inputBytesPadded.size() - 1), 8);
 
     for (int ct = 0; ct < 8; ct++) {
       traceValue.counter = ct;
-      traceValue.byte1 = inputBytes.get(ct);
-      traceValue.acc1 = inputBytes.slice(0, ct + 1);
+      traceValue.byte1 = inputBytesPadded.get(ct);
+      traceValue.acc1 = inputBytesPadded.slice(0, ct + 1);
       traceValue.power = byteCountingOutput.powerList().get(ct);
       traceValue.accSize = byteCountingOutput.accByteSizeList().get(ct);
       traceValue.bit = bitDecOutput.bitDecList().get(ct);
@@ -613,7 +650,7 @@ public class RlpTxrcpt implements Module {
 
     trace
         .absLogNum(BigInteger.valueOf(this.absLogNum))
-        .absLogNumMax(BigInteger.valueOf(this.absLogNumMax))
+        .absLogNumMax(BigInteger.valueOf(traceValue.absLogNumMax))
         .absTxNum(BigInteger.valueOf(traceValue.absTxNum))
         .absTxNumMax(BigInteger.valueOf(this.chunkList.size()))
         .acc1(traceValue.acc1.toUnsignedBigInteger())
@@ -771,11 +808,15 @@ public class RlpTxrcpt implements Module {
   public ModuleTrace commit() {
     final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
 
+    int absLogNumMax = 0;
+    for (RlpTxrcptChunk chunk : this.chunkList) {
+      absLogNumMax += chunk.logs().size();
+    }
+
     int absTxNum = 0;
-    int estTraceSize = 0;
     for (RlpTxrcptChunk chunk : this.chunkList) {
       absTxNum += 1;
-      traceChunk(chunk, absTxNum, trace);
+      traceChunk(chunk, absTxNum, absLogNumMax, trace);
     }
     return new RlpTxrcptTrace(trace.build());
   }
