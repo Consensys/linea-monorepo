@@ -21,6 +21,7 @@ import org.apache.tuweni.bytes.Bytes;
 
 class RlpTxrcptColumns {
   int absTxNum;
+  int absLogNumMax;
   Bytes acc1;
   Bytes acc2;
   Bytes acc3;

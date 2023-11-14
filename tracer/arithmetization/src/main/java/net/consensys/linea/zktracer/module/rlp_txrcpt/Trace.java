@@ -541,26 +541,6 @@ public record Trace(
       return this;
     }
 
-    public TraceBuilder setInput1Relative(final BigInteger b, int i) {
-      this.input1.set(this.input1.size() - 1 - i, b);
-      return this;
-    }
-
-    public TraceBuilder setInput2Relative(final BigInteger b, int i) {
-      this.input2.set(this.input2.size() - 1 - i, b);
-      return this;
-    }
-
-    public TraceBuilder setInput3Relative(final BigInteger b, int i) {
-      this.input3.set(this.input3.size() - 1 - i, b);
-      return this;
-    }
-
-    public TraceBuilder setInput4Relative(final BigInteger b, int i) {
-      this.input4.set(this.input4.size() - 1 - i, b);
-      return this;
-    }
-
     public TraceBuilder input4(final BigInteger b) {
       if (filled.get(23)) {
         throw new IllegalStateException("INPUT_4 already set");
