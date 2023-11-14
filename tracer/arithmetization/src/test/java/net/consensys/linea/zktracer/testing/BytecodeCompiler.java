@@ -43,7 +43,7 @@ public class BytecodeCompiler {
   }
 
   private static Bytes toBytes(final int x) {
-    return Bytes.ofUnsignedShort(x).trimLeadingZeros();
+    return Bytes.ofUnsignedLong(x).trimLeadingZeros();
   }
 
   /**
@@ -124,12 +124,14 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler push(final Bytes xs) {
-    Preconditions.condition(
-        !xs.isEmpty() && xs.size() <= 32, "Provided byte array is empty or exceeds 32 bytes");
+    Preconditions.condition(xs.size() <= 32, "Provided byte array is empty or exceeds 32 bytes");
 
-    int pushNOpCode = OpCode.PUSH1.byteValue() + xs.size() - 1;
-
-    return this.immediate(pushNOpCode).immediate(xs);
+    if (xs.isEmpty()) {
+      return this.immediate(OpCode.PUSH1.byteValue()).immediate(Bytes.of(0));
+    } else {
+      int pushNOpCode = OpCode.PUSH1.byteValue() + xs.size() - 1;
+      return this.immediate(pushNOpCode).immediate(xs);
+    }
   }
 
   /**

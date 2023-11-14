@@ -48,7 +48,7 @@ public final class StackFragment implements TraceFragment {
   private EWord hashInfoKeccak = EWord.ZERO;
   private final long hashInfoSize;
   private final boolean hashInfoFlag;
-  private final OpCode opCode;
+  @Getter private final OpCode opCode;
 
   private StackFragment(
       Stack stack,
