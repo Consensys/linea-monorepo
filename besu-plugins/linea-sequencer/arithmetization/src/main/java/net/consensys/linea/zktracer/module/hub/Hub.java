@@ -102,7 +102,7 @@ public class Hub implements Module {
   public static final GasProjector gp = new GasProjector();
 
   // Revertible state of the hub
-  private final State state = new State();
+  @Getter private final State state = new State();
 
   // Long-lived states
   @Getter ConflationInfo conflation = new ConflationInfo();

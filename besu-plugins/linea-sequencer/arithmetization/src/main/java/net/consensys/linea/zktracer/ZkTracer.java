@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -43,7 +44,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
 
   private final ZkTraceBuilder zkTraceBuilder = new ZkTraceBuilder();
-  private final Hub hub;
+  @Getter private final Hub hub;
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   public ZkTracer() {
@@ -110,19 +111,23 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
-    this.hub.tracePreOpcode(frame);
+    if (frame.getCode().getSize() > 0) {
+      this.hub.tracePreOpcode(frame);
+    }
   }
 
   @Override
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
-    this.hub.tracePostExecution(frame, operationResult);
+    if (frame.getCode().getSize() > 0) {
+      this.hub.tracePostExecution(frame, operationResult);
+    }
   }
 
   @Override
   public void traceContextEnter(MessageFrame frame) {
     // We only want to trigger on creation of new contexts, not on re-entry in
     // existing contexts
-    if (frame.getState() == MessageFrame.State.NOT_STARTED) {
+    if (frame.getState() == MessageFrame.State.NOT_STARTED && frame.getCode().getSize() > 0) {
       this.hub.traceContextEnter(frame);
     }
   }

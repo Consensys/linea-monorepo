@@ -76,6 +76,8 @@ public class ToyExecutionEnvironment {
    */
   private final Consumer<TransactionProcessingResult> testValidator;
 
+  private final Consumer<ZkTracer> zkTracerValidator;
+
   private static final FeeMarket feeMarket = FeeMarket.london(-1);
   private final ZkBlockAwareOperationTracer tracer = new ZkTracer();
 
@@ -142,6 +144,7 @@ public class ToyExecutionEnvironment {
           0);
 
       this.testValidator.accept(result);
+      this.zkTracerValidator.accept((ZkTracer) tracer);
     }
 
     tracer.traceEndBlock(header, mockBlockBody);
@@ -201,7 +204,8 @@ public class ToyExecutionEnvironment {
           Optional.ofNullable(evm).orElse(defaultEvm()),
           Optional.ofNullable(transactions).orElse(defaultTxList),
           Optional.ofNullable(testValidator)
-              .orElse(result -> assertThat(result.isSuccessful()).isTrue()));
+              .orElse(result -> assertThat(result.isSuccessful()).isTrue()),
+          Optional.ofNullable(zkTracerValidator).orElse(zkTracer -> {}));
     }
   }
 }
