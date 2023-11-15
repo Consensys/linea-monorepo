@@ -27,7 +27,7 @@ import net.consensys.linea.zktracer.container.StackedContainer;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Implements a system of nested lists behaving as a single on, where the current context
+ * Implements a system of nested lists behaving as a single one, where the current context
  * modification can transparently be dropped.
  *
  * @param <E> the type of elements stored in the list
@@ -229,6 +229,9 @@ public class StackedList<E> implements List<E>, StackedContainer {
     }
 
     private List<F> list() {
+      if (sl.lists.size() == 0) {
+        return List.of();
+      }
       return this.sl.lists.get(this.head);
     }
 
