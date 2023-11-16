@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
@@ -23,7 +24,7 @@ public interface GasProjection {
   GasCalculator gc = ZkTracer.gasCalculator;
 
   default long linearCost(long a, long x, long unit) {
-    assert (unit == 1) || (unit == 32);
+    Preconditions.checkArgument((unit == 1) || (unit == 32));
     return Words.clampedMultiply(a, (Words.clampedAdd(x, unit) - 1) / unit);
   }
 

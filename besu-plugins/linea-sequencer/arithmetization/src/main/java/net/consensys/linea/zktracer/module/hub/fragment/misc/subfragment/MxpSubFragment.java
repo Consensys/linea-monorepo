@@ -47,7 +47,7 @@ public record MxpSubFragment(
     EWord size2 = EWord.ZERO;
 
     return new MxpSubFragment(
-        hub.exceptions().outOfMemoryExpansion(),
+        hub.pch().exceptions().outOfMemoryExpansion(),
         opCode.byteValue(),
         opCode == OpCode.RETURN && hub.currentFrame().underDeployment(),
         hub.currentFrame().frame().memoryWordSize(),
