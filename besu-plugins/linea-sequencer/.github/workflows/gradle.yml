@@ -55,10 +55,10 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
 
-      - name: Run acceptanceTest
-        run: ./gradlew :acceptance-tests:acceptanceTest
+      - name: Run acceptance tests
+        run: ./gradlew :acceptance-tests:acceptanceTests
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Dorg.gradle.daemon=false
 
       - name: Upload test report
         if: always()
@@ -101,10 +101,10 @@ jobs:
       - name: Install corset
         run: cargo install --git ssh://git@github.com/Consensys/corset.git --locked
 
-      - name: Run tests
-        run: ./gradlew :arithmetization:test
+      - name: Run unit tests
+        run: ./gradlew :arithmetization:test --info
         env:
-          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          JAVA_OPTS: -Dorg.gradle.daemon=false
 
       - name: Upload test report
         uses: actions/upload-artifact@v2
