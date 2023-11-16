@@ -47,6 +47,9 @@ tasks.register('referenceBlockchainTests', Test) {
 
   dependsOn generateBlockchainReferenceTests
 
+  minHeapSize = "4g"
+  maxHeapSize = "20g"
+
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
   }
@@ -57,6 +60,9 @@ tasks.register('referenceGeneralStateTests', Test) {
 
   dependsOn generateGeneralStateReferenceTests
 
+  minHeapSize = "4g"
+  maxHeapSize = "20g"
+
   useJUnitPlatform {
     includeTags("GeneralStateReferenceTest")
   }
@@ -65,11 +71,15 @@ tasks.register('referenceGeneralStateTests', Test) {
 tasks.register('referenceTests', Test) {
   description = 'Runs ETH reference tests.'
 
+  minHeapSize = "4g"
+  maxHeapSize = "20g"
+
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
     includeTags("GeneralStateReferenceTest")
   }
 }
+
 
 dependencies {
   testImplementation project(":arithmetization")

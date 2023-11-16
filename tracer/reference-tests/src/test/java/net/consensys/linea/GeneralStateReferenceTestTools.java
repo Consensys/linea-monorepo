@@ -104,6 +104,7 @@ public class GeneralStateReferenceTestTools {
     // Consumes a huge amount of memory
     params.ignore("static_Call1MB1024Calldepth-\\w");
     params.ignore("ShanghaiLove_.*");
+    params.ignore("/GeneralStateTests/VMTests/vmPerformance/");
 
     // Don't do time consuming tests
     params.ignore("CALLBlake2f_MaxRounds.*");
