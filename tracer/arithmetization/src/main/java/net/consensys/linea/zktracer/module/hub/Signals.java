@@ -16,10 +16,10 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /**
  * Encodes the signals triggering other components.
@@ -28,229 +28,263 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
  * context.
  */
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class Signals {
-  private final Hub hub;
-  private final OpCodeData opCodeData;
+  @Getter private boolean mmu;
+  @Getter private boolean mxp;
+  @Getter private boolean oob;
+  @Getter private boolean precompileInfo;
+  @Getter private boolean stipend;
+  @Getter private boolean exp;
+  @Getter private boolean trm;
+  @Getter private boolean hashInfo;
+  @Getter private boolean romLex;
 
-  @Getter boolean mmu = false;
-  @Getter boolean mxp = false;
-  @Getter boolean oob = false;
-  @Getter boolean precompileInfo = false;
-  @Getter boolean stipend = false;
-  @Getter boolean exp = false;
+  private final PlatformController platformController;
 
-  public Signals() {
-    this.hub = null;
-    this.opCodeData = null;
-  }
-
-  public Signals(Hub hub) {
-    this.hub = hub;
-    this.opCodeData = hub.currentFrame().opCode().getData();
+  public void reset() {
+    this.mmu = false;
+    this.mxp = false;
+    this.oob = false;
+    this.precompileInfo = false;
+    this.stipend = false;
+    this.exp = false;
+    this.trm = false;
+    this.hashInfo = false;
+    this.romLex = false;
   }
 
   public Signals snapshot() {
-    var r = new Signals();
+    Signals r = new Signals(null);
     r.mmu = this.mmu;
     r.mxp = this.mxp;
     r.oob = this.oob;
     r.precompileInfo = this.precompileInfo;
     r.stipend = this.stipend;
     r.exp = this.exp;
+    r.trm = this.trm;
+    r.hashInfo = this.hashInfo;
+    r.romLex = this.romLex;
+
     return r;
   }
 
-  /**
-   * If requested and possible, trigger the MMU
-   *
-   * @return the signals
-   */
-  public Signals wantMmu(boolean b) {
-    this.mmu = b && canMmu();
-    return this;
-  }
-
-  /**
-   * If requested and possible, trigger the MXP
-   *
-   * @return the signals
-   */
-  public Signals wantMxp(boolean b) {
-    this.mxp = b && canMxp();
-    return this;
-  }
-
-  /**
-   * If requested and possible, trigger the OOB
-   *
-   * @return the signals
-   */
-  public Signals wantOob(boolean b) {
-    this.oob = b && canOob();
-    return this;
-  }
-
-  /**
-   * If requested and possible, trigger the PREC_INFO
-   *
-   * @return the signals
-   */
-  public Signals wantPrecompileInfo(boolean b) {
-    this.precompileInfo = b && canPrecompileInfo();
-    return this;
-  }
-
-  /**
-   * If requested and possible, trigger the STP
-   *
-   * @return the signals
-   */
-  public Signals wantStipend(boolean b) {
-    this.stipend = b && canStp();
-    return this;
-  }
-
-  /**
-   * If requested and possible, trigger the EXP
-   *
-   * @return the signals
-   */
-  public Signals wantExp(boolean b) {
-    this.exp = b && canExp();
-    return this;
-  }
-
-  /**
-   * If possible, trigger the MMU
-   *
-   * @return the signals
-   */
   public Signals wantMmu() {
-    this.mmu = canMmu();
+    this.mmu = true;
     return this;
   }
 
-  /**
-   * If possible, trigger the MXP
-   *
-   * @return the signals
-   */
   public Signals wantMxp() {
-    this.mxp = canMxp();
+    this.mxp = true;
     return this;
   }
 
-  /**
-   * If possible, trigger the OOB
-   *
-   * @return the signals
-   */
-  public Signals wantOob() {
-    this.oob = canOob();
-    return this;
-  }
-
-  /**
-   * If possible, trigger the PREC_INFO
-   *
-   * @return the signals
-   */
-  public Signals wantPrecompileInfo() {
-    this.precompileInfo = canPrecompileInfo();
-    return this;
-  }
-
-  /**
-   * If possible, trigger the STP
-   *
-   * @return the signals
-   */
   public Signals wantStipend() {
-    this.stipend = canStp();
+    this.stipend = true;
+    return this;
+  }
+
+  public Signals wantOob() {
+    this.oob = true;
     return this;
   }
 
   /**
-   * If possible, trigger the EXP
+   * Setup all the signalling required to trigger modules for the execution of the current
+   * operation.
    *
-   * @return the signals
+   * @param frame the currently executing frame
+   * @param platformController the parent controller
+   * @param hub the execution context
    */
-  public Signals wantExp() {
-    this.exp = canExp();
-    return this;
-  }
+  public void prepare(MessageFrame frame, PlatformController platformController, Hub hub) {
+    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final Exceptions ex = platformController.exceptions();
 
-  private boolean canMmu() {
-    return opCodeData.ramSettings().enabled() && hub.exceptions().none();
-  }
-
-  private boolean canMxp() {
-    boolean mxpFlag = false;
-    if (opCodeData.isMxp()) {
-      mxpFlag =
-          switch (opCodeData.instructionFamily()) {
-            case CALL, CREATE, LOG -> !hub.exceptions().stackOverflow()
-                || !hub.exceptions().staticViolation();
-            default -> false;
-          };
-    }
-    return mxpFlag;
-  }
-
-  private boolean canOob() {
-    boolean oobFlag = false;
-
-    if (opCodeData.stackSettings().oobFlag()) {
-      if (opCodeData.mnemonic() == OpCode.CALLDATALOAD) {
-        oobFlag = !hub.exceptions().stackUnderflow();
-      } else if (opCodeData.instructionFamily() == InstructionFamily.JUMP) {
-        oobFlag = !hub.exceptions().stackUnderflow();
-      } else if (opCodeData.mnemonic() == OpCode.RETURNDATACOPY) {
-        oobFlag = !hub.exceptions().stackUnderflow(); // TODO: updateCallerReturndata it
-      } else if (opCodeData.instructionFamily() == InstructionFamily.CALL) {
-        oobFlag = !hub.exceptions().any();
-      } else if (opCodeData.instructionFamily() == InstructionFamily.CREATE) {
-        oobFlag = !hub.exceptions().any();
-      } else if (opCodeData.mnemonic() == OpCode.SSTORE) {
-        oobFlag = !hub.exceptions().stackUnderflow() && !hub.exceptions().staticViolation();
-      } else if (opCodeData.mnemonic() == OpCode.RETURN) {
-        oobFlag =
-            !hub.exceptions().stackUnderflow()
-                && hub.currentFrame().underDeployment(); // TODO: see for the rest
+    switch (opCode) {
+      case CALLDATACOPY, CODECOPY -> {
+        this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
+        this.mmu = ex.none() && !frame.getStackItem(1).isZero();
       }
+
+      case RETURNDATACOPY -> {
+        this.oob = ex.returnDataCopyFault() || ex.none();
+        this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
+        this.mmu = ex.none() && !frame.getStackItem(1).isZero();
+      }
+
+      case EXTCODECOPY -> {
+        this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
+        this.mmu = ex.none() && !frame.getStackItem(2).isZero();
+        this.trm = ex.outOfGas() || ex.none();
+      }
+
+      case LOG0, LOG1, LOG2, LOG3, LOG4 -> {
+        this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
+        this.mmu = ex.none() && !frame.getStackItem(1).isZero(); // TODO: retcon to false if REVERT
+      }
+
+      case CALL, DELEGATECALL, STATICCALL, CALLCODE -> {
+        // WARN: nothing to see here, dynamically requested
+      }
+
+      case CREATE, CREATE2 -> {
+        // WARN: nothing to see here, cf scenarios – vous qui entrez ici, abandonnez tout espoir
+      }
+
+      case REVERT -> {
+        this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
+        this.mmu =
+            ex.none()
+                && !frame.getStackItem(1).isZero()
+                && hub.currentFrame().returnDataTarget().length() > 0;
+      }
+
+      case RETURN -> {
+        final boolean isDeployment = frame.getType() == MessageFrame.Type.CONTRACT_CREATION;
+        final boolean sizeNonZero =
+            Hub.maybeStackItem(frame, 1).map(size -> !size.isZero()).orElse(false);
+
+        // WARN: Static part, other modules may be dynamically requested in the hub
+        this.mxp =
+            ex.outOfMemoryExpansion() || ex.outOfGas() || ex.invalidCodePrefix() || ex.none();
+        this.oob = isDeployment && (ex.codeSizeOverflow() || ex.none());
+        this.mmu =
+            (isDeployment && ex.invalidCodePrefix())
+                || (!isDeployment
+                    && ex.none()
+                    && sizeNonZero
+                    && hub.currentFrame().returnDataTarget().length() > 0)
+                || (isDeployment && ex.none() && sizeNonZero);
+        this.romLex = this.hashInfo = isDeployment && ex.none() && sizeNonZero;
+      }
+
+        // TODO: these opcodes
+      case ADD -> {}
+      case MUL -> {}
+      case SUB -> {}
+      case DIV -> {}
+      case SDIV -> {}
+      case MOD -> {}
+      case SMOD -> {}
+      case ADDMOD -> {}
+      case MULMOD -> {}
+      case EXP -> {}
+      case SIGNEXTEND -> {}
+      case LT -> {}
+      case GT -> {}
+      case SLT -> {}
+      case SGT -> {}
+      case EQ -> {}
+      case ISZERO -> {}
+      case AND -> {}
+      case OR -> {}
+      case XOR -> {}
+      case NOT -> {}
+      case BYTE -> {}
+      case SHL -> {}
+      case SHR -> {}
+      case SAR -> {}
+      case SHA3 -> {}
+      case ADDRESS -> {}
+      case BALANCE -> {}
+      case ORIGIN -> {}
+      case CALLER -> {}
+      case CALLVALUE -> {}
+      case CALLDATALOAD -> {}
+      case CALLDATASIZE -> {}
+      case CODESIZE -> {}
+      case GASPRICE -> {}
+      case EXTCODESIZE -> {}
+      case RETURNDATASIZE -> {}
+      case EXTCODEHASH -> {}
+      case BLOCKHASH -> {}
+      case COINBASE -> {}
+      case TIMESTAMP -> {}
+      case NUMBER -> {}
+      case DIFFICULTY -> {}
+      case GASLIMIT -> {}
+      case CHAINID -> {}
+      case SELFBALANCE -> {}
+      case BASEFEE -> {}
+      case POP -> {}
+      case MLOAD -> {}
+      case MSTORE -> {}
+      case MSTORE8 -> {}
+      case SLOAD -> {}
+      case SSTORE -> {}
+      case JUMP -> {}
+      case JUMPI -> {}
+      case PC -> {}
+      case MSIZE -> {}
+      case GAS -> {}
+      case JUMPDEST -> {}
+      case PUSH1 -> {}
+      case PUSH2 -> {}
+      case PUSH3 -> {}
+      case PUSH4 -> {}
+      case PUSH5 -> {}
+      case PUSH6 -> {}
+      case PUSH7 -> {}
+      case PUSH8 -> {}
+      case PUSH9 -> {}
+      case PUSH10 -> {}
+      case PUSH11 -> {}
+      case PUSH12 -> {}
+      case PUSH13 -> {}
+      case PUSH14 -> {}
+      case PUSH15 -> {}
+      case PUSH16 -> {}
+      case PUSH17 -> {}
+      case PUSH18 -> {}
+      case PUSH19 -> {}
+      case PUSH20 -> {}
+      case PUSH21 -> {}
+      case PUSH22 -> {}
+      case PUSH23 -> {}
+      case PUSH24 -> {}
+      case PUSH25 -> {}
+      case PUSH26 -> {}
+      case PUSH27 -> {}
+      case PUSH28 -> {}
+      case PUSH29 -> {}
+      case PUSH30 -> {}
+      case PUSH31 -> {}
+      case PUSH32 -> {}
+      case DUP1 -> {}
+      case DUP2 -> {}
+      case DUP3 -> {}
+      case DUP4 -> {}
+      case DUP5 -> {}
+      case DUP6 -> {}
+      case DUP7 -> {}
+      case DUP8 -> {}
+      case DUP9 -> {}
+      case DUP10 -> {}
+      case DUP11 -> {}
+      case DUP12 -> {}
+      case DUP13 -> {}
+      case DUP14 -> {}
+      case DUP15 -> {}
+      case DUP16 -> {}
+      case SWAP1 -> {}
+      case SWAP2 -> {}
+      case SWAP3 -> {}
+      case SWAP4 -> {}
+      case SWAP5 -> {}
+      case SWAP6 -> {}
+      case SWAP7 -> {}
+      case SWAP8 -> {}
+      case SWAP9 -> {}
+      case SWAP10 -> {}
+      case SWAP11 -> {}
+      case SWAP12 -> {}
+      case SWAP13 -> {}
+      case SWAP14 -> {}
+      case SWAP15 -> {}
+      case SWAP16 -> {}
+      case INVALID -> {}
+      case SELFDESTRUCT -> {}
     }
-
-    return oobFlag;
-  }
-
-  private boolean canPrecompileInfo() {
-    boolean precompileInfoFlag = false;
-
-    if (opCodeData.instructionFamily() == InstructionFamily.CALL) {
-      precompileInfoFlag =
-          !hub.exceptions()
-              .any(); // TODO:  && no abort(assez de balance && CSD < 1024) && to precompile
-    }
-
-    return precompileInfoFlag;
-  }
-
-  private boolean canStp() {
-    boolean stpFlag = false;
-
-    if (opCodeData.instructionFamily() == InstructionFamily.CALL) {
-      stpFlag =
-          !hub.exceptions().stackUnderflow()
-              && !hub.exceptions().staticViolation()
-              && !hub.exceptions().outOfMemoryExpansion();
-    } else if (opCodeData.instructionFamily() == InstructionFamily.CREATE) {
-      stpFlag = false; // TODO:
-    }
-
-    return stpFlag;
-  }
-
-  private boolean canExp() {
-    return opCodeData.mnemonic() == OpCode.EXP && !hub.exceptions().stackUnderflow();
   }
 }

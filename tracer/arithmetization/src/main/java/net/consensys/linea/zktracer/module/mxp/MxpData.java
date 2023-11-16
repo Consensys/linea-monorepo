@@ -22,6 +22,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
 import java.math.BigInteger;
 import java.util.Arrays;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -301,7 +302,7 @@ public class MxpData {
       if (maxOffset1.compareTo(TWO_POW_32) >= 0) {
         acc1 = maxOffset1.subtract(TWO_POW_32);
       } else {
-        assert maxOffset2.compareTo(TWO_POW_32) >= 0;
+        Preconditions.checkArgument(maxOffset2.compareTo(TWO_POW_32) >= 0);
         acc2 = maxOffset2.subtract(TWO_POW_32);
       }
     } else {

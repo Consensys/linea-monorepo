@@ -128,11 +128,11 @@ public class State implements StackedContainer {
         this.hub++;
       }
 
-      void stampSubmodules(final Signals signals) {
-        if (signals.mmu()) {
+      void stampSubmodules(final PlatformController platformController) {
+        if (platformController.signals().mmu()) {
           this.mmu++;
         }
-        if (signals.mxp()) {
+        if (platformController.signals().mxp()) {
           this.mxp++;
         }
       }

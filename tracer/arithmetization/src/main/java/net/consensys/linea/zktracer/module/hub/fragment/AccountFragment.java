@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.types.Address.isPrecompile;
 
 import java.math.BigInteger;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -50,7 +51,8 @@ public final class AccountFragment implements TraceFragment {
       boolean debit,
       long cost,
       boolean createAddress) {
-    assert oldState.address() == newState.address();
+    Preconditions.checkArgument(oldState.address().equals(newState.address()));
+
     this.who = oldState.address();
     this.oldState = oldState;
     this.newState = newState;

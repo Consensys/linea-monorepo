@@ -26,7 +26,6 @@ public final class Sha3 implements GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long length = 0;
-  private int bitLength = 0;
 
   public Sha3(MessageFrame frame) {
     this.frame = frame;
@@ -34,7 +33,6 @@ public final class Sha3 implements GasProjection {
       Bytes biLength = frame.getStackItem(1);
       this.offset = clampedToLong(frame.getStackItem(0));
       this.length = clampedToLong(biLength);
-      this.bitLength = biLength.bitLength();
     }
   }
 
@@ -45,7 +43,6 @@ public final class Sha3 implements GasProjection {
 
   @Override
   public long memoryExpansion() {
-
     return gc.memoryExpansionGasCost(frame, offset, length);
   }
 
@@ -56,11 +53,11 @@ public final class Sha3 implements GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(GasConstants.G_KECCAK_256_WORD.cost(), this.bitLength, 32);
+    return linearCost(GasConstants.G_KECCAK_256_WORD.cost(), this.length, 32);
   }
 
   @Override
   public long messageSize() {
-    return (this.bitLength + 7) / 8;
+    return this.length;
   }
 }

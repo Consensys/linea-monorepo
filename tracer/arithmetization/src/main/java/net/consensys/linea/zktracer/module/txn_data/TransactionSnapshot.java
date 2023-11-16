@@ -19,6 +19,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -129,7 +130,10 @@ public final class TransactionSnapshot {
         tx.getTo().map(world::get).map(AccountState::hasCode).orElse(!tx.getPayload().isEmpty()),
         tx.getType(),
         codeIdBeforeLex,
-        world.get(tx.getSender()).getBalance().getAsBigInteger(),
+        Optional.ofNullable(tx.getSender())
+            .map(world::get)
+            .map(x -> x.getBalance().getAsBigInteger())
+            .orElse(BigInteger.ZERO),
         tx.getPayload().copy(),
         tx.getGasLimit(),
         computeEffectiveGasPrice(baseFee, tx),
@@ -221,7 +225,7 @@ public final class TransactionSnapshot {
       initialCost += (long) this.prewarmedStorageKeysCount() * TxnDataTrace.G_accessliststorage;
     }
 
-    assert (this.gasLimit() >= initialCost) : "gasLimit < initialGasCost";
+    Preconditions.checkArgument(this.gasLimit() >= initialCost, "gasLimit < initialGasCost");
 
     return initialCost;
   }

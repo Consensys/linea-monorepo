@@ -38,7 +38,7 @@ public class MiscFragment implements TraceFragment, PostExecDefer {
   private final List<TraceSubFragment> subFragments = new ArrayList<>();
 
   public MiscFragment(Hub hub, MessageFrame frame) {
-    this.signals = hub.signals().snapshot();
+    this.signals = hub.pch().signals().snapshot();
 
     // TODO: the rest
     if (this.signals.mmu()) {

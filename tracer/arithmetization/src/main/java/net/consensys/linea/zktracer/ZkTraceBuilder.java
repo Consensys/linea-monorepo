@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRtTrace;
@@ -39,7 +40,7 @@ public class ZkTraceBuilder {
                         + " -- lines found: "
                         + v.length());
               }
-              assert v.length() == module.lineCount();
+              Preconditions.checkArgument(v.length() == module.lineCount());
               traceResults.put(module.jsonKey(), v);
             });
     return this;
