@@ -15,23 +15,45 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
-/**
- * Records the aborting conditions that may happen during a CALL or a CREATE.
- *
- * @param callStackOverflow too many nested contexts
- * @param balanceTooLow trying to give more ETH than the caller has
- */
-public record Aborts(boolean callStackOverflow, boolean balanceTooLow) {
-  public static Aborts forFrame(Hub hub) {
-    return new Aborts(
-        hub.callStack().wouldOverflow(),
+/** Records the aborting conditions that may happen during a CALL or a CREATE. */
+@Getter
+@NoArgsConstructor
+@Accessors(fluent = true)
+public final class Aborts {
+  private boolean callStackOverflow;
+  private boolean balanceTooLow;
+
+  /**
+   * @param callStackOverflow too many nested contexts
+   * @param balanceTooLow trying to give more ETH than the caller has
+   */
+  public Aborts(boolean callStackOverflow, boolean balanceTooLow) {
+    this.callStackOverflow = callStackOverflow;
+    this.balanceTooLow = balanceTooLow;
+  }
+
+  public void reset() {
+    this.callStackOverflow = false;
+    this.balanceTooLow = false;
+  }
+
+  public void prepare(Hub hub) {
+    this.callStackOverflow = hub.callStack().wouldOverflow();
+    if (this.callStackOverflow) {
+      return;
+    }
+
+    this.balanceTooLow =
         switch (hub.currentFrame().opCode()) {
           case CALL, CALLCODE -> {
-            if (hub.exceptions().none()) {
+            if (hub.pch().exceptions().none()) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().getAccount(myAddress).getBalance();
@@ -43,7 +65,7 @@ public record Aborts(boolean callStackOverflow, boolean balanceTooLow) {
             }
           }
           case CREATE, CREATE2 -> {
-            if (hub.exceptions().none()) {
+            if (hub.pch().exceptions().none()) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().getAccount(myAddress).getBalance();
@@ -55,7 +77,7 @@ public record Aborts(boolean callStackOverflow, boolean balanceTooLow) {
             }
           }
           default -> false;
-        });
+        };
   }
 
   public Aborts snapshot() {

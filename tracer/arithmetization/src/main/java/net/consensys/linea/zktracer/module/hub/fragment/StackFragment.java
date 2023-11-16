@@ -36,6 +36,8 @@ import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Accessors(fluent = true)
@@ -95,7 +97,14 @@ public final class StackFragment implements TraceFragment {
         case RETURN -> this.hashInfoKeccak = EWord.ZERO; // TODO: fixme
         case CREATE2 -> {
           Address newAddress = EWord.of(frame.getStackItem(0)).toAddress();
-          this.hashInfoKeccak = EWord.of(frame.getWorldUpdater().get(newAddress).getCodeHash());
+          // zero address indicates a failed deployment
+          if (!newAddress.isZero()) {
+            this.hashInfoKeccak =
+                EWord.of(
+                    Optional.ofNullable(frame.getWorldUpdater().get(newAddress))
+                        .map(AccountState::getCodeHash)
+                        .orElse(Hash.EMPTY));
+          }
         }
         default -> throw new IllegalStateException("unexpected opcode");
       }
@@ -188,7 +197,7 @@ public final class StackFragment implements TraceFragment {
         .pStackMxpx(exceptions.outOfMemoryExpansion())
         .pStackRdcx(exceptions.returnDataCopyFault())
         .pStackJumpx(exceptions.jumpFault())
-        .pStackStaticx(exceptions.staticViolation())
+        .pStackStaticx(exceptions.staticFault())
         .pStackSstorex(exceptions.outOfSStore())
         .pStackInvprex(contextExceptions.invalidCodePrefix())
         .pStackMaxcsx(contextExceptions.codeSizeOverflow())

@@ -478,11 +478,11 @@ opcodes:
     value: 0x40
     instructionFamily: BATCH
     stackSettings:
-      pattern: ZERO_ONE
+      pattern: ONE_ONE
       alpha: 1
-      delta: 0
+      delta: 1
       nbAdded: 1
-      nbRemoved: 0
+      nbRemoved: 1
       staticGas: G_BLOCK_HASH
       flag1: true
   - mnemonic: COINBASE
