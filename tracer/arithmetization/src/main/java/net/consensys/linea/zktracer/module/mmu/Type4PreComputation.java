@@ -470,7 +470,7 @@ class Type4PreComputation implements MmuPreComputation {
       case CODECOPY -> topCallFrame.code().getSize();
       case EXTCODECOPY -> {
         Address address = Words.toAddress(microData.value().toBytes());
-        topCallFrame.frame().getWorldUpdater().getAccount(address).getCode().size();
+        topCallFrame.frame().getWorldUpdater().get(address).getCode().size();
       }
       case CALLDATACOPY -> callStack.caller().callDataRange().length();
       case RETURNDATACOPY -> topCallFrame.returnDataRange().length();
