@@ -161,7 +161,6 @@ public class GeneralStateReferenceTestTools {
     final ZkTracer zkTracer = new ZkTracer();
     zkTracer.traceStartConflation(1);
     zkTracer.traceStartBlock(blockHeader, blockBody);
-    zkTracer.traceStartTransaction(worldStateUpdater, transaction);
 
     final TransactionProcessingResult result =
         processor.processTransaction(
@@ -182,14 +181,6 @@ public class GeneralStateReferenceTestTools {
       return;
     }
 
-    zkTracer.traceEndTransaction(
-        worldStateUpdater,
-        transaction,
-        result.isSuccessful(),
-        result.getOutput(),
-        result.getLogs(),
-        transaction.getGasLimit() - result.getGasRemaining(),
-        0);
     zkTracer.traceEndBlock(blockHeader, blockBody);
     zkTracer.traceEndConflation();
 

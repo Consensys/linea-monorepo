@@ -126,10 +126,8 @@ public class BlockchainReferenceTestTools {
                 ? HeaderValidationMode.LIGHT
                 : HeaderValidationMode.FULL;
 
-        zkTracer.traceStartConflation(1);
         final BlockImportResult importResult =
             blockImporter.importBlock(context, block, validationMode, validationMode);
-        zkTracer.traceEndConflation();
 
         assertThat(importResult.isImported()).isEqualTo(candidateBlock.isValid());
       } catch (final RLPException e) {
