@@ -56,7 +56,7 @@ public final class Aborts {
             if (hub.pch().exceptions().none()) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
-                  hub.messageFrame().getWorldUpdater().getAccount(myAddress).getBalance();
+                  hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();
               final Wei value = Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(2)));
 
               yield value.greaterThan(myBalance);
@@ -68,7 +68,7 @@ public final class Aborts {
             if (hub.pch().exceptions().none()) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
-                  hub.messageFrame().getWorldUpdater().getAccount(myAddress).getBalance();
+                  hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();
               final Wei value = Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(0)));
 
               yield value.greaterThan(myBalance);

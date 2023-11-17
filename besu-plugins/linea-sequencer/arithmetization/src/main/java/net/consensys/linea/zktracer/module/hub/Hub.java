@@ -1028,7 +1028,7 @@ public class Hub implements Module {
               case BALANCE, EXTCODESIZE, EXTCODEHASH -> Words.toAddress(frame.getStackItem(0));
               default -> Address.wrap(this.currentFrame().address());
             };
-        Account targetAccount = frame.getWorldUpdater().getAccount(targetAddress);
+        Account targetAccount = frame.getWorldUpdater().get(targetAddress);
         AccountSnapshot accountSnapshot =
             AccountSnapshot.fromAccount(
                 targetAccount,
@@ -1051,7 +1051,7 @@ public class Hub implements Module {
                 case EXTCODECOPY -> Words.toAddress(frame.getStackItem(0));
                 default -> throw new IllegalStateException("unexpected opcode");
               };
-          Account targetAccount = frame.getWorldUpdater().getAccount(targetAddress);
+          Account targetAccount = frame.getWorldUpdater().get(targetAddress);
           AccountSnapshot accountSnapshot =
               AccountSnapshot.fromAccount(
                   targetAccount,
@@ -1144,7 +1144,7 @@ public class Hub implements Module {
       }
       case CREATE -> {
         Address myAddress = this.currentFrame().address();
-        Account myAccount = frame.getWorldUpdater().getAccount(myAddress);
+        Account myAccount = frame.getWorldUpdater().get(myAddress);
         AccountSnapshot myAccountSnapshot =
             AccountSnapshot.fromAccount(
                 myAccount,
@@ -1153,7 +1153,7 @@ public class Hub implements Module {
                 this.conflation.deploymentInfo().isDeploying(myAddress));
 
         Address createdAddress = this.currentFrame().address();
-        Account createdAccount = frame.getWorldUpdater().getAccount(createdAddress);
+        Account createdAccount = frame.getWorldUpdater().get(createdAddress);
         AccountSnapshot createdAccountSnapshot =
             AccountSnapshot.fromAccount(
                 createdAccount,
@@ -1173,7 +1173,7 @@ public class Hub implements Module {
 
       case CALL -> {
         final Address myAddress = this.currentFrame().address();
-        final Account myAccount = frame.getWorldUpdater().getAccount(myAddress);
+        final Account myAccount = frame.getWorldUpdater().get(myAddress);
         final AccountSnapshot myAccountSnapshot =
             AccountSnapshot.fromAccount(
                 myAccount,
@@ -1182,7 +1182,7 @@ public class Hub implements Module {
                 this.conflation.deploymentInfo().isDeploying(myAddress));
 
         final Address calledAddress = Words.toAddress(frame.getStackItem(1));
-        final Account calledAccount = frame.getWorldUpdater().getAccount(calledAddress);
+        final Account calledAccount = frame.getWorldUpdater().get(calledAddress);
         final boolean hasCode =
             Optional.ofNullable(calledAccount).map(AccountState::hasCode).orElse(false);
 
@@ -1274,7 +1274,7 @@ public class Hub implements Module {
       case JUMP -> {
         AccountSnapshot codeAccountSnapshot =
             AccountSnapshot.fromAccount(
-                frame.getWorldUpdater().getAccount(this.currentFrame().codeAddress()),
+                frame.getWorldUpdater().get(this.currentFrame().codeAddress()),
                 true,
                 this.conflation.deploymentInfo().number(this.currentFrame().codeAddress()),
                 this.currentFrame().underDeployment());

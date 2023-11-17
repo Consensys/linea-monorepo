@@ -81,7 +81,7 @@ public class RlpAddr implements Module {
                 OpCode.CREATE,
                 frame
                     .getWorldUpdater()
-                    .getAccount(currentAddress)
+                    .get(currentAddress)
                     .getNonce(), // TODO: use the method done by @Lorenzo in OOB module
                 currentAddress);
         this.chunkList.add(chunk);

@@ -63,9 +63,9 @@ public class WithCodeCallSection extends TraceSection
   @Override
   public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
     final Address callerAddress = preCallCallerAccountSnapshot.address();
-    final Account callerAccount = frame.getWorldUpdater().getAccount(callerAddress);
+    final Account callerAccount = frame.getWorldUpdater().get(callerAddress);
     final Address calledAddress = preCallCalledAccountSnapshot.address();
-    final Account calledAccount = frame.getWorldUpdater().getAccount(calledAddress);
+    final Account calledAccount = frame.getWorldUpdater().get(calledAddress);
 
     this.postCallCallerAccountSnapshot =
         AccountSnapshot.fromAccount(
@@ -84,9 +84,9 @@ public class WithCodeCallSection extends TraceSection
   @Override
   public void runNextContext(Hub hub, MessageFrame frame) {
     final Address callerAddress = preCallCallerAccountSnapshot.address();
-    final Account callerAccount = frame.getWorldUpdater().getAccount(callerAddress);
+    final Account callerAccount = frame.getWorldUpdater().get(callerAddress);
     final Address calledAddress = preCallCalledAccountSnapshot.address();
-    final Account calledAccount = frame.getWorldUpdater().getAccount(calledAddress);
+    final Account calledAccount = frame.getWorldUpdater().get(calledAddress);
 
     this.inCallCallerAccountSnapshot =
         AccountSnapshot.fromAccount(
