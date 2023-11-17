@@ -165,12 +165,12 @@ public class RomLex implements Module {
                 currentAddress,
                 frame
                     .getWorldUpdater()
-                    .getAccount(currentAddress)
+                    .get(currentAddress)
                     .getNonce()); // TODO: use the method done by @Lorenzo in OOB module
 
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
-        this.byteCode = frame.readMemory(offset, length);
+        this.byteCode = frame.shadowReadMemory(offset, length);
         if (!this.byteCode.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
         }
@@ -179,7 +179,7 @@ public class RomLex implements Module {
       case CREATE2 -> {
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
-        this.byteCode = frame.readMemory(offset, length);
+        this.byteCode = frame.shadowReadMemory(offset, length);
 
         if (!this.byteCode.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
@@ -195,7 +195,7 @@ public class RomLex implements Module {
       case RETURN -> {
         final long offset = clampedToLong(frame.getStackItem(0));
         final long length = clampedToLong(frame.getStackItem(1));
-        final Bytes code = frame.readMemory(offset, length);
+        final Bytes code = frame.shadowReadMemory(offset, length);
         final boolean depStatus =
             hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
         if (!code.isEmpty() && depStatus) {

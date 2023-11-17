@@ -55,7 +55,7 @@ public class CreateSection extends TraceSection
     Address creatorAddress = oldCreatorSnapshot.address();
     this.newCreatorSnapshot =
         AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().getAccount(creatorAddress),
+            frame.getWorldUpdater().get(creatorAddress),
             true,
             hub.conflation().deploymentInfo().number(creatorAddress),
             hub.conflation().deploymentInfo().isDeploying(creatorAddress));
@@ -63,7 +63,7 @@ public class CreateSection extends TraceSection
     Address createdAddress = oldCreatedSnapshot.address();
     this.newCreatedSnapshot =
         AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().getAccount(createdAddress),
+            frame.getWorldUpdater().get(createdAddress),
             true,
             hub.conflation().deploymentInfo().number(createdAddress),
             hub.conflation().deploymentInfo().isDeploying(createdAddress));
