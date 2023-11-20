@@ -22,6 +22,9 @@ import java.util.stream.IntStream;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Conversions {
+  public static final BigInteger UNSIGNED_LONG_MASK =
+      BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
+
   public static Bytes bigIntegerToBytes(final BigInteger input) {
     Bytes bytes;
     if (input.equals(BigInteger.ZERO)) {
@@ -55,5 +58,14 @@ public class Conversions {
 
   public static BigInteger booleanToBigInteger(final boolean input) {
     return input ? BigInteger.ONE : BigInteger.ZERO;
+  }
+
+  public static BigInteger longToUnsignedBigInteger(final long input) {
+    final BigInteger output = BigInteger.valueOf(input).and(UNSIGNED_LONG_MASK);
+    if (output.bitLength() > 64) {
+      throw new IllegalArgumentException(
+          "a long can't be more than 64 bits long, and is" + output.bitLength());
+    }
+    return output;
   }
 }
