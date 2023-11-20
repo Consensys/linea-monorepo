@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -209,7 +210,7 @@ public class RlpTxn implements Module {
     }
 
     // Phase 2 : Nonce
-    BigInteger nonce = BigInteger.valueOf(chunk.tx().getNonce());
+    BigInteger nonce = longToUnsignedBigInteger(chunk.tx().getNonce());
     traceValue.dataLo = nonce;
     handlePhaseInteger(traceValue, 2, nonce, 8, trace);
 

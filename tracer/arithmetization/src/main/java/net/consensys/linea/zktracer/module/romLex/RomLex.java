@@ -15,8 +15,9 @@
 
 package net.consensys.linea.zktracer.module.romLex;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
+import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
@@ -31,7 +32,6 @@ import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.AccountState;
@@ -159,15 +159,7 @@ public class RomLex implements Module {
 
     switch (opcode) {
       case CREATE -> {
-        final Address currentAddress = frame.getRecipientAddress();
-        this.address =
-            Address.contractAddress(
-                currentAddress,
-                frame
-                    .getWorldUpdater()
-                    .get(currentAddress)
-                    .getNonce()); // TODO: use the method done by @Lorenzo in OOB module
-
+        this.address = getCreateAddress(frame);
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
         this.byteCode = frame.shadowReadMemory(offset, length);
@@ -183,12 +175,7 @@ public class RomLex implements Module {
 
         if (!this.byteCode.isEmpty()) {
           codeIdentifierBeforeLexOrder += 1;
-          final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-          final Bytes32 hash = keccak256(this.byteCode);
-          this.address =
-              Address.extract(
-                  keccak256(
-                      Bytes.concatenate(CREATE2_SHIFT, frame.getRecipientAddress(), salt, hash)));
+          this.address = getCreate2Address(frame);
         }
       }
 

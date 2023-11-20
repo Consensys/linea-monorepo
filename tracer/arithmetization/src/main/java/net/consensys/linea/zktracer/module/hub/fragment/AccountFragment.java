@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import static net.consensys.linea.zktracer.types.Address.isPrecompile;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
 
