@@ -36,7 +36,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
 
   @Override
   public PluginTransactionSelector create() {
-    final LineaTransactionSelectorConfiguration lineaConfiguration = options.toDomainObject();
-    return new LineaTransactionSelector(lineaConfiguration, this.limitsMapSupplier);
+    return new LineaTransactionSelector(options.toDomainObject(), this.limitsMapSupplier);
   }
 }

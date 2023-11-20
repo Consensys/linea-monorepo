@@ -30,9 +30,12 @@ import java.util.stream.Collectors;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
+import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.web3j.crypto.Credentials;
@@ -174,6 +177,12 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             .collect(Collectors.toSet());
 
     assertThat(blockNumbers.size()).isEqualTo(1);
+  }
+
+  protected void assertTransactionNotInThePool(String hash) {
+    minerNode.verify(
+        new TxPoolConditions(new TxPoolTransactions())
+            .notInTransactionPool(Hash.fromHexString(hash)));
   }
 
   private TransactionReceiptProcessor createReceiptProcessor(Web3j web3j) {
