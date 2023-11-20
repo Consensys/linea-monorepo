@@ -36,6 +36,8 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private final Supplier<Map<String, Integer>> moduleLimitsProvider;
   private final ZkTracer zkTracer;
   private final String limitFilePath;
+  private Map<String, Integer> prevLineCount = Map.of();
+  private Map<String, Integer> currLineCount;
 
   public TraceLineLimitTransactionSelector(
       final Supplier<Map<String, Integer>> moduleLimitsProvider, final String limitFilePath) {
@@ -64,6 +66,13 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
     zkTracer.popTransaction(pendingTransaction);
   }
 
+  @Override
+  public void onTransactionSelected(
+      final PendingTransaction pendingTransaction,
+      final TransactionProcessingResult processingResult) {
+    prevLineCount = currLineCount;
+  }
+
   /**
    * Checking the created trace lines is performed post-processing.
    *
@@ -77,8 +86,8 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
       final TransactionProcessingResult processingResult) {
     final Map<String, Integer> moduleLimits = moduleLimitsProvider.get();
     // check that we are not exceed line number for any module
-    final Map<String, Integer> lineCounts = zkTracer.getModulesLineCount();
-    for (var e : lineCounts.entrySet()) {
+    currLineCount = zkTracer.getModulesLineCount();
+    for (var e : currLineCount.entrySet()) {
       final String module = e.getKey();
       if (!moduleLimits.containsKey(module)) {
         final String errorMsg =
@@ -86,7 +95,22 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
         log.error(errorMsg);
         throw new RuntimeException(errorMsg);
       }
-      if (lineCounts.get(module) > moduleLimits.get(module)) {
+
+      final int currModuleLineCount = currLineCount.get(module);
+      final int moduleLineCountLimit = moduleLimits.get(module);
+
+      final int txModuleLineCount = currModuleLineCount - prevLineCount.getOrDefault(module, 0);
+      if (txModuleLineCount > moduleLineCountLimit) {
+        log.warn(
+            "Tx {} line count for module {}={} is above the limit {}, removing from the txpool",
+            pendingTransaction.getTransaction().getHash(),
+            module,
+            txModuleLineCount,
+            moduleLineCountLimit);
+        return TransactionSelectionResult.invalid("TX_MODULE_LINE_COUNT_OVERFLOW");
+      }
+
+      if (currModuleLineCount > moduleLineCountLimit) {
         return TransactionSelectionResult.BLOCK_FULL;
       }
     }
