@@ -59,11 +59,12 @@ public class Ext implements Module {
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
     final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
-    final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
-    final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
-    final Bytes32 arg3 = Bytes32.leftPad(frame.getStackItem(2));
-
-    this.operations.add(new ExtOperation(opCode, arg1, arg2, arg3));
+    this.operations.add(
+        new ExtOperation(
+            opCode.mnemonic(),
+            Bytes32.leftPad(frame.getStackItem(0)),
+            Bytes32.leftPad(frame.getStackItem(1)),
+            Bytes32.leftPad(frame.getStackItem(2))));
   }
 
   public void traceExtOperation(ExtOperation op, Trace trace) {
@@ -213,6 +214,7 @@ public class Ext implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     for (ExtOperation operation : this.operations) {
+      operation.setup();
       this.traceExtOperation(operation, trace);
     }
   }
