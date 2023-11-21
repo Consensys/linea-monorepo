@@ -182,7 +182,7 @@ public class Signals {
       case LOG0, LOG1, LOG2, LOG3, LOG4 -> {
         this.mxp = ex.outOfMemoryExpansion() || ex.outOfGas() || ex.none();
         this.mmu = ex.none() && !frame.getStackItem(1).isZero(); // TODO: retcon to false if REVERT
-        this.logInfo = this.mmu;
+        // logInfo and logData are triggered via rlpRcpt at the end of the tx
       }
 
       case CALL, DELEGATECALL, STATICCALL, CALLCODE -> {
