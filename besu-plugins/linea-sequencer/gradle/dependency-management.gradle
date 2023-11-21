@@ -33,6 +33,12 @@ repositories {
   mavenCentral()
 }
 
+configurations.all {
+  resolutionStrategy {
+    cacheChangingModulesFor 0, 'seconds'
+  }
+}
+
 apply plugin: 'io.spring.dependency-management'
 
 dependencyManagement {
