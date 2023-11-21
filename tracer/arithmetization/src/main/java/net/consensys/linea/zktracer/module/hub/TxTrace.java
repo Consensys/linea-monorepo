@@ -103,7 +103,7 @@ public class TxTrace {
    *
    * @param hubTrace where to materialize the trace
    */
-  public void commit(Trace.TraceBuilder hubTrace) {
+  public void commit(Trace hubTrace) {
     for (TraceSection opSection : this.trace) {
       for (TraceSection.TraceLine line : opSection.getLines()) {
         line.trace(hubTrace);

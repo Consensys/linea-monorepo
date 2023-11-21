@@ -16,10 +16,12 @@
 package net.consensys.linea.zktracer.module.shf;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
@@ -52,7 +54,7 @@ public class Shf implements Module {
         new ShfOperation(OpCode.of(frame.getCurrentOperation().getOpcode()), arg1, arg2));
   }
 
-  private void traceShfOperation(ShfOperation op, Trace.TraceBuilder trace) {
+  private void traceShfOperation(ShfOperation op, Trace trace) {
     this.stamp++;
 
     for (int i = 0; i < op.maxCt(); i++) {
@@ -122,14 +124,17 @@ public class Shf implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     for (ShfOperation op : this.operations) {
       this.traceShfOperation(op, trace);
     }
-
-    return new ShfTrace(trace.build());
   }
 
   @Override

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import lombok.SneakyThrows;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.BlobGas;
@@ -125,6 +126,7 @@ public class GeneralStateReferenceTestTools {
     return params.generate(filePath);
   }
 
+  @SneakyThrows
   public static void executeTest(final GeneralStateTestCaseEipSpec spec) {
     final BlockHeader blockHeader = spec.getBlockHeader();
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
@@ -215,7 +217,7 @@ public class GeneralStateReferenceTestTools {
                   .isEqualTo(expected);
             });
 
-    assertThat(CorsetValidator.isValid(zkTracer.getJsonTrace())).isTrue();
+    assertThat(CorsetValidator.isValid(zkTracer.writeToTmpFile())).isTrue();
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {

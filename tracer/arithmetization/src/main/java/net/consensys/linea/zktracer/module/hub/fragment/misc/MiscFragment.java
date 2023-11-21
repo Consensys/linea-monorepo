@@ -67,7 +67,7 @@ public class MiscFragment implements TraceFragment, PostExecDefer {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     trace
         .peekAtMiscellaneous(true)
         .pMiscellaneousMmuFlag(this.signals.mmu())

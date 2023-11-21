@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,384 +16,358 @@
 package net.consensys.linea.zktracer.module.trm;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC_HI") List<BigInteger> accHi,
-    @JsonProperty("ACC_LO") List<BigInteger> accLo,
-    @JsonProperty("ACC_T") List<BigInteger> accT,
-    @JsonProperty("ADDR_HI") List<BigInteger> addrHi,
-    @JsonProperty("ADDR_LO") List<BigInteger> addrLo,
-    @JsonProperty("BYTE_HI") List<UnsignedByte> byteHi,
-    @JsonProperty("BYTE_LO") List<UnsignedByte> byteLo,
-    @JsonProperty("CT") List<BigInteger> ct,
-    @JsonProperty("IS_PREC") List<Boolean> isPrec,
-    @JsonProperty("ONE") List<Boolean> one,
-    @JsonProperty("PBIT") List<Boolean> pbit,
-    @JsonProperty("STAMP") List<BigInteger> stamp,
-    @JsonProperty("TRM_ADDR_HI") List<BigInteger> trmAddrHi) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer accHi;
+  private final MappedByteBuffer accLo;
+  private final MappedByteBuffer accT;
+  private final MappedByteBuffer addrHi;
+  private final MappedByteBuffer addrLo;
+  private final MappedByteBuffer byteHi;
+  private final MappedByteBuffer byteLo;
+  private final MappedByteBuffer ct;
+  private final MappedByteBuffer isPrec;
+  private final MappedByteBuffer one;
+  private final MappedByteBuffer pbit;
+  private final MappedByteBuffer stamp;
+  private final MappedByteBuffer trmAddrHi;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("trm.ACC_HI", 32, length),
+        new ColumnHeader("trm.ACC_LO", 32, length),
+        new ColumnHeader("trm.ACC_T", 32, length),
+        new ColumnHeader("trm.ADDR_HI", 32, length),
+        new ColumnHeader("trm.ADDR_LO", 32, length),
+        new ColumnHeader("trm.BYTE_HI", 1, length),
+        new ColumnHeader("trm.BYTE_LO", 1, length),
+        new ColumnHeader("trm.CT", 32, length),
+        new ColumnHeader("trm.IS_PREC", 1, length),
+        new ColumnHeader("trm.ONE", 1, length),
+        new ColumnHeader("trm.PBIT", 1, length),
+        new ColumnHeader("trm.STAMP", 32, length),
+        new ColumnHeader("trm.TRM_ADDR_HI", 32, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.accHi = buffers.get(0);
+    this.accLo = buffers.get(1);
+    this.accT = buffers.get(2);
+    this.addrHi = buffers.get(3);
+    this.addrLo = buffers.get(4);
+    this.byteHi = buffers.get(5);
+    this.byteLo = buffers.get(6);
+    this.ct = buffers.get(7);
+    this.isPrec = buffers.get(8);
+    this.one = buffers.get(9);
+    this.pbit = buffers.get(10);
+    this.stamp = buffers.get(11);
+    this.trmAddrHi = buffers.get(12);
   }
 
   public int size() {
-    return this.accHi.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ACC_HI")
-    private final List<BigInteger> accHi;
-
-    @JsonProperty("ACC_LO")
-    private final List<BigInteger> accLo;
-
-    @JsonProperty("ACC_T")
-    private final List<BigInteger> accT;
-
-    @JsonProperty("ADDR_HI")
-    private final List<BigInteger> addrHi;
-
-    @JsonProperty("ADDR_LO")
-    private final List<BigInteger> addrLo;
-
-    @JsonProperty("BYTE_HI")
-    private final List<UnsignedByte> byteHi;
-
-    @JsonProperty("BYTE_LO")
-    private final List<UnsignedByte> byteLo;
-
-    @JsonProperty("CT")
-    private final List<BigInteger> ct;
-
-    @JsonProperty("IS_PREC")
-    private final List<Boolean> isPrec;
-
-    @JsonProperty("ONE")
-    private final List<Boolean> one;
-
-    @JsonProperty("PBIT")
-    private final List<Boolean> pbit;
-
-    @JsonProperty("STAMP")
-    private final List<BigInteger> stamp;
-
-    @JsonProperty("TRM_ADDR_HI")
-    private final List<BigInteger> trmAddrHi;
-
-    private TraceBuilder(int length) {
-      this.accHi = new ArrayList<>(length);
-      this.accLo = new ArrayList<>(length);
-      this.accT = new ArrayList<>(length);
-      this.addrHi = new ArrayList<>(length);
-      this.addrLo = new ArrayList<>(length);
-      this.byteHi = new ArrayList<>(length);
-      this.byteLo = new ArrayList<>(length);
-      this.ct = new ArrayList<>(length);
-      this.isPrec = new ArrayList<>(length);
-      this.one = new ArrayList<>(length);
-      this.pbit = new ArrayList<>(length);
-      this.stamp = new ArrayList<>(length);
-      this.trmAddrHi = new ArrayList<>(length);
+  public Trace accHi(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("trm.ACC_HI already set");
+    } else {
+      filled.set(0);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    accHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.accHi.size();
+    return this;
+  }
+
+  public Trace accLo(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("trm.ACC_LO already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder accHi(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC_HI already set");
-      } else {
-        filled.set(0);
-      }
+    accLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accT(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("trm.ACC_T already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder accLo(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_LO already set");
-      } else {
-        filled.set(1);
-      }
+    accT.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace addrHi(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("trm.ADDR_HI already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder accT(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ACC_T already set");
-      } else {
-        filled.set(2);
-      }
+    addrHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accT.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace addrLo(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("trm.ADDR_LO already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder addrHi(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ADDR_HI already set");
-      } else {
-        filled.set(3);
-      }
+    addrLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      addrHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteHi(final UnsignedByte b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("trm.BYTE_HI already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder addrLo(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ADDR_LO already set");
-      } else {
-        filled.set(4);
-      }
+    byteHi.put(b.toByte());
 
-      addrLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteLo(final UnsignedByte b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("trm.BYTE_LO already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder byteHi(final UnsignedByte b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("BYTE_HI already set");
-      } else {
-        filled.set(5);
-      }
+    byteLo.put(b.toByte());
 
-      byteHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ct(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("trm.CT already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder byteLo(final UnsignedByte b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("BYTE_LO already set");
-      } else {
-        filled.set(6);
-      }
+    ct.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isPrec(final Boolean b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("trm.IS_PREC already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder ct(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("CT already set");
-      } else {
-        filled.set(7);
-      }
+    isPrec.put((byte) (b ? 1 : 0));
 
-      ct.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace one(final Boolean b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("trm.ONE already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder isPrec(final Boolean b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("IS_PREC already set");
-      } else {
-        filled.set(8);
-      }
+    one.put((byte) (b ? 1 : 0));
 
-      isPrec.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace pbit(final Boolean b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("trm.PBIT already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder one(final Boolean b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("ONE already set");
-      } else {
-        filled.set(9);
-      }
+    pbit.put((byte) (b ? 1 : 0));
 
-      one.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace stamp(final BigInteger b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("trm.STAMP already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder pbit(final Boolean b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("PBIT already set");
-      } else {
-        filled.set(10);
-      }
+    stamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      pbit.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace trmAddrHi(final BigInteger b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("trm.TRM_ADDR_HI already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder stamp(final BigInteger b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("STAMP already set");
-      } else {
-        filled.set(11);
-      }
+    trmAddrHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      stamp.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("trm.ACC_HI has not been filled");
     }
 
-    public TraceBuilder trmAddrHi(final BigInteger b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("TRM_ADDR_HI already set");
-      } else {
-        filled.set(12);
-      }
-
-      trmAddrHi.add(b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("trm.ACC_LO has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC_HI has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_LO has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ACC_T has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ADDR_HI has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ADDR_LO has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("BYTE_HI has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("BYTE_LO has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("CT has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("IS_PREC has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("ONE has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("PBIT has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("STAMP has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("TRM_ADDR_HI has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("trm.ACC_T has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        accHi.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        accLo.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        accT.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        addrHi.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        addrLo.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        byteHi.add(UnsignedByte.of(0));
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        byteLo.add(UnsignedByte.of(0));
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        ct.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        isPrec.add(false);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        one.add(false);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        pbit.add(false);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        stamp.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        trmAddrHi.add(BigInteger.ZERO);
-        this.filled.set(12);
-      }
-
-      return this.validateRow();
+    if (!filled.get(3)) {
+      throw new IllegalStateException("trm.ADDR_HI has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          accHi, accLo, accT, addrHi, addrLo, byteHi, byteLo, ct, isPrec, one, pbit, stamp,
-          trmAddrHi);
+    if (!filled.get(4)) {
+      throw new IllegalStateException("trm.ADDR_LO has not been filled");
     }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("trm.BYTE_HI has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("trm.BYTE_LO has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("trm.CT has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("trm.IS_PREC has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("trm.ONE has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("trm.PBIT has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("trm.STAMP has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("trm.TRM_ADDR_HI has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      accHi.position(accHi.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      accLo.position(accLo.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      accT.position(accT.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      addrHi.position(addrHi.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      addrLo.position(addrLo.position() + 32);
+    }
+
+    if (!filled.get(5)) {
+      byteHi.position(byteHi.position() + 1);
+    }
+
+    if (!filled.get(6)) {
+      byteLo.position(byteLo.position() + 1);
+    }
+
+    if (!filled.get(7)) {
+      ct.position(ct.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      isPrec.position(isPrec.position() + 1);
+    }
+
+    if (!filled.get(9)) {
+      one.position(one.position() + 1);
+    }
+
+    if (!filled.get(10)) {
+      pbit.position(pbit.position() + 1);
+    }
+
+    if (!filled.get(11)) {
+      stamp.position(stamp.position() + 32);
+    }
+
+    if (!filled.get(12)) {
+      trmAddrHi.position(trmAddrHi.position() + 32);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }

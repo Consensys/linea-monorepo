@@ -26,7 +26,7 @@ import net.consensys.linea.zktracer.types.EWord;
 public record ExpSubFragment(EWord exponent) implements TraceSubFragment {
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousExpExponentHi(exponent.hiBigInt())
         .pMiscellaneousExpExponentLo(this.exponent.loBigInt())

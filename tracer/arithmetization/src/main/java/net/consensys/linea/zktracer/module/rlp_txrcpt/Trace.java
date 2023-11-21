@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,1175 +16,1068 @@
 package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ABS_LOG_NUM") List<BigInteger> absLogNum,
-    @JsonProperty("ABS_LOG_NUM_MAX") List<BigInteger> absLogNumMax,
-    @JsonProperty("ABS_TX_NUM") List<BigInteger> absTxNum,
-    @JsonProperty("ABS_TX_NUM_MAX") List<BigInteger> absTxNumMax,
-    @JsonProperty("ACC_1") List<BigInteger> acc1,
-    @JsonProperty("ACC_2") List<BigInteger> acc2,
-    @JsonProperty("ACC_3") List<BigInteger> acc3,
-    @JsonProperty("ACC_4") List<BigInteger> acc4,
-    @JsonProperty("ACC_SIZE") List<BigInteger> accSize,
-    @JsonProperty("BIT") List<Boolean> bit,
-    @JsonProperty("BIT_ACC") List<UnsignedByte> bitAcc,
-    @JsonProperty("BYTE_1") List<UnsignedByte> byte1,
-    @JsonProperty("BYTE_2") List<UnsignedByte> byte2,
-    @JsonProperty("BYTE_3") List<UnsignedByte> byte3,
-    @JsonProperty("BYTE_4") List<UnsignedByte> byte4,
-    @JsonProperty("COUNTER") List<BigInteger> counter,
-    @JsonProperty("DEPTH_1") List<Boolean> depth1,
-    @JsonProperty("DONE") List<Boolean> done,
-    @JsonProperty("INDEX") List<BigInteger> index,
-    @JsonProperty("INDEX_LOCAL") List<BigInteger> indexLocal,
-    @JsonProperty("INPUT_1") List<BigInteger> input1,
-    @JsonProperty("INPUT_2") List<BigInteger> input2,
-    @JsonProperty("INPUT_3") List<BigInteger> input3,
-    @JsonProperty("INPUT_4") List<BigInteger> input4,
-    @JsonProperty("IS_DATA") List<Boolean> isData,
-    @JsonProperty("IS_PREFIX") List<Boolean> isPrefix,
-    @JsonProperty("IS_TOPIC") List<Boolean> isTopic,
-    @JsonProperty("LC_CORRECTION") List<Boolean> lcCorrection,
-    @JsonProperty("LIMB") List<BigInteger> limb,
-    @JsonProperty("LIMB_CONSTRUCTED") List<Boolean> limbConstructed,
-    @JsonProperty("LOCAL_SIZE") List<BigInteger> localSize,
-    @JsonProperty("LOG_ENTRY_SIZE") List<BigInteger> logEntrySize,
-    @JsonProperty("nBYTES") List<UnsignedByte> nBytes,
-    @JsonProperty("nSTEP") List<BigInteger> nStep,
-    @JsonProperty("PHASE_1") List<Boolean> phase1,
-    @JsonProperty("PHASE_2") List<Boolean> phase2,
-    @JsonProperty("PHASE_3") List<Boolean> phase3,
-    @JsonProperty("PHASE_4") List<Boolean> phase4,
-    @JsonProperty("PHASE_5") List<Boolean> phase5,
-    @JsonProperty("PHASE_END") List<Boolean> phaseEnd,
-    @JsonProperty("PHASE_SIZE") List<BigInteger> phaseSize,
-    @JsonProperty("POWER") List<BigInteger> power,
-    @JsonProperty("TXRCPT_SIZE") List<BigInteger> txrcptSize) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+  static final int CREATE2_SHIFT = 255;
+  static final int G_TXDATA_NONZERO = 16;
+  static final int G_TXDATA_ZERO = 4;
+  static final int INT_LONG = 183;
+  static final int INT_SHORT = 128;
+  static final int LIST_LONG = 247;
+  static final int LIST_SHORT = 192;
+  static final int LLARGE = 16;
+  static final int LLARGEMO = 15;
+  static final int RLPADDR_CONST_RECIPE_1 = 1;
+  static final int RLPADDR_CONST_RECIPE_2 = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
+  static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
+  static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
+  static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
+  static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer absLogNum;
+  private final MappedByteBuffer absLogNumMax;
+  private final MappedByteBuffer absTxNum;
+  private final MappedByteBuffer absTxNumMax;
+  private final MappedByteBuffer acc1;
+  private final MappedByteBuffer acc2;
+  private final MappedByteBuffer acc3;
+  private final MappedByteBuffer acc4;
+  private final MappedByteBuffer accSize;
+  private final MappedByteBuffer bit;
+  private final MappedByteBuffer bitAcc;
+  private final MappedByteBuffer byte1;
+  private final MappedByteBuffer byte2;
+  private final MappedByteBuffer byte3;
+  private final MappedByteBuffer byte4;
+  private final MappedByteBuffer counter;
+  private final MappedByteBuffer depth1;
+  private final MappedByteBuffer done;
+  private final MappedByteBuffer index;
+  private final MappedByteBuffer indexLocal;
+  private final MappedByteBuffer input1;
+  private final MappedByteBuffer input2;
+  private final MappedByteBuffer input3;
+  private final MappedByteBuffer input4;
+  private final MappedByteBuffer isData;
+  private final MappedByteBuffer isPrefix;
+  private final MappedByteBuffer isTopic;
+  private final MappedByteBuffer lcCorrection;
+  private final MappedByteBuffer limb;
+  private final MappedByteBuffer limbConstructed;
+  private final MappedByteBuffer localSize;
+  private final MappedByteBuffer logEntrySize;
+  private final MappedByteBuffer nBytes;
+  private final MappedByteBuffer nStep;
+  private final MappedByteBuffer phase1;
+  private final MappedByteBuffer phase2;
+  private final MappedByteBuffer phase3;
+  private final MappedByteBuffer phase4;
+  private final MappedByteBuffer phase5;
+  private final MappedByteBuffer phaseEnd;
+  private final MappedByteBuffer phaseSize;
+  private final MappedByteBuffer power;
+  private final MappedByteBuffer txrcptSize;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("rlpTxRcpt.ABS_LOG_NUM", 32, length),
+        new ColumnHeader("rlpTxRcpt.ABS_LOG_NUM_MAX", 32, length),
+        new ColumnHeader("rlpTxRcpt.ABS_TX_NUM", 32, length),
+        new ColumnHeader("rlpTxRcpt.ABS_TX_NUM_MAX", 32, length),
+        new ColumnHeader("rlpTxRcpt.ACC_1", 32, length),
+        new ColumnHeader("rlpTxRcpt.ACC_2", 32, length),
+        new ColumnHeader("rlpTxRcpt.ACC_3", 32, length),
+        new ColumnHeader("rlpTxRcpt.ACC_4", 32, length),
+        new ColumnHeader("rlpTxRcpt.ACC_SIZE", 32, length),
+        new ColumnHeader("rlpTxRcpt.BIT", 1, length),
+        new ColumnHeader("rlpTxRcpt.BIT_ACC", 1, length),
+        new ColumnHeader("rlpTxRcpt.BYTE_1", 1, length),
+        new ColumnHeader("rlpTxRcpt.BYTE_2", 1, length),
+        new ColumnHeader("rlpTxRcpt.BYTE_3", 1, length),
+        new ColumnHeader("rlpTxRcpt.BYTE_4", 1, length),
+        new ColumnHeader("rlpTxRcpt.COUNTER", 32, length),
+        new ColumnHeader("rlpTxRcpt.DEPTH_1", 1, length),
+        new ColumnHeader("rlpTxRcpt.DONE", 1, length),
+        new ColumnHeader("rlpTxRcpt.INDEX", 32, length),
+        new ColumnHeader("rlpTxRcpt.INDEX_LOCAL", 32, length),
+        new ColumnHeader("rlpTxRcpt.INPUT_1", 32, length),
+        new ColumnHeader("rlpTxRcpt.INPUT_2", 32, length),
+        new ColumnHeader("rlpTxRcpt.INPUT_3", 32, length),
+        new ColumnHeader("rlpTxRcpt.INPUT_4", 32, length),
+        new ColumnHeader("rlpTxRcpt.IS_DATA", 1, length),
+        new ColumnHeader("rlpTxRcpt.IS_PREFIX", 1, length),
+        new ColumnHeader("rlpTxRcpt.IS_TOPIC", 1, length),
+        new ColumnHeader("rlpTxRcpt.LC_CORRECTION", 1, length),
+        new ColumnHeader("rlpTxRcpt.LIMB", 32, length),
+        new ColumnHeader("rlpTxRcpt.LIMB_CONSTRUCTED", 1, length),
+        new ColumnHeader("rlpTxRcpt.LOCAL_SIZE", 32, length),
+        new ColumnHeader("rlpTxRcpt.LOG_ENTRY_SIZE", 32, length),
+        new ColumnHeader("rlpTxRcpt.nBYTES", 1, length),
+        new ColumnHeader("rlpTxRcpt.nSTEP", 32, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_1", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_2", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_3", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_4", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_5", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_END", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_SIZE", 32, length),
+        new ColumnHeader("rlpTxRcpt.POWER", 32, length),
+        new ColumnHeader("rlpTxRcpt.TXRCPT_SIZE", 32, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.absLogNum = buffers.get(0);
+    this.absLogNumMax = buffers.get(1);
+    this.absTxNum = buffers.get(2);
+    this.absTxNumMax = buffers.get(3);
+    this.acc1 = buffers.get(4);
+    this.acc2 = buffers.get(5);
+    this.acc3 = buffers.get(6);
+    this.acc4 = buffers.get(7);
+    this.accSize = buffers.get(8);
+    this.bit = buffers.get(9);
+    this.bitAcc = buffers.get(10);
+    this.byte1 = buffers.get(11);
+    this.byte2 = buffers.get(12);
+    this.byte3 = buffers.get(13);
+    this.byte4 = buffers.get(14);
+    this.counter = buffers.get(15);
+    this.depth1 = buffers.get(16);
+    this.done = buffers.get(17);
+    this.index = buffers.get(18);
+    this.indexLocal = buffers.get(19);
+    this.input1 = buffers.get(20);
+    this.input2 = buffers.get(21);
+    this.input3 = buffers.get(22);
+    this.input4 = buffers.get(23);
+    this.isData = buffers.get(24);
+    this.isPrefix = buffers.get(25);
+    this.isTopic = buffers.get(26);
+    this.lcCorrection = buffers.get(27);
+    this.limb = buffers.get(28);
+    this.limbConstructed = buffers.get(29);
+    this.localSize = buffers.get(30);
+    this.logEntrySize = buffers.get(31);
+    this.nBytes = buffers.get(32);
+    this.nStep = buffers.get(33);
+    this.phase1 = buffers.get(34);
+    this.phase2 = buffers.get(35);
+    this.phase3 = buffers.get(36);
+    this.phase4 = buffers.get(37);
+    this.phase5 = buffers.get(38);
+    this.phaseEnd = buffers.get(39);
+    this.phaseSize = buffers.get(40);
+    this.power = buffers.get(41);
+    this.txrcptSize = buffers.get(42);
   }
 
   public int size() {
-    return this.absLogNum.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ABS_LOG_NUM")
-    private final List<BigInteger> absLogNum;
-
-    @JsonProperty("ABS_LOG_NUM_MAX")
-    private final List<BigInteger> absLogNumMax;
-
-    @JsonProperty("ABS_TX_NUM")
-    private final List<BigInteger> absTxNum;
-
-    @JsonProperty("ABS_TX_NUM_MAX")
-    private final List<BigInteger> absTxNumMax;
-
-    @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1;
-
-    @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2;
-
-    @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3;
-
-    @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4;
-
-    @JsonProperty("ACC_SIZE")
-    private final List<BigInteger> accSize;
-
-    @JsonProperty("BIT")
-    private final List<Boolean> bit;
-
-    @JsonProperty("BIT_ACC")
-    private final List<UnsignedByte> bitAcc;
-
-    @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1;
-
-    @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2;
-
-    @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3;
-
-    @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4;
-
-    @JsonProperty("COUNTER")
-    private final List<BigInteger> counter;
-
-    @JsonProperty("DEPTH_1")
-    private final List<Boolean> depth1;
-
-    @JsonProperty("DONE")
-    private final List<Boolean> done;
-
-    @JsonProperty("INDEX")
-    private final List<BigInteger> index;
-
-    @JsonProperty("INDEX_LOCAL")
-    private final List<BigInteger> indexLocal;
-
-    @JsonProperty("INPUT_1")
-    private final List<BigInteger> input1;
-
-    @JsonProperty("INPUT_2")
-    private final List<BigInteger> input2;
-
-    @JsonProperty("INPUT_3")
-    private final List<BigInteger> input3;
-
-    @JsonProperty("INPUT_4")
-    private final List<BigInteger> input4;
-
-    @JsonProperty("IS_DATA")
-    private final List<Boolean> isData;
-
-    @JsonProperty("IS_PREFIX")
-    private final List<Boolean> isPrefix;
-
-    @JsonProperty("IS_TOPIC")
-    private final List<Boolean> isTopic;
-
-    @JsonProperty("LC_CORRECTION")
-    private final List<Boolean> lcCorrection;
-
-    @JsonProperty("LIMB")
-    private final List<BigInteger> limb;
-
-    @JsonProperty("LIMB_CONSTRUCTED")
-    private final List<Boolean> limbConstructed;
-
-    @JsonProperty("LOCAL_SIZE")
-    private final List<BigInteger> localSize;
-
-    @JsonProperty("LOG_ENTRY_SIZE")
-    private final List<BigInteger> logEntrySize;
-
-    @JsonProperty("nBYTES")
-    private final List<UnsignedByte> nBytes;
-
-    @JsonProperty("nSTEP")
-    private final List<BigInteger> nStep;
-
-    @JsonProperty("PHASE_1")
-    private final List<Boolean> phase1;
-
-    @JsonProperty("PHASE_2")
-    private final List<Boolean> phase2;
-
-    @JsonProperty("PHASE_3")
-    private final List<Boolean> phase3;
-
-    @JsonProperty("PHASE_4")
-    private final List<Boolean> phase4;
-
-    @JsonProperty("PHASE_5")
-    private final List<Boolean> phase5;
-
-    @JsonProperty("PHASE_END")
-    private final List<Boolean> phaseEnd;
-
-    @JsonProperty("PHASE_SIZE")
-    private final List<BigInteger> phaseSize;
-
-    @JsonProperty("POWER")
-    private final List<BigInteger> power;
-
-    @JsonProperty("TXRCPT_SIZE")
-    private final List<BigInteger> txrcptSize;
-
-    private TraceBuilder(int length) {
-      this.absLogNum = new ArrayList<>(length);
-      this.absLogNumMax = new ArrayList<>(length);
-      this.absTxNum = new ArrayList<>(length);
-      this.absTxNumMax = new ArrayList<>(length);
-      this.acc1 = new ArrayList<>(length);
-      this.acc2 = new ArrayList<>(length);
-      this.acc3 = new ArrayList<>(length);
-      this.acc4 = new ArrayList<>(length);
-      this.accSize = new ArrayList<>(length);
-      this.bit = new ArrayList<>(length);
-      this.bitAcc = new ArrayList<>(length);
-      this.byte1 = new ArrayList<>(length);
-      this.byte2 = new ArrayList<>(length);
-      this.byte3 = new ArrayList<>(length);
-      this.byte4 = new ArrayList<>(length);
-      this.counter = new ArrayList<>(length);
-      this.depth1 = new ArrayList<>(length);
-      this.done = new ArrayList<>(length);
-      this.index = new ArrayList<>(length);
-      this.indexLocal = new ArrayList<>(length);
-      this.input1 = new ArrayList<>(length);
-      this.input2 = new ArrayList<>(length);
-      this.input3 = new ArrayList<>(length);
-      this.input4 = new ArrayList<>(length);
-      this.isData = new ArrayList<>(length);
-      this.isPrefix = new ArrayList<>(length);
-      this.isTopic = new ArrayList<>(length);
-      this.lcCorrection = new ArrayList<>(length);
-      this.limb = new ArrayList<>(length);
-      this.limbConstructed = new ArrayList<>(length);
-      this.localSize = new ArrayList<>(length);
-      this.logEntrySize = new ArrayList<>(length);
-      this.nBytes = new ArrayList<>(length);
-      this.nStep = new ArrayList<>(length);
-      this.phase1 = new ArrayList<>(length);
-      this.phase2 = new ArrayList<>(length);
-      this.phase3 = new ArrayList<>(length);
-      this.phase4 = new ArrayList<>(length);
-      this.phase5 = new ArrayList<>(length);
-      this.phaseEnd = new ArrayList<>(length);
-      this.phaseSize = new ArrayList<>(length);
-      this.power = new ArrayList<>(length);
-      this.txrcptSize = new ArrayList<>(length);
+  public Trace absLogNum(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_LOG_NUM already set");
+    } else {
+      filled.set(0);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    absLogNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.absLogNum.size();
+    return this;
+  }
+
+  public Trace absLogNumMax(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_LOG_NUM_MAX already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder absLogNum(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ABS_LOG_NUM already set");
-      } else {
-        filled.set(0);
-      }
+    absLogNumMax.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absLogNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace absTxNum(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_TX_NUM already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder absLogNumMax(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ABS_LOG_NUM_MAX already set");
-      } else {
-        filled.set(1);
-      }
+    absTxNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absLogNumMax.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace absTxNumMax(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_TX_NUM_MAX already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder absTxNum(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ABS_TX_NUM already set");
-      } else {
-        filled.set(2);
-      }
+    absTxNumMax.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absTxNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc1(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_1 already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder absTxNumMax(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ABS_TX_NUM_MAX already set");
-      } else {
-        filled.set(3);
-      }
+    acc1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absTxNumMax.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc2(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_2 already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder acc1(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ACC_1 already set");
-      } else {
-        filled.set(4);
-      }
+    acc2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc3(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_3 already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder acc2(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("ACC_2 already set");
-      } else {
-        filled.set(5);
-      }
+    acc3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc4(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_4 already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder acc3(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("ACC_3 already set");
-      } else {
-        filled.set(6);
-      }
+    acc4.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accSize(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_SIZE already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder acc4(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("ACC_4 already set");
-      } else {
-        filled.set(7);
-      }
+    accSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit(final Boolean b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("rlpTxRcpt.BIT already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder accSize(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("ACC_SIZE already set");
-      } else {
-        filled.set(8);
-      }
+    bit.put((byte) (b ? 1 : 0));
 
-      accSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bitAcc(final UnsignedByte b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("rlpTxRcpt.BIT_ACC already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder bit(final Boolean b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("BIT already set");
-      } else {
-        filled.set(9);
-      }
+    bitAcc.put(b.toByte());
 
-      bit.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte1(final UnsignedByte b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_1 already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder bitAcc(final UnsignedByte b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("BIT_ACC already set");
-      } else {
-        filled.set(10);
-      }
+    byte1.put(b.toByte());
 
-      bitAcc.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte2(final UnsignedByte b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_2 already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("BYTE_1 already set");
-      } else {
-        filled.set(11);
-      }
+    byte2.put(b.toByte());
 
-      byte1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte3(final UnsignedByte b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_3 already set");
+    } else {
+      filled.set(13);
     }
 
-    public TraceBuilder byte2(final UnsignedByte b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("BYTE_2 already set");
-      } else {
-        filled.set(12);
-      }
+    byte3.put(b.toByte());
 
-      byte2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte4(final UnsignedByte b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_4 already set");
+    } else {
+      filled.set(14);
     }
 
-    public TraceBuilder byte3(final UnsignedByte b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("BYTE_3 already set");
-      } else {
-        filled.set(13);
-      }
+    byte4.put(b.toByte());
 
-      byte3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace counter(final BigInteger b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("rlpTxRcpt.COUNTER already set");
+    } else {
+      filled.set(15);
     }
 
-    public TraceBuilder byte4(final UnsignedByte b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("BYTE_4 already set");
-      } else {
-        filled.set(14);
-      }
+    counter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace depth1(final Boolean b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("rlpTxRcpt.DEPTH_1 already set");
+    } else {
+      filled.set(16);
     }
 
-    public TraceBuilder counter(final BigInteger b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("COUNTER already set");
-      } else {
-        filled.set(15);
-      }
+    depth1.put((byte) (b ? 1 : 0));
 
-      counter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace done(final Boolean b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("rlpTxRcpt.DONE already set");
+    } else {
+      filled.set(17);
     }
 
-    public TraceBuilder depth1(final Boolean b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("DEPTH_1 already set");
-      } else {
-        filled.set(16);
-      }
+    done.put((byte) (b ? 1 : 0));
 
-      depth1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace index(final BigInteger b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("rlpTxRcpt.INDEX already set");
+    } else {
+      filled.set(18);
     }
 
-    public TraceBuilder done(final Boolean b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("DONE already set");
-      } else {
-        filled.set(17);
-      }
+    index.put(UInt256.valueOf(b).toBytes().toArray());
 
-      done.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace indexLocal(final BigInteger b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("rlpTxRcpt.INDEX_LOCAL already set");
+    } else {
+      filled.set(19);
     }
 
-    public TraceBuilder index(final BigInteger b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("INDEX already set");
-      } else {
-        filled.set(18);
-      }
+    indexLocal.put(UInt256.valueOf(b).toBytes().toArray());
 
-      index.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace input1(final BigInteger b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_1 already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder indexLocal(final BigInteger b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("INDEX_LOCAL already set");
-      } else {
-        filled.set(19);
-      }
+    input1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      indexLocal.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace input2(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_2 already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder input1(final BigInteger b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("INPUT_1 already set");
-      } else {
-        filled.set(20);
-      }
+    input2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      input1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace input3(final BigInteger b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_3 already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder input2(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("INPUT_2 already set");
-      } else {
-        filled.set(21);
-      }
+    input3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      input2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace input4(final BigInteger b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_4 already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder input3(final BigInteger b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("INPUT_3 already set");
-      } else {
-        filled.set(22);
-      }
+    input4.put(UInt256.valueOf(b).toBytes().toArray());
 
-      input3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isData(final Boolean b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_DATA already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder input4(final BigInteger b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("INPUT_4 already set");
-      } else {
-        filled.set(23);
-      }
+    isData.put((byte) (b ? 1 : 0));
 
-      input4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isPrefix(final Boolean b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_PREFIX already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder isData(final Boolean b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("IS_DATA already set");
-      } else {
-        filled.set(24);
-      }
+    isPrefix.put((byte) (b ? 1 : 0));
 
-      isData.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isTopic(final Boolean b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_TOPIC already set");
+    } else {
+      filled.set(26);
     }
 
-    public TraceBuilder isPrefix(final Boolean b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("IS_PREFIX already set");
-      } else {
-        filled.set(25);
-      }
+    isTopic.put((byte) (b ? 1 : 0));
 
-      isPrefix.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace lcCorrection(final Boolean b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("rlpTxRcpt.LC_CORRECTION already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder isTopic(final Boolean b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("IS_TOPIC already set");
-      } else {
-        filled.set(26);
-      }
+    lcCorrection.put((byte) (b ? 1 : 0));
 
-      isTopic.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace limb(final BigInteger b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("rlpTxRcpt.LIMB already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder lcCorrection(final Boolean b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("LC_CORRECTION already set");
-      } else {
-        filled.set(27);
-      }
+    limb.put(UInt256.valueOf(b).toBytes().toArray());
 
-      lcCorrection.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace limbConstructed(final Boolean b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("rlpTxRcpt.LIMB_CONSTRUCTED already set");
+    } else {
+      filled.set(29);
     }
 
-    public TraceBuilder limb(final BigInteger b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("LIMB already set");
-      } else {
-        filled.set(28);
-      }
+    limbConstructed.put((byte) (b ? 1 : 0));
 
-      limb.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace localSize(final BigInteger b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("rlpTxRcpt.LOCAL_SIZE already set");
+    } else {
+      filled.set(30);
     }
 
-    public TraceBuilder limbConstructed(final Boolean b) {
-      if (filled.get(29)) {
-        throw new IllegalStateException("LIMB_CONSTRUCTED already set");
-      } else {
-        filled.set(29);
-      }
+    localSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      limbConstructed.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace logEntrySize(final BigInteger b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("rlpTxRcpt.LOG_ENTRY_SIZE already set");
+    } else {
+      filled.set(31);
     }
 
-    public TraceBuilder localSize(final BigInteger b) {
-      if (filled.get(30)) {
-        throw new IllegalStateException("LOCAL_SIZE already set");
-      } else {
-        filled.set(30);
-      }
+    logEntrySize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      localSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nBytes(final UnsignedByte b) {
+    if (filled.get(41)) {
+      throw new IllegalStateException("rlpTxRcpt.nBYTES already set");
+    } else {
+      filled.set(41);
     }
 
-    public TraceBuilder logEntrySize(final BigInteger b) {
-      if (filled.get(31)) {
-        throw new IllegalStateException("LOG_ENTRY_SIZE already set");
-      } else {
-        filled.set(31);
-      }
+    nBytes.put(b.toByte());
 
-      logEntrySize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nStep(final BigInteger b) {
+    if (filled.get(42)) {
+      throw new IllegalStateException("rlpTxRcpt.nSTEP already set");
+    } else {
+      filled.set(42);
     }
 
-    public TraceBuilder nBytes(final UnsignedByte b) {
-      if (filled.get(41)) {
-        throw new IllegalStateException("nBYTES already set");
-      } else {
-        filled.set(41);
-      }
+    nStep.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nBytes.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phase1(final Boolean b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_1 already set");
+    } else {
+      filled.set(32);
     }
 
-    public TraceBuilder nStep(final BigInteger b) {
-      if (filled.get(42)) {
-        throw new IllegalStateException("nSTEP already set");
-      } else {
-        filled.set(42);
-      }
+    phase1.put((byte) (b ? 1 : 0));
 
-      nStep.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phase2(final Boolean b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_2 already set");
+    } else {
+      filled.set(33);
     }
 
-    public TraceBuilder phase1(final Boolean b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("PHASE_1 already set");
-      } else {
-        filled.set(32);
-      }
+    phase2.put((byte) (b ? 1 : 0));
 
-      phase1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phase3(final Boolean b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_3 already set");
+    } else {
+      filled.set(34);
     }
 
-    public TraceBuilder phase2(final Boolean b) {
-      if (filled.get(33)) {
-        throw new IllegalStateException("PHASE_2 already set");
-      } else {
-        filled.set(33);
-      }
+    phase3.put((byte) (b ? 1 : 0));
 
-      phase2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phase4(final Boolean b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_4 already set");
+    } else {
+      filled.set(35);
     }
 
-    public TraceBuilder phase3(final Boolean b) {
-      if (filled.get(34)) {
-        throw new IllegalStateException("PHASE_3 already set");
-      } else {
-        filled.set(34);
-      }
+    phase4.put((byte) (b ? 1 : 0));
 
-      phase3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phase5(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_5 already set");
+    } else {
+      filled.set(36);
     }
 
-    public TraceBuilder phase4(final Boolean b) {
-      if (filled.get(35)) {
-        throw new IllegalStateException("PHASE_4 already set");
-      } else {
-        filled.set(35);
-      }
+    phase5.put((byte) (b ? 1 : 0));
 
-      phase4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phaseEnd(final Boolean b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_END already set");
+    } else {
+      filled.set(37);
     }
 
-    public TraceBuilder phase5(final Boolean b) {
-      if (filled.get(36)) {
-        throw new IllegalStateException("PHASE_5 already set");
-      } else {
-        filled.set(36);
-      }
+    phaseEnd.put((byte) (b ? 1 : 0));
 
-      phase5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phaseSize(final BigInteger b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE already set");
+    } else {
+      filled.set(38);
     }
 
-    public TraceBuilder phaseEnd(final Boolean b) {
-      if (filled.get(37)) {
-        throw new IllegalStateException("PHASE_END already set");
-      } else {
-        filled.set(37);
-      }
+    phaseSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      phaseEnd.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace power(final BigInteger b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("rlpTxRcpt.POWER already set");
+    } else {
+      filled.set(39);
     }
 
-    public TraceBuilder phaseSize(final BigInteger b) {
-      if (filled.get(38)) {
-        throw new IllegalStateException("PHASE_SIZE already set");
-      } else {
-        filled.set(38);
-      }
+    power.put(UInt256.valueOf(b).toBytes().toArray());
 
-      phaseSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace txrcptSize(final BigInteger b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("rlpTxRcpt.TXRCPT_SIZE already set");
+    } else {
+      filled.set(40);
     }
 
-    public TraceBuilder power(final BigInteger b) {
-      if (filled.get(39)) {
-        throw new IllegalStateException("POWER already set");
-      } else {
-        filled.set(39);
-      }
+    txrcptSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      power.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_LOG_NUM has not been filled");
     }
 
-    public TraceBuilder txrcptSize(final BigInteger b) {
-      if (filled.get(40)) {
-        throw new IllegalStateException("TXRCPT_SIZE already set");
-      } else {
-        filled.set(40);
-      }
-
-      txrcptSize.add(b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_LOG_NUM_MAX has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ABS_LOG_NUM has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ABS_LOG_NUM_MAX has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ABS_TX_NUM has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ABS_TX_NUM_MAX has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ACC_1 has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("ACC_2 has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("ACC_3 has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("ACC_4 has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("ACC_SIZE has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("BIT has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("BIT_ACC has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("BYTE_1 has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("BYTE_2 has not been filled");
-      }
-
-      if (!filled.get(13)) {
-        throw new IllegalStateException("BYTE_3 has not been filled");
-      }
-
-      if (!filled.get(14)) {
-        throw new IllegalStateException("BYTE_4 has not been filled");
-      }
-
-      if (!filled.get(15)) {
-        throw new IllegalStateException("COUNTER has not been filled");
-      }
-
-      if (!filled.get(16)) {
-        throw new IllegalStateException("DEPTH_1 has not been filled");
-      }
-
-      if (!filled.get(17)) {
-        throw new IllegalStateException("DONE has not been filled");
-      }
-
-      if (!filled.get(18)) {
-        throw new IllegalStateException("INDEX has not been filled");
-      }
-
-      if (!filled.get(19)) {
-        throw new IllegalStateException("INDEX_LOCAL has not been filled");
-      }
-
-      if (!filled.get(20)) {
-        throw new IllegalStateException("INPUT_1 has not been filled");
-      }
-
-      if (!filled.get(21)) {
-        throw new IllegalStateException("INPUT_2 has not been filled");
-      }
-
-      if (!filled.get(22)) {
-        throw new IllegalStateException("INPUT_3 has not been filled");
-      }
-
-      if (!filled.get(23)) {
-        throw new IllegalStateException("INPUT_4 has not been filled");
-      }
-
-      if (!filled.get(24)) {
-        throw new IllegalStateException("IS_DATA has not been filled");
-      }
-
-      if (!filled.get(25)) {
-        throw new IllegalStateException("IS_PREFIX has not been filled");
-      }
-
-      if (!filled.get(26)) {
-        throw new IllegalStateException("IS_TOPIC has not been filled");
-      }
-
-      if (!filled.get(27)) {
-        throw new IllegalStateException("LC_CORRECTION has not been filled");
-      }
-
-      if (!filled.get(28)) {
-        throw new IllegalStateException("LIMB has not been filled");
-      }
-
-      if (!filled.get(29)) {
-        throw new IllegalStateException("LIMB_CONSTRUCTED has not been filled");
-      }
-
-      if (!filled.get(30)) {
-        throw new IllegalStateException("LOCAL_SIZE has not been filled");
-      }
-
-      if (!filled.get(31)) {
-        throw new IllegalStateException("LOG_ENTRY_SIZE has not been filled");
-      }
-
-      if (!filled.get(41)) {
-        throw new IllegalStateException("nBYTES has not been filled");
-      }
-
-      if (!filled.get(42)) {
-        throw new IllegalStateException("nSTEP has not been filled");
-      }
-
-      if (!filled.get(32)) {
-        throw new IllegalStateException("PHASE_1 has not been filled");
-      }
-
-      if (!filled.get(33)) {
-        throw new IllegalStateException("PHASE_2 has not been filled");
-      }
-
-      if (!filled.get(34)) {
-        throw new IllegalStateException("PHASE_3 has not been filled");
-      }
-
-      if (!filled.get(35)) {
-        throw new IllegalStateException("PHASE_4 has not been filled");
-      }
-
-      if (!filled.get(36)) {
-        throw new IllegalStateException("PHASE_5 has not been filled");
-      }
-
-      if (!filled.get(37)) {
-        throw new IllegalStateException("PHASE_END has not been filled");
-      }
-
-      if (!filled.get(38)) {
-        throw new IllegalStateException("PHASE_SIZE has not been filled");
-      }
-
-      if (!filled.get(39)) {
-        throw new IllegalStateException("POWER has not been filled");
-      }
-
-      if (!filled.get(40)) {
-        throw new IllegalStateException("TXRCPT_SIZE has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_TX_NUM has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        absLogNum.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        absLogNumMax.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        absTxNum.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        absTxNumMax.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        acc1.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        acc2.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        acc3.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        acc4.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        accSize.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        bit.add(false);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        bitAcc.add(UnsignedByte.ZERO);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        byte1.add(UnsignedByte.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        byte2.add(UnsignedByte.ZERO);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        byte3.add(UnsignedByte.ZERO);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        byte4.add(UnsignedByte.ZERO);
-        this.filled.set(14);
-      }
-      if (!filled.get(15)) {
-        counter.add(BigInteger.ZERO);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        depth1.add(false);
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        done.add(false);
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        index.add(BigInteger.ZERO);
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        indexLocal.add(BigInteger.ZERO);
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        input1.add(BigInteger.ZERO);
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        input2.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        input3.add(BigInteger.ZERO);
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        input4.add(BigInteger.ZERO);
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        isData.add(false);
-        this.filled.set(24);
-      }
-      if (!filled.get(25)) {
-        isPrefix.add(false);
-        this.filled.set(25);
-      }
-      if (!filled.get(26)) {
-        isTopic.add(false);
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        lcCorrection.add(false);
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        limb.add(BigInteger.ZERO);
-        this.filled.set(28);
-      }
-      if (!filled.get(29)) {
-        limbConstructed.add(false);
-        this.filled.set(29);
-      }
-      if (!filled.get(30)) {
-        localSize.add(BigInteger.ZERO);
-        this.filled.set(30);
-      }
-      if (!filled.get(31)) {
-        logEntrySize.add(BigInteger.ZERO);
-        this.filled.set(31);
-      }
-      if (!filled.get(41)) {
-        nBytes.add(UnsignedByte.ZERO);
-        this.filled.set(41);
-      }
-      if (!filled.get(42)) {
-        nStep.add(BigInteger.ZERO);
-        this.filled.set(42);
-      }
-      if (!filled.get(32)) {
-        phase1.add(false);
-        this.filled.set(32);
-      }
-      if (!filled.get(33)) {
-        phase2.add(false);
-        this.filled.set(33);
-      }
-      if (!filled.get(34)) {
-        phase3.add(false);
-        this.filled.set(34);
-      }
-      if (!filled.get(35)) {
-        phase4.add(false);
-        this.filled.set(35);
-      }
-      if (!filled.get(36)) {
-        phase5.add(false);
-        this.filled.set(36);
-      }
-      if (!filled.get(37)) {
-        phaseEnd.add(false);
-        this.filled.set(37);
-      }
-      if (!filled.get(38)) {
-        phaseSize.add(BigInteger.ZERO);
-        this.filled.set(38);
-      }
-      if (!filled.get(39)) {
-        power.add(BigInteger.ZERO);
-        this.filled.set(39);
-      }
-      if (!filled.get(40)) {
-        txrcptSize.add(BigInteger.ZERO);
-        this.filled.set(40);
-      }
-
-      return this.validateRow();
+    if (!filled.get(3)) {
+      throw new IllegalStateException("rlpTxRcpt.ABS_TX_NUM_MAX has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          absLogNum,
-          absLogNumMax,
-          absTxNum,
-          absTxNumMax,
-          acc1,
-          acc2,
-          acc3,
-          acc4,
-          accSize,
-          bit,
-          bitAcc,
-          byte1,
-          byte2,
-          byte3,
-          byte4,
-          counter,
-          depth1,
-          done,
-          index,
-          indexLocal,
-          input1,
-          input2,
-          input3,
-          input4,
-          isData,
-          isPrefix,
-          isTopic,
-          lcCorrection,
-          limb,
-          limbConstructed,
-          localSize,
-          logEntrySize,
-          nBytes,
-          nStep,
-          phase1,
-          phase2,
-          phase3,
-          phase4,
-          phase5,
-          phaseEnd,
-          phaseSize,
-          power,
-          txrcptSize);
+    if (!filled.get(4)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_1 has not been filled");
     }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_2 has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_3 has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_4 has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("rlpTxRcpt.ACC_SIZE has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("rlpTxRcpt.BIT has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("rlpTxRcpt.BIT_ACC has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_1 has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_2 has not been filled");
+    }
+
+    if (!filled.get(13)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_3 has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("rlpTxRcpt.BYTE_4 has not been filled");
+    }
+
+    if (!filled.get(15)) {
+      throw new IllegalStateException("rlpTxRcpt.COUNTER has not been filled");
+    }
+
+    if (!filled.get(16)) {
+      throw new IllegalStateException("rlpTxRcpt.DEPTH_1 has not been filled");
+    }
+
+    if (!filled.get(17)) {
+      throw new IllegalStateException("rlpTxRcpt.DONE has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("rlpTxRcpt.INDEX has not been filled");
+    }
+
+    if (!filled.get(19)) {
+      throw new IllegalStateException("rlpTxRcpt.INDEX_LOCAL has not been filled");
+    }
+
+    if (!filled.get(20)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_1 has not been filled");
+    }
+
+    if (!filled.get(21)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_2 has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_3 has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("rlpTxRcpt.INPUT_4 has not been filled");
+    }
+
+    if (!filled.get(24)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_DATA has not been filled");
+    }
+
+    if (!filled.get(25)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_PREFIX has not been filled");
+    }
+
+    if (!filled.get(26)) {
+      throw new IllegalStateException("rlpTxRcpt.IS_TOPIC has not been filled");
+    }
+
+    if (!filled.get(27)) {
+      throw new IllegalStateException("rlpTxRcpt.LC_CORRECTION has not been filled");
+    }
+
+    if (!filled.get(28)) {
+      throw new IllegalStateException("rlpTxRcpt.LIMB has not been filled");
+    }
+
+    if (!filled.get(29)) {
+      throw new IllegalStateException("rlpTxRcpt.LIMB_CONSTRUCTED has not been filled");
+    }
+
+    if (!filled.get(30)) {
+      throw new IllegalStateException("rlpTxRcpt.LOCAL_SIZE has not been filled");
+    }
+
+    if (!filled.get(31)) {
+      throw new IllegalStateException("rlpTxRcpt.LOG_ENTRY_SIZE has not been filled");
+    }
+
+    if (!filled.get(41)) {
+      throw new IllegalStateException("rlpTxRcpt.nBYTES has not been filled");
+    }
+
+    if (!filled.get(42)) {
+      throw new IllegalStateException("rlpTxRcpt.nSTEP has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_1 has not been filled");
+    }
+
+    if (!filled.get(33)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_2 has not been filled");
+    }
+
+    if (!filled.get(34)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_3 has not been filled");
+    }
+
+    if (!filled.get(35)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_4 has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_5 has not been filled");
+    }
+
+    if (!filled.get(37)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_END has not been filled");
+    }
+
+    if (!filled.get(38)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE has not been filled");
+    }
+
+    if (!filled.get(39)) {
+      throw new IllegalStateException("rlpTxRcpt.POWER has not been filled");
+    }
+
+    if (!filled.get(40)) {
+      throw new IllegalStateException("rlpTxRcpt.TXRCPT_SIZE has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      absLogNum.position(absLogNum.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      absLogNumMax.position(absLogNumMax.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      absTxNum.position(absTxNum.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      absTxNumMax.position(absTxNumMax.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      acc1.position(acc1.position() + 32);
+    }
+
+    if (!filled.get(5)) {
+      acc2.position(acc2.position() + 32);
+    }
+
+    if (!filled.get(6)) {
+      acc3.position(acc3.position() + 32);
+    }
+
+    if (!filled.get(7)) {
+      acc4.position(acc4.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      accSize.position(accSize.position() + 32);
+    }
+
+    if (!filled.get(9)) {
+      bit.position(bit.position() + 1);
+    }
+
+    if (!filled.get(10)) {
+      bitAcc.position(bitAcc.position() + 1);
+    }
+
+    if (!filled.get(11)) {
+      byte1.position(byte1.position() + 1);
+    }
+
+    if (!filled.get(12)) {
+      byte2.position(byte2.position() + 1);
+    }
+
+    if (!filled.get(13)) {
+      byte3.position(byte3.position() + 1);
+    }
+
+    if (!filled.get(14)) {
+      byte4.position(byte4.position() + 1);
+    }
+
+    if (!filled.get(15)) {
+      counter.position(counter.position() + 32);
+    }
+
+    if (!filled.get(16)) {
+      depth1.position(depth1.position() + 1);
+    }
+
+    if (!filled.get(17)) {
+      done.position(done.position() + 1);
+    }
+
+    if (!filled.get(18)) {
+      index.position(index.position() + 32);
+    }
+
+    if (!filled.get(19)) {
+      indexLocal.position(indexLocal.position() + 32);
+    }
+
+    if (!filled.get(20)) {
+      input1.position(input1.position() + 32);
+    }
+
+    if (!filled.get(21)) {
+      input2.position(input2.position() + 32);
+    }
+
+    if (!filled.get(22)) {
+      input3.position(input3.position() + 32);
+    }
+
+    if (!filled.get(23)) {
+      input4.position(input4.position() + 32);
+    }
+
+    if (!filled.get(24)) {
+      isData.position(isData.position() + 1);
+    }
+
+    if (!filled.get(25)) {
+      isPrefix.position(isPrefix.position() + 1);
+    }
+
+    if (!filled.get(26)) {
+      isTopic.position(isTopic.position() + 1);
+    }
+
+    if (!filled.get(27)) {
+      lcCorrection.position(lcCorrection.position() + 1);
+    }
+
+    if (!filled.get(28)) {
+      limb.position(limb.position() + 32);
+    }
+
+    if (!filled.get(29)) {
+      limbConstructed.position(limbConstructed.position() + 1);
+    }
+
+    if (!filled.get(30)) {
+      localSize.position(localSize.position() + 32);
+    }
+
+    if (!filled.get(31)) {
+      logEntrySize.position(logEntrySize.position() + 32);
+    }
+
+    if (!filled.get(41)) {
+      nBytes.position(nBytes.position() + 1);
+    }
+
+    if (!filled.get(42)) {
+      nStep.position(nStep.position() + 32);
+    }
+
+    if (!filled.get(32)) {
+      phase1.position(phase1.position() + 1);
+    }
+
+    if (!filled.get(33)) {
+      phase2.position(phase2.position() + 1);
+    }
+
+    if (!filled.get(34)) {
+      phase3.position(phase3.position() + 1);
+    }
+
+    if (!filled.get(35)) {
+      phase4.position(phase4.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      phase5.position(phase5.position() + 1);
+    }
+
+    if (!filled.get(37)) {
+      phaseEnd.position(phaseEnd.position() + 1);
+    }
+
+    if (!filled.get(38)) {
+      phaseSize.position(phaseSize.position() + 32);
+    }
+
+    if (!filled.get(39)) {
+      power.position(power.position() + 32);
+    }
+
+    if (!filled.get(40)) {
+      txrcptSize.position(txrcptSize.position() + 32);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }

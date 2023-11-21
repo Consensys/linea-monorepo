@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,1383 +16,1232 @@
 package net.consensys.linea.zktracer.module.mul;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC_A_0") List<BigInteger> accA0,
-    @JsonProperty("ACC_A_1") List<BigInteger> accA1,
-    @JsonProperty("ACC_A_2") List<BigInteger> accA2,
-    @JsonProperty("ACC_A_3") List<BigInteger> accA3,
-    @JsonProperty("ACC_B_0") List<BigInteger> accB0,
-    @JsonProperty("ACC_B_1") List<BigInteger> accB1,
-    @JsonProperty("ACC_B_2") List<BigInteger> accB2,
-    @JsonProperty("ACC_B_3") List<BigInteger> accB3,
-    @JsonProperty("ACC_C_0") List<BigInteger> accC0,
-    @JsonProperty("ACC_C_1") List<BigInteger> accC1,
-    @JsonProperty("ACC_C_2") List<BigInteger> accC2,
-    @JsonProperty("ACC_C_3") List<BigInteger> accC3,
-    @JsonProperty("ACC_H_0") List<BigInteger> accH0,
-    @JsonProperty("ACC_H_1") List<BigInteger> accH1,
-    @JsonProperty("ACC_H_2") List<BigInteger> accH2,
-    @JsonProperty("ACC_H_3") List<BigInteger> accH3,
-    @JsonProperty("ARG_1_HI") List<BigInteger> arg1Hi,
-    @JsonProperty("ARG_1_LO") List<BigInteger> arg1Lo,
-    @JsonProperty("ARG_2_HI") List<BigInteger> arg2Hi,
-    @JsonProperty("ARG_2_LO") List<BigInteger> arg2Lo,
-    @JsonProperty("BIT_NUM") List<BigInteger> bitNum,
-    @JsonProperty("BITS") List<Boolean> bits,
-    @JsonProperty("BYTE_A_0") List<UnsignedByte> byteA0,
-    @JsonProperty("BYTE_A_1") List<UnsignedByte> byteA1,
-    @JsonProperty("BYTE_A_2") List<UnsignedByte> byteA2,
-    @JsonProperty("BYTE_A_3") List<UnsignedByte> byteA3,
-    @JsonProperty("BYTE_B_0") List<UnsignedByte> byteB0,
-    @JsonProperty("BYTE_B_1") List<UnsignedByte> byteB1,
-    @JsonProperty("BYTE_B_2") List<UnsignedByte> byteB2,
-    @JsonProperty("BYTE_B_3") List<UnsignedByte> byteB3,
-    @JsonProperty("BYTE_C_0") List<UnsignedByte> byteC0,
-    @JsonProperty("BYTE_C_1") List<UnsignedByte> byteC1,
-    @JsonProperty("BYTE_C_2") List<UnsignedByte> byteC2,
-    @JsonProperty("BYTE_C_3") List<UnsignedByte> byteC3,
-    @JsonProperty("BYTE_H_0") List<UnsignedByte> byteH0,
-    @JsonProperty("BYTE_H_1") List<UnsignedByte> byteH1,
-    @JsonProperty("BYTE_H_2") List<UnsignedByte> byteH2,
-    @JsonProperty("BYTE_H_3") List<UnsignedByte> byteH3,
-    @JsonProperty("COUNTER") List<BigInteger> counter,
-    @JsonProperty("EXPONENT_BIT") List<Boolean> exponentBit,
-    @JsonProperty("EXPONENT_BIT_ACCUMULATOR") List<BigInteger> exponentBitAccumulator,
-    @JsonProperty("EXPONENT_BIT_SOURCE") List<Boolean> exponentBitSource,
-    @JsonProperty("INSTRUCTION") List<BigInteger> instruction,
-    @JsonProperty("MUL_STAMP") List<BigInteger> mulStamp,
-    @JsonProperty("OLI") List<Boolean> oli,
-    @JsonProperty("RES_HI") List<BigInteger> resHi,
-    @JsonProperty("RES_LO") List<BigInteger> resLo,
-    @JsonProperty("RESULT_VANISHES") List<Boolean> resultVanishes,
-    @JsonProperty("SQUARE_AND_MULTIPLY") List<Boolean> squareAndMultiply,
-    @JsonProperty("TINY_BASE") List<Boolean> tinyBase,
-    @JsonProperty("TINY_EXPONENT") List<Boolean> tinyExponent) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer accA0;
+  private final MappedByteBuffer accA1;
+  private final MappedByteBuffer accA2;
+  private final MappedByteBuffer accA3;
+  private final MappedByteBuffer accB0;
+  private final MappedByteBuffer accB1;
+  private final MappedByteBuffer accB2;
+  private final MappedByteBuffer accB3;
+  private final MappedByteBuffer accC0;
+  private final MappedByteBuffer accC1;
+  private final MappedByteBuffer accC2;
+  private final MappedByteBuffer accC3;
+  private final MappedByteBuffer accH0;
+  private final MappedByteBuffer accH1;
+  private final MappedByteBuffer accH2;
+  private final MappedByteBuffer accH3;
+  private final MappedByteBuffer arg1Hi;
+  private final MappedByteBuffer arg1Lo;
+  private final MappedByteBuffer arg2Hi;
+  private final MappedByteBuffer arg2Lo;
+  private final MappedByteBuffer bitNum;
+  private final MappedByteBuffer bits;
+  private final MappedByteBuffer byteA0;
+  private final MappedByteBuffer byteA1;
+  private final MappedByteBuffer byteA2;
+  private final MappedByteBuffer byteA3;
+  private final MappedByteBuffer byteB0;
+  private final MappedByteBuffer byteB1;
+  private final MappedByteBuffer byteB2;
+  private final MappedByteBuffer byteB3;
+  private final MappedByteBuffer byteC0;
+  private final MappedByteBuffer byteC1;
+  private final MappedByteBuffer byteC2;
+  private final MappedByteBuffer byteC3;
+  private final MappedByteBuffer byteH0;
+  private final MappedByteBuffer byteH1;
+  private final MappedByteBuffer byteH2;
+  private final MappedByteBuffer byteH3;
+  private final MappedByteBuffer counter;
+  private final MappedByteBuffer exponentBit;
+  private final MappedByteBuffer exponentBitAccumulator;
+  private final MappedByteBuffer exponentBitSource;
+  private final MappedByteBuffer instruction;
+  private final MappedByteBuffer mulStamp;
+  private final MappedByteBuffer oli;
+  private final MappedByteBuffer resHi;
+  private final MappedByteBuffer resLo;
+  private final MappedByteBuffer resultVanishes;
+  private final MappedByteBuffer squareAndMultiply;
+  private final MappedByteBuffer tinyBase;
+  private final MappedByteBuffer tinyExponent;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("mul.ACC_A_0", 32, length),
+        new ColumnHeader("mul.ACC_A_1", 32, length),
+        new ColumnHeader("mul.ACC_A_2", 32, length),
+        new ColumnHeader("mul.ACC_A_3", 32, length),
+        new ColumnHeader("mul.ACC_B_0", 32, length),
+        new ColumnHeader("mul.ACC_B_1", 32, length),
+        new ColumnHeader("mul.ACC_B_2", 32, length),
+        new ColumnHeader("mul.ACC_B_3", 32, length),
+        new ColumnHeader("mul.ACC_C_0", 32, length),
+        new ColumnHeader("mul.ACC_C_1", 32, length),
+        new ColumnHeader("mul.ACC_C_2", 32, length),
+        new ColumnHeader("mul.ACC_C_3", 32, length),
+        new ColumnHeader("mul.ACC_H_0", 32, length),
+        new ColumnHeader("mul.ACC_H_1", 32, length),
+        new ColumnHeader("mul.ACC_H_2", 32, length),
+        new ColumnHeader("mul.ACC_H_3", 32, length),
+        new ColumnHeader("mul.ARG_1_HI", 32, length),
+        new ColumnHeader("mul.ARG_1_LO", 32, length),
+        new ColumnHeader("mul.ARG_2_HI", 32, length),
+        new ColumnHeader("mul.ARG_2_LO", 32, length),
+        new ColumnHeader("mul.BIT_NUM", 32, length),
+        new ColumnHeader("mul.BITS", 1, length),
+        new ColumnHeader("mul.BYTE_A_0", 1, length),
+        new ColumnHeader("mul.BYTE_A_1", 1, length),
+        new ColumnHeader("mul.BYTE_A_2", 1, length),
+        new ColumnHeader("mul.BYTE_A_3", 1, length),
+        new ColumnHeader("mul.BYTE_B_0", 1, length),
+        new ColumnHeader("mul.BYTE_B_1", 1, length),
+        new ColumnHeader("mul.BYTE_B_2", 1, length),
+        new ColumnHeader("mul.BYTE_B_3", 1, length),
+        new ColumnHeader("mul.BYTE_C_0", 1, length),
+        new ColumnHeader("mul.BYTE_C_1", 1, length),
+        new ColumnHeader("mul.BYTE_C_2", 1, length),
+        new ColumnHeader("mul.BYTE_C_3", 1, length),
+        new ColumnHeader("mul.BYTE_H_0", 1, length),
+        new ColumnHeader("mul.BYTE_H_1", 1, length),
+        new ColumnHeader("mul.BYTE_H_2", 1, length),
+        new ColumnHeader("mul.BYTE_H_3", 1, length),
+        new ColumnHeader("mul.COUNTER", 32, length),
+        new ColumnHeader("mul.EXPONENT_BIT", 1, length),
+        new ColumnHeader("mul.EXPONENT_BIT_ACCUMULATOR", 32, length),
+        new ColumnHeader("mul.EXPONENT_BIT_SOURCE", 1, length),
+        new ColumnHeader("mul.INSTRUCTION", 32, length),
+        new ColumnHeader("mul.MUL_STAMP", 32, length),
+        new ColumnHeader("mul.OLI", 1, length),
+        new ColumnHeader("mul.RES_HI", 32, length),
+        new ColumnHeader("mul.RES_LO", 32, length),
+        new ColumnHeader("mul.RESULT_VANISHES", 1, length),
+        new ColumnHeader("mul.SQUARE_AND_MULTIPLY", 1, length),
+        new ColumnHeader("mul.TINY_BASE", 1, length),
+        new ColumnHeader("mul.TINY_EXPONENT", 1, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.accA0 = buffers.get(0);
+    this.accA1 = buffers.get(1);
+    this.accA2 = buffers.get(2);
+    this.accA3 = buffers.get(3);
+    this.accB0 = buffers.get(4);
+    this.accB1 = buffers.get(5);
+    this.accB2 = buffers.get(6);
+    this.accB3 = buffers.get(7);
+    this.accC0 = buffers.get(8);
+    this.accC1 = buffers.get(9);
+    this.accC2 = buffers.get(10);
+    this.accC3 = buffers.get(11);
+    this.accH0 = buffers.get(12);
+    this.accH1 = buffers.get(13);
+    this.accH2 = buffers.get(14);
+    this.accH3 = buffers.get(15);
+    this.arg1Hi = buffers.get(16);
+    this.arg1Lo = buffers.get(17);
+    this.arg2Hi = buffers.get(18);
+    this.arg2Lo = buffers.get(19);
+    this.bitNum = buffers.get(20);
+    this.bits = buffers.get(21);
+    this.byteA0 = buffers.get(22);
+    this.byteA1 = buffers.get(23);
+    this.byteA2 = buffers.get(24);
+    this.byteA3 = buffers.get(25);
+    this.byteB0 = buffers.get(26);
+    this.byteB1 = buffers.get(27);
+    this.byteB2 = buffers.get(28);
+    this.byteB3 = buffers.get(29);
+    this.byteC0 = buffers.get(30);
+    this.byteC1 = buffers.get(31);
+    this.byteC2 = buffers.get(32);
+    this.byteC3 = buffers.get(33);
+    this.byteH0 = buffers.get(34);
+    this.byteH1 = buffers.get(35);
+    this.byteH2 = buffers.get(36);
+    this.byteH3 = buffers.get(37);
+    this.counter = buffers.get(38);
+    this.exponentBit = buffers.get(39);
+    this.exponentBitAccumulator = buffers.get(40);
+    this.exponentBitSource = buffers.get(41);
+    this.instruction = buffers.get(42);
+    this.mulStamp = buffers.get(43);
+    this.oli = buffers.get(44);
+    this.resHi = buffers.get(45);
+    this.resLo = buffers.get(46);
+    this.resultVanishes = buffers.get(47);
+    this.squareAndMultiply = buffers.get(48);
+    this.tinyBase = buffers.get(49);
+    this.tinyExponent = buffers.get(50);
   }
 
   public int size() {
-    return this.accA0.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ACC_A_0")
-    private final List<BigInteger> accA0;
-
-    @JsonProperty("ACC_A_1")
-    private final List<BigInteger> accA1;
-
-    @JsonProperty("ACC_A_2")
-    private final List<BigInteger> accA2;
-
-    @JsonProperty("ACC_A_3")
-    private final List<BigInteger> accA3;
-
-    @JsonProperty("ACC_B_0")
-    private final List<BigInteger> accB0;
-
-    @JsonProperty("ACC_B_1")
-    private final List<BigInteger> accB1;
-
-    @JsonProperty("ACC_B_2")
-    private final List<BigInteger> accB2;
-
-    @JsonProperty("ACC_B_3")
-    private final List<BigInteger> accB3;
-
-    @JsonProperty("ACC_C_0")
-    private final List<BigInteger> accC0;
-
-    @JsonProperty("ACC_C_1")
-    private final List<BigInteger> accC1;
-
-    @JsonProperty("ACC_C_2")
-    private final List<BigInteger> accC2;
-
-    @JsonProperty("ACC_C_3")
-    private final List<BigInteger> accC3;
-
-    @JsonProperty("ACC_H_0")
-    private final List<BigInteger> accH0;
-
-    @JsonProperty("ACC_H_1")
-    private final List<BigInteger> accH1;
-
-    @JsonProperty("ACC_H_2")
-    private final List<BigInteger> accH2;
-
-    @JsonProperty("ACC_H_3")
-    private final List<BigInteger> accH3;
-
-    @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi;
-
-    @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo;
-
-    @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi;
-
-    @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo;
-
-    @JsonProperty("BIT_NUM")
-    private final List<BigInteger> bitNum;
-
-    @JsonProperty("BITS")
-    private final List<Boolean> bits;
-
-    @JsonProperty("BYTE_A_0")
-    private final List<UnsignedByte> byteA0;
-
-    @JsonProperty("BYTE_A_1")
-    private final List<UnsignedByte> byteA1;
-
-    @JsonProperty("BYTE_A_2")
-    private final List<UnsignedByte> byteA2;
-
-    @JsonProperty("BYTE_A_3")
-    private final List<UnsignedByte> byteA3;
-
-    @JsonProperty("BYTE_B_0")
-    private final List<UnsignedByte> byteB0;
-
-    @JsonProperty("BYTE_B_1")
-    private final List<UnsignedByte> byteB1;
-
-    @JsonProperty("BYTE_B_2")
-    private final List<UnsignedByte> byteB2;
-
-    @JsonProperty("BYTE_B_3")
-    private final List<UnsignedByte> byteB3;
-
-    @JsonProperty("BYTE_C_0")
-    private final List<UnsignedByte> byteC0;
-
-    @JsonProperty("BYTE_C_1")
-    private final List<UnsignedByte> byteC1;
-
-    @JsonProperty("BYTE_C_2")
-    private final List<UnsignedByte> byteC2;
-
-    @JsonProperty("BYTE_C_3")
-    private final List<UnsignedByte> byteC3;
-
-    @JsonProperty("BYTE_H_0")
-    private final List<UnsignedByte> byteH0;
-
-    @JsonProperty("BYTE_H_1")
-    private final List<UnsignedByte> byteH1;
-
-    @JsonProperty("BYTE_H_2")
-    private final List<UnsignedByte> byteH2;
-
-    @JsonProperty("BYTE_H_3")
-    private final List<UnsignedByte> byteH3;
-
-    @JsonProperty("COUNTER")
-    private final List<BigInteger> counter;
-
-    @JsonProperty("EXPONENT_BIT")
-    private final List<Boolean> exponentBit;
-
-    @JsonProperty("EXPONENT_BIT_ACCUMULATOR")
-    private final List<BigInteger> exponentBitAccumulator;
-
-    @JsonProperty("EXPONENT_BIT_SOURCE")
-    private final List<Boolean> exponentBitSource;
-
-    @JsonProperty("INSTRUCTION")
-    private final List<BigInteger> instruction;
-
-    @JsonProperty("MUL_STAMP")
-    private final List<BigInteger> mulStamp;
-
-    @JsonProperty("OLI")
-    private final List<Boolean> oli;
-
-    @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi;
-
-    @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo;
-
-    @JsonProperty("RESULT_VANISHES")
-    private final List<Boolean> resultVanishes;
-
-    @JsonProperty("SQUARE_AND_MULTIPLY")
-    private final List<Boolean> squareAndMultiply;
-
-    @JsonProperty("TINY_BASE")
-    private final List<Boolean> tinyBase;
-
-    @JsonProperty("TINY_EXPONENT")
-    private final List<Boolean> tinyExponent;
-
-    private TraceBuilder(int length) {
-      this.accA0 = new ArrayList<>(length);
-      this.accA1 = new ArrayList<>(length);
-      this.accA2 = new ArrayList<>(length);
-      this.accA3 = new ArrayList<>(length);
-      this.accB0 = new ArrayList<>(length);
-      this.accB1 = new ArrayList<>(length);
-      this.accB2 = new ArrayList<>(length);
-      this.accB3 = new ArrayList<>(length);
-      this.accC0 = new ArrayList<>(length);
-      this.accC1 = new ArrayList<>(length);
-      this.accC2 = new ArrayList<>(length);
-      this.accC3 = new ArrayList<>(length);
-      this.accH0 = new ArrayList<>(length);
-      this.accH1 = new ArrayList<>(length);
-      this.accH2 = new ArrayList<>(length);
-      this.accH3 = new ArrayList<>(length);
-      this.arg1Hi = new ArrayList<>(length);
-      this.arg1Lo = new ArrayList<>(length);
-      this.arg2Hi = new ArrayList<>(length);
-      this.arg2Lo = new ArrayList<>(length);
-      this.bitNum = new ArrayList<>(length);
-      this.bits = new ArrayList<>(length);
-      this.byteA0 = new ArrayList<>(length);
-      this.byteA1 = new ArrayList<>(length);
-      this.byteA2 = new ArrayList<>(length);
-      this.byteA3 = new ArrayList<>(length);
-      this.byteB0 = new ArrayList<>(length);
-      this.byteB1 = new ArrayList<>(length);
-      this.byteB2 = new ArrayList<>(length);
-      this.byteB3 = new ArrayList<>(length);
-      this.byteC0 = new ArrayList<>(length);
-      this.byteC1 = new ArrayList<>(length);
-      this.byteC2 = new ArrayList<>(length);
-      this.byteC3 = new ArrayList<>(length);
-      this.byteH0 = new ArrayList<>(length);
-      this.byteH1 = new ArrayList<>(length);
-      this.byteH2 = new ArrayList<>(length);
-      this.byteH3 = new ArrayList<>(length);
-      this.counter = new ArrayList<>(length);
-      this.exponentBit = new ArrayList<>(length);
-      this.exponentBitAccumulator = new ArrayList<>(length);
-      this.exponentBitSource = new ArrayList<>(length);
-      this.instruction = new ArrayList<>(length);
-      this.mulStamp = new ArrayList<>(length);
-      this.oli = new ArrayList<>(length);
-      this.resHi = new ArrayList<>(length);
-      this.resLo = new ArrayList<>(length);
-      this.resultVanishes = new ArrayList<>(length);
-      this.squareAndMultiply = new ArrayList<>(length);
-      this.tinyBase = new ArrayList<>(length);
-      this.tinyExponent = new ArrayList<>(length);
+  public Trace accA0(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("mul.ACC_A_0 already set");
+    } else {
+      filled.set(0);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    accA0.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.accA0.size();
+    return this;
+  }
+
+  public Trace accA1(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("mul.ACC_A_1 already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder accA0(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC_A_0 already set");
-      } else {
-        filled.set(0);
-      }
+    accA1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accA0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accA2(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("mul.ACC_A_2 already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder accA1(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_A_1 already set");
-      } else {
-        filled.set(1);
-      }
+    accA2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accA1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accA3(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("mul.ACC_A_3 already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder accA2(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ACC_A_2 already set");
-      } else {
-        filled.set(2);
-      }
+    accA3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accA2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accB0(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("mul.ACC_B_0 already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder accA3(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ACC_A_3 already set");
-      } else {
-        filled.set(3);
-      }
+    accB0.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accA3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accB1(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("mul.ACC_B_1 already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder accB0(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ACC_B_0 already set");
-      } else {
-        filled.set(4);
-      }
+    accB1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accB2(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("mul.ACC_B_2 already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder accB1(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("ACC_B_1 already set");
-      } else {
-        filled.set(5);
-      }
+    accB2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accB3(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("mul.ACC_B_3 already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder accB2(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("ACC_B_2 already set");
-      } else {
-        filled.set(6);
-      }
+    accB3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accC0(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("mul.ACC_C_0 already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder accB3(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("ACC_B_3 already set");
-      } else {
-        filled.set(7);
-      }
+    accC0.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accC1(final BigInteger b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("mul.ACC_C_1 already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder accC0(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("ACC_C_0 already set");
-      } else {
-        filled.set(8);
-      }
+    accC1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accC0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accC2(final BigInteger b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("mul.ACC_C_2 already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder accC1(final BigInteger b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("ACC_C_1 already set");
-      } else {
-        filled.set(9);
-      }
+    accC2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accC1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accC3(final BigInteger b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("mul.ACC_C_3 already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder accC2(final BigInteger b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("ACC_C_2 already set");
-      } else {
-        filled.set(10);
-      }
+    accC3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accC2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accH0(final BigInteger b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("mul.ACC_H_0 already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder accC3(final BigInteger b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("ACC_C_3 already set");
-      } else {
-        filled.set(11);
-      }
+    accH0.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accC3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accH1(final BigInteger b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("mul.ACC_H_1 already set");
+    } else {
+      filled.set(13);
     }
 
-    public TraceBuilder accH0(final BigInteger b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("ACC_H_0 already set");
-      } else {
-        filled.set(12);
-      }
+    accH1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accH0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accH2(final BigInteger b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("mul.ACC_H_2 already set");
+    } else {
+      filled.set(14);
     }
 
-    public TraceBuilder accH1(final BigInteger b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("ACC_H_1 already set");
-      } else {
-        filled.set(13);
-      }
+    accH2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accH1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accH3(final BigInteger b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("mul.ACC_H_3 already set");
+    } else {
+      filled.set(15);
     }
 
-    public TraceBuilder accH2(final BigInteger b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("ACC_H_2 already set");
-      } else {
-        filled.set(14);
-      }
+    accH3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accH2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg1Hi(final BigInteger b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("mul.ARG_1_HI already set");
+    } else {
+      filled.set(16);
     }
 
-    public TraceBuilder accH3(final BigInteger b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("ACC_H_3 already set");
-      } else {
-        filled.set(15);
-      }
+    arg1Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accH3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg1Lo(final BigInteger b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("mul.ARG_1_LO already set");
+    } else {
+      filled.set(17);
     }
 
-    public TraceBuilder arg1Hi(final BigInteger b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("ARG_1_HI already set");
-      } else {
-        filled.set(16);
-      }
+    arg1Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      arg1Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg2Hi(final BigInteger b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("mul.ARG_2_HI already set");
+    } else {
+      filled.set(18);
     }
 
-    public TraceBuilder arg1Lo(final BigInteger b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("ARG_1_LO already set");
-      } else {
-        filled.set(17);
-      }
+    arg2Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      arg1Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg2Lo(final BigInteger b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("mul.ARG_2_LO already set");
+    } else {
+      filled.set(19);
     }
 
-    public TraceBuilder arg2Hi(final BigInteger b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("ARG_2_HI already set");
-      } else {
-        filled.set(18);
-      }
+    arg2Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      arg2Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bitNum(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("mul.BIT_NUM already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder arg2Lo(final BigInteger b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("ARG_2_LO already set");
-      } else {
-        filled.set(19);
-      }
+    bitNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      arg2Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bits(final Boolean b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("mul.BITS already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder bitNum(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("BIT_NUM already set");
-      } else {
-        filled.set(21);
-      }
+    bits.put((byte) (b ? 1 : 0));
 
-      bitNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteA0(final UnsignedByte b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("mul.BYTE_A_0 already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder bits(final Boolean b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("BITS already set");
-      } else {
-        filled.set(20);
-      }
+    byteA0.put(b.toByte());
 
-      bits.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteA1(final UnsignedByte b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("mul.BYTE_A_1 already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder byteA0(final UnsignedByte b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("BYTE_A_0 already set");
-      } else {
-        filled.set(22);
-      }
+    byteA1.put(b.toByte());
 
-      byteA0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteA2(final UnsignedByte b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("mul.BYTE_A_2 already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder byteA1(final UnsignedByte b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("BYTE_A_1 already set");
-      } else {
-        filled.set(23);
-      }
+    byteA2.put(b.toByte());
 
-      byteA1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteA3(final UnsignedByte b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("mul.BYTE_A_3 already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder byteA2(final UnsignedByte b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("BYTE_A_2 already set");
-      } else {
-        filled.set(24);
-      }
+    byteA3.put(b.toByte());
 
-      byteA2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB0(final UnsignedByte b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("mul.BYTE_B_0 already set");
+    } else {
+      filled.set(26);
     }
 
-    public TraceBuilder byteA3(final UnsignedByte b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("BYTE_A_3 already set");
-      } else {
-        filled.set(25);
-      }
+    byteB0.put(b.toByte());
 
-      byteA3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB1(final UnsignedByte b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("mul.BYTE_B_1 already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder byteB0(final UnsignedByte b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("BYTE_B_0 already set");
-      } else {
-        filled.set(26);
-      }
+    byteB1.put(b.toByte());
 
-      byteB0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB2(final UnsignedByte b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("mul.BYTE_B_2 already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder byteB1(final UnsignedByte b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("BYTE_B_1 already set");
-      } else {
-        filled.set(27);
-      }
+    byteB2.put(b.toByte());
 
-      byteB1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB3(final UnsignedByte b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("mul.BYTE_B_3 already set");
+    } else {
+      filled.set(29);
     }
 
-    public TraceBuilder byteB2(final UnsignedByte b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("BYTE_B_2 already set");
-      } else {
-        filled.set(28);
-      }
+    byteB3.put(b.toByte());
 
-      byteB2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteC0(final UnsignedByte b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("mul.BYTE_C_0 already set");
+    } else {
+      filled.set(30);
     }
 
-    public TraceBuilder byteB3(final UnsignedByte b) {
-      if (filled.get(29)) {
-        throw new IllegalStateException("BYTE_B_3 already set");
-      } else {
-        filled.set(29);
-      }
+    byteC0.put(b.toByte());
 
-      byteB3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteC1(final UnsignedByte b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("mul.BYTE_C_1 already set");
+    } else {
+      filled.set(31);
     }
 
-    public TraceBuilder byteC0(final UnsignedByte b) {
-      if (filled.get(30)) {
-        throw new IllegalStateException("BYTE_C_0 already set");
-      } else {
-        filled.set(30);
-      }
+    byteC1.put(b.toByte());
 
-      byteC0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteC2(final UnsignedByte b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("mul.BYTE_C_2 already set");
+    } else {
+      filled.set(32);
     }
 
-    public TraceBuilder byteC1(final UnsignedByte b) {
-      if (filled.get(31)) {
-        throw new IllegalStateException("BYTE_C_1 already set");
-      } else {
-        filled.set(31);
-      }
+    byteC2.put(b.toByte());
 
-      byteC1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteC3(final UnsignedByte b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("mul.BYTE_C_3 already set");
+    } else {
+      filled.set(33);
     }
 
-    public TraceBuilder byteC2(final UnsignedByte b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("BYTE_C_2 already set");
-      } else {
-        filled.set(32);
-      }
+    byteC3.put(b.toByte());
 
-      byteC2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH0(final UnsignedByte b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("mul.BYTE_H_0 already set");
+    } else {
+      filled.set(34);
     }
 
-    public TraceBuilder byteC3(final UnsignedByte b) {
-      if (filled.get(33)) {
-        throw new IllegalStateException("BYTE_C_3 already set");
-      } else {
-        filled.set(33);
-      }
+    byteH0.put(b.toByte());
 
-      byteC3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH1(final UnsignedByte b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("mul.BYTE_H_1 already set");
+    } else {
+      filled.set(35);
     }
 
-    public TraceBuilder byteH0(final UnsignedByte b) {
-      if (filled.get(34)) {
-        throw new IllegalStateException("BYTE_H_0 already set");
-      } else {
-        filled.set(34);
-      }
+    byteH1.put(b.toByte());
 
-      byteH0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH2(final UnsignedByte b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("mul.BYTE_H_2 already set");
+    } else {
+      filled.set(36);
     }
 
-    public TraceBuilder byteH1(final UnsignedByte b) {
-      if (filled.get(35)) {
-        throw new IllegalStateException("BYTE_H_1 already set");
-      } else {
-        filled.set(35);
-      }
+    byteH2.put(b.toByte());
 
-      byteH1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH3(final UnsignedByte b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("mul.BYTE_H_3 already set");
+    } else {
+      filled.set(37);
     }
 
-    public TraceBuilder byteH2(final UnsignedByte b) {
-      if (filled.get(36)) {
-        throw new IllegalStateException("BYTE_H_2 already set");
-      } else {
-        filled.set(36);
-      }
+    byteH3.put(b.toByte());
 
-      byteH2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace counter(final BigInteger b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("mul.COUNTER already set");
+    } else {
+      filled.set(38);
     }
 
-    public TraceBuilder byteH3(final UnsignedByte b) {
-      if (filled.get(37)) {
-        throw new IllegalStateException("BYTE_H_3 already set");
-      } else {
-        filled.set(37);
-      }
+    counter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteH3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exponentBit(final Boolean b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT already set");
+    } else {
+      filled.set(39);
     }
 
-    public TraceBuilder counter(final BigInteger b) {
-      if (filled.get(38)) {
-        throw new IllegalStateException("COUNTER already set");
-      } else {
-        filled.set(38);
-      }
+    exponentBit.put((byte) (b ? 1 : 0));
 
-      counter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exponentBitAccumulator(final BigInteger b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT_ACCUMULATOR already set");
+    } else {
+      filled.set(40);
     }
 
-    public TraceBuilder exponentBit(final Boolean b) {
-      if (filled.get(39)) {
-        throw new IllegalStateException("EXPONENT_BIT already set");
-      } else {
-        filled.set(39);
-      }
+    exponentBitAccumulator.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exponentBit.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exponentBitSource(final Boolean b) {
+    if (filled.get(41)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT_SOURCE already set");
+    } else {
+      filled.set(41);
     }
 
-    public TraceBuilder exponentBitAccumulator(final BigInteger b) {
-      if (filled.get(40)) {
-        throw new IllegalStateException("EXPONENT_BIT_ACCUMULATOR already set");
-      } else {
-        filled.set(40);
-      }
+    exponentBitSource.put((byte) (b ? 1 : 0));
 
-      exponentBitAccumulator.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace instruction(final BigInteger b) {
+    if (filled.get(42)) {
+      throw new IllegalStateException("mul.INSTRUCTION already set");
+    } else {
+      filled.set(42);
     }
 
-    public TraceBuilder exponentBitSource(final Boolean b) {
-      if (filled.get(41)) {
-        throw new IllegalStateException("EXPONENT_BIT_SOURCE already set");
-      } else {
-        filled.set(41);
-      }
+    instruction.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exponentBitSource.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace mulStamp(final BigInteger b) {
+    if (filled.get(43)) {
+      throw new IllegalStateException("mul.MUL_STAMP already set");
+    } else {
+      filled.set(43);
     }
 
-    public TraceBuilder instruction(final BigInteger b) {
-      if (filled.get(42)) {
-        throw new IllegalStateException("INSTRUCTION already set");
-      } else {
-        filled.set(42);
-      }
+    mulStamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      instruction.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace oli(final Boolean b) {
+    if (filled.get(44)) {
+      throw new IllegalStateException("mul.OLI already set");
+    } else {
+      filled.set(44);
     }
 
-    public TraceBuilder mulStamp(final BigInteger b) {
-      if (filled.get(43)) {
-        throw new IllegalStateException("MUL_STAMP already set");
-      } else {
-        filled.set(43);
-      }
+    oli.put((byte) (b ? 1 : 0));
 
-      mulStamp.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resHi(final BigInteger b) {
+    if (filled.get(46)) {
+      throw new IllegalStateException("mul.RES_HI already set");
+    } else {
+      filled.set(46);
     }
 
-    public TraceBuilder oli(final Boolean b) {
-      if (filled.get(44)) {
-        throw new IllegalStateException("OLI already set");
-      } else {
-        filled.set(44);
-      }
+    resHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      oli.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resLo(final BigInteger b) {
+    if (filled.get(47)) {
+      throw new IllegalStateException("mul.RES_LO already set");
+    } else {
+      filled.set(47);
     }
 
-    public TraceBuilder resHi(final BigInteger b) {
-      if (filled.get(46)) {
-        throw new IllegalStateException("RES_HI already set");
-      } else {
-        filled.set(46);
-      }
+    resLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      resHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resultVanishes(final Boolean b) {
+    if (filled.get(45)) {
+      throw new IllegalStateException("mul.RESULT_VANISHES already set");
+    } else {
+      filled.set(45);
     }
 
-    public TraceBuilder resLo(final BigInteger b) {
-      if (filled.get(47)) {
-        throw new IllegalStateException("RES_LO already set");
-      } else {
-        filled.set(47);
-      }
+    resultVanishes.put((byte) (b ? 1 : 0));
 
-      resLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace squareAndMultiply(final Boolean b) {
+    if (filled.get(48)) {
+      throw new IllegalStateException("mul.SQUARE_AND_MULTIPLY already set");
+    } else {
+      filled.set(48);
     }
 
-    public TraceBuilder resultVanishes(final Boolean b) {
-      if (filled.get(45)) {
-        throw new IllegalStateException("RESULT_VANISHES already set");
-      } else {
-        filled.set(45);
-      }
+    squareAndMultiply.put((byte) (b ? 1 : 0));
 
-      resultVanishes.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace tinyBase(final Boolean b) {
+    if (filled.get(49)) {
+      throw new IllegalStateException("mul.TINY_BASE already set");
+    } else {
+      filled.set(49);
     }
 
-    public TraceBuilder squareAndMultiply(final Boolean b) {
-      if (filled.get(48)) {
-        throw new IllegalStateException("SQUARE_AND_MULTIPLY already set");
-      } else {
-        filled.set(48);
-      }
+    tinyBase.put((byte) (b ? 1 : 0));
 
-      squareAndMultiply.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace tinyExponent(final Boolean b) {
+    if (filled.get(50)) {
+      throw new IllegalStateException("mul.TINY_EXPONENT already set");
+    } else {
+      filled.set(50);
     }
 
-    public TraceBuilder tinyBase(final Boolean b) {
-      if (filled.get(49)) {
-        throw new IllegalStateException("TINY_BASE already set");
-      } else {
-        filled.set(49);
-      }
+    tinyExponent.put((byte) (b ? 1 : 0));
 
-      tinyBase.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("mul.ACC_A_0 has not been filled");
     }
 
-    public TraceBuilder tinyExponent(final Boolean b) {
-      if (filled.get(50)) {
-        throw new IllegalStateException("TINY_EXPONENT already set");
-      } else {
-        filled.set(50);
-      }
-
-      tinyExponent.add(b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("mul.ACC_A_1 has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC_A_0 has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_A_1 has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ACC_A_2 has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ACC_A_3 has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ACC_B_0 has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("ACC_B_1 has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("ACC_B_2 has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("ACC_B_3 has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("ACC_C_0 has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("ACC_C_1 has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("ACC_C_2 has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("ACC_C_3 has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("ACC_H_0 has not been filled");
-      }
-
-      if (!filled.get(13)) {
-        throw new IllegalStateException("ACC_H_1 has not been filled");
-      }
-
-      if (!filled.get(14)) {
-        throw new IllegalStateException("ACC_H_2 has not been filled");
-      }
-
-      if (!filled.get(15)) {
-        throw new IllegalStateException("ACC_H_3 has not been filled");
-      }
-
-      if (!filled.get(16)) {
-        throw new IllegalStateException("ARG_1_HI has not been filled");
-      }
-
-      if (!filled.get(17)) {
-        throw new IllegalStateException("ARG_1_LO has not been filled");
-      }
-
-      if (!filled.get(18)) {
-        throw new IllegalStateException("ARG_2_HI has not been filled");
-      }
-
-      if (!filled.get(19)) {
-        throw new IllegalStateException("ARG_2_LO has not been filled");
-      }
-
-      if (!filled.get(21)) {
-        throw new IllegalStateException("BIT_NUM has not been filled");
-      }
-
-      if (!filled.get(20)) {
-        throw new IllegalStateException("BITS has not been filled");
-      }
-
-      if (!filled.get(22)) {
-        throw new IllegalStateException("BYTE_A_0 has not been filled");
-      }
-
-      if (!filled.get(23)) {
-        throw new IllegalStateException("BYTE_A_1 has not been filled");
-      }
-
-      if (!filled.get(24)) {
-        throw new IllegalStateException("BYTE_A_2 has not been filled");
-      }
-
-      if (!filled.get(25)) {
-        throw new IllegalStateException("BYTE_A_3 has not been filled");
-      }
-
-      if (!filled.get(26)) {
-        throw new IllegalStateException("BYTE_B_0 has not been filled");
-      }
-
-      if (!filled.get(27)) {
-        throw new IllegalStateException("BYTE_B_1 has not been filled");
-      }
-
-      if (!filled.get(28)) {
-        throw new IllegalStateException("BYTE_B_2 has not been filled");
-      }
-
-      if (!filled.get(29)) {
-        throw new IllegalStateException("BYTE_B_3 has not been filled");
-      }
-
-      if (!filled.get(30)) {
-        throw new IllegalStateException("BYTE_C_0 has not been filled");
-      }
-
-      if (!filled.get(31)) {
-        throw new IllegalStateException("BYTE_C_1 has not been filled");
-      }
-
-      if (!filled.get(32)) {
-        throw new IllegalStateException("BYTE_C_2 has not been filled");
-      }
-
-      if (!filled.get(33)) {
-        throw new IllegalStateException("BYTE_C_3 has not been filled");
-      }
-
-      if (!filled.get(34)) {
-        throw new IllegalStateException("BYTE_H_0 has not been filled");
-      }
-
-      if (!filled.get(35)) {
-        throw new IllegalStateException("BYTE_H_1 has not been filled");
-      }
-
-      if (!filled.get(36)) {
-        throw new IllegalStateException("BYTE_H_2 has not been filled");
-      }
-
-      if (!filled.get(37)) {
-        throw new IllegalStateException("BYTE_H_3 has not been filled");
-      }
-
-      if (!filled.get(38)) {
-        throw new IllegalStateException("COUNTER has not been filled");
-      }
-
-      if (!filled.get(39)) {
-        throw new IllegalStateException("EXPONENT_BIT has not been filled");
-      }
-
-      if (!filled.get(40)) {
-        throw new IllegalStateException("EXPONENT_BIT_ACCUMULATOR has not been filled");
-      }
-
-      if (!filled.get(41)) {
-        throw new IllegalStateException("EXPONENT_BIT_SOURCE has not been filled");
-      }
-
-      if (!filled.get(42)) {
-        throw new IllegalStateException("INSTRUCTION has not been filled");
-      }
-
-      if (!filled.get(43)) {
-        throw new IllegalStateException("MUL_STAMP has not been filled");
-      }
-
-      if (!filled.get(44)) {
-        throw new IllegalStateException("OLI has not been filled");
-      }
-
-      if (!filled.get(46)) {
-        throw new IllegalStateException("RES_HI has not been filled");
-      }
-
-      if (!filled.get(47)) {
-        throw new IllegalStateException("RES_LO has not been filled");
-      }
-
-      if (!filled.get(45)) {
-        throw new IllegalStateException("RESULT_VANISHES has not been filled");
-      }
-
-      if (!filled.get(48)) {
-        throw new IllegalStateException("SQUARE_AND_MULTIPLY has not been filled");
-      }
-
-      if (!filled.get(49)) {
-        throw new IllegalStateException("TINY_BASE has not been filled");
-      }
-
-      if (!filled.get(50)) {
-        throw new IllegalStateException("TINY_EXPONENT has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("mul.ACC_A_2 has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        accA0.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        accA1.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        accA2.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        accA3.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        accB0.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        accB1.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        accB2.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        accB3.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        accC0.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        accC1.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        accC2.add(BigInteger.ZERO);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        accC3.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        accH0.add(BigInteger.ZERO);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        accH1.add(BigInteger.ZERO);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        accH2.add(BigInteger.ZERO);
-        this.filled.set(14);
-      }
-      if (!filled.get(15)) {
-        accH3.add(BigInteger.ZERO);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        arg1Hi.add(BigInteger.ZERO);
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        arg1Lo.add(BigInteger.ZERO);
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        arg2Hi.add(BigInteger.ZERO);
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        arg2Lo.add(BigInteger.ZERO);
-        this.filled.set(19);
-      }
-      if (!filled.get(21)) {
-        bitNum.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(20)) {
-        bits.add(false);
-        this.filled.set(20);
-      }
-      if (!filled.get(22)) {
-        byteA0.add(UnsignedByte.of(0));
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        byteA1.add(UnsignedByte.of(0));
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        byteA2.add(UnsignedByte.of(0));
-        this.filled.set(24);
-      }
-      if (!filled.get(25)) {
-        byteA3.add(UnsignedByte.of(0));
-        this.filled.set(25);
-      }
-      if (!filled.get(26)) {
-        byteB0.add(UnsignedByte.of(0));
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        byteB1.add(UnsignedByte.of(0));
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        byteB2.add(UnsignedByte.of(0));
-        this.filled.set(28);
-      }
-      if (!filled.get(29)) {
-        byteB3.add(UnsignedByte.of(0));
-        this.filled.set(29);
-      }
-      if (!filled.get(30)) {
-        byteC0.add(UnsignedByte.of(0));
-        this.filled.set(30);
-      }
-      if (!filled.get(31)) {
-        byteC1.add(UnsignedByte.of(0));
-        this.filled.set(31);
-      }
-      if (!filled.get(32)) {
-        byteC2.add(UnsignedByte.of(0));
-        this.filled.set(32);
-      }
-      if (!filled.get(33)) {
-        byteC3.add(UnsignedByte.of(0));
-        this.filled.set(33);
-      }
-      if (!filled.get(34)) {
-        byteH0.add(UnsignedByte.of(0));
-        this.filled.set(34);
-      }
-      if (!filled.get(35)) {
-        byteH1.add(UnsignedByte.of(0));
-        this.filled.set(35);
-      }
-      if (!filled.get(36)) {
-        byteH2.add(UnsignedByte.of(0));
-        this.filled.set(36);
-      }
-      if (!filled.get(37)) {
-        byteH3.add(UnsignedByte.of(0));
-        this.filled.set(37);
-      }
-      if (!filled.get(38)) {
-        counter.add(BigInteger.ZERO);
-        this.filled.set(38);
-      }
-      if (!filled.get(39)) {
-        exponentBit.add(false);
-        this.filled.set(39);
-      }
-      if (!filled.get(40)) {
-        exponentBitAccumulator.add(BigInteger.ZERO);
-        this.filled.set(40);
-      }
-      if (!filled.get(41)) {
-        exponentBitSource.add(false);
-        this.filled.set(41);
-      }
-      if (!filled.get(42)) {
-        instruction.add(BigInteger.ZERO);
-        this.filled.set(42);
-      }
-      if (!filled.get(43)) {
-        mulStamp.add(BigInteger.ZERO);
-        this.filled.set(43);
-      }
-      if (!filled.get(44)) {
-        oli.add(false);
-        this.filled.set(44);
-      }
-      if (!filled.get(46)) {
-        resHi.add(BigInteger.ZERO);
-        this.filled.set(46);
-      }
-      if (!filled.get(47)) {
-        resLo.add(BigInteger.ZERO);
-        this.filled.set(47);
-      }
-      if (!filled.get(45)) {
-        resultVanishes.add(false);
-        this.filled.set(45);
-      }
-      if (!filled.get(48)) {
-        squareAndMultiply.add(false);
-        this.filled.set(48);
-      }
-      if (!filled.get(49)) {
-        tinyBase.add(false);
-        this.filled.set(49);
-      }
-      if (!filled.get(50)) {
-        tinyExponent.add(false);
-        this.filled.set(50);
-      }
-
-      return this.validateRow();
+    if (!filled.get(3)) {
+      throw new IllegalStateException("mul.ACC_A_3 has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          accA0,
-          accA1,
-          accA2,
-          accA3,
-          accB0,
-          accB1,
-          accB2,
-          accB3,
-          accC0,
-          accC1,
-          accC2,
-          accC3,
-          accH0,
-          accH1,
-          accH2,
-          accH3,
-          arg1Hi,
-          arg1Lo,
-          arg2Hi,
-          arg2Lo,
-          bitNum,
-          bits,
-          byteA0,
-          byteA1,
-          byteA2,
-          byteA3,
-          byteB0,
-          byteB1,
-          byteB2,
-          byteB3,
-          byteC0,
-          byteC1,
-          byteC2,
-          byteC3,
-          byteH0,
-          byteH1,
-          byteH2,
-          byteH3,
-          counter,
-          exponentBit,
-          exponentBitAccumulator,
-          exponentBitSource,
-          instruction,
-          mulStamp,
-          oli,
-          resHi,
-          resLo,
-          resultVanishes,
-          squareAndMultiply,
-          tinyBase,
-          tinyExponent);
+    if (!filled.get(4)) {
+      throw new IllegalStateException("mul.ACC_B_0 has not been filled");
     }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("mul.ACC_B_1 has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("mul.ACC_B_2 has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("mul.ACC_B_3 has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("mul.ACC_C_0 has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("mul.ACC_C_1 has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("mul.ACC_C_2 has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("mul.ACC_C_3 has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("mul.ACC_H_0 has not been filled");
+    }
+
+    if (!filled.get(13)) {
+      throw new IllegalStateException("mul.ACC_H_1 has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("mul.ACC_H_2 has not been filled");
+    }
+
+    if (!filled.get(15)) {
+      throw new IllegalStateException("mul.ACC_H_3 has not been filled");
+    }
+
+    if (!filled.get(16)) {
+      throw new IllegalStateException("mul.ARG_1_HI has not been filled");
+    }
+
+    if (!filled.get(17)) {
+      throw new IllegalStateException("mul.ARG_1_LO has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("mul.ARG_2_HI has not been filled");
+    }
+
+    if (!filled.get(19)) {
+      throw new IllegalStateException("mul.ARG_2_LO has not been filled");
+    }
+
+    if (!filled.get(21)) {
+      throw new IllegalStateException("mul.BIT_NUM has not been filled");
+    }
+
+    if (!filled.get(20)) {
+      throw new IllegalStateException("mul.BITS has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("mul.BYTE_A_0 has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("mul.BYTE_A_1 has not been filled");
+    }
+
+    if (!filled.get(24)) {
+      throw new IllegalStateException("mul.BYTE_A_2 has not been filled");
+    }
+
+    if (!filled.get(25)) {
+      throw new IllegalStateException("mul.BYTE_A_3 has not been filled");
+    }
+
+    if (!filled.get(26)) {
+      throw new IllegalStateException("mul.BYTE_B_0 has not been filled");
+    }
+
+    if (!filled.get(27)) {
+      throw new IllegalStateException("mul.BYTE_B_1 has not been filled");
+    }
+
+    if (!filled.get(28)) {
+      throw new IllegalStateException("mul.BYTE_B_2 has not been filled");
+    }
+
+    if (!filled.get(29)) {
+      throw new IllegalStateException("mul.BYTE_B_3 has not been filled");
+    }
+
+    if (!filled.get(30)) {
+      throw new IllegalStateException("mul.BYTE_C_0 has not been filled");
+    }
+
+    if (!filled.get(31)) {
+      throw new IllegalStateException("mul.BYTE_C_1 has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException("mul.BYTE_C_2 has not been filled");
+    }
+
+    if (!filled.get(33)) {
+      throw new IllegalStateException("mul.BYTE_C_3 has not been filled");
+    }
+
+    if (!filled.get(34)) {
+      throw new IllegalStateException("mul.BYTE_H_0 has not been filled");
+    }
+
+    if (!filled.get(35)) {
+      throw new IllegalStateException("mul.BYTE_H_1 has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("mul.BYTE_H_2 has not been filled");
+    }
+
+    if (!filled.get(37)) {
+      throw new IllegalStateException("mul.BYTE_H_3 has not been filled");
+    }
+
+    if (!filled.get(38)) {
+      throw new IllegalStateException("mul.COUNTER has not been filled");
+    }
+
+    if (!filled.get(39)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT has not been filled");
+    }
+
+    if (!filled.get(40)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT_ACCUMULATOR has not been filled");
+    }
+
+    if (!filled.get(41)) {
+      throw new IllegalStateException("mul.EXPONENT_BIT_SOURCE has not been filled");
+    }
+
+    if (!filled.get(42)) {
+      throw new IllegalStateException("mul.INSTRUCTION has not been filled");
+    }
+
+    if (!filled.get(43)) {
+      throw new IllegalStateException("mul.MUL_STAMP has not been filled");
+    }
+
+    if (!filled.get(44)) {
+      throw new IllegalStateException("mul.OLI has not been filled");
+    }
+
+    if (!filled.get(46)) {
+      throw new IllegalStateException("mul.RES_HI has not been filled");
+    }
+
+    if (!filled.get(47)) {
+      throw new IllegalStateException("mul.RES_LO has not been filled");
+    }
+
+    if (!filled.get(45)) {
+      throw new IllegalStateException("mul.RESULT_VANISHES has not been filled");
+    }
+
+    if (!filled.get(48)) {
+      throw new IllegalStateException("mul.SQUARE_AND_MULTIPLY has not been filled");
+    }
+
+    if (!filled.get(49)) {
+      throw new IllegalStateException("mul.TINY_BASE has not been filled");
+    }
+
+    if (!filled.get(50)) {
+      throw new IllegalStateException("mul.TINY_EXPONENT has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      accA0.position(accA0.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      accA1.position(accA1.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      accA2.position(accA2.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      accA3.position(accA3.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      accB0.position(accB0.position() + 32);
+    }
+
+    if (!filled.get(5)) {
+      accB1.position(accB1.position() + 32);
+    }
+
+    if (!filled.get(6)) {
+      accB2.position(accB2.position() + 32);
+    }
+
+    if (!filled.get(7)) {
+      accB3.position(accB3.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      accC0.position(accC0.position() + 32);
+    }
+
+    if (!filled.get(9)) {
+      accC1.position(accC1.position() + 32);
+    }
+
+    if (!filled.get(10)) {
+      accC2.position(accC2.position() + 32);
+    }
+
+    if (!filled.get(11)) {
+      accC3.position(accC3.position() + 32);
+    }
+
+    if (!filled.get(12)) {
+      accH0.position(accH0.position() + 32);
+    }
+
+    if (!filled.get(13)) {
+      accH1.position(accH1.position() + 32);
+    }
+
+    if (!filled.get(14)) {
+      accH2.position(accH2.position() + 32);
+    }
+
+    if (!filled.get(15)) {
+      accH3.position(accH3.position() + 32);
+    }
+
+    if (!filled.get(16)) {
+      arg1Hi.position(arg1Hi.position() + 32);
+    }
+
+    if (!filled.get(17)) {
+      arg1Lo.position(arg1Lo.position() + 32);
+    }
+
+    if (!filled.get(18)) {
+      arg2Hi.position(arg2Hi.position() + 32);
+    }
+
+    if (!filled.get(19)) {
+      arg2Lo.position(arg2Lo.position() + 32);
+    }
+
+    if (!filled.get(21)) {
+      bitNum.position(bitNum.position() + 32);
+    }
+
+    if (!filled.get(20)) {
+      bits.position(bits.position() + 1);
+    }
+
+    if (!filled.get(22)) {
+      byteA0.position(byteA0.position() + 1);
+    }
+
+    if (!filled.get(23)) {
+      byteA1.position(byteA1.position() + 1);
+    }
+
+    if (!filled.get(24)) {
+      byteA2.position(byteA2.position() + 1);
+    }
+
+    if (!filled.get(25)) {
+      byteA3.position(byteA3.position() + 1);
+    }
+
+    if (!filled.get(26)) {
+      byteB0.position(byteB0.position() + 1);
+    }
+
+    if (!filled.get(27)) {
+      byteB1.position(byteB1.position() + 1);
+    }
+
+    if (!filled.get(28)) {
+      byteB2.position(byteB2.position() + 1);
+    }
+
+    if (!filled.get(29)) {
+      byteB3.position(byteB3.position() + 1);
+    }
+
+    if (!filled.get(30)) {
+      byteC0.position(byteC0.position() + 1);
+    }
+
+    if (!filled.get(31)) {
+      byteC1.position(byteC1.position() + 1);
+    }
+
+    if (!filled.get(32)) {
+      byteC2.position(byteC2.position() + 1);
+    }
+
+    if (!filled.get(33)) {
+      byteC3.position(byteC3.position() + 1);
+    }
+
+    if (!filled.get(34)) {
+      byteH0.position(byteH0.position() + 1);
+    }
+
+    if (!filled.get(35)) {
+      byteH1.position(byteH1.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      byteH2.position(byteH2.position() + 1);
+    }
+
+    if (!filled.get(37)) {
+      byteH3.position(byteH3.position() + 1);
+    }
+
+    if (!filled.get(38)) {
+      counter.position(counter.position() + 32);
+    }
+
+    if (!filled.get(39)) {
+      exponentBit.position(exponentBit.position() + 1);
+    }
+
+    if (!filled.get(40)) {
+      exponentBitAccumulator.position(exponentBitAccumulator.position() + 32);
+    }
+
+    if (!filled.get(41)) {
+      exponentBitSource.position(exponentBitSource.position() + 1);
+    }
+
+    if (!filled.get(42)) {
+      instruction.position(instruction.position() + 32);
+    }
+
+    if (!filled.get(43)) {
+      mulStamp.position(mulStamp.position() + 32);
+    }
+
+    if (!filled.get(44)) {
+      oli.position(oli.position() + 1);
+    }
+
+    if (!filled.get(46)) {
+      resHi.position(resHi.position() + 32);
+    }
+
+    if (!filled.get(47)) {
+      resLo.position(resLo.position() + 32);
+    }
+
+    if (!filled.get(45)) {
+      resultVanishes.position(resultVanishes.position() + 1);
+    }
+
+    if (!filled.get(48)) {
+      squareAndMultiply.position(squareAndMultiply.position() + 1);
+    }
+
+    if (!filled.get(49)) {
+      tinyBase.position(tinyBase.position() + 1);
+    }
+
+    if (!filled.get(50)) {
+      tinyExponent.position(tinyExponent.position() + 1);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }

@@ -16,10 +16,12 @@
 package net.consensys.linea.zktracer.module.mod;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -64,7 +66,7 @@ public class Mod implements Module {
     this.chunks.enter();
   }
 
-  public void traceModOperation(ModOperation op, Trace.TraceBuilder trace) {
+  public void traceModOperation(ModOperation op, Trace trace) {
     this.stamp++;
 
     for (int i = 0; i < op.maxCounter(); i++) {
@@ -137,17 +139,21 @@ public class Mod implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
     for (ModOperation op : this.chunks) {
       this.traceModOperation(op, trace);
     }
-    return new ModTrace(trace.build());
   }
 
   @Override
   public int lineCount() {
     return this.chunks.stream().mapToInt(ModOperation::maxCounter).sum();
+  }
+
+  @Override
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
   }
 
   /**

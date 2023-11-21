@@ -16,8 +16,11 @@
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
-import net.consensys.linea.zktracer.module.ModuleTrace;
+import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.DataLocation;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -27,8 +30,8 @@ import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.stack.Pattern;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
-public final class InstructionDecoder {
-  private static void traceFamily(OpCodeData op, Trace.TraceBuilder trace) {
+public final class InstructionDecoder implements Module {
+  private static void traceFamily(OpCodeData op, Trace trace) {
     trace
         .familyAdd(op.instructionFamily() == InstructionFamily.ADD)
         .familyMod(op.instructionFamily() == InstructionFamily.MOD)
@@ -57,7 +60,7 @@ public final class InstructionDecoder {
         .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID);
   }
 
-  private static void traceStackSettings(OpCodeData op, Trace.TraceBuilder trace) {
+  private static void traceStackSettings(OpCodeData op, Trace trace) {
     trace
         .patternZeroZero(op.stackSettings().pattern() == Pattern.ZERO_ZERO)
         .patternOneZero(op.stackSettings().pattern() == Pattern.ONE_ZERO)
@@ -87,7 +90,7 @@ public final class InstructionDecoder {
         .flag4(op.stackSettings().flag4());
   }
 
-  private static void traceRamSettings(OpCodeData op, Trace.TraceBuilder trace) {
+  private static void traceRamSettings(OpCodeData op, Trace trace) {
     trace
         .ramEnabled(op.ramSettings().enabled())
         // Source
@@ -116,7 +119,7 @@ public final class InstructionDecoder {
         .ramTargetLogData(op.ramSettings().target() == DataLocation.LOG_DATA);
   }
 
-  private static void traceBillingSettings(OpCodeData op, Trace.TraceBuilder trace) {
+  private static void traceBillingSettings(OpCodeData op, Trace trace) {
     trace
         .billingPerWord(
             BigInteger.valueOf(
@@ -135,8 +138,30 @@ public final class InstructionDecoder {
         .mxpType5(op.billing().type() == MxpType.TYPE_5);
   }
 
-  public static ModuleTrace generate() {
-    Trace.TraceBuilder trace = new Trace.TraceBuilder(256);
+  @Override
+  public String jsonKey() {
+    return "instruction-decoder";
+  }
+
+  @Override
+  public void enterTransaction() {}
+
+  @Override
+  public void popTransaction() {}
+
+  @Override
+  public int lineCount() {
+    return 256;
+  }
+
+  @Override
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    Trace trace = new Trace(buffers);
 
     for (int i = 0; i < 256; i++) {
       final OpCodeData op = OpCode.of(i).getData();
@@ -151,7 +176,5 @@ public final class InstructionDecoder {
           .isJumpdest(op.jumpFlag())
           .validateRow();
     }
-
-    return new InstructionDecoderTrace(trace.build());
   }
 }

@@ -15,17 +15,13 @@
 
 package net.consensys.linea.tracegeneration.rpc;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.zip.GZIPOutputStream;
+import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
+import com.google.common.base.Stopwatch;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -34,11 +30,10 @@ import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 /** Responsible for conflated file traces generation. */
+@Slf4j
 public class RollupGenerateConflatedTracesToFileV0 {
 
   private final BesuContext besuContext;
-  private final JsonFactory jsonFactory = new JsonFactory();
-  private final boolean isGzipEnabled = true;
 
   private Path tracesPath;
   private TraceService traceService;
@@ -62,6 +57,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
    * @return an execution file trace.
    */
   public FileTrace execute(final PluginRpcRequest request) {
+    Stopwatch sw = Stopwatch.createStarted();
     if (traceService == null) {
       traceService = initTraceService();
     }
@@ -76,7 +72,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
       final long fromBlock = params.fromBlock();
       final long toBlock = params.toBlock();
       final ZkTracer tracer = new ZkTracer();
-
+      log.warn("[TRACING] starting at {}", sw.elapsed(TimeUnit.SECONDS));
       traceService.trace(
           fromBlock,
           toBlock,
@@ -90,8 +86,9 @@ public class RollupGenerateConflatedTracesToFileV0 {
           },
           tracer);
 
+      log.warn("[TRACING] trace computed at {}", sw.elapsed(TimeUnit.SECONDS));
       final String path = writeTraceToFile(tracer, params.runtimeVersion());
-
+      log.warn("[TRACING] trace written at {}", sw.elapsed(TimeUnit.SECONDS));
       return new FileTrace(params.runtimeVersion(), path);
     } catch (Exception ex) {
       throw new PluginRpcEndpointException(ex.getMessage());
@@ -121,36 +118,12 @@ public class RollupGenerateConflatedTracesToFileV0 {
   }
 
   private String writeTraceToFile(final ZkTracer tracer, final String traceRuntimeVersion) {
-    final File file = generateOutputFile(traceRuntimeVersion);
-    final OutputStream outputStream = createOutputStream(file);
-
-    try (JsonGenerator jsonGenerator =
-        jsonFactory.createGenerator(outputStream, JsonEncoding.UTF8)) {
-      jsonGenerator.useDefaultPrettyPrinter();
-      jsonGenerator.writeObject(tracer.getJsonTrace());
-
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return file.getAbsolutePath();
+    final Path fileName = generateOutputFileName(traceRuntimeVersion);
+    tracer.writeToFile(fileName);
+    return fileName.toAbsolutePath().toString();
   }
 
-  private OutputStream createOutputStream(final File file) {
-    try {
-      FileOutputStream fileOutputStream = new FileOutputStream(file);
-      if (isGzipEnabled) {
-        return new GZIPOutputStream(fileOutputStream);
-      }
-
-      return fileOutputStream;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private File generateOutputFile(final String tracesEngineVersion) {
-
+  private Path generateOutputFileName(final String tracesEngineVersion) {
     if (!Files.isDirectory(tracesPath) && !tracesPath.toFile().mkdirs()) {
       throw new RuntimeException(
           String.format(
@@ -158,15 +131,13 @@ public class RollupGenerateConflatedTracesToFileV0 {
               tracesPath.toAbsolutePath()));
     }
 
-    return tracesPath
-        .resolve(
-            String.format(
-                "%.10s-%s.traces.%s",
-                System.currentTimeMillis(), tracesEngineVersion, getFileFormat()))
-        .toFile();
+    return Paths.get(
+        String.format(
+            "%.10s-%s.traces.%s",
+            System.currentTimeMillis(), tracesEngineVersion, getFileFormat()));
   }
 
   private String getFileFormat() {
-    return isGzipEnabled ? "json.gz" : "json";
+    return "lt";
   }
 }

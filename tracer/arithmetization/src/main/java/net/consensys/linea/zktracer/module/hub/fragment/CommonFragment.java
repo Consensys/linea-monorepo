@@ -64,7 +64,7 @@ public final class CommonFragment implements TraceFragment {
   @Getter @Setter private int nonStackRowsCounter;
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .absoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
         .batchNumber(BigInteger.valueOf(this.batchNumber))

@@ -15,8 +15,10 @@
 
 package net.consensys.linea.zktracer.module.mmio;
 
+import java.util.List;
+
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 
 public class Mmio implements Module {
   @Override
@@ -36,7 +38,7 @@ public class Mmio implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    return null;
+  public List<ColumnHeader> columnsHeaders() {
+    throw new RuntimeException("TODO");
   }
 }

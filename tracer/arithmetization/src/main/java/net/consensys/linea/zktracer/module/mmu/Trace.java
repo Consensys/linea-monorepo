@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,2112 +16,1876 @@
 package net.consensys.linea.zktracer.module.mmu;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC_1") List<BigInteger> acc1,
-    @JsonProperty("ACC_2") List<BigInteger> acc2,
-    @JsonProperty("ACC_3") List<BigInteger> acc3,
-    @JsonProperty("ACC_4") List<BigInteger> acc4,
-    @JsonProperty("ACC_5") List<BigInteger> acc5,
-    @JsonProperty("ACC_6") List<BigInteger> acc6,
-    @JsonProperty("ACC_7") List<BigInteger> acc7,
-    @JsonProperty("ACC_8") List<BigInteger> acc8,
-    @JsonProperty("ALIGNED") List<BigInteger> aligned,
-    @JsonProperty("BIT_1") List<Boolean> bit1,
-    @JsonProperty("BIT_2") List<Boolean> bit2,
-    @JsonProperty("BIT_3") List<Boolean> bit3,
-    @JsonProperty("BIT_4") List<Boolean> bit4,
-    @JsonProperty("BIT_5") List<Boolean> bit5,
-    @JsonProperty("BIT_6") List<Boolean> bit6,
-    @JsonProperty("BIT_7") List<Boolean> bit7,
-    @JsonProperty("BIT_8") List<Boolean> bit8,
-    @JsonProperty("BYTE_1") List<UnsignedByte> byte1,
-    @JsonProperty("BYTE_2") List<UnsignedByte> byte2,
-    @JsonProperty("BYTE_3") List<UnsignedByte> byte3,
-    @JsonProperty("BYTE_4") List<UnsignedByte> byte4,
-    @JsonProperty("BYTE_5") List<UnsignedByte> byte5,
-    @JsonProperty("BYTE_6") List<UnsignedByte> byte6,
-    @JsonProperty("BYTE_7") List<UnsignedByte> byte7,
-    @JsonProperty("BYTE_8") List<UnsignedByte> byte8,
-    @JsonProperty("CALL_DATA_OFFSET") List<BigInteger> callDataOffset,
-    @JsonProperty("CALL_DATA_SIZE") List<BigInteger> callDataSize,
-    @JsonProperty("CALL_STACK_DEPTH") List<BigInteger> callStackDepth,
-    @JsonProperty("CALLER") List<BigInteger> caller,
-    @JsonProperty("CONTEXT_NUMBER") List<BigInteger> contextNumber,
-    @JsonProperty("CONTEXT_SOURCE") List<BigInteger> contextSource,
-    @JsonProperty("CONTEXT_TARGET") List<BigInteger> contextTarget,
-    @JsonProperty("COUNTER") List<BigInteger> counter,
-    @JsonProperty("ERF") List<Boolean> erf,
-    @JsonProperty("EXO_IS_HASH") List<Boolean> exoIsHash,
-    @JsonProperty("EXO_IS_LOG") List<Boolean> exoIsLog,
-    @JsonProperty("EXO_IS_ROM") List<Boolean> exoIsRom,
-    @JsonProperty("EXO_IS_TXCD") List<Boolean> exoIsTxcd,
-    @JsonProperty("FAST") List<BigInteger> fast,
-    @JsonProperty("INFO") List<BigInteger> info,
-    @JsonProperty("INSTRUCTION") List<BigInteger> instruction,
-    @JsonProperty("IS_DATA") List<Boolean> isData,
-    @JsonProperty("IS_MICRO_INSTRUCTION") List<Boolean> isMicroInstruction,
-    @JsonProperty("MICRO_INSTRUCTION") List<BigInteger> microInstruction,
-    @JsonProperty("MICRO_INSTRUCTION_STAMP") List<BigInteger> microInstructionStamp,
-    @JsonProperty("MIN") List<BigInteger> min,
-    @JsonProperty("NIB_1") List<UnsignedByte> nib1,
-    @JsonProperty("NIB_2") List<UnsignedByte> nib2,
-    @JsonProperty("NIB_3") List<UnsignedByte> nib3,
-    @JsonProperty("NIB_4") List<UnsignedByte> nib4,
-    @JsonProperty("NIB_5") List<UnsignedByte> nib5,
-    @JsonProperty("NIB_6") List<UnsignedByte> nib6,
-    @JsonProperty("NIB_7") List<UnsignedByte> nib7,
-    @JsonProperty("NIB_8") List<UnsignedByte> nib8,
-    @JsonProperty("NIB_9") List<UnsignedByte> nib9,
-    @JsonProperty("OFF_1_LO") List<BigInteger> off1Lo,
-    @JsonProperty("OFF_2_HI") List<BigInteger> off2Hi,
-    @JsonProperty("OFF_2_LO") List<BigInteger> off2Lo,
-    @JsonProperty("OFFSET_OUT_OF_BOUNDS") List<Boolean> offsetOutOfBounds,
-    @JsonProperty("PRECOMPUTATION") List<BigInteger> precomputation,
-    @JsonProperty("RAM_STAMP") List<BigInteger> ramStamp,
-    @JsonProperty("REFO") List<BigInteger> refo,
-    @JsonProperty("REFS") List<BigInteger> refs,
-    @JsonProperty("RETURN_CAPACITY") List<BigInteger> returnCapacity,
-    @JsonProperty("RETURN_OFFSET") List<BigInteger> returnOffset,
-    @JsonProperty("RETURNER") List<BigInteger> returner,
-    @JsonProperty("SIZE") List<BigInteger> size_,
-    @JsonProperty("SIZE_IMPORTED") List<BigInteger> sizeImported,
-    @JsonProperty("SOURCE_BYTE_OFFSET") List<BigInteger> sourceByteOffset,
-    @JsonProperty("SOURCE_LIMB_OFFSET") List<BigInteger> sourceLimbOffset,
-    @JsonProperty("TARGET_BYTE_OFFSET") List<BigInteger> targetByteOffset,
-    @JsonProperty("TARGET_LIMB_OFFSET") List<BigInteger> targetLimbOffset,
-    @JsonProperty("TERNARY") List<BigInteger> ternary,
-    @JsonProperty("TO_RAM") List<Boolean> toRam,
-    @JsonProperty("TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS")
-        List<BigInteger> totalNumberOfMicroInstructions,
-    @JsonProperty("TOTAL_NUMBER_OF_PADDINGS") List<BigInteger> totalNumberOfPaddings,
-    @JsonProperty("TOTAL_NUMBER_OF_READS") List<BigInteger> totalNumberOfReads,
-    @JsonProperty("VAL_HI") List<BigInteger> valHi,
-    @JsonProperty("VAL_LO") List<BigInteger> valLo) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer acc1;
+  private final MappedByteBuffer acc2;
+  private final MappedByteBuffer acc3;
+  private final MappedByteBuffer acc4;
+  private final MappedByteBuffer acc5;
+  private final MappedByteBuffer acc6;
+  private final MappedByteBuffer acc7;
+  private final MappedByteBuffer acc8;
+  private final MappedByteBuffer aligned;
+  private final MappedByteBuffer bit1;
+  private final MappedByteBuffer bit2;
+  private final MappedByteBuffer bit3;
+  private final MappedByteBuffer bit4;
+  private final MappedByteBuffer bit5;
+  private final MappedByteBuffer bit6;
+  private final MappedByteBuffer bit7;
+  private final MappedByteBuffer bit8;
+  private final MappedByteBuffer byte1;
+  private final MappedByteBuffer byte2;
+  private final MappedByteBuffer byte3;
+  private final MappedByteBuffer byte4;
+  private final MappedByteBuffer byte5;
+  private final MappedByteBuffer byte6;
+  private final MappedByteBuffer byte7;
+  private final MappedByteBuffer byte8;
+  private final MappedByteBuffer callDataOffset;
+  private final MappedByteBuffer callDataSize;
+  private final MappedByteBuffer callStackDepth;
+  private final MappedByteBuffer caller;
+  private final MappedByteBuffer contextNumber;
+  private final MappedByteBuffer contextSource;
+  private final MappedByteBuffer contextTarget;
+  private final MappedByteBuffer counter;
+  private final MappedByteBuffer erf;
+  private final MappedByteBuffer exoIsHash;
+  private final MappedByteBuffer exoIsLog;
+  private final MappedByteBuffer exoIsRom;
+  private final MappedByteBuffer exoIsTxcd;
+  private final MappedByteBuffer fast;
+  private final MappedByteBuffer info;
+  private final MappedByteBuffer instruction;
+  private final MappedByteBuffer isData;
+  private final MappedByteBuffer isMicroInstruction;
+  private final MappedByteBuffer microInstruction;
+  private final MappedByteBuffer microInstructionStamp;
+  private final MappedByteBuffer min;
+  private final MappedByteBuffer nib1;
+  private final MappedByteBuffer nib2;
+  private final MappedByteBuffer nib3;
+  private final MappedByteBuffer nib4;
+  private final MappedByteBuffer nib5;
+  private final MappedByteBuffer nib6;
+  private final MappedByteBuffer nib7;
+  private final MappedByteBuffer nib8;
+  private final MappedByteBuffer nib9;
+  private final MappedByteBuffer off1Lo;
+  private final MappedByteBuffer off2Hi;
+  private final MappedByteBuffer off2Lo;
+  private final MappedByteBuffer offsetOutOfBounds;
+  private final MappedByteBuffer precomputation;
+  private final MappedByteBuffer ramStamp;
+  private final MappedByteBuffer refo;
+  private final MappedByteBuffer refs;
+  private final MappedByteBuffer returnCapacity;
+  private final MappedByteBuffer returnOffset;
+  private final MappedByteBuffer returner;
+  private final MappedByteBuffer size;
+  private final MappedByteBuffer sizeImported;
+  private final MappedByteBuffer sourceByteOffset;
+  private final MappedByteBuffer sourceLimbOffset;
+  private final MappedByteBuffer targetByteOffset;
+  private final MappedByteBuffer targetLimbOffset;
+  private final MappedByteBuffer ternary;
+  private final MappedByteBuffer toRam;
+  private final MappedByteBuffer totalNumberOfMicroInstructions;
+  private final MappedByteBuffer totalNumberOfPaddings;
+  private final MappedByteBuffer totalNumberOfReads;
+  private final MappedByteBuffer valHi;
+  private final MappedByteBuffer valLo;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("mmu.ACC_1", 32, length),
+        new ColumnHeader("mmu.ACC_2", 32, length),
+        new ColumnHeader("mmu.ACC_3", 32, length),
+        new ColumnHeader("mmu.ACC_4", 32, length),
+        new ColumnHeader("mmu.ACC_5", 32, length),
+        new ColumnHeader("mmu.ACC_6", 32, length),
+        new ColumnHeader("mmu.ACC_7", 32, length),
+        new ColumnHeader("mmu.ACC_8", 32, length),
+        new ColumnHeader("mmu.ALIGNED", 32, length),
+        new ColumnHeader("mmu.BIT_1", 1, length),
+        new ColumnHeader("mmu.BIT_2", 1, length),
+        new ColumnHeader("mmu.BIT_3", 1, length),
+        new ColumnHeader("mmu.BIT_4", 1, length),
+        new ColumnHeader("mmu.BIT_5", 1, length),
+        new ColumnHeader("mmu.BIT_6", 1, length),
+        new ColumnHeader("mmu.BIT_7", 1, length),
+        new ColumnHeader("mmu.BIT_8", 1, length),
+        new ColumnHeader("mmu.BYTE_1", 1, length),
+        new ColumnHeader("mmu.BYTE_2", 1, length),
+        new ColumnHeader("mmu.BYTE_3", 1, length),
+        new ColumnHeader("mmu.BYTE_4", 1, length),
+        new ColumnHeader("mmu.BYTE_5", 1, length),
+        new ColumnHeader("mmu.BYTE_6", 1, length),
+        new ColumnHeader("mmu.BYTE_7", 1, length),
+        new ColumnHeader("mmu.BYTE_8", 1, length),
+        new ColumnHeader("mmu.CALL_DATA_OFFSET", 32, length),
+        new ColumnHeader("mmu.CALL_DATA_SIZE", 32, length),
+        new ColumnHeader("mmu.CALL_STACK_DEPTH", 32, length),
+        new ColumnHeader("mmu.CALLER", 32, length),
+        new ColumnHeader("mmu.CONTEXT_NUMBER", 32, length),
+        new ColumnHeader("mmu.CONTEXT_SOURCE", 32, length),
+        new ColumnHeader("mmu.CONTEXT_TARGET", 32, length),
+        new ColumnHeader("mmu.COUNTER", 32, length),
+        new ColumnHeader("mmu.ERF", 1, length),
+        new ColumnHeader("mmu.EXO_IS_HASH", 1, length),
+        new ColumnHeader("mmu.EXO_IS_LOG", 1, length),
+        new ColumnHeader("mmu.EXO_IS_ROM", 1, length),
+        new ColumnHeader("mmu.EXO_IS_TXCD", 1, length),
+        new ColumnHeader("mmu.FAST", 32, length),
+        new ColumnHeader("mmu.INFO", 32, length),
+        new ColumnHeader("mmu.INSTRUCTION", 32, length),
+        new ColumnHeader("mmu.IS_DATA", 1, length),
+        new ColumnHeader("mmu.IS_MICRO_INSTRUCTION", 1, length),
+        new ColumnHeader("mmu.MICRO_INSTRUCTION", 32, length),
+        new ColumnHeader("mmu.MICRO_INSTRUCTION_STAMP", 32, length),
+        new ColumnHeader("mmu.MIN", 32, length),
+        new ColumnHeader("mmu.NIB_1", 1, length),
+        new ColumnHeader("mmu.NIB_2", 1, length),
+        new ColumnHeader("mmu.NIB_3", 1, length),
+        new ColumnHeader("mmu.NIB_4", 1, length),
+        new ColumnHeader("mmu.NIB_5", 1, length),
+        new ColumnHeader("mmu.NIB_6", 1, length),
+        new ColumnHeader("mmu.NIB_7", 1, length),
+        new ColumnHeader("mmu.NIB_8", 1, length),
+        new ColumnHeader("mmu.NIB_9", 1, length),
+        new ColumnHeader("mmu.OFF_1_LO", 32, length),
+        new ColumnHeader("mmu.OFF_2_HI", 32, length),
+        new ColumnHeader("mmu.OFF_2_LO", 32, length),
+        new ColumnHeader("mmu.OFFSET_OUT_OF_BOUNDS", 1, length),
+        new ColumnHeader("mmu.PRECOMPUTATION", 32, length),
+        new ColumnHeader("mmu.RAM_STAMP", 32, length),
+        new ColumnHeader("mmu.REFO", 32, length),
+        new ColumnHeader("mmu.REFS", 32, length),
+        new ColumnHeader("mmu.RETURN_CAPACITY", 32, length),
+        new ColumnHeader("mmu.RETURN_OFFSET", 32, length),
+        new ColumnHeader("mmu.RETURNER", 32, length),
+        new ColumnHeader("mmu.SIZE", 32, length),
+        new ColumnHeader("mmu.SIZE_IMPORTED", 32, length),
+        new ColumnHeader("mmu.SOURCE_BYTE_OFFSET", 32, length),
+        new ColumnHeader("mmu.SOURCE_LIMB_OFFSET", 32, length),
+        new ColumnHeader("mmu.TARGET_BYTE_OFFSET", 32, length),
+        new ColumnHeader("mmu.TARGET_LIMB_OFFSET", 32, length),
+        new ColumnHeader("mmu.TERNARY", 32, length),
+        new ColumnHeader("mmu.TO_RAM", 1, length),
+        new ColumnHeader("mmu.TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS", 32, length),
+        new ColumnHeader("mmu.TOTAL_NUMBER_OF_PADDINGS", 32, length),
+        new ColumnHeader("mmu.TOTAL_NUMBER_OF_READS", 32, length),
+        new ColumnHeader("mmu.VAL_HI", 32, length),
+        new ColumnHeader("mmu.VAL_LO", 32, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.acc1 = buffers.get(0);
+    this.acc2 = buffers.get(1);
+    this.acc3 = buffers.get(2);
+    this.acc4 = buffers.get(3);
+    this.acc5 = buffers.get(4);
+    this.acc6 = buffers.get(5);
+    this.acc7 = buffers.get(6);
+    this.acc8 = buffers.get(7);
+    this.aligned = buffers.get(8);
+    this.bit1 = buffers.get(9);
+    this.bit2 = buffers.get(10);
+    this.bit3 = buffers.get(11);
+    this.bit4 = buffers.get(12);
+    this.bit5 = buffers.get(13);
+    this.bit6 = buffers.get(14);
+    this.bit7 = buffers.get(15);
+    this.bit8 = buffers.get(16);
+    this.byte1 = buffers.get(17);
+    this.byte2 = buffers.get(18);
+    this.byte3 = buffers.get(19);
+    this.byte4 = buffers.get(20);
+    this.byte5 = buffers.get(21);
+    this.byte6 = buffers.get(22);
+    this.byte7 = buffers.get(23);
+    this.byte8 = buffers.get(24);
+    this.callDataOffset = buffers.get(25);
+    this.callDataSize = buffers.get(26);
+    this.callStackDepth = buffers.get(27);
+    this.caller = buffers.get(28);
+    this.contextNumber = buffers.get(29);
+    this.contextSource = buffers.get(30);
+    this.contextTarget = buffers.get(31);
+    this.counter = buffers.get(32);
+    this.erf = buffers.get(33);
+    this.exoIsHash = buffers.get(34);
+    this.exoIsLog = buffers.get(35);
+    this.exoIsRom = buffers.get(36);
+    this.exoIsTxcd = buffers.get(37);
+    this.fast = buffers.get(38);
+    this.info = buffers.get(39);
+    this.instruction = buffers.get(40);
+    this.isData = buffers.get(41);
+    this.isMicroInstruction = buffers.get(42);
+    this.microInstruction = buffers.get(43);
+    this.microInstructionStamp = buffers.get(44);
+    this.min = buffers.get(45);
+    this.nib1 = buffers.get(46);
+    this.nib2 = buffers.get(47);
+    this.nib3 = buffers.get(48);
+    this.nib4 = buffers.get(49);
+    this.nib5 = buffers.get(50);
+    this.nib6 = buffers.get(51);
+    this.nib7 = buffers.get(52);
+    this.nib8 = buffers.get(53);
+    this.nib9 = buffers.get(54);
+    this.off1Lo = buffers.get(55);
+    this.off2Hi = buffers.get(56);
+    this.off2Lo = buffers.get(57);
+    this.offsetOutOfBounds = buffers.get(58);
+    this.precomputation = buffers.get(59);
+    this.ramStamp = buffers.get(60);
+    this.refo = buffers.get(61);
+    this.refs = buffers.get(62);
+    this.returnCapacity = buffers.get(63);
+    this.returnOffset = buffers.get(64);
+    this.returner = buffers.get(65);
+    this.size = buffers.get(66);
+    this.sizeImported = buffers.get(67);
+    this.sourceByteOffset = buffers.get(68);
+    this.sourceLimbOffset = buffers.get(69);
+    this.targetByteOffset = buffers.get(70);
+    this.targetLimbOffset = buffers.get(71);
+    this.ternary = buffers.get(72);
+    this.toRam = buffers.get(73);
+    this.totalNumberOfMicroInstructions = buffers.get(74);
+    this.totalNumberOfPaddings = buffers.get(75);
+    this.totalNumberOfReads = buffers.get(76);
+    this.valHi = buffers.get(77);
+    this.valLo = buffers.get(78);
   }
 
   public int size() {
-    return this.acc1.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
+  public Trace acc1(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("mmu.ACC_1 already set");
+    } else {
+      filled.set(0);
+    }
+
+    acc1.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc2(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("mmu.ACC_2 already set");
+    } else {
+      filled.set(1);
+    }
+
+    acc2.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc3(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("mmu.ACC_3 already set");
+    } else {
+      filled.set(2);
+    }
+
+    acc3.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1;
+    return this;
+  }
 
-    @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2;
+  public Trace acc4(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("mmu.ACC_4 already set");
+    } else {
+      filled.set(3);
+    }
+
+    acc4.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc5(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("mmu.ACC_5 already set");
+    } else {
+      filled.set(4);
+    }
 
-    @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3;
+    acc5.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4;
+    return this;
+  }
 
-    @JsonProperty("ACC_5")
-    private final List<BigInteger> acc5;
+  public Trace acc6(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("mmu.ACC_6 already set");
+    } else {
+      filled.set(5);
+    }
+
+    acc6.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
 
-    @JsonProperty("ACC_6")
-    private final List<BigInteger> acc6;
+  public Trace acc7(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("mmu.ACC_7 already set");
+    } else {
+      filled.set(6);
+    }
 
-    @JsonProperty("ACC_7")
-    private final List<BigInteger> acc7;
+    acc7.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_8")
-    private final List<BigInteger> acc8;
+    return this;
+  }
 
-    @JsonProperty("ALIGNED")
-    private final List<BigInteger> aligned;
+  public Trace acc8(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("mmu.ACC_8 already set");
+    } else {
+      filled.set(7);
+    }
 
-    @JsonProperty("BIT_1")
-    private final List<Boolean> bit1;
+    acc8.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BIT_2")
-    private final List<Boolean> bit2;
+    return this;
+  }
 
-    @JsonProperty("BIT_3")
-    private final List<Boolean> bit3;
+  public Trace aligned(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("mmu.ALIGNED already set");
+    } else {
+      filled.set(8);
+    }
 
-    @JsonProperty("BIT_4")
-    private final List<Boolean> bit4;
+    aligned.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BIT_5")
-    private final List<Boolean> bit5;
+    return this;
+  }
 
-    @JsonProperty("BIT_6")
-    private final List<Boolean> bit6;
+  public Trace bit1(final Boolean b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("mmu.BIT_1 already set");
+    } else {
+      filled.set(9);
+    }
 
-    @JsonProperty("BIT_7")
-    private final List<Boolean> bit7;
+    bit1.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("BIT_8")
-    private final List<Boolean> bit8;
+    return this;
+  }
 
-    @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1;
+  public Trace bit2(final Boolean b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("mmu.BIT_2 already set");
+    } else {
+      filled.set(10);
+    }
 
-    @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2;
+    bit2.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3;
+    return this;
+  }
 
-    @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4;
+  public Trace bit3(final Boolean b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("mmu.BIT_3 already set");
+    } else {
+      filled.set(11);
+    }
 
-    @JsonProperty("BYTE_5")
-    private final List<UnsignedByte> byte5;
+    bit3.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("BYTE_6")
-    private final List<UnsignedByte> byte6;
+    return this;
+  }
 
-    @JsonProperty("BYTE_7")
-    private final List<UnsignedByte> byte7;
+  public Trace bit4(final Boolean b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("mmu.BIT_4 already set");
+    } else {
+      filled.set(12);
+    }
 
-    @JsonProperty("BYTE_8")
-    private final List<UnsignedByte> byte8;
+    bit4.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("CALL_DATA_OFFSET")
-    private final List<BigInteger> callDataOffset;
+    return this;
+  }
 
-    @JsonProperty("CALL_DATA_SIZE")
-    private final List<BigInteger> callDataSize;
+  public Trace bit5(final Boolean b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("mmu.BIT_5 already set");
+    } else {
+      filled.set(13);
+    }
 
-    @JsonProperty("CALL_STACK_DEPTH")
-    private final List<BigInteger> callStackDepth;
+    bit5.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("CALLER")
-    private final List<BigInteger> caller;
+    return this;
+  }
 
-    @JsonProperty("CONTEXT_NUMBER")
-    private final List<BigInteger> contextNumber;
+  public Trace bit6(final Boolean b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("mmu.BIT_6 already set");
+    } else {
+      filled.set(14);
+    }
 
-    @JsonProperty("CONTEXT_SOURCE")
-    private final List<BigInteger> contextSource;
+    bit6.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("CONTEXT_TARGET")
-    private final List<BigInteger> contextTarget;
+    return this;
+  }
 
-    @JsonProperty("COUNTER")
-    private final List<BigInteger> counter;
+  public Trace bit7(final Boolean b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("mmu.BIT_7 already set");
+    } else {
+      filled.set(15);
+    }
 
-    @JsonProperty("ERF")
-    private final List<Boolean> erf;
+    bit7.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("EXO_IS_HASH")
-    private final List<Boolean> exoIsHash;
+    return this;
+  }
 
-    @JsonProperty("EXO_IS_LOG")
-    private final List<Boolean> exoIsLog;
+  public Trace bit8(final Boolean b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("mmu.BIT_8 already set");
+    } else {
+      filled.set(16);
+    }
 
-    @JsonProperty("EXO_IS_ROM")
-    private final List<Boolean> exoIsRom;
+    bit8.put((byte) (b ? 1 : 0));
 
-    @JsonProperty("EXO_IS_TXCD")
-    private final List<Boolean> exoIsTxcd;
+    return this;
+  }
 
-    @JsonProperty("FAST")
-    private final List<BigInteger> fast;
+  public Trace byte1(final UnsignedByte b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("mmu.BYTE_1 already set");
+    } else {
+      filled.set(17);
+    }
 
-    @JsonProperty("INFO")
-    private final List<BigInteger> info;
+    byte1.put(b.toByte());
 
-    @JsonProperty("INSTRUCTION")
-    private final List<BigInteger> instruction;
+    return this;
+  }
 
-    @JsonProperty("IS_DATA")
-    private final List<Boolean> isData;
+  public Trace byte2(final UnsignedByte b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("mmu.BYTE_2 already set");
+    } else {
+      filled.set(18);
+    }
 
-    @JsonProperty("IS_MICRO_INSTRUCTION")
-    private final List<Boolean> isMicroInstruction;
+    byte2.put(b.toByte());
 
-    @JsonProperty("MICRO_INSTRUCTION")
-    private final List<BigInteger> microInstruction;
+    return this;
+  }
 
-    @JsonProperty("MICRO_INSTRUCTION_STAMP")
-    private final List<BigInteger> microInstructionStamp;
+  public Trace byte3(final UnsignedByte b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("mmu.BYTE_3 already set");
+    } else {
+      filled.set(19);
+    }
 
-    @JsonProperty("MIN")
-    private final List<BigInteger> min;
+    byte3.put(b.toByte());
 
-    @JsonProperty("NIB_1")
-    private final List<UnsignedByte> nib1;
+    return this;
+  }
 
-    @JsonProperty("NIB_2")
-    private final List<UnsignedByte> nib2;
+  public Trace byte4(final UnsignedByte b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("mmu.BYTE_4 already set");
+    } else {
+      filled.set(20);
+    }
 
-    @JsonProperty("NIB_3")
-    private final List<UnsignedByte> nib3;
+    byte4.put(b.toByte());
 
-    @JsonProperty("NIB_4")
-    private final List<UnsignedByte> nib4;
+    return this;
+  }
 
-    @JsonProperty("NIB_5")
-    private final List<UnsignedByte> nib5;
+  public Trace byte5(final UnsignedByte b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("mmu.BYTE_5 already set");
+    } else {
+      filled.set(21);
+    }
 
-    @JsonProperty("NIB_6")
-    private final List<UnsignedByte> nib6;
+    byte5.put(b.toByte());
 
-    @JsonProperty("NIB_7")
-    private final List<UnsignedByte> nib7;
+    return this;
+  }
 
-    @JsonProperty("NIB_8")
-    private final List<UnsignedByte> nib8;
+  public Trace byte6(final UnsignedByte b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("mmu.BYTE_6 already set");
+    } else {
+      filled.set(22);
+    }
 
-    @JsonProperty("NIB_9")
-    private final List<UnsignedByte> nib9;
+    byte6.put(b.toByte());
 
-    @JsonProperty("OFF_1_LO")
-    private final List<BigInteger> off1Lo;
+    return this;
+  }
 
-    @JsonProperty("OFF_2_HI")
-    private final List<BigInteger> off2Hi;
+  public Trace byte7(final UnsignedByte b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("mmu.BYTE_7 already set");
+    } else {
+      filled.set(23);
+    }
 
-    @JsonProperty("OFF_2_LO")
-    private final List<BigInteger> off2Lo;
+    byte7.put(b.toByte());
 
-    @JsonProperty("OFFSET_OUT_OF_BOUNDS")
-    private final List<Boolean> offsetOutOfBounds;
+    return this;
+  }
 
-    @JsonProperty("PRECOMPUTATION")
-    private final List<BigInteger> precomputation;
+  public Trace byte8(final UnsignedByte b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("mmu.BYTE_8 already set");
+    } else {
+      filled.set(24);
+    }
 
-    @JsonProperty("RAM_STAMP")
-    private final List<BigInteger> ramStamp;
+    byte8.put(b.toByte());
 
-    @JsonProperty("REFO")
-    private final List<BigInteger> refo;
+    return this;
+  }
 
-    @JsonProperty("REFS")
-    private final List<BigInteger> refs;
-
-    @JsonProperty("RETURN_CAPACITY")
-    private final List<BigInteger> returnCapacity;
-
-    @JsonProperty("RETURN_OFFSET")
-    private final List<BigInteger> returnOffset;
-
-    @JsonProperty("RETURNER")
-    private final List<BigInteger> returner;
-
-    @JsonProperty("SIZE")
-    private final List<BigInteger> size;
-
-    @JsonProperty("SIZE_IMPORTED")
-    private final List<BigInteger> sizeImported;
-
-    @JsonProperty("SOURCE_BYTE_OFFSET")
-    private final List<BigInteger> sourceByteOffset;
-
-    @JsonProperty("SOURCE_LIMB_OFFSET")
-    private final List<BigInteger> sourceLimbOffset;
-
-    @JsonProperty("TARGET_BYTE_OFFSET")
-    private final List<BigInteger> targetByteOffset;
-
-    @JsonProperty("TARGET_LIMB_OFFSET")
-    private final List<BigInteger> targetLimbOffset;
-
-    @JsonProperty("TERNARY")
-    private final List<BigInteger> ternary;
-
-    @JsonProperty("TO_RAM")
-    private final List<Boolean> toRam;
-
-    @JsonProperty("TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS")
-    private final List<BigInteger> totalNumberOfMicroInstructions;
-
-    @JsonProperty("TOTAL_NUMBER_OF_PADDINGS")
-    private final List<BigInteger> totalNumberOfPaddings;
-
-    @JsonProperty("TOTAL_NUMBER_OF_READS")
-    private final List<BigInteger> totalNumberOfReads;
-
-    @JsonProperty("VAL_HI")
-    private final List<BigInteger> valHi;
-
-    @JsonProperty("VAL_LO")
-    private final List<BigInteger> valLo;
-
-    private TraceBuilder(int length) {
-      this.acc1 = new ArrayList<>(length);
-      this.acc2 = new ArrayList<>(length);
-      this.acc3 = new ArrayList<>(length);
-      this.acc4 = new ArrayList<>(length);
-      this.acc5 = new ArrayList<>(length);
-      this.acc6 = new ArrayList<>(length);
-      this.acc7 = new ArrayList<>(length);
-      this.acc8 = new ArrayList<>(length);
-      this.aligned = new ArrayList<>(length);
-      this.bit1 = new ArrayList<>(length);
-      this.bit2 = new ArrayList<>(length);
-      this.bit3 = new ArrayList<>(length);
-      this.bit4 = new ArrayList<>(length);
-      this.bit5 = new ArrayList<>(length);
-      this.bit6 = new ArrayList<>(length);
-      this.bit7 = new ArrayList<>(length);
-      this.bit8 = new ArrayList<>(length);
-      this.byte1 = new ArrayList<>(length);
-      this.byte2 = new ArrayList<>(length);
-      this.byte3 = new ArrayList<>(length);
-      this.byte4 = new ArrayList<>(length);
-      this.byte5 = new ArrayList<>(length);
-      this.byte6 = new ArrayList<>(length);
-      this.byte7 = new ArrayList<>(length);
-      this.byte8 = new ArrayList<>(length);
-      this.callDataOffset = new ArrayList<>(length);
-      this.callDataSize = new ArrayList<>(length);
-      this.callStackDepth = new ArrayList<>(length);
-      this.caller = new ArrayList<>(length);
-      this.contextNumber = new ArrayList<>(length);
-      this.contextSource = new ArrayList<>(length);
-      this.contextTarget = new ArrayList<>(length);
-      this.counter = new ArrayList<>(length);
-      this.erf = new ArrayList<>(length);
-      this.exoIsHash = new ArrayList<>(length);
-      this.exoIsLog = new ArrayList<>(length);
-      this.exoIsRom = new ArrayList<>(length);
-      this.exoIsTxcd = new ArrayList<>(length);
-      this.fast = new ArrayList<>(length);
-      this.info = new ArrayList<>(length);
-      this.instruction = new ArrayList<>(length);
-      this.isData = new ArrayList<>(length);
-      this.isMicroInstruction = new ArrayList<>(length);
-      this.microInstruction = new ArrayList<>(length);
-      this.microInstructionStamp = new ArrayList<>(length);
-      this.min = new ArrayList<>(length);
-      this.nib1 = new ArrayList<>(length);
-      this.nib2 = new ArrayList<>(length);
-      this.nib3 = new ArrayList<>(length);
-      this.nib4 = new ArrayList<>(length);
-      this.nib5 = new ArrayList<>(length);
-      this.nib6 = new ArrayList<>(length);
-      this.nib7 = new ArrayList<>(length);
-      this.nib8 = new ArrayList<>(length);
-      this.nib9 = new ArrayList<>(length);
-      this.off1Lo = new ArrayList<>(length);
-      this.off2Hi = new ArrayList<>(length);
-      this.off2Lo = new ArrayList<>(length);
-      this.offsetOutOfBounds = new ArrayList<>(length);
-      this.precomputation = new ArrayList<>(length);
-      this.ramStamp = new ArrayList<>(length);
-      this.refo = new ArrayList<>(length);
-      this.refs = new ArrayList<>(length);
-      this.returnCapacity = new ArrayList<>(length);
-      this.returnOffset = new ArrayList<>(length);
-      this.returner = new ArrayList<>(length);
-      this.size = new ArrayList<>(length);
-      this.sizeImported = new ArrayList<>(length);
-      this.sourceByteOffset = new ArrayList<>(length);
-      this.sourceLimbOffset = new ArrayList<>(length);
-      this.targetByteOffset = new ArrayList<>(length);
-      this.targetLimbOffset = new ArrayList<>(length);
-      this.ternary = new ArrayList<>(length);
-      this.toRam = new ArrayList<>(length);
-      this.totalNumberOfMicroInstructions = new ArrayList<>(length);
-      this.totalNumberOfPaddings = new ArrayList<>(length);
-      this.totalNumberOfReads = new ArrayList<>(length);
-      this.valHi = new ArrayList<>(length);
-      this.valLo = new ArrayList<>(length);
+  public Trace callDataOffset(final BigInteger b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("mmu.CALL_DATA_OFFSET already set");
+    } else {
+      filled.set(26);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    callDataOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.acc1.size();
+    return this;
+  }
+
+  public Trace callDataSize(final BigInteger b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("mmu.CALL_DATA_SIZE already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder acc1(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC_1 already set");
-      } else {
-        filled.set(0);
-      }
+    callDataSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace callStackDepth(final BigInteger b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("mmu.CALL_STACK_DEPTH already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder acc2(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_2 already set");
-      } else {
-        filled.set(1);
-      }
+    callStackDepth.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace caller(final BigInteger b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("mmu.CALLER already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder acc3(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ACC_3 already set");
-      } else {
-        filled.set(2);
-      }
+    caller.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace contextNumber(final BigInteger b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("mmu.CONTEXT_NUMBER already set");
+    } else {
+      filled.set(29);
     }
 
-    public TraceBuilder acc4(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ACC_4 already set");
-      } else {
-        filled.set(3);
-      }
+    contextNumber.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace contextSource(final BigInteger b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("mmu.CONTEXT_SOURCE already set");
+    } else {
+      filled.set(30);
     }
 
-    public TraceBuilder acc5(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ACC_5 already set");
-      } else {
-        filled.set(4);
-      }
+    contextSource.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace contextTarget(final BigInteger b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("mmu.CONTEXT_TARGET already set");
+    } else {
+      filled.set(31);
     }
 
-    public TraceBuilder acc6(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("ACC_6 already set");
-      } else {
-        filled.set(5);
-      }
+    contextTarget.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace counter(final BigInteger b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("mmu.COUNTER already set");
+    } else {
+      filled.set(32);
     }
 
-    public TraceBuilder acc7(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("ACC_7 already set");
-      } else {
-        filled.set(6);
-      }
+    counter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc7.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace erf(final Boolean b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("mmu.ERF already set");
+    } else {
+      filled.set(33);
     }
 
-    public TraceBuilder acc8(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("ACC_8 already set");
-      } else {
-        filled.set(7);
-      }
+    erf.put((byte) (b ? 1 : 0));
 
-      acc8.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exoIsHash(final Boolean b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("mmu.EXO_IS_HASH already set");
+    } else {
+      filled.set(34);
     }
 
-    public TraceBuilder aligned(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("ALIGNED already set");
-      } else {
-        filled.set(8);
-      }
+    exoIsHash.put((byte) (b ? 1 : 0));
 
-      aligned.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exoIsLog(final Boolean b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("mmu.EXO_IS_LOG already set");
+    } else {
+      filled.set(35);
     }
 
-    public TraceBuilder bit1(final Boolean b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("BIT_1 already set");
-      } else {
-        filled.set(9);
-      }
+    exoIsLog.put((byte) (b ? 1 : 0));
 
-      bit1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exoIsRom(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("mmu.EXO_IS_ROM already set");
+    } else {
+      filled.set(36);
     }
 
-    public TraceBuilder bit2(final Boolean b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("BIT_2 already set");
-      } else {
-        filled.set(10);
-      }
+    exoIsRom.put((byte) (b ? 1 : 0));
 
-      bit2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace exoIsTxcd(final Boolean b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("mmu.EXO_IS_TXCD already set");
+    } else {
+      filled.set(37);
     }
 
-    public TraceBuilder bit3(final Boolean b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("BIT_3 already set");
-      } else {
-        filled.set(11);
-      }
+    exoIsTxcd.put((byte) (b ? 1 : 0));
 
-      bit3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace fast(final BigInteger b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("mmu.FAST already set");
+    } else {
+      filled.set(38);
     }
 
-    public TraceBuilder bit4(final Boolean b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("BIT_4 already set");
-      } else {
-        filled.set(12);
-      }
+    fast.put(UInt256.valueOf(b).toBytes().toArray());
 
-      bit4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace info(final BigInteger b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("mmu.INFO already set");
+    } else {
+      filled.set(39);
     }
 
-    public TraceBuilder bit5(final Boolean b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("BIT_5 already set");
-      } else {
-        filled.set(13);
-      }
+    info.put(UInt256.valueOf(b).toBytes().toArray());
 
-      bit5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace instruction(final BigInteger b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("mmu.INSTRUCTION already set");
+    } else {
+      filled.set(40);
     }
 
-    public TraceBuilder bit6(final Boolean b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("BIT_6 already set");
-      } else {
-        filled.set(14);
-      }
+    instruction.put(UInt256.valueOf(b).toBytes().toArray());
 
-      bit6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isData(final Boolean b) {
+    if (filled.get(41)) {
+      throw new IllegalStateException("mmu.IS_DATA already set");
+    } else {
+      filled.set(41);
     }
 
-    public TraceBuilder bit7(final Boolean b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("BIT_7 already set");
-      } else {
-        filled.set(15);
-      }
+    isData.put((byte) (b ? 1 : 0));
 
-      bit7.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isMicroInstruction(final Boolean b) {
+    if (filled.get(42)) {
+      throw new IllegalStateException("mmu.IS_MICRO_INSTRUCTION already set");
+    } else {
+      filled.set(42);
     }
 
-    public TraceBuilder bit8(final Boolean b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("BIT_8 already set");
-      } else {
-        filled.set(16);
-      }
+    isMicroInstruction.put((byte) (b ? 1 : 0));
 
-      bit8.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace microInstruction(final BigInteger b) {
+    if (filled.get(43)) {
+      throw new IllegalStateException("mmu.MICRO_INSTRUCTION already set");
+    } else {
+      filled.set(43);
     }
 
-    public TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("BYTE_1 already set");
-      } else {
-        filled.set(17);
-      }
+    microInstruction.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace microInstructionStamp(final BigInteger b) {
+    if (filled.get(44)) {
+      throw new IllegalStateException("mmu.MICRO_INSTRUCTION_STAMP already set");
+    } else {
+      filled.set(44);
     }
 
-    public TraceBuilder byte2(final UnsignedByte b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("BYTE_2 already set");
-      } else {
-        filled.set(18);
-      }
+    microInstructionStamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace min(final BigInteger b) {
+    if (filled.get(45)) {
+      throw new IllegalStateException("mmu.MIN already set");
+    } else {
+      filled.set(45);
     }
 
-    public TraceBuilder byte3(final UnsignedByte b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("BYTE_3 already set");
-      } else {
-        filled.set(19);
-      }
+    min.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib1(final UnsignedByte b) {
+    if (filled.get(46)) {
+      throw new IllegalStateException("mmu.NIB_1 already set");
+    } else {
+      filled.set(46);
     }
 
-    public TraceBuilder byte4(final UnsignedByte b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("BYTE_4 already set");
-      } else {
-        filled.set(20);
-      }
+    nib1.put(b.toByte());
 
-      byte4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib2(final UnsignedByte b) {
+    if (filled.get(47)) {
+      throw new IllegalStateException("mmu.NIB_2 already set");
+    } else {
+      filled.set(47);
     }
 
-    public TraceBuilder byte5(final UnsignedByte b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("BYTE_5 already set");
-      } else {
-        filled.set(21);
-      }
+    nib2.put(b.toByte());
 
-      byte5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib3(final UnsignedByte b) {
+    if (filled.get(48)) {
+      throw new IllegalStateException("mmu.NIB_3 already set");
+    } else {
+      filled.set(48);
     }
 
-    public TraceBuilder byte6(final UnsignedByte b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("BYTE_6 already set");
-      } else {
-        filled.set(22);
-      }
+    nib3.put(b.toByte());
 
-      byte6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib4(final UnsignedByte b) {
+    if (filled.get(49)) {
+      throw new IllegalStateException("mmu.NIB_4 already set");
+    } else {
+      filled.set(49);
     }
 
-    public TraceBuilder byte7(final UnsignedByte b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("BYTE_7 already set");
-      } else {
-        filled.set(23);
-      }
+    nib4.put(b.toByte());
 
-      byte7.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib5(final UnsignedByte b) {
+    if (filled.get(50)) {
+      throw new IllegalStateException("mmu.NIB_5 already set");
+    } else {
+      filled.set(50);
     }
 
-    public TraceBuilder byte8(final UnsignedByte b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("BYTE_8 already set");
-      } else {
-        filled.set(24);
-      }
+    nib5.put(b.toByte());
 
-      byte8.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib6(final UnsignedByte b) {
+    if (filled.get(51)) {
+      throw new IllegalStateException("mmu.NIB_6 already set");
+    } else {
+      filled.set(51);
     }
 
-    public TraceBuilder callDataOffset(final BigInteger b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("CALL_DATA_OFFSET already set");
-      } else {
-        filled.set(26);
-      }
+    nib6.put(b.toByte());
 
-      callDataOffset.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib7(final UnsignedByte b) {
+    if (filled.get(52)) {
+      throw new IllegalStateException("mmu.NIB_7 already set");
+    } else {
+      filled.set(52);
     }
 
-    public TraceBuilder callDataSize(final BigInteger b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("CALL_DATA_SIZE already set");
-      } else {
-        filled.set(27);
-      }
+    nib7.put(b.toByte());
 
-      callDataSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib8(final UnsignedByte b) {
+    if (filled.get(53)) {
+      throw new IllegalStateException("mmu.NIB_8 already set");
+    } else {
+      filled.set(53);
     }
 
-    public TraceBuilder callStackDepth(final BigInteger b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("CALL_STACK_DEPTH already set");
-      } else {
-        filled.set(28);
-      }
+    nib8.put(b.toByte());
 
-      callStackDepth.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nib9(final UnsignedByte b) {
+    if (filled.get(54)) {
+      throw new IllegalStateException("mmu.NIB_9 already set");
+    } else {
+      filled.set(54);
     }
 
-    public TraceBuilder caller(final BigInteger b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("CALLER already set");
-      } else {
-        filled.set(25);
-      }
+    nib9.put(b.toByte());
 
-      caller.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace off1Lo(final BigInteger b) {
+    if (filled.get(56)) {
+      throw new IllegalStateException("mmu.OFF_1_LO already set");
+    } else {
+      filled.set(56);
     }
 
-    public TraceBuilder contextNumber(final BigInteger b) {
-      if (filled.get(29)) {
-        throw new IllegalStateException("CONTEXT_NUMBER already set");
-      } else {
-        filled.set(29);
-      }
+    off1Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      contextNumber.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace off2Hi(final BigInteger b) {
+    if (filled.get(57)) {
+      throw new IllegalStateException("mmu.OFF_2_HI already set");
+    } else {
+      filled.set(57);
     }
 
-    public TraceBuilder contextSource(final BigInteger b) {
-      if (filled.get(30)) {
-        throw new IllegalStateException("CONTEXT_SOURCE already set");
-      } else {
-        filled.set(30);
-      }
+    off2Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      contextSource.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace off2Lo(final BigInteger b) {
+    if (filled.get(58)) {
+      throw new IllegalStateException("mmu.OFF_2_LO already set");
+    } else {
+      filled.set(58);
     }
 
-    public TraceBuilder contextTarget(final BigInteger b) {
-      if (filled.get(31)) {
-        throw new IllegalStateException("CONTEXT_TARGET already set");
-      } else {
-        filled.set(31);
-      }
+    off2Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      contextTarget.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace offsetOutOfBounds(final Boolean b) {
+    if (filled.get(55)) {
+      throw new IllegalStateException("mmu.OFFSET_OUT_OF_BOUNDS already set");
+    } else {
+      filled.set(55);
     }
 
-    public TraceBuilder counter(final BigInteger b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("COUNTER already set");
-      } else {
-        filled.set(32);
-      }
+    offsetOutOfBounds.put((byte) (b ? 1 : 0));
 
-      counter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace precomputation(final BigInteger b) {
+    if (filled.get(59)) {
+      throw new IllegalStateException("mmu.PRECOMPUTATION already set");
+    } else {
+      filled.set(59);
     }
 
-    public TraceBuilder erf(final Boolean b) {
-      if (filled.get(33)) {
-        throw new IllegalStateException("ERF already set");
-      } else {
-        filled.set(33);
-      }
+    precomputation.put(UInt256.valueOf(b).toBytes().toArray());
 
-      erf.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ramStamp(final BigInteger b) {
+    if (filled.get(60)) {
+      throw new IllegalStateException("mmu.RAM_STAMP already set");
+    } else {
+      filled.set(60);
     }
 
-    public TraceBuilder exoIsHash(final Boolean b) {
-      if (filled.get(34)) {
-        throw new IllegalStateException("EXO_IS_HASH already set");
-      } else {
-        filled.set(34);
-      }
+    ramStamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exoIsHash.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace refo(final BigInteger b) {
+    if (filled.get(61)) {
+      throw new IllegalStateException("mmu.REFO already set");
+    } else {
+      filled.set(61);
     }
 
-    public TraceBuilder exoIsLog(final Boolean b) {
-      if (filled.get(35)) {
-        throw new IllegalStateException("EXO_IS_LOG already set");
-      } else {
-        filled.set(35);
-      }
+    refo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exoIsLog.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace refs(final BigInteger b) {
+    if (filled.get(62)) {
+      throw new IllegalStateException("mmu.REFS already set");
+    } else {
+      filled.set(62);
     }
 
-    public TraceBuilder exoIsRom(final Boolean b) {
-      if (filled.get(36)) {
-        throw new IllegalStateException("EXO_IS_ROM already set");
-      } else {
-        filled.set(36);
-      }
+    refs.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exoIsRom.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace returnCapacity(final BigInteger b) {
+    if (filled.get(64)) {
+      throw new IllegalStateException("mmu.RETURN_CAPACITY already set");
+    } else {
+      filled.set(64);
     }
 
-    public TraceBuilder exoIsTxcd(final Boolean b) {
-      if (filled.get(37)) {
-        throw new IllegalStateException("EXO_IS_TXCD already set");
-      } else {
-        filled.set(37);
-      }
+    returnCapacity.put(UInt256.valueOf(b).toBytes().toArray());
 
-      exoIsTxcd.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace returnOffset(final BigInteger b) {
+    if (filled.get(65)) {
+      throw new IllegalStateException("mmu.RETURN_OFFSET already set");
+    } else {
+      filled.set(65);
     }
 
-    public TraceBuilder fast(final BigInteger b) {
-      if (filled.get(38)) {
-        throw new IllegalStateException("FAST already set");
-      } else {
-        filled.set(38);
-      }
+    returnOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      fast.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace returner(final BigInteger b) {
+    if (filled.get(63)) {
+      throw new IllegalStateException("mmu.RETURNER already set");
+    } else {
+      filled.set(63);
     }
 
-    public TraceBuilder info(final BigInteger b) {
-      if (filled.get(39)) {
-        throw new IllegalStateException("INFO already set");
-      } else {
-        filled.set(39);
-      }
+    returner.put(UInt256.valueOf(b).toBytes().toArray());
 
-      info.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace size(final BigInteger b) {
+    if (filled.get(66)) {
+      throw new IllegalStateException("mmu.SIZE already set");
+    } else {
+      filled.set(66);
     }
 
-    public TraceBuilder instruction(final BigInteger b) {
-      if (filled.get(40)) {
-        throw new IllegalStateException("INSTRUCTION already set");
-      } else {
-        filled.set(40);
-      }
+    size.put(UInt256.valueOf(b).toBytes().toArray());
 
-      instruction.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace sizeImported(final BigInteger b) {
+    if (filled.get(67)) {
+      throw new IllegalStateException("mmu.SIZE_IMPORTED already set");
+    } else {
+      filled.set(67);
     }
 
-    public TraceBuilder isData(final Boolean b) {
-      if (filled.get(41)) {
-        throw new IllegalStateException("IS_DATA already set");
-      } else {
-        filled.set(41);
-      }
+    sizeImported.put(UInt256.valueOf(b).toBytes().toArray());
 
-      isData.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace sourceByteOffset(final BigInteger b) {
+    if (filled.get(68)) {
+      throw new IllegalStateException("mmu.SOURCE_BYTE_OFFSET already set");
+    } else {
+      filled.set(68);
     }
 
-    public TraceBuilder isMicroInstruction(final Boolean b) {
-      if (filled.get(42)) {
-        throw new IllegalStateException("IS_MICRO_INSTRUCTION already set");
-      } else {
-        filled.set(42);
-      }
+    sourceByteOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      isMicroInstruction.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace sourceLimbOffset(final BigInteger b) {
+    if (filled.get(69)) {
+      throw new IllegalStateException("mmu.SOURCE_LIMB_OFFSET already set");
+    } else {
+      filled.set(69);
     }
 
-    public TraceBuilder microInstruction(final BigInteger b) {
-      if (filled.get(43)) {
-        throw new IllegalStateException("MICRO_INSTRUCTION already set");
-      } else {
-        filled.set(43);
-      }
+    sourceLimbOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      microInstruction.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace targetByteOffset(final BigInteger b) {
+    if (filled.get(70)) {
+      throw new IllegalStateException("mmu.TARGET_BYTE_OFFSET already set");
+    } else {
+      filled.set(70);
     }
 
-    public TraceBuilder microInstructionStamp(final BigInteger b) {
-      if (filled.get(44)) {
-        throw new IllegalStateException("MICRO_INSTRUCTION_STAMP already set");
-      } else {
-        filled.set(44);
-      }
+    targetByteOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      microInstructionStamp.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace targetLimbOffset(final BigInteger b) {
+    if (filled.get(71)) {
+      throw new IllegalStateException("mmu.TARGET_LIMB_OFFSET already set");
+    } else {
+      filled.set(71);
     }
 
-    public TraceBuilder min(final BigInteger b) {
-      if (filled.get(45)) {
-        throw new IllegalStateException("MIN already set");
-      } else {
-        filled.set(45);
-      }
+    targetLimbOffset.put(UInt256.valueOf(b).toBytes().toArray());
 
-      min.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ternary(final BigInteger b) {
+    if (filled.get(72)) {
+      throw new IllegalStateException("mmu.TERNARY already set");
+    } else {
+      filled.set(72);
     }
 
-    public TraceBuilder nib1(final UnsignedByte b) {
-      if (filled.get(46)) {
-        throw new IllegalStateException("NIB_1 already set");
-      } else {
-        filled.set(46);
-      }
+    ternary.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace toRam(final Boolean b) {
+    if (filled.get(76)) {
+      throw new IllegalStateException("mmu.TO_RAM already set");
+    } else {
+      filled.set(76);
     }
 
-    public TraceBuilder nib2(final UnsignedByte b) {
-      if (filled.get(47)) {
-        throw new IllegalStateException("NIB_2 already set");
-      } else {
-        filled.set(47);
-      }
+    toRam.put((byte) (b ? 1 : 0));
 
-      nib2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace totalNumberOfMicroInstructions(final BigInteger b) {
+    if (filled.get(73)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS already set");
+    } else {
+      filled.set(73);
     }
 
-    public TraceBuilder nib3(final UnsignedByte b) {
-      if (filled.get(48)) {
-        throw new IllegalStateException("NIB_3 already set");
-      } else {
-        filled.set(48);
-      }
+    totalNumberOfMicroInstructions.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace totalNumberOfPaddings(final BigInteger b) {
+    if (filled.get(74)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_PADDINGS already set");
+    } else {
+      filled.set(74);
     }
 
-    public TraceBuilder nib4(final UnsignedByte b) {
-      if (filled.get(49)) {
-        throw new IllegalStateException("NIB_4 already set");
-      } else {
-        filled.set(49);
-      }
+    totalNumberOfPaddings.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace totalNumberOfReads(final BigInteger b) {
+    if (filled.get(75)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_READS already set");
+    } else {
+      filled.set(75);
     }
 
-    public TraceBuilder nib5(final UnsignedByte b) {
-      if (filled.get(50)) {
-        throw new IllegalStateException("NIB_5 already set");
-      } else {
-        filled.set(50);
-      }
+    totalNumberOfReads.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace valHi(final BigInteger b) {
+    if (filled.get(77)) {
+      throw new IllegalStateException("mmu.VAL_HI already set");
+    } else {
+      filled.set(77);
     }
 
-    public TraceBuilder nib6(final UnsignedByte b) {
-      if (filled.get(51)) {
-        throw new IllegalStateException("NIB_6 already set");
-      } else {
-        filled.set(51);
-      }
+    valHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace valLo(final BigInteger b) {
+    if (filled.get(78)) {
+      throw new IllegalStateException("mmu.VAL_LO already set");
+    } else {
+      filled.set(78);
     }
 
-    public TraceBuilder nib7(final UnsignedByte b) {
-      if (filled.get(52)) {
-        throw new IllegalStateException("NIB_7 already set");
-      } else {
-        filled.set(52);
-      }
+    valLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nib7.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("mmu.ACC_1 has not been filled");
     }
 
-    public TraceBuilder nib8(final UnsignedByte b) {
-      if (filled.get(53)) {
-        throw new IllegalStateException("NIB_8 already set");
-      } else {
-        filled.set(53);
-      }
+    if (!filled.get(1)) {
+      throw new IllegalStateException("mmu.ACC_2 has not been filled");
+    }
 
-      nib8.add(b);
+    if (!filled.get(2)) {
+      throw new IllegalStateException("mmu.ACC_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(3)) {
+      throw new IllegalStateException("mmu.ACC_4 has not been filled");
     }
 
-    public TraceBuilder nib9(final UnsignedByte b) {
-      if (filled.get(54)) {
-        throw new IllegalStateException("NIB_9 already set");
-      } else {
-        filled.set(54);
-      }
+    if (!filled.get(4)) {
+      throw new IllegalStateException("mmu.ACC_5 has not been filled");
+    }
 
-      nib9.add(b);
+    if (!filled.get(5)) {
+      throw new IllegalStateException("mmu.ACC_6 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(6)) {
+      throw new IllegalStateException("mmu.ACC_7 has not been filled");
     }
 
-    public TraceBuilder off1Lo(final BigInteger b) {
-      if (filled.get(56)) {
-        throw new IllegalStateException("OFF_1_LO already set");
-      } else {
-        filled.set(56);
-      }
+    if (!filled.get(7)) {
+      throw new IllegalStateException("mmu.ACC_8 has not been filled");
+    }
 
-      off1Lo.add(b);
+    if (!filled.get(8)) {
+      throw new IllegalStateException("mmu.ALIGNED has not been filled");
+    }
 
-      return this;
+    if (!filled.get(9)) {
+      throw new IllegalStateException("mmu.BIT_1 has not been filled");
     }
 
-    public TraceBuilder off2Hi(final BigInteger b) {
-      if (filled.get(57)) {
-        throw new IllegalStateException("OFF_2_HI already set");
-      } else {
-        filled.set(57);
-      }
+    if (!filled.get(10)) {
+      throw new IllegalStateException("mmu.BIT_2 has not been filled");
+    }
 
-      off2Hi.add(b);
+    if (!filled.get(11)) {
+      throw new IllegalStateException("mmu.BIT_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(12)) {
+      throw new IllegalStateException("mmu.BIT_4 has not been filled");
     }
 
-    public TraceBuilder off2Lo(final BigInteger b) {
-      if (filled.get(58)) {
-        throw new IllegalStateException("OFF_2_LO already set");
-      } else {
-        filled.set(58);
-      }
+    if (!filled.get(13)) {
+      throw new IllegalStateException("mmu.BIT_5 has not been filled");
+    }
 
-      off2Lo.add(b);
+    if (!filled.get(14)) {
+      throw new IllegalStateException("mmu.BIT_6 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(15)) {
+      throw new IllegalStateException("mmu.BIT_7 has not been filled");
     }
 
-    public TraceBuilder offsetOutOfBounds(final Boolean b) {
-      if (filled.get(55)) {
-        throw new IllegalStateException("OFFSET_OUT_OF_BOUNDS already set");
-      } else {
-        filled.set(55);
-      }
+    if (!filled.get(16)) {
+      throw new IllegalStateException("mmu.BIT_8 has not been filled");
+    }
 
-      offsetOutOfBounds.add(b);
+    if (!filled.get(17)) {
+      throw new IllegalStateException("mmu.BYTE_1 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(18)) {
+      throw new IllegalStateException("mmu.BYTE_2 has not been filled");
     }
 
-    public TraceBuilder precomputation(final BigInteger b) {
-      if (filled.get(59)) {
-        throw new IllegalStateException("PRECOMPUTATION already set");
-      } else {
-        filled.set(59);
-      }
+    if (!filled.get(19)) {
+      throw new IllegalStateException("mmu.BYTE_3 has not been filled");
+    }
 
-      precomputation.add(b);
+    if (!filled.get(20)) {
+      throw new IllegalStateException("mmu.BYTE_4 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(21)) {
+      throw new IllegalStateException("mmu.BYTE_5 has not been filled");
     }
 
-    public TraceBuilder ramStamp(final BigInteger b) {
-      if (filled.get(60)) {
-        throw new IllegalStateException("RAM_STAMP already set");
-      } else {
-        filled.set(60);
-      }
+    if (!filled.get(22)) {
+      throw new IllegalStateException("mmu.BYTE_6 has not been filled");
+    }
 
-      ramStamp.add(b);
+    if (!filled.get(23)) {
+      throw new IllegalStateException("mmu.BYTE_7 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(24)) {
+      throw new IllegalStateException("mmu.BYTE_8 has not been filled");
     }
 
-    public TraceBuilder refo(final BigInteger b) {
-      if (filled.get(61)) {
-        throw new IllegalStateException("REFO already set");
-      } else {
-        filled.set(61);
-      }
+    if (!filled.get(26)) {
+      throw new IllegalStateException("mmu.CALL_DATA_OFFSET has not been filled");
+    }
 
-      refo.add(b);
+    if (!filled.get(27)) {
+      throw new IllegalStateException("mmu.CALL_DATA_SIZE has not been filled");
+    }
 
-      return this;
+    if (!filled.get(28)) {
+      throw new IllegalStateException("mmu.CALL_STACK_DEPTH has not been filled");
     }
 
-    public TraceBuilder refs(final BigInteger b) {
-      if (filled.get(62)) {
-        throw new IllegalStateException("REFS already set");
-      } else {
-        filled.set(62);
-      }
+    if (!filled.get(25)) {
+      throw new IllegalStateException("mmu.CALLER has not been filled");
+    }
 
-      refs.add(b);
+    if (!filled.get(29)) {
+      throw new IllegalStateException("mmu.CONTEXT_NUMBER has not been filled");
+    }
 
-      return this;
+    if (!filled.get(30)) {
+      throw new IllegalStateException("mmu.CONTEXT_SOURCE has not been filled");
     }
 
-    public TraceBuilder returnCapacity(final BigInteger b) {
-      if (filled.get(64)) {
-        throw new IllegalStateException("RETURN_CAPACITY already set");
-      } else {
-        filled.set(64);
-      }
+    if (!filled.get(31)) {
+      throw new IllegalStateException("mmu.CONTEXT_TARGET has not been filled");
+    }
 
-      returnCapacity.add(b);
+    if (!filled.get(32)) {
+      throw new IllegalStateException("mmu.COUNTER has not been filled");
+    }
 
-      return this;
+    if (!filled.get(33)) {
+      throw new IllegalStateException("mmu.ERF has not been filled");
     }
 
-    public TraceBuilder returnOffset(final BigInteger b) {
-      if (filled.get(65)) {
-        throw new IllegalStateException("RETURN_OFFSET already set");
-      } else {
-        filled.set(65);
-      }
+    if (!filled.get(34)) {
+      throw new IllegalStateException("mmu.EXO_IS_HASH has not been filled");
+    }
 
-      returnOffset.add(b);
+    if (!filled.get(35)) {
+      throw new IllegalStateException("mmu.EXO_IS_LOG has not been filled");
+    }
 
-      return this;
+    if (!filled.get(36)) {
+      throw new IllegalStateException("mmu.EXO_IS_ROM has not been filled");
     }
 
-    public TraceBuilder returner(final BigInteger b) {
-      if (filled.get(63)) {
-        throw new IllegalStateException("RETURNER already set");
-      } else {
-        filled.set(63);
-      }
+    if (!filled.get(37)) {
+      throw new IllegalStateException("mmu.EXO_IS_TXCD has not been filled");
+    }
 
-      returner.add(b);
+    if (!filled.get(38)) {
+      throw new IllegalStateException("mmu.FAST has not been filled");
+    }
 
-      return this;
+    if (!filled.get(39)) {
+      throw new IllegalStateException("mmu.INFO has not been filled");
     }
 
-    public TraceBuilder size(final BigInteger b) {
-      if (filled.get(66)) {
-        throw new IllegalStateException("SIZE already set");
-      } else {
-        filled.set(66);
-      }
+    if (!filled.get(40)) {
+      throw new IllegalStateException("mmu.INSTRUCTION has not been filled");
+    }
 
-      size.add(b);
+    if (!filled.get(41)) {
+      throw new IllegalStateException("mmu.IS_DATA has not been filled");
+    }
 
-      return this;
+    if (!filled.get(42)) {
+      throw new IllegalStateException("mmu.IS_MICRO_INSTRUCTION has not been filled");
     }
 
-    public TraceBuilder sizeImported(final BigInteger b) {
-      if (filled.get(67)) {
-        throw new IllegalStateException("SIZE_IMPORTED already set");
-      } else {
-        filled.set(67);
-      }
+    if (!filled.get(43)) {
+      throw new IllegalStateException("mmu.MICRO_INSTRUCTION has not been filled");
+    }
 
-      sizeImported.add(b);
+    if (!filled.get(44)) {
+      throw new IllegalStateException("mmu.MICRO_INSTRUCTION_STAMP has not been filled");
+    }
 
-      return this;
+    if (!filled.get(45)) {
+      throw new IllegalStateException("mmu.MIN has not been filled");
     }
 
-    public TraceBuilder sourceByteOffset(final BigInteger b) {
-      if (filled.get(68)) {
-        throw new IllegalStateException("SOURCE_BYTE_OFFSET already set");
-      } else {
-        filled.set(68);
-      }
+    if (!filled.get(46)) {
+      throw new IllegalStateException("mmu.NIB_1 has not been filled");
+    }
 
-      sourceByteOffset.add(b);
+    if (!filled.get(47)) {
+      throw new IllegalStateException("mmu.NIB_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(48)) {
+      throw new IllegalStateException("mmu.NIB_3 has not been filled");
     }
 
-    public TraceBuilder sourceLimbOffset(final BigInteger b) {
-      if (filled.get(69)) {
-        throw new IllegalStateException("SOURCE_LIMB_OFFSET already set");
-      } else {
-        filled.set(69);
-      }
+    if (!filled.get(49)) {
+      throw new IllegalStateException("mmu.NIB_4 has not been filled");
+    }
 
-      sourceLimbOffset.add(b);
+    if (!filled.get(50)) {
+      throw new IllegalStateException("mmu.NIB_5 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(51)) {
+      throw new IllegalStateException("mmu.NIB_6 has not been filled");
     }
 
-    public TraceBuilder targetByteOffset(final BigInteger b) {
-      if (filled.get(70)) {
-        throw new IllegalStateException("TARGET_BYTE_OFFSET already set");
-      } else {
-        filled.set(70);
-      }
+    if (!filled.get(52)) {
+      throw new IllegalStateException("mmu.NIB_7 has not been filled");
+    }
 
-      targetByteOffset.add(b);
+    if (!filled.get(53)) {
+      throw new IllegalStateException("mmu.NIB_8 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(54)) {
+      throw new IllegalStateException("mmu.NIB_9 has not been filled");
     }
 
-    public TraceBuilder targetLimbOffset(final BigInteger b) {
-      if (filled.get(71)) {
-        throw new IllegalStateException("TARGET_LIMB_OFFSET already set");
-      } else {
-        filled.set(71);
-      }
+    if (!filled.get(56)) {
+      throw new IllegalStateException("mmu.OFF_1_LO has not been filled");
+    }
 
-      targetLimbOffset.add(b);
+    if (!filled.get(57)) {
+      throw new IllegalStateException("mmu.OFF_2_HI has not been filled");
+    }
 
-      return this;
+    if (!filled.get(58)) {
+      throw new IllegalStateException("mmu.OFF_2_LO has not been filled");
     }
 
-    public TraceBuilder ternary(final BigInteger b) {
-      if (filled.get(72)) {
-        throw new IllegalStateException("TERNARY already set");
-      } else {
-        filled.set(72);
-      }
+    if (!filled.get(55)) {
+      throw new IllegalStateException("mmu.OFFSET_OUT_OF_BOUNDS has not been filled");
+    }
 
-      ternary.add(b);
+    if (!filled.get(59)) {
+      throw new IllegalStateException("mmu.PRECOMPUTATION has not been filled");
+    }
 
-      return this;
+    if (!filled.get(60)) {
+      throw new IllegalStateException("mmu.RAM_STAMP has not been filled");
     }
 
-    public TraceBuilder toRam(final Boolean b) {
-      if (filled.get(76)) {
-        throw new IllegalStateException("TO_RAM already set");
-      } else {
-        filled.set(76);
-      }
+    if (!filled.get(61)) {
+      throw new IllegalStateException("mmu.REFO has not been filled");
+    }
 
-      toRam.add(b);
+    if (!filled.get(62)) {
+      throw new IllegalStateException("mmu.REFS has not been filled");
+    }
 
-      return this;
+    if (!filled.get(64)) {
+      throw new IllegalStateException("mmu.RETURN_CAPACITY has not been filled");
     }
 
-    public TraceBuilder totalNumberOfMicroInstructions(final BigInteger b) {
-      if (filled.get(73)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS already set");
-      } else {
-        filled.set(73);
-      }
+    if (!filled.get(65)) {
+      throw new IllegalStateException("mmu.RETURN_OFFSET has not been filled");
+    }
 
-      totalNumberOfMicroInstructions.add(b);
+    if (!filled.get(63)) {
+      throw new IllegalStateException("mmu.RETURNER has not been filled");
+    }
 
-      return this;
+    if (!filled.get(66)) {
+      throw new IllegalStateException("mmu.SIZE has not been filled");
     }
 
-    public TraceBuilder totalNumberOfPaddings(final BigInteger b) {
-      if (filled.get(74)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_PADDINGS already set");
-      } else {
-        filled.set(74);
-      }
+    if (!filled.get(67)) {
+      throw new IllegalStateException("mmu.SIZE_IMPORTED has not been filled");
+    }
 
-      totalNumberOfPaddings.add(b);
+    if (!filled.get(68)) {
+      throw new IllegalStateException("mmu.SOURCE_BYTE_OFFSET has not been filled");
+    }
 
-      return this;
+    if (!filled.get(69)) {
+      throw new IllegalStateException("mmu.SOURCE_LIMB_OFFSET has not been filled");
     }
 
-    public TraceBuilder totalNumberOfReads(final BigInteger b) {
-      if (filled.get(75)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_READS already set");
-      } else {
-        filled.set(75);
-      }
+    if (!filled.get(70)) {
+      throw new IllegalStateException("mmu.TARGET_BYTE_OFFSET has not been filled");
+    }
 
-      totalNumberOfReads.add(b);
+    if (!filled.get(71)) {
+      throw new IllegalStateException("mmu.TARGET_LIMB_OFFSET has not been filled");
+    }
 
-      return this;
+    if (!filled.get(72)) {
+      throw new IllegalStateException("mmu.TERNARY has not been filled");
     }
 
-    public TraceBuilder valHi(final BigInteger b) {
-      if (filled.get(77)) {
-        throw new IllegalStateException("VAL_HI already set");
-      } else {
-        filled.set(77);
-      }
+    if (!filled.get(76)) {
+      throw new IllegalStateException("mmu.TO_RAM has not been filled");
+    }
 
-      valHi.add(b);
+    if (!filled.get(73)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS has not been filled");
+    }
 
-      return this;
+    if (!filled.get(74)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_PADDINGS has not been filled");
     }
 
-    public TraceBuilder valLo(final BigInteger b) {
-      if (filled.get(78)) {
-        throw new IllegalStateException("VAL_LO already set");
-      } else {
-        filled.set(78);
-      }
+    if (!filled.get(75)) {
+      throw new IllegalStateException("mmu.TOTAL_NUMBER_OF_READS has not been filled");
+    }
 
-      valLo.add(b);
+    if (!filled.get(77)) {
+      throw new IllegalStateException("mmu.VAL_HI has not been filled");
+    }
 
-      return this;
+    if (!filled.get(78)) {
+      throw new IllegalStateException("mmu.VAL_LO has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC_1 has not been filled");
-      }
+    filled.clear();
+    this.currentLine++;
 
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_2 has not been filled");
-      }
+    return this;
+  }
 
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ACC_3 has not been filled");
-      }
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      acc1.position(acc1.position() + 32);
+    }
 
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ACC_4 has not been filled");
-      }
+    if (!filled.get(1)) {
+      acc2.position(acc2.position() + 32);
+    }
 
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ACC_5 has not been filled");
-      }
+    if (!filled.get(2)) {
+      acc3.position(acc3.position() + 32);
+    }
 
-      if (!filled.get(5)) {
-        throw new IllegalStateException("ACC_6 has not been filled");
-      }
+    if (!filled.get(3)) {
+      acc4.position(acc4.position() + 32);
+    }
 
-      if (!filled.get(6)) {
-        throw new IllegalStateException("ACC_7 has not been filled");
-      }
+    if (!filled.get(4)) {
+      acc5.position(acc5.position() + 32);
+    }
 
-      if (!filled.get(7)) {
-        throw new IllegalStateException("ACC_8 has not been filled");
-      }
+    if (!filled.get(5)) {
+      acc6.position(acc6.position() + 32);
+    }
 
-      if (!filled.get(8)) {
-        throw new IllegalStateException("ALIGNED has not been filled");
-      }
+    if (!filled.get(6)) {
+      acc7.position(acc7.position() + 32);
+    }
 
-      if (!filled.get(9)) {
-        throw new IllegalStateException("BIT_1 has not been filled");
-      }
+    if (!filled.get(7)) {
+      acc8.position(acc8.position() + 32);
+    }
 
-      if (!filled.get(10)) {
-        throw new IllegalStateException("BIT_2 has not been filled");
-      }
+    if (!filled.get(8)) {
+      aligned.position(aligned.position() + 32);
+    }
 
-      if (!filled.get(11)) {
-        throw new IllegalStateException("BIT_3 has not been filled");
-      }
+    if (!filled.get(9)) {
+      bit1.position(bit1.position() + 1);
+    }
 
-      if (!filled.get(12)) {
-        throw new IllegalStateException("BIT_4 has not been filled");
-      }
+    if (!filled.get(10)) {
+      bit2.position(bit2.position() + 1);
+    }
 
-      if (!filled.get(13)) {
-        throw new IllegalStateException("BIT_5 has not been filled");
-      }
+    if (!filled.get(11)) {
+      bit3.position(bit3.position() + 1);
+    }
 
-      if (!filled.get(14)) {
-        throw new IllegalStateException("BIT_6 has not been filled");
-      }
+    if (!filled.get(12)) {
+      bit4.position(bit4.position() + 1);
+    }
 
-      if (!filled.get(15)) {
-        throw new IllegalStateException("BIT_7 has not been filled");
-      }
+    if (!filled.get(13)) {
+      bit5.position(bit5.position() + 1);
+    }
 
-      if (!filled.get(16)) {
-        throw new IllegalStateException("BIT_8 has not been filled");
-      }
+    if (!filled.get(14)) {
+      bit6.position(bit6.position() + 1);
+    }
 
-      if (!filled.get(17)) {
-        throw new IllegalStateException("BYTE_1 has not been filled");
-      }
+    if (!filled.get(15)) {
+      bit7.position(bit7.position() + 1);
+    }
 
-      if (!filled.get(18)) {
-        throw new IllegalStateException("BYTE_2 has not been filled");
-      }
+    if (!filled.get(16)) {
+      bit8.position(bit8.position() + 1);
+    }
 
-      if (!filled.get(19)) {
-        throw new IllegalStateException("BYTE_3 has not been filled");
-      }
+    if (!filled.get(17)) {
+      byte1.position(byte1.position() + 1);
+    }
 
-      if (!filled.get(20)) {
-        throw new IllegalStateException("BYTE_4 has not been filled");
-      }
+    if (!filled.get(18)) {
+      byte2.position(byte2.position() + 1);
+    }
 
-      if (!filled.get(21)) {
-        throw new IllegalStateException("BYTE_5 has not been filled");
-      }
+    if (!filled.get(19)) {
+      byte3.position(byte3.position() + 1);
+    }
 
-      if (!filled.get(22)) {
-        throw new IllegalStateException("BYTE_6 has not been filled");
-      }
+    if (!filled.get(20)) {
+      byte4.position(byte4.position() + 1);
+    }
 
-      if (!filled.get(23)) {
-        throw new IllegalStateException("BYTE_7 has not been filled");
-      }
+    if (!filled.get(21)) {
+      byte5.position(byte5.position() + 1);
+    }
 
-      if (!filled.get(24)) {
-        throw new IllegalStateException("BYTE_8 has not been filled");
-      }
+    if (!filled.get(22)) {
+      byte6.position(byte6.position() + 1);
+    }
 
-      if (!filled.get(26)) {
-        throw new IllegalStateException("CALL_DATA_OFFSET has not been filled");
-      }
+    if (!filled.get(23)) {
+      byte7.position(byte7.position() + 1);
+    }
 
-      if (!filled.get(27)) {
-        throw new IllegalStateException("CALL_DATA_SIZE has not been filled");
-      }
+    if (!filled.get(24)) {
+      byte8.position(byte8.position() + 1);
+    }
 
-      if (!filled.get(28)) {
-        throw new IllegalStateException("CALL_STACK_DEPTH has not been filled");
-      }
+    if (!filled.get(26)) {
+      callDataOffset.position(callDataOffset.position() + 32);
+    }
 
-      if (!filled.get(25)) {
-        throw new IllegalStateException("CALLER has not been filled");
-      }
+    if (!filled.get(27)) {
+      callDataSize.position(callDataSize.position() + 32);
+    }
 
-      if (!filled.get(29)) {
-        throw new IllegalStateException("CONTEXT_NUMBER has not been filled");
-      }
+    if (!filled.get(28)) {
+      callStackDepth.position(callStackDepth.position() + 32);
+    }
 
-      if (!filled.get(30)) {
-        throw new IllegalStateException("CONTEXT_SOURCE has not been filled");
-      }
+    if (!filled.get(25)) {
+      caller.position(caller.position() + 32);
+    }
 
-      if (!filled.get(31)) {
-        throw new IllegalStateException("CONTEXT_TARGET has not been filled");
-      }
+    if (!filled.get(29)) {
+      contextNumber.position(contextNumber.position() + 32);
+    }
 
-      if (!filled.get(32)) {
-        throw new IllegalStateException("COUNTER has not been filled");
-      }
+    if (!filled.get(30)) {
+      contextSource.position(contextSource.position() + 32);
+    }
 
-      if (!filled.get(33)) {
-        throw new IllegalStateException("ERF has not been filled");
-      }
+    if (!filled.get(31)) {
+      contextTarget.position(contextTarget.position() + 32);
+    }
 
-      if (!filled.get(34)) {
-        throw new IllegalStateException("EXO_IS_HASH has not been filled");
-      }
+    if (!filled.get(32)) {
+      counter.position(counter.position() + 32);
+    }
 
-      if (!filled.get(35)) {
-        throw new IllegalStateException("EXO_IS_LOG has not been filled");
-      }
+    if (!filled.get(33)) {
+      erf.position(erf.position() + 1);
+    }
 
-      if (!filled.get(36)) {
-        throw new IllegalStateException("EXO_IS_ROM has not been filled");
-      }
+    if (!filled.get(34)) {
+      exoIsHash.position(exoIsHash.position() + 1);
+    }
 
-      if (!filled.get(37)) {
-        throw new IllegalStateException("EXO_IS_TXCD has not been filled");
-      }
+    if (!filled.get(35)) {
+      exoIsLog.position(exoIsLog.position() + 1);
+    }
 
-      if (!filled.get(38)) {
-        throw new IllegalStateException("FAST has not been filled");
-      }
+    if (!filled.get(36)) {
+      exoIsRom.position(exoIsRom.position() + 1);
+    }
 
-      if (!filled.get(39)) {
-        throw new IllegalStateException("INFO has not been filled");
-      }
+    if (!filled.get(37)) {
+      exoIsTxcd.position(exoIsTxcd.position() + 1);
+    }
 
-      if (!filled.get(40)) {
-        throw new IllegalStateException("INSTRUCTION has not been filled");
-      }
+    if (!filled.get(38)) {
+      fast.position(fast.position() + 32);
+    }
 
-      if (!filled.get(41)) {
-        throw new IllegalStateException("IS_DATA has not been filled");
-      }
+    if (!filled.get(39)) {
+      info.position(info.position() + 32);
+    }
 
-      if (!filled.get(42)) {
-        throw new IllegalStateException("IS_MICRO_INSTRUCTION has not been filled");
-      }
+    if (!filled.get(40)) {
+      instruction.position(instruction.position() + 32);
+    }
 
-      if (!filled.get(43)) {
-        throw new IllegalStateException("MICRO_INSTRUCTION has not been filled");
-      }
+    if (!filled.get(41)) {
+      isData.position(isData.position() + 1);
+    }
 
-      if (!filled.get(44)) {
-        throw new IllegalStateException("MICRO_INSTRUCTION_STAMP has not been filled");
-      }
+    if (!filled.get(42)) {
+      isMicroInstruction.position(isMicroInstruction.position() + 1);
+    }
 
-      if (!filled.get(45)) {
-        throw new IllegalStateException("MIN has not been filled");
-      }
+    if (!filled.get(43)) {
+      microInstruction.position(microInstruction.position() + 32);
+    }
 
-      if (!filled.get(46)) {
-        throw new IllegalStateException("NIB_1 has not been filled");
-      }
+    if (!filled.get(44)) {
+      microInstructionStamp.position(microInstructionStamp.position() + 32);
+    }
 
-      if (!filled.get(47)) {
-        throw new IllegalStateException("NIB_2 has not been filled");
-      }
+    if (!filled.get(45)) {
+      min.position(min.position() + 32);
+    }
 
-      if (!filled.get(48)) {
-        throw new IllegalStateException("NIB_3 has not been filled");
-      }
+    if (!filled.get(46)) {
+      nib1.position(nib1.position() + 1);
+    }
 
-      if (!filled.get(49)) {
-        throw new IllegalStateException("NIB_4 has not been filled");
-      }
+    if (!filled.get(47)) {
+      nib2.position(nib2.position() + 1);
+    }
 
-      if (!filled.get(50)) {
-        throw new IllegalStateException("NIB_5 has not been filled");
-      }
+    if (!filled.get(48)) {
+      nib3.position(nib3.position() + 1);
+    }
 
-      if (!filled.get(51)) {
-        throw new IllegalStateException("NIB_6 has not been filled");
-      }
+    if (!filled.get(49)) {
+      nib4.position(nib4.position() + 1);
+    }
 
-      if (!filled.get(52)) {
-        throw new IllegalStateException("NIB_7 has not been filled");
-      }
+    if (!filled.get(50)) {
+      nib5.position(nib5.position() + 1);
+    }
 
-      if (!filled.get(53)) {
-        throw new IllegalStateException("NIB_8 has not been filled");
-      }
+    if (!filled.get(51)) {
+      nib6.position(nib6.position() + 1);
+    }
 
-      if (!filled.get(54)) {
-        throw new IllegalStateException("NIB_9 has not been filled");
-      }
+    if (!filled.get(52)) {
+      nib7.position(nib7.position() + 1);
+    }
 
-      if (!filled.get(56)) {
-        throw new IllegalStateException("OFF_1_LO has not been filled");
-      }
+    if (!filled.get(53)) {
+      nib8.position(nib8.position() + 1);
+    }
 
-      if (!filled.get(57)) {
-        throw new IllegalStateException("OFF_2_HI has not been filled");
-      }
+    if (!filled.get(54)) {
+      nib9.position(nib9.position() + 1);
+    }
 
-      if (!filled.get(58)) {
-        throw new IllegalStateException("OFF_2_LO has not been filled");
-      }
+    if (!filled.get(56)) {
+      off1Lo.position(off1Lo.position() + 32);
+    }
 
-      if (!filled.get(55)) {
-        throw new IllegalStateException("OFFSET_OUT_OF_BOUNDS has not been filled");
-      }
+    if (!filled.get(57)) {
+      off2Hi.position(off2Hi.position() + 32);
+    }
 
-      if (!filled.get(59)) {
-        throw new IllegalStateException("PRECOMPUTATION has not been filled");
-      }
+    if (!filled.get(58)) {
+      off2Lo.position(off2Lo.position() + 32);
+    }
 
-      if (!filled.get(60)) {
-        throw new IllegalStateException("RAM_STAMP has not been filled");
-      }
+    if (!filled.get(55)) {
+      offsetOutOfBounds.position(offsetOutOfBounds.position() + 1);
+    }
 
-      if (!filled.get(61)) {
-        throw new IllegalStateException("REFO has not been filled");
-      }
+    if (!filled.get(59)) {
+      precomputation.position(precomputation.position() + 32);
+    }
 
-      if (!filled.get(62)) {
-        throw new IllegalStateException("REFS has not been filled");
-      }
+    if (!filled.get(60)) {
+      ramStamp.position(ramStamp.position() + 32);
+    }
 
-      if (!filled.get(64)) {
-        throw new IllegalStateException("RETURN_CAPACITY has not been filled");
-      }
+    if (!filled.get(61)) {
+      refo.position(refo.position() + 32);
+    }
 
-      if (!filled.get(65)) {
-        throw new IllegalStateException("RETURN_OFFSET has not been filled");
-      }
+    if (!filled.get(62)) {
+      refs.position(refs.position() + 32);
+    }
 
-      if (!filled.get(63)) {
-        throw new IllegalStateException("RETURNER has not been filled");
-      }
+    if (!filled.get(64)) {
+      returnCapacity.position(returnCapacity.position() + 32);
+    }
 
-      if (!filled.get(66)) {
-        throw new IllegalStateException("SIZE has not been filled");
-      }
+    if (!filled.get(65)) {
+      returnOffset.position(returnOffset.position() + 32);
+    }
 
-      if (!filled.get(67)) {
-        throw new IllegalStateException("SIZE_IMPORTED has not been filled");
-      }
+    if (!filled.get(63)) {
+      returner.position(returner.position() + 32);
+    }
 
-      if (!filled.get(68)) {
-        throw new IllegalStateException("SOURCE_BYTE_OFFSET has not been filled");
-      }
+    if (!filled.get(66)) {
+      size.position(size.position() + 32);
+    }
 
-      if (!filled.get(69)) {
-        throw new IllegalStateException("SOURCE_LIMB_OFFSET has not been filled");
-      }
+    if (!filled.get(67)) {
+      sizeImported.position(sizeImported.position() + 32);
+    }
 
-      if (!filled.get(70)) {
-        throw new IllegalStateException("TARGET_BYTE_OFFSET has not been filled");
-      }
+    if (!filled.get(68)) {
+      sourceByteOffset.position(sourceByteOffset.position() + 32);
+    }
 
-      if (!filled.get(71)) {
-        throw new IllegalStateException("TARGET_LIMB_OFFSET has not been filled");
-      }
+    if (!filled.get(69)) {
+      sourceLimbOffset.position(sourceLimbOffset.position() + 32);
+    }
 
-      if (!filled.get(72)) {
-        throw new IllegalStateException("TERNARY has not been filled");
-      }
+    if (!filled.get(70)) {
+      targetByteOffset.position(targetByteOffset.position() + 32);
+    }
 
-      if (!filled.get(76)) {
-        throw new IllegalStateException("TO_RAM has not been filled");
-      }
+    if (!filled.get(71)) {
+      targetLimbOffset.position(targetLimbOffset.position() + 32);
+    }
 
-      if (!filled.get(73)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_MICRO_INSTRUCTIONS has not been filled");
-      }
+    if (!filled.get(72)) {
+      ternary.position(ternary.position() + 32);
+    }
 
-      if (!filled.get(74)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_PADDINGS has not been filled");
-      }
+    if (!filled.get(76)) {
+      toRam.position(toRam.position() + 1);
+    }
 
-      if (!filled.get(75)) {
-        throw new IllegalStateException("TOTAL_NUMBER_OF_READS has not been filled");
-      }
+    if (!filled.get(73)) {
+      totalNumberOfMicroInstructions.position(totalNumberOfMicroInstructions.position() + 32);
+    }
 
-      if (!filled.get(77)) {
-        throw new IllegalStateException("VAL_HI has not been filled");
-      }
+    if (!filled.get(74)) {
+      totalNumberOfPaddings.position(totalNumberOfPaddings.position() + 32);
+    }
 
-      if (!filled.get(78)) {
-        throw new IllegalStateException("VAL_LO has not been filled");
-      }
+    if (!filled.get(75)) {
+      totalNumberOfReads.position(totalNumberOfReads.position() + 32);
+    }
 
-      filled.clear();
+    if (!filled.get(77)) {
+      valHi.position(valHi.position() + 32);
+    }
 
-      return this;
+    if (!filled.get(78)) {
+      valLo.position(valLo.position() + 32);
     }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        acc1.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        acc2.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        acc3.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        acc4.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        acc5.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        acc6.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        acc7.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        acc8.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        aligned.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        bit1.add(false);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        bit2.add(false);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        bit3.add(false);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        bit4.add(false);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        bit5.add(false);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        bit6.add(false);
-        this.filled.set(14);
-      }
-      if (!filled.get(15)) {
-        bit7.add(false);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        bit8.add(false);
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        byte1.add(UnsignedByte.of(0));
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        byte2.add(UnsignedByte.of(0));
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        byte3.add(UnsignedByte.of(0));
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        byte4.add(UnsignedByte.of(0));
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        byte5.add(UnsignedByte.of(0));
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        byte6.add(UnsignedByte.of(0));
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        byte7.add(UnsignedByte.of(0));
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        byte8.add(UnsignedByte.of(0));
-        this.filled.set(24);
-      }
-      if (!filled.get(26)) {
-        callDataOffset.add(BigInteger.ZERO);
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        callDataSize.add(BigInteger.ZERO);
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        callStackDepth.add(BigInteger.ZERO);
-        this.filled.set(28);
-      }
-      if (!filled.get(25)) {
-        caller.add(BigInteger.ZERO);
-        this.filled.set(25);
-      }
-      if (!filled.get(29)) {
-        contextNumber.add(BigInteger.ZERO);
-        this.filled.set(29);
-      }
-      if (!filled.get(30)) {
-        contextSource.add(BigInteger.ZERO);
-        this.filled.set(30);
-      }
-      if (!filled.get(31)) {
-        contextTarget.add(BigInteger.ZERO);
-        this.filled.set(31);
-      }
-      if (!filled.get(32)) {
-        counter.add(BigInteger.ZERO);
-        this.filled.set(32);
-      }
-      if (!filled.get(33)) {
-        erf.add(false);
-        this.filled.set(33);
-      }
-      if (!filled.get(34)) {
-        exoIsHash.add(false);
-        this.filled.set(34);
-      }
-      if (!filled.get(35)) {
-        exoIsLog.add(false);
-        this.filled.set(35);
-      }
-      if (!filled.get(36)) {
-        exoIsRom.add(false);
-        this.filled.set(36);
-      }
-      if (!filled.get(37)) {
-        exoIsTxcd.add(false);
-        this.filled.set(37);
-      }
-      if (!filled.get(38)) {
-        fast.add(BigInteger.ZERO);
-        this.filled.set(38);
-      }
-      if (!filled.get(39)) {
-        info.add(BigInteger.ZERO);
-        this.filled.set(39);
-      }
-      if (!filled.get(40)) {
-        instruction.add(BigInteger.ZERO);
-        this.filled.set(40);
-      }
-      if (!filled.get(41)) {
-        isData.add(false);
-        this.filled.set(41);
-      }
-      if (!filled.get(42)) {
-        isMicroInstruction.add(false);
-        this.filled.set(42);
-      }
-      if (!filled.get(43)) {
-        microInstruction.add(BigInteger.ZERO);
-        this.filled.set(43);
-      }
-      if (!filled.get(44)) {
-        microInstructionStamp.add(BigInteger.ZERO);
-        this.filled.set(44);
-      }
-      if (!filled.get(45)) {
-        min.add(BigInteger.ZERO);
-        this.filled.set(45);
-      }
-      if (!filled.get(46)) {
-        nib1.add(UnsignedByte.of(0));
-        this.filled.set(46);
-      }
-      if (!filled.get(47)) {
-        nib2.add(UnsignedByte.of(0));
-        this.filled.set(47);
-      }
-      if (!filled.get(48)) {
-        nib3.add(UnsignedByte.of(0));
-        this.filled.set(48);
-      }
-      if (!filled.get(49)) {
-        nib4.add(UnsignedByte.of(0));
-        this.filled.set(49);
-      }
-      if (!filled.get(50)) {
-        nib5.add(UnsignedByte.of(0));
-        this.filled.set(50);
-      }
-      if (!filled.get(51)) {
-        nib6.add(UnsignedByte.of(0));
-        this.filled.set(51);
-      }
-      if (!filled.get(52)) {
-        nib7.add(UnsignedByte.of(0));
-        this.filled.set(52);
-      }
-      if (!filled.get(53)) {
-        nib8.add(UnsignedByte.of(0));
-        this.filled.set(53);
-      }
-      if (!filled.get(54)) {
-        nib9.add(UnsignedByte.of(0));
-        this.filled.set(54);
-      }
-      if (!filled.get(56)) {
-        off1Lo.add(BigInteger.ZERO);
-        this.filled.set(56);
-      }
-      if (!filled.get(57)) {
-        off2Hi.add(BigInteger.ZERO);
-        this.filled.set(57);
-      }
-      if (!filled.get(58)) {
-        off2Lo.add(BigInteger.ZERO);
-        this.filled.set(58);
-      }
-      if (!filled.get(55)) {
-        offsetOutOfBounds.add(false);
-        this.filled.set(55);
-      }
-      if (!filled.get(59)) {
-        precomputation.add(BigInteger.ZERO);
-        this.filled.set(59);
-      }
-      if (!filled.get(60)) {
-        ramStamp.add(BigInteger.ZERO);
-        this.filled.set(60);
-      }
-      if (!filled.get(61)) {
-        refo.add(BigInteger.ZERO);
-        this.filled.set(61);
-      }
-      if (!filled.get(62)) {
-        refs.add(BigInteger.ZERO);
-        this.filled.set(62);
-      }
-      if (!filled.get(64)) {
-        returnCapacity.add(BigInteger.ZERO);
-        this.filled.set(64);
-      }
-      if (!filled.get(65)) {
-        returnOffset.add(BigInteger.ZERO);
-        this.filled.set(65);
-      }
-      if (!filled.get(63)) {
-        returner.add(BigInteger.ZERO);
-        this.filled.set(63);
-      }
-      if (!filled.get(66)) {
-        size.add(BigInteger.ZERO);
-        this.filled.set(66);
-      }
-      if (!filled.get(67)) {
-        sizeImported.add(BigInteger.ZERO);
-        this.filled.set(67);
-      }
-      if (!filled.get(68)) {
-        sourceByteOffset.add(BigInteger.ZERO);
-        this.filled.set(68);
-      }
-      if (!filled.get(69)) {
-        sourceLimbOffset.add(BigInteger.ZERO);
-        this.filled.set(69);
-      }
-      if (!filled.get(70)) {
-        targetByteOffset.add(BigInteger.ZERO);
-        this.filled.set(70);
-      }
-      if (!filled.get(71)) {
-        targetLimbOffset.add(BigInteger.ZERO);
-        this.filled.set(71);
-      }
-      if (!filled.get(72)) {
-        ternary.add(BigInteger.ZERO);
-        this.filled.set(72);
-      }
-      if (!filled.get(76)) {
-        toRam.add(false);
-        this.filled.set(76);
-      }
-      if (!filled.get(73)) {
-        totalNumberOfMicroInstructions.add(BigInteger.ZERO);
-        this.filled.set(73);
-      }
-      if (!filled.get(74)) {
-        totalNumberOfPaddings.add(BigInteger.ZERO);
-        this.filled.set(74);
-      }
-      if (!filled.get(75)) {
-        totalNumberOfReads.add(BigInteger.ZERO);
-        this.filled.set(75);
-      }
-      if (!filled.get(77)) {
-        valHi.add(BigInteger.ZERO);
-        this.filled.set(77);
-      }
-      if (!filled.get(78)) {
-        valLo.add(BigInteger.ZERO);
-        this.filled.set(78);
-      }
-
-      return this.validateRow();
-    }
-
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          acc1,
-          acc2,
-          acc3,
-          acc4,
-          acc5,
-          acc6,
-          acc7,
-          acc8,
-          aligned,
-          bit1,
-          bit2,
-          bit3,
-          bit4,
-          bit5,
-          bit6,
-          bit7,
-          bit8,
-          byte1,
-          byte2,
-          byte3,
-          byte4,
-          byte5,
-          byte6,
-          byte7,
-          byte8,
-          callDataOffset,
-          callDataSize,
-          callStackDepth,
-          caller,
-          contextNumber,
-          contextSource,
-          contextTarget,
-          counter,
-          erf,
-          exoIsHash,
-          exoIsLog,
-          exoIsRom,
-          exoIsTxcd,
-          fast,
-          info,
-          instruction,
-          isData,
-          isMicroInstruction,
-          microInstruction,
-          microInstructionStamp,
-          min,
-          nib1,
-          nib2,
-          nib3,
-          nib4,
-          nib5,
-          nib6,
-          nib7,
-          nib8,
-          nib9,
-          off1Lo,
-          off2Hi,
-          off2Lo,
-          offsetOutOfBounds,
-          precomputation,
-          ramStamp,
-          refo,
-          refs,
-          returnCapacity,
-          returnOffset,
-          returner,
-          size,
-          sizeImported,
-          sourceByteOffset,
-          sourceLimbOffset,
-          targetByteOffset,
-          targetLimbOffset,
-          ternary,
-          toRam,
-          totalNumberOfMicroInstructions,
-          totalNumberOfPaddings,
-          totalNumberOfReads,
-          valHi,
-          valLo);
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
+    return null;
   }
 }

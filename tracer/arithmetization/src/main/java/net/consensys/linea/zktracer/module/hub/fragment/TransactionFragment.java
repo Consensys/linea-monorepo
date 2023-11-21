@@ -76,7 +76,7 @@ public final class TransactionFragment implements TraceFragment {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     final EWord to = EWord.of(Hub.effectiveToAddress(tx));
     final EWord from = EWord.of(tx.getSender());
     final EWord miner = EWord.of(minerAddress);

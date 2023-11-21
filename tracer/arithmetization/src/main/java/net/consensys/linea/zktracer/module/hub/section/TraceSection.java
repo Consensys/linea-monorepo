@@ -46,7 +46,7 @@ public abstract class TraceSection {
      * @param trace where to trace the line
      * @return the trace builder
      */
-    public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+    public Trace trace(Trace trace) {
       Preconditions.checkNotNull(common);
       Preconditions.checkNotNull(specific);
 
@@ -107,7 +107,7 @@ public abstract class TraceSection {
         hub.opCodeData().stackSettings().twoLinesInstruction(),
         this.stackRowsCounter == 1,
         0, // retconned on sealing
-        this.nonStackRowsCounter - 1);
+        this.nonStackRowsCounter);
   }
 
   /** Default creator for an empty section. */
