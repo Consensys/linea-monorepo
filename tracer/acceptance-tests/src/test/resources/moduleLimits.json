@@ -15,5 +15,7 @@
   "Rom": 20000,
   "RomLex": 20000,
   "InstructionDecoder": 256,
-  "ShfRt": 2305
+  "ShfRt": 2305,
+  "LogData": 20000,
+  "LogInfo": 20000
 }
