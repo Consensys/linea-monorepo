@@ -36,6 +36,8 @@ import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
 import net.consensys.linea.zktracer.module.hub.fragment.misc.MiscFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
+import net.consensys.linea.zktracer.module.logData.LogData;
+import net.consensys.linea.zktracer.module.logInfo.LogInfo;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
@@ -168,10 +170,14 @@ public class Hub implements Module {
   private final Module mxp;
   private final Module mmu;
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
+  private final LogInfo logInfo = new LogInfo(rlpTxrcpt);
+  private final LogData logData = new LogData(rlpTxrcpt);
   private final RlpAddr rlpAddr = new RlpAddr();
   private final Rom rom;
   private final RomLex romLex;
   private final TxnData txnData;
+  private final Trm trm = new Trm();
+
   // Precompile counters
   private final Sha256 sha256 = new Sha256();
   private final Ecrec ecrec = new Ecrec();
@@ -183,12 +189,12 @@ public class Hub implements Module {
   private final EcpairingWeightedCall ecpairingWeightedCall =
       new EcpairingWeightedCall(ecpairingCall);
   private final Blake2f blake2 = new Blake2f();
-  private final Trm trm = new Trm();
 
   private final List<Module> modules;
 
   private final List<Module>
-      precompileLimitModules; // Those modules are not traced, we just compute the number of calls
+      precompileLimitModules; // Those modules are not traced, we just compute the number of
+  // calls
   // to
   // those precompile to meet prover's limit
 
@@ -227,6 +233,8 @@ public class Hub implements Module {
                     this.wcp,
                     this.rlpTxn,
                     this.rlpTxrcpt,
+                    this.logData,
+                    this.logInfo,
                     this.rlpAddr,
                     this.rom,
                     this.txnData,
@@ -242,7 +250,7 @@ public class Hub implements Module {
     return List.of(
         new InstructionDecoder(),
         new ShfRt(),
-        //        this,
+        // this,
         this.romLex,
         this.add,
         this.ext,
@@ -253,6 +261,8 @@ public class Hub implements Module {
         this.mxp,
         this.rlpTxn,
         this.rlpTxrcpt,
+        this.logData,
+        this.logInfo,
         this.rlpAddr,
         this.rom,
         this.txnData);
@@ -424,54 +434,54 @@ public class Hub implements Module {
   }
 
   void triggerModules(MessageFrame frame) {
-    //    switch (this.opCodeData().instructionFamily()) {
-    //      case CREATE -> {
-    //        if (this.pch().exceptions().noStackException() &&
+    // switch (this.opCodeData().instructionFamily()) {
+    // case CREATE -> {
+    // if (this.pch().exceptions().noStackException() &&
     // !this.pch().exceptions().staticFault()) {
-    //          this.mxp.tracePreOpcode(frame); // TODO: trigger in OoG
-    //        }
+    // this.mxp.tracePreOpcode(frame); // TODO: trigger in OoG
+    // }
     //
-    //        if (!this.pch().exceptions().any() && this.callStack().depth() < 1024) {
-    //          // TODO: check for failure: non empty byte code or non zero nonce (for the
-    //          // Deployed
-    //          // Address)
-    //          UInt256 value = UInt256.fromBytes(frame.getStackItem(0));
-    //          if (frame
-    //              .getWorldUpdater()
-    //              .get(this.tx.transaction().getSender())
-    //              .getBalance()
-    //              .toUInt256()
-    //              .greaterOrEqualThan(value)) {
-    //            this.rlpAddr.tracePreOpcode(frame);
-    //            this.romLex.tracePreOpcode(frame);
-    //          }
-    //        }
-    //      }
-    //      case CALL -> {
-    //        if (!this.pch().exceptions().any() && this.callStack().depth() < 1024) {
-    //          this.romLex.tracePreOpcode(frame);
-    //          for (Module m : this.precompileLimitModules) {
-    //            m.tracePreOpcode(frame);
-    //          }
-    //        }
-    //        if (!this.pch().exceptions().stackUnderflow() &&
+    // if (!this.pch().exceptions().any() && this.callStack().depth() < 1024) {
+    // // TODO: check for failure: non empty byte code or non zero nonce (for the
+    // // Deployed
+    // // Address)
+    // UInt256 value = UInt256.fromBytes(frame.getStackItem(0));
+    // if (frame
+    // .getWorldUpdater()
+    // .get(this.tx.transaction().getSender())
+    // .getBalance()
+    // .toUInt256()
+    // .greaterOrEqualThan(value)) {
+    // this.rlpAddr.tracePreOpcode(frame);
+    // this.romLex.tracePreOpcode(frame);
+    // }
+    // }
+    // }
+    // case CALL -> {
+    // if (!this.pch().exceptions().any() && this.callStack().depth() < 1024) {
+    // this.romLex.tracePreOpcode(frame);
+    // for (Module m : this.precompileLimitModules) {
+    // m.tracePreOpcode(frame);
+    // }
+    // }
+    // if (!this.pch().exceptions().stackUnderflow() &&
     // !this.pch().exceptions().staticFault()) {
-    //          this.mxp.tracePreOpcode(frame);
-    //        }
-    //        if (this.pch().exceptions().noStackException()) {
-    //          this.trm.tracePreOpcode(frame); // TODO refine the trigger
-    //        }
-    //      }
-    //      default -> {}
-    //    }
+    // this.mxp.tracePreOpcode(frame);
+    // }
+    // if (this.pch().exceptions().noStackException()) {
+    // this.trm.tracePreOpcode(frame); // TODO refine the trigger
+    // }
+    // }
+    // default -> {}
+    // }
 
     // TODO: coming soon
     if (this.pch.signals().add()) {
       this.add.tracePreOpcode(frame);
     }
-    //    if (this.pch.signals().bin()) {
-    //      this.bin.tracePreOpcode(frame);
-    //    }
+    // if (this.pch.signals().bin()) {
+    // this.bin.tracePreOpcode(frame);
+    // }
     if (this.pch.signals().mul()) {
       this.mul.tracePreOpcode(frame);
     }
@@ -507,9 +517,6 @@ public class Hub implements Module {
       this.trm.tracePreOpcode(frame);
     }
     if (this.pch.signals().hashInfo()) {
-      // TODO: this.hashInfo.tracePreOpcode(frame);
-    }
-    if (this.pch.signals().logInfo()) {
       // TODO: this.hashInfo.tracePreOpcode(frame);
     }
     if (this.pch.signals().romLex()) {
@@ -575,9 +582,9 @@ public class Hub implements Module {
     } else {
       // Trace the exceptions of a transaction that could not even start
       // TODO: integrate with PCH
-      //      if (this.exceptions == null) {
-      //        this.exceptions = Exceptions.fromOutOfGas();
-      //      }
+      // if (this.exceptions == null) {
+      // this.exceptions = Exceptions.fromOutOfGas();
+      // }
 
       // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
       Address toAddress = this.tx.transaction().getSender();

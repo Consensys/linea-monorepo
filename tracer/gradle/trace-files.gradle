@@ -73,7 +73,7 @@ tasks.register('shfRT', TraceFilesTask) {
 //
 // Modules requiring the library
 //
-['rlp_txrcpt', 'rlp_txn', 'rlpAddr', 'txn_data'].each {moduleName ->
+['rlp_txrcpt', 'rlp_txn', 'rlpAddr', 'txn_data', 'logInfo', 'logData'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

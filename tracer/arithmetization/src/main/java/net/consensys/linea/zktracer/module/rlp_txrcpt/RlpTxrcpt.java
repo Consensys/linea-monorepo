@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
@@ -51,7 +52,7 @@ public class RlpTxrcpt implements Module {
   private static final int INT_RLP_LIST_LONG = Trace.LIST_LONG;
 
   private int absLogNum = 0;
-  StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
+  @Getter public StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
 
   @Override
   public String jsonKey() {
@@ -368,9 +369,10 @@ public class RlpTxrcpt implements Module {
         traceValue.localSize = logList.get(i).getData().size();
         // There are three cases for tracing the data RLP prefix:
         switch (logList.get(i).getData().size()) {
-          case 0 -> { // Case  no data:
+          case 0 -> { // Case no data:
             traceValue.partialReset(phase, 1);
-            // In INPUT_2 is stored the number of topics, stored in INDEX_LOCAL at the previous row
+            // In INPUT_2 is stored the number of topics, stored in INDEX_LOCAL at the
+            // previous row
             traceValue.input2 = Bytes.ofUnsignedShort(indexLocalEndTopic);
             traceValue.depth1 = true;
             traceValue.isPrefix = true;
@@ -737,12 +739,15 @@ public class RlpTxrcpt implements Module {
     // The size of RLP(Oa) is always 21.
     int logSize = 21;
 
-    // RLP(Topic) is of size 1 for 0 topic, 33+1 for 1 topic, 2 + 33*nTOPIC for 2 <= nTOPIC <=4.
+    // RLP(Topic) is of size 1 for 0 topic, 33+1 for 1 topic, 2 + 33*nTOPIC for 2 <=
+    // nTOPIC <=4.
     logSize += outerRlpSize(33 * log.getTopics().size());
 
-    // RLP(Od) is of size OuterRlpSize(datasize) except if the Data is made of one byte.
+    // RLP(Od) is of size OuterRlpSize(datasize) except if the Data is made of one
+    // byte.
     if (log.getData().size() == 1) {
-      // If the byte is of value >= 128, its RLP is 2 byte, else 1 byte (no RLP prefix).
+      // If the byte is of value >= 128, its RLP is 2 byte, else 1 byte (no RLP
+      // prefix).
       if (log.getData().toUnsignedBigInteger().compareTo(BigInteger.valueOf(128)) >= 0) {
         logSize += 2;
       } else {
@@ -756,7 +761,8 @@ public class RlpTxrcpt implements Module {
   }
 
   public int ChunkRowSize(RlpTxrcptChunk chunk) {
-    // Phase 0 is always 1+8=9 row long, Phase 1, 1 row long, Phase 2 8 row long, Phase 3 65 = 1 +
+    // Phase 0 is always 1+8=9 row long, Phase 1, 1 row long, Phase 2 8 row long,
+    // Phase 3 65 = 1 +
     // 64 row long
     int rowSize = 83;
 
@@ -768,7 +774,8 @@ public class RlpTxrcpt implements Module {
       rowSize += 8;
 
       for (int i = 0; i < chunk.logs().size(); i++) {
-        // Rlp prefix of a log entry is always 8, Log entry address is always 3 row long, Log topics
+        // Rlp prefix of a log entry is always 8, Log entry address is always 3 row
+        // long, Log topics
         // rlp prefix always 1
         rowSize += 12;
 
