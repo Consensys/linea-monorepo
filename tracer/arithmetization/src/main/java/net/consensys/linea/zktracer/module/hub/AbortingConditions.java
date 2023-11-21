@@ -26,7 +26,7 @@ import org.hyperledger.besu.datatypes.Wei;
 @Getter
 @NoArgsConstructor
 @Accessors(fluent = true)
-public final class Aborts {
+public final class AbortingConditions {
   private boolean callStackOverflow;
   private boolean balanceTooLow;
 
@@ -34,9 +34,15 @@ public final class Aborts {
    * @param callStackOverflow too many nested contexts
    * @param balanceTooLow trying to give more ETH than the caller has
    */
-  public Aborts(boolean callStackOverflow, boolean balanceTooLow) {
+  public AbortingConditions(boolean callStackOverflow, boolean balanceTooLow) {
     this.callStackOverflow = callStackOverflow;
     this.balanceTooLow = balanceTooLow;
+  }
+
+  public static AbortingConditions of(Hub hub) {
+    AbortingConditions r = new AbortingConditions();
+    r.prepare(hub);
+    return r;
   }
 
   public void reset() {
@@ -80,8 +86,8 @@ public final class Aborts {
         };
   }
 
-  public Aborts snapshot() {
-    return new Aborts(this.callStackOverflow, this.balanceTooLow);
+  public AbortingConditions snapshot() {
+    return new AbortingConditions(this.callStackOverflow, this.balanceTooLow);
   }
 
   public boolean none() {

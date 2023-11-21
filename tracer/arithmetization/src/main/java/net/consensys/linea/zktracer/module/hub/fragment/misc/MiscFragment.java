@@ -73,8 +73,7 @@ public class MiscFragment implements TraceFragment, PostExecDefer {
         .pMiscellaneousMmuFlag(this.signals.mmu())
         .pMiscellaneousMxpFlag(this.signals.mxp())
         .pMiscellaneousOobFlag(this.signals.oob())
-        .pMiscellaneousPrecinfoFlag(this.signals.precompileInfo())
-        .pMiscellaneousStpFlag(this.signals.stipend())
+        .pMiscellaneousStpFlag(this.signals.stp())
         .pMiscellaneousExpFlag(this.signals.exp());
 
     for (TraceSubFragment subFragment : this.subFragments) {
