@@ -23,7 +23,7 @@ import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Aborts;
+import net.consensys.linea.zktracer.module.hub.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Exceptions;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -56,7 +56,7 @@ public final class StackFragment implements TraceFragment {
       Stack stack,
       List<StackOperation> stackOps,
       Exceptions exceptions,
-      Aborts aborts,
+      AbortingConditions aborts,
       DeploymentExceptions contextExceptions,
       GasProjection gp,
       boolean isDeploying) {
@@ -83,7 +83,7 @@ public final class StackFragment implements TraceFragment {
       final Stack stack,
       final List<StackOperation> stackOperations,
       final Exceptions exceptions,
-      final Aborts aborts,
+      final AbortingConditions aborts,
       final GasProjection gp,
       boolean isDeploying) {
     return new StackFragment(

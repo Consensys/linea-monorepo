@@ -49,7 +49,7 @@ public class AddressUtils {
     }
     final Address currentAddress = frame.getRecipientAddress();
     return Address.contractAddress(
-        currentAddress, frame.getWorldUpdater().getAccount(currentAddress).getNonce());
+        currentAddress, frame.getWorldUpdater().get(currentAddress).getNonce());
   }
 
   public static Address getCreate2Address(final MessageFrame frame) {
