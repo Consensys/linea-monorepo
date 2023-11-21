@@ -19,14 +19,15 @@ import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -44,6 +45,19 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
 public class TxnData implements Module {
+  private static final int LT = 16;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_0 = 0;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_1 = 7;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_2 = 2;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_3 = 8;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_4 = 9;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_5 = 6;
+  static final int TYPE_0_RLP_TXN_PHASE_NUMBER_6 = 3;
+  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_6 = 3;
+  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_7 = 10;
+  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_6 = 5;
+  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_7 = 10;
+
   private final Hub hub;
   private final RomLex romLex;
   private final Wcp wcp;
@@ -52,8 +66,6 @@ public class TxnData implements Module {
   public String jsonKey() {
     return "txnData";
   }
-
-  final Trace.TraceBuilder trace = new Trace.TraceBuilder();
 
   private final List<BlockSnapshot> blocks = new ArrayList<>();
 
@@ -235,10 +247,10 @@ public class TxnData implements Module {
   private List<Integer> setWcpInst(TransactionSnapshot tx) {
     List<Integer> common =
         List.of(
-            TxnDataTrace.LT, // ct = 0
-            TxnDataTrace.LT, // ct = 1
-            TxnDataTrace.LT, // ct = 2
-            TxnDataTrace.LT // ct = 3
+            LT, // ct = 0
+            LT, // ct = 1
+            LT, // ct = 2
+            LT // ct = 3
             );
     List<Integer> suffix =
         switch (tx.type()) {
@@ -254,9 +266,9 @@ public class TxnData implements Module {
               0 // ct = 7
               );
           case EIP1559 -> List.of(
-              TxnDataTrace.LT, // ct = 4
-              TxnDataTrace.LT, // ct = 5
-              TxnDataTrace.LT, // ct = 6
+              LT, // ct = 4
+              LT, // ct = 5
+              LT, // ct = 6
               0 // ct = 7
               );
           default -> throw new RuntimeException("transaction type not supported");
@@ -362,12 +374,12 @@ public class TxnData implements Module {
   private List<Integer> setPhaseRlpTxnNumbers(TransactionSnapshot tx) {
     List<Integer> common =
         List.of(
-            TxnDataTrace.common_rlp_txn_phase_number_0, // ct = 0
-            TxnDataTrace.common_rlp_txn_phase_number_1, // ct = 1
-            TxnDataTrace.common_rlp_txn_phase_number_2, // ct = 2
-            TxnDataTrace.common_rlp_txn_phase_number_3, // ct = 3
-            TxnDataTrace.common_rlp_txn_phase_number_4, // ct = 4
-            TxnDataTrace.common_rlp_txn_phase_number_5 // ct = 5
+            COMMON_RLP_TXN_PHASE_NUMBER_0, // ct = 0
+            COMMON_RLP_TXN_PHASE_NUMBER_1, // ct = 1
+            COMMON_RLP_TXN_PHASE_NUMBER_2, // ct = 2
+            COMMON_RLP_TXN_PHASE_NUMBER_3, // ct = 3
+            COMMON_RLP_TXN_PHASE_NUMBER_4, // ct = 4
+            COMMON_RLP_TXN_PHASE_NUMBER_5 // ct = 5
             );
 
     List<Integer> phaseDependentSuffix;
@@ -375,17 +387,17 @@ public class TxnData implements Module {
     switch (tx.type()) {
       case FRONTIER -> phaseDependentSuffix =
           List.of(
-              TxnDataTrace.type_0_rlp_txn_phase_number_6 // ct = 6
+              TYPE_0_RLP_TXN_PHASE_NUMBER_6 // ct = 6
               );
       case ACCESS_LIST -> phaseDependentSuffix =
           List.of(
-              TxnDataTrace.type_1_rlp_txn_phase_number_6, // ct = 6
-              TxnDataTrace.type_1_rlp_txn_phase_number_7 // ct = 7
+              TYPE_1_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+              TYPE_1_RLP_TXN_PHASE_NUMBER_7 // ct = 7
               );
       case EIP1559 -> phaseDependentSuffix =
           List.of(
-              TxnDataTrace.type_2_rlp_txn_phase_number_6, // ct = 6
-              TxnDataTrace.type_2_rlp_txn_phase_number_7 // ct = 7
+              TYPE_2_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+              TYPE_2_RLP_TXN_PHASE_NUMBER_7 // ct = 7
               );
       default -> throw new RuntimeException("transaction type not supported");
     }
@@ -394,9 +406,9 @@ public class TxnData implements Module {
 
   private List<Integer> setPhaseRlpTxnRcpt(TransactionSnapshot tx) {
     return List.of(
-        TxnDataTrace.RLPRECEIPT_SUBPHASE_ID_TYPE, // ct =0
-        TxnDataTrace.RLPRECEIPT_SUBPHASE_ID_STATUS_CODE, // ct = 1
-        TxnDataTrace.RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS, // ct = 2
+        Trace.RLPRECEIPT_SUBPHASE_ID_TYPE, // ct =0
+        Trace.RLPRECEIPT_SUBPHASE_ID_STATUS_CODE, // ct = 1
+        Trace.RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS, // ct = 2
         0, // ct = 3
         0, // ct = 4
         0, // ct = 5
@@ -434,6 +446,7 @@ public class TxnData implements Module {
   }
 
   private void traceTx(
+      Trace trace,
       BlockSnapshot block,
       TransactionSnapshot tx,
       int absTxNumMax,
@@ -459,7 +472,7 @@ public class TxnData implements Module {
     final List<Integer> phaseRlpTxnRcpt = setPhaseRlpTxnRcpt(tx);
     final List<Long> outgoingRlpTxnRcpt = setOutgoingRlpTxnRcpt(tx);
     for (int ct = 0; ct < tx.maxCounter(); ct++) {
-      this.trace
+      trace
           .absTxNumMax(BigInteger.valueOf(absTxNumMax))
           .absTxNum(BigInteger.valueOf(absTxNum))
           .btcNumMax(BigInteger.valueOf(btcNumMax))
@@ -503,14 +516,20 @@ public class TxnData implements Module {
           .wcpResLo(wcpRes.get(ct))
           .wcpInst(BigInteger.valueOf(wcpInsts.get(ct)))
           .phaseRlpTxnrcpt(BigInteger.valueOf(phaseRlpTxnRcpt.get(ct)))
-          .outgoingRlpTxnrcpt(BigInteger.valueOf(outgoingRlpTxnRcpt.get(ct)));
-
-      this.trace.validateRow();
+          .outgoingRlpTxnrcpt(BigInteger.valueOf(outgoingRlpTxnRcpt.get(ct)))
+          .validateRow();
     }
   }
 
   @Override
-  public ModuleTrace commit() {
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
+
     int absTxNumMax = 0;
     int absTxNum = 0;
     int batchNumMax = 0;
@@ -530,11 +549,9 @@ public class TxnData implements Module {
           absTxNum++;
           relTxNum++;
           this.traceTx(
-              block, tx, absTxNumMax, absTxNum, batchNumMax, btchNum, relTxNumMax, relTxNum);
+              trace, block, tx, absTxNumMax, absTxNum, batchNumMax, btchNum, relTxNumMax, relTxNum);
         }
       }
     }
-
-    return new TxnDataTrace(trace.build());
   }
 }

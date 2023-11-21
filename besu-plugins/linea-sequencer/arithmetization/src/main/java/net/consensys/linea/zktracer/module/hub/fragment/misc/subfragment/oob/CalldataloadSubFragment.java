@@ -35,7 +35,7 @@ public record CalldataloadSubFragment(EWord readOffset, EWord calldataSize)
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousOobOutgoingData1(this.readOffset.hiBigInt())
         .pMiscellaneousOobOutgoingData2(this.readOffset().loBigInt())

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -44,7 +45,7 @@ public interface ZkBlockAwareOperationTracer extends BlockAwareOperationTracer {
    *
    * @return a JSON string of the trace
    */
-  String getJsonTrace();
+  void writeToFile(final Path filename);
 
   void traceStartTransaction(WorldView worldView, Transaction transaction);
 

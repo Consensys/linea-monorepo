@@ -82,7 +82,7 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousMmuInst(BigInteger.valueOf(this.opCode))
         .pMiscellaneousMmuParam1(BigInteger.valueOf(this.param1))

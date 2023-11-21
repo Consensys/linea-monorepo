@@ -19,11 +19,13 @@ import static net.consensys.linea.zktracer.types.Conversions.booleanToBigInteger
 import static net.consensys.linea.zktracer.types.Conversions.unsignedBytesToUnsignedBigInteger;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 import java.util.Map;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.mmio.Mmio;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -67,14 +69,17 @@ public class Mmu implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     for (MicroData m : this.state) {
       traceMicroData(m, callStack, trace);
     }
-
-    return new MmuTrace(trace.build());
   }
 
   /**
@@ -91,8 +96,7 @@ public class Mmu implements Module {
     this.state.add(microData);
   }
 
-  private void traceMicroData(
-      MicroData microData, final CallStack callStack, Trace.TraceBuilder trace) {
+  private void traceMicroData(MicroData microData, final CallStack callStack, Trace trace) {
     if (microData.skip()) {
       return;
     }
@@ -121,7 +125,7 @@ public class Mmu implements Module {
     }
   }
 
-  private void trace(MicroData microData, Trace.TraceBuilder trace) {
+  private void trace(MicroData microData, Trace trace) {
     Pointers pointers = microData.pointers();
 
     BigInteger value = microData.value().toUnsignedBigInteger();

@@ -18,9 +18,11 @@ package net.consensys.linea.zktracer.module.rom;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.romLex.RomChunk;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -69,7 +71,7 @@ public class Rom implements Module {
     return LLARGE * nbSlice + nPaddingRow;
   }
 
-  private void traceChunk(RomChunk chunk, int cfi, int cfiInfty, Trace.TraceBuilder trace) {
+  private void traceChunk(RomChunk chunk, int cfi, int cfiInfty, Trace trace) {
     final int chunkRowSize = chunkRowSize(chunk);
     final int codeSize = chunk.byteCode().size();
     final int nLimbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
@@ -187,8 +189,13 @@ public class Rom implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     int cfi = 0;
     final int cfiInfty = this.romLex.sortedChunks.size();
@@ -196,7 +203,5 @@ public class Rom implements Module {
       cfi += 1;
       traceChunk(chunk, cfi, cfiInfty, trace);
     }
-
-    return new RomTrace(trace.build());
   }
 }

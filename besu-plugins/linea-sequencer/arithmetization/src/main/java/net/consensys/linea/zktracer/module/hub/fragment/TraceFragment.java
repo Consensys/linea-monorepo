@@ -23,7 +23,7 @@ import net.consensys.linea.zktracer.module.hub.Trace;
  * each line, or a perspective-specific fragment.
  */
 public interface TraceFragment {
-  Trace.TraceBuilder trace(Trace.TraceBuilder trace);
+  Trace trace(Trace trace);
 
   /**
    * This hook is called by the {@link Hub} at the end of the transaction to retrofit information if

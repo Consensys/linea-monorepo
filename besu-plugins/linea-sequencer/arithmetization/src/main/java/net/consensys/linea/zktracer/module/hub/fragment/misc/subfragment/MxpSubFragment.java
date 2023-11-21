@@ -25,7 +25,7 @@ import net.consensys.linea.zktracer.types.EWord;
 
 public record MxpSubFragment(
     boolean mxpException,
-    byte opCode,
+    int opCode,
     boolean deploys,
     int memorySize,
     long gasMxp,
@@ -48,7 +48,7 @@ public record MxpSubFragment(
 
     return new MxpSubFragment(
         hub.pch().exceptions().outOfMemoryExpansion(),
-        opCode.byteValue(),
+        opCode.getData().value(),
         opCode == OpCode.RETURN && hub.currentFrame().underDeployment(),
         hub.currentFrame().frame().memoryWordSize(),
         gasMxp,
@@ -59,7 +59,7 @@ public record MxpSubFragment(
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousMxpMxpx(this.mxpException)
         .pMiscellaneousMxpInst(BigInteger.valueOf(this.opCode))

@@ -102,7 +102,7 @@ jobs:
         run: cargo install --git ssh://git@github.com/Consensys/corset.git --locked
 
       - name: Run unit tests
-        run: ./gradlew :arithmetization:test --info
+        run: ./gradlew :arithmetization:test
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 

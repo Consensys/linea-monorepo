@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,811 +16,726 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC_1") List<BigInteger> acc1,
-    @JsonProperty("ACC_2") List<BigInteger> acc2,
-    @JsonProperty("ACC_3") List<BigInteger> acc3,
-    @JsonProperty("ACC_4") List<BigInteger> acc4,
-    @JsonProperty("ACC_5") List<BigInteger> acc5,
-    @JsonProperty("ACC_6") List<BigInteger> acc6,
-    @JsonProperty("ARGUMENT_1_HI") List<BigInteger> argument1Hi,
-    @JsonProperty("ARGUMENT_1_LO") List<BigInteger> argument1Lo,
-    @JsonProperty("ARGUMENT_2_HI") List<BigInteger> argument2Hi,
-    @JsonProperty("ARGUMENT_2_LO") List<BigInteger> argument2Lo,
-    @JsonProperty("BIT_1") List<Boolean> bit1,
-    @JsonProperty("BIT_2") List<Boolean> bit2,
-    @JsonProperty("BIT_3") List<Boolean> bit3,
-    @JsonProperty("BIT_4") List<Boolean> bit4,
-    @JsonProperty("BITS") List<Boolean> bits,
-    @JsonProperty("BYTE_1") List<UnsignedByte> byte1,
-    @JsonProperty("BYTE_2") List<UnsignedByte> byte2,
-    @JsonProperty("BYTE_3") List<UnsignedByte> byte3,
-    @JsonProperty("BYTE_4") List<UnsignedByte> byte4,
-    @JsonProperty("BYTE_5") List<UnsignedByte> byte5,
-    @JsonProperty("BYTE_6") List<UnsignedByte> byte6,
-    @JsonProperty("COUNTER") List<BigInteger> counter,
-    @JsonProperty("INST") List<BigInteger> inst,
-    @JsonProperty("NEG_1") List<Boolean> neg1,
-    @JsonProperty("NEG_2") List<Boolean> neg2,
-    @JsonProperty("ONE_LINE_INSTRUCTION") List<Boolean> oneLineInstruction,
-    @JsonProperty("RESULT_HI") List<BigInteger> resultHi,
-    @JsonProperty("RESULT_LO") List<BigInteger> resultLo,
-    @JsonProperty("WORD_COMPARISON_STAMP") List<BigInteger> wordComparisonStamp) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer acc1;
+  private final MappedByteBuffer acc2;
+  private final MappedByteBuffer acc3;
+  private final MappedByteBuffer acc4;
+  private final MappedByteBuffer acc5;
+  private final MappedByteBuffer acc6;
+  private final MappedByteBuffer argument1Hi;
+  private final MappedByteBuffer argument1Lo;
+  private final MappedByteBuffer argument2Hi;
+  private final MappedByteBuffer argument2Lo;
+  private final MappedByteBuffer bit1;
+  private final MappedByteBuffer bit2;
+  private final MappedByteBuffer bit3;
+  private final MappedByteBuffer bit4;
+  private final MappedByteBuffer bits;
+  private final MappedByteBuffer byte1;
+  private final MappedByteBuffer byte2;
+  private final MappedByteBuffer byte3;
+  private final MappedByteBuffer byte4;
+  private final MappedByteBuffer byte5;
+  private final MappedByteBuffer byte6;
+  private final MappedByteBuffer counter;
+  private final MappedByteBuffer inst;
+  private final MappedByteBuffer neg1;
+  private final MappedByteBuffer neg2;
+  private final MappedByteBuffer oneLineInstruction;
+  private final MappedByteBuffer resultHi;
+  private final MappedByteBuffer resultLo;
+  private final MappedByteBuffer wordComparisonStamp;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("wcp.ACC_1", 32, length),
+        new ColumnHeader("wcp.ACC_2", 32, length),
+        new ColumnHeader("wcp.ACC_3", 32, length),
+        new ColumnHeader("wcp.ACC_4", 32, length),
+        new ColumnHeader("wcp.ACC_5", 32, length),
+        new ColumnHeader("wcp.ACC_6", 32, length),
+        new ColumnHeader("wcp.ARGUMENT_1_HI", 32, length),
+        new ColumnHeader("wcp.ARGUMENT_1_LO", 32, length),
+        new ColumnHeader("wcp.ARGUMENT_2_HI", 32, length),
+        new ColumnHeader("wcp.ARGUMENT_2_LO", 32, length),
+        new ColumnHeader("wcp.BIT_1", 1, length),
+        new ColumnHeader("wcp.BIT_2", 1, length),
+        new ColumnHeader("wcp.BIT_3", 1, length),
+        new ColumnHeader("wcp.BIT_4", 1, length),
+        new ColumnHeader("wcp.BITS", 1, length),
+        new ColumnHeader("wcp.BYTE_1", 1, length),
+        new ColumnHeader("wcp.BYTE_2", 1, length),
+        new ColumnHeader("wcp.BYTE_3", 1, length),
+        new ColumnHeader("wcp.BYTE_4", 1, length),
+        new ColumnHeader("wcp.BYTE_5", 1, length),
+        new ColumnHeader("wcp.BYTE_6", 1, length),
+        new ColumnHeader("wcp.COUNTER", 32, length),
+        new ColumnHeader("wcp.INST", 32, length),
+        new ColumnHeader("wcp.NEG_1", 1, length),
+        new ColumnHeader("wcp.NEG_2", 1, length),
+        new ColumnHeader("wcp.ONE_LINE_INSTRUCTION", 1, length),
+        new ColumnHeader("wcp.RESULT_HI", 32, length),
+        new ColumnHeader("wcp.RESULT_LO", 32, length),
+        new ColumnHeader("wcp.WORD_COMPARISON_STAMP", 32, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.acc1 = buffers.get(0);
+    this.acc2 = buffers.get(1);
+    this.acc3 = buffers.get(2);
+    this.acc4 = buffers.get(3);
+    this.acc5 = buffers.get(4);
+    this.acc6 = buffers.get(5);
+    this.argument1Hi = buffers.get(6);
+    this.argument1Lo = buffers.get(7);
+    this.argument2Hi = buffers.get(8);
+    this.argument2Lo = buffers.get(9);
+    this.bit1 = buffers.get(10);
+    this.bit2 = buffers.get(11);
+    this.bit3 = buffers.get(12);
+    this.bit4 = buffers.get(13);
+    this.bits = buffers.get(14);
+    this.byte1 = buffers.get(15);
+    this.byte2 = buffers.get(16);
+    this.byte3 = buffers.get(17);
+    this.byte4 = buffers.get(18);
+    this.byte5 = buffers.get(19);
+    this.byte6 = buffers.get(20);
+    this.counter = buffers.get(21);
+    this.inst = buffers.get(22);
+    this.neg1 = buffers.get(23);
+    this.neg2 = buffers.get(24);
+    this.oneLineInstruction = buffers.get(25);
+    this.resultHi = buffers.get(26);
+    this.resultLo = buffers.get(27);
+    this.wordComparisonStamp = buffers.get(28);
   }
 
   public int size() {
-    return this.acc1.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ACC_1")
-    private final List<BigInteger> acc1;
-
-    @JsonProperty("ACC_2")
-    private final List<BigInteger> acc2;
-
-    @JsonProperty("ACC_3")
-    private final List<BigInteger> acc3;
-
-    @JsonProperty("ACC_4")
-    private final List<BigInteger> acc4;
-
-    @JsonProperty("ACC_5")
-    private final List<BigInteger> acc5;
-
-    @JsonProperty("ACC_6")
-    private final List<BigInteger> acc6;
-
-    @JsonProperty("ARGUMENT_1_HI")
-    private final List<BigInteger> argument1Hi;
-
-    @JsonProperty("ARGUMENT_1_LO")
-    private final List<BigInteger> argument1Lo;
-
-    @JsonProperty("ARGUMENT_2_HI")
-    private final List<BigInteger> argument2Hi;
-
-    @JsonProperty("ARGUMENT_2_LO")
-    private final List<BigInteger> argument2Lo;
-
-    @JsonProperty("BIT_1")
-    private final List<Boolean> bit1;
-
-    @JsonProperty("BIT_2")
-    private final List<Boolean> bit2;
-
-    @JsonProperty("BIT_3")
-    private final List<Boolean> bit3;
-
-    @JsonProperty("BIT_4")
-    private final List<Boolean> bit4;
-
-    @JsonProperty("BITS")
-    private final List<Boolean> bits;
-
-    @JsonProperty("BYTE_1")
-    private final List<UnsignedByte> byte1;
-
-    @JsonProperty("BYTE_2")
-    private final List<UnsignedByte> byte2;
-
-    @JsonProperty("BYTE_3")
-    private final List<UnsignedByte> byte3;
-
-    @JsonProperty("BYTE_4")
-    private final List<UnsignedByte> byte4;
-
-    @JsonProperty("BYTE_5")
-    private final List<UnsignedByte> byte5;
-
-    @JsonProperty("BYTE_6")
-    private final List<UnsignedByte> byte6;
-
-    @JsonProperty("COUNTER")
-    private final List<BigInteger> counter;
-
-    @JsonProperty("INST")
-    private final List<BigInteger> inst;
-
-    @JsonProperty("NEG_1")
-    private final List<Boolean> neg1;
-
-    @JsonProperty("NEG_2")
-    private final List<Boolean> neg2;
-
-    @JsonProperty("ONE_LINE_INSTRUCTION")
-    private final List<Boolean> oneLineInstruction;
-
-    @JsonProperty("RESULT_HI")
-    private final List<BigInteger> resultHi;
-
-    @JsonProperty("RESULT_LO")
-    private final List<BigInteger> resultLo;
-
-    @JsonProperty("WORD_COMPARISON_STAMP")
-    private final List<BigInteger> wordComparisonStamp;
-
-    private TraceBuilder(int length) {
-      this.acc1 = new ArrayList<>(length);
-      this.acc2 = new ArrayList<>(length);
-      this.acc3 = new ArrayList<>(length);
-      this.acc4 = new ArrayList<>(length);
-      this.acc5 = new ArrayList<>(length);
-      this.acc6 = new ArrayList<>(length);
-      this.argument1Hi = new ArrayList<>(length);
-      this.argument1Lo = new ArrayList<>(length);
-      this.argument2Hi = new ArrayList<>(length);
-      this.argument2Lo = new ArrayList<>(length);
-      this.bit1 = new ArrayList<>(length);
-      this.bit2 = new ArrayList<>(length);
-      this.bit3 = new ArrayList<>(length);
-      this.bit4 = new ArrayList<>(length);
-      this.bits = new ArrayList<>(length);
-      this.byte1 = new ArrayList<>(length);
-      this.byte2 = new ArrayList<>(length);
-      this.byte3 = new ArrayList<>(length);
-      this.byte4 = new ArrayList<>(length);
-      this.byte5 = new ArrayList<>(length);
-      this.byte6 = new ArrayList<>(length);
-      this.counter = new ArrayList<>(length);
-      this.inst = new ArrayList<>(length);
-      this.neg1 = new ArrayList<>(length);
-      this.neg2 = new ArrayList<>(length);
-      this.oneLineInstruction = new ArrayList<>(length);
-      this.resultHi = new ArrayList<>(length);
-      this.resultLo = new ArrayList<>(length);
-      this.wordComparisonStamp = new ArrayList<>(length);
+  public Trace acc1(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("wcp.ACC_1 already set");
+    } else {
+      filled.set(0);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    acc1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.acc1.size();
+    return this;
+  }
+
+  public Trace acc2(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("wcp.ACC_2 already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder acc1(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC_1 already set");
-      } else {
-        filled.set(0);
-      }
+    acc2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc3(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("wcp.ACC_3 already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder acc2(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_2 already set");
-      } else {
-        filled.set(1);
-      }
+    acc3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc4(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("wcp.ACC_4 already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder acc3(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ACC_3 already set");
-      } else {
-        filled.set(2);
-      }
+    acc4.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc5(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("wcp.ACC_5 already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder acc4(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ACC_4 already set");
-      } else {
-        filled.set(3);
-      }
+    acc5.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace acc6(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("wcp.ACC_6 already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder acc5(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ACC_5 already set");
-      } else {
-        filled.set(4);
-      }
+    acc6.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace argument1Hi(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("wcp.ARGUMENT_1_HI already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder acc6(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("ACC_6 already set");
-      } else {
-        filled.set(5);
-      }
+    argument1Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace argument1Lo(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("wcp.ARGUMENT_1_LO already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder argument1Hi(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("ARGUMENT_1_HI already set");
-      } else {
-        filled.set(6);
-      }
+    argument1Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      argument1Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace argument2Hi(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("wcp.ARGUMENT_2_HI already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder argument1Lo(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("ARGUMENT_1_LO already set");
-      } else {
-        filled.set(7);
-      }
+    argument2Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      argument1Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace argument2Lo(final BigInteger b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("wcp.ARGUMENT_2_LO already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder argument2Hi(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("ARGUMENT_2_HI already set");
-      } else {
-        filled.set(8);
-      }
+    argument2Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      argument2Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit1(final Boolean b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("wcp.BIT_1 already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder argument2Lo(final BigInteger b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("ARGUMENT_2_LO already set");
-      } else {
-        filled.set(9);
-      }
+    bit1.put((byte) (b ? 1 : 0));
 
-      argument2Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit2(final Boolean b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("wcp.BIT_2 already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder bit1(final Boolean b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("BIT_1 already set");
-      } else {
-        filled.set(11);
-      }
+    bit2.put((byte) (b ? 1 : 0));
 
-      bit1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit3(final Boolean b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("wcp.BIT_3 already set");
+    } else {
+      filled.set(13);
     }
 
-    public TraceBuilder bit2(final Boolean b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("BIT_2 already set");
-      } else {
-        filled.set(12);
-      }
+    bit3.put((byte) (b ? 1 : 0));
 
-      bit2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit4(final Boolean b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("wcp.BIT_4 already set");
+    } else {
+      filled.set(14);
     }
 
-    public TraceBuilder bit3(final Boolean b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("BIT_3 already set");
-      } else {
-        filled.set(13);
-      }
+    bit4.put((byte) (b ? 1 : 0));
 
-      bit3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bits(final Boolean b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("wcp.BITS already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder bit4(final Boolean b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("BIT_4 already set");
-      } else {
-        filled.set(14);
-      }
+    bits.put((byte) (b ? 1 : 0));
 
-      bit4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte1(final UnsignedByte b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("wcp.BYTE_1 already set");
+    } else {
+      filled.set(15);
     }
 
-    public TraceBuilder bits(final Boolean b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("BITS already set");
-      } else {
-        filled.set(10);
-      }
+    byte1.put(b.toByte());
 
-      bits.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte2(final UnsignedByte b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("wcp.BYTE_2 already set");
+    } else {
+      filled.set(16);
     }
 
-    public TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("BYTE_1 already set");
-      } else {
-        filled.set(15);
-      }
+    byte2.put(b.toByte());
 
-      byte1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte3(final UnsignedByte b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("wcp.BYTE_3 already set");
+    } else {
+      filled.set(17);
     }
 
-    public TraceBuilder byte2(final UnsignedByte b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("BYTE_2 already set");
-      } else {
-        filled.set(16);
-      }
+    byte3.put(b.toByte());
 
-      byte2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte4(final UnsignedByte b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("wcp.BYTE_4 already set");
+    } else {
+      filled.set(18);
     }
 
-    public TraceBuilder byte3(final UnsignedByte b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("BYTE_3 already set");
-      } else {
-        filled.set(17);
-      }
+    byte4.put(b.toByte());
 
-      byte3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte5(final UnsignedByte b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("wcp.BYTE_5 already set");
+    } else {
+      filled.set(19);
     }
 
-    public TraceBuilder byte4(final UnsignedByte b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("BYTE_4 already set");
-      } else {
-        filled.set(18);
-      }
+    byte5.put(b.toByte());
 
-      byte4.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte6(final UnsignedByte b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("wcp.BYTE_6 already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder byte5(final UnsignedByte b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("BYTE_5 already set");
-      } else {
-        filled.set(19);
-      }
+    byte6.put(b.toByte());
 
-      byte5.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace counter(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("wcp.COUNTER already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder byte6(final UnsignedByte b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("BYTE_6 already set");
-      } else {
-        filled.set(20);
-      }
+    counter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte6.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace inst(final BigInteger b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("wcp.INST already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder counter(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("COUNTER already set");
-      } else {
-        filled.set(21);
-      }
+    inst.put(UInt256.valueOf(b).toBytes().toArray());
 
-      counter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace neg1(final Boolean b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("wcp.NEG_1 already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder inst(final BigInteger b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("INST already set");
-      } else {
-        filled.set(22);
-      }
+    neg1.put((byte) (b ? 1 : 0));
 
-      inst.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace neg2(final Boolean b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("wcp.NEG_2 already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder neg1(final Boolean b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("NEG_1 already set");
-      } else {
-        filled.set(23);
-      }
+    neg2.put((byte) (b ? 1 : 0));
 
-      neg1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace oneLineInstruction(final Boolean b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("wcp.ONE_LINE_INSTRUCTION already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder neg2(final Boolean b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("NEG_2 already set");
-      } else {
-        filled.set(24);
-      }
+    oneLineInstruction.put((byte) (b ? 1 : 0));
 
-      neg2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resultHi(final BigInteger b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("wcp.RESULT_HI already set");
+    } else {
+      filled.set(26);
     }
 
-    public TraceBuilder oneLineInstruction(final Boolean b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("ONE_LINE_INSTRUCTION already set");
-      } else {
-        filled.set(25);
-      }
+    resultHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      oneLineInstruction.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resultLo(final BigInteger b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("wcp.RESULT_LO already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder resultHi(final BigInteger b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("RESULT_HI already set");
-      } else {
-        filled.set(26);
-      }
+    resultLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      resultHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace wordComparisonStamp(final BigInteger b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("wcp.WORD_COMPARISON_STAMP already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder resultLo(final BigInteger b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("RESULT_LO already set");
-      } else {
-        filled.set(27);
-      }
+    wordComparisonStamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      resultLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("wcp.ACC_1 has not been filled");
     }
 
-    public TraceBuilder wordComparisonStamp(final BigInteger b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("WORD_COMPARISON_STAMP already set");
-      } else {
-        filled.set(28);
-      }
-
-      wordComparisonStamp.add(b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("wcp.ACC_2 has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC_1 has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_2 has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ACC_3 has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ACC_4 has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ACC_5 has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("ACC_6 has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("ARGUMENT_1_HI has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("ARGUMENT_1_LO has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("ARGUMENT_2_HI has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("ARGUMENT_2_LO has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("BIT_1 has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("BIT_2 has not been filled");
-      }
-
-      if (!filled.get(13)) {
-        throw new IllegalStateException("BIT_3 has not been filled");
-      }
-
-      if (!filled.get(14)) {
-        throw new IllegalStateException("BIT_4 has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("BITS has not been filled");
-      }
-
-      if (!filled.get(15)) {
-        throw new IllegalStateException("BYTE_1 has not been filled");
-      }
-
-      if (!filled.get(16)) {
-        throw new IllegalStateException("BYTE_2 has not been filled");
-      }
-
-      if (!filled.get(17)) {
-        throw new IllegalStateException("BYTE_3 has not been filled");
-      }
-
-      if (!filled.get(18)) {
-        throw new IllegalStateException("BYTE_4 has not been filled");
-      }
-
-      if (!filled.get(19)) {
-        throw new IllegalStateException("BYTE_5 has not been filled");
-      }
-
-      if (!filled.get(20)) {
-        throw new IllegalStateException("BYTE_6 has not been filled");
-      }
-
-      if (!filled.get(21)) {
-        throw new IllegalStateException("COUNTER has not been filled");
-      }
-
-      if (!filled.get(22)) {
-        throw new IllegalStateException("INST has not been filled");
-      }
-
-      if (!filled.get(23)) {
-        throw new IllegalStateException("NEG_1 has not been filled");
-      }
-
-      if (!filled.get(24)) {
-        throw new IllegalStateException("NEG_2 has not been filled");
-      }
-
-      if (!filled.get(25)) {
-        throw new IllegalStateException("ONE_LINE_INSTRUCTION has not been filled");
-      }
-
-      if (!filled.get(26)) {
-        throw new IllegalStateException("RESULT_HI has not been filled");
-      }
-
-      if (!filled.get(27)) {
-        throw new IllegalStateException("RESULT_LO has not been filled");
-      }
-
-      if (!filled.get(28)) {
-        throw new IllegalStateException("WORD_COMPARISON_STAMP has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("wcp.ACC_3 has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        acc1.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        acc2.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        acc3.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        acc4.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        acc5.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        acc6.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        argument1Hi.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        argument1Lo.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        argument2Hi.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        argument2Lo.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(11)) {
-        bit1.add(false);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        bit2.add(false);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        bit3.add(false);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        bit4.add(false);
-        this.filled.set(14);
-      }
-      if (!filled.get(10)) {
-        bits.add(false);
-        this.filled.set(10);
-      }
-      if (!filled.get(15)) {
-        byte1.add(UnsignedByte.of(0));
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        byte2.add(UnsignedByte.of(0));
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        byte3.add(UnsignedByte.of(0));
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        byte4.add(UnsignedByte.of(0));
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        byte5.add(UnsignedByte.of(0));
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        byte6.add(UnsignedByte.of(0));
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        counter.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        inst.add(BigInteger.ZERO);
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        neg1.add(false);
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        neg2.add(false);
-        this.filled.set(24);
-      }
-      if (!filled.get(25)) {
-        oneLineInstruction.add(false);
-        this.filled.set(25);
-      }
-      if (!filled.get(26)) {
-        resultHi.add(BigInteger.ZERO);
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        resultLo.add(BigInteger.ZERO);
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        wordComparisonStamp.add(BigInteger.ZERO);
-        this.filled.set(28);
-      }
-
-      return this.validateRow();
+    if (!filled.get(3)) {
+      throw new IllegalStateException("wcp.ACC_4 has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          acc1,
-          acc2,
-          acc3,
-          acc4,
-          acc5,
-          acc6,
-          argument1Hi,
-          argument1Lo,
-          argument2Hi,
-          argument2Lo,
-          bit1,
-          bit2,
-          bit3,
-          bit4,
-          bits,
-          byte1,
-          byte2,
-          byte3,
-          byte4,
-          byte5,
-          byte6,
-          counter,
-          inst,
-          neg1,
-          neg2,
-          oneLineInstruction,
-          resultHi,
-          resultLo,
-          wordComparisonStamp);
+    if (!filled.get(4)) {
+      throw new IllegalStateException("wcp.ACC_5 has not been filled");
     }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("wcp.ACC_6 has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("wcp.ARGUMENT_1_HI has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("wcp.ARGUMENT_1_LO has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("wcp.ARGUMENT_2_HI has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("wcp.ARGUMENT_2_LO has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("wcp.BIT_1 has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("wcp.BIT_2 has not been filled");
+    }
+
+    if (!filled.get(13)) {
+      throw new IllegalStateException("wcp.BIT_3 has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("wcp.BIT_4 has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("wcp.BITS has not been filled");
+    }
+
+    if (!filled.get(15)) {
+      throw new IllegalStateException("wcp.BYTE_1 has not been filled");
+    }
+
+    if (!filled.get(16)) {
+      throw new IllegalStateException("wcp.BYTE_2 has not been filled");
+    }
+
+    if (!filled.get(17)) {
+      throw new IllegalStateException("wcp.BYTE_3 has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("wcp.BYTE_4 has not been filled");
+    }
+
+    if (!filled.get(19)) {
+      throw new IllegalStateException("wcp.BYTE_5 has not been filled");
+    }
+
+    if (!filled.get(20)) {
+      throw new IllegalStateException("wcp.BYTE_6 has not been filled");
+    }
+
+    if (!filled.get(21)) {
+      throw new IllegalStateException("wcp.COUNTER has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("wcp.INST has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("wcp.NEG_1 has not been filled");
+    }
+
+    if (!filled.get(24)) {
+      throw new IllegalStateException("wcp.NEG_2 has not been filled");
+    }
+
+    if (!filled.get(25)) {
+      throw new IllegalStateException("wcp.ONE_LINE_INSTRUCTION has not been filled");
+    }
+
+    if (!filled.get(26)) {
+      throw new IllegalStateException("wcp.RESULT_HI has not been filled");
+    }
+
+    if (!filled.get(27)) {
+      throw new IllegalStateException("wcp.RESULT_LO has not been filled");
+    }
+
+    if (!filled.get(28)) {
+      throw new IllegalStateException("wcp.WORD_COMPARISON_STAMP has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      acc1.position(acc1.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      acc2.position(acc2.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      acc3.position(acc3.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      acc4.position(acc4.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      acc5.position(acc5.position() + 32);
+    }
+
+    if (!filled.get(5)) {
+      acc6.position(acc6.position() + 32);
+    }
+
+    if (!filled.get(6)) {
+      argument1Hi.position(argument1Hi.position() + 32);
+    }
+
+    if (!filled.get(7)) {
+      argument1Lo.position(argument1Lo.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      argument2Hi.position(argument2Hi.position() + 32);
+    }
+
+    if (!filled.get(9)) {
+      argument2Lo.position(argument2Lo.position() + 32);
+    }
+
+    if (!filled.get(11)) {
+      bit1.position(bit1.position() + 1);
+    }
+
+    if (!filled.get(12)) {
+      bit2.position(bit2.position() + 1);
+    }
+
+    if (!filled.get(13)) {
+      bit3.position(bit3.position() + 1);
+    }
+
+    if (!filled.get(14)) {
+      bit4.position(bit4.position() + 1);
+    }
+
+    if (!filled.get(10)) {
+      bits.position(bits.position() + 1);
+    }
+
+    if (!filled.get(15)) {
+      byte1.position(byte1.position() + 1);
+    }
+
+    if (!filled.get(16)) {
+      byte2.position(byte2.position() + 1);
+    }
+
+    if (!filled.get(17)) {
+      byte3.position(byte3.position() + 1);
+    }
+
+    if (!filled.get(18)) {
+      byte4.position(byte4.position() + 1);
+    }
+
+    if (!filled.get(19)) {
+      byte5.position(byte5.position() + 1);
+    }
+
+    if (!filled.get(20)) {
+      byte6.position(byte6.position() + 1);
+    }
+
+    if (!filled.get(21)) {
+      counter.position(counter.position() + 32);
+    }
+
+    if (!filled.get(22)) {
+      inst.position(inst.position() + 32);
+    }
+
+    if (!filled.get(23)) {
+      neg1.position(neg1.position() + 1);
+    }
+
+    if (!filled.get(24)) {
+      neg2.position(neg2.position() + 1);
+    }
+
+    if (!filled.get(25)) {
+      oneLineInstruction.position(oneLineInstruction.position() + 1);
+    }
+
+    if (!filled.get(26)) {
+      resultHi.position(resultHi.position() + 32);
+    }
+
+    if (!filled.get(27)) {
+      resultLo.position(resultLo.position() + 32);
+    }
+
+    if (!filled.get(28)) {
+      wordComparisonStamp.position(wordComparisonStamp.position() + 32);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }

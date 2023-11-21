@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,219 +16,196 @@
 package net.consensys.linea.zktracer.module.tables.shf;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record Trace(
-    @JsonProperty("BYTE") List<BigInteger> byteField,
-    @JsonProperty("IS_IN_RT") List<BigInteger> isInRt,
-    @JsonProperty("LAS") List<BigInteger> las,
-    @JsonProperty("MSHP") List<BigInteger> mshp,
-    @JsonProperty("ONES") List<BigInteger> ones,
-    @JsonProperty("RAP") List<BigInteger> rap) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer _byte;
+  private final MappedByteBuffer isInRt;
+  private final MappedByteBuffer las;
+  private final MappedByteBuffer mshp;
+  private final MappedByteBuffer ones;
+  private final MappedByteBuffer rap;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("shfRT.BYTE", 32, length),
+        new ColumnHeader("shfRT.IS_IN_RT", 32, length),
+        new ColumnHeader("shfRT.LAS", 32, length),
+        new ColumnHeader("shfRT.MSHP", 32, length),
+        new ColumnHeader("shfRT.ONES", 32, length),
+        new ColumnHeader("shfRT.RAP", 32, length));
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
+  public Trace(List<MappedByteBuffer> buffers) {
+    this._byte = buffers.get(0);
+    this.isInRt = buffers.get(1);
+    this.las = buffers.get(2);
+    this.mshp = buffers.get(3);
+    this.ones = buffers.get(4);
+    this.rap = buffers.get(5);
+  }
 
-    private final List<BigInteger> byteField = new ArrayList<>();
-    private final List<BigInteger> isInRt = new ArrayList<>();
-    private final List<BigInteger> las = new ArrayList<>();
-    private final List<BigInteger> mshp = new ArrayList<>();
-    private final List<BigInteger> ones = new ArrayList<>();
-    private final List<BigInteger> rap = new ArrayList<>();
-
-    private TraceBuilder() {}
-
-    TraceBuilder byteField(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("BYTE already set");
-      } else {
-        filled.set(0);
-      }
-
-      byteField.add(b);
-
-      return this;
+  public int size() {
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
     }
 
-    TraceBuilder isInRt(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("IS_IN_RT already set");
-      } else {
-        filled.set(5);
-      }
+    return this.currentLine;
+  }
 
-      isInRt.add(b);
-
-      return this;
+  public Trace _byte(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("shfRT.BYTE already set");
+    } else {
+      filled.set(0);
     }
 
-    TraceBuilder las(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("LAS already set");
-      } else {
-        filled.set(1);
-      }
+    _byte.put(UInt256.valueOf(b).toBytes().toArray());
 
-      las.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isInRt(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("shfRT.IS_IN_RT already set");
+    } else {
+      filled.set(1);
     }
 
-    TraceBuilder mshp(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("MSHP already set");
-      } else {
-        filled.set(4);
-      }
+    isInRt.put(UInt256.valueOf(b).toBytes().toArray());
 
-      mshp.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace las(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("shfRT.LAS already set");
+    } else {
+      filled.set(2);
     }
 
-    TraceBuilder ones(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ONES already set");
-      } else {
-        filled.set(3);
-      }
+    las.put(UInt256.valueOf(b).toBytes().toArray());
 
-      ones.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace mshp(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("shfRT.MSHP already set");
+    } else {
+      filled.set(3);
     }
 
-    TraceBuilder rap(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("RAP already set");
-      } else {
-        filled.set(2);
-      }
+    mshp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      rap.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ones(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("shfRT.ONES already set");
+    } else {
+      filled.set(4);
     }
 
-    TraceBuilder setByteAt(final BigInteger b, int i) {
-      byteField.set(i, b);
+    ones.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this;
+    return this;
+  }
+
+  public Trace rap(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("shfRT.RAP already set");
+    } else {
+      filled.set(5);
     }
 
-    TraceBuilder setIsInRtAt(final BigInteger b, int i) {
-      isInRt.set(i, b);
+    rap.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this;
+    return this;
+  }
+
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("shfRT.BYTE has not been filled");
     }
 
-    TraceBuilder setLasAt(final BigInteger b, int i) {
-      las.set(i, b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("shfRT.IS_IN_RT has not been filled");
     }
 
-    TraceBuilder setMshpAt(final BigInteger b, int i) {
-      mshp.set(i, b);
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("shfRT.LAS has not been filled");
     }
 
-    TraceBuilder setOnesAt(final BigInteger b, int i) {
-      ones.set(i, b);
-
-      return this;
+    if (!filled.get(3)) {
+      throw new IllegalStateException("shfRT.MSHP has not been filled");
     }
 
-    TraceBuilder setRapAt(final BigInteger b, int i) {
-      rap.set(i, b);
-
-      return this;
+    if (!filled.get(4)) {
+      throw new IllegalStateException("shfRT.ONES has not been filled");
     }
 
-    TraceBuilder setByteRelative(final BigInteger b, int i) {
-      byteField.set(byteField.size() - 1 - i, b);
-
-      return this;
+    if (!filled.get(5)) {
+      throw new IllegalStateException("shfRT.RAP has not been filled");
     }
 
-    TraceBuilder setIsInRtRelative(final BigInteger b, int i) {
-      isInRt.set(isInRt.size() - 1 - i, b);
+    filled.clear();
+    this.currentLine++;
 
-      return this;
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      _byte.position(_byte.position() + 32);
     }
 
-    TraceBuilder setLasRelative(final BigInteger b, int i) {
-      las.set(las.size() - 1 - i, b);
-
-      return this;
+    if (!filled.get(1)) {
+      isInRt.position(isInRt.position() + 32);
     }
 
-    TraceBuilder setMshpRelative(final BigInteger b, int i) {
-      mshp.set(mshp.size() - 1 - i, b);
-
-      return this;
+    if (!filled.get(2)) {
+      las.position(las.position() + 32);
     }
 
-    TraceBuilder setOnesRelative(final BigInteger b, int i) {
-      ones.set(ones.size() - 1 - i, b);
-
-      return this;
+    if (!filled.get(3)) {
+      mshp.position(mshp.position() + 32);
     }
 
-    TraceBuilder setRapRelative(final BigInteger b, int i) {
-      rap.set(rap.size() - 1 - i, b);
-
-      return this;
+    if (!filled.get(4)) {
+      ones.position(ones.position() + 32);
     }
 
-    TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("BYTE has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("IS_IN_RT has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("LAS has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("MSHP has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ONES has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("RAP has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(5)) {
+      rap.position(rap.position() + 32);
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
+    filled.clear();
+    this.currentLine++;
 
-      return new Trace(byteField, isInRt, las, mshp, ones, rap);
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
+    return null;
   }
 }

@@ -16,11 +16,13 @@
 package net.consensys.linea.zktracer.module.add;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -91,8 +93,7 @@ public class Add implements Module {
    * @param arg1 first operand
    * @param arg2 second operand
    */
-  private void traceAddOperation(
-      OpCode opCode, Bytes32 arg1, Bytes32 arg2, Trace.TraceBuilder trace) {
+  private void traceAddOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Trace trace) {
     this.stamp++;
 
     final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
@@ -155,13 +156,16 @@ public class Add implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = new Trace.TraceBuilder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
     for (AddOperation op : this.chunks) {
       this.traceAddOperation(op.opCodem(), op.arg1(), op.arg2(), trace);
     }
-
-    return new AddTrace(trace.build());
   }
 
   @Override

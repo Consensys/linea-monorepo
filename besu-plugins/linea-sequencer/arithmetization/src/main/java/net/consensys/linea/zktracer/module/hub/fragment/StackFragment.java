@@ -112,36 +112,36 @@ public final class StackFragment implements TraceFragment {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
-    final List<Function<BigInteger, Trace.TraceBuilder>> valHiTracers =
+  public Trace trace(Trace trace) {
+    final List<Function<BigInteger, Trace>> valHiTracers =
         List.of(
             trace::pStackStackItemValueHi1,
             trace::pStackStackItemValueHi2,
             trace::pStackStackItemValueHi3,
             trace::pStackStackItemValueHi4);
 
-    final List<Function<BigInteger, Trace.TraceBuilder>> valLoTracers =
+    final List<Function<BigInteger, Trace>> valLoTracers =
         List.of(
             trace::pStackStackItemValueLo1,
             trace::pStackStackItemValueLo2,
             trace::pStackStackItemValueLo3,
             trace::pStackStackItemValueLo4);
 
-    final List<Function<Boolean, Trace.TraceBuilder>> popTracers =
+    final List<Function<Boolean, Trace>> popTracers =
         List.of(
             trace::pStackStackItemPop1,
             trace::pStackStackItemPop2,
             trace::pStackStackItemPop3,
             trace::pStackStackItemPop4);
 
-    final List<Function<BigInteger, Trace.TraceBuilder>> heightTracers =
+    final List<Function<BigInteger, Trace>> heightTracers =
         List.of(
             trace::pStackStackItemHeight1,
             trace::pStackStackItemHeight2,
             trace::pStackStackItemHeight3,
             trace::pStackStackItemHeight4);
 
-    final List<Function<BigInteger, Trace.TraceBuilder>> stampTracers =
+    final List<Function<BigInteger, Trace>> stampTracers =
         List.of(
             trace::pStackStackItemStamp1,
             trace::pStackStackItemStamp2,

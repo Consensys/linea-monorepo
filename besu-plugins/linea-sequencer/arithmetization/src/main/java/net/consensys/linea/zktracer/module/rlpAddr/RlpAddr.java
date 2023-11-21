@@ -27,10 +27,12 @@ import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -109,8 +111,7 @@ public class RlpAddr implements Module {
     }
   }
 
-  private void traceCreate2(int stamp, RlpAddrChunk chunk, Trace.TraceBuilder trace) {
-
+  private void traceCreate2(int stamp, RlpAddrChunk chunk, Trace trace) {
     for (int ct = 0; ct < 6; ct++) {
       trace
           .stamp(BigInteger.valueOf(stamp))
@@ -169,7 +170,7 @@ public class RlpAddr implements Module {
     }
   }
 
-  private void traceCreate(int stamp, RlpAddrChunk chunk, Trace.TraceBuilder trace) {
+  private void traceCreate(int stamp, RlpAddrChunk chunk, Trace trace) {
     final int RECIPE1_CT_MAX = 8;
     final BigInteger nonce = chunk.nonce().orElseThrow();
 
@@ -282,7 +283,7 @@ public class RlpAddr implements Module {
     }
   }
 
-  private void traceChunks(RlpAddrChunk chunk, int stamp, Trace.TraceBuilder trace) {
+  private void traceChunks(RlpAddrChunk chunk, int stamp, Trace trace) {
     if (chunk.opCode().equals(OpCode.CREATE)) {
       traceCreate(stamp, chunk, trace);
     } else {
@@ -308,12 +309,16 @@ public class RlpAddr implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     for (int i = 0; i < this.chunkList.size(); i++) {
       traceChunks(chunkList.get(i), i + 1, trace);
     }
-    return new RlpAddrTrace(trace.build());
   }
 }

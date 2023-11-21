@@ -64,7 +64,7 @@ public final class AccountFragment implements TraceFragment {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     final EWord eWho = EWord.of(who);
     final EWord eCodeHash = EWord.of(oldState.code().getCodeHash());
     final EWord eCodeHashNew = EWord.of(newState.code().getCodeHash());

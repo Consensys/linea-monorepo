@@ -15,11 +15,13 @@
 
 package net.consensys.linea.zktracer.module.preclimits;
 
+import java.nio.MappedByteBuffer;
+import java.util.List;
 import java.util.Stack;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -96,7 +98,12 @@ public final class Rip160 implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
+  public List<ColumnHeader> columnsHeaders() {
+    throw new IllegalStateException("should never be called");
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
     throw new IllegalStateException("should never be called");
   }
 }

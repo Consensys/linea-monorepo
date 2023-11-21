@@ -18,5 +18,5 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 import net.consensys.linea.zktracer.module.hub.Trace;
 
 public interface TraceSubFragment {
-  Trace.TraceBuilder trace(Trace.TraceBuilder trace);
+  Trace trace(Trace trace);
 }

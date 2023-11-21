@@ -20,11 +20,12 @@ import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSiz
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -75,7 +76,7 @@ public class Trm implements Module {
         && (trmAddrParamAsBigInt.compareTo(BigInteger.TEN) < 0));
   }
 
-  private void traceTrimming(EWord data, Trace.TraceBuilder trace) {
+  private void traceTrimming(EWord data, Trace trace) {
     this.stamp++;
     Bytes trmHi = padToGivenSizeWithLeftZero(data.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
     Boolean isPrec = isPrecompile(Address.extract(data));
@@ -102,13 +103,17 @@ public class Trm implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     for (EWord data : this.trimmings) {
       traceTrimming(data, trace);
     }
-    return new TrmTrace(trace.build());
   }
 
   @Override

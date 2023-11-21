@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,1669 +16,1485 @@
 package net.consensys.linea.zktracer.module.mod;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC_1_2") List<BigInteger> acc12,
-    @JsonProperty("ACC_1_3") List<BigInteger> acc13,
-    @JsonProperty("ACC_2_2") List<BigInteger> acc22,
-    @JsonProperty("ACC_2_3") List<BigInteger> acc23,
-    @JsonProperty("ACC_B_0") List<BigInteger> accB0,
-    @JsonProperty("ACC_B_1") List<BigInteger> accB1,
-    @JsonProperty("ACC_B_2") List<BigInteger> accB2,
-    @JsonProperty("ACC_B_3") List<BigInteger> accB3,
-    @JsonProperty("ACC_DELTA_0") List<BigInteger> accDelta0,
-    @JsonProperty("ACC_DELTA_1") List<BigInteger> accDelta1,
-    @JsonProperty("ACC_DELTA_2") List<BigInteger> accDelta2,
-    @JsonProperty("ACC_DELTA_3") List<BigInteger> accDelta3,
-    @JsonProperty("ACC_H_0") List<BigInteger> accH0,
-    @JsonProperty("ACC_H_1") List<BigInteger> accH1,
-    @JsonProperty("ACC_H_2") List<BigInteger> accH2,
-    @JsonProperty("ACC_Q_0") List<BigInteger> accQ0,
-    @JsonProperty("ACC_Q_1") List<BigInteger> accQ1,
-    @JsonProperty("ACC_Q_2") List<BigInteger> accQ2,
-    @JsonProperty("ACC_Q_3") List<BigInteger> accQ3,
-    @JsonProperty("ACC_R_0") List<BigInteger> accR0,
-    @JsonProperty("ACC_R_1") List<BigInteger> accR1,
-    @JsonProperty("ACC_R_2") List<BigInteger> accR2,
-    @JsonProperty("ACC_R_3") List<BigInteger> accR3,
-    @JsonProperty("ARG_1_HI") List<BigInteger> arg1Hi,
-    @JsonProperty("ARG_1_LO") List<BigInteger> arg1Lo,
-    @JsonProperty("ARG_2_HI") List<BigInteger> arg2Hi,
-    @JsonProperty("ARG_2_LO") List<BigInteger> arg2Lo,
-    @JsonProperty("BYTE_1_2") List<UnsignedByte> byte12,
-    @JsonProperty("BYTE_1_3") List<UnsignedByte> byte13,
-    @JsonProperty("BYTE_2_2") List<UnsignedByte> byte22,
-    @JsonProperty("BYTE_2_3") List<UnsignedByte> byte23,
-    @JsonProperty("BYTE_B_0") List<UnsignedByte> byteB0,
-    @JsonProperty("BYTE_B_1") List<UnsignedByte> byteB1,
-    @JsonProperty("BYTE_B_2") List<UnsignedByte> byteB2,
-    @JsonProperty("BYTE_B_3") List<UnsignedByte> byteB3,
-    @JsonProperty("BYTE_DELTA_0") List<UnsignedByte> byteDelta0,
-    @JsonProperty("BYTE_DELTA_1") List<UnsignedByte> byteDelta1,
-    @JsonProperty("BYTE_DELTA_2") List<UnsignedByte> byteDelta2,
-    @JsonProperty("BYTE_DELTA_3") List<UnsignedByte> byteDelta3,
-    @JsonProperty("BYTE_H_0") List<UnsignedByte> byteH0,
-    @JsonProperty("BYTE_H_1") List<UnsignedByte> byteH1,
-    @JsonProperty("BYTE_H_2") List<UnsignedByte> byteH2,
-    @JsonProperty("BYTE_Q_0") List<UnsignedByte> byteQ0,
-    @JsonProperty("BYTE_Q_1") List<UnsignedByte> byteQ1,
-    @JsonProperty("BYTE_Q_2") List<UnsignedByte> byteQ2,
-    @JsonProperty("BYTE_Q_3") List<UnsignedByte> byteQ3,
-    @JsonProperty("BYTE_R_0") List<UnsignedByte> byteR0,
-    @JsonProperty("BYTE_R_1") List<UnsignedByte> byteR1,
-    @JsonProperty("BYTE_R_2") List<UnsignedByte> byteR2,
-    @JsonProperty("BYTE_R_3") List<UnsignedByte> byteR3,
-    @JsonProperty("CMP_1") List<Boolean> cmp1,
-    @JsonProperty("CMP_2") List<Boolean> cmp2,
-    @JsonProperty("CT") List<BigInteger> ct,
-    @JsonProperty("DEC_OUTPUT") List<Boolean> decOutput,
-    @JsonProperty("DEC_SIGNED") List<Boolean> decSigned,
-    @JsonProperty("INST") List<BigInteger> inst,
-    @JsonProperty("MSB_1") List<Boolean> msb1,
-    @JsonProperty("MSB_2") List<Boolean> msb2,
-    @JsonProperty("OLI") List<Boolean> oli,
-    @JsonProperty("RES_HI") List<BigInteger> resHi,
-    @JsonProperty("RES_LO") List<BigInteger> resLo,
-    @JsonProperty("STAMP") List<BigInteger> stamp) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer acc12;
+  private final MappedByteBuffer acc13;
+  private final MappedByteBuffer acc22;
+  private final MappedByteBuffer acc23;
+  private final MappedByteBuffer accB0;
+  private final MappedByteBuffer accB1;
+  private final MappedByteBuffer accB2;
+  private final MappedByteBuffer accB3;
+  private final MappedByteBuffer accDelta0;
+  private final MappedByteBuffer accDelta1;
+  private final MappedByteBuffer accDelta2;
+  private final MappedByteBuffer accDelta3;
+  private final MappedByteBuffer accH0;
+  private final MappedByteBuffer accH1;
+  private final MappedByteBuffer accH2;
+  private final MappedByteBuffer accQ0;
+  private final MappedByteBuffer accQ1;
+  private final MappedByteBuffer accQ2;
+  private final MappedByteBuffer accQ3;
+  private final MappedByteBuffer accR0;
+  private final MappedByteBuffer accR1;
+  private final MappedByteBuffer accR2;
+  private final MappedByteBuffer accR3;
+  private final MappedByteBuffer arg1Hi;
+  private final MappedByteBuffer arg1Lo;
+  private final MappedByteBuffer arg2Hi;
+  private final MappedByteBuffer arg2Lo;
+  private final MappedByteBuffer byte12;
+  private final MappedByteBuffer byte13;
+  private final MappedByteBuffer byte22;
+  private final MappedByteBuffer byte23;
+  private final MappedByteBuffer byteB0;
+  private final MappedByteBuffer byteB1;
+  private final MappedByteBuffer byteB2;
+  private final MappedByteBuffer byteB3;
+  private final MappedByteBuffer byteDelta0;
+  private final MappedByteBuffer byteDelta1;
+  private final MappedByteBuffer byteDelta2;
+  private final MappedByteBuffer byteDelta3;
+  private final MappedByteBuffer byteH0;
+  private final MappedByteBuffer byteH1;
+  private final MappedByteBuffer byteH2;
+  private final MappedByteBuffer byteQ0;
+  private final MappedByteBuffer byteQ1;
+  private final MappedByteBuffer byteQ2;
+  private final MappedByteBuffer byteQ3;
+  private final MappedByteBuffer byteR0;
+  private final MappedByteBuffer byteR1;
+  private final MappedByteBuffer byteR2;
+  private final MappedByteBuffer byteR3;
+  private final MappedByteBuffer cmp1;
+  private final MappedByteBuffer cmp2;
+  private final MappedByteBuffer ct;
+  private final MappedByteBuffer decOutput;
+  private final MappedByteBuffer decSigned;
+  private final MappedByteBuffer inst;
+  private final MappedByteBuffer msb1;
+  private final MappedByteBuffer msb2;
+  private final MappedByteBuffer oli;
+  private final MappedByteBuffer resHi;
+  private final MappedByteBuffer resLo;
+  private final MappedByteBuffer stamp;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("mod.ACC_1_2", 32, length),
+        new ColumnHeader("mod.ACC_1_3", 32, length),
+        new ColumnHeader("mod.ACC_2_2", 32, length),
+        new ColumnHeader("mod.ACC_2_3", 32, length),
+        new ColumnHeader("mod.ACC_B_0", 32, length),
+        new ColumnHeader("mod.ACC_B_1", 32, length),
+        new ColumnHeader("mod.ACC_B_2", 32, length),
+        new ColumnHeader("mod.ACC_B_3", 32, length),
+        new ColumnHeader("mod.ACC_DELTA_0", 32, length),
+        new ColumnHeader("mod.ACC_DELTA_1", 32, length),
+        new ColumnHeader("mod.ACC_DELTA_2", 32, length),
+        new ColumnHeader("mod.ACC_DELTA_3", 32, length),
+        new ColumnHeader("mod.ACC_H_0", 32, length),
+        new ColumnHeader("mod.ACC_H_1", 32, length),
+        new ColumnHeader("mod.ACC_H_2", 32, length),
+        new ColumnHeader("mod.ACC_Q_0", 32, length),
+        new ColumnHeader("mod.ACC_Q_1", 32, length),
+        new ColumnHeader("mod.ACC_Q_2", 32, length),
+        new ColumnHeader("mod.ACC_Q_3", 32, length),
+        new ColumnHeader("mod.ACC_R_0", 32, length),
+        new ColumnHeader("mod.ACC_R_1", 32, length),
+        new ColumnHeader("mod.ACC_R_2", 32, length),
+        new ColumnHeader("mod.ACC_R_3", 32, length),
+        new ColumnHeader("mod.ARG_1_HI", 32, length),
+        new ColumnHeader("mod.ARG_1_LO", 32, length),
+        new ColumnHeader("mod.ARG_2_HI", 32, length),
+        new ColumnHeader("mod.ARG_2_LO", 32, length),
+        new ColumnHeader("mod.BYTE_1_2", 1, length),
+        new ColumnHeader("mod.BYTE_1_3", 1, length),
+        new ColumnHeader("mod.BYTE_2_2", 1, length),
+        new ColumnHeader("mod.BYTE_2_3", 1, length),
+        new ColumnHeader("mod.BYTE_B_0", 1, length),
+        new ColumnHeader("mod.BYTE_B_1", 1, length),
+        new ColumnHeader("mod.BYTE_B_2", 1, length),
+        new ColumnHeader("mod.BYTE_B_3", 1, length),
+        new ColumnHeader("mod.BYTE_DELTA_0", 1, length),
+        new ColumnHeader("mod.BYTE_DELTA_1", 1, length),
+        new ColumnHeader("mod.BYTE_DELTA_2", 1, length),
+        new ColumnHeader("mod.BYTE_DELTA_3", 1, length),
+        new ColumnHeader("mod.BYTE_H_0", 1, length),
+        new ColumnHeader("mod.BYTE_H_1", 1, length),
+        new ColumnHeader("mod.BYTE_H_2", 1, length),
+        new ColumnHeader("mod.BYTE_Q_0", 1, length),
+        new ColumnHeader("mod.BYTE_Q_1", 1, length),
+        new ColumnHeader("mod.BYTE_Q_2", 1, length),
+        new ColumnHeader("mod.BYTE_Q_3", 1, length),
+        new ColumnHeader("mod.BYTE_R_0", 1, length),
+        new ColumnHeader("mod.BYTE_R_1", 1, length),
+        new ColumnHeader("mod.BYTE_R_2", 1, length),
+        new ColumnHeader("mod.BYTE_R_3", 1, length),
+        new ColumnHeader("mod.CMP_1", 1, length),
+        new ColumnHeader("mod.CMP_2", 1, length),
+        new ColumnHeader("mod.CT", 32, length),
+        new ColumnHeader("mod.DEC_OUTPUT", 1, length),
+        new ColumnHeader("mod.DEC_SIGNED", 1, length),
+        new ColumnHeader("mod.INST", 32, length),
+        new ColumnHeader("mod.MSB_1", 1, length),
+        new ColumnHeader("mod.MSB_2", 1, length),
+        new ColumnHeader("mod.OLI", 1, length),
+        new ColumnHeader("mod.RES_HI", 32, length),
+        new ColumnHeader("mod.RES_LO", 32, length),
+        new ColumnHeader("mod.STAMP", 32, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.acc12 = buffers.get(0);
+    this.acc13 = buffers.get(1);
+    this.acc22 = buffers.get(2);
+    this.acc23 = buffers.get(3);
+    this.accB0 = buffers.get(4);
+    this.accB1 = buffers.get(5);
+    this.accB2 = buffers.get(6);
+    this.accB3 = buffers.get(7);
+    this.accDelta0 = buffers.get(8);
+    this.accDelta1 = buffers.get(9);
+    this.accDelta2 = buffers.get(10);
+    this.accDelta3 = buffers.get(11);
+    this.accH0 = buffers.get(12);
+    this.accH1 = buffers.get(13);
+    this.accH2 = buffers.get(14);
+    this.accQ0 = buffers.get(15);
+    this.accQ1 = buffers.get(16);
+    this.accQ2 = buffers.get(17);
+    this.accQ3 = buffers.get(18);
+    this.accR0 = buffers.get(19);
+    this.accR1 = buffers.get(20);
+    this.accR2 = buffers.get(21);
+    this.accR3 = buffers.get(22);
+    this.arg1Hi = buffers.get(23);
+    this.arg1Lo = buffers.get(24);
+    this.arg2Hi = buffers.get(25);
+    this.arg2Lo = buffers.get(26);
+    this.byte12 = buffers.get(27);
+    this.byte13 = buffers.get(28);
+    this.byte22 = buffers.get(29);
+    this.byte23 = buffers.get(30);
+    this.byteB0 = buffers.get(31);
+    this.byteB1 = buffers.get(32);
+    this.byteB2 = buffers.get(33);
+    this.byteB3 = buffers.get(34);
+    this.byteDelta0 = buffers.get(35);
+    this.byteDelta1 = buffers.get(36);
+    this.byteDelta2 = buffers.get(37);
+    this.byteDelta3 = buffers.get(38);
+    this.byteH0 = buffers.get(39);
+    this.byteH1 = buffers.get(40);
+    this.byteH2 = buffers.get(41);
+    this.byteQ0 = buffers.get(42);
+    this.byteQ1 = buffers.get(43);
+    this.byteQ2 = buffers.get(44);
+    this.byteQ3 = buffers.get(45);
+    this.byteR0 = buffers.get(46);
+    this.byteR1 = buffers.get(47);
+    this.byteR2 = buffers.get(48);
+    this.byteR3 = buffers.get(49);
+    this.cmp1 = buffers.get(50);
+    this.cmp2 = buffers.get(51);
+    this.ct = buffers.get(52);
+    this.decOutput = buffers.get(53);
+    this.decSigned = buffers.get(54);
+    this.inst = buffers.get(55);
+    this.msb1 = buffers.get(56);
+    this.msb2 = buffers.get(57);
+    this.oli = buffers.get(58);
+    this.resHi = buffers.get(59);
+    this.resLo = buffers.get(60);
+    this.stamp = buffers.get(61);
   }
 
   public int size() {
-    return this.acc12.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
+  public Trace acc12(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("mod.ACC_1_2 already set");
+    } else {
+      filled.set(0);
+    }
+
+    acc12.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc13(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("mod.ACC_1_3 already set");
+    } else {
+      filled.set(1);
+    }
+
+    acc13.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc22(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("mod.ACC_2_2 already set");
+    } else {
+      filled.set(2);
+    }
+
+    acc22.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace acc23(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("mod.ACC_2_3 already set");
+    } else {
+      filled.set(3);
+    }
+
+    acc23.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace accB0(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("mod.ACC_B_0 already set");
+    } else {
+      filled.set(4);
+    }
 
-    @JsonProperty("ACC_1_2")
-    private final List<BigInteger> acc12;
+    accB0.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_1_3")
-    private final List<BigInteger> acc13;
+    return this;
+  }
 
-    @JsonProperty("ACC_2_2")
-    private final List<BigInteger> acc22;
+  public Trace accB1(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("mod.ACC_B_1 already set");
+    } else {
+      filled.set(5);
+    }
+
+    accB1.put(UInt256.valueOf(b).toBytes().toArray());
+
+    return this;
+  }
+
+  public Trace accB2(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("mod.ACC_B_2 already set");
+    } else {
+      filled.set(6);
+    }
+
+    accB2.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_2_3")
-    private final List<BigInteger> acc23;
+    return this;
+  }
 
-    @JsonProperty("ACC_B_0")
-    private final List<BigInteger> accB0;
+  public Trace accB3(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("mod.ACC_B_3 already set");
+    } else {
+      filled.set(7);
+    }
 
-    @JsonProperty("ACC_B_1")
-    private final List<BigInteger> accB1;
+    accB3.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_B_2")
-    private final List<BigInteger> accB2;
+    return this;
+  }
+
+  public Trace accDelta0(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("mod.ACC_DELTA_0 already set");
+    } else {
+      filled.set(8);
+    }
 
-    @JsonProperty("ACC_B_3")
-    private final List<BigInteger> accB3;
+    accDelta0.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_DELTA_0")
-    private final List<BigInteger> accDelta0;
+    return this;
+  }
 
-    @JsonProperty("ACC_DELTA_1")
-    private final List<BigInteger> accDelta1;
+  public Trace accDelta1(final BigInteger b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("mod.ACC_DELTA_1 already set");
+    } else {
+      filled.set(9);
+    }
 
-    @JsonProperty("ACC_DELTA_2")
-    private final List<BigInteger> accDelta2;
+    accDelta1.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_DELTA_3")
-    private final List<BigInteger> accDelta3;
+    return this;
+  }
 
-    @JsonProperty("ACC_H_0")
-    private final List<BigInteger> accH0;
+  public Trace accDelta2(final BigInteger b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("mod.ACC_DELTA_2 already set");
+    } else {
+      filled.set(10);
+    }
 
-    @JsonProperty("ACC_H_1")
-    private final List<BigInteger> accH1;
+    accDelta2.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_H_2")
-    private final List<BigInteger> accH2;
+    return this;
+  }
 
-    @JsonProperty("ACC_Q_0")
-    private final List<BigInteger> accQ0;
+  public Trace accDelta3(final BigInteger b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("mod.ACC_DELTA_3 already set");
+    } else {
+      filled.set(11);
+    }
 
-    @JsonProperty("ACC_Q_1")
-    private final List<BigInteger> accQ1;
+    accDelta3.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_Q_2")
-    private final List<BigInteger> accQ2;
+    return this;
+  }
 
-    @JsonProperty("ACC_Q_3")
-    private final List<BigInteger> accQ3;
+  public Trace accH0(final BigInteger b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("mod.ACC_H_0 already set");
+    } else {
+      filled.set(12);
+    }
 
-    @JsonProperty("ACC_R_0")
-    private final List<BigInteger> accR0;
+    accH0.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ACC_R_1")
-    private final List<BigInteger> accR1;
+    return this;
+  }
 
-    @JsonProperty("ACC_R_2")
-    private final List<BigInteger> accR2;
+  public Trace accH1(final BigInteger b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("mod.ACC_H_1 already set");
+    } else {
+      filled.set(13);
+    }
 
-    @JsonProperty("ACC_R_3")
-    private final List<BigInteger> accR3;
+    accH1.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ARG_1_HI")
-    private final List<BigInteger> arg1Hi;
+    return this;
+  }
 
-    @JsonProperty("ARG_1_LO")
-    private final List<BigInteger> arg1Lo;
+  public Trace accH2(final BigInteger b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("mod.ACC_H_2 already set");
+    } else {
+      filled.set(14);
+    }
 
-    @JsonProperty("ARG_2_HI")
-    private final List<BigInteger> arg2Hi;
+    accH2.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("ARG_2_LO")
-    private final List<BigInteger> arg2Lo;
+    return this;
+  }
 
-    @JsonProperty("BYTE_1_2")
-    private final List<UnsignedByte> byte12;
+  public Trace accQ0(final BigInteger b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("mod.ACC_Q_0 already set");
+    } else {
+      filled.set(15);
+    }
 
-    @JsonProperty("BYTE_1_3")
-    private final List<UnsignedByte> byte13;
+    accQ0.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BYTE_2_2")
-    private final List<UnsignedByte> byte22;
+    return this;
+  }
 
-    @JsonProperty("BYTE_2_3")
-    private final List<UnsignedByte> byte23;
+  public Trace accQ1(final BigInteger b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("mod.ACC_Q_1 already set");
+    } else {
+      filled.set(16);
+    }
 
-    @JsonProperty("BYTE_B_0")
-    private final List<UnsignedByte> byteB0;
+    accQ1.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BYTE_B_1")
-    private final List<UnsignedByte> byteB1;
+    return this;
+  }
 
-    @JsonProperty("BYTE_B_2")
-    private final List<UnsignedByte> byteB2;
+  public Trace accQ2(final BigInteger b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("mod.ACC_Q_2 already set");
+    } else {
+      filled.set(17);
+    }
 
-    @JsonProperty("BYTE_B_3")
-    private final List<UnsignedByte> byteB3;
+    accQ2.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BYTE_DELTA_0")
-    private final List<UnsignedByte> byteDelta0;
+    return this;
+  }
 
-    @JsonProperty("BYTE_DELTA_1")
-    private final List<UnsignedByte> byteDelta1;
+  public Trace accQ3(final BigInteger b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("mod.ACC_Q_3 already set");
+    } else {
+      filled.set(18);
+    }
 
-    @JsonProperty("BYTE_DELTA_2")
-    private final List<UnsignedByte> byteDelta2;
+    accQ3.put(UInt256.valueOf(b).toBytes().toArray());
 
-    @JsonProperty("BYTE_DELTA_3")
-    private final List<UnsignedByte> byteDelta3;
+    return this;
+  }
 
-    @JsonProperty("BYTE_H_0")
-    private final List<UnsignedByte> byteH0;
-
-    @JsonProperty("BYTE_H_1")
-    private final List<UnsignedByte> byteH1;
-
-    @JsonProperty("BYTE_H_2")
-    private final List<UnsignedByte> byteH2;
-
-    @JsonProperty("BYTE_Q_0")
-    private final List<UnsignedByte> byteQ0;
-
-    @JsonProperty("BYTE_Q_1")
-    private final List<UnsignedByte> byteQ1;
-
-    @JsonProperty("BYTE_Q_2")
-    private final List<UnsignedByte> byteQ2;
-
-    @JsonProperty("BYTE_Q_3")
-    private final List<UnsignedByte> byteQ3;
-
-    @JsonProperty("BYTE_R_0")
-    private final List<UnsignedByte> byteR0;
-
-    @JsonProperty("BYTE_R_1")
-    private final List<UnsignedByte> byteR1;
-
-    @JsonProperty("BYTE_R_2")
-    private final List<UnsignedByte> byteR2;
-
-    @JsonProperty("BYTE_R_3")
-    private final List<UnsignedByte> byteR3;
-
-    @JsonProperty("CMP_1")
-    private final List<Boolean> cmp1;
-
-    @JsonProperty("CMP_2")
-    private final List<Boolean> cmp2;
-
-    @JsonProperty("CT")
-    private final List<BigInteger> ct;
-
-    @JsonProperty("DEC_OUTPUT")
-    private final List<Boolean> decOutput;
-
-    @JsonProperty("DEC_SIGNED")
-    private final List<Boolean> decSigned;
-
-    @JsonProperty("INST")
-    private final List<BigInteger> inst;
-
-    @JsonProperty("MSB_1")
-    private final List<Boolean> msb1;
-
-    @JsonProperty("MSB_2")
-    private final List<Boolean> msb2;
-
-    @JsonProperty("OLI")
-    private final List<Boolean> oli;
-
-    @JsonProperty("RES_HI")
-    private final List<BigInteger> resHi;
-
-    @JsonProperty("RES_LO")
-    private final List<BigInteger> resLo;
-
-    @JsonProperty("STAMP")
-    private final List<BigInteger> stamp;
-
-    private TraceBuilder(int length) {
-      this.acc12 = new ArrayList<>(length);
-      this.acc13 = new ArrayList<>(length);
-      this.acc22 = new ArrayList<>(length);
-      this.acc23 = new ArrayList<>(length);
-      this.accB0 = new ArrayList<>(length);
-      this.accB1 = new ArrayList<>(length);
-      this.accB2 = new ArrayList<>(length);
-      this.accB3 = new ArrayList<>(length);
-      this.accDelta0 = new ArrayList<>(length);
-      this.accDelta1 = new ArrayList<>(length);
-      this.accDelta2 = new ArrayList<>(length);
-      this.accDelta3 = new ArrayList<>(length);
-      this.accH0 = new ArrayList<>(length);
-      this.accH1 = new ArrayList<>(length);
-      this.accH2 = new ArrayList<>(length);
-      this.accQ0 = new ArrayList<>(length);
-      this.accQ1 = new ArrayList<>(length);
-      this.accQ2 = new ArrayList<>(length);
-      this.accQ3 = new ArrayList<>(length);
-      this.accR0 = new ArrayList<>(length);
-      this.accR1 = new ArrayList<>(length);
-      this.accR2 = new ArrayList<>(length);
-      this.accR3 = new ArrayList<>(length);
-      this.arg1Hi = new ArrayList<>(length);
-      this.arg1Lo = new ArrayList<>(length);
-      this.arg2Hi = new ArrayList<>(length);
-      this.arg2Lo = new ArrayList<>(length);
-      this.byte12 = new ArrayList<>(length);
-      this.byte13 = new ArrayList<>(length);
-      this.byte22 = new ArrayList<>(length);
-      this.byte23 = new ArrayList<>(length);
-      this.byteB0 = new ArrayList<>(length);
-      this.byteB1 = new ArrayList<>(length);
-      this.byteB2 = new ArrayList<>(length);
-      this.byteB3 = new ArrayList<>(length);
-      this.byteDelta0 = new ArrayList<>(length);
-      this.byteDelta1 = new ArrayList<>(length);
-      this.byteDelta2 = new ArrayList<>(length);
-      this.byteDelta3 = new ArrayList<>(length);
-      this.byteH0 = new ArrayList<>(length);
-      this.byteH1 = new ArrayList<>(length);
-      this.byteH2 = new ArrayList<>(length);
-      this.byteQ0 = new ArrayList<>(length);
-      this.byteQ1 = new ArrayList<>(length);
-      this.byteQ2 = new ArrayList<>(length);
-      this.byteQ3 = new ArrayList<>(length);
-      this.byteR0 = new ArrayList<>(length);
-      this.byteR1 = new ArrayList<>(length);
-      this.byteR2 = new ArrayList<>(length);
-      this.byteR3 = new ArrayList<>(length);
-      this.cmp1 = new ArrayList<>(length);
-      this.cmp2 = new ArrayList<>(length);
-      this.ct = new ArrayList<>(length);
-      this.decOutput = new ArrayList<>(length);
-      this.decSigned = new ArrayList<>(length);
-      this.inst = new ArrayList<>(length);
-      this.msb1 = new ArrayList<>(length);
-      this.msb2 = new ArrayList<>(length);
-      this.oli = new ArrayList<>(length);
-      this.resHi = new ArrayList<>(length);
-      this.resLo = new ArrayList<>(length);
-      this.stamp = new ArrayList<>(length);
+  public Trace accR0(final BigInteger b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("mod.ACC_R_0 already set");
+    } else {
+      filled.set(19);
     }
+
+    accR0.put(UInt256.valueOf(b).toBytes().toArray());
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    return this;
+  }
 
-      return this.acc12.size();
+  public Trace accR1(final BigInteger b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("mod.ACC_R_1 already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder acc12(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC_1_2 already set");
-      } else {
-        filled.set(0);
-      }
+    accR1.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc12.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accR2(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("mod.ACC_R_2 already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder acc13(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_1_3 already set");
-      } else {
-        filled.set(1);
-      }
+    accR2.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc13.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace accR3(final BigInteger b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("mod.ACC_R_3 already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder acc22(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ACC_2_2 already set");
-      } else {
-        filled.set(2);
-      }
+    accR3.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc22.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg1Hi(final BigInteger b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("mod.ARG_1_HI already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder acc23(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ACC_2_3 already set");
-      } else {
-        filled.set(3);
-      }
+    arg1Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc23.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg1Lo(final BigInteger b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("mod.ARG_1_LO already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder accB0(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("ACC_B_0 already set");
-      } else {
-        filled.set(4);
-      }
+    arg1Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg2Hi(final BigInteger b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("mod.ARG_2_HI already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder accB1(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("ACC_B_1 already set");
-      } else {
-        filled.set(5);
-      }
+    arg2Hi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace arg2Lo(final BigInteger b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("mod.ARG_2_LO already set");
+    } else {
+      filled.set(26);
     }
 
-    public TraceBuilder accB2(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("ACC_B_2 already set");
-      } else {
-        filled.set(6);
-      }
+    arg2Lo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accB2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte12(final UnsignedByte b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("mod.BYTE_1_2 already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder accB3(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("ACC_B_3 already set");
-      } else {
-        filled.set(7);
-      }
+    byte12.put(b.toByte());
 
-      accB3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte13(final UnsignedByte b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("mod.BYTE_1_3 already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder accDelta0(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("ACC_DELTA_0 already set");
-      } else {
-        filled.set(8);
-      }
+    byte13.put(b.toByte());
 
-      accDelta0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte22(final UnsignedByte b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("mod.BYTE_2_2 already set");
+    } else {
+      filled.set(29);
     }
 
-    public TraceBuilder accDelta1(final BigInteger b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("ACC_DELTA_1 already set");
-      } else {
-        filled.set(9);
-      }
+    byte22.put(b.toByte());
 
-      accDelta1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte23(final UnsignedByte b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("mod.BYTE_2_3 already set");
+    } else {
+      filled.set(30);
     }
 
-    public TraceBuilder accDelta2(final BigInteger b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("ACC_DELTA_2 already set");
-      } else {
-        filled.set(10);
-      }
+    byte23.put(b.toByte());
 
-      accDelta2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB0(final UnsignedByte b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("mod.BYTE_B_0 already set");
+    } else {
+      filled.set(31);
     }
 
-    public TraceBuilder accDelta3(final BigInteger b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("ACC_DELTA_3 already set");
-      } else {
-        filled.set(11);
-      }
+    byteB0.put(b.toByte());
 
-      accDelta3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB1(final UnsignedByte b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("mod.BYTE_B_1 already set");
+    } else {
+      filled.set(32);
     }
 
-    public TraceBuilder accH0(final BigInteger b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("ACC_H_0 already set");
-      } else {
-        filled.set(12);
-      }
+    byteB1.put(b.toByte());
 
-      accH0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB2(final UnsignedByte b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("mod.BYTE_B_2 already set");
+    } else {
+      filled.set(33);
     }
 
-    public TraceBuilder accH1(final BigInteger b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("ACC_H_1 already set");
-      } else {
-        filled.set(13);
-      }
+    byteB2.put(b.toByte());
 
-      accH1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteB3(final UnsignedByte b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("mod.BYTE_B_3 already set");
+    } else {
+      filled.set(34);
     }
 
-    public TraceBuilder accH2(final BigInteger b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("ACC_H_2 already set");
-      } else {
-        filled.set(14);
-      }
+    byteB3.put(b.toByte());
 
-      accH2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteDelta0(final UnsignedByte b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_0 already set");
+    } else {
+      filled.set(35);
     }
 
-    public TraceBuilder accQ0(final BigInteger b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("ACC_Q_0 already set");
-      } else {
-        filled.set(15);
-      }
+    byteDelta0.put(b.toByte());
 
-      accQ0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteDelta1(final UnsignedByte b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_1 already set");
+    } else {
+      filled.set(36);
     }
 
-    public TraceBuilder accQ1(final BigInteger b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("ACC_Q_1 already set");
-      } else {
-        filled.set(16);
-      }
+    byteDelta1.put(b.toByte());
 
-      accQ1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteDelta2(final UnsignedByte b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_2 already set");
+    } else {
+      filled.set(37);
     }
 
-    public TraceBuilder accQ2(final BigInteger b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("ACC_Q_2 already set");
-      } else {
-        filled.set(17);
-      }
+    byteDelta2.put(b.toByte());
 
-      accQ2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteDelta3(final UnsignedByte b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_3 already set");
+    } else {
+      filled.set(38);
     }
 
-    public TraceBuilder accQ3(final BigInteger b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("ACC_Q_3 already set");
-      } else {
-        filled.set(18);
-      }
+    byteDelta3.put(b.toByte());
 
-      accQ3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH0(final UnsignedByte b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("mod.BYTE_H_0 already set");
+    } else {
+      filled.set(39);
     }
 
-    public TraceBuilder accR0(final BigInteger b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("ACC_R_0 already set");
-      } else {
-        filled.set(19);
-      }
+    byteH0.put(b.toByte());
 
-      accR0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH1(final UnsignedByte b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("mod.BYTE_H_1 already set");
+    } else {
+      filled.set(40);
     }
 
-    public TraceBuilder accR1(final BigInteger b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("ACC_R_1 already set");
-      } else {
-        filled.set(20);
-      }
+    byteH1.put(b.toByte());
 
-      accR1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteH2(final UnsignedByte b) {
+    if (filled.get(41)) {
+      throw new IllegalStateException("mod.BYTE_H_2 already set");
+    } else {
+      filled.set(41);
     }
 
-    public TraceBuilder accR2(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("ACC_R_2 already set");
-      } else {
-        filled.set(21);
-      }
+    byteH2.put(b.toByte());
 
-      accR2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteQ0(final UnsignedByte b) {
+    if (filled.get(42)) {
+      throw new IllegalStateException("mod.BYTE_Q_0 already set");
+    } else {
+      filled.set(42);
     }
 
-    public TraceBuilder accR3(final BigInteger b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("ACC_R_3 already set");
-      } else {
-        filled.set(22);
-      }
+    byteQ0.put(b.toByte());
 
-      accR3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteQ1(final UnsignedByte b) {
+    if (filled.get(43)) {
+      throw new IllegalStateException("mod.BYTE_Q_1 already set");
+    } else {
+      filled.set(43);
     }
 
-    public TraceBuilder arg1Hi(final BigInteger b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("ARG_1_HI already set");
-      } else {
-        filled.set(23);
-      }
+    byteQ1.put(b.toByte());
 
-      arg1Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteQ2(final UnsignedByte b) {
+    if (filled.get(44)) {
+      throw new IllegalStateException("mod.BYTE_Q_2 already set");
+    } else {
+      filled.set(44);
     }
 
-    public TraceBuilder arg1Lo(final BigInteger b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("ARG_1_LO already set");
-      } else {
-        filled.set(24);
-      }
+    byteQ2.put(b.toByte());
 
-      arg1Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteQ3(final UnsignedByte b) {
+    if (filled.get(45)) {
+      throw new IllegalStateException("mod.BYTE_Q_3 already set");
+    } else {
+      filled.set(45);
     }
 
-    public TraceBuilder arg2Hi(final BigInteger b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("ARG_2_HI already set");
-      } else {
-        filled.set(25);
-      }
+    byteQ3.put(b.toByte());
 
-      arg2Hi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteR0(final UnsignedByte b) {
+    if (filled.get(46)) {
+      throw new IllegalStateException("mod.BYTE_R_0 already set");
+    } else {
+      filled.set(46);
     }
 
-    public TraceBuilder arg2Lo(final BigInteger b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("ARG_2_LO already set");
-      } else {
-        filled.set(26);
-      }
+    byteR0.put(b.toByte());
 
-      arg2Lo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteR1(final UnsignedByte b) {
+    if (filled.get(47)) {
+      throw new IllegalStateException("mod.BYTE_R_1 already set");
+    } else {
+      filled.set(47);
     }
 
-    public TraceBuilder byte12(final UnsignedByte b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("BYTE_1_2 already set");
-      } else {
-        filled.set(27);
-      }
+    byteR1.put(b.toByte());
 
-      byte12.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteR2(final UnsignedByte b) {
+    if (filled.get(48)) {
+      throw new IllegalStateException("mod.BYTE_R_2 already set");
+    } else {
+      filled.set(48);
     }
 
-    public TraceBuilder byte13(final UnsignedByte b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("BYTE_1_3 already set");
-      } else {
-        filled.set(28);
-      }
+    byteR2.put(b.toByte());
 
-      byte13.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byteR3(final UnsignedByte b) {
+    if (filled.get(49)) {
+      throw new IllegalStateException("mod.BYTE_R_3 already set");
+    } else {
+      filled.set(49);
     }
 
-    public TraceBuilder byte22(final UnsignedByte b) {
-      if (filled.get(29)) {
-        throw new IllegalStateException("BYTE_2_2 already set");
-      } else {
-        filled.set(29);
-      }
+    byteR3.put(b.toByte());
 
-      byte22.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace cmp1(final Boolean b) {
+    if (filled.get(50)) {
+      throw new IllegalStateException("mod.CMP_1 already set");
+    } else {
+      filled.set(50);
     }
 
-    public TraceBuilder byte23(final UnsignedByte b) {
-      if (filled.get(30)) {
-        throw new IllegalStateException("BYTE_2_3 already set");
-      } else {
-        filled.set(30);
-      }
+    cmp1.put((byte) (b ? 1 : 0));
 
-      byte23.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace cmp2(final Boolean b) {
+    if (filled.get(51)) {
+      throw new IllegalStateException("mod.CMP_2 already set");
+    } else {
+      filled.set(51);
     }
 
-    public TraceBuilder byteB0(final UnsignedByte b) {
-      if (filled.get(31)) {
-        throw new IllegalStateException("BYTE_B_0 already set");
-      } else {
-        filled.set(31);
-      }
+    cmp2.put((byte) (b ? 1 : 0));
 
-      byteB0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ct(final BigInteger b) {
+    if (filled.get(52)) {
+      throw new IllegalStateException("mod.CT already set");
+    } else {
+      filled.set(52);
     }
 
-    public TraceBuilder byteB1(final UnsignedByte b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("BYTE_B_1 already set");
-      } else {
-        filled.set(32);
-      }
+    ct.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteB1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace decOutput(final Boolean b) {
+    if (filled.get(53)) {
+      throw new IllegalStateException("mod.DEC_OUTPUT already set");
+    } else {
+      filled.set(53);
     }
 
-    public TraceBuilder byteB2(final UnsignedByte b) {
-      if (filled.get(33)) {
-        throw new IllegalStateException("BYTE_B_2 already set");
-      } else {
-        filled.set(33);
-      }
+    decOutput.put((byte) (b ? 1 : 0));
 
-      byteB2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace decSigned(final Boolean b) {
+    if (filled.get(54)) {
+      throw new IllegalStateException("mod.DEC_SIGNED already set");
+    } else {
+      filled.set(54);
     }
 
-    public TraceBuilder byteB3(final UnsignedByte b) {
-      if (filled.get(34)) {
-        throw new IllegalStateException("BYTE_B_3 already set");
-      } else {
-        filled.set(34);
-      }
+    decSigned.put((byte) (b ? 1 : 0));
 
-      byteB3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace inst(final BigInteger b) {
+    if (filled.get(55)) {
+      throw new IllegalStateException("mod.INST already set");
+    } else {
+      filled.set(55);
     }
 
-    public TraceBuilder byteDelta0(final UnsignedByte b) {
-      if (filled.get(35)) {
-        throw new IllegalStateException("BYTE_DELTA_0 already set");
-      } else {
-        filled.set(35);
-      }
+    inst.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteDelta0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace msb1(final Boolean b) {
+    if (filled.get(56)) {
+      throw new IllegalStateException("mod.MSB_1 already set");
+    } else {
+      filled.set(56);
     }
 
-    public TraceBuilder byteDelta1(final UnsignedByte b) {
-      if (filled.get(36)) {
-        throw new IllegalStateException("BYTE_DELTA_1 already set");
-      } else {
-        filled.set(36);
-      }
+    msb1.put((byte) (b ? 1 : 0));
 
-      byteDelta1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace msb2(final Boolean b) {
+    if (filled.get(57)) {
+      throw new IllegalStateException("mod.MSB_2 already set");
+    } else {
+      filled.set(57);
     }
 
-    public TraceBuilder byteDelta2(final UnsignedByte b) {
-      if (filled.get(37)) {
-        throw new IllegalStateException("BYTE_DELTA_2 already set");
-      } else {
-        filled.set(37);
-      }
+    msb2.put((byte) (b ? 1 : 0));
 
-      byteDelta2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace oli(final Boolean b) {
+    if (filled.get(58)) {
+      throw new IllegalStateException("mod.OLI already set");
+    } else {
+      filled.set(58);
     }
 
-    public TraceBuilder byteDelta3(final UnsignedByte b) {
-      if (filled.get(38)) {
-        throw new IllegalStateException("BYTE_DELTA_3 already set");
-      } else {
-        filled.set(38);
-      }
+    oli.put((byte) (b ? 1 : 0));
 
-      byteDelta3.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resHi(final BigInteger b) {
+    if (filled.get(59)) {
+      throw new IllegalStateException("mod.RES_HI already set");
+    } else {
+      filled.set(59);
     }
 
-    public TraceBuilder byteH0(final UnsignedByte b) {
-      if (filled.get(39)) {
-        throw new IllegalStateException("BYTE_H_0 already set");
-      } else {
-        filled.set(39);
-      }
+    resHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteH0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace resLo(final BigInteger b) {
+    if (filled.get(60)) {
+      throw new IllegalStateException("mod.RES_LO already set");
+    } else {
+      filled.set(60);
     }
 
-    public TraceBuilder byteH1(final UnsignedByte b) {
-      if (filled.get(40)) {
-        throw new IllegalStateException("BYTE_H_1 already set");
-      } else {
-        filled.set(40);
-      }
+    resLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteH1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace stamp(final BigInteger b) {
+    if (filled.get(61)) {
+      throw new IllegalStateException("mod.STAMP already set");
+    } else {
+      filled.set(61);
     }
 
-    public TraceBuilder byteH2(final UnsignedByte b) {
-      if (filled.get(41)) {
-        throw new IllegalStateException("BYTE_H_2 already set");
-      } else {
-        filled.set(41);
-      }
+    stamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byteH2.add(b);
+    return this;
+  }
+
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("mod.ACC_1_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("mod.ACC_1_3 has not been filled");
     }
 
-    public TraceBuilder byteQ0(final UnsignedByte b) {
-      if (filled.get(42)) {
-        throw new IllegalStateException("BYTE_Q_0 already set");
-      } else {
-        filled.set(42);
-      }
+    if (!filled.get(2)) {
+      throw new IllegalStateException("mod.ACC_2_2 has not been filled");
+    }
 
-      byteQ0.add(b);
+    if (!filled.get(3)) {
+      throw new IllegalStateException("mod.ACC_2_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(4)) {
+      throw new IllegalStateException("mod.ACC_B_0 has not been filled");
     }
 
-    public TraceBuilder byteQ1(final UnsignedByte b) {
-      if (filled.get(43)) {
-        throw new IllegalStateException("BYTE_Q_1 already set");
-      } else {
-        filled.set(43);
-      }
+    if (!filled.get(5)) {
+      throw new IllegalStateException("mod.ACC_B_1 has not been filled");
+    }
 
-      byteQ1.add(b);
+    if (!filled.get(6)) {
+      throw new IllegalStateException("mod.ACC_B_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(7)) {
+      throw new IllegalStateException("mod.ACC_B_3 has not been filled");
     }
 
-    public TraceBuilder byteQ2(final UnsignedByte b) {
-      if (filled.get(44)) {
-        throw new IllegalStateException("BYTE_Q_2 already set");
-      } else {
-        filled.set(44);
-      }
+    if (!filled.get(8)) {
+      throw new IllegalStateException("mod.ACC_DELTA_0 has not been filled");
+    }
 
-      byteQ2.add(b);
+    if (!filled.get(9)) {
+      throw new IllegalStateException("mod.ACC_DELTA_1 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(10)) {
+      throw new IllegalStateException("mod.ACC_DELTA_2 has not been filled");
     }
 
-    public TraceBuilder byteQ3(final UnsignedByte b) {
-      if (filled.get(45)) {
-        throw new IllegalStateException("BYTE_Q_3 already set");
-      } else {
-        filled.set(45);
-      }
+    if (!filled.get(11)) {
+      throw new IllegalStateException("mod.ACC_DELTA_3 has not been filled");
+    }
 
-      byteQ3.add(b);
+    if (!filled.get(12)) {
+      throw new IllegalStateException("mod.ACC_H_0 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(13)) {
+      throw new IllegalStateException("mod.ACC_H_1 has not been filled");
     }
 
-    public TraceBuilder byteR0(final UnsignedByte b) {
-      if (filled.get(46)) {
-        throw new IllegalStateException("BYTE_R_0 already set");
-      } else {
-        filled.set(46);
-      }
+    if (!filled.get(14)) {
+      throw new IllegalStateException("mod.ACC_H_2 has not been filled");
+    }
 
-      byteR0.add(b);
+    if (!filled.get(15)) {
+      throw new IllegalStateException("mod.ACC_Q_0 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(16)) {
+      throw new IllegalStateException("mod.ACC_Q_1 has not been filled");
     }
 
-    public TraceBuilder byteR1(final UnsignedByte b) {
-      if (filled.get(47)) {
-        throw new IllegalStateException("BYTE_R_1 already set");
-      } else {
-        filled.set(47);
-      }
+    if (!filled.get(17)) {
+      throw new IllegalStateException("mod.ACC_Q_2 has not been filled");
+    }
 
-      byteR1.add(b);
+    if (!filled.get(18)) {
+      throw new IllegalStateException("mod.ACC_Q_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(19)) {
+      throw new IllegalStateException("mod.ACC_R_0 has not been filled");
     }
 
-    public TraceBuilder byteR2(final UnsignedByte b) {
-      if (filled.get(48)) {
-        throw new IllegalStateException("BYTE_R_2 already set");
-      } else {
-        filled.set(48);
-      }
+    if (!filled.get(20)) {
+      throw new IllegalStateException("mod.ACC_R_1 has not been filled");
+    }
 
-      byteR2.add(b);
+    if (!filled.get(21)) {
+      throw new IllegalStateException("mod.ACC_R_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(22)) {
+      throw new IllegalStateException("mod.ACC_R_3 has not been filled");
     }
 
-    public TraceBuilder byteR3(final UnsignedByte b) {
-      if (filled.get(49)) {
-        throw new IllegalStateException("BYTE_R_3 already set");
-      } else {
-        filled.set(49);
-      }
+    if (!filled.get(23)) {
+      throw new IllegalStateException("mod.ARG_1_HI has not been filled");
+    }
 
-      byteR3.add(b);
+    if (!filled.get(24)) {
+      throw new IllegalStateException("mod.ARG_1_LO has not been filled");
+    }
 
-      return this;
+    if (!filled.get(25)) {
+      throw new IllegalStateException("mod.ARG_2_HI has not been filled");
     }
 
-    public TraceBuilder cmp1(final Boolean b) {
-      if (filled.get(50)) {
-        throw new IllegalStateException("CMP_1 already set");
-      } else {
-        filled.set(50);
-      }
+    if (!filled.get(26)) {
+      throw new IllegalStateException("mod.ARG_2_LO has not been filled");
+    }
 
-      cmp1.add(b);
+    if (!filled.get(27)) {
+      throw new IllegalStateException("mod.BYTE_1_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(28)) {
+      throw new IllegalStateException("mod.BYTE_1_3 has not been filled");
     }
 
-    public TraceBuilder cmp2(final Boolean b) {
-      if (filled.get(51)) {
-        throw new IllegalStateException("CMP_2 already set");
-      } else {
-        filled.set(51);
-      }
+    if (!filled.get(29)) {
+      throw new IllegalStateException("mod.BYTE_2_2 has not been filled");
+    }
 
-      cmp2.add(b);
+    if (!filled.get(30)) {
+      throw new IllegalStateException("mod.BYTE_2_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(31)) {
+      throw new IllegalStateException("mod.BYTE_B_0 has not been filled");
     }
 
-    public TraceBuilder ct(final BigInteger b) {
-      if (filled.get(52)) {
-        throw new IllegalStateException("CT already set");
-      } else {
-        filled.set(52);
-      }
+    if (!filled.get(32)) {
+      throw new IllegalStateException("mod.BYTE_B_1 has not been filled");
+    }
 
-      ct.add(b);
+    if (!filled.get(33)) {
+      throw new IllegalStateException("mod.BYTE_B_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(34)) {
+      throw new IllegalStateException("mod.BYTE_B_3 has not been filled");
     }
 
-    public TraceBuilder decOutput(final Boolean b) {
-      if (filled.get(53)) {
-        throw new IllegalStateException("DEC_OUTPUT already set");
-      } else {
-        filled.set(53);
-      }
+    if (!filled.get(35)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_0 has not been filled");
+    }
 
-      decOutput.add(b);
+    if (!filled.get(36)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_1 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(37)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_2 has not been filled");
     }
 
-    public TraceBuilder decSigned(final Boolean b) {
-      if (filled.get(54)) {
-        throw new IllegalStateException("DEC_SIGNED already set");
-      } else {
-        filled.set(54);
-      }
+    if (!filled.get(38)) {
+      throw new IllegalStateException("mod.BYTE_DELTA_3 has not been filled");
+    }
 
-      decSigned.add(b);
+    if (!filled.get(39)) {
+      throw new IllegalStateException("mod.BYTE_H_0 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(40)) {
+      throw new IllegalStateException("mod.BYTE_H_1 has not been filled");
     }
 
-    public TraceBuilder inst(final BigInteger b) {
-      if (filled.get(55)) {
-        throw new IllegalStateException("INST already set");
-      } else {
-        filled.set(55);
-      }
+    if (!filled.get(41)) {
+      throw new IllegalStateException("mod.BYTE_H_2 has not been filled");
+    }
 
-      inst.add(b);
+    if (!filled.get(42)) {
+      throw new IllegalStateException("mod.BYTE_Q_0 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(43)) {
+      throw new IllegalStateException("mod.BYTE_Q_1 has not been filled");
     }
 
-    public TraceBuilder msb1(final Boolean b) {
-      if (filled.get(56)) {
-        throw new IllegalStateException("MSB_1 already set");
-      } else {
-        filled.set(56);
-      }
+    if (!filled.get(44)) {
+      throw new IllegalStateException("mod.BYTE_Q_2 has not been filled");
+    }
 
-      msb1.add(b);
+    if (!filled.get(45)) {
+      throw new IllegalStateException("mod.BYTE_Q_3 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(46)) {
+      throw new IllegalStateException("mod.BYTE_R_0 has not been filled");
     }
 
-    public TraceBuilder msb2(final Boolean b) {
-      if (filled.get(57)) {
-        throw new IllegalStateException("MSB_2 already set");
-      } else {
-        filled.set(57);
-      }
+    if (!filled.get(47)) {
+      throw new IllegalStateException("mod.BYTE_R_1 has not been filled");
+    }
 
-      msb2.add(b);
+    if (!filled.get(48)) {
+      throw new IllegalStateException("mod.BYTE_R_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(49)) {
+      throw new IllegalStateException("mod.BYTE_R_3 has not been filled");
     }
 
-    public TraceBuilder oli(final Boolean b) {
-      if (filled.get(58)) {
-        throw new IllegalStateException("OLI already set");
-      } else {
-        filled.set(58);
-      }
+    if (!filled.get(50)) {
+      throw new IllegalStateException("mod.CMP_1 has not been filled");
+    }
 
-      oli.add(b);
+    if (!filled.get(51)) {
+      throw new IllegalStateException("mod.CMP_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(52)) {
+      throw new IllegalStateException("mod.CT has not been filled");
     }
 
-    public TraceBuilder resHi(final BigInteger b) {
-      if (filled.get(59)) {
-        throw new IllegalStateException("RES_HI already set");
-      } else {
-        filled.set(59);
-      }
+    if (!filled.get(53)) {
+      throw new IllegalStateException("mod.DEC_OUTPUT has not been filled");
+    }
 
-      resHi.add(b);
+    if (!filled.get(54)) {
+      throw new IllegalStateException("mod.DEC_SIGNED has not been filled");
+    }
 
-      return this;
+    if (!filled.get(55)) {
+      throw new IllegalStateException("mod.INST has not been filled");
     }
 
-    public TraceBuilder resLo(final BigInteger b) {
-      if (filled.get(60)) {
-        throw new IllegalStateException("RES_LO already set");
-      } else {
-        filled.set(60);
-      }
+    if (!filled.get(56)) {
+      throw new IllegalStateException("mod.MSB_1 has not been filled");
+    }
 
-      resLo.add(b);
+    if (!filled.get(57)) {
+      throw new IllegalStateException("mod.MSB_2 has not been filled");
+    }
 
-      return this;
+    if (!filled.get(58)) {
+      throw new IllegalStateException("mod.OLI has not been filled");
     }
 
-    public TraceBuilder stamp(final BigInteger b) {
-      if (filled.get(61)) {
-        throw new IllegalStateException("STAMP already set");
-      } else {
-        filled.set(61);
-      }
+    if (!filled.get(59)) {
+      throw new IllegalStateException("mod.RES_HI has not been filled");
+    }
 
-      stamp.add(b);
+    if (!filled.get(60)) {
+      throw new IllegalStateException("mod.RES_LO has not been filled");
+    }
 
-      return this;
+    if (!filled.get(61)) {
+      throw new IllegalStateException("mod.STAMP has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC_1_2 has not been filled");
-      }
+    filled.clear();
+    this.currentLine++;
 
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_1_3 has not been filled");
-      }
+    return this;
+  }
 
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ACC_2_2 has not been filled");
-      }
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      acc12.position(acc12.position() + 32);
+    }
 
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ACC_2_3 has not been filled");
-      }
+    if (!filled.get(1)) {
+      acc13.position(acc13.position() + 32);
+    }
 
-      if (!filled.get(4)) {
-        throw new IllegalStateException("ACC_B_0 has not been filled");
-      }
+    if (!filled.get(2)) {
+      acc22.position(acc22.position() + 32);
+    }
 
-      if (!filled.get(5)) {
-        throw new IllegalStateException("ACC_B_1 has not been filled");
-      }
+    if (!filled.get(3)) {
+      acc23.position(acc23.position() + 32);
+    }
 
-      if (!filled.get(6)) {
-        throw new IllegalStateException("ACC_B_2 has not been filled");
-      }
+    if (!filled.get(4)) {
+      accB0.position(accB0.position() + 32);
+    }
 
-      if (!filled.get(7)) {
-        throw new IllegalStateException("ACC_B_3 has not been filled");
-      }
+    if (!filled.get(5)) {
+      accB1.position(accB1.position() + 32);
+    }
 
-      if (!filled.get(8)) {
-        throw new IllegalStateException("ACC_DELTA_0 has not been filled");
-      }
+    if (!filled.get(6)) {
+      accB2.position(accB2.position() + 32);
+    }
 
-      if (!filled.get(9)) {
-        throw new IllegalStateException("ACC_DELTA_1 has not been filled");
-      }
+    if (!filled.get(7)) {
+      accB3.position(accB3.position() + 32);
+    }
 
-      if (!filled.get(10)) {
-        throw new IllegalStateException("ACC_DELTA_2 has not been filled");
-      }
+    if (!filled.get(8)) {
+      accDelta0.position(accDelta0.position() + 32);
+    }
 
-      if (!filled.get(11)) {
-        throw new IllegalStateException("ACC_DELTA_3 has not been filled");
-      }
+    if (!filled.get(9)) {
+      accDelta1.position(accDelta1.position() + 32);
+    }
 
-      if (!filled.get(12)) {
-        throw new IllegalStateException("ACC_H_0 has not been filled");
-      }
+    if (!filled.get(10)) {
+      accDelta2.position(accDelta2.position() + 32);
+    }
 
-      if (!filled.get(13)) {
-        throw new IllegalStateException("ACC_H_1 has not been filled");
-      }
+    if (!filled.get(11)) {
+      accDelta3.position(accDelta3.position() + 32);
+    }
 
-      if (!filled.get(14)) {
-        throw new IllegalStateException("ACC_H_2 has not been filled");
-      }
+    if (!filled.get(12)) {
+      accH0.position(accH0.position() + 32);
+    }
 
-      if (!filled.get(15)) {
-        throw new IllegalStateException("ACC_Q_0 has not been filled");
-      }
+    if (!filled.get(13)) {
+      accH1.position(accH1.position() + 32);
+    }
 
-      if (!filled.get(16)) {
-        throw new IllegalStateException("ACC_Q_1 has not been filled");
-      }
+    if (!filled.get(14)) {
+      accH2.position(accH2.position() + 32);
+    }
 
-      if (!filled.get(17)) {
-        throw new IllegalStateException("ACC_Q_2 has not been filled");
-      }
+    if (!filled.get(15)) {
+      accQ0.position(accQ0.position() + 32);
+    }
 
-      if (!filled.get(18)) {
-        throw new IllegalStateException("ACC_Q_3 has not been filled");
-      }
+    if (!filled.get(16)) {
+      accQ1.position(accQ1.position() + 32);
+    }
 
-      if (!filled.get(19)) {
-        throw new IllegalStateException("ACC_R_0 has not been filled");
-      }
+    if (!filled.get(17)) {
+      accQ2.position(accQ2.position() + 32);
+    }
 
-      if (!filled.get(20)) {
-        throw new IllegalStateException("ACC_R_1 has not been filled");
-      }
+    if (!filled.get(18)) {
+      accQ3.position(accQ3.position() + 32);
+    }
 
-      if (!filled.get(21)) {
-        throw new IllegalStateException("ACC_R_2 has not been filled");
-      }
+    if (!filled.get(19)) {
+      accR0.position(accR0.position() + 32);
+    }
 
-      if (!filled.get(22)) {
-        throw new IllegalStateException("ACC_R_3 has not been filled");
-      }
+    if (!filled.get(20)) {
+      accR1.position(accR1.position() + 32);
+    }
 
-      if (!filled.get(23)) {
-        throw new IllegalStateException("ARG_1_HI has not been filled");
-      }
+    if (!filled.get(21)) {
+      accR2.position(accR2.position() + 32);
+    }
 
-      if (!filled.get(24)) {
-        throw new IllegalStateException("ARG_1_LO has not been filled");
-      }
+    if (!filled.get(22)) {
+      accR3.position(accR3.position() + 32);
+    }
 
-      if (!filled.get(25)) {
-        throw new IllegalStateException("ARG_2_HI has not been filled");
-      }
+    if (!filled.get(23)) {
+      arg1Hi.position(arg1Hi.position() + 32);
+    }
 
-      if (!filled.get(26)) {
-        throw new IllegalStateException("ARG_2_LO has not been filled");
-      }
+    if (!filled.get(24)) {
+      arg1Lo.position(arg1Lo.position() + 32);
+    }
 
-      if (!filled.get(27)) {
-        throw new IllegalStateException("BYTE_1_2 has not been filled");
-      }
+    if (!filled.get(25)) {
+      arg2Hi.position(arg2Hi.position() + 32);
+    }
 
-      if (!filled.get(28)) {
-        throw new IllegalStateException("BYTE_1_3 has not been filled");
-      }
+    if (!filled.get(26)) {
+      arg2Lo.position(arg2Lo.position() + 32);
+    }
 
-      if (!filled.get(29)) {
-        throw new IllegalStateException("BYTE_2_2 has not been filled");
-      }
+    if (!filled.get(27)) {
+      byte12.position(byte12.position() + 1);
+    }
 
-      if (!filled.get(30)) {
-        throw new IllegalStateException("BYTE_2_3 has not been filled");
-      }
+    if (!filled.get(28)) {
+      byte13.position(byte13.position() + 1);
+    }
 
-      if (!filled.get(31)) {
-        throw new IllegalStateException("BYTE_B_0 has not been filled");
-      }
+    if (!filled.get(29)) {
+      byte22.position(byte22.position() + 1);
+    }
 
-      if (!filled.get(32)) {
-        throw new IllegalStateException("BYTE_B_1 has not been filled");
-      }
+    if (!filled.get(30)) {
+      byte23.position(byte23.position() + 1);
+    }
 
-      if (!filled.get(33)) {
-        throw new IllegalStateException("BYTE_B_2 has not been filled");
-      }
+    if (!filled.get(31)) {
+      byteB0.position(byteB0.position() + 1);
+    }
 
-      if (!filled.get(34)) {
-        throw new IllegalStateException("BYTE_B_3 has not been filled");
-      }
+    if (!filled.get(32)) {
+      byteB1.position(byteB1.position() + 1);
+    }
 
-      if (!filled.get(35)) {
-        throw new IllegalStateException("BYTE_DELTA_0 has not been filled");
-      }
+    if (!filled.get(33)) {
+      byteB2.position(byteB2.position() + 1);
+    }
 
-      if (!filled.get(36)) {
-        throw new IllegalStateException("BYTE_DELTA_1 has not been filled");
-      }
+    if (!filled.get(34)) {
+      byteB3.position(byteB3.position() + 1);
+    }
 
-      if (!filled.get(37)) {
-        throw new IllegalStateException("BYTE_DELTA_2 has not been filled");
-      }
+    if (!filled.get(35)) {
+      byteDelta0.position(byteDelta0.position() + 1);
+    }
 
-      if (!filled.get(38)) {
-        throw new IllegalStateException("BYTE_DELTA_3 has not been filled");
-      }
+    if (!filled.get(36)) {
+      byteDelta1.position(byteDelta1.position() + 1);
+    }
 
-      if (!filled.get(39)) {
-        throw new IllegalStateException("BYTE_H_0 has not been filled");
-      }
+    if (!filled.get(37)) {
+      byteDelta2.position(byteDelta2.position() + 1);
+    }
 
-      if (!filled.get(40)) {
-        throw new IllegalStateException("BYTE_H_1 has not been filled");
-      }
+    if (!filled.get(38)) {
+      byteDelta3.position(byteDelta3.position() + 1);
+    }
 
-      if (!filled.get(41)) {
-        throw new IllegalStateException("BYTE_H_2 has not been filled");
-      }
+    if (!filled.get(39)) {
+      byteH0.position(byteH0.position() + 1);
+    }
 
-      if (!filled.get(42)) {
-        throw new IllegalStateException("BYTE_Q_0 has not been filled");
-      }
+    if (!filled.get(40)) {
+      byteH1.position(byteH1.position() + 1);
+    }
 
-      if (!filled.get(43)) {
-        throw new IllegalStateException("BYTE_Q_1 has not been filled");
-      }
+    if (!filled.get(41)) {
+      byteH2.position(byteH2.position() + 1);
+    }
 
-      if (!filled.get(44)) {
-        throw new IllegalStateException("BYTE_Q_2 has not been filled");
-      }
+    if (!filled.get(42)) {
+      byteQ0.position(byteQ0.position() + 1);
+    }
 
-      if (!filled.get(45)) {
-        throw new IllegalStateException("BYTE_Q_3 has not been filled");
-      }
+    if (!filled.get(43)) {
+      byteQ1.position(byteQ1.position() + 1);
+    }
 
-      if (!filled.get(46)) {
-        throw new IllegalStateException("BYTE_R_0 has not been filled");
-      }
+    if (!filled.get(44)) {
+      byteQ2.position(byteQ2.position() + 1);
+    }
 
-      if (!filled.get(47)) {
-        throw new IllegalStateException("BYTE_R_1 has not been filled");
-      }
+    if (!filled.get(45)) {
+      byteQ3.position(byteQ3.position() + 1);
+    }
 
-      if (!filled.get(48)) {
-        throw new IllegalStateException("BYTE_R_2 has not been filled");
-      }
+    if (!filled.get(46)) {
+      byteR0.position(byteR0.position() + 1);
+    }
 
-      if (!filled.get(49)) {
-        throw new IllegalStateException("BYTE_R_3 has not been filled");
-      }
+    if (!filled.get(47)) {
+      byteR1.position(byteR1.position() + 1);
+    }
 
-      if (!filled.get(50)) {
-        throw new IllegalStateException("CMP_1 has not been filled");
-      }
+    if (!filled.get(48)) {
+      byteR2.position(byteR2.position() + 1);
+    }
 
-      if (!filled.get(51)) {
-        throw new IllegalStateException("CMP_2 has not been filled");
-      }
+    if (!filled.get(49)) {
+      byteR3.position(byteR3.position() + 1);
+    }
 
-      if (!filled.get(52)) {
-        throw new IllegalStateException("CT has not been filled");
-      }
+    if (!filled.get(50)) {
+      cmp1.position(cmp1.position() + 1);
+    }
 
-      if (!filled.get(53)) {
-        throw new IllegalStateException("DEC_OUTPUT has not been filled");
-      }
+    if (!filled.get(51)) {
+      cmp2.position(cmp2.position() + 1);
+    }
 
-      if (!filled.get(54)) {
-        throw new IllegalStateException("DEC_SIGNED has not been filled");
-      }
+    if (!filled.get(52)) {
+      ct.position(ct.position() + 32);
+    }
 
-      if (!filled.get(55)) {
-        throw new IllegalStateException("INST has not been filled");
-      }
+    if (!filled.get(53)) {
+      decOutput.position(decOutput.position() + 1);
+    }
 
-      if (!filled.get(56)) {
-        throw new IllegalStateException("MSB_1 has not been filled");
-      }
+    if (!filled.get(54)) {
+      decSigned.position(decSigned.position() + 1);
+    }
 
-      if (!filled.get(57)) {
-        throw new IllegalStateException("MSB_2 has not been filled");
-      }
+    if (!filled.get(55)) {
+      inst.position(inst.position() + 32);
+    }
 
-      if (!filled.get(58)) {
-        throw new IllegalStateException("OLI has not been filled");
-      }
+    if (!filled.get(56)) {
+      msb1.position(msb1.position() + 1);
+    }
 
-      if (!filled.get(59)) {
-        throw new IllegalStateException("RES_HI has not been filled");
-      }
+    if (!filled.get(57)) {
+      msb2.position(msb2.position() + 1);
+    }
 
-      if (!filled.get(60)) {
-        throw new IllegalStateException("RES_LO has not been filled");
-      }
+    if (!filled.get(58)) {
+      oli.position(oli.position() + 1);
+    }
 
-      if (!filled.get(61)) {
-        throw new IllegalStateException("STAMP has not been filled");
-      }
+    if (!filled.get(59)) {
+      resHi.position(resHi.position() + 32);
+    }
 
-      filled.clear();
+    if (!filled.get(60)) {
+      resLo.position(resLo.position() + 32);
+    }
 
-      return this;
+    if (!filled.get(61)) {
+      stamp.position(stamp.position() + 32);
     }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        acc12.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        acc13.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        acc22.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        acc23.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        accB0.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        accB1.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        accB2.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        accB3.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        accDelta0.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        accDelta1.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        accDelta2.add(BigInteger.ZERO);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        accDelta3.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        accH0.add(BigInteger.ZERO);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        accH1.add(BigInteger.ZERO);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        accH2.add(BigInteger.ZERO);
-        this.filled.set(14);
-      }
-      if (!filled.get(15)) {
-        accQ0.add(BigInteger.ZERO);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        accQ1.add(BigInteger.ZERO);
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        accQ2.add(BigInteger.ZERO);
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        accQ3.add(BigInteger.ZERO);
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        accR0.add(BigInteger.ZERO);
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        accR1.add(BigInteger.ZERO);
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        accR2.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        accR3.add(BigInteger.ZERO);
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        arg1Hi.add(BigInteger.ZERO);
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        arg1Lo.add(BigInteger.ZERO);
-        this.filled.set(24);
-      }
-      if (!filled.get(25)) {
-        arg2Hi.add(BigInteger.ZERO);
-        this.filled.set(25);
-      }
-      if (!filled.get(26)) {
-        arg2Lo.add(BigInteger.ZERO);
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        byte12.add(UnsignedByte.of(0));
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        byte13.add(UnsignedByte.of(0));
-        this.filled.set(28);
-      }
-      if (!filled.get(29)) {
-        byte22.add(UnsignedByte.of(0));
-        this.filled.set(29);
-      }
-      if (!filled.get(30)) {
-        byte23.add(UnsignedByte.of(0));
-        this.filled.set(30);
-      }
-      if (!filled.get(31)) {
-        byteB0.add(UnsignedByte.of(0));
-        this.filled.set(31);
-      }
-      if (!filled.get(32)) {
-        byteB1.add(UnsignedByte.of(0));
-        this.filled.set(32);
-      }
-      if (!filled.get(33)) {
-        byteB2.add(UnsignedByte.of(0));
-        this.filled.set(33);
-      }
-      if (!filled.get(34)) {
-        byteB3.add(UnsignedByte.of(0));
-        this.filled.set(34);
-      }
-      if (!filled.get(35)) {
-        byteDelta0.add(UnsignedByte.of(0));
-        this.filled.set(35);
-      }
-      if (!filled.get(36)) {
-        byteDelta1.add(UnsignedByte.of(0));
-        this.filled.set(36);
-      }
-      if (!filled.get(37)) {
-        byteDelta2.add(UnsignedByte.of(0));
-        this.filled.set(37);
-      }
-      if (!filled.get(38)) {
-        byteDelta3.add(UnsignedByte.of(0));
-        this.filled.set(38);
-      }
-      if (!filled.get(39)) {
-        byteH0.add(UnsignedByte.of(0));
-        this.filled.set(39);
-      }
-      if (!filled.get(40)) {
-        byteH1.add(UnsignedByte.of(0));
-        this.filled.set(40);
-      }
-      if (!filled.get(41)) {
-        byteH2.add(UnsignedByte.of(0));
-        this.filled.set(41);
-      }
-      if (!filled.get(42)) {
-        byteQ0.add(UnsignedByte.of(0));
-        this.filled.set(42);
-      }
-      if (!filled.get(43)) {
-        byteQ1.add(UnsignedByte.of(0));
-        this.filled.set(43);
-      }
-      if (!filled.get(44)) {
-        byteQ2.add(UnsignedByte.of(0));
-        this.filled.set(44);
-      }
-      if (!filled.get(45)) {
-        byteQ3.add(UnsignedByte.of(0));
-        this.filled.set(45);
-      }
-      if (!filled.get(46)) {
-        byteR0.add(UnsignedByte.of(0));
-        this.filled.set(46);
-      }
-      if (!filled.get(47)) {
-        byteR1.add(UnsignedByte.of(0));
-        this.filled.set(47);
-      }
-      if (!filled.get(48)) {
-        byteR2.add(UnsignedByte.of(0));
-        this.filled.set(48);
-      }
-      if (!filled.get(49)) {
-        byteR3.add(UnsignedByte.of(0));
-        this.filled.set(49);
-      }
-      if (!filled.get(50)) {
-        cmp1.add(false);
-        this.filled.set(50);
-      }
-      if (!filled.get(51)) {
-        cmp2.add(false);
-        this.filled.set(51);
-      }
-      if (!filled.get(52)) {
-        ct.add(BigInteger.ZERO);
-        this.filled.set(52);
-      }
-      if (!filled.get(53)) {
-        decOutput.add(false);
-        this.filled.set(53);
-      }
-      if (!filled.get(54)) {
-        decSigned.add(false);
-        this.filled.set(54);
-      }
-      if (!filled.get(55)) {
-        inst.add(BigInteger.ZERO);
-        this.filled.set(55);
-      }
-      if (!filled.get(56)) {
-        msb1.add(false);
-        this.filled.set(56);
-      }
-      if (!filled.get(57)) {
-        msb2.add(false);
-        this.filled.set(57);
-      }
-      if (!filled.get(58)) {
-        oli.add(false);
-        this.filled.set(58);
-      }
-      if (!filled.get(59)) {
-        resHi.add(BigInteger.ZERO);
-        this.filled.set(59);
-      }
-      if (!filled.get(60)) {
-        resLo.add(BigInteger.ZERO);
-        this.filled.set(60);
-      }
-      if (!filled.get(61)) {
-        stamp.add(BigInteger.ZERO);
-        this.filled.set(61);
-      }
-
-      return this.validateRow();
-    }
-
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          acc12,
-          acc13,
-          acc22,
-          acc23,
-          accB0,
-          accB1,
-          accB2,
-          accB3,
-          accDelta0,
-          accDelta1,
-          accDelta2,
-          accDelta3,
-          accH0,
-          accH1,
-          accH2,
-          accQ0,
-          accQ1,
-          accQ2,
-          accQ3,
-          accR0,
-          accR1,
-          accR2,
-          accR3,
-          arg1Hi,
-          arg1Lo,
-          arg2Hi,
-          arg2Lo,
-          byte12,
-          byte13,
-          byte22,
-          byte23,
-          byteB0,
-          byteB1,
-          byteB2,
-          byteB3,
-          byteDelta0,
-          byteDelta1,
-          byteDelta2,
-          byteDelta3,
-          byteH0,
-          byteH1,
-          byteH2,
-          byteQ0,
-          byteQ1,
-          byteQ2,
-          byteQ3,
-          byteR0,
-          byteR1,
-          byteR2,
-          byteR3,
-          cmp1,
-          cmp2,
-          ct,
-          decOutput,
-          decSigned,
-          inst,
-          msb1,
-          msb2,
-          oli,
-          resHi,
-          resLo,
-          stamp);
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
+    return null;
   }
 }

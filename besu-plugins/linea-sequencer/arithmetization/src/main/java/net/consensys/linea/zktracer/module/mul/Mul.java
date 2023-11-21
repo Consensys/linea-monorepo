@@ -16,10 +16,12 @@
 package net.consensys.linea.zktracer.module.mul;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
@@ -63,18 +65,7 @@ public class Mul implements Module {
     this.operations.enter();
   }
 
-  @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount() + 16);
-    for (var op : this.operations) {
-      this.traceMulOperation(op, trace);
-    }
-    this.traceMulOperation(new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO), trace);
-
-    return new MulTrace(trace.build());
-  }
-
-  private void traceMulOperation(final MulOperation op, Trace.TraceBuilder trace) {
+  private void traceMulOperation(final MulOperation op, Trace trace) {
     this.stamp++;
 
     switch (op.getRegime()) {
@@ -96,13 +87,13 @@ public class Mul implements Module {
     }
   }
 
-  private void traceSubOp(final MulOperation data, Trace.TraceBuilder trace) {
+  private void traceSubOp(final MulOperation data, Trace trace) {
     for (int ct = 0; ct < data.maxCt(); ct++) {
       traceRow(data, ct, trace);
     }
   }
 
-  private void traceRow(final MulOperation op, final int i, Trace.TraceBuilder trace) {
+  private void traceRow(final MulOperation op, final int i, Trace trace) {
     trace
         .mulStamp(BigInteger.valueOf(stamp))
         .counter(BigInteger.valueOf(i))
@@ -186,5 +177,19 @@ public class Mul implements Module {
                       default -> throw new RuntimeException("regime not supported");
                     })
             .sum();
+  }
+
+  @Override
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
+    for (var op : this.operations) {
+      this.traceMulOperation(op, trace);
+    }
+    this.traceMulOperation(new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO), trace);
   }
 }

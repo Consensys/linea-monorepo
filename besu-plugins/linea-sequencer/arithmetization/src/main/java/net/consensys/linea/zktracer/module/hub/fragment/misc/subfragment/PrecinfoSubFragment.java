@@ -21,7 +21,7 @@ import org.apache.commons.lang3.NotImplementedException;
 
 public record PrecinfoSubFragment() implements TraceSubFragment {
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     throw new NotImplementedException("Soon");
   }
 }

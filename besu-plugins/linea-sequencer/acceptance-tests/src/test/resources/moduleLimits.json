@@ -13,5 +13,7 @@
   "TxnData": 20000,
   "Wcp": 20000,
   "Rom": 20000,
-  "RomLex": 20000
+  "RomLex": 20000,
+  "InstructionDecoder": 256,
+  "ShfRt": 2305
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,707 +16,654 @@
 package net.consensys.linea.zktracer.module.rlpAddr;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ACC") List<BigInteger> acc,
-    @JsonProperty("ACC_BYTESIZE") List<BigInteger> accBytesize,
-    @JsonProperty("ADDR_HI") List<BigInteger> addrHi,
-    @JsonProperty("ADDR_LO") List<BigInteger> addrLo,
-    @JsonProperty("BIT1") List<Boolean> bit1,
-    @JsonProperty("BIT_ACC") List<UnsignedByte> bitAcc,
-    @JsonProperty("BYTE1") List<UnsignedByte> byte1,
-    @JsonProperty("COUNTER") List<BigInteger> counter,
-    @JsonProperty("DEP_ADDR_HI") List<BigInteger> depAddrHi,
-    @JsonProperty("DEP_ADDR_LO") List<BigInteger> depAddrLo,
-    @JsonProperty("INDEX") List<BigInteger> index,
-    @JsonProperty("KEC_HI") List<BigInteger> kecHi,
-    @JsonProperty("KEC_LO") List<BigInteger> kecLo,
-    @JsonProperty("LC") List<Boolean> lc,
-    @JsonProperty("LIMB") List<BigInteger> limb,
-    @JsonProperty("nBYTES") List<BigInteger> nBytes,
-    @JsonProperty("NONCE") List<BigInteger> nonce,
-    @JsonProperty("POWER") List<BigInteger> power,
-    @JsonProperty("RECIPE") List<BigInteger> recipe,
-    @JsonProperty("RECIPE_1") List<Boolean> recipe1,
-    @JsonProperty("RECIPE_2") List<Boolean> recipe2,
-    @JsonProperty("SALT_HI") List<BigInteger> saltHi,
-    @JsonProperty("SALT_LO") List<BigInteger> saltLo,
-    @JsonProperty("STAMP") List<BigInteger> stamp,
-    @JsonProperty("TINY_NON_ZERO_NONCE") List<Boolean> tinyNonZeroNonce) {
-  static TraceBuilder builder(int length) {
-    return new TraceBuilder(length);
+public class Trace {
+  static final int CREATE2_SHIFT = 255;
+  static final int G_TXDATA_NONZERO = 16;
+  static final int G_TXDATA_ZERO = 4;
+  static final int INT_LONG = 183;
+  static final int INT_SHORT = 128;
+  static final int LIST_LONG = 247;
+  static final int LIST_SHORT = 192;
+  static final int LLARGE = 16;
+  static final int LLARGEMO = 15;
+  static final int RLPADDR_CONST_RECIPE_1 = 1;
+  static final int RLPADDR_CONST_RECIPE_2 = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
+  static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
+  static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
+  static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
+  static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer acc;
+  private final MappedByteBuffer accBytesize;
+  private final MappedByteBuffer addrHi;
+  private final MappedByteBuffer addrLo;
+  private final MappedByteBuffer bit1;
+  private final MappedByteBuffer bitAcc;
+  private final MappedByteBuffer byte1;
+  private final MappedByteBuffer counter;
+  private final MappedByteBuffer depAddrHi;
+  private final MappedByteBuffer depAddrLo;
+  private final MappedByteBuffer index;
+  private final MappedByteBuffer kecHi;
+  private final MappedByteBuffer kecLo;
+  private final MappedByteBuffer lc;
+  private final MappedByteBuffer limb;
+  private final MappedByteBuffer nBytes;
+  private final MappedByteBuffer nonce;
+  private final MappedByteBuffer power;
+  private final MappedByteBuffer recipe;
+  private final MappedByteBuffer recipe1;
+  private final MappedByteBuffer recipe2;
+  private final MappedByteBuffer saltHi;
+  private final MappedByteBuffer saltLo;
+  private final MappedByteBuffer stamp;
+  private final MappedByteBuffer tinyNonZeroNonce;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("rlpAddr.ACC", 32, length),
+        new ColumnHeader("rlpAddr.ACC_BYTESIZE", 32, length),
+        new ColumnHeader("rlpAddr.ADDR_HI", 32, length),
+        new ColumnHeader("rlpAddr.ADDR_LO", 32, length),
+        new ColumnHeader("rlpAddr.BIT1", 1, length),
+        new ColumnHeader("rlpAddr.BIT_ACC", 1, length),
+        new ColumnHeader("rlpAddr.BYTE1", 1, length),
+        new ColumnHeader("rlpAddr.COUNTER", 32, length),
+        new ColumnHeader("rlpAddr.DEP_ADDR_HI", 32, length),
+        new ColumnHeader("rlpAddr.DEP_ADDR_LO", 32, length),
+        new ColumnHeader("rlpAddr.INDEX", 32, length),
+        new ColumnHeader("rlpAddr.KEC_HI", 32, length),
+        new ColumnHeader("rlpAddr.KEC_LO", 32, length),
+        new ColumnHeader("rlpAddr.LC", 1, length),
+        new ColumnHeader("rlpAddr.LIMB", 32, length),
+        new ColumnHeader("rlpAddr.nBYTES", 32, length),
+        new ColumnHeader("rlpAddr.NONCE", 32, length),
+        new ColumnHeader("rlpAddr.POWER", 32, length),
+        new ColumnHeader("rlpAddr.RECIPE", 32, length),
+        new ColumnHeader("rlpAddr.RECIPE_1", 1, length),
+        new ColumnHeader("rlpAddr.RECIPE_2", 1, length),
+        new ColumnHeader("rlpAddr.SALT_HI", 32, length),
+        new ColumnHeader("rlpAddr.SALT_LO", 32, length),
+        new ColumnHeader("rlpAddr.STAMP", 32, length),
+        new ColumnHeader("rlpAddr.TINY_NON_ZERO_NONCE", 1, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.acc = buffers.get(0);
+    this.accBytesize = buffers.get(1);
+    this.addrHi = buffers.get(2);
+    this.addrLo = buffers.get(3);
+    this.bit1 = buffers.get(4);
+    this.bitAcc = buffers.get(5);
+    this.byte1 = buffers.get(6);
+    this.counter = buffers.get(7);
+    this.depAddrHi = buffers.get(8);
+    this.depAddrLo = buffers.get(9);
+    this.index = buffers.get(10);
+    this.kecHi = buffers.get(11);
+    this.kecLo = buffers.get(12);
+    this.lc = buffers.get(13);
+    this.limb = buffers.get(14);
+    this.nBytes = buffers.get(15);
+    this.nonce = buffers.get(16);
+    this.power = buffers.get(17);
+    this.recipe = buffers.get(18);
+    this.recipe1 = buffers.get(19);
+    this.recipe2 = buffers.get(20);
+    this.saltHi = buffers.get(21);
+    this.saltLo = buffers.get(22);
+    this.stamp = buffers.get(23);
+    this.tinyNonZeroNonce = buffers.get(24);
   }
 
   public int size() {
-    return this.acc.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ACC")
-    private final List<BigInteger> acc;
-
-    @JsonProperty("ACC_BYTESIZE")
-    private final List<BigInteger> accBytesize;
-
-    @JsonProperty("ADDR_HI")
-    private final List<BigInteger> addrHi;
-
-    @JsonProperty("ADDR_LO")
-    private final List<BigInteger> addrLo;
-
-    @JsonProperty("BIT1")
-    private final List<Boolean> bit1;
-
-    @JsonProperty("BIT_ACC")
-    private final List<UnsignedByte> bitAcc;
-
-    @JsonProperty("BYTE1")
-    private final List<UnsignedByte> byte1;
-
-    @JsonProperty("COUNTER")
-    private final List<BigInteger> counter;
-
-    @JsonProperty("DEP_ADDR_HI")
-    private final List<BigInteger> depAddrHi;
-
-    @JsonProperty("DEP_ADDR_LO")
-    private final List<BigInteger> depAddrLo;
-
-    @JsonProperty("INDEX")
-    private final List<BigInteger> index;
-
-    @JsonProperty("KEC_HI")
-    private final List<BigInteger> kecHi;
-
-    @JsonProperty("KEC_LO")
-    private final List<BigInteger> kecLo;
-
-    @JsonProperty("LC")
-    private final List<Boolean> lc;
-
-    @JsonProperty("LIMB")
-    private final List<BigInteger> limb;
-
-    @JsonProperty("nBYTES")
-    private final List<BigInteger> nBytes;
-
-    @JsonProperty("NONCE")
-    private final List<BigInteger> nonce;
-
-    @JsonProperty("POWER")
-    private final List<BigInteger> power;
-
-    @JsonProperty("RECIPE")
-    private final List<BigInteger> recipe;
-
-    @JsonProperty("RECIPE_1")
-    private final List<Boolean> recipe1;
-
-    @JsonProperty("RECIPE_2")
-    private final List<Boolean> recipe2;
-
-    @JsonProperty("SALT_HI")
-    private final List<BigInteger> saltHi;
-
-    @JsonProperty("SALT_LO")
-    private final List<BigInteger> saltLo;
-
-    @JsonProperty("STAMP")
-    private final List<BigInteger> stamp;
-
-    @JsonProperty("TINY_NON_ZERO_NONCE")
-    private final List<Boolean> tinyNonZeroNonce;
-
-    private TraceBuilder(int length) {
-      this.acc = new ArrayList<>(length);
-      this.accBytesize = new ArrayList<>(length);
-      this.addrHi = new ArrayList<>(length);
-      this.addrLo = new ArrayList<>(length);
-      this.bit1 = new ArrayList<>(length);
-      this.bitAcc = new ArrayList<>(length);
-      this.byte1 = new ArrayList<>(length);
-      this.counter = new ArrayList<>(length);
-      this.depAddrHi = new ArrayList<>(length);
-      this.depAddrLo = new ArrayList<>(length);
-      this.index = new ArrayList<>(length);
-      this.kecHi = new ArrayList<>(length);
-      this.kecLo = new ArrayList<>(length);
-      this.lc = new ArrayList<>(length);
-      this.limb = new ArrayList<>(length);
-      this.nBytes = new ArrayList<>(length);
-      this.nonce = new ArrayList<>(length);
-      this.power = new ArrayList<>(length);
-      this.recipe = new ArrayList<>(length);
-      this.recipe1 = new ArrayList<>(length);
-      this.recipe2 = new ArrayList<>(length);
-      this.saltHi = new ArrayList<>(length);
-      this.saltLo = new ArrayList<>(length);
-      this.stamp = new ArrayList<>(length);
-      this.tinyNonZeroNonce = new ArrayList<>(length);
+  public Trace acc(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("rlpAddr.ACC already set");
+    } else {
+      filled.set(0);
     }
 
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
+    acc.put(UInt256.valueOf(b).toBytes().toArray());
 
-      return this.acc.size();
+    return this;
+  }
+
+  public Trace accBytesize(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("rlpAddr.ACC_BYTESIZE already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder acc(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ACC already set");
-      } else {
-        filled.set(0);
-      }
+    accBytesize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      acc.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace addrHi(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("rlpAddr.ADDR_HI already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder accBytesize(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ACC_BYTESIZE already set");
-      } else {
-        filled.set(1);
-      }
+    addrHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      accBytesize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace addrLo(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("rlpAddr.ADDR_LO already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder addrHi(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("ADDR_HI already set");
-      } else {
-        filled.set(2);
-      }
+    addrLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      addrHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bit1(final Boolean b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("rlpAddr.BIT1 already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder addrLo(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("ADDR_LO already set");
-      } else {
-        filled.set(3);
-      }
+    bit1.put((byte) (b ? 1 : 0));
 
-      addrLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace bitAcc(final UnsignedByte b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("rlpAddr.BIT_ACC already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder bit1(final Boolean b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("BIT1 already set");
-      } else {
-        filled.set(4);
-      }
+    bitAcc.put(b.toByte());
 
-      bit1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace byte1(final UnsignedByte b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("rlpAddr.BYTE1 already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder bitAcc(final UnsignedByte b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("BIT_ACC already set");
-      } else {
-        filled.set(5);
-      }
+    byte1.put(b.toByte());
 
-      bitAcc.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace counter(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("rlpAddr.COUNTER already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder byte1(final UnsignedByte b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("BYTE1 already set");
-      } else {
-        filled.set(6);
-      }
+    counter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      byte1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace depAddrHi(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("rlpAddr.DEP_ADDR_HI already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder counter(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("COUNTER already set");
-      } else {
-        filled.set(7);
-      }
+    depAddrHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      counter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace depAddrLo(final BigInteger b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("rlpAddr.DEP_ADDR_LO already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder depAddrHi(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("DEP_ADDR_HI already set");
-      } else {
-        filled.set(8);
-      }
+    depAddrLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      depAddrHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace index(final BigInteger b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("rlpAddr.INDEX already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder depAddrLo(final BigInteger b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("DEP_ADDR_LO already set");
-      } else {
-        filled.set(9);
-      }
+    index.put(UInt256.valueOf(b).toBytes().toArray());
 
-      depAddrLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace kecHi(final BigInteger b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("rlpAddr.KEC_HI already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder index(final BigInteger b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("INDEX already set");
-      } else {
-        filled.set(10);
-      }
+    kecHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      index.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace kecLo(final BigInteger b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("rlpAddr.KEC_LO already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder kecHi(final BigInteger b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("KEC_HI already set");
-      } else {
-        filled.set(11);
-      }
+    kecLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      kecHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace lc(final Boolean b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("rlpAddr.LC already set");
+    } else {
+      filled.set(13);
     }
 
-    public TraceBuilder kecLo(final BigInteger b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("KEC_LO already set");
-      } else {
-        filled.set(12);
-      }
+    lc.put((byte) (b ? 1 : 0));
 
-      kecLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace limb(final BigInteger b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("rlpAddr.LIMB already set");
+    } else {
+      filled.set(14);
     }
 
-    public TraceBuilder lc(final Boolean b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("LC already set");
-      } else {
-        filled.set(13);
-      }
+    limb.put(UInt256.valueOf(b).toBytes().toArray());
 
-      lc.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nBytes(final BigInteger b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("rlpAddr.nBYTES already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder limb(final BigInteger b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("LIMB already set");
-      } else {
-        filled.set(14);
-      }
+    nBytes.put(UInt256.valueOf(b).toBytes().toArray());
 
-      limb.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nonce(final BigInteger b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("rlpAddr.NONCE already set");
+    } else {
+      filled.set(15);
     }
 
-    public TraceBuilder nBytes(final BigInteger b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("nBYTES already set");
-      } else {
-        filled.set(24);
-      }
+    nonce.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nBytes.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace power(final BigInteger b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("rlpAddr.POWER already set");
+    } else {
+      filled.set(16);
     }
 
-    public TraceBuilder nonce(final BigInteger b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("NONCE already set");
-      } else {
-        filled.set(15);
-      }
+    power.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nonce.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace recipe(final BigInteger b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("rlpAddr.RECIPE already set");
+    } else {
+      filled.set(17);
     }
 
-    public TraceBuilder power(final BigInteger b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("POWER already set");
-      } else {
-        filled.set(16);
-      }
+    recipe.put(UInt256.valueOf(b).toBytes().toArray());
 
-      power.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace recipe1(final Boolean b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("rlpAddr.RECIPE_1 already set");
+    } else {
+      filled.set(18);
     }
 
-    public TraceBuilder recipe(final BigInteger b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("RECIPE already set");
-      } else {
-        filled.set(17);
-      }
+    recipe1.put((byte) (b ? 1 : 0));
 
-      recipe.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace recipe2(final Boolean b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("rlpAddr.RECIPE_2 already set");
+    } else {
+      filled.set(19);
     }
 
-    public TraceBuilder recipe1(final Boolean b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("RECIPE_1 already set");
-      } else {
-        filled.set(18);
-      }
+    recipe2.put((byte) (b ? 1 : 0));
 
-      recipe1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace saltHi(final BigInteger b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("rlpAddr.SALT_HI already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder recipe2(final Boolean b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("RECIPE_2 already set");
-      } else {
-        filled.set(19);
-      }
+    saltHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      recipe2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace saltLo(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("rlpAddr.SALT_LO already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder saltHi(final BigInteger b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("SALT_HI already set");
-      } else {
-        filled.set(20);
-      }
+    saltLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      saltHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace stamp(final BigInteger b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("rlpAddr.STAMP already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder saltLo(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("SALT_LO already set");
-      } else {
-        filled.set(21);
-      }
+    stamp.put(UInt256.valueOf(b).toBytes().toArray());
 
-      saltLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace tinyNonZeroNonce(final Boolean b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("rlpAddr.TINY_NON_ZERO_NONCE already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder stamp(final BigInteger b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("STAMP already set");
-      } else {
-        filled.set(22);
-      }
+    tinyNonZeroNonce.put((byte) (b ? 1 : 0));
 
-      stamp.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("rlpAddr.ACC has not been filled");
     }
 
-    public TraceBuilder tinyNonZeroNonce(final Boolean b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("TINY_NON_ZERO_NONCE already set");
-      } else {
-        filled.set(23);
-      }
-
-      tinyNonZeroNonce.add(b);
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("rlpAddr.ACC_BYTESIZE has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ACC has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ACC_BYTESIZE has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("ADDR_HI has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("ADDR_LO has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("BIT1 has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("BIT_ACC has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("BYTE1 has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("COUNTER has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("DEP_ADDR_HI has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("DEP_ADDR_LO has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("INDEX has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("KEC_HI has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("KEC_LO has not been filled");
-      }
-
-      if (!filled.get(13)) {
-        throw new IllegalStateException("LC has not been filled");
-      }
-
-      if (!filled.get(14)) {
-        throw new IllegalStateException("LIMB has not been filled");
-      }
-
-      if (!filled.get(24)) {
-        throw new IllegalStateException("nBYTES has not been filled");
-      }
-
-      if (!filled.get(15)) {
-        throw new IllegalStateException("NONCE has not been filled");
-      }
-
-      if (!filled.get(16)) {
-        throw new IllegalStateException("POWER has not been filled");
-      }
-
-      if (!filled.get(17)) {
-        throw new IllegalStateException("RECIPE has not been filled");
-      }
-
-      if (!filled.get(18)) {
-        throw new IllegalStateException("RECIPE_1 has not been filled");
-      }
-
-      if (!filled.get(19)) {
-        throw new IllegalStateException("RECIPE_2 has not been filled");
-      }
-
-      if (!filled.get(20)) {
-        throw new IllegalStateException("SALT_HI has not been filled");
-      }
-
-      if (!filled.get(21)) {
-        throw new IllegalStateException("SALT_LO has not been filled");
-      }
-
-      if (!filled.get(22)) {
-        throw new IllegalStateException("STAMP has not been filled");
-      }
-
-      if (!filled.get(23)) {
-        throw new IllegalStateException("TINY_NON_ZERO_NONCE has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(2)) {
+      throw new IllegalStateException("rlpAddr.ADDR_HI has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        acc.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        accBytesize.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        addrHi.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        addrLo.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        bit1.add(false);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        bitAcc.add(UnsignedByte.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        byte1.add(UnsignedByte.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        counter.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        depAddrHi.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        depAddrLo.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        index.add(BigInteger.ZERO);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        kecHi.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        kecLo.add(BigInteger.ZERO);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        lc.add(false);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        limb.add(BigInteger.ZERO);
-        this.filled.set(14);
-      }
-      if (!filled.get(24)) {
-        nBytes.add(BigInteger.ZERO);
-        this.filled.set(24);
-      }
-      if (!filled.get(15)) {
-        nonce.add(BigInteger.ZERO);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        power.add(BigInteger.ZERO);
-        this.filled.set(16);
-      }
-      if (!filled.get(17)) {
-        recipe.add(BigInteger.ZERO);
-        this.filled.set(17);
-      }
-      if (!filled.get(18)) {
-        recipe1.add(false);
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        recipe2.add(false);
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        saltHi.add(BigInteger.ZERO);
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        saltLo.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        stamp.add(BigInteger.ZERO);
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        tinyNonZeroNonce.add(false);
-        this.filled.set(23);
-      }
-
-      return this.validateRow();
+    if (!filled.get(3)) {
+      throw new IllegalStateException("rlpAddr.ADDR_LO has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          acc,
-          accBytesize,
-          addrHi,
-          addrLo,
-          bit1,
-          bitAcc,
-          byte1,
-          counter,
-          depAddrHi,
-          depAddrLo,
-          index,
-          kecHi,
-          kecLo,
-          lc,
-          limb,
-          nBytes,
-          nonce,
-          power,
-          recipe,
-          recipe1,
-          recipe2,
-          saltHi,
-          saltLo,
-          stamp,
-          tinyNonZeroNonce);
+    if (!filled.get(4)) {
+      throw new IllegalStateException("rlpAddr.BIT1 has not been filled");
     }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("rlpAddr.BIT_ACC has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("rlpAddr.BYTE1 has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("rlpAddr.COUNTER has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("rlpAddr.DEP_ADDR_HI has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("rlpAddr.DEP_ADDR_LO has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("rlpAddr.INDEX has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("rlpAddr.KEC_HI has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("rlpAddr.KEC_LO has not been filled");
+    }
+
+    if (!filled.get(13)) {
+      throw new IllegalStateException("rlpAddr.LC has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("rlpAddr.LIMB has not been filled");
+    }
+
+    if (!filled.get(24)) {
+      throw new IllegalStateException("rlpAddr.nBYTES has not been filled");
+    }
+
+    if (!filled.get(15)) {
+      throw new IllegalStateException("rlpAddr.NONCE has not been filled");
+    }
+
+    if (!filled.get(16)) {
+      throw new IllegalStateException("rlpAddr.POWER has not been filled");
+    }
+
+    if (!filled.get(17)) {
+      throw new IllegalStateException("rlpAddr.RECIPE has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("rlpAddr.RECIPE_1 has not been filled");
+    }
+
+    if (!filled.get(19)) {
+      throw new IllegalStateException("rlpAddr.RECIPE_2 has not been filled");
+    }
+
+    if (!filled.get(20)) {
+      throw new IllegalStateException("rlpAddr.SALT_HI has not been filled");
+    }
+
+    if (!filled.get(21)) {
+      throw new IllegalStateException("rlpAddr.SALT_LO has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("rlpAddr.STAMP has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("rlpAddr.TINY_NON_ZERO_NONCE has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      acc.position(acc.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      accBytesize.position(accBytesize.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      addrHi.position(addrHi.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      addrLo.position(addrLo.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      bit1.position(bit1.position() + 1);
+    }
+
+    if (!filled.get(5)) {
+      bitAcc.position(bitAcc.position() + 1);
+    }
+
+    if (!filled.get(6)) {
+      byte1.position(byte1.position() + 1);
+    }
+
+    if (!filled.get(7)) {
+      counter.position(counter.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      depAddrHi.position(depAddrHi.position() + 32);
+    }
+
+    if (!filled.get(9)) {
+      depAddrLo.position(depAddrLo.position() + 32);
+    }
+
+    if (!filled.get(10)) {
+      index.position(index.position() + 32);
+    }
+
+    if (!filled.get(11)) {
+      kecHi.position(kecHi.position() + 32);
+    }
+
+    if (!filled.get(12)) {
+      kecLo.position(kecLo.position() + 32);
+    }
+
+    if (!filled.get(13)) {
+      lc.position(lc.position() + 1);
+    }
+
+    if (!filled.get(14)) {
+      limb.position(limb.position() + 32);
+    }
+
+    if (!filled.get(24)) {
+      nBytes.position(nBytes.position() + 32);
+    }
+
+    if (!filled.get(15)) {
+      nonce.position(nonce.position() + 32);
+    }
+
+    if (!filled.get(16)) {
+      power.position(power.position() + 32);
+    }
+
+    if (!filled.get(17)) {
+      recipe.position(recipe.position() + 32);
+    }
+
+    if (!filled.get(18)) {
+      recipe1.position(recipe1.position() + 1);
+    }
+
+    if (!filled.get(19)) {
+      recipe2.position(recipe2.position() + 1);
+    }
+
+    if (!filled.get(20)) {
+      saltHi.position(saltHi.position() + 32);
+    }
+
+    if (!filled.get(21)) {
+      saltLo.position(saltLo.position() + 32);
+    }
+
+    if (!filled.get(22)) {
+      stamp.position(stamp.position() + 32);
+    }
+
+    if (!filled.get(23)) {
+      tinyNonZeroNonce.position(tinyNonZeroNonce.position() + 1);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }
