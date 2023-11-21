@@ -39,7 +39,7 @@ public record StorageFragment(
     boolean newWarmth)
     implements TraceFragment {
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     EWord eAddress = EWord.of(address);
 
     return trace

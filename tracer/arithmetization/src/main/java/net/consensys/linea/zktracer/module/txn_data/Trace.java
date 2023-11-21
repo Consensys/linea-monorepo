@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -16,1105 +16,1044 @@
 package net.consensys.linea.zktracer.module.txn_data;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
+import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import net.consensys.linea.zktracer.ColumnHeader;
+import org.apache.tuweni.units.bigints.UInt256;
 
 /**
- * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
- * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
+ * WARNING: This code is generated automatically.
+ *
+ * <p>Any modifications to this code may be overwritten and could lead to unexpected behavior.
+ * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-public record Trace(
-    @JsonProperty("ABS_TX_NUM") List<BigInteger> absTxNum,
-    @JsonProperty("ABS_TX_NUM_MAX") List<BigInteger> absTxNumMax,
-    @JsonProperty("BASEFEE") List<BigInteger> basefee,
-    @JsonProperty("BTC_NUM") List<BigInteger> btcNum,
-    @JsonProperty("BTC_NUM_MAX") List<BigInteger> btcNumMax,
-    @JsonProperty("CALL_DATA_SIZE") List<BigInteger> callDataSize,
-    @JsonProperty("CODE_FRAGMENT_INDEX") List<BigInteger> codeFragmentIndex,
-    @JsonProperty("COINBASE_HI") List<BigInteger> coinbaseHi,
-    @JsonProperty("COINBASE_LO") List<BigInteger> coinbaseLo,
-    @JsonProperty("CT") List<BigInteger> ct,
-    @JsonProperty("CUMULATIVE_CONSUMED_GAS") List<BigInteger> cumulativeConsumedGas,
-    @JsonProperty("FROM_HI") List<BigInteger> fromHi,
-    @JsonProperty("FROM_LO") List<BigInteger> fromLo,
-    @JsonProperty("GAS_LIMIT") List<BigInteger> gasLimit,
-    @JsonProperty("GAS_PRICE") List<BigInteger> gasPrice,
-    @JsonProperty("INIT_CODE_SIZE") List<BigInteger> initCodeSize,
-    @JsonProperty("INITIAL_BALANCE") List<BigInteger> initialBalance,
-    @JsonProperty("INITIAL_GAS") List<BigInteger> initialGas,
-    @JsonProperty("IS_DEP") List<Boolean> isDep,
-    @JsonProperty("LEFTOVER_GAS") List<BigInteger> leftoverGas,
-    @JsonProperty("NONCE") List<BigInteger> nonce,
-    @JsonProperty("OUTGOING_HI") List<BigInteger> outgoingHi,
-    @JsonProperty("OUTGOING_LO") List<BigInteger> outgoingLo,
-    @JsonProperty("OUTGOING_RLP_TXNRCPT") List<BigInteger> outgoingRlpTxnrcpt,
-    @JsonProperty("PHASE_RLP_TXN") List<BigInteger> phaseRlpTxn,
-    @JsonProperty("PHASE_RLP_TXNRCPT") List<BigInteger> phaseRlpTxnrcpt,
-    @JsonProperty("REFUND_AMOUNT") List<BigInteger> refundAmount,
-    @JsonProperty("REFUND_COUNTER") List<BigInteger> refundCounter,
-    @JsonProperty("REL_TX_NUM") List<BigInteger> relTxNum,
-    @JsonProperty("REL_TX_NUM_MAX") List<BigInteger> relTxNumMax,
-    @JsonProperty("REQUIRES_EVM_EXECUTION") List<Boolean> requiresEvmExecution,
-    @JsonProperty("STATUS_CODE") List<Boolean> statusCode,
-    @JsonProperty("TO_HI") List<BigInteger> toHi,
-    @JsonProperty("TO_LO") List<BigInteger> toLo,
-    @JsonProperty("TYPE0") List<Boolean> type0,
-    @JsonProperty("TYPE1") List<Boolean> type1,
-    @JsonProperty("TYPE2") List<Boolean> type2,
-    @JsonProperty("VALUE") List<BigInteger> value,
-    @JsonProperty("WCP_ARG_ONE_LO") List<BigInteger> wcpArgOneLo,
-    @JsonProperty("WCP_ARG_TWO_LO") List<BigInteger> wcpArgTwoLo,
-    @JsonProperty("WCP_INST") List<BigInteger> wcpInst,
-    @JsonProperty("WCP_RES_LO") List<Boolean> wcpResLo) {
-  static TraceBuilder builder() {
-    return new TraceBuilder();
+public class Trace {
+  static final int CREATE2_SHIFT = 255;
+  static final int G_TXDATA_NONZERO = 16;
+  static final int G_TXDATA_ZERO = 4;
+  static final int INT_LONG = 183;
+  static final int INT_SHORT = 128;
+  static final int LIST_LONG = 247;
+  static final int LIST_SHORT = 192;
+  static final int LLARGE = 16;
+  static final int LLARGEMO = 15;
+  static final int RLPADDR_CONST_RECIPE_1 = 1;
+  static final int RLPADDR_CONST_RECIPE_2 = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
+  static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
+  static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
+  static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
+  static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
+  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
+  static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+
+  private final BitSet filled = new BitSet();
+  private int currentLine = 0;
+
+  private final MappedByteBuffer absTxNum;
+  private final MappedByteBuffer absTxNumMax;
+  private final MappedByteBuffer basefee;
+  private final MappedByteBuffer btcNum;
+  private final MappedByteBuffer btcNumMax;
+  private final MappedByteBuffer callDataSize;
+  private final MappedByteBuffer codeFragmentIndex;
+  private final MappedByteBuffer coinbaseHi;
+  private final MappedByteBuffer coinbaseLo;
+  private final MappedByteBuffer ct;
+  private final MappedByteBuffer cumulativeConsumedGas;
+  private final MappedByteBuffer fromHi;
+  private final MappedByteBuffer fromLo;
+  private final MappedByteBuffer gasLimit;
+  private final MappedByteBuffer gasPrice;
+  private final MappedByteBuffer initCodeSize;
+  private final MappedByteBuffer initialBalance;
+  private final MappedByteBuffer initialGas;
+  private final MappedByteBuffer isDep;
+  private final MappedByteBuffer leftoverGas;
+  private final MappedByteBuffer nonce;
+  private final MappedByteBuffer outgoingHi;
+  private final MappedByteBuffer outgoingLo;
+  private final MappedByteBuffer outgoingRlpTxnrcpt;
+  private final MappedByteBuffer phaseRlpTxn;
+  private final MappedByteBuffer phaseRlpTxnrcpt;
+  private final MappedByteBuffer refundAmount;
+  private final MappedByteBuffer refundCounter;
+  private final MappedByteBuffer relTxNum;
+  private final MappedByteBuffer relTxNumMax;
+  private final MappedByteBuffer requiresEvmExecution;
+  private final MappedByteBuffer statusCode;
+  private final MappedByteBuffer toHi;
+  private final MappedByteBuffer toLo;
+  private final MappedByteBuffer type0;
+  private final MappedByteBuffer type1;
+  private final MappedByteBuffer type2;
+  private final MappedByteBuffer value;
+  private final MappedByteBuffer wcpArgOneLo;
+  private final MappedByteBuffer wcpArgTwoLo;
+  private final MappedByteBuffer wcpInst;
+  private final MappedByteBuffer wcpResLo;
+
+  static List<ColumnHeader> headers(int length) {
+    return List.of(
+        new ColumnHeader("txnData.ABS_TX_NUM", 32, length),
+        new ColumnHeader("txnData.ABS_TX_NUM_MAX", 32, length),
+        new ColumnHeader("txnData.BASEFEE", 32, length),
+        new ColumnHeader("txnData.BTC_NUM", 32, length),
+        new ColumnHeader("txnData.BTC_NUM_MAX", 32, length),
+        new ColumnHeader("txnData.CALL_DATA_SIZE", 32, length),
+        new ColumnHeader("txnData.CODE_FRAGMENT_INDEX", 32, length),
+        new ColumnHeader("txnData.COINBASE_HI", 32, length),
+        new ColumnHeader("txnData.COINBASE_LO", 32, length),
+        new ColumnHeader("txnData.CT", 32, length),
+        new ColumnHeader("txnData.CUMULATIVE_CONSUMED_GAS", 32, length),
+        new ColumnHeader("txnData.FROM_HI", 32, length),
+        new ColumnHeader("txnData.FROM_LO", 32, length),
+        new ColumnHeader("txnData.GAS_LIMIT", 32, length),
+        new ColumnHeader("txnData.GAS_PRICE", 32, length),
+        new ColumnHeader("txnData.INIT_CODE_SIZE", 32, length),
+        new ColumnHeader("txnData.INITIAL_BALANCE", 32, length),
+        new ColumnHeader("txnData.INITIAL_GAS", 32, length),
+        new ColumnHeader("txnData.IS_DEP", 1, length),
+        new ColumnHeader("txnData.LEFTOVER_GAS", 32, length),
+        new ColumnHeader("txnData.NONCE", 32, length),
+        new ColumnHeader("txnData.OUTGOING_HI", 32, length),
+        new ColumnHeader("txnData.OUTGOING_LO", 32, length),
+        new ColumnHeader("txnData.OUTGOING_RLP_TXNRCPT", 32, length),
+        new ColumnHeader("txnData.PHASE_RLP_TXN", 32, length),
+        new ColumnHeader("txnData.PHASE_RLP_TXNRCPT", 32, length),
+        new ColumnHeader("txnData.REFUND_AMOUNT", 32, length),
+        new ColumnHeader("txnData.REFUND_COUNTER", 32, length),
+        new ColumnHeader("txnData.REL_TX_NUM", 32, length),
+        new ColumnHeader("txnData.REL_TX_NUM_MAX", 32, length),
+        new ColumnHeader("txnData.REQUIRES_EVM_EXECUTION", 1, length),
+        new ColumnHeader("txnData.STATUS_CODE", 1, length),
+        new ColumnHeader("txnData.TO_HI", 32, length),
+        new ColumnHeader("txnData.TO_LO", 32, length),
+        new ColumnHeader("txnData.TYPE0", 1, length),
+        new ColumnHeader("txnData.TYPE1", 1, length),
+        new ColumnHeader("txnData.TYPE2", 1, length),
+        new ColumnHeader("txnData.VALUE", 32, length),
+        new ColumnHeader("txnData.WCP_ARG_ONE_LO", 32, length),
+        new ColumnHeader("txnData.WCP_ARG_TWO_LO", 32, length),
+        new ColumnHeader("txnData.WCP_INST", 32, length),
+        new ColumnHeader("txnData.WCP_RES_LO", 1, length));
+  }
+
+  public Trace(List<MappedByteBuffer> buffers) {
+    this.absTxNum = buffers.get(0);
+    this.absTxNumMax = buffers.get(1);
+    this.basefee = buffers.get(2);
+    this.btcNum = buffers.get(3);
+    this.btcNumMax = buffers.get(4);
+    this.callDataSize = buffers.get(5);
+    this.codeFragmentIndex = buffers.get(6);
+    this.coinbaseHi = buffers.get(7);
+    this.coinbaseLo = buffers.get(8);
+    this.ct = buffers.get(9);
+    this.cumulativeConsumedGas = buffers.get(10);
+    this.fromHi = buffers.get(11);
+    this.fromLo = buffers.get(12);
+    this.gasLimit = buffers.get(13);
+    this.gasPrice = buffers.get(14);
+    this.initCodeSize = buffers.get(15);
+    this.initialBalance = buffers.get(16);
+    this.initialGas = buffers.get(17);
+    this.isDep = buffers.get(18);
+    this.leftoverGas = buffers.get(19);
+    this.nonce = buffers.get(20);
+    this.outgoingHi = buffers.get(21);
+    this.outgoingLo = buffers.get(22);
+    this.outgoingRlpTxnrcpt = buffers.get(23);
+    this.phaseRlpTxn = buffers.get(24);
+    this.phaseRlpTxnrcpt = buffers.get(25);
+    this.refundAmount = buffers.get(26);
+    this.refundCounter = buffers.get(27);
+    this.relTxNum = buffers.get(28);
+    this.relTxNumMax = buffers.get(29);
+    this.requiresEvmExecution = buffers.get(30);
+    this.statusCode = buffers.get(31);
+    this.toHi = buffers.get(32);
+    this.toLo = buffers.get(33);
+    this.type0 = buffers.get(34);
+    this.type1 = buffers.get(35);
+    this.type2 = buffers.get(36);
+    this.value = buffers.get(37);
+    this.wcpArgOneLo = buffers.get(38);
+    this.wcpArgTwoLo = buffers.get(39);
+    this.wcpInst = buffers.get(40);
+    this.wcpResLo = buffers.get(41);
   }
 
   public int size() {
-    return this.absTxNum.size();
+    if (!filled.isEmpty()) {
+      throw new RuntimeException("Cannot measure a trace with a non-validated row.");
+    }
+
+    return this.currentLine;
   }
 
-  static class TraceBuilder {
-    private final BitSet filled = new BitSet();
-
-    @JsonProperty("ABS_TX_NUM")
-    private final List<BigInteger> absTxNum = new ArrayList<>();
-
-    @JsonProperty("ABS_TX_NUM_MAX")
-    private final List<BigInteger> absTxNumMax = new ArrayList<>();
-
-    @JsonProperty("BASEFEE")
-    private final List<BigInteger> basefee = new ArrayList<>();
-
-    @JsonProperty("BTC_NUM")
-    private final List<BigInteger> btcNum = new ArrayList<>();
-
-    @JsonProperty("BTC_NUM_MAX")
-    private final List<BigInteger> btcNumMax = new ArrayList<>();
-
-    @JsonProperty("CALL_DATA_SIZE")
-    private final List<BigInteger> callDataSize = new ArrayList<>();
-
-    @JsonProperty("CODE_FRAGMENT_INDEX")
-    private final List<BigInteger> codeFragmentIndex = new ArrayList<>();
-
-    @JsonProperty("COINBASE_HI")
-    private final List<BigInteger> coinbaseHi = new ArrayList<>();
-
-    @JsonProperty("COINBASE_LO")
-    private final List<BigInteger> coinbaseLo = new ArrayList<>();
-
-    @JsonProperty("CT")
-    private final List<BigInteger> ct = new ArrayList<>();
-
-    @JsonProperty("CUMULATIVE_CONSUMED_GAS")
-    private final List<BigInteger> cumulativeConsumedGas = new ArrayList<>();
-
-    @JsonProperty("FROM_HI")
-    private final List<BigInteger> fromHi = new ArrayList<>();
-
-    @JsonProperty("FROM_LO")
-    private final List<BigInteger> fromLo = new ArrayList<>();
-
-    @JsonProperty("GAS_LIMIT")
-    private final List<BigInteger> gasLimit = new ArrayList<>();
-
-    @JsonProperty("GAS_PRICE")
-    private final List<BigInteger> gasPrice = new ArrayList<>();
-
-    @JsonProperty("INIT_CODE_SIZE")
-    private final List<BigInteger> initCodeSize = new ArrayList<>();
-
-    @JsonProperty("INITIAL_BALANCE")
-    private final List<BigInteger> initialBalance = new ArrayList<>();
-
-    @JsonProperty("INITIAL_GAS")
-    private final List<BigInteger> initialGas = new ArrayList<>();
-
-    @JsonProperty("IS_DEP")
-    private final List<Boolean> isDep = new ArrayList<>();
-
-    @JsonProperty("LEFTOVER_GAS")
-    private final List<BigInteger> leftoverGas = new ArrayList<>();
-
-    @JsonProperty("NONCE")
-    private final List<BigInteger> nonce = new ArrayList<>();
-
-    @JsonProperty("OUTGOING_HI")
-    private final List<BigInteger> outgoingHi = new ArrayList<>();
-
-    @JsonProperty("OUTGOING_LO")
-    private final List<BigInteger> outgoingLo = new ArrayList<>();
-
-    @JsonProperty("OUTGOING_RLP_TXNRCPT")
-    private final List<BigInteger> outgoingRlpTxnrcpt = new ArrayList<>();
-
-    @JsonProperty("PHASE_RLP_TXN")
-    private final List<BigInteger> phaseRlpTxn = new ArrayList<>();
-
-    @JsonProperty("PHASE_RLP_TXNRCPT")
-    private final List<BigInteger> phaseRlpTxnrcpt = new ArrayList<>();
-
-    @JsonProperty("REFUND_AMOUNT")
-    private final List<BigInteger> refundAmount = new ArrayList<>();
-
-    @JsonProperty("REFUND_COUNTER")
-    private final List<BigInteger> refundCounter = new ArrayList<>();
-
-    @JsonProperty("REL_TX_NUM")
-    private final List<BigInteger> relTxNum = new ArrayList<>();
-
-    @JsonProperty("REL_TX_NUM_MAX")
-    private final List<BigInteger> relTxNumMax = new ArrayList<>();
-
-    @JsonProperty("REQUIRES_EVM_EXECUTION")
-    private final List<Boolean> requiresEvmExecution = new ArrayList<>();
-
-    @JsonProperty("STATUS_CODE")
-    private final List<Boolean> statusCode = new ArrayList<>();
-
-    @JsonProperty("TO_HI")
-    private final List<BigInteger> toHi = new ArrayList<>();
-
-    @JsonProperty("TO_LO")
-    private final List<BigInteger> toLo = new ArrayList<>();
-
-    @JsonProperty("TYPE0")
-    private final List<Boolean> type0 = new ArrayList<>();
-
-    @JsonProperty("TYPE1")
-    private final List<Boolean> type1 = new ArrayList<>();
-
-    @JsonProperty("TYPE2")
-    private final List<Boolean> type2 = new ArrayList<>();
-
-    @JsonProperty("VALUE")
-    private final List<BigInteger> value = new ArrayList<>();
-
-    @JsonProperty("WCP_ARG_ONE_LO")
-    private final List<BigInteger> wcpArgOneLo = new ArrayList<>();
-
-    @JsonProperty("WCP_ARG_TWO_LO")
-    private final List<BigInteger> wcpArgTwoLo = new ArrayList<>();
-
-    @JsonProperty("WCP_INST")
-    private final List<BigInteger> wcpInst = new ArrayList<>();
-
-    @JsonProperty("WCP_RES_LO")
-    private final List<Boolean> wcpResLo = new ArrayList<>();
-
-    TraceBuilder() {}
-
-    public int size() {
-      if (!filled.isEmpty()) {
-        throw new RuntimeException("Cannot measure a trace with a non-validated row.");
-      }
-
-      return this.absTxNum.size();
+  public Trace absTxNum(final BigInteger b) {
+    if (filled.get(0)) {
+      throw new IllegalStateException("txnData.ABS_TX_NUM already set");
+    } else {
+      filled.set(0);
     }
 
-    public TraceBuilder absTxNum(final BigInteger b) {
-      if (filled.get(0)) {
-        throw new IllegalStateException("ABS_TX_NUM already set");
-      } else {
-        filled.set(0);
-      }
+    absTxNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absTxNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace absTxNumMax(final BigInteger b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("txnData.ABS_TX_NUM_MAX already set");
+    } else {
+      filled.set(1);
     }
 
-    public TraceBuilder absTxNumMax(final BigInteger b) {
-      if (filled.get(1)) {
-        throw new IllegalStateException("ABS_TX_NUM_MAX already set");
-      } else {
-        filled.set(1);
-      }
+    absTxNumMax.put(UInt256.valueOf(b).toBytes().toArray());
 
-      absTxNumMax.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace basefee(final BigInteger b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("txnData.BASEFEE already set");
+    } else {
+      filled.set(2);
     }
 
-    public TraceBuilder basefee(final BigInteger b) {
-      if (filled.get(2)) {
-        throw new IllegalStateException("BASEFEE already set");
-      } else {
-        filled.set(2);
-      }
+    basefee.put(UInt256.valueOf(b).toBytes().toArray());
 
-      basefee.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace btcNum(final BigInteger b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("txnData.BTC_NUM already set");
+    } else {
+      filled.set(3);
     }
 
-    public TraceBuilder btcNum(final BigInteger b) {
-      if (filled.get(3)) {
-        throw new IllegalStateException("BTC_NUM already set");
-      } else {
-        filled.set(3);
-      }
+    btcNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      btcNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace btcNumMax(final BigInteger b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("txnData.BTC_NUM_MAX already set");
+    } else {
+      filled.set(4);
     }
 
-    public TraceBuilder btcNumMax(final BigInteger b) {
-      if (filled.get(4)) {
-        throw new IllegalStateException("BTC_NUM_MAX already set");
-      } else {
-        filled.set(4);
-      }
+    btcNumMax.put(UInt256.valueOf(b).toBytes().toArray());
 
-      btcNumMax.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace callDataSize(final BigInteger b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("txnData.CALL_DATA_SIZE already set");
+    } else {
+      filled.set(5);
     }
 
-    public TraceBuilder callDataSize(final BigInteger b) {
-      if (filled.get(5)) {
-        throw new IllegalStateException("CALL_DATA_SIZE already set");
-      } else {
-        filled.set(5);
-      }
+    callDataSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      callDataSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace codeFragmentIndex(final BigInteger b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("txnData.CODE_FRAGMENT_INDEX already set");
+    } else {
+      filled.set(6);
     }
 
-    public TraceBuilder codeFragmentIndex(final BigInteger b) {
-      if (filled.get(6)) {
-        throw new IllegalStateException("CODE_FRAGMENT_INDEX already set");
-      } else {
-        filled.set(6);
-      }
+    codeFragmentIndex.put(UInt256.valueOf(b).toBytes().toArray());
 
-      codeFragmentIndex.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace coinbaseHi(final BigInteger b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("txnData.COINBASE_HI already set");
+    } else {
+      filled.set(7);
     }
 
-    public TraceBuilder coinbaseHi(final BigInteger b) {
-      if (filled.get(7)) {
-        throw new IllegalStateException("COINBASE_HI already set");
-      } else {
-        filled.set(7);
-      }
+    coinbaseHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      coinbaseHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace coinbaseLo(final BigInteger b) {
+    if (filled.get(8)) {
+      throw new IllegalStateException("txnData.COINBASE_LO already set");
+    } else {
+      filled.set(8);
     }
 
-    public TraceBuilder coinbaseLo(final BigInteger b) {
-      if (filled.get(8)) {
-        throw new IllegalStateException("COINBASE_LO already set");
-      } else {
-        filled.set(8);
-      }
+    coinbaseLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      coinbaseLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace ct(final BigInteger b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("txnData.CT already set");
+    } else {
+      filled.set(9);
     }
 
-    public TraceBuilder ct(final BigInteger b) {
-      if (filled.get(9)) {
-        throw new IllegalStateException("CT already set");
-      } else {
-        filled.set(9);
-      }
+    ct.put(UInt256.valueOf(b).toBytes().toArray());
 
-      ct.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace cumulativeConsumedGas(final BigInteger b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("txnData.CUMULATIVE_CONSUMED_GAS already set");
+    } else {
+      filled.set(10);
     }
 
-    public TraceBuilder cumulativeConsumedGas(final BigInteger b) {
-      if (filled.get(10)) {
-        throw new IllegalStateException("CUMULATIVE_CONSUMED_GAS already set");
-      } else {
-        filled.set(10);
-      }
+    cumulativeConsumedGas.put(UInt256.valueOf(b).toBytes().toArray());
 
-      cumulativeConsumedGas.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace fromHi(final BigInteger b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("txnData.FROM_HI already set");
+    } else {
+      filled.set(11);
     }
 
-    public TraceBuilder fromHi(final BigInteger b) {
-      if (filled.get(11)) {
-        throw new IllegalStateException("FROM_HI already set");
-      } else {
-        filled.set(11);
-      }
+    fromHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      fromHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace fromLo(final BigInteger b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("txnData.FROM_LO already set");
+    } else {
+      filled.set(12);
     }
 
-    public TraceBuilder fromLo(final BigInteger b) {
-      if (filled.get(12)) {
-        throw new IllegalStateException("FROM_LO already set");
-      } else {
-        filled.set(12);
-      }
+    fromLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      fromLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace gasLimit(final BigInteger b) {
+    if (filled.get(13)) {
+      throw new IllegalStateException("txnData.GAS_LIMIT already set");
+    } else {
+      filled.set(13);
     }
 
-    public TraceBuilder gasLimit(final BigInteger b) {
-      if (filled.get(13)) {
-        throw new IllegalStateException("GAS_LIMIT already set");
-      } else {
-        filled.set(13);
-      }
+    gasLimit.put(UInt256.valueOf(b).toBytes().toArray());
 
-      gasLimit.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace gasPrice(final BigInteger b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("txnData.GAS_PRICE already set");
+    } else {
+      filled.set(14);
     }
 
-    public TraceBuilder gasPrice(final BigInteger b) {
-      if (filled.get(14)) {
-        throw new IllegalStateException("GAS_PRICE already set");
-      } else {
-        filled.set(14);
-      }
+    gasPrice.put(UInt256.valueOf(b).toBytes().toArray());
 
-      gasPrice.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace initCodeSize(final BigInteger b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("txnData.INIT_CODE_SIZE already set");
+    } else {
+      filled.set(17);
     }
 
-    public TraceBuilder initCodeSize(final BigInteger b) {
-      if (filled.get(17)) {
-        throw new IllegalStateException("INIT_CODE_SIZE already set");
-      } else {
-        filled.set(17);
-      }
+    initCodeSize.put(UInt256.valueOf(b).toBytes().toArray());
 
-      initCodeSize.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace initialBalance(final BigInteger b) {
+    if (filled.get(15)) {
+      throw new IllegalStateException("txnData.INITIAL_BALANCE already set");
+    } else {
+      filled.set(15);
     }
 
-    public TraceBuilder initialBalance(final BigInteger b) {
-      if (filled.get(15)) {
-        throw new IllegalStateException("INITIAL_BALANCE already set");
-      } else {
-        filled.set(15);
-      }
+    initialBalance.put(UInt256.valueOf(b).toBytes().toArray());
 
-      initialBalance.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace initialGas(final BigInteger b) {
+    if (filled.get(16)) {
+      throw new IllegalStateException("txnData.INITIAL_GAS already set");
+    } else {
+      filled.set(16);
     }
 
-    public TraceBuilder initialGas(final BigInteger b) {
-      if (filled.get(16)) {
-        throw new IllegalStateException("INITIAL_GAS already set");
-      } else {
-        filled.set(16);
-      }
+    initialGas.put(UInt256.valueOf(b).toBytes().toArray());
 
-      initialGas.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace isDep(final Boolean b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("txnData.IS_DEP already set");
+    } else {
+      filled.set(18);
     }
 
-    public TraceBuilder isDep(final Boolean b) {
-      if (filled.get(18)) {
-        throw new IllegalStateException("IS_DEP already set");
-      } else {
-        filled.set(18);
-      }
+    isDep.put((byte) (b ? 1 : 0));
 
-      isDep.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace leftoverGas(final BigInteger b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("txnData.LEFTOVER_GAS already set");
+    } else {
+      filled.set(19);
     }
 
-    public TraceBuilder leftoverGas(final BigInteger b) {
-      if (filled.get(19)) {
-        throw new IllegalStateException("LEFTOVER_GAS already set");
-      } else {
-        filled.set(19);
-      }
+    leftoverGas.put(UInt256.valueOf(b).toBytes().toArray());
 
-      leftoverGas.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace nonce(final BigInteger b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("txnData.NONCE already set");
+    } else {
+      filled.set(20);
     }
 
-    public TraceBuilder nonce(final BigInteger b) {
-      if (filled.get(20)) {
-        throw new IllegalStateException("NONCE already set");
-      } else {
-        filled.set(20);
-      }
+    nonce.put(UInt256.valueOf(b).toBytes().toArray());
 
-      nonce.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace outgoingHi(final BigInteger b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("txnData.OUTGOING_HI already set");
+    } else {
+      filled.set(21);
     }
 
-    public TraceBuilder outgoingHi(final BigInteger b) {
-      if (filled.get(21)) {
-        throw new IllegalStateException("OUTGOING_HI already set");
-      } else {
-        filled.set(21);
-      }
+    outgoingHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      outgoingHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace outgoingLo(final BigInteger b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("txnData.OUTGOING_LO already set");
+    } else {
+      filled.set(22);
     }
 
-    public TraceBuilder outgoingLo(final BigInteger b) {
-      if (filled.get(22)) {
-        throw new IllegalStateException("OUTGOING_LO already set");
-      } else {
-        filled.set(22);
-      }
+    outgoingLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      outgoingLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace outgoingRlpTxnrcpt(final BigInteger b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("txnData.OUTGOING_RLP_TXNRCPT already set");
+    } else {
+      filled.set(23);
     }
 
-    public TraceBuilder outgoingRlpTxnrcpt(final BigInteger b) {
-      if (filled.get(23)) {
-        throw new IllegalStateException("OUTGOING_RLP_TXNRCPT already set");
-      } else {
-        filled.set(23);
-      }
+    outgoingRlpTxnrcpt.put(UInt256.valueOf(b).toBytes().toArray());
 
-      outgoingRlpTxnrcpt.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phaseRlpTxn(final BigInteger b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("txnData.PHASE_RLP_TXN already set");
+    } else {
+      filled.set(24);
     }
 
-    public TraceBuilder phaseRlpTxn(final BigInteger b) {
-      if (filled.get(24)) {
-        throw new IllegalStateException("PHASE_RLP_TXN already set");
-      } else {
-        filled.set(24);
-      }
+    phaseRlpTxn.put(UInt256.valueOf(b).toBytes().toArray());
 
-      phaseRlpTxn.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace phaseRlpTxnrcpt(final BigInteger b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT already set");
+    } else {
+      filled.set(25);
     }
 
-    public TraceBuilder phaseRlpTxnrcpt(final BigInteger b) {
-      if (filled.get(25)) {
-        throw new IllegalStateException("PHASE_RLP_TXNRCPT already set");
-      } else {
-        filled.set(25);
-      }
+    phaseRlpTxnrcpt.put(UInt256.valueOf(b).toBytes().toArray());
 
-      phaseRlpTxnrcpt.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace refundAmount(final BigInteger b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("txnData.REFUND_AMOUNT already set");
+    } else {
+      filled.set(26);
     }
 
-    public TraceBuilder refundAmount(final BigInteger b) {
-      if (filled.get(26)) {
-        throw new IllegalStateException("REFUND_AMOUNT already set");
-      } else {
-        filled.set(26);
-      }
+    refundAmount.put(UInt256.valueOf(b).toBytes().toArray());
 
-      refundAmount.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace refundCounter(final BigInteger b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("txnData.REFUND_COUNTER already set");
+    } else {
+      filled.set(27);
     }
 
-    public TraceBuilder refundCounter(final BigInteger b) {
-      if (filled.get(27)) {
-        throw new IllegalStateException("REFUND_COUNTER already set");
-      } else {
-        filled.set(27);
-      }
+    refundCounter.put(UInt256.valueOf(b).toBytes().toArray());
 
-      refundCounter.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace relTxNum(final BigInteger b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("txnData.REL_TX_NUM already set");
+    } else {
+      filled.set(28);
     }
 
-    public TraceBuilder relTxNum(final BigInteger b) {
-      if (filled.get(28)) {
-        throw new IllegalStateException("REL_TX_NUM already set");
-      } else {
-        filled.set(28);
-      }
+    relTxNum.put(UInt256.valueOf(b).toBytes().toArray());
 
-      relTxNum.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace relTxNumMax(final BigInteger b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("txnData.REL_TX_NUM_MAX already set");
+    } else {
+      filled.set(29);
     }
 
-    public TraceBuilder relTxNumMax(final BigInteger b) {
-      if (filled.get(29)) {
-        throw new IllegalStateException("REL_TX_NUM_MAX already set");
-      } else {
-        filled.set(29);
-      }
+    relTxNumMax.put(UInt256.valueOf(b).toBytes().toArray());
 
-      relTxNumMax.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace requiresEvmExecution(final Boolean b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("txnData.REQUIRES_EVM_EXECUTION already set");
+    } else {
+      filled.set(30);
     }
 
-    public TraceBuilder requiresEvmExecution(final Boolean b) {
-      if (filled.get(30)) {
-        throw new IllegalStateException("REQUIRES_EVM_EXECUTION already set");
-      } else {
-        filled.set(30);
-      }
+    requiresEvmExecution.put((byte) (b ? 1 : 0));
 
-      requiresEvmExecution.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace statusCode(final Boolean b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("txnData.STATUS_CODE already set");
+    } else {
+      filled.set(31);
     }
 
-    public TraceBuilder statusCode(final Boolean b) {
-      if (filled.get(31)) {
-        throw new IllegalStateException("STATUS_CODE already set");
-      } else {
-        filled.set(31);
-      }
+    statusCode.put((byte) (b ? 1 : 0));
 
-      statusCode.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace toHi(final BigInteger b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("txnData.TO_HI already set");
+    } else {
+      filled.set(32);
     }
 
-    public TraceBuilder toHi(final BigInteger b) {
-      if (filled.get(32)) {
-        throw new IllegalStateException("TO_HI already set");
-      } else {
-        filled.set(32);
-      }
+    toHi.put(UInt256.valueOf(b).toBytes().toArray());
 
-      toHi.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace toLo(final BigInteger b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("txnData.TO_LO already set");
+    } else {
+      filled.set(33);
     }
 
-    public TraceBuilder toLo(final BigInteger b) {
-      if (filled.get(33)) {
-        throw new IllegalStateException("TO_LO already set");
-      } else {
-        filled.set(33);
-      }
+    toLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      toLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace type0(final Boolean b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("txnData.TYPE0 already set");
+    } else {
+      filled.set(34);
     }
 
-    public TraceBuilder type0(final Boolean b) {
-      if (filled.get(34)) {
-        throw new IllegalStateException("TYPE0 already set");
-      } else {
-        filled.set(34);
-      }
+    type0.put((byte) (b ? 1 : 0));
 
-      type0.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace type1(final Boolean b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("txnData.TYPE1 already set");
+    } else {
+      filled.set(35);
     }
 
-    public TraceBuilder type1(final Boolean b) {
-      if (filled.get(35)) {
-        throw new IllegalStateException("TYPE1 already set");
-      } else {
-        filled.set(35);
-      }
+    type1.put((byte) (b ? 1 : 0));
 
-      type1.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace type2(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("txnData.TYPE2 already set");
+    } else {
+      filled.set(36);
     }
 
-    public TraceBuilder type2(final Boolean b) {
-      if (filled.get(36)) {
-        throw new IllegalStateException("TYPE2 already set");
-      } else {
-        filled.set(36);
-      }
+    type2.put((byte) (b ? 1 : 0));
 
-      type2.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace value(final BigInteger b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("txnData.VALUE already set");
+    } else {
+      filled.set(37);
     }
 
-    public TraceBuilder value(final BigInteger b) {
-      if (filled.get(37)) {
-        throw new IllegalStateException("VALUE already set");
-      } else {
-        filled.set(37);
-      }
+    value.put(UInt256.valueOf(b).toBytes().toArray());
 
-      value.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace wcpArgOneLo(final BigInteger b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("txnData.WCP_ARG_ONE_LO already set");
+    } else {
+      filled.set(38);
     }
 
-    public TraceBuilder wcpArgOneLo(final BigInteger b) {
-      if (filled.get(38)) {
-        throw new IllegalStateException("WCP_ARG_ONE_LO already set");
-      } else {
-        filled.set(38);
-      }
+    wcpArgOneLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      wcpArgOneLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace wcpArgTwoLo(final BigInteger b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("txnData.WCP_ARG_TWO_LO already set");
+    } else {
+      filled.set(39);
     }
 
-    public TraceBuilder wcpArgTwoLo(final BigInteger b) {
-      if (filled.get(39)) {
-        throw new IllegalStateException("WCP_ARG_TWO_LO already set");
-      } else {
-        filled.set(39);
-      }
+    wcpArgTwoLo.put(UInt256.valueOf(b).toBytes().toArray());
 
-      wcpArgTwoLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace wcpInst(final BigInteger b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("txnData.WCP_INST already set");
+    } else {
+      filled.set(40);
     }
 
-    public TraceBuilder wcpInst(final BigInteger b) {
-      if (filled.get(40)) {
-        throw new IllegalStateException("WCP_INST already set");
-      } else {
-        filled.set(40);
-      }
+    wcpInst.put(UInt256.valueOf(b).toBytes().toArray());
 
-      wcpInst.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace wcpResLo(final Boolean b) {
+    if (filled.get(41)) {
+      throw new IllegalStateException("txnData.WCP_RES_LO already set");
+    } else {
+      filled.set(41);
     }
 
-    public TraceBuilder wcpResLo(final Boolean b) {
-      if (filled.get(41)) {
-        throw new IllegalStateException("WCP_RES_LO already set");
-      } else {
-        filled.set(41);
-      }
+    wcpResLo.put((byte) (b ? 1 : 0));
 
-      wcpResLo.add(b);
+    return this;
+  }
 
-      return this;
+  public Trace validateRow() {
+    if (!filled.get(0)) {
+      throw new IllegalStateException("txnData.ABS_TX_NUM has not been filled");
     }
 
-    public TraceBuilder validateRow() {
-      if (!filled.get(0)) {
-        throw new IllegalStateException("ABS_TX_NUM has not been filled");
-      }
-
-      if (!filled.get(1)) {
-        throw new IllegalStateException("ABS_TX_NUM_MAX has not been filled");
-      }
-
-      if (!filled.get(2)) {
-        throw new IllegalStateException("BASEFEE has not been filled");
-      }
-
-      if (!filled.get(3)) {
-        throw new IllegalStateException("BTC_NUM has not been filled");
-      }
-
-      if (!filled.get(4)) {
-        throw new IllegalStateException("BTC_NUM_MAX has not been filled");
-      }
-
-      if (!filled.get(5)) {
-        throw new IllegalStateException("CALL_DATA_SIZE has not been filled");
-      }
-
-      if (!filled.get(6)) {
-        throw new IllegalStateException("CODE_FRAGMENT_INDEX has not been filled");
-      }
-
-      if (!filled.get(7)) {
-        throw new IllegalStateException("COINBASE_HI has not been filled");
-      }
-
-      if (!filled.get(8)) {
-        throw new IllegalStateException("COINBASE_LO has not been filled");
-      }
-
-      if (!filled.get(9)) {
-        throw new IllegalStateException("CT has not been filled");
-      }
-
-      if (!filled.get(10)) {
-        throw new IllegalStateException("CUMULATIVE_CONSUMED_GAS has not been filled");
-      }
-
-      if (!filled.get(11)) {
-        throw new IllegalStateException("FROM_HI has not been filled");
-      }
-
-      if (!filled.get(12)) {
-        throw new IllegalStateException("FROM_LO has not been filled");
-      }
-
-      if (!filled.get(13)) {
-        throw new IllegalStateException("GAS_LIMIT has not been filled");
-      }
-
-      if (!filled.get(14)) {
-        throw new IllegalStateException("GAS_PRICE has not been filled");
-      }
-
-      if (!filled.get(17)) {
-        throw new IllegalStateException("INIT_CODE_SIZE has not been filled");
-      }
-
-      if (!filled.get(15)) {
-        throw new IllegalStateException("INITIAL_BALANCE has not been filled");
-      }
-
-      if (!filled.get(16)) {
-        throw new IllegalStateException("INITIAL_GAS has not been filled");
-      }
-
-      if (!filled.get(18)) {
-        throw new IllegalStateException("IS_DEP has not been filled");
-      }
-
-      if (!filled.get(19)) {
-        throw new IllegalStateException("LEFTOVER_GAS has not been filled");
-      }
-
-      if (!filled.get(20)) {
-        throw new IllegalStateException("NONCE has not been filled");
-      }
-
-      if (!filled.get(21)) {
-        throw new IllegalStateException("OUTGOING_HI has not been filled");
-      }
-
-      if (!filled.get(22)) {
-        throw new IllegalStateException("OUTGOING_LO has not been filled");
-      }
-
-      if (!filled.get(23)) {
-        throw new IllegalStateException("OUTGOING_RLP_TXNRCPT has not been filled");
-      }
-
-      if (!filled.get(24)) {
-        throw new IllegalStateException("PHASE_RLP_TXN has not been filled");
-      }
-
-      if (!filled.get(25)) {
-        throw new IllegalStateException("PHASE_RLP_TXNRCPT has not been filled");
-      }
-
-      if (!filled.get(26)) {
-        throw new IllegalStateException("REFUND_AMOUNT has not been filled");
-      }
-
-      if (!filled.get(27)) {
-        throw new IllegalStateException("REFUND_COUNTER has not been filled");
-      }
-
-      if (!filled.get(28)) {
-        throw new IllegalStateException("REL_TX_NUM has not been filled");
-      }
-
-      if (!filled.get(29)) {
-        throw new IllegalStateException("REL_TX_NUM_MAX has not been filled");
-      }
-
-      if (!filled.get(30)) {
-        throw new IllegalStateException("REQUIRES_EVM_EXECUTION has not been filled");
-      }
-
-      if (!filled.get(31)) {
-        throw new IllegalStateException("STATUS_CODE has not been filled");
-      }
-
-      if (!filled.get(32)) {
-        throw new IllegalStateException("TO_HI has not been filled");
-      }
-
-      if (!filled.get(33)) {
-        throw new IllegalStateException("TO_LO has not been filled");
-      }
-
-      if (!filled.get(34)) {
-        throw new IllegalStateException("TYPE0 has not been filled");
-      }
-
-      if (!filled.get(35)) {
-        throw new IllegalStateException("TYPE1 has not been filled");
-      }
-
-      if (!filled.get(36)) {
-        throw new IllegalStateException("TYPE2 has not been filled");
-      }
-
-      if (!filled.get(37)) {
-        throw new IllegalStateException("VALUE has not been filled");
-      }
-
-      if (!filled.get(38)) {
-        throw new IllegalStateException("WCP_ARG_ONE_LO has not been filled");
-      }
-
-      if (!filled.get(39)) {
-        throw new IllegalStateException("WCP_ARG_TWO_LO has not been filled");
-      }
-
-      if (!filled.get(40)) {
-        throw new IllegalStateException("WCP_INST has not been filled");
-      }
-
-      if (!filled.get(41)) {
-        throw new IllegalStateException("WCP_RES_LO has not been filled");
-      }
-
-      filled.clear();
-
-      return this;
+    if (!filled.get(1)) {
+      throw new IllegalStateException("txnData.ABS_TX_NUM_MAX has not been filled");
     }
 
-    public TraceBuilder fillAndValidateRow() {
-      if (!filled.get(0)) {
-        absTxNum.add(BigInteger.ZERO);
-        this.filled.set(0);
-      }
-      if (!filled.get(1)) {
-        absTxNumMax.add(BigInteger.ZERO);
-        this.filled.set(1);
-      }
-      if (!filled.get(2)) {
-        basefee.add(BigInteger.ZERO);
-        this.filled.set(2);
-      }
-      if (!filled.get(3)) {
-        btcNum.add(BigInteger.ZERO);
-        this.filled.set(3);
-      }
-      if (!filled.get(4)) {
-        btcNumMax.add(BigInteger.ZERO);
-        this.filled.set(4);
-      }
-      if (!filled.get(5)) {
-        callDataSize.add(BigInteger.ZERO);
-        this.filled.set(5);
-      }
-      if (!filled.get(6)) {
-        codeFragmentIndex.add(BigInteger.ZERO);
-        this.filled.set(6);
-      }
-      if (!filled.get(7)) {
-        coinbaseHi.add(BigInteger.ZERO);
-        this.filled.set(7);
-      }
-      if (!filled.get(8)) {
-        coinbaseLo.add(BigInteger.ZERO);
-        this.filled.set(8);
-      }
-      if (!filled.get(9)) {
-        ct.add(BigInteger.ZERO);
-        this.filled.set(9);
-      }
-      if (!filled.get(10)) {
-        cumulativeConsumedGas.add(BigInteger.ZERO);
-        this.filled.set(10);
-      }
-      if (!filled.get(11)) {
-        fromHi.add(BigInteger.ZERO);
-        this.filled.set(11);
-      }
-      if (!filled.get(12)) {
-        fromLo.add(BigInteger.ZERO);
-        this.filled.set(12);
-      }
-      if (!filled.get(13)) {
-        gasLimit.add(BigInteger.ZERO);
-        this.filled.set(13);
-      }
-      if (!filled.get(14)) {
-        gasPrice.add(BigInteger.ZERO);
-        this.filled.set(14);
-      }
-      if (!filled.get(17)) {
-        initCodeSize.add(BigInteger.ZERO);
-        this.filled.set(17);
-      }
-      if (!filled.get(15)) {
-        initialBalance.add(BigInteger.ZERO);
-        this.filled.set(15);
-      }
-      if (!filled.get(16)) {
-        initialGas.add(BigInteger.ZERO);
-        this.filled.set(16);
-      }
-      if (!filled.get(18)) {
-        isDep.add(false);
-        this.filled.set(18);
-      }
-      if (!filled.get(19)) {
-        leftoverGas.add(BigInteger.ZERO);
-        this.filled.set(19);
-      }
-      if (!filled.get(20)) {
-        nonce.add(BigInteger.ZERO);
-        this.filled.set(20);
-      }
-      if (!filled.get(21)) {
-        outgoingHi.add(BigInteger.ZERO);
-        this.filled.set(21);
-      }
-      if (!filled.get(22)) {
-        outgoingLo.add(BigInteger.ZERO);
-        this.filled.set(22);
-      }
-      if (!filled.get(23)) {
-        outgoingRlpTxnrcpt.add(BigInteger.ZERO);
-        this.filled.set(23);
-      }
-      if (!filled.get(24)) {
-        phaseRlpTxn.add(BigInteger.ZERO);
-        this.filled.set(24);
-      }
-      if (!filled.get(25)) {
-        phaseRlpTxnrcpt.add(BigInteger.ZERO);
-        this.filled.set(25);
-      }
-      if (!filled.get(26)) {
-        refundAmount.add(BigInteger.ZERO);
-        this.filled.set(26);
-      }
-      if (!filled.get(27)) {
-        refundCounter.add(BigInteger.ZERO);
-        this.filled.set(27);
-      }
-      if (!filled.get(28)) {
-        relTxNum.add(BigInteger.ZERO);
-        this.filled.set(28);
-      }
-      if (!filled.get(29)) {
-        relTxNumMax.add(BigInteger.ZERO);
-        this.filled.set(29);
-      }
-      if (!filled.get(30)) {
-        requiresEvmExecution.add(false);
-        this.filled.set(30);
-      }
-      if (!filled.get(31)) {
-        statusCode.add(false);
-        this.filled.set(31);
-      }
-      if (!filled.get(32)) {
-        toHi.add(BigInteger.ZERO);
-        this.filled.set(32);
-      }
-      if (!filled.get(33)) {
-        toLo.add(BigInteger.ZERO);
-        this.filled.set(33);
-      }
-      if (!filled.get(34)) {
-        type0.add(false);
-        this.filled.set(34);
-      }
-      if (!filled.get(35)) {
-        type1.add(false);
-        this.filled.set(35);
-      }
-      if (!filled.get(36)) {
-        type2.add(false);
-        this.filled.set(36);
-      }
-      if (!filled.get(37)) {
-        value.add(BigInteger.ZERO);
-        this.filled.set(37);
-      }
-      if (!filled.get(38)) {
-        wcpArgOneLo.add(BigInteger.ZERO);
-        this.filled.set(38);
-      }
-      if (!filled.get(39)) {
-        wcpArgTwoLo.add(BigInteger.ZERO);
-        this.filled.set(39);
-      }
-      if (!filled.get(40)) {
-        wcpInst.add(BigInteger.ZERO);
-        this.filled.set(40);
-      }
-      if (!filled.get(41)) {
-        wcpResLo.add(false);
-        this.filled.set(41);
-      }
-
-      return this.validateRow();
+    if (!filled.get(2)) {
+      throw new IllegalStateException("txnData.BASEFEE has not been filled");
     }
 
-    public Trace build() {
-      if (!filled.isEmpty()) {
-        throw new IllegalStateException("Cannot build trace with a non-validated row.");
-      }
-
-      return new Trace(
-          absTxNum,
-          absTxNumMax,
-          basefee,
-          btcNum,
-          btcNumMax,
-          callDataSize,
-          codeFragmentIndex,
-          coinbaseHi,
-          coinbaseLo,
-          ct,
-          cumulativeConsumedGas,
-          fromHi,
-          fromLo,
-          gasLimit,
-          gasPrice,
-          initCodeSize,
-          initialBalance,
-          initialGas,
-          isDep,
-          leftoverGas,
-          nonce,
-          outgoingHi,
-          outgoingLo,
-          outgoingRlpTxnrcpt,
-          phaseRlpTxn,
-          phaseRlpTxnrcpt,
-          refundAmount,
-          refundCounter,
-          relTxNum,
-          relTxNumMax,
-          requiresEvmExecution,
-          statusCode,
-          toHi,
-          toLo,
-          type0,
-          type1,
-          type2,
-          value,
-          wcpArgOneLo,
-          wcpArgTwoLo,
-          wcpInst,
-          wcpResLo);
+    if (!filled.get(3)) {
+      throw new IllegalStateException("txnData.BTC_NUM has not been filled");
     }
+
+    if (!filled.get(4)) {
+      throw new IllegalStateException("txnData.BTC_NUM_MAX has not been filled");
+    }
+
+    if (!filled.get(5)) {
+      throw new IllegalStateException("txnData.CALL_DATA_SIZE has not been filled");
+    }
+
+    if (!filled.get(6)) {
+      throw new IllegalStateException("txnData.CODE_FRAGMENT_INDEX has not been filled");
+    }
+
+    if (!filled.get(7)) {
+      throw new IllegalStateException("txnData.COINBASE_HI has not been filled");
+    }
+
+    if (!filled.get(8)) {
+      throw new IllegalStateException("txnData.COINBASE_LO has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("txnData.CT has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("txnData.CUMULATIVE_CONSUMED_GAS has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("txnData.FROM_HI has not been filled");
+    }
+
+    if (!filled.get(12)) {
+      throw new IllegalStateException("txnData.FROM_LO has not been filled");
+    }
+
+    if (!filled.get(13)) {
+      throw new IllegalStateException("txnData.GAS_LIMIT has not been filled");
+    }
+
+    if (!filled.get(14)) {
+      throw new IllegalStateException("txnData.GAS_PRICE has not been filled");
+    }
+
+    if (!filled.get(17)) {
+      throw new IllegalStateException("txnData.INIT_CODE_SIZE has not been filled");
+    }
+
+    if (!filled.get(15)) {
+      throw new IllegalStateException("txnData.INITIAL_BALANCE has not been filled");
+    }
+
+    if (!filled.get(16)) {
+      throw new IllegalStateException("txnData.INITIAL_GAS has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("txnData.IS_DEP has not been filled");
+    }
+
+    if (!filled.get(19)) {
+      throw new IllegalStateException("txnData.LEFTOVER_GAS has not been filled");
+    }
+
+    if (!filled.get(20)) {
+      throw new IllegalStateException("txnData.NONCE has not been filled");
+    }
+
+    if (!filled.get(21)) {
+      throw new IllegalStateException("txnData.OUTGOING_HI has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("txnData.OUTGOING_LO has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("txnData.OUTGOING_RLP_TXNRCPT has not been filled");
+    }
+
+    if (!filled.get(24)) {
+      throw new IllegalStateException("txnData.PHASE_RLP_TXN has not been filled");
+    }
+
+    if (!filled.get(25)) {
+      throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT has not been filled");
+    }
+
+    if (!filled.get(26)) {
+      throw new IllegalStateException("txnData.REFUND_AMOUNT has not been filled");
+    }
+
+    if (!filled.get(27)) {
+      throw new IllegalStateException("txnData.REFUND_COUNTER has not been filled");
+    }
+
+    if (!filled.get(28)) {
+      throw new IllegalStateException("txnData.REL_TX_NUM has not been filled");
+    }
+
+    if (!filled.get(29)) {
+      throw new IllegalStateException("txnData.REL_TX_NUM_MAX has not been filled");
+    }
+
+    if (!filled.get(30)) {
+      throw new IllegalStateException("txnData.REQUIRES_EVM_EXECUTION has not been filled");
+    }
+
+    if (!filled.get(31)) {
+      throw new IllegalStateException("txnData.STATUS_CODE has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException("txnData.TO_HI has not been filled");
+    }
+
+    if (!filled.get(33)) {
+      throw new IllegalStateException("txnData.TO_LO has not been filled");
+    }
+
+    if (!filled.get(34)) {
+      throw new IllegalStateException("txnData.TYPE0 has not been filled");
+    }
+
+    if (!filled.get(35)) {
+      throw new IllegalStateException("txnData.TYPE1 has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("txnData.TYPE2 has not been filled");
+    }
+
+    if (!filled.get(37)) {
+      throw new IllegalStateException("txnData.VALUE has not been filled");
+    }
+
+    if (!filled.get(38)) {
+      throw new IllegalStateException("txnData.WCP_ARG_ONE_LO has not been filled");
+    }
+
+    if (!filled.get(39)) {
+      throw new IllegalStateException("txnData.WCP_ARG_TWO_LO has not been filled");
+    }
+
+    if (!filled.get(40)) {
+      throw new IllegalStateException("txnData.WCP_INST has not been filled");
+    }
+
+    if (!filled.get(41)) {
+      throw new IllegalStateException("txnData.WCP_RES_LO has not been filled");
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace fillAndValidateRow() {
+    if (!filled.get(0)) {
+      absTxNum.position(absTxNum.position() + 32);
+    }
+
+    if (!filled.get(1)) {
+      absTxNumMax.position(absTxNumMax.position() + 32);
+    }
+
+    if (!filled.get(2)) {
+      basefee.position(basefee.position() + 32);
+    }
+
+    if (!filled.get(3)) {
+      btcNum.position(btcNum.position() + 32);
+    }
+
+    if (!filled.get(4)) {
+      btcNumMax.position(btcNumMax.position() + 32);
+    }
+
+    if (!filled.get(5)) {
+      callDataSize.position(callDataSize.position() + 32);
+    }
+
+    if (!filled.get(6)) {
+      codeFragmentIndex.position(codeFragmentIndex.position() + 32);
+    }
+
+    if (!filled.get(7)) {
+      coinbaseHi.position(coinbaseHi.position() + 32);
+    }
+
+    if (!filled.get(8)) {
+      coinbaseLo.position(coinbaseLo.position() + 32);
+    }
+
+    if (!filled.get(9)) {
+      ct.position(ct.position() + 32);
+    }
+
+    if (!filled.get(10)) {
+      cumulativeConsumedGas.position(cumulativeConsumedGas.position() + 32);
+    }
+
+    if (!filled.get(11)) {
+      fromHi.position(fromHi.position() + 32);
+    }
+
+    if (!filled.get(12)) {
+      fromLo.position(fromLo.position() + 32);
+    }
+
+    if (!filled.get(13)) {
+      gasLimit.position(gasLimit.position() + 32);
+    }
+
+    if (!filled.get(14)) {
+      gasPrice.position(gasPrice.position() + 32);
+    }
+
+    if (!filled.get(17)) {
+      initCodeSize.position(initCodeSize.position() + 32);
+    }
+
+    if (!filled.get(15)) {
+      initialBalance.position(initialBalance.position() + 32);
+    }
+
+    if (!filled.get(16)) {
+      initialGas.position(initialGas.position() + 32);
+    }
+
+    if (!filled.get(18)) {
+      isDep.position(isDep.position() + 1);
+    }
+
+    if (!filled.get(19)) {
+      leftoverGas.position(leftoverGas.position() + 32);
+    }
+
+    if (!filled.get(20)) {
+      nonce.position(nonce.position() + 32);
+    }
+
+    if (!filled.get(21)) {
+      outgoingHi.position(outgoingHi.position() + 32);
+    }
+
+    if (!filled.get(22)) {
+      outgoingLo.position(outgoingLo.position() + 32);
+    }
+
+    if (!filled.get(23)) {
+      outgoingRlpTxnrcpt.position(outgoingRlpTxnrcpt.position() + 32);
+    }
+
+    if (!filled.get(24)) {
+      phaseRlpTxn.position(phaseRlpTxn.position() + 32);
+    }
+
+    if (!filled.get(25)) {
+      phaseRlpTxnrcpt.position(phaseRlpTxnrcpt.position() + 32);
+    }
+
+    if (!filled.get(26)) {
+      refundAmount.position(refundAmount.position() + 32);
+    }
+
+    if (!filled.get(27)) {
+      refundCounter.position(refundCounter.position() + 32);
+    }
+
+    if (!filled.get(28)) {
+      relTxNum.position(relTxNum.position() + 32);
+    }
+
+    if (!filled.get(29)) {
+      relTxNumMax.position(relTxNumMax.position() + 32);
+    }
+
+    if (!filled.get(30)) {
+      requiresEvmExecution.position(requiresEvmExecution.position() + 1);
+    }
+
+    if (!filled.get(31)) {
+      statusCode.position(statusCode.position() + 1);
+    }
+
+    if (!filled.get(32)) {
+      toHi.position(toHi.position() + 32);
+    }
+
+    if (!filled.get(33)) {
+      toLo.position(toLo.position() + 32);
+    }
+
+    if (!filled.get(34)) {
+      type0.position(type0.position() + 1);
+    }
+
+    if (!filled.get(35)) {
+      type1.position(type1.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      type2.position(type2.position() + 1);
+    }
+
+    if (!filled.get(37)) {
+      value.position(value.position() + 32);
+    }
+
+    if (!filled.get(38)) {
+      wcpArgOneLo.position(wcpArgOneLo.position() + 32);
+    }
+
+    if (!filled.get(39)) {
+      wcpArgTwoLo.position(wcpArgTwoLo.position() + 32);
+    }
+
+    if (!filled.get(40)) {
+      wcpInst.position(wcpInst.position() + 32);
+    }
+
+    if (!filled.get(41)) {
+      wcpResLo.position(wcpResLo.position() + 1);
+    }
+
+    filled.clear();
+    this.currentLine++;
+
+    return this;
+  }
+
+  public Trace build() {
+    if (!filled.isEmpty()) {
+      throw new IllegalStateException("Cannot build trace with a non-validated row.");
+    }
+    return null;
   }
 }

@@ -51,7 +51,7 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .peekAtScenario(true)
         .pScenarioScnFailure1(false)

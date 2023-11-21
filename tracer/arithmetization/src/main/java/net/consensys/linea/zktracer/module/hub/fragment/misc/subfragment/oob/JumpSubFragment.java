@@ -60,7 +60,7 @@ public record JumpSubFragment(
   }
 
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousOobOutgoingData1(this.targetPc.hiBigInt())
         .pMiscellaneousOobOutgoingData2(this.targetPc.loBigInt())

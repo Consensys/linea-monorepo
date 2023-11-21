@@ -37,6 +37,15 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Accessors(fluent = true)
 @Getter
 public final class TransactionSnapshot {
+  private static final int nROWS0 = 6;
+  private static final int nROWS1 = 7;
+  private static final int nROWS2 = 7;
+
+  private static final int G_accesslistaddress = 2400;
+  private static final int G_accessliststorage = 1900;
+  private static final int G_transaction = 21000;
+  private static final int G_txcreate = 32000;
+
   /** Value moved by the transaction */
   private final BigInteger value;
   /** Sender address */
@@ -204,9 +213,9 @@ public final class TransactionSnapshot {
   // - init code (contract creation)
   long maxCounter() {
     return switch (this.type()) {
-      case FRONTIER -> 1 + TxnDataTrace.nROWS0;
-      case ACCESS_LIST -> 1 + TxnDataTrace.nROWS1;
-      case EIP1559 -> 1 + TxnDataTrace.nROWS2;
+      case FRONTIER -> 1 + nROWS0;
+      case ACCESS_LIST -> 1 + nROWS1;
+      case EIP1559 -> 1 + nROWS2;
       default -> throw new RuntimeException("transaction type not supported");
     };
   }
@@ -215,14 +224,14 @@ public final class TransactionSnapshot {
     long initialCost = this.dataCost();
 
     if (this.isDeployment()) {
-      initialCost += TxnDataTrace.G_txcreate;
+      initialCost += G_txcreate;
     }
 
-    initialCost += TxnDataTrace.G_transaction;
+    initialCost += G_transaction;
 
     if (this.type() != TransactionType.FRONTIER) {
-      initialCost += (long) this.prewarmedAddressesCount() * TxnDataTrace.G_accesslistaddress;
-      initialCost += (long) this.prewarmedStorageKeysCount() * TxnDataTrace.G_accessliststorage;
+      initialCost += (long) this.prewarmedAddressesCount() * G_accesslistaddress;
+      initialCost += (long) this.prewarmedStorageKeysCount() * G_accessliststorage;
     }
 
     Preconditions.checkArgument(this.gasLimit() >= initialCost, "gasLimit < initialGasCost");

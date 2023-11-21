@@ -13,24 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.tables.shf;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import org.apache.tuweni.bytes.Bytes;
 
-public final class EcpairingWeightedCall implements Module {
-  private final EcpairingCall ecpairingCall;
-
-  public EcpairingWeightedCall(EcpairingCall ecpairingCall) {
-    this.ecpairingCall = ecpairingCall;
-  }
-
+public record ShfRt() implements Module {
   @Override
   public String jsonKey() {
-    return "ecpairingWeightedCall";
+    return "shfRT";
   }
 
   @Override
@@ -41,16 +37,36 @@ public final class EcpairingWeightedCall implements Module {
 
   @Override
   public int lineCount() {
-    return ecpairingCall.counts.stream().mapToInt(EcpairingLimit::nMillerLoop).sum();
+    return 256 * 9 + 1;
   }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    throw new IllegalStateException("should never be called");
+    return Trace.headers(this.lineCount());
   }
 
-  @Override
   public void commit(List<MappedByteBuffer> buffers) {
-    throw new IllegalStateException("should never be called");
+    final Trace trace = new Trace(buffers);
+    for (int a = 0; a <= 255; a++) {
+      for (int uShp = 0; uShp <= 8; uShp++) {
+        trace
+            ._byte(BigInteger.valueOf(a))
+            .las(BigInteger.valueOf(Bytes.of((byte) a).shiftLeft(8 - uShp).toInt())) // a<<(8-µShp)
+            .mshp(BigInteger.valueOf(uShp))
+            .rap(BigInteger.valueOf(Bytes.ofUnsignedShort(a).shiftRight(uShp).toInt()))
+            .ones(BigInteger.valueOf((Bytes.fromHexString("0xFF").shiftRight(uShp)).not().toInt()))
+            .isInRt(BigInteger.ONE)
+            .validateRow();
+      }
+    }
+
+    trace
+        ._byte(BigInteger.ZERO)
+        .isInRt(BigInteger.ZERO)
+        .las(BigInteger.ZERO)
+        .mshp(BigInteger.ZERO)
+        .ones(BigInteger.ZERO)
+        .rap(BigInteger.ZERO)
+        .validateRow();
   }
 }

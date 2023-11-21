@@ -26,7 +26,7 @@ public record ContextFragment(
     CallStack callStack, CallFrame callFrame, boolean updateCallerReturndata)
     implements TraceFragment {
   @Override
-  public Trace.TraceBuilder trace(Trace.TraceBuilder trace) {
+  public Trace trace(Trace trace) {
     EWord eAddress = callFrame.addressAsEWord();
     EWord eCodeAddress = callFrame.codeAddressAsEWord();
 

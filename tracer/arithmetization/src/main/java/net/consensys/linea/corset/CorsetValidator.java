@@ -15,11 +15,8 @@
 
 package net.consensys.linea.corset;
 
-import static java.nio.file.StandardOpenOption.WRITE;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 
@@ -69,23 +66,8 @@ public class CorsetValidator {
     CORSET_BIN = whichCorsetProcessOutput.trim();
   }
 
-  public static boolean isValid(final String trace) {
+  public static boolean isValid(final Path filename) {
     final Path traceFile;
-
-    try {
-      traceFile = Files.createTempFile("", ".tmp.json");
-      log.info("Trace file: %s".formatted(traceFile.toAbsolutePath()));
-    } catch (IOException e) {
-      log.error("Can't create temporary trace file: %s".formatted(e.getMessage()));
-      throw new RuntimeException(e);
-    }
-
-    try {
-      Files.writeString(traceFile, trace, WRITE);
-    } catch (IOException e) {
-      log.error("Cannot write to temporary trace file: %s".formatted(e.getMessage()));
-      throw new RuntimeException(e);
-    }
 
     final Process corsetValidationProcess;
     try {
@@ -94,7 +76,7 @@ public class CorsetValidator {
                   CORSET_BIN,
                   "check",
                   "-T",
-                  traceFile.toFile().getAbsolutePath(),
+                  filename.toAbsolutePath().toString(),
                   "-q",
                   "-r",
                   "-d",

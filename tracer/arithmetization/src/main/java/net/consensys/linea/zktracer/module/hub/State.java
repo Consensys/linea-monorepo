@@ -53,7 +53,7 @@ public class State implements StackedContainer {
    * @param hubTrace the trace builder to write to
    * @return the trace builder
    */
-  Trace.TraceBuilder commit(Trace.TraceBuilder hubTrace) {
+  Trace commit(Trace hubTrace) {
     for (TxState txState : this.state) {
       txState.txTrace().commit(hubTrace);
     }

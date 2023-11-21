@@ -16,10 +16,12 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import java.math.BigInteger;
+import java.nio.MappedByteBuffer;
+import java.util.List;
 
+import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.ModuleTrace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -58,7 +60,7 @@ public class Wcp implements Module {
     this.operations.add(new WcpOperation(opCode, arg1, arg2));
   }
 
-  public void traceWcpOperation(WcpOperation op, Trace.TraceBuilder trace) {
+  public void traceWcpOperation(WcpOperation op, Trace trace) {
     this.stamp++;
     for (int i = 0; i < op.maxCt(); i++) {
       trace
@@ -96,14 +98,17 @@ public class Wcp implements Module {
   }
 
   @Override
-  public ModuleTrace commit() {
-    final Trace.TraceBuilder trace = Trace.builder(this.lineCount());
+  public List<ColumnHeader> columnsHeaders() {
+    return Trace.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
 
     for (WcpOperation operation : this.operations) {
       this.traceWcpOperation(operation, trace);
     }
-
-    return new WcpTrace(trace.build());
   }
 
   @Override
