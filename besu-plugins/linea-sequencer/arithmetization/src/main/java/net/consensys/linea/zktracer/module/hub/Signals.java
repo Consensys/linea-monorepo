@@ -195,7 +195,10 @@ public class Signals {
             ex.none() && this.platformController.aborts().any();
 
         final Address target = Words.toAddress(frame.getStackItem(1));
-        final boolean targetAddressHasNonEmptyCode = frame.getWorldUpdater().get(target).hasCode();
+        final boolean targetAddressHasNonEmptyCode =
+            Optional.ofNullable(frame.getWorldUpdater().get(target))
+                .map(AccountState::hasCode)
+                .orElse(false);
 
         this.romLex = ex.none() && !triggersAbortingCondition && targetAddressHasNonEmptyCode;
       }
