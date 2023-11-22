@@ -27,6 +27,8 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.memory.MemorySpan;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.opcode.OpCodeData;
+import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackContext;
 import net.consensys.linea.zktracer.types.EWord;
@@ -72,6 +74,7 @@ public class CallFrame {
 
   @Getter @Setter private int pc;
   @Getter @Setter private OpCode opCode = OpCode.STOP;
+  @Getter @Setter private OpCodeData opCodeData = OpCodes.of(OpCode.STOP);
   @Getter private MessageFrame frame;
 
   /** the ether amount given to this frame. */
@@ -225,6 +228,7 @@ public class CallFrame {
   public void frame(MessageFrame frame) {
     this.frame = frame;
     this.opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    this.opCodeData = OpCodes.of(this.opCode);
     this.pc = frame.getPC();
   }
 }

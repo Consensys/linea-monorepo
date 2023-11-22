@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.runtime.stack;
 
 import lombok.Getter;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
@@ -327,7 +326,7 @@ public class Stack {
   public void processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
     this.stamp = stackStamp;
     this.height = this.heightNew;
-    this.currentOpcodeData = OpCode.of(frame.getCurrentOperation().getOpcode()).getData();
+    this.currentOpcodeData = callFrame.opCodeData();
     callFrame.pending(new StackContext(this.currentOpcodeData.mnemonic()));
 
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
