@@ -132,7 +132,7 @@ public class Hub implements Module {
   }
 
   public OpCodeData opCodeData() {
-    return this.currentFrame().opCode().getData();
+    return this.currentFrame().opCodeData();
   }
 
   TraceSection currentTraceSection() {
