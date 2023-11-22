@@ -48,7 +48,7 @@ public record MxpSubFragment(
 
     return new MxpSubFragment(
         hub.pch().exceptions().outOfMemoryExpansion(),
-        opCode.getData().value(),
+        hub.currentFrame().opCodeData().value(),
         opCode == OpCode.RETURN && hub.currentFrame().underDeployment(),
         hub.currentFrame().frame().memoryWordSize(),
         gasMxp,
