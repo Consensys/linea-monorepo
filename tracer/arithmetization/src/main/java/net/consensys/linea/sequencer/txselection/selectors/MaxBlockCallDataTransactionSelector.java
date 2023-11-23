@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_CALLDATA_FULL;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_CALLDATA_OVERFLOW;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import lombok.RequiredArgsConstructor;
@@ -53,11 +53,13 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
     final int transactionCallDataSize = transaction.getPayload().size();
 
     if (isTransactionExceedingBlockCallDataSizeLimit(transactionCallDataSize)) {
-      log.trace(
-          "BlockCallData {} greater than {}, completing operation",
-          transactionCallDataSize,
-          maxBlockCallDataSize);
-      return BLOCK_CALLDATA_FULL;
+      log.atTrace()
+          .setMessage(
+              "BlockCallData including this tx is {} greater than the max allowed {}, skipping tx")
+          .addArgument(() -> blockCallDataSize + transactionCallDataSize)
+          .addArgument(maxBlockCallDataSize)
+          .log();
+      return BLOCK_CALLDATA_OVERFLOW;
     }
     return SELECTED;
   }
