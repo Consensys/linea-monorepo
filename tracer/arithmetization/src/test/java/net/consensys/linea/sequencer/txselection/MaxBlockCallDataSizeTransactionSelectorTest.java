@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.sequencer.txselection;
 
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_CALLDATA_FULL;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_CALLDATA_OVERFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.Mockito.mock;
@@ -63,7 +63,7 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
     var mockTransaction = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE);
     var mockTransaction2 = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE + 1);
     verifyTransactionSelection(transactionSelector, mockTransaction, SELECTED);
-    verifyTransactionSelection(transactionSelector, mockTransaction2, BLOCK_CALLDATA_FULL);
+    verifyTransactionSelection(transactionSelector, mockTransaction2, BLOCK_CALLDATA_OVERFLOW);
   }
 
   @Test
@@ -73,8 +73,8 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
     var thirdTransaction = mockTransactionOfCallDataSize(TX_CALL_DATA_SIZE);
 
     verifyTransactionSelection(transactionSelector, firstTransaction, SELECTED);
-    verifyTransactionSelection(transactionSelector, secondTransaction, BLOCK_CALLDATA_FULL);
-    verifyTransactionSelection(transactionSelector, thirdTransaction, BLOCK_CALLDATA_FULL);
+    verifyTransactionSelection(transactionSelector, secondTransaction, BLOCK_CALLDATA_OVERFLOW);
+    verifyTransactionSelection(transactionSelector, thirdTransaction, BLOCK_CALLDATA_OVERFLOW);
   }
 
   private void verifyTransactionSelection(
