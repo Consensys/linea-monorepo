@@ -14,7 +14,9 @@
  */
 package net.consensys.linea.sequencer.txselection;
 
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_CALLDATA_FULL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,20 +45,16 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
   public void shouldSelectTransactionWhen_BlockCallDataSize_IsLessThan_MaxBlockCallDataSize() {
     var mockTransaction = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE);
     var mockTransaction2 = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE - 1);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction, TransactionSelectionResult.SELECTED);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction2, TransactionSelectionResult.SELECTED);
+    verifyTransactionSelection(transactionSelector, mockTransaction, SELECTED);
+    verifyTransactionSelection(transactionSelector, mockTransaction2, SELECTED);
   }
 
   @Test
   public void shouldSelectTransactionWhen_BlockCallDataSize_IsEqualTo_MaxBlockCallDataSize() {
     var mockTransaction = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE);
     var mockTransaction2 = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction, TransactionSelectionResult.SELECTED);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction2, TransactionSelectionResult.SELECTED);
+    verifyTransactionSelection(transactionSelector, mockTransaction, SELECTED);
+    verifyTransactionSelection(transactionSelector, mockTransaction2, SELECTED);
   }
 
   @Test
@@ -64,10 +62,8 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
       shouldNotSelectTransactionWhen_BlockCallDataSize_IsGreaterThan_MaxBlockCallDataSize() {
     var mockTransaction = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE);
     var mockTransaction2 = mockTransactionOfCallDataSize(BLOCK_CALL_DATA_HALF_SIZE + 1);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction, TransactionSelectionResult.SELECTED);
-    verifyTransactionSelection(
-        transactionSelector, mockTransaction2, TransactionSelectionResult.BLOCK_FULL);
+    verifyTransactionSelection(transactionSelector, mockTransaction, SELECTED);
+    verifyTransactionSelection(transactionSelector, mockTransaction2, BLOCK_CALLDATA_FULL);
   }
 
   @Test
@@ -76,12 +72,9 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
     var secondTransaction = mockTransactionOfCallDataSize(TX_CALL_DATA_SIZE);
     var thirdTransaction = mockTransactionOfCallDataSize(TX_CALL_DATA_SIZE);
 
-    verifyTransactionSelection(
-        transactionSelector, firstTransaction, TransactionSelectionResult.SELECTED);
-    verifyTransactionSelection(
-        transactionSelector, secondTransaction, TransactionSelectionResult.BLOCK_FULL);
-    verifyTransactionSelection(
-        transactionSelector, thirdTransaction, TransactionSelectionResult.BLOCK_FULL);
+    verifyTransactionSelection(transactionSelector, firstTransaction, SELECTED);
+    verifyTransactionSelection(transactionSelector, secondTransaction, BLOCK_CALLDATA_FULL);
+    verifyTransactionSelection(transactionSelector, thirdTransaction, BLOCK_CALLDATA_FULL);
   }
 
   private void verifyTransactionSelection(
@@ -97,7 +90,7 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
       final PluginTransactionSelector selector,
       final PendingTransaction transaction,
       final TransactionSelectionResult selectionResult) {
-    if (selectionResult.equals(TransactionSelectionResult.SELECTED)) {
+    if (selectionResult.equals(SELECTED)) {
       selector.onTransactionSelected(transaction, mock(TransactionProcessingResult.class));
     } else {
       selector.onTransactionNotSelected(transaction, selectionResult);
