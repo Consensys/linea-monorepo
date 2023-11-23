@@ -70,7 +70,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
   public void onTransactionSelected(
       final PendingTransaction pendingTransaction,
       final TransactionProcessingResult processingResult) {
-    cumulativeBlockGasUsed +=
+    cumulativeBlockGasUsed =
         Math.addExact(cumulativeBlockGasUsed, processingResult.getEstimateGasUsedByTransaction());
   }
 
