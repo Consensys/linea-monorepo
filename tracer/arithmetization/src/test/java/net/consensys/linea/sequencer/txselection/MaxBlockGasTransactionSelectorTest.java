@@ -14,8 +14,10 @@
  */
 package net.consensys.linea.sequencer.txselection;
 
-import static net.consensys.linea.sequencer.txselection.selectors.MaxBlockGasTransactionSelector.TRANSACTION_GAS_EXCEEDS_MAX_BLOCK_GAS;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_USER_GAS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -44,20 +46,14 @@ public class MaxBlockGasTransactionSelectorTest {
   public void shouldSelectWhen_GasUsedByTransaction_IsLessThan_MaxGasPerBlock() {
     var mockTransactionProcessingResult = mockTransactionProcessingResult(MAX_GAS_PER_BLOCK - 1);
     verifyTransactionSelection(
-        transactionSelector,
-        mockTransaction(),
-        mockTransactionProcessingResult,
-        TransactionSelectionResult.SELECTED);
+        transactionSelector, mockTransaction(), mockTransactionProcessingResult, SELECTED);
   }
 
   @Test
   public void shouldSelectWhen_GasUsedByTransaction_IsEqual_MaxGasPerBlock() {
     var mockTransactionProcessingResult = mockTransactionProcessingResult(MAX_GAS_PER_BLOCK);
     verifyTransactionSelection(
-        transactionSelector,
-        mockTransaction(),
-        mockTransactionProcessingResult,
-        TransactionSelectionResult.SELECTED);
+        transactionSelector, mockTransaction(), mockTransactionProcessingResult, SELECTED);
   }
 
   @Test
@@ -67,7 +63,7 @@ public class MaxBlockGasTransactionSelectorTest {
         transactionSelector,
         mockTransaction(),
         mockTransactionProcessingResult,
-        TransactionSelectionResult.invalid(TRANSACTION_GAS_EXCEEDS_MAX_BLOCK_GAS));
+        TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS);
   }
 
   @Test
@@ -77,21 +73,21 @@ public class MaxBlockGasTransactionSelectorTest {
         transactionSelector,
         mockTransaction(),
         mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_80_PERCENTAGE),
-        TransactionSelectionResult.SELECTED);
+        SELECTED);
 
     // block 80% full, transaction 80% max gas, should not select
     verifyTransactionSelection(
         transactionSelector,
         mockTransaction(),
         mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_80_PERCENTAGE),
-        TransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_GAS);
+        TX_TOO_LARGE_FOR_REMAINING_USER_GAS);
 
     // block 80% full, transaction 20% max gas, should select
     verifyTransactionSelection(
         transactionSelector,
         mockTransaction(),
         mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_20_PERCENTAGE),
-        TransactionSelectionResult.SELECTED);
+        SELECTED);
   }
 
   private void verifyTransactionSelection(
@@ -124,7 +120,7 @@ public class MaxBlockGasTransactionSelectorTest {
       final PendingTransaction transaction,
       final TransactionProcessingResult processingResult,
       final TransactionSelectionResult selectionResult) {
-    if (selectionResult.equals(TransactionSelectionResult.SELECTED)) {
+    if (selectionResult.equals(SELECTED)) {
       selector.onTransactionSelected(transaction, processingResult);
     } else {
       selector.onTransactionNotSelected(transaction, selectionResult);

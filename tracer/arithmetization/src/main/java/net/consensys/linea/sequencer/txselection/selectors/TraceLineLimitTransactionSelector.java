@@ -14,6 +14,10 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_MODULE_LINE_COUNT_FULL;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -56,7 +60,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final PendingTransaction pendingTransaction) {
-    return TransactionSelectionResult.SELECTED;
+    return SELECTED;
   }
 
   @Override
@@ -78,7 +82,9 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
    *
    * @param pendingTransaction The processed transaction.
    * @param processingResult The result of the transaction processing.
-   * @return BLOCK_FULL if the trace lines for a module are over the limit, otherwise SELECTED.
+   * @return BLOCK_MODULE_LINE_COUNT_FULL if the trace lines for a module are over the limit for the
+   *     block, TX_MODULE_LINE_COUNT_OVERFLOW if the trace lines are over the limit for the single
+   *     tx, otherwise SELECTED.
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
@@ -107,14 +113,14 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
             module,
             txModuleLineCount,
             moduleLineCountLimit);
-        return TransactionSelectionResult.invalid("TX_MODULE_LINE_COUNT_OVERFLOW");
+        return TX_MODULE_LINE_COUNT_OVERFLOW;
       }
 
       if (currModuleLineCount > moduleLineCountLimit) {
-        return TransactionSelectionResult.BLOCK_FULL;
+        return BLOCK_MODULE_LINE_COUNT_FULL;
       }
     }
-    return TransactionSelectionResult.SELECTED;
+    return SELECTED;
   }
 
   @Override
