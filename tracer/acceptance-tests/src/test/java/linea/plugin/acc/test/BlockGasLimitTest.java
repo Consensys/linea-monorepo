@@ -14,22 +14,27 @@
  */
 package linea.plugin.acc.test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import java.math.BigInteger;
 import java.util.List;
 
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
+import org.web3j.tx.RawTransactionManager;
+import org.web3j.tx.TransactionManager;
 
 /** This class tests the block gas limit functionality of the plugin. */
 public class BlockGasLimitTest extends LineaPluginTestBase {
 
+  private static final BigInteger GAS_PRICE = BigInteger.TEN.pow(9);
+  private static final BigInteger VALUE = BigInteger.TWO;
+
   @Override
   public List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-max-block-gas=", "44000")
+        .set("--plugin-linea-max-block-gas=", "300000")
         .build();
   }
 
@@ -41,33 +46,56 @@ public class BlockGasLimitTest extends LineaPluginTestBase {
     minerNode.execute(minerTransactions.minerStop());
   }
 
+  /**
+   * if we have a list of transactions [t_0.3, t_0.3, t_0.66, t_0.4], just two blocks are created,
+   * where t_x fills X% of a limit.
+   */
   @Test
-  public void shouldNotIncludeTransactionsWhenBlockGasAboveLimit() throws Exception {
+  public void multipleBlocksFilledRespectingUserBlockGasLimit() throws Exception {
     final Web3j web3j = minerNode.nodeRequests().eth();
+    final Credentials credentials1 = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager1 = new RawTransactionManager(web3j, credentials1, CHAIN_ID);
+    final Credentials credentials2 = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
+    TransactionManager txManager2 = new RawTransactionManager(web3j, credentials2, CHAIN_ID);
 
-    final String transactionHash1 =
-        sendTransactionWithGivenLengthPayload(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY, web3j, 0);
+    final var tx100kGas1 =
+        txManager1.sendTransaction(
+            GAS_PRICE,
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT).divide(BigInteger.TEN),
+            accounts.getSecondaryBenefactor().getAddress(),
+            "a".repeat(10000),
+            VALUE);
 
-    final String largeGasTransactionHash =
-        sendTransactionWithGivenLengthPayload(
-            Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY, web3j, MAX_CALLDATA_SIZE);
+    final var tx100kGas2 =
+        txManager1.sendTransaction(
+            GAS_PRICE.multiply(BigInteger.TWO),
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT).divide(BigInteger.TEN),
+            accounts.getSecondaryBenefactor().getAddress(),
+            "b".repeat(10000),
+            VALUE);
 
-    final String transactionHash2 =
-        sendTransactionWithGivenLengthPayload(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY, web3j, 10);
+    final var tx200kGas =
+        txManager2.sendTransaction(
+            GAS_PRICE.multiply(BigInteger.TEN),
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT).divide(BigInteger.TEN),
+            accounts.getPrimaryBenefactor().getAddress(),
+            "c".repeat(20000),
+            VALUE);
 
-    // Assert that all three transactions are in the pool
-    assertThat(minerNode.execute(txPoolTransactions.getTxPoolContents()).size()).isEqualTo(3);
+    final var tx125kGas =
+        txManager1.sendTransaction(
+            GAS_PRICE.multiply(BigInteger.TWO),
+            BigInteger.valueOf(MAX_TX_GAS_LIMIT).divide(BigInteger.TEN),
+            accounts.getSecondaryBenefactor().getAddress(),
+            "d".repeat(12500),
+            VALUE);
 
     startMining();
 
-    // transactionHash1 and transactionHash2 do not exceed the block gas limit, hence will be in the
-    // same block.
-    assertTransactionsMinedInSameBlock(web3j, List.of(transactionHash1, transactionHash2));
-
-    // largeGasTransactionHash exceeds the block gas limit when combined with another transaction,
-    // hence they are in separate blocks.
-    assertTransactionsMinedInSeparateBlocks(
-        web3j, List.of(largeGasTransactionHash, transactionHash2));
+    assertTransactionsMinedInSameBlock(
+        web3j, List.of(tx100kGas1.getTransactionHash(), tx200kGas.getTransactionHash()));
+    assertTransactionsMinedInSameBlock(
+        web3j, List.of(tx100kGas2.getTransactionHash(), tx125kGas.getTransactionHash()));
   }
 
   private void startMining() {

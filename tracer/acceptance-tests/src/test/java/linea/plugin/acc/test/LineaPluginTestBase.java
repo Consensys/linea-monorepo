@@ -35,6 +35,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory.CliqueOptions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,11 +55,16 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
   public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
   public static final long CHAIN_ID = 1337L;
+  public static final CliqueOptions LINEA_CLIQUE_OPTIONS =
+      new CliqueOptions(
+          CliqueOptions.DEFAULT.blockPeriodSeconds(), CliqueOptions.DEFAULT.epochLength(), false);
   protected BesuNode minerNode;
 
   @BeforeEach
   public void setup() throws Exception {
-    minerNode = besu.createMinerNodeWithExtraCliOptions("miner1", getTestCliOptions());
+    minerNode =
+        besu.createCliqueNodeWithExtraCliOptions(
+            "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions());
     cluster.start(minerNode);
   }
 
