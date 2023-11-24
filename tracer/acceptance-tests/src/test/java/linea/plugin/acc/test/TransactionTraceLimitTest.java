@@ -33,7 +33,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
 
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
-  private static final BigInteger GAS_PRICE = BigInteger.ONE;
+  private static final BigInteger GAS_PRICE = BigInteger.TEN.pow(9);
   private static final BigInteger NONCE = BigInteger.ONE;
 
   @Override
@@ -51,7 +51,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
     final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
 
-    final ArrayList<String> hashes = new ArrayList<>();
+    final ArrayList<String> hashes = new ArrayList<>(5);
     for (int i = 0; i < 5; i++) {
       final RawTransaction transaction =
           RawTransaction.createTransaction(
@@ -62,7 +62,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
               VALUE,
               txData,
               GAS_PRICE,
-              NONCE);
+              GAS_PRICE.multiply(BigInteger.TEN));
       final byte[] signedTransaction = TransactionEncoder.signMessage(transaction, credentials);
       final EthSendTransaction response =
           web3j.ethSendRawTransaction(Numeric.toHexString(signedTransaction)).send();
