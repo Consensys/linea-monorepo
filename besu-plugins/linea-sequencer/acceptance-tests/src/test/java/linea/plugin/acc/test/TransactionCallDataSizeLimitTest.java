@@ -17,20 +17,19 @@ package linea.plugin.acc.test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
-import org.web3j.tx.response.PollingTransactionReceiptProcessor;
-import org.web3j.tx.response.TransactionReceiptProcessor;
 
 public class TransactionCallDataSizeLimitTest extends LineaPluginTestBase {
 
@@ -75,14 +74,8 @@ public class TransactionCallDataSizeLimitTest extends LineaPluginTestBase {
             .sendTransaction(GAS_PRICE, GAS_LIMIT, contractAddress, txDataGood, VALUE)
             .getTransactionHash();
 
-    TransactionReceiptProcessor receiptProcessor =
-        new PollingTransactionReceiptProcessor(
-            web3j, 4000L, TransactionManager.DEFAULT_POLLING_ATTEMPTS_PER_TX_HASH);
-
     // make sure that a transaction that is not too big was mined
-    final TransactionReceipt transactionReceipt =
-        receiptProcessor.waitForTransactionReceipt(hashGood);
-    assertThat(transactionReceipt).isNotNull();
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(hashGood));
   }
 
   @Test
@@ -94,12 +87,53 @@ public class TransactionCallDataSizeLimitTest extends LineaPluginTestBase {
     TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
 
     final String txDataTooBig = simpleStorage.set("a".repeat(1200 - 79)).encodeFunctionCall();
-    final String hashTooBig =
-        txManager
-            .sendTransaction(GAS_PRICE, GAS_LIMIT, contractAddress, txDataTooBig, VALUE)
-            .getTransactionHash();
+    final var txTooBigResp =
+        txManager.sendTransaction(GAS_PRICE, GAS_LIMIT, contractAddress, txDataTooBig, VALUE);
 
-    final EthGetTransactionReceipt receipt = web3j.ethGetTransactionReceipt(hashTooBig).send();
-    assertThat(receipt.getTransactionReceipt()).isEmpty();
+    assertThat(txTooBigResp.hasError()).isTrue();
+    assertThat(txTooBigResp.getError().getMessage())
+        .isEqualTo("Calldata of transaction is greater than the allowed max of 1188");
+  }
+
+  /**
+   * if we have a list of transactions [t_small, t_tooBig, t_small, ..., t_small] where t_tooBig is
+   * too big to fit in a block, we have blocks created that contain all t_small transactions.
+   *
+   * @throws Exception if send transaction fails
+   */
+  @Test
+  public void multipleSmallTxsMinedWhileTxTooBigNot() throws Exception {
+    final SimpleStorage simpleStorage = deploySimpleStorage();
+
+    final Web3j web3j = minerNode.nodeRequests().eth();
+    final String contractAddress = simpleStorage.getContractAddress();
+    final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
+    TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
+
+    final Account smallCalldataSender = accounts.getSecondaryBenefactor();
+    final Account recipient = accounts.createAccount("recipient");
+
+    final List<Hash> expectedConfirmedTxs = new ArrayList<>(4);
+
+    expectedConfirmedTxs.add(
+        minerNode.execute(accountTransactions.createTransfer(smallCalldataSender, recipient, 1)));
+
+    final String txDataTooBig = simpleStorage.set("a".repeat(1200 - 79)).encodeFunctionCall();
+
+    final var txTooBigResp =
+        txManager.sendTransaction(
+            GAS_PRICE, BigInteger.valueOf(MAX_TX_GAS_LIMIT), contractAddress, txDataTooBig, VALUE);
+
+    expectedConfirmedTxs.addAll(
+        minerNode.execute(
+            accountTransactions.createIncrementalTransfers(smallCalldataSender, recipient, 3)));
+
+    assertThat(txTooBigResp.hasError()).isTrue();
+    assertThat(txTooBigResp.getError().getMessage())
+        .isEqualTo("Calldata of transaction is greater than the allowed max of 1188");
+
+    expectedConfirmedTxs.stream()
+        .map(Hash::toHexString)
+        .forEach(hash -> minerNode.verify(eth.expectSuccessfulTransactionReceipt(hash)));
   }
 }
