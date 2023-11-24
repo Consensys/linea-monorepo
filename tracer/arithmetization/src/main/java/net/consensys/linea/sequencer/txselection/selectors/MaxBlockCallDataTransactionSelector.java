@@ -35,7 +35,7 @@ import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelecto
 public class MaxBlockCallDataTransactionSelector implements PluginTransactionSelector {
 
   private final int maxBlockCallDataSize;
-  private int blockCallDataSize;
+  private int cumulativeBlockCallDataSize;
 
   /**
    * Evaluates a transaction before processing. Checks if adding the transaction to the block pushes
@@ -55,12 +55,20 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
     if (isTransactionExceedingBlockCallDataSizeLimit(transactionCallDataSize)) {
       log.atTrace()
           .setMessage(
-              "BlockCallData including this tx is {} greater than the max allowed {}, skipping tx")
-          .addArgument(() -> blockCallDataSize + transactionCallDataSize)
+              "Cumulative block calldata size including tx {} is {} greater than the max allowed {}, skipping tx")
+          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(() -> cumulativeBlockCallDataSize + transactionCallDataSize)
           .addArgument(maxBlockCallDataSize)
           .log();
       return BLOCK_CALLDATA_OVERFLOW;
     }
+
+    log.atTrace()
+        .setMessage("Cumulative block calldata size including tx {} is {}")
+        .addArgument(pendingTransaction.getTransaction()::getHash)
+        .addArgument(cumulativeBlockCallDataSize)
+        .log();
+
     return SELECTED;
   }
 
@@ -72,7 +80,8 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
    * @return true if the total call data size would be too big, false otherwise.
    */
   private boolean isTransactionExceedingBlockCallDataSizeLimit(int transactionCallDataSize) {
-    return Math.addExact(blockCallDataSize, transactionCallDataSize) > maxBlockCallDataSize;
+    return Math.addExact(cumulativeBlockCallDataSize, transactionCallDataSize)
+        > maxBlockCallDataSize;
   }
 
   /**
@@ -85,7 +94,8 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
       final PendingTransaction pendingTransaction,
       final TransactionProcessingResult transactionProcessingResult) {
     final int transactionCallDataSize = pendingTransaction.getTransaction().getPayload().size();
-    blockCallDataSize = Math.addExact(blockCallDataSize, transactionCallDataSize);
+    cumulativeBlockCallDataSize =
+        Math.addExact(cumulativeBlockCallDataSize, transactionCallDataSize);
   }
 
   /**

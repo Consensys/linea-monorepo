@@ -40,18 +40,26 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
     final long gasUsedByTransaction = processingResult.getEstimateGasUsedByTransaction();
 
     if (gasUsedByTransaction > maxGasPerBlock) {
-      log.trace(
-          "Not selecting transaction, gas used {} greater than max user gas per block {}",
-          gasUsedByTransaction,
-          maxGasPerBlock);
+      log.atTrace()
+          .setMessage(
+              "Not selecting transaction {}, its gas used {} is greater than max user gas per block {},"
+                  + " removing it from the txpool")
+          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(gasUsedByTransaction)
+          .addArgument(maxGasPerBlock)
+          .log();
       return TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS;
     }
 
     if (isTransactionExceedingMaxBlockGasLimit(gasUsedByTransaction)) {
-      log.trace(
-          "Not selecting transaction, cumulative gas used {} greater than max user gas per block {}",
-          cumulativeBlockGasUsed,
-          maxGasPerBlock);
+      log.atTrace()
+          .setMessage(
+              "Not selecting transaction {}, its cumulative block gas used {} greater than max user gas per block {},"
+                  + " skipping it")
+          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(cumulativeBlockGasUsed)
+          .addArgument(maxGasPerBlock)
+          .log();
       return TX_TOO_LARGE_FOR_REMAINING_USER_GAS;
     }
     return SELECTED;
