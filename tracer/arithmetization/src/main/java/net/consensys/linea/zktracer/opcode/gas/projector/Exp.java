@@ -19,11 +19,11 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public final class Exp implements GasProjection {
-  private int bitSize = 0;
+  private int exponentByteSize = 0;
 
   public Exp(MessageFrame frame) {
     if (frame.stackSize() > 1) {
-      this.bitSize = frame.getStackItem(1).bitLength();
+      this.exponentByteSize = frame.getStackItem(1).size();
     }
   }
 
@@ -34,6 +34,6 @@ public final class Exp implements GasProjection {
 
   @Override
   public long expGas() {
-    return linearCost(GasConstants.G_EXP_BYTE.cost(), this.bitSize, 1);
+    return linearCost(GasConstants.G_EXP_BYTE.cost(), this.exponentByteSize, 1);
   }
 }

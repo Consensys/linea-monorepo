@@ -82,6 +82,44 @@ public final class Exceptions {
     this.codeSizeOverflow = codeSizeOverflow;
   }
 
+  @Override
+  public String toString() {
+    if (this.invalidOpcode) {
+      return "Invalid opcode";
+    }
+    if (this.stackUnderflow) {
+      return "Stack underflow";
+    }
+    if (this.stackOverflow) {
+      return "Stack overflow";
+    }
+    if (this.outOfMemoryExpansion) {
+      return "Out of MXP";
+    }
+    if (this.outOfGas) {
+      return "Out of gas";
+    }
+    if (this.returnDataCopyFault) {
+      return "RDC fault";
+    }
+    if (this.jumpFault) {
+      return "JMP fault";
+    }
+    if (this.staticFault) {
+      return "Static fault";
+    }
+    if (this.outOfSStore) {
+      return "Out of SSTORE";
+    }
+    if (this.invalidCodePrefix) {
+      return "Invalid code prefix";
+    }
+    if (this.codeSizeOverflow) {
+      return "Code size overflow";
+    }
+    return "No exception";
+  }
+
   public void reset() {
     this.invalidOpcode = false;
     this.stackUnderflow = false;
