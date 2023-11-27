@@ -217,7 +217,7 @@ public class CallFrame {
       this.selfRevertsAt = stamp;
       this.revertChildren(callStack, stamp);
     } else if (stamp != this.selfRevertsAt) {
-      throw new RuntimeException("a context can not self-reverse twice");
+      throw new IllegalStateException("a context can not self-reverse twice");
     }
   }
 
