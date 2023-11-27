@@ -18,23 +18,19 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class DataCopy implements GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
-  private long size = 0;
-  private int bitSize = 0;
+  private long len = 0;
 
   public DataCopy(MessageFrame frame) {
     this.frame = frame;
     if (frame.stackSize() > 2) {
-      Bytes bSize = frame.getStackItem(2);
-      this.offset = clampedToLong(frame.getStackItem(0));
-      this.bitSize = bSize.size();
-      this.size = clampedToLong(bSize);
+      this.offset = clampedToLong(frame.getStackItem(1));
+      this.len = clampedToLong(frame.getStackItem(2));
     }
   }
 
@@ -45,16 +41,16 @@ public final class DataCopy implements GasProjection {
 
   @Override
   public long memoryExpansion() {
-    return gc.memoryExpansionGasCost(frame, this.offset, this.size);
+    return gc.memoryExpansionGasCost(frame, this.offset, this.len);
   }
 
   @Override
   public long largestOffset() {
-    return this.size == 0 ? 0 : Words.clampedAdd(this.offset, this.size);
+    return this.len == 0 ? 0 : Words.clampedAdd(this.offset, this.len);
   }
 
   @Override
   public long linearPerWord() {
-    return linearCost(GasConstants.G_COPY.cost(), this.bitSize, 32);
+    return linearCost(GasConstants.G_COPY.cost(), this.len, 32);
   }
 }
