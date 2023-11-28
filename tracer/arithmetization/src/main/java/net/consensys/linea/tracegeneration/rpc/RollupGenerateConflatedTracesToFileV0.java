@@ -18,7 +18,6 @@ package net.consensys.linea.tracegeneration.rpc;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +71,6 @@ public class RollupGenerateConflatedTracesToFileV0 {
       final long fromBlock = params.fromBlock();
       final long toBlock = params.toBlock();
       final ZkTracer tracer = new ZkTracer();
-      log.warn("[TRACING] starting at {}", sw.elapsed(TimeUnit.SECONDS));
       traceService.trace(
           fromBlock,
           toBlock,
@@ -85,10 +83,10 @@ public class RollupGenerateConflatedTracesToFileV0 {
             tracer.traceEndConflation();
           },
           tracer);
-
-      log.warn("[TRACING] trace computed at {}", sw.elapsed(TimeUnit.SECONDS));
+      log.info("[TRACING] trace computed in {}", sw);
+      sw.reset().start();
       final String path = writeTraceToFile(tracer, params.runtimeVersion());
-      log.warn("[TRACING] trace written at {}", sw.elapsed(TimeUnit.SECONDS));
+      log.info("[TRACING] trace serialized in {}", sw);
       return new FileTrace(params.runtimeVersion(), path);
     } catch (Exception ex) {
       throw new PluginRpcEndpointException(ex.getMessage());
