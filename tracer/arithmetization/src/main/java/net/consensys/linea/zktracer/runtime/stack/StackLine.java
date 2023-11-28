@@ -19,22 +19,33 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * As the zkEVM spec can only handle up to four stack operations per trace line of the {@link Hub},
  * operations on the stack must be decomposed in “lines” (mapping 1-to-1 with a trace line from the
  * hub, hence the name) of zero to four atomic {@link StackOperation}.
- *
- * @param items zero to four stack operations contained within this line
- * @param resultColumn if positive, in which item to store the expected retroactive result
  */
-public record StackLine(List<IndexedStackOperation> items, int resultColumn) {
+@Accessors(fluent = true)
+public final class StackLine {
+  private final List<IndexedStackOperation> items;
+  @Getter private final int resultColumn;
+
+  /**
+   * @param items zero to four stack operations contained within this line
+   * @param resultColumn if positive, in which item to store the expected retroactive result
+   */
+  public StackLine(List<IndexedStackOperation> items, int resultColumn) {
+    this.items = items;
+    this.resultColumn = resultColumn;
+  }
 
   /** The default constructor, an empty stack line. */
   public StackLine() {
-    this(new ArrayList<>(), -1);
+    this(new ArrayList<>(4), -1);
   }
 
   /**
@@ -44,7 +55,8 @@ public record StackLine(List<IndexedStackOperation> items, int resultColumn) {
    * @param items the {@link IndexedStackOperation} to include in this line
    */
   StackLine(int ct, IndexedStackOperation... items) {
-    this(Arrays.stream(items).toList(), -1);
+    this.items = Arrays.asList(items);
+    this.resultColumn = -1;
   }
 
   /**
@@ -66,9 +78,9 @@ public record StackLine(List<IndexedStackOperation> items, int resultColumn) {
    * Action} during the unlatching process.
    *
    * @param i the 1-based stack item to alter
-   * @param value the {@link EWord} to use
+   * @param value the {@link Bytes} to use
    */
-  public void setResult(int i, EWord value) {
+  public void setResult(int i, Bytes value) {
     for (var item : this.items) {
       if (item.i() == i - 1) {
         item.it().setValue(value);
@@ -83,9 +95,9 @@ public record StackLine(List<IndexedStackOperation> items, int resultColumn) {
    * Sets the value of stack item <code>resultColumn</code>. Used to retroactively set the value of
    * push {@link Action} during the unlatching process.
    *
-   * @param value the {@link EWord} to use
+   * @param value the {@link Bytes} to use
    */
-  public void setResult(EWord value) {
+  public void setResult(Bytes value) {
     if (this.resultColumn == -1) {
       throw new RuntimeException("Stack line has no result column");
     }

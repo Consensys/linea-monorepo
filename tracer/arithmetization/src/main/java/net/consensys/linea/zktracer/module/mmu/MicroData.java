@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 
 @AllArgsConstructor
 @Accessors(fluent = true)
@@ -60,7 +61,7 @@ class MicroData {
   // < 1.000.000
   @Getter @Setter private int size;
   // stack element <=> uint256
-  @Getter @Setter private EWord value;
+  @Getter @Setter private Bytes value;
   // stack element
   @Getter @Setter private Pointers pointers;
   // stack element

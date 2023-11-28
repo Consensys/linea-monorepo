@@ -167,10 +167,11 @@ public final class StackFragment implements TraceFragment {
     while (it.hasNext()) {
       var i = it.nextIndex();
       var op = it.next();
+      final EWord eword = EWord.of(op.value());
 
       heightTracers.get(i).apply(BigInteger.valueOf(op.height()));
-      valLoTracers.get(i).apply(op.value().loBigInt());
-      valHiTracers.get(i).apply(op.value().hiBigInt());
+      valLoTracers.get(i).apply(eword.loBigInt());
+      valHiTracers.get(i).apply(eword.hiBigInt());
       popTracers.get(i).apply(op.action() == Action.POP);
       stampTracers.get(i).apply(BigInteger.valueOf(op.stackStamp()));
     }

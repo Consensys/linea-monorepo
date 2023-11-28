@@ -22,9 +22,9 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
 public final class EcpairingWeightedCall implements Module {
-  private final EcpairingCall ecpairingCall;
+  private final EcPairingCall ecpairingCall;
 
-  public EcpairingWeightedCall(EcpairingCall ecpairingCall) {
+  public EcpairingWeightedCall(EcPairingCall ecpairingCall) {
     this.ecpairingCall = ecpairingCall;
   }
 

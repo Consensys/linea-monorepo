@@ -24,15 +24,16 @@ import net.consensys.linea.zktracer.module.hub.defer.PostExecDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 
 @Slf4j
 public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
-  EWord stackValue = EWord.ZERO;
-  EWord offset1 = EWord.ZERO;
-  EWord offset2 = EWord.ZERO;
+  Bytes stackValue = Bytes.EMPTY;
+  Bytes offset1 = Bytes.EMPTY;
+  Bytes offset2 = Bytes.EMPTY;
   byte opCode;
   int param1 = 0;
   int param2 = 0;
@@ -48,7 +49,7 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
 
     switch (opCode) {
       case SHA3 -> {
-        offset1 = EWord.of(frame.getStackItem(0));
+        offset1 = frame.getStackItem(0).copy();
         param1 = 0; // TODO: hash info stamp
         size = Words.clampedToInt(Words.clampedToLong(frame.getStackItem(1)));
         exoSum = 0; // TODO:
@@ -58,13 +59,13 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
         this.info = hub.callStack().depth() == 1;
         this.referenceOffset = hub.currentFrame().callDataPointer().offset();
         this.referenceSize = hub.currentFrame().callDataPointer().length();
-        this.offset1 = EWord.of(frame.getStackItem(0));
+        this.offset1 = frame.getStackItem(0).copy();
       }
       case MSTORE, MSTORE8 -> {
-        this.offset1 = EWord.of(frame.getStackItem(0));
-        this.stackValue = EWord.of(frame.getStackItem(1));
+        this.offset1 = frame.getStackItem(0).copy();
+        this.stackValue = frame.getStackItem(1).copy();
       }
-      case MLOAD -> this.offset1 = EWord.of(frame.getStackItem(0));
+      case MLOAD -> this.offset1 = frame.getStackItem(0).copy();
       default -> log.info("MMU not yet implemented for this opcode");
     }
 
@@ -72,10 +73,11 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
   }
 
   @Override
-  public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
-    switch (OpCode.of(this.opCode)) {
+  public void runPostExec(
+      final Hub hub, final MessageFrame frame, final Operation.OperationResult operationResult) {
+    switch (hub.opCode()) {
       case MLOAD, CALLDATALOAD -> {
-        this.stackValue = EWord.of(frame.getStackItem(0));
+        this.stackValue = frame.getStackItem(0).copy();
       }
       default -> {}
     }
@@ -83,6 +85,10 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
 
   @Override
   public Trace trace(Trace trace) {
+    final EWord eOffset1 = EWord.of(this.offset1);
+    final EWord eOffset2 = EWord.of(this.offset2);
+    final EWord eStackValue = EWord.of(this.stackValue);
+
     return trace
         .pMiscellaneousMmuInst(BigInteger.valueOf(this.opCode))
         .pMiscellaneousMmuParam1(BigInteger.valueOf(this.param1))
@@ -91,12 +97,12 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
         .pMiscellaneousMmuInfo(this.info)
         .pMiscellaneousMmuRefOffset(BigInteger.valueOf(this.referenceOffset))
         .pMiscellaneousMmuRefSize(BigInteger.valueOf(this.referenceSize))
-        .pMiscellaneousMmuOffset1Lo(this.offset1.loBigInt())
-        .pMiscellaneousMmuOffset2Hi(this.offset2.hiBigInt())
-        .pMiscellaneousMmuOffset2Lo(this.offset2.loBigInt())
+        .pMiscellaneousMmuOffset1Lo(eOffset1.loBigInt())
+        .pMiscellaneousMmuOffset2Hi(eOffset2.hiBigInt())
+        .pMiscellaneousMmuOffset2Lo(eOffset2.loBigInt())
         .pMiscellaneousMmuSize(BigInteger.valueOf(this.size))
-        .pMiscellaneousMmuStackValHi(this.stackValue.hiBigInt())
-        .pMiscellaneousMmuStackValLo(this.stackValue.loBigInt())
+        .pMiscellaneousMmuStackValHi(eStackValue.hiBigInt())
+        .pMiscellaneousMmuStackValLo(eStackValue.loBigInt())
         .pMiscellaneousMmuExoSum(BigInteger.valueOf(this.exoSum));
   }
 }

@@ -33,7 +33,7 @@ public final class StackContext {
   /** The opcode that triggered the stack operations. */
   OpCode opCode;
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
-  @Getter List<StackLine> lines;
+  @Getter final List<StackLine> lines = new ArrayList<>(4);
 
   /**
    * The default constructor for a valid, albeit empty line.
@@ -42,7 +42,6 @@ public final class StackContext {
    */
   StackContext(OpCode opCode) {
     this.opCode = opCode;
-    this.lines = new ArrayList<>();
   }
 
   /**

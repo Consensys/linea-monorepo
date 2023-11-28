@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.module.mmio.Mmio;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.runtime.stack.StackOperation;
+import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -136,11 +137,13 @@ public class Mmu implements Module {
 
     boolean[] bits = microData.bits();
 
+    final EWord eStack1 = EWord.of(pointers.stack1());
+
     trace
         .ramStamp(BigInteger.valueOf(this.ramStamp))
         .microInstructionStamp(BigInteger.ZERO)
         .isMicroInstruction(this.isMicro)
-        .off1Lo(pointers.stack1().lo().toUnsignedBigInteger())
+        .off1Lo(eStack1.lo().toUnsignedBigInteger())
         .off2Hi(pointers.stack2().toUnsignedBigInteger())
         .sizeImported(BigInteger.valueOf(microData.sizeImported()))
         .valHi(value)
