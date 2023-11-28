@@ -73,6 +73,16 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
     }
   }
 
+  public Path writeToTmpFile(final Path rootDir) {
+    try {
+      final Path traceFile = Files.createTempFile(rootDir, null, ".lt");
+      this.writeToFile(traceFile);
+      return traceFile;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public void writeToFile(final Path filename) {
     Stopwatch sw = Stopwatch.createStarted();

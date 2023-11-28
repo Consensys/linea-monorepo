@@ -78,13 +78,14 @@ public class RandomTxrcptTests {
     //
     // TODO: uncomment the test
     // assertThat(
-    //    CorsetValidator.isValid(
+    //    CorsetValidator.validate(
     //        new ZkTraceBuilder()
     //            .addTrace(rlpTxrcpt)
     //            .addTrace(logInfo)
     //            .addTrace(logData)
     //            .build()
-    //            .toJson()))
+    //            .toJson())
+    //    isValid())
     //    .isTrue();
   }
 
