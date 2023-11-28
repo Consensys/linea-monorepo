@@ -52,6 +52,7 @@ public class GeneralStateReferenceTestTools {
       ReferenceTestProtocolSchedules.create();
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
+  private static final CorsetValidator corsetValidator = new CorsetValidator();
 
   private static MainnetTransactionProcessor transactionProcessor(final String name) {
     return protocolSpec(name).getTransactionProcessor();
@@ -217,7 +218,7 @@ public class GeneralStateReferenceTestTools {
                   .isEqualTo(expected);
             });
 
-    assertThat(CorsetValidator.isValid(zkTracer.writeToTmpFile())).isTrue();
+    assertThat(corsetValidator.validate(zkTracer.writeToTmpFile()).isValid()).isTrue();
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {

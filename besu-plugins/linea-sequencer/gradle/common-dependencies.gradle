@@ -19,6 +19,7 @@ dependencies {
   implementation 'ch.qos.logback:logback-core'
   implementation 'ch.qos.logback:logback-classic'
   implementation 'commons-io:commons-io'
+  implementation 'com.slack.api:slack-api-client'
 
   testImplementation 'org.apache.commons:commons-lang3'
   testImplementation 'com.google.guava:guava'

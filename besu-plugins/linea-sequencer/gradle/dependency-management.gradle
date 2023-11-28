@@ -116,5 +116,7 @@ dependencyManagement {
     dependency 'com.splunk.logging:splunk-library-javalogging:1.11.5'
 
     dependency 'io.vertx:vertx-core:4.3.8'
+
+    dependency 'com.slack.api:slack-api-client:1.32.1'
   }
 }

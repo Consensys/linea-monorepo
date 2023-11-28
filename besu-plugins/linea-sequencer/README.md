@@ -158,3 +158,7 @@ ______________________________________________________________________
 ```shell
 corset check -T <JSON_FILE> -v zkevm-constraints/zkevm.bin
 ```
+
+## Continuous Tracing
+
+The continuous tracing plugin is documented [here](CONTINUOUS_TRACING.md).
