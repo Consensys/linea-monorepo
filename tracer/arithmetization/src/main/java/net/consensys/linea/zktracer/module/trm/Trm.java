@@ -30,8 +30,12 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Trm implements Module {
   @Override
@@ -66,6 +70,26 @@ public class Trm implements Module {
       }
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         this.trimmings.add(EWord.of(frame.getStackItem(1)));
+      }
+    }
+  }
+
+  @Override
+  public void traceStartTx(WorldView worldView, Transaction tx) {
+    final TransactionType txType = tx.getType();
+    switch (txType) {
+      case ACCESS_LIST, EIP1559 -> {
+        if (tx.getAccessList().isPresent()) {
+          for (AccessListEntry entry : tx.getAccessList().get()) {
+            this.trimmings.add(EWord.of(entry.address()));
+          }
+        }
+      }
+      case FRONTIER -> {
+        return;
+      }
+      default -> {
+        throw new IllegalStateException("TransactionType not supported: " + txType);
       }
     }
   }
