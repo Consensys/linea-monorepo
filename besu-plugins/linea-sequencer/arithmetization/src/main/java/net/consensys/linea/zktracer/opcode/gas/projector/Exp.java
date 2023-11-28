@@ -23,7 +23,8 @@ public final class Exp implements GasProjection {
 
   public Exp(MessageFrame frame) {
     if (frame.stackSize() > 1) {
-      this.exponentByteSize = frame.getStackItem(1).size();
+      final int bitLength = frame.getStackItem(1).bitLength();
+      this.exponentByteSize = (bitLength + 7) / 8;
     }
   }
 
