@@ -140,13 +140,13 @@ public class Signals {
    * @param hub the execution context
    */
   public void prepare(MessageFrame frame, PlatformController platformController, Hub hub) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
     final Exceptions ex = platformController.exceptions();
 
     // this.gas coincides with CONTEXT_MAY_CHANGE
     this.gas =
         ex.any()
-            || this.AUTOMATIC_GAS_MODULE_TRIGGER.contains(opCode.getData().instructionFamily());
+            || this.AUTOMATIC_GAS_MODULE_TRIGGER.contains(hub.opCodeData().instructionFamily());
 
     if (ex.stackException()) {
       return;

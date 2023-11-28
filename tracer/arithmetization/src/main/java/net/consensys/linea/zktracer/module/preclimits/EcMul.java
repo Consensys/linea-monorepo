@@ -19,14 +19,18 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class Ecmul implements Module {
+@RequiredArgsConstructor
+public final class EcMul implements Module {
+  private final Hub hub;
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
@@ -48,7 +52,7 @@ public final class Ecmul implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {

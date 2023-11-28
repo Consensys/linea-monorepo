@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import java.util.Optional;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.AddressUtils;
 import org.hyperledger.besu.datatypes.Address;
@@ -24,7 +25,9 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
+@RequiredArgsConstructor
 public final class FailureConditions {
+  private final Hub hub;
   private boolean deploymentAddressHasNonZeroNonce;
   private boolean deploymentAddressHasNonEmptyCode;
 
@@ -34,7 +37,7 @@ public final class FailureConditions {
   }
 
   public void prepare(MessageFrame frame) {
-    OpCode instruction = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode instruction = this.hub.opCode();
     Address deploymentAddress;
     switch (instruction) {
       case CREATE -> {

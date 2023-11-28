@@ -19,29 +19,30 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-@Slf4j
-public final class EcpairingCall implements Module {
-  public final Stack<EcpairingLimit> counts = new Stack<>();
-  private final int precompileBaseGasFee = 45000; // cf EIP-1108
-  private final int precompileMillerLoopGasFee = 34000; // cf EIP-1108
-  private final int ecPairingNbBytesperMillerLoop = 192;
+@RequiredArgsConstructor
+public final class EcAdd implements Module {
+  private final Hub hub;
+  private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
   public String jsonKey() {
-    return "ecpairingCall";
+    return "ecadd";
   }
+
+  private final int precompileGasFee = 150; // cf EIP-1108
 
   @Override
   public void enterTransaction() {
-    counts.push(new EcpairingLimit(0, 0));
+    counts.push(0);
   }
 
   @Override
@@ -51,31 +52,15 @@ public final class EcpairingCall implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.ALTBN128_PAIRING) {
-          long length = 0;
-          switch (opCode) {
-            case CALL, CALLCODE -> length = Words.clampedToLong(frame.getStackItem(4));
-            case DELEGATECALL, STATICCALL -> length = Words.clampedToLong(frame.getStackItem(3));
-          }
-
-          final int nMillerLoop = (int) (length / ecPairingNbBytesperMillerLoop);
-          if (nMillerLoop * ecPairingNbBytesperMillerLoop != length) {
-            log.info("Argument is not a right size: " + length);
-            return;
-          }
-
+        if (target == Address.ALTBN128_ADD) {
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          if (gasPaid >= precompileBaseGasFee + precompileMillerLoopGasFee * nMillerLoop) {
-            final EcpairingLimit lastEcpairingLimit = this.counts.pop();
-            this.counts.push(
-                new EcpairingLimit(
-                    lastEcpairingLimit.nPrecompileCall() + 1,
-                    lastEcpairingLimit.nMillerLoop() + nMillerLoop));
+          if (gasPaid >= precompileGasFee) {
+            this.counts.push(this.counts.pop() + 1);
           }
         }
       }
@@ -85,7 +70,7 @@ public final class EcpairingCall implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(EcpairingLimit::nPrecompileCall).sum();
+    return this.counts.stream().mapToInt(x -> x).sum();
   }
 
   @Override

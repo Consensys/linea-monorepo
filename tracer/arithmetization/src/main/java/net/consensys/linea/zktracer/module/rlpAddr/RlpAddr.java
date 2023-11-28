@@ -30,9 +30,11 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -44,12 +46,14 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+@RequiredArgsConstructor
 public class RlpAddr implements Module {
   private static final Bytes CREATE2_SHIFT = bigIntegerToBytes(BigInteger.valueOf(0xff));
   private static final Bytes INT_SHORT = bigIntegerToBytes(BigInteger.valueOf(0x80));
   private static final int LIST_SHORT = 0xc0;
   private static final int LLARGE = 16;
 
+  private final Hub hub;
   private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
 
   @Override
@@ -84,7 +88,7 @@ public class RlpAddr implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opcode = this.hub.opCode();
     switch (opcode) {
       case CREATE -> {
         final Address currentAddress = frame.getRecipientAddress();

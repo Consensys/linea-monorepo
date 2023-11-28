@@ -40,7 +40,7 @@ public record StorageFragment(
     implements TraceFragment {
   @Override
   public Trace trace(Trace trace) {
-    EWord eAddress = EWord.of(address);
+    final EWord eAddress = EWord.of(address);
 
     return trace
         .peekAtStorage(true)

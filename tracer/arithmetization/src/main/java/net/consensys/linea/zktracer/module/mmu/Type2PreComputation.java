@@ -44,7 +44,7 @@ class Type2PreComputation implements MmuPreComputation {
             .target(callStack.caller().contextNumber())
             .build());
 
-    microData.sizeImported(stackOps.get(2).value().intValue());
+    microData.sizeImported(stackOps.get(2).value().toInt());
 
     EWord retOffset = microData.instructionContext().returnOffset();
     EWord ax = retOffset.mod(16);
@@ -61,7 +61,7 @@ class Type2PreComputation implements MmuPreComputation {
 
     microData.pointers(Pointers.builder().stack1(stackOps.get(0).value().copy()).build());
 
-    int off1 = microData.pointers().stack1().intValue();
+    int off1 = microData.pointers().stack1().toInt();
     int alignment = off1 % 16;
 
     microData.readPad(

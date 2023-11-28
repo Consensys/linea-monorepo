@@ -15,19 +15,20 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import java.util.Stack;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.StackedContainer;
 
 public class State implements StackedContainer {
-  private final Stack<TxState> state = new Stack<>();
+  private final Deque<TxState> state = new ArrayDeque<>(50);
 
   State() {}
 
   private TxState current() {
-    return this.state.get(this.state.size() - 1);
+    return this.state.peek();
   }
 
   TxState.Stamps stamps() {

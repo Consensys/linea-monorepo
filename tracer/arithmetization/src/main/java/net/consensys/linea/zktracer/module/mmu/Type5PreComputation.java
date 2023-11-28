@@ -48,11 +48,11 @@ class Type5PreComputation implements MmuPreComputation {
 
     microData.pointers(Pointers.builder().stack1(stackOps.get(0).value().copy()).build());
 
-    EWord offset = microData.pointers().stack1().copy();
+    final EWord offset = EWord.of(microData.pointers().stack1().copy());
     microData.callDataSize(callStack.caller().callDataRange().length().toInt());
 
     int callDataSize = microData.callDataSize();
-    EWord callDataSizeEWord = EWord.of(callDataSize);
+    final EWord callDataSizeEWord = EWord.of(callDataSize);
 
     if (callDataSize == 0 || callDataSizeEWord.lessOrEqualThan(offset)) {
       microData.skip(true);
