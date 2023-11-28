@@ -38,7 +38,6 @@ public class OpCodes {
   /** Loads all opcode metadata from src/main/resources/opcodes.yml. */
   @SneakyThrows(IOException.class)
   public static void load() {
-
     JsonNode rootNode =
         YAML_CONVERTER
             .getObjectMapper()
