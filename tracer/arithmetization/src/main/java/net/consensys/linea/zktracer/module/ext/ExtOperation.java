@@ -62,6 +62,17 @@ public class ExtOperation {
     return Objects.hash(this.opCode, this.arg1, this.arg2, this.arg3);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    final ExtOperation that = (ExtOperation) o;
+    return Objects.equals(opCode, that.opCode)
+        && Objects.equals(arg1, that.arg1)
+        && Objects.equals(arg2, that.arg2)
+        && Objects.equals(arg3, that.arg3);
+  }
+
   public ExtOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     this.opCode = opCode;
     this.arg1 = BaseBytes.fromBytes32(arg1.copy());

@@ -60,6 +60,16 @@ public class ModOperation {
     return Objects.hash(this.opCode, this.arg1, this.arg2);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    final ModOperation that = (ModOperation) o;
+    return Objects.equals(opCode, that.opCode)
+        && Objects.equals(arg1, that.arg1)
+        && Objects.equals(arg2, that.arg2);
+  }
+
   public ModOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
     this(opCodeData.mnemonic(), arg1, arg2);
   }
