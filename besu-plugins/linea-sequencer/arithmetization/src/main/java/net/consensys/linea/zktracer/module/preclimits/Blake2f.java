@@ -19,24 +19,24 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-@Slf4j
+@RequiredArgsConstructor
 public final class Blake2f implements Module {
+  final Hub hub;
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
   public String jsonKey() {
     return null;
   }
-
-  private final int black2fDataSize = 213;
 
   @Override
   public void enterTransaction() {
@@ -50,7 +50,7 @@ public final class Blake2f implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
@@ -68,8 +68,10 @@ public final class Blake2f implements Module {
               offset = Words.clampedToLong(frame.getStackItem(2));
             }
           }
-          if (length == black2fDataSize) {
-            final int f = frame.shadowReadMemory(offset, length).get(black2fDataSize - 1);
+
+          final int blake2fDataSize = 213;
+          if (length == blake2fDataSize) {
+            final int f = frame.shadowReadMemory(offset, length).get(blake2fDataSize - 1);
             if (f == 0 || f == 1) {
               final int r =
                   frame

@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.runtime.stack.StackOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -48,7 +49,7 @@ class Type4PreComputation implements MmuPreComputation {
             .stack2(stackOps.get(1).value().copy())
             .build());
 
-    EWord value = stackOps.get(3).value().copy();
+    Bytes value = stackOps.get(3).value().copy();
     microData.sizeImported(value.toInt());
     microData.value(value);
 
@@ -422,7 +423,7 @@ class Type4PreComputation implements MmuPreComputation {
   }
 
   void setTern(MicroData microData, final CallStack callStack) {
-    EWord off2 = microData.pointers().stack2();
+    final EWord off2 = EWord.of(microData.pointers().stack2());
 
     microData.referenceSize(calculateReferenceSize(microData, callStack));
 
@@ -469,7 +470,7 @@ class Type4PreComputation implements MmuPreComputation {
     switch (opCode) {
       case CODECOPY -> topCallFrame.code().getSize();
       case EXTCODECOPY -> {
-        Address address = Words.toAddress(microData.value().toBytes());
+        final Address address = Words.toAddress(microData.value());
         topCallFrame.frame().getWorldUpdater().get(address).getCode().size();
       }
       case CALLDATACOPY -> callStack.caller().callDataRange().length();
@@ -483,8 +484,8 @@ class Type4PreComputation implements MmuPreComputation {
 
   private void dispatchTern0(final MicroData microData, final CallStack callStack) {
     Pointers pointers = microData.pointers();
-    EWord off1Lo = pointers.stack1();
-    EWord off2 = pointers.stack2();
+    EWord off1Lo = EWord.of(pointers.stack1());
+    EWord off2 = EWord.of(pointers.stack2());
     boolean[] bits = microData.bits();
 
     microData.referenceOffset(calculateReferenceOffset(microData, callStack));
@@ -560,8 +561,8 @@ class Type4PreComputation implements MmuPreComputation {
 
   private void dispatchTern1(final MicroData microData, final CallStack callStack) {
     Pointers pointers = microData.pointers();
-    EWord off1Lo = pointers.stack1();
-    EWord off2 = pointers.stack2();
+    EWord off1Lo = EWord.of(pointers.stack1());
+    EWord off2 = EWord.of(pointers.stack2());
     boolean[] bits = microData.bits();
 
     microData.referenceOffset(calculateReferenceOffset(microData, callStack));
@@ -624,7 +625,7 @@ class Type4PreComputation implements MmuPreComputation {
   }
 
   private void dispatchTern2(MicroData microData) {
-    EWord off1 = microData.pointers().stack1();
+    EWord off1 = EWord.of(microData.pointers().stack1());
     UnsignedByte[] nibbles = microData.nibbles();
 
     // ACC_3 & NIB_3

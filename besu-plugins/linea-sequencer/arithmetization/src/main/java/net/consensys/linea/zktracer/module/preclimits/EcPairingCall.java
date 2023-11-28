@@ -19,26 +19,33 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class Ecadd implements Module {
-  private final Stack<Integer> counts = new Stack<Integer>();
+@Slf4j
+@RequiredArgsConstructor
+public final class EcPairingCall implements Module {
+  private final Hub hub;
+  public final Stack<EcpairingLimit> counts = new Stack<>();
+  private final int precompileBaseGasFee = 45000; // cf EIP-1108
+  private final int precompileMillerLoopGasFee = 34000; // cf EIP-1108
+  private final int ecPairingNbBytesperMillerLoop = 192;
 
   @Override
   public String jsonKey() {
-    return "ecadd";
+    return "ecpairingCall";
   }
-
-  private final int precompileGasFee = 150; // cf EIP-1108
 
   @Override
   public void enterTransaction() {
-    counts.push(0);
+    counts.push(new EcpairingLimit(0, 0));
   }
 
   @Override
@@ -48,15 +55,31 @@ public final class Ecadd implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.ALTBN128_ADD) {
+        if (target == Address.ALTBN128_PAIRING) {
+          long length = 0;
+          switch (opCode) {
+            case CALL, CALLCODE -> length = Words.clampedToLong(frame.getStackItem(4));
+            case DELEGATECALL, STATICCALL -> length = Words.clampedToLong(frame.getStackItem(3));
+          }
+
+          final int nMillerLoop = (int) (length / ecPairingNbBytesperMillerLoop);
+          if (nMillerLoop * ecPairingNbBytesperMillerLoop != length) {
+            log.warn("[ECPairing] Argument is not a right size: " + length);
+            return;
+          }
+
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          if (gasPaid >= precompileGasFee) {
-            this.counts.push(this.counts.pop() + 1);
+          if (gasPaid >= precompileBaseGasFee + precompileMillerLoopGasFee * nMillerLoop) {
+            final EcpairingLimit lastEcpairingLimit = this.counts.pop();
+            this.counts.push(
+                new EcpairingLimit(
+                    lastEcpairingLimit.nPrecompileCall() + 1,
+                    lastEcpairingLimit.nMillerLoop() + nMillerLoop));
           }
         }
       }
@@ -66,7 +89,7 @@ public final class Ecadd implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(x -> x).sum();
+    return this.counts.stream().mapToInt(EcpairingLimit::nPrecompileCall).sum();
   }
 
   @Override

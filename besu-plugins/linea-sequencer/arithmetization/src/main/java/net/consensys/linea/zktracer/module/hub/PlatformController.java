@@ -37,10 +37,10 @@ public class PlatformController {
 
   public PlatformController(final Hub hub) {
     this.hub = hub;
-    this.exceptions = new Exceptions();
+    this.exceptions = new Exceptions(hub);
     this.aborts = new AbortingConditions();
     this.signals = new Signals(this);
-    this.failures = new FailureConditions();
+    this.failures = new FailureConditions(hub);
   }
 
   /** Reset all information */

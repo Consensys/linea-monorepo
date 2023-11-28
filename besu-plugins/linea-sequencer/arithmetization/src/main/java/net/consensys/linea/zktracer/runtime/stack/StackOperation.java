@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.runtime.stack;
 
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * An atomic operation (read/pop or write/push) on the stack, indexed within a {@link
@@ -32,7 +33,7 @@ public final class StackOperation {
    */
   private final int height;
   /** The value having been popped from/pushed on the stack. */
-  private EWord value;
+  private Bytes value;
   /** whether this action is a push or a pop. */
   private final Action action;
   /**
@@ -43,12 +44,12 @@ public final class StackOperation {
 
   StackOperation() {
     this.height = 0;
-    this.value = EWord.ZERO;
+    this.value = Bytes.EMPTY;
     this.action = Action.NONE;
     this.stackStamp = 0;
   }
 
-  StackOperation(int height, EWord value, Action action, int stackStamp) {
+  StackOperation(int height, Bytes value, Action action, int stackStamp) {
     this.height = height;
     this.value = value;
     this.action = action;
@@ -71,7 +72,7 @@ public final class StackOperation {
     return new StackOperation(height, val.copy(), Action.PUSH, stackStamp);
   }
 
-  public void setValue(EWord x) {
+  public void setValue(Bytes x) {
     this.value = x;
   }
 
@@ -79,7 +80,7 @@ public final class StackOperation {
     return height;
   }
 
-  public EWord value() {
+  public Bytes value() {
     return value;
   }
 

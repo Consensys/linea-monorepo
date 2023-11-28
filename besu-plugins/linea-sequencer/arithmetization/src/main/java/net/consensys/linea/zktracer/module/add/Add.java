@@ -19,10 +19,12 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -33,8 +35,11 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for addition/subtraction. */
+@RequiredArgsConstructor
 public class Add implements Module {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
+
+  private final Hub hub;
 
   private int stamp = 0;
 
@@ -61,8 +66,7 @@ public class Add implements Module {
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-    this.chunks.add(
-        new AddOperation(OpCode.of(frame.getCurrentOperation().getOpcode()), arg1, arg2));
+    this.chunks.add(new AddOperation(hub.opCode(), arg1, arg2));
   }
 
   /**

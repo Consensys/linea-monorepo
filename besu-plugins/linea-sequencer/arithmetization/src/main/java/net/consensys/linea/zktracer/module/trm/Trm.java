@@ -38,17 +38,17 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Trm implements Module {
+  private int stamp = 0;
+  private static final int MAX_CT = 16;
+  private static final int LLARGE = 16;
+  private static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
+
+  private final StackedSet<EWord> trimmings = new StackedSet<>();
+
   @Override
   public String jsonKey() {
     return "trm";
   }
-
-  private int stamp = 0;
-  private final int maxCT = 16;
-  static final int LLARGE = 16;
-  static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
-
-  private final StackedSet<EWord> trimmings = new StackedSet<>();
 
   @Override
   public void enterTransaction() {
@@ -62,7 +62,6 @@ public class Trm implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     switch (opCode) {
       case BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, SELFDESTRUCT -> {
@@ -105,9 +104,9 @@ public class Trm implements Module {
     Bytes trmHi = padToGivenSizeWithLeftZero(data.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
     Boolean isPrec = isPrecompile(Address.extract(data));
     final int accLastByte = isPrec ? 9 - (0xff & data.get(31)) : (0xff & data.get(31)) - 10;
-    List<Boolean> ones = bitDecomposition(accLastByte, maxCT).bitDecList();
+    List<Boolean> ones = bitDecomposition(accLastByte, MAX_CT).bitDecList();
 
-    for (int ct = 0; ct < this.maxCT; ct++) {
+    for (int ct = 0; ct < MAX_CT; ct++) {
       trace
           .ct(BigInteger.valueOf(ct))
           .stamp(BigInteger.valueOf(this.stamp))
@@ -142,6 +141,6 @@ public class Trm implements Module {
 
   @Override
   public int lineCount() {
-    return this.trimmings.size() * maxCT;
+    return this.trimmings.size() * MAX_CT;
   }
 }

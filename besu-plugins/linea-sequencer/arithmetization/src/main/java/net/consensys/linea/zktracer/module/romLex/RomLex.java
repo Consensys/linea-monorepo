@@ -156,7 +156,7 @@ public class RomLex implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    OpCode opcode = this.hub.opCode();
 
     switch (opcode) {
       case CREATE -> {

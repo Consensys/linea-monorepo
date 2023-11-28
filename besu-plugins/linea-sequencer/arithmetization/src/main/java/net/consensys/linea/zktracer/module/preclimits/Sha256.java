@@ -19,16 +19,18 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-@Slf4j
+@RequiredArgsConstructor
 public final class Sha256 implements Module {
+  private final Hub hub;
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
@@ -55,7 +57,7 @@ public final class Sha256 implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opCode = hub.opCode();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
