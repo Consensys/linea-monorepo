@@ -77,6 +77,16 @@ public class MulOperation {
     return Objects.hash(this.opCode, this.arg1, this.arg2);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    final MulOperation that = (MulOperation) o;
+    return Objects.equals(opCode, that.opCode)
+        && Objects.equals(arg1, that.arg1)
+        && Objects.equals(arg2, that.arg2);
+  }
+
   public MulOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
     this(opCodeData.mnemonic(), arg1, arg2);
   }
