@@ -213,23 +213,22 @@ public class Hub implements Module {
     this.modules =
         Stream.concat(
                 Stream.of(
-                    this.romLex, // romLex must be called before modules requiring CodeFragmentIndex
-                    // (Rom, RlpTxn, TxnData, RAM, TODO: HUB)
+                    this.romLex, // WARN: must be called first
                     this.add,
                     this.ext,
+                    this.logData,
+                    this.logInfo,
                     this.mod,
                     this.mul,
                     this.mxp,
-                    this.shf,
-                    this.wcp,
+                    this.rlpAddr,
                     this.rlpTxn,
                     this.rlpTxrcpt,
-                    this.logData,
-                    this.logInfo,
-                    this.rlpAddr,
                     this.rom,
+                    this.shf,
+                    this.trm,
                     this.txnData,
-                    this.trm),
+                    this.wcp),
                 this.precompileLimitModules.stream())
             .toList();
   }
@@ -239,24 +238,26 @@ public class Hub implements Module {
    */
   public List<Module> getModulesToTrace() {
     return List.of(
+        // Reference tables
         new InstructionDecoder(),
         new ShfRt(),
-        // this,
-        this.romLex,
+        // Modules
+        this,
         this.add,
         this.ext,
-        this.mod,
-        this.mul,
-        this.shf,
-        this.wcp,
-        this.mxp,
-        this.rlpTxn,
-        this.rlpTxrcpt,
         this.logData,
         this.logInfo,
+        this.mod,
+        this.mul,
+        this.mxp,
         this.rlpAddr,
+        this.rlpTxn,
+        this.rlpTxrcpt,
         this.rom,
-        this.txnData);
+        this.romLex,
+        this.shf,
+        this.txnData,
+        this.wcp);
   }
 
   @Override
@@ -429,7 +430,9 @@ public class Hub implements Module {
       precompileLimit.tracePreOpcode(frame);
     }
 
-    // TODO: coming soon
+    if (this.pch.signals().romLex()) {
+      this.romLex.tracePreOpcode(frame);
+    }
     if (this.pch.signals().add()) {
       this.add.tracePreOpcode(frame);
     }
@@ -472,9 +475,6 @@ public class Hub implements Module {
     }
     if (this.pch.signals().hashInfo()) {
       // TODO: this.hashInfo.tracePreOpcode(frame);
-    }
-    if (this.pch.signals().romLex()) {
-      this.romLex.tracePreOpcode(frame);
     }
   }
 
