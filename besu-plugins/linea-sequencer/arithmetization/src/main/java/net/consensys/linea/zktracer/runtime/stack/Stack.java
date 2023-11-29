@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.runtime.stack;
 import lombok.Getter;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
-import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Stack {
@@ -46,18 +46,18 @@ public class Stack {
     return r;
   }
 
-  private EWord getStack(MessageFrame frame, int i) {
-    return EWord.of(frame.getStackItem(i));
+  private Bytes getStack(MessageFrame frame, int i) {
+    return frame.getStackItem(i);
   }
 
   private void oneZero(MessageFrame frame, StackContext pending) {
-    EWord val = getStack(frame, 0);
+    Bytes val = getStack(frame, 0);
     pending.addLine(new IndexedStackOperation(1, StackOperation.pop(this.height, val, this.stamp)));
   }
 
   private void twoZero(MessageFrame frame, StackContext pending) {
-    EWord val1 = getStack(frame, 0);
-    EWord val2 = getStack(frame, 1);
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, 1);
 
     pending.addLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height, val1, this.stamp)),
@@ -70,7 +70,7 @@ public class Stack {
   }
 
   private void oneOne(MessageFrame frame, StackContext pending) {
-    EWord val = getStack(frame, 0);
+    Bytes val = getStack(frame, 0);
 
     pending.addArmingLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height, val, this.stamp)),
@@ -78,8 +78,8 @@ public class Stack {
   }
 
   private void twoOne(MessageFrame frame, StackContext pending) {
-    EWord val1 = getStack(frame, 0);
-    EWord val2 = getStack(frame, 1);
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, 1);
 
     pending.addArmingLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height, val1, this.stamp)),
@@ -88,9 +88,9 @@ public class Stack {
   }
 
   private void threeOne(MessageFrame frame, StackContext pending) {
-    EWord val1 = getStack(frame, 0);
-    EWord val2 = getStack(frame, 1);
-    EWord val3 = getStack(frame, 2);
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, 1);
+    Bytes val3 = getStack(frame, 2);
 
     pending.addArmingLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height, val1, this.stamp)),
@@ -102,14 +102,14 @@ public class Stack {
   private void loadStore(MessageFrame frame, StackContext pending) {
     if (this.currentOpcodeData.stackSettings().flag3()
         || this.currentOpcodeData.stackSettings().flag4()) {
-      EWord val1 = getStack(frame, 0);
-      EWord val2 = getStack(frame, 1);
+      Bytes val1 = getStack(frame, 0);
+      Bytes val2 = getStack(frame, 1);
 
       pending.addLine(
           new IndexedStackOperation(1, StackOperation.pop(this.height, val1, this.stamp)),
           new IndexedStackOperation(4, StackOperation.pop(this.height - 1, val2, this.stamp + 1)));
     } else {
-      EWord val = getStack(frame, 0);
+      Bytes val = getStack(frame, 0);
 
       pending.addArmingLine(
           new IndexedStackOperation(1, StackOperation.pop(this.height, val, this.stamp)),
@@ -119,7 +119,7 @@ public class Stack {
 
   private void dup(MessageFrame frame, StackContext pending) {
     int depth = this.currentOpcodeData.stackSettings().delta() - 1;
-    EWord val = getStack(frame, depth);
+    Bytes val = getStack(frame, depth);
 
     pending.addLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height - depth, val, this.stamp)),
@@ -131,8 +131,8 @@ public class Stack {
 
   private void swap(MessageFrame frame, StackContext pending) {
     int depth = this.currentOpcodeData.stackSettings().delta() - 1;
-    EWord val1 = getStack(frame, 0);
-    EWord val2 = getStack(frame, depth);
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, depth);
 
     pending.addLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height - depth, val1, this.stamp)),
@@ -144,8 +144,8 @@ public class Stack {
   }
 
   private void log(MessageFrame frame, StackContext pending) {
-    EWord offset = getStack(frame, 0);
-    EWord size = getStack(frame, 1);
+    Bytes offset = getStack(frame, 0);
+    Bytes size = getStack(frame, 1);
 
     // Stack line 1
     pending.addLine(
@@ -157,7 +157,7 @@ public class Stack {
     switch (this.currentOpcodeData.mnemonic()) {
       case LOG0 -> {}
       case LOG1 -> {
-        EWord topic1 = getStack(frame, 2);
+        Bytes topic1 = getStack(frame, 2);
 
         line2 =
             new IndexedStackOperation[] {
@@ -166,8 +166,8 @@ public class Stack {
             };
       }
       case LOG2 -> {
-        EWord topic1 = getStack(frame, 2);
-        EWord topic2 = getStack(frame, 3);
+        Bytes topic1 = getStack(frame, 2);
+        Bytes topic2 = getStack(frame, 3);
 
         line2 =
             new IndexedStackOperation[] {
@@ -178,9 +178,9 @@ public class Stack {
             };
       }
       case LOG3 -> {
-        EWord topic1 = getStack(frame, 2);
-        EWord topic2 = getStack(frame, 3);
-        EWord topic3 = getStack(frame, 4);
+        Bytes topic1 = getStack(frame, 2);
+        Bytes topic2 = getStack(frame, 3);
+        Bytes topic3 = getStack(frame, 4);
 
         line2 =
             new IndexedStackOperation[] {
@@ -193,10 +193,10 @@ public class Stack {
             };
       }
       case LOG4 -> {
-        EWord topic1 = getStack(frame, 2);
-        EWord topic2 = getStack(frame, 3);
-        EWord topic3 = getStack(frame, 4);
-        EWord topic4 = getStack(frame, 5);
+        Bytes topic1 = getStack(frame, 2);
+        Bytes topic2 = getStack(frame, 3);
+        Bytes topic3 = getStack(frame, 4);
+        Bytes topic4 = getStack(frame, 5);
 
         line2 =
             new IndexedStackOperation[] {
@@ -217,10 +217,10 @@ public class Stack {
 
   private void copy(MessageFrame frame, StackContext pending) {
     if (this.currentOpcodeData.stackSettings().addressTrimmingInstruction()) {
-      EWord val0 = getStack(frame, 0);
-      EWord val1 = getStack(frame, 1);
-      EWord val2 = getStack(frame, 2);
-      EWord val3 = getStack(frame, 3);
+      Bytes val0 = getStack(frame, 0);
+      Bytes val1 = getStack(frame, 1);
+      Bytes val2 = getStack(frame, 2);
+      Bytes val3 = getStack(frame, 3);
 
       pending.addLine(
           new IndexedStackOperation(1, StackOperation.pop(this.height - 1, val1, this.stamp + 1)),
@@ -228,9 +228,9 @@ public class Stack {
           new IndexedStackOperation(3, StackOperation.pop(this.height - 2, val2, this.stamp + 3)),
           new IndexedStackOperation(4, StackOperation.pop(this.height, val0, this.stamp)));
     } else {
-      EWord val1 = getStack(frame, 0);
-      EWord val2 = getStack(frame, 2);
-      EWord val3 = getStack(frame, 1);
+      Bytes val1 = getStack(frame, 0);
+      Bytes val2 = getStack(frame, 2);
+      Bytes val3 = getStack(frame, 1);
 
       pending.addLine(
           new IndexedStackOperation(1, StackOperation.pop(this.height, val1, this.stamp + 1)),
@@ -240,18 +240,18 @@ public class Stack {
   }
 
   private void call(MessageFrame frame, StackContext pending) {
-    EWord val1 = getStack(frame, 0);
-    EWord val2 = getStack(frame, 1);
-    EWord val3 = getStack(frame, 2);
-    EWord val4 = getStack(frame, 3);
-    EWord val5 = getStack(frame, 4);
-    EWord val6 = getStack(frame, 5);
+    Bytes val1 = getStack(frame, 0);
+    Bytes val2 = getStack(frame, 1);
+    Bytes val3 = getStack(frame, 2);
+    Bytes val4 = getStack(frame, 3);
+    Bytes val5 = getStack(frame, 4);
+    Bytes val6 = getStack(frame, 5);
 
     boolean sevenItems =
         this.currentOpcodeData.stackSettings().flag1()
             || this.currentOpcodeData.stackSettings().flag2();
     if (sevenItems) {
-      EWord val7 = getStack(frame, 6);
+      Bytes val7 = getStack(frame, 6);
 
       pending.addLine(
           new IndexedStackOperation(1, StackOperation.pop(this.height - 3, val4, this.stamp + 3)),
@@ -279,22 +279,22 @@ public class Stack {
   }
 
   private void create(MessageFrame frame, StackContext pending) {
-    EWord val1 = getStack(frame, 1);
-    EWord val2 = getStack(frame, 2);
+    Bytes val1 = getStack(frame, 1);
+    Bytes val2 = getStack(frame, 2);
 
     pending.addLine(
         new IndexedStackOperation(1, StackOperation.pop(this.height - 1, val1, this.stamp + 1)),
         new IndexedStackOperation(2, StackOperation.pop(this.height - 2, val2, this.stamp + 2)));
     if (this.currentOpcodeData.stackSettings().flag1()) {
-      EWord val3 = getStack(frame, 3);
-      EWord val4 = getStack(frame, 0);
+      Bytes val3 = getStack(frame, 3);
+      Bytes val4 = getStack(frame, 0);
 
       pending.addArmingLine(
           new IndexedStackOperation(2, StackOperation.pop(this.height - 3, val3, this.stamp + 3)),
           new IndexedStackOperation(3, StackOperation.pop(this.height, val4, this.stamp)),
           new IndexedStackOperation(4, StackOperation.push(this.height - 3, this.stamp + 4)));
     } else {
-      EWord val4 = getStack(frame, 0);
+      Bytes val4 = getStack(frame, 0);
 
       pending.addArmingLine(
           new IndexedStackOperation(3, StackOperation.pop(this.height, val4, this.stamp)),
