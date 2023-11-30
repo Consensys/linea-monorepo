@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Singular;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
@@ -54,6 +55,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 /** Fluent API for executing EVM transactions in tests. */
 @Builder
 @RequiredArgsConstructor
+@Slf4j
 public class ToyExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
   private static final CorsetValidator corsetValidator = new CorsetValidator();
@@ -97,6 +99,7 @@ public class ToyExecutionEnvironment {
     try {
       final Path traceFile = Files.createTempFile(null, ".lt");
       tracer.writeToFile(traceFile);
+      log.info("trace written to `{}`", traceFile);
       assertThat(corsetValidator.validate(traceFile).isValid()).isTrue();
     } catch (IOException e) {
       throw new RuntimeException(e);
