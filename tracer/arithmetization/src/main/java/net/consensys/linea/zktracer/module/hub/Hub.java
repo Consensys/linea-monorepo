@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -91,17 +93,6 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Accessors(fluent = true)
 public class Hub implements Module {
   private static final int TAU = 8;
-  private static final Set<Address> PRECOMPILES =
-      Set.of(
-          Address.ECREC,
-          Address.SHA256,
-          Address.RIPEMD160,
-          Address.ID,
-          Address.MODEXP,
-          Address.ALTBN128_ADD,
-          Address.ALTBN128_MUL,
-          Address.ALTBN128_PAIRING,
-          Address.BLAKE2B_F_COMPRESSION);
 
   public static Optional<Bytes> maybeStackItem(MessageFrame frame, int idx) {
     if (frame.stackSize() > idx) {
@@ -263,10 +254,6 @@ public class Hub implements Module {
   @Override
   public String jsonKey() {
     return "hub_v2_off";
-  }
-
-  public static boolean isPrecompile(Address to) {
-    return PRECOMPILES.contains(to);
   }
 
   public static boolean isValidPrecompileCall(MessageFrame frame, final OpCode opCode) {
