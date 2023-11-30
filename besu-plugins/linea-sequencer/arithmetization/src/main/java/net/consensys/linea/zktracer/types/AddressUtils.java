@@ -39,7 +39,7 @@ public class AddressUtils {
           org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING,
           org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION);
 
-  public static boolean isPrecompile(org.hyperledger.besu.datatypes.Address to) {
+  public static boolean isPrecompile(Address to) {
     return precompileAddress.contains(to);
   }
 
