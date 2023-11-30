@@ -62,8 +62,8 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:core:$besuVersion:test-support"
   testImplementation "${besuArtifactGroup}:evm:$besuVersion"
 
-  testImplementation 'org.apache.tuweni:tuweni-bytes'
-  testImplementation 'org.apache.tuweni:tuweni-units'
+  testImplementation 'io.tmio:tuweni-bytes'
+  testImplementation 'io.tmio:tuweni-units'
 
   testImplementation 'org.web3j:abi'
   testImplementation 'org.web3j:besu'
