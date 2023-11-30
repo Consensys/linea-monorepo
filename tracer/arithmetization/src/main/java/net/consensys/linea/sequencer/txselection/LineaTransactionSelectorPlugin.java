@@ -16,14 +16,21 @@
 package net.consensys.linea.sequencer.txselection;
 
 import java.io.File;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
+import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.LineaRequiredPlugin;
+import org.apache.tuweni.toml.Toml;
+import org.apache.tuweni.toml.TomlParseResult;
+import org.apache.tuweni.toml.TomlTable;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -36,7 +43,7 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionSelectorCliOptions options;
   private Optional<TransactionSelectionService> service;
-  private Map<String, Integer> limitsMap;
+  private Map<String, Integer> limitsMap = new HashMap<>();
 
   public LineaTransactionSelectorPlugin() {
     options = LineaTransactionSelectorCliOptions.create();
@@ -72,17 +79,29 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
     ObjectMapper objectMapper = new ObjectMapper();
 
     try {
-      limitsMap =
-          objectMapper.readValue(
-              new File(lineaConfiguration.moduleLimitsFilePath()),
-              new TypeReference<Map<String, Integer>>() {});
+      URL url = new File(lineaConfiguration.moduleLimitsFilePath()).toURI().toURL();
+      final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
+      TomlParseResult result = Toml.parse(tomlString);
+      final TomlTable table = result.getTable("traces-limits");
+      table
+          .toMap()
+          .keySet()
+          .forEach(key -> limitsMap.put(toCamelCase(key), Math.toIntExact(table.getLong(key))));
     } catch (final Exception e) {
       final String errorMsg =
-          "Problem reading the json file containing the limits for the modules: "
+          "Problem reading the toml file containing the limits for the modules: "
               + lineaConfiguration.moduleLimitsFilePath();
       log.error(errorMsg);
       throw new RuntimeException(errorMsg, e);
     }
+  }
+
+  private String toCamelCase(final String in) {
+    final String[] parts = in.toLowerCase().split("_");
+    final StringBuilder sb = new StringBuilder();
+    Arrays.stream(parts)
+        .forEach(p -> sb.append(p.substring(0, 1).toUpperCase()).append(p.substring(1)));
+    return sb.toString();
   }
 
   @Override
