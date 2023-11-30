@@ -39,7 +39,7 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
   @Override
   public List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-module-limit-file-path=", getResourcePath("/moduleLimits.json"))
+        .set("--plugin-linea-module-limit-file-path=", getResourcePath("/moduleLimits.toml"))
         .build();
   }
 

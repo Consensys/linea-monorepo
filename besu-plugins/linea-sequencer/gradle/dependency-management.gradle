@@ -47,7 +47,7 @@ dependencyManagement {
   }
 
   dependencies {
-    dependencySet(group: 'org.apache.tuweni', version: '2.3.1') {
+    dependencySet(group: 'io.tmio', version: '2.4.2') {
       entry 'tuweni-bytes'
       entry 'tuweni-net'
       entry 'tuweni-toml'

@@ -96,8 +96,8 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:util:${besuVersion}"
   testImplementation "${besuArtifactGroup}:plugin-api"
 
-  testImplementation 'org.apache.tuweni:tuweni-bytes'
-  testImplementation 'org.apache.tuweni:tuweni-units'
+  testImplementation 'io.tmio:tuweni-bytes'
+  testImplementation 'io.tmio:tuweni-units'
 
   testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
   testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'

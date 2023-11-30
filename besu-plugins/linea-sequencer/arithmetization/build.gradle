@@ -49,13 +49,15 @@ dependencies {
 
   implementation 'info.picocli:picocli'
 
+  implementation 'io.tmio:tuweni-toml'
+
   compileOnly 'io.vertx:vertx-core'
 
   implementation 'com.fasterxml.jackson.core:jackson-databind'
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 
-  implementation 'org.apache.tuweni:tuweni-bytes'
-  implementation 'org.apache.tuweni:tuweni-units'
+  implementation 'io.tmio:tuweni-bytes'
+  implementation 'io.tmio:tuweni-units'
 
   implementation 'org.bouncycastle:bcprov-jdk18on'
 
