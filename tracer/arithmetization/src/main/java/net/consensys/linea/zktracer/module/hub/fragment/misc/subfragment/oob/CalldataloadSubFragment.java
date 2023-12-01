@@ -15,19 +15,17 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment.oob;
 
-import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public record CalldataloadSubFragment(EWord readOffset, EWord calldataSize)
     implements TraceSubFragment {
-  private static final BigInteger CALLDATALOAD =
-      BigInteger.valueOf(OpCode.CALLDATALOAD.byteValue());
+  private static final Bytes CALLDATALOAD = Bytes.of(OpCode.CALLDATALOAD.byteValue());
 
   public static CalldataloadSubFragment build(Hub hub, MessageFrame frame) {
     return new CalldataloadSubFragment(
@@ -37,9 +35,9 @@ public record CalldataloadSubFragment(EWord readOffset, EWord calldataSize)
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousOobOutgoingData1(this.readOffset.hiBigInt())
-        .pMiscellaneousOobOutgoingData2(this.readOffset().loBigInt())
-        .pMiscellaneousOobOutgoingData5(this.calldataSize.getAsBigInteger())
+        .pMiscellaneousOobOutgoingData1(this.readOffset.hi())
+        .pMiscellaneousOobOutgoingData2(this.readOffset().lo())
+        .pMiscellaneousOobOutgoingData5(this.calldataSize)
         .pMiscellaneousOobInst(CALLDATALOAD)
         .pMiscellaneousOobEvent1(this.readOffset.greaterOrEqualThan(this.calldataSize));
   }

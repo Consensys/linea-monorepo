@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.stp;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -138,62 +137,82 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace arg1Hi(final BigInteger b) {
+  public Trace arg1Hi(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("stp.ARG_1_HI already set");
     } else {
       filled.set(0);
     }
 
-    arg1Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Hi.put((byte) 0);
+    }
+    arg1Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg1Lo(final BigInteger b) {
+  public Trace arg1Lo(final Bytes b) {
     if (filled.get(1)) {
       throw new IllegalStateException("stp.ARG_1_LO already set");
     } else {
       filled.set(1);
     }
 
-    arg1Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Lo.put((byte) 0);
+    }
+    arg1Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg2Lo(final BigInteger b) {
+  public Trace arg2Lo(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("stp.ARG_2_LO already set");
     } else {
       filled.set(2);
     }
 
-    arg2Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg2Lo.put((byte) 0);
+    }
+    arg2Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace ct(final BigInteger b) {
+  public Trace ct(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("stp.CT already set");
     } else {
       filled.set(3);
     }
 
-    ct.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      ct.put((byte) 0);
+    }
+    ct.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace ctMax(final BigInteger b) {
+  public Trace ctMax(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("stp.CT_MAX already set");
     } else {
       filled.set(4);
     }
 
-    ctMax.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      ctMax.put((byte) 0);
+    }
+    ctMax.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -222,86 +241,114 @@ public class Trace {
     return this;
   }
 
-  public Trace gasActual(final BigInteger b) {
+  public Trace gasActual(final Bytes b) {
     if (filled.get(7)) {
       throw new IllegalStateException("stp.GAS_ACTUAL already set");
     } else {
       filled.set(7);
     }
 
-    gasActual.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasActual.put((byte) 0);
+    }
+    gasActual.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasHi(final BigInteger b) {
+  public Trace gasHi(final Bytes b) {
     if (filled.get(8)) {
       throw new IllegalStateException("stp.GAS_HI already set");
     } else {
       filled.set(8);
     }
 
-    gasHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasHi.put((byte) 0);
+    }
+    gasHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasLo(final BigInteger b) {
+  public Trace gasLo(final Bytes b) {
     if (filled.get(9)) {
       throw new IllegalStateException("stp.GAS_LO already set");
     } else {
       filled.set(9);
     }
 
-    gasLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasLo.put((byte) 0);
+    }
+    gasLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasMxp(final BigInteger b) {
+  public Trace gasMxp(final Bytes b) {
     if (filled.get(10)) {
       throw new IllegalStateException("stp.GAS_MXP already set");
     } else {
       filled.set(10);
     }
 
-    gasMxp.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasMxp.put((byte) 0);
+    }
+    gasMxp.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasOopkt(final BigInteger b) {
+  public Trace gasOopkt(final Bytes b) {
     if (filled.get(11)) {
       throw new IllegalStateException("stp.GAS_OOPKT already set");
     } else {
       filled.set(11);
     }
 
-    gasOopkt.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasOopkt.put((byte) 0);
+    }
+    gasOopkt.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasStipend(final BigInteger b) {
+  public Trace gasStipend(final Bytes b) {
     if (filled.get(12)) {
       throw new IllegalStateException("stp.GAS_STIPEND already set");
     } else {
       filled.set(12);
     }
 
-    gasStipend.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasStipend.put((byte) 0);
+    }
+    gasStipend.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace gasUpfront(final BigInteger b) {
+  public Trace gasUpfront(final Bytes b) {
     if (filled.get(13)) {
       throw new IllegalStateException("stp.GAS_UPFRONT already set");
     } else {
       filled.set(13);
     }
 
-    gasUpfront.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasUpfront.put((byte) 0);
+    }
+    gasUpfront.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -414,50 +461,66 @@ public class Trace {
     return this;
   }
 
-  public Trace resLo(final BigInteger b) {
+  public Trace resLo(final Bytes b) {
     if (filled.get(23)) {
       throw new IllegalStateException("stp.RES_LO already set");
     } else {
       filled.set(23);
     }
 
-    resLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resLo.put((byte) 0);
+    }
+    resLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace stamp(final BigInteger b) {
+  public Trace stamp(final Bytes b) {
     if (filled.get(24)) {
       throw new IllegalStateException("stp.STAMP already set");
     } else {
       filled.set(24);
     }
 
-    stamp.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      stamp.put((byte) 0);
+    }
+    stamp.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace valHi(final BigInteger b) {
+  public Trace valHi(final Bytes b) {
     if (filled.get(25)) {
       throw new IllegalStateException("stp.VAL_HI already set");
     } else {
       filled.set(25);
     }
 
-    valHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      valHi.put((byte) 0);
+    }
+    valHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace valLo(final BigInteger b) {
+  public Trace valLo(final Bytes b) {
     if (filled.get(26)) {
       throw new IllegalStateException("stp.VAL_LO already set");
     } else {
       filled.set(26);
     }
 
-    valLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      valLo.put((byte) 0);
+    }
+    valLo.put(b.toArrayUnsafe());
 
     return this;
   }

@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -204,110 +203,146 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace acc1(final BigInteger b) {
+  public Trace acc1(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("shf.ACC_1 already set");
     } else {
       filled.set(0);
     }
 
-    acc1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc1.put((byte) 0);
+    }
+    acc1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc2(final BigInteger b) {
+  public Trace acc2(final Bytes b) {
     if (filled.get(1)) {
       throw new IllegalStateException("shf.ACC_2 already set");
     } else {
       filled.set(1);
     }
 
-    acc2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc2.put((byte) 0);
+    }
+    acc2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc3(final BigInteger b) {
+  public Trace acc3(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("shf.ACC_3 already set");
     } else {
       filled.set(2);
     }
 
-    acc3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc3.put((byte) 0);
+    }
+    acc3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc4(final BigInteger b) {
+  public Trace acc4(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("shf.ACC_4 already set");
     } else {
       filled.set(3);
     }
 
-    acc4.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc4.put((byte) 0);
+    }
+    acc4.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc5(final BigInteger b) {
+  public Trace acc5(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("shf.ACC_5 already set");
     } else {
       filled.set(4);
     }
 
-    acc5.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc5.put((byte) 0);
+    }
+    acc5.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg1Hi(final BigInteger b) {
+  public Trace arg1Hi(final Bytes b) {
     if (filled.get(5)) {
       throw new IllegalStateException("shf.ARG_1_HI already set");
     } else {
       filled.set(5);
     }
 
-    arg1Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Hi.put((byte) 0);
+    }
+    arg1Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg1Lo(final BigInteger b) {
+  public Trace arg1Lo(final Bytes b) {
     if (filled.get(6)) {
       throw new IllegalStateException("shf.ARG_1_LO already set");
     } else {
       filled.set(6);
     }
 
-    arg1Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Lo.put((byte) 0);
+    }
+    arg1Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg2Hi(final BigInteger b) {
+  public Trace arg2Hi(final Bytes b) {
     if (filled.get(7)) {
       throw new IllegalStateException("shf.ARG_2_HI already set");
     } else {
       filled.set(7);
     }
 
-    arg2Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg2Hi.put((byte) 0);
+    }
+    arg2Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg2Lo(final BigInteger b) {
+  public Trace arg2Lo(final Bytes b) {
     if (filled.get(8)) {
       throw new IllegalStateException("shf.ARG_2_LO already set");
     } else {
       filled.set(8);
     }
 
-    arg2Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg2Lo.put((byte) 0);
+    }
+    arg2Lo.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -492,26 +527,34 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final BigInteger b) {
+  public Trace counter(final Bytes b) {
     if (filled.get(24)) {
       throw new IllegalStateException("shf.COUNTER already set");
     } else {
       filled.set(24);
     }
 
-    counter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      counter.put((byte) 0);
+    }
+    counter.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace inst(final BigInteger b) {
+  public Trace inst(final Bytes b) {
     if (filled.get(25)) {
       throw new IllegalStateException("shf.INST already set");
     } else {
       filled.set(25);
     }
 
-    inst.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      inst.put((byte) 0);
+    }
+    inst.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -540,50 +583,66 @@ public class Trace {
     return this;
   }
 
-  public Trace leftAlignedSuffixHigh(final BigInteger b) {
+  public Trace leftAlignedSuffixHigh(final Bytes b) {
     if (filled.get(28)) {
       throw new IllegalStateException("shf.LEFT_ALIGNED_SUFFIX_HIGH already set");
     } else {
       filled.set(28);
     }
 
-    leftAlignedSuffixHigh.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      leftAlignedSuffixHigh.put((byte) 0);
+    }
+    leftAlignedSuffixHigh.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace leftAlignedSuffixLow(final BigInteger b) {
+  public Trace leftAlignedSuffixLow(final Bytes b) {
     if (filled.get(29)) {
       throw new IllegalStateException("shf.LEFT_ALIGNED_SUFFIX_LOW already set");
     } else {
       filled.set(29);
     }
 
-    leftAlignedSuffixLow.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      leftAlignedSuffixLow.put((byte) 0);
+    }
+    leftAlignedSuffixLow.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace low3(final BigInteger b) {
+  public Trace low3(final Bytes b) {
     if (filled.get(30)) {
       throw new IllegalStateException("shf.LOW_3 already set");
     } else {
       filled.set(30);
     }
 
-    low3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      low3.put((byte) 0);
+    }
+    low3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace microShiftParameter(final BigInteger b) {
+  public Trace microShiftParameter(final Bytes b) {
     if (filled.get(31)) {
       throw new IllegalStateException("shf.MICRO_SHIFT_PARAMETER already set");
     } else {
       filled.set(31);
     }
 
-    microShiftParameter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      microShiftParameter.put((byte) 0);
+    }
+    microShiftParameter.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -612,182 +671,242 @@ public class Trace {
     return this;
   }
 
-  public Trace ones(final BigInteger b) {
+  public Trace ones(final Bytes b) {
     if (filled.get(33)) {
       throw new IllegalStateException("shf.ONES already set");
     } else {
       filled.set(33);
     }
 
-    ones.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      ones.put((byte) 0);
+    }
+    ones.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace resHi(final BigInteger b) {
+  public Trace resHi(final Bytes b) {
     if (filled.get(35)) {
       throw new IllegalStateException("shf.RES_HI already set");
     } else {
       filled.set(35);
     }
 
-    resHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resHi.put((byte) 0);
+    }
+    resHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace resLo(final BigInteger b) {
+  public Trace resLo(final Bytes b) {
     if (filled.get(36)) {
       throw new IllegalStateException("shf.RES_LO already set");
     } else {
       filled.set(36);
     }
 
-    resLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resLo.put((byte) 0);
+    }
+    resLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace rightAlignedPrefixHigh(final BigInteger b) {
+  public Trace rightAlignedPrefixHigh(final Bytes b) {
     if (filled.get(37)) {
       throw new IllegalStateException("shf.RIGHT_ALIGNED_PREFIX_HIGH already set");
     } else {
       filled.set(37);
     }
 
-    rightAlignedPrefixHigh.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rightAlignedPrefixHigh.put((byte) 0);
+    }
+    rightAlignedPrefixHigh.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace rightAlignedPrefixLow(final BigInteger b) {
+  public Trace rightAlignedPrefixLow(final Bytes b) {
     if (filled.get(38)) {
       throw new IllegalStateException("shf.RIGHT_ALIGNED_PREFIX_LOW already set");
     } else {
       filled.set(38);
     }
 
-    rightAlignedPrefixLow.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rightAlignedPrefixLow.put((byte) 0);
+    }
+    rightAlignedPrefixLow.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb3Hi(final BigInteger b) {
+  public Trace shb3Hi(final Bytes b) {
     if (filled.get(39)) {
       throw new IllegalStateException("shf.SHB_3_HI already set");
     } else {
       filled.set(39);
     }
 
-    shb3Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb3Hi.put((byte) 0);
+    }
+    shb3Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb3Lo(final BigInteger b) {
+  public Trace shb3Lo(final Bytes b) {
     if (filled.get(40)) {
       throw new IllegalStateException("shf.SHB_3_LO already set");
     } else {
       filled.set(40);
     }
 
-    shb3Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb3Lo.put((byte) 0);
+    }
+    shb3Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb4Hi(final BigInteger b) {
+  public Trace shb4Hi(final Bytes b) {
     if (filled.get(41)) {
       throw new IllegalStateException("shf.SHB_4_HI already set");
     } else {
       filled.set(41);
     }
 
-    shb4Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb4Hi.put((byte) 0);
+    }
+    shb4Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb4Lo(final BigInteger b) {
+  public Trace shb4Lo(final Bytes b) {
     if (filled.get(42)) {
       throw new IllegalStateException("shf.SHB_4_LO already set");
     } else {
       filled.set(42);
     }
 
-    shb4Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb4Lo.put((byte) 0);
+    }
+    shb4Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb5Hi(final BigInteger b) {
+  public Trace shb5Hi(final Bytes b) {
     if (filled.get(43)) {
       throw new IllegalStateException("shf.SHB_5_HI already set");
     } else {
       filled.set(43);
     }
 
-    shb5Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb5Hi.put((byte) 0);
+    }
+    shb5Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb5Lo(final BigInteger b) {
+  public Trace shb5Lo(final Bytes b) {
     if (filled.get(44)) {
       throw new IllegalStateException("shf.SHB_5_LO already set");
     } else {
       filled.set(44);
     }
 
-    shb5Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb5Lo.put((byte) 0);
+    }
+    shb5Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb6Hi(final BigInteger b) {
+  public Trace shb6Hi(final Bytes b) {
     if (filled.get(45)) {
       throw new IllegalStateException("shf.SHB_6_HI already set");
     } else {
       filled.set(45);
     }
 
-    shb6Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb6Hi.put((byte) 0);
+    }
+    shb6Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb6Lo(final BigInteger b) {
+  public Trace shb6Lo(final Bytes b) {
     if (filled.get(46)) {
       throw new IllegalStateException("shf.SHB_6_LO already set");
     } else {
       filled.set(46);
     }
 
-    shb6Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb6Lo.put((byte) 0);
+    }
+    shb6Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb7Hi(final BigInteger b) {
+  public Trace shb7Hi(final Bytes b) {
     if (filled.get(47)) {
       throw new IllegalStateException("shf.SHB_7_HI already set");
     } else {
       filled.set(47);
     }
 
-    shb7Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb7Hi.put((byte) 0);
+    }
+    shb7Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace shb7Lo(final BigInteger b) {
+  public Trace shb7Lo(final Bytes b) {
     if (filled.get(48)) {
       throw new IllegalStateException("shf.SHB_7_LO already set");
     } else {
       filled.set(48);
     }
 
-    shb7Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shb7Lo.put((byte) 0);
+    }
+    shb7Lo.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -804,14 +923,18 @@ public class Trace {
     return this;
   }
 
-  public Trace shiftStamp(final BigInteger b) {
+  public Trace shiftStamp(final Bytes b) {
     if (filled.get(50)) {
       throw new IllegalStateException("shf.SHIFT_STAMP already set");
     } else {
       filled.set(50);
     }
 
-    shiftStamp.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      shiftStamp.put((byte) 0);
+    }
+    shiftStamp.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1238,10 +1361,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }

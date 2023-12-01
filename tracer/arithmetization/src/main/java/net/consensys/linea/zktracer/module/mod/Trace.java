@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.mod;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -237,326 +236,434 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace acc12(final BigInteger b) {
+  public Trace acc12(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("mod.ACC_1_2 already set");
     } else {
       filled.set(0);
     }
 
-    acc12.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc12.put((byte) 0);
+    }
+    acc12.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc13(final BigInteger b) {
+  public Trace acc13(final Bytes b) {
     if (filled.get(1)) {
       throw new IllegalStateException("mod.ACC_1_3 already set");
     } else {
       filled.set(1);
     }
 
-    acc13.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc13.put((byte) 0);
+    }
+    acc13.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc22(final BigInteger b) {
+  public Trace acc22(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("mod.ACC_2_2 already set");
     } else {
       filled.set(2);
     }
 
-    acc22.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc22.put((byte) 0);
+    }
+    acc22.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc23(final BigInteger b) {
+  public Trace acc23(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("mod.ACC_2_3 already set");
     } else {
       filled.set(3);
     }
 
-    acc23.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc23.put((byte) 0);
+    }
+    acc23.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accB0(final BigInteger b) {
+  public Trace accB0(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("mod.ACC_B_0 already set");
     } else {
       filled.set(4);
     }
 
-    accB0.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accB0.put((byte) 0);
+    }
+    accB0.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accB1(final BigInteger b) {
+  public Trace accB1(final Bytes b) {
     if (filled.get(5)) {
       throw new IllegalStateException("mod.ACC_B_1 already set");
     } else {
       filled.set(5);
     }
 
-    accB1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accB1.put((byte) 0);
+    }
+    accB1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accB2(final BigInteger b) {
+  public Trace accB2(final Bytes b) {
     if (filled.get(6)) {
       throw new IllegalStateException("mod.ACC_B_2 already set");
     } else {
       filled.set(6);
     }
 
-    accB2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accB2.put((byte) 0);
+    }
+    accB2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accB3(final BigInteger b) {
+  public Trace accB3(final Bytes b) {
     if (filled.get(7)) {
       throw new IllegalStateException("mod.ACC_B_3 already set");
     } else {
       filled.set(7);
     }
 
-    accB3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accB3.put((byte) 0);
+    }
+    accB3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accDelta0(final BigInteger b) {
+  public Trace accDelta0(final Bytes b) {
     if (filled.get(8)) {
       throw new IllegalStateException("mod.ACC_DELTA_0 already set");
     } else {
       filled.set(8);
     }
 
-    accDelta0.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accDelta0.put((byte) 0);
+    }
+    accDelta0.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accDelta1(final BigInteger b) {
+  public Trace accDelta1(final Bytes b) {
     if (filled.get(9)) {
       throw new IllegalStateException("mod.ACC_DELTA_1 already set");
     } else {
       filled.set(9);
     }
 
-    accDelta1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accDelta1.put((byte) 0);
+    }
+    accDelta1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accDelta2(final BigInteger b) {
+  public Trace accDelta2(final Bytes b) {
     if (filled.get(10)) {
       throw new IllegalStateException("mod.ACC_DELTA_2 already set");
     } else {
       filled.set(10);
     }
 
-    accDelta2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accDelta2.put((byte) 0);
+    }
+    accDelta2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accDelta3(final BigInteger b) {
+  public Trace accDelta3(final Bytes b) {
     if (filled.get(11)) {
       throw new IllegalStateException("mod.ACC_DELTA_3 already set");
     } else {
       filled.set(11);
     }
 
-    accDelta3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accDelta3.put((byte) 0);
+    }
+    accDelta3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accH0(final BigInteger b) {
+  public Trace accH0(final Bytes b) {
     if (filled.get(12)) {
       throw new IllegalStateException("mod.ACC_H_0 already set");
     } else {
       filled.set(12);
     }
 
-    accH0.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accH0.put((byte) 0);
+    }
+    accH0.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accH1(final BigInteger b) {
+  public Trace accH1(final Bytes b) {
     if (filled.get(13)) {
       throw new IllegalStateException("mod.ACC_H_1 already set");
     } else {
       filled.set(13);
     }
 
-    accH1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accH1.put((byte) 0);
+    }
+    accH1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accH2(final BigInteger b) {
+  public Trace accH2(final Bytes b) {
     if (filled.get(14)) {
       throw new IllegalStateException("mod.ACC_H_2 already set");
     } else {
       filled.set(14);
     }
 
-    accH2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accH2.put((byte) 0);
+    }
+    accH2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accQ0(final BigInteger b) {
+  public Trace accQ0(final Bytes b) {
     if (filled.get(15)) {
       throw new IllegalStateException("mod.ACC_Q_0 already set");
     } else {
       filled.set(15);
     }
 
-    accQ0.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accQ0.put((byte) 0);
+    }
+    accQ0.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accQ1(final BigInteger b) {
+  public Trace accQ1(final Bytes b) {
     if (filled.get(16)) {
       throw new IllegalStateException("mod.ACC_Q_1 already set");
     } else {
       filled.set(16);
     }
 
-    accQ1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accQ1.put((byte) 0);
+    }
+    accQ1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accQ2(final BigInteger b) {
+  public Trace accQ2(final Bytes b) {
     if (filled.get(17)) {
       throw new IllegalStateException("mod.ACC_Q_2 already set");
     } else {
       filled.set(17);
     }
 
-    accQ2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accQ2.put((byte) 0);
+    }
+    accQ2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accQ3(final BigInteger b) {
+  public Trace accQ3(final Bytes b) {
     if (filled.get(18)) {
       throw new IllegalStateException("mod.ACC_Q_3 already set");
     } else {
       filled.set(18);
     }
 
-    accQ3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accQ3.put((byte) 0);
+    }
+    accQ3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accR0(final BigInteger b) {
+  public Trace accR0(final Bytes b) {
     if (filled.get(19)) {
       throw new IllegalStateException("mod.ACC_R_0 already set");
     } else {
       filled.set(19);
     }
 
-    accR0.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accR0.put((byte) 0);
+    }
+    accR0.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accR1(final BigInteger b) {
+  public Trace accR1(final Bytes b) {
     if (filled.get(20)) {
       throw new IllegalStateException("mod.ACC_R_1 already set");
     } else {
       filled.set(20);
     }
 
-    accR1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accR1.put((byte) 0);
+    }
+    accR1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accR2(final BigInteger b) {
+  public Trace accR2(final Bytes b) {
     if (filled.get(21)) {
       throw new IllegalStateException("mod.ACC_R_2 already set");
     } else {
       filled.set(21);
     }
 
-    accR2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accR2.put((byte) 0);
+    }
+    accR2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace accR3(final BigInteger b) {
+  public Trace accR3(final Bytes b) {
     if (filled.get(22)) {
       throw new IllegalStateException("mod.ACC_R_3 already set");
     } else {
       filled.set(22);
     }
 
-    accR3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      accR3.put((byte) 0);
+    }
+    accR3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg1Hi(final BigInteger b) {
+  public Trace arg1Hi(final Bytes b) {
     if (filled.get(23)) {
       throw new IllegalStateException("mod.ARG_1_HI already set");
     } else {
       filled.set(23);
     }
 
-    arg1Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Hi.put((byte) 0);
+    }
+    arg1Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg1Lo(final BigInteger b) {
+  public Trace arg1Lo(final Bytes b) {
     if (filled.get(24)) {
       throw new IllegalStateException("mod.ARG_1_LO already set");
     } else {
       filled.set(24);
     }
 
-    arg1Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg1Lo.put((byte) 0);
+    }
+    arg1Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg2Hi(final BigInteger b) {
+  public Trace arg2Hi(final Bytes b) {
     if (filled.get(25)) {
       throw new IllegalStateException("mod.ARG_2_HI already set");
     } else {
       filled.set(25);
     }
 
-    arg2Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg2Hi.put((byte) 0);
+    }
+    arg2Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace arg2Lo(final BigInteger b) {
+  public Trace arg2Lo(final Bytes b) {
     if (filled.get(26)) {
       throw new IllegalStateException("mod.ARG_2_LO already set");
     } else {
       filled.set(26);
     }
 
-    arg2Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      arg2Lo.put((byte) 0);
+    }
+    arg2Lo.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -861,14 +968,18 @@ public class Trace {
     return this;
   }
 
-  public Trace ct(final BigInteger b) {
+  public Trace ct(final Bytes b) {
     if (filled.get(52)) {
       throw new IllegalStateException("mod.CT already set");
     } else {
       filled.set(52);
     }
 
-    ct.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      ct.put((byte) 0);
+    }
+    ct.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -897,14 +1008,18 @@ public class Trace {
     return this;
   }
 
-  public Trace inst(final BigInteger b) {
+  public Trace inst(final Bytes b) {
     if (filled.get(55)) {
       throw new IllegalStateException("mod.INST already set");
     } else {
       filled.set(55);
     }
 
-    inst.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      inst.put((byte) 0);
+    }
+    inst.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -945,38 +1060,50 @@ public class Trace {
     return this;
   }
 
-  public Trace resHi(final BigInteger b) {
+  public Trace resHi(final Bytes b) {
     if (filled.get(59)) {
       throw new IllegalStateException("mod.RES_HI already set");
     } else {
       filled.set(59);
     }
 
-    resHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resHi.put((byte) 0);
+    }
+    resHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace resLo(final BigInteger b) {
+  public Trace resLo(final Bytes b) {
     if (filled.get(60)) {
       throw new IllegalStateException("mod.RES_LO already set");
     } else {
       filled.set(60);
     }
 
-    resLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resLo.put((byte) 0);
+    }
+    resLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace stamp(final BigInteger b) {
+  public Trace stamp(final Bytes b) {
     if (filled.get(61)) {
       throw new IllegalStateException("mod.STAMP already set");
     } else {
       filled.set(61);
     }
 
-    stamp.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      stamp.put((byte) 0);
+    }
+    stamp.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1491,10 +1618,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }

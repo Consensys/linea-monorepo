@@ -15,13 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment;
 
-import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 
 public record MxpSubFragment(
     boolean mxpException,
@@ -62,17 +61,17 @@ public record MxpSubFragment(
   public Trace trace(Trace trace) {
     return trace
         .pMiscellaneousMxpMxpx(this.mxpException)
-        .pMiscellaneousMxpInst(BigInteger.valueOf(this.opCode))
+        .pMiscellaneousMxpInst(Bytes.ofUnsignedInt(this.opCode))
         .pMiscellaneousMxpDeploys(this.deploys)
-        .pMiscellaneousMxpWords(BigInteger.valueOf(this.memorySize))
-        .pMiscellaneousMxpGasMxp(BigInteger.valueOf(this.gasMxp))
-        .pMiscellaneousMxpOffset1Hi(this.offset1.hiBigInt())
-        .pMiscellaneousMxpOffset1Lo(this.offset1.loBigInt())
-        .pMiscellaneousMxpOffset2Hi(this.offset2.hiBigInt())
-        .pMiscellaneousMxpOffset2Lo(this.offset2.loBigInt())
-        .pMiscellaneousMxpSize1Hi(this.size1.hiBigInt())
-        .pMiscellaneousMxpSize1Lo(this.size1.loBigInt())
-        .pMiscellaneousMxpSize2Hi(this.size2.hiBigInt())
-        .pMiscellaneousMxpSize2Lo(this.size2.loBigInt());
+        .pMiscellaneousMxpWords(Bytes.ofUnsignedLong(this.memorySize))
+        .pMiscellaneousMxpGasMxp(Bytes.ofUnsignedLong(this.gasMxp))
+        .pMiscellaneousMxpOffset1Hi(this.offset1.hi())
+        .pMiscellaneousMxpOffset1Lo(this.offset1.lo())
+        .pMiscellaneousMxpOffset2Hi(this.offset2.hi())
+        .pMiscellaneousMxpOffset2Lo(this.offset2.lo())
+        .pMiscellaneousMxpSize1Hi(this.size1.hi())
+        .pMiscellaneousMxpSize1Lo(this.size1.lo())
+        .pMiscellaneousMxpSize2Hi(this.size2.hi())
+        .pMiscellaneousMxpSize2Lo(this.size2.lo());
   }
 }

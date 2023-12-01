@@ -15,10 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 /**
@@ -44,17 +43,17 @@ public record StorageFragment(
 
     return trace
         .peekAtStorage(true)
-        .pStorageAddressHi(eAddress.hiBigInt())
-        .pStorageAddressLo(eAddress.loBigInt())
-        .pStorageDeploymentNumber(BigInteger.valueOf(deploymentNumber))
-        .pStorageStorageKeyHi(key.hiBigInt())
-        .pStorageStorageKeyLo(key.loBigInt())
-        .pStorageValOrigHi(valOrig.hiBigInt())
-        .pStorageValOrigLo(valOrig.loBigInt())
-        .pStorageValCurrHi(valCurr.hiBigInt())
-        .pStorageValCurrLo(valCurr.loBigInt())
-        .pStorageValNextHi(valNext.hiBigInt())
-        .pStorageValNextLo(valNext.loBigInt())
+        .pStorageAddressHi(eAddress.hi())
+        .pStorageAddressLo(eAddress.lo())
+        .pStorageDeploymentNumber(Bytes.ofUnsignedInt(deploymentNumber))
+        .pStorageStorageKeyHi(key.hi())
+        .pStorageStorageKeyLo(key.lo())
+        .pStorageValOrigHi(valOrig.hi())
+        .pStorageValOrigLo(valOrig.lo())
+        .pStorageValCurrHi(valCurr.hi())
+        .pStorageValCurrLo(valCurr.lo())
+        .pStorageValNextHi(valNext.hi())
+        .pStorageValNextLo(valNext.lo())
         .pStorageWarm(oldWarmth)
         .pStorageWarmNew(newWarmth)
         .pStorageValOrigIsZero(valOrig.isZero())

@@ -22,6 +22,7 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -62,13 +63,13 @@ public record JumpSubFragment(
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousOobOutgoingData1(this.targetPc.hiBigInt())
-        .pMiscellaneousOobOutgoingData2(this.targetPc.loBigInt())
-        .pMiscellaneousOobOutgoingData3(this.jumpCondition.hiBigInt())
-        .pMiscellaneousOobOutgoingData4(this.jumpCondition.loBigInt())
-        .pMiscellaneousOobOutgoingData5(BigInteger.valueOf(this.codeSize))
-        .pMiscellaneousOobOutgoingData6(BigInteger.ZERO)
-        .pMiscellaneousOobInst(BigInteger.valueOf(this.opCode.byteValue()))
+        .pMiscellaneousOobOutgoingData1(this.targetPc.hi())
+        .pMiscellaneousOobOutgoingData2(this.targetPc.lo())
+        .pMiscellaneousOobOutgoingData3(this.jumpCondition.hi())
+        .pMiscellaneousOobOutgoingData4(this.jumpCondition.lo())
+        .pMiscellaneousOobOutgoingData5(Bytes.ofUnsignedInt(this.codeSize))
+        .pMiscellaneousOobOutgoingData6(Bytes.EMPTY)
+        .pMiscellaneousOobInst(Bytes.ofUnsignedInt(this.opCode.byteValue()))
         .pMiscellaneousOobEvent1(this.event1)
         .pMiscellaneousOobEvent2(this.event2);
   }

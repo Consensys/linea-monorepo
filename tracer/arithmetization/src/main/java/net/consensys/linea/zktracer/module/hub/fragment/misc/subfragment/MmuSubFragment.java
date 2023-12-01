@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.misc.subfragment;
 
-import java.math.BigInteger;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -90,19 +88,19 @@ public class MmuSubFragment implements TraceSubFragment, PostExecDefer {
     final EWord eStackValue = EWord.of(this.stackValue);
 
     return trace
-        .pMiscellaneousMmuInst(BigInteger.valueOf(this.opCode))
-        .pMiscellaneousMmuParam1(BigInteger.valueOf(this.param1))
-        .pMiscellaneousMmuParam2(BigInteger.valueOf(this.param2))
-        .pMiscellaneousMmuReturner(BigInteger.valueOf(this.returner))
+        .pMiscellaneousMmuInst(Bytes.of(this.opCode))
+        .pMiscellaneousMmuParam1(Bytes.ofUnsignedInt(this.param1))
+        .pMiscellaneousMmuParam2(Bytes.ofUnsignedInt(this.param2))
+        //        .pMiscellaneousMmuReturner(Bytes.ofUnsignedInt(this.returner))
         .pMiscellaneousMmuInfo(this.info)
-        .pMiscellaneousMmuRefOffset(BigInteger.valueOf(this.referenceOffset))
-        .pMiscellaneousMmuRefSize(BigInteger.valueOf(this.referenceSize))
-        .pMiscellaneousMmuOffset1Lo(eOffset1.loBigInt())
-        .pMiscellaneousMmuOffset2Hi(eOffset2.hiBigInt())
-        .pMiscellaneousMmuOffset2Lo(eOffset2.loBigInt())
-        .pMiscellaneousMmuSize(BigInteger.valueOf(this.size))
-        .pMiscellaneousMmuStackValHi(eStackValue.hiBigInt())
-        .pMiscellaneousMmuStackValLo(eStackValue.loBigInt())
-        .pMiscellaneousMmuExoSum(BigInteger.valueOf(this.exoSum));
+        .pMiscellaneousMmuRefOffset(Bytes.ofUnsignedLong(this.referenceOffset))
+        .pMiscellaneousMmuRefSize(Bytes.ofUnsignedLong(this.referenceSize))
+        .pMiscellaneousMmuOffset1Lo(eOffset1.lo())
+        .pMiscellaneousMmuOffset2Hi(eOffset2.hi())
+        .pMiscellaneousMmuOffset2Lo(eOffset2.lo())
+        .pMiscellaneousMmuSize(Bytes.ofUnsignedInt(this.size))
+        .pMiscellaneousMmuStackValHi(eStackValue.hi())
+        .pMiscellaneousMmuStackValLo(eStackValue.lo())
+        .pMiscellaneousMmuExoSum(Bytes.ofUnsignedInt(this.exoSum));
   }
 }

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import java.math.BigInteger;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -83,24 +83,24 @@ public final class TransactionFragment implements TraceFragment {
 
     return trace
         .peekAtTransaction(true)
-        .pTransactionNonce(BigInteger.valueOf(tx.getNonce()))
+        .pTransactionNonce(Bytes.ofUnsignedLong(tx.getNonce()))
         .pTransactionIsDeployment(tx.getTo().isEmpty())
-        .pTransactionFromAddressHi(from.hiBigInt())
-        .pTransactionFromAddressLo(from.loBigInt())
-        .pTransactionToAddressHi(to.hiBigInt())
-        .pTransactionToAddressLo(to.loBigInt())
-        .pTransactionGasPrice(gasPrice.toUnsignedBigInteger())
-        .pTransactionBasefee(baseFee.toUnsignedBigInteger())
-        .pTransactionInitGas(TxInfo.computeInitGas(tx))
-        .pTransactionInitialBalance(BigInteger.valueOf(initialGas))
-        .pTransactionValue(tx.getValue().getAsBigInteger())
-        .pTransactionCoinbaseAddressHi(miner.hiBigInt())
-        .pTransactionCoinbaseAddressLo(miner.loBigInt())
-        .pTransactionCallDataSize(BigInteger.valueOf(tx.getData().map(Bytes::size).orElse(0)))
+        .pTransactionFromAddressHi(from.hi())
+        .pTransactionFromAddressLo(from.lo())
+        .pTransactionToAddressHi(to.hi())
+        .pTransactionToAddressLo(to.lo())
+        .pTransactionGasPrice(gasPrice)
+        .pTransactionBasefee(baseFee)
+        .pTransactionInitGas(Bytes.ofUnsignedLong(TxInfo.computeInitGas(tx)))
+        .pTransactionInitialBalance(Bytes.ofUnsignedLong(initialGas))
+        .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
+        .pTransactionCoinbaseAddressHi(miner.hi())
+        .pTransactionCoinbaseAddressLo(miner.lo())
+        .pTransactionCallDataSize(Bytes.ofUnsignedInt(tx.getData().map(Bytes::size).orElse(0)))
         .pTransactionTxnRequiresEvmExecution(evmExecutes)
-        .pTransactionLeftoverGas(BigInteger.valueOf(leftoverGas))
-        .pTransactionGasRefundCounterFinal(BigInteger.valueOf(gasRefundFinalCounter))
-        .pTransactionGasRefundAmount(BigInteger.valueOf(gasRefundAmount))
+        .pTransactionLeftoverGas(Bytes.ofUnsignedLong(leftoverGas))
+        .pTransactionGasRefundCounterFinal(Bytes.ofUnsignedLong(gasRefundFinalCounter))
+        .pTransactionGasRefundAmount(Bytes.ofUnsignedLong(gasRefundAmount))
         .pTransactionStatusCode(txSuccess);
   }
 }

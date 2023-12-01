@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.stp;
 
 import static java.lang.Long.max;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
-import static net.consensys.linea.zktracer.types.Conversions.booleanToBigInteger;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
 import java.math.BigInteger;
@@ -35,6 +35,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -239,9 +240,9 @@ public class Stp implements Module {
 
     for (int ct = 0; ct <= ctMax; ct++) {
       trace
-          .stamp(BigInteger.valueOf(stamp))
-          .ct(BigInteger.valueOf(ct))
-          .ctMax(BigInteger.valueOf(ctMax))
+          .stamp(Bytes.ofUnsignedInt(stamp))
+          .ct(Bytes.of(ct))
+          .ctMax(Bytes.of(ctMax))
           .instruction(UnsignedByte.of(chunk.opCode().byteValue()))
           .isCreate(chunk.opCode() == OpCode.CREATE)
           .isCreate2(chunk.opCode() == OpCode.CREATE2)
@@ -249,42 +250,42 @@ public class Stp implements Module {
           .isCallcode(false)
           .isDelegatecall(false)
           .isStaticcall(false)
-          .gasHi(BigInteger.ZERO)
-          .gasLo(BigInteger.ZERO)
-          .valHi(chunk.value().slice(0, 16).toUnsignedBigInteger())
-          .valLo(chunk.value().slice(16, 16).toUnsignedBigInteger())
+          .gasHi(Bytes.EMPTY)
+          .gasLo(Bytes.EMPTY)
+          .valHi(chunk.value().slice(0, 16))
+          .valLo(chunk.value().slice(16, 16))
           .exists(false) // TODO document this
           .warm(false) // TODO document this
           .outOfGasException(chunk.oogx())
-          .gasActual(BigInteger.valueOf(chunk.gasActual()))
-          .gasMxp(BigInteger.valueOf(chunk.gasMxp()))
-          .gasUpfront(BigInteger.valueOf(chunk.gasPrelim()))
-          .gasOopkt(BigInteger.valueOf(gasOopkt))
-          .gasStipend(BigInteger.ZERO)
-          .arg1Hi(BigInteger.ZERO);
+          .gasActual(Bytes.ofUnsignedLong(chunk.gasActual()))
+          .gasMxp(Bytes.ofUnsignedLong(chunk.gasMxp()))
+          .gasUpfront(Bytes.ofUnsignedLong(chunk.gasPrelim()))
+          .gasOopkt(Bytes.ofUnsignedLong(gasOopkt))
+          .gasStipend(Bytes.EMPTY)
+          .arg1Hi(Bytes.EMPTY);
 
       switch (ct) {
         case 0 -> trace
-            .arg1Lo(BigInteger.valueOf(chunk.gasActual()))
-            .arg2Lo(BigInteger.ZERO)
+            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
+            .arg2Lo(Bytes.EMPTY)
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(BigInteger.ZERO) // we REQUIRE that the currently available gas is nonnegative
+            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
             .wcpFlag(true)
             .modFlag(false)
             .validateRow();
         case 1 -> trace
-            .arg1Lo(BigInteger.valueOf(chunk.gasActual()))
-            .arg2Lo(BigInteger.valueOf(chunk.gasPrelim()))
+            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
+            .arg2Lo(Bytes.ofUnsignedLong(chunk.gasPrelim()))
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(booleanToBigInteger(chunk.oogx()))
+            .resLo(Bytes.of(chunk.oogx() ? 1 : 0))
             .wcpFlag(true)
             .modFlag(false)
             .validateRow();
         case 2 -> trace
-            .arg1Lo(BigInteger.valueOf(getGDiff(chunk)))
-            .arg2Lo(BigInteger.valueOf(64))
+            .arg1Lo(Bytes.ofUnsignedLong(getGDiff(chunk)))
+            .arg2Lo(Bytes.of(64))
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(BigInteger.valueOf(getGDiffOver64(chunk)))
+            .resLo(Bytes.ofUnsignedLong(getGDiffOver64(chunk)))
             .wcpFlag(false)
             .modFlag(true)
             .validateRow();
@@ -299,20 +300,21 @@ public class Stp implements Module {
         (!chunk.oogx() && callCanTransferValue(chunk.opCode()) && !chunk.value().isZero())
             ? GasConstants.G_CALL_STIPEND.cost()
             : 0;
-    final BigInteger gasOopkt =
+    final Bytes gasOopkt =
         chunk.oogx()
-            ? BigInteger.ZERO
-            : chunk
-                .gas()
-                .orElseThrow()
-                .toUnsignedBigInteger()
-                .min(BigInteger.valueOf(get63of64GDiff(chunk)));
+            ? Bytes.EMPTY
+            : bigIntegerToBytes(
+                chunk
+                    .gas()
+                    .orElseThrow()
+                    .toUnsignedBigInteger()
+                    .min(BigInteger.valueOf(get63of64GDiff(chunk))));
 
     for (int ct = 0; ct <= ctMax; ct++) {
       trace
-          .stamp(BigInteger.valueOf(stamp))
-          .ct(BigInteger.valueOf(ct))
-          .ctMax(BigInteger.valueOf(ctMax))
+          .stamp(Bytes.ofUnsignedInt(stamp))
+          .ct(Bytes.of(ct))
+          .ctMax(Bytes.of(ctMax))
           .instruction(UnsignedByte.of(chunk.opCode().byteValue()))
           .isCreate(false)
           .isCreate2(false)
@@ -320,70 +322,72 @@ public class Stp implements Module {
           .isCallcode(chunk.opCode() == OpCode.CALLCODE)
           .isDelegatecall(chunk.opCode() == OpCode.DELEGATECALL)
           .isStaticcall(chunk.opCode() == OpCode.STATICCALL)
-          .gasHi(chunk.gas().orElseThrow().slice(0, 16).toUnsignedBigInteger())
-          .gasLo(chunk.gas().orElseThrow().slice(16).toUnsignedBigInteger())
-          .valHi(chunk.value().slice(0, 16).toUnsignedBigInteger())
-          .valLo(chunk.value().slice(16).toUnsignedBigInteger())
+          .gasHi(chunk.gas().orElseThrow().slice(0, 16))
+          .gasLo(chunk.gas().orElseThrow().slice(16))
+          .valHi(chunk.value().slice(0, 16))
+          .valLo(chunk.value().slice(16))
           .exists(chunk.toExists().orElseThrow())
           .warm(chunk.toWarm().orElseThrow())
           .outOfGasException(chunk.oogx())
-          .gasActual(BigInteger.valueOf(chunk.gasActual()))
-          .gasMxp(BigInteger.valueOf(chunk.gasMxp()))
-          .gasUpfront(BigInteger.valueOf(chunk.gasPrelim()))
+          .gasActual(Bytes.ofUnsignedLong(chunk.gasActual()))
+          .gasMxp(Bytes.ofUnsignedLong(chunk.gasMxp()))
+          .gasUpfront(Bytes.ofUnsignedLong(chunk.gasPrelim()))
           .gasOopkt(gasOopkt)
-          .gasStipend(BigInteger.valueOf(gasStipend));
+          .gasStipend(Bytes.ofUnsignedLong(gasStipend));
 
       switch (ct) {
         case 0 -> trace
-            .arg1Hi(BigInteger.ZERO)
-            .arg1Lo(BigInteger.valueOf(chunk.gasActual()))
-            .arg2Lo(BigInteger.ZERO)
+            .arg1Hi(Bytes.EMPTY)
+            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
+            .arg2Lo(Bytes.EMPTY)
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(BigInteger.ZERO) // we REQUIRE that the currently available gas is nonnegative
+            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
             .wcpFlag(true)
             .modFlag(false)
             .validateRow();
         case 1 -> trace
-            .arg1Hi(chunk.value().slice(0, 16).toUnsignedBigInteger())
-            .arg1Lo(chunk.value().slice(16, 16).toUnsignedBigInteger())
-            .arg2Lo(BigInteger.ZERO)
+            .arg1Hi(chunk.value().slice(0, 16))
+            .arg1Lo(chunk.value().slice(16, 16))
+            .arg2Lo(Bytes.EMPTY)
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.ISZERO.byteValue()))
-            .resLo(booleanToBigInteger(chunk.value().isZero()))
+            .resLo(Bytes.of(chunk.value().isZero() ? 1 : 0))
             .wcpFlag(callCanTransferValue(chunk.opCode()))
             .modFlag(false)
             .validateRow();
         case 2 -> trace
-            .arg1Hi(BigInteger.ZERO)
-            .arg1Lo(BigInteger.valueOf(chunk.gasActual()))
-            .arg2Lo(BigInteger.valueOf(chunk.gasPrelim()))
+            .arg1Hi(Bytes.EMPTY)
+            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
+            .arg2Lo(Bytes.ofUnsignedLong(chunk.gasPrelim()))
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(booleanToBigInteger(chunk.oogx()))
+            .resLo(Bytes.of(chunk.oogx() ? 1 : 0))
             .wcpFlag(true)
             .modFlag(false)
             .validateRow();
           // the following rows are only filled in if no out of gas exception
         case 3 -> trace
-            .arg1Hi(BigInteger.ZERO)
-            .arg1Lo(BigInteger.valueOf(getGDiff(chunk)))
-            .arg2Lo(BigInteger.valueOf(64))
+            .arg1Hi(Bytes.EMPTY)
+            .arg1Lo(Bytes.ofUnsignedLong(getGDiff(chunk)))
+            .arg2Lo(Bytes.of(64))
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(BigInteger.valueOf(getGDiffOver64(chunk)))
+            .resLo(Bytes.ofUnsignedLong(getGDiffOver64(chunk)))
             .wcpFlag(false)
             .modFlag(true)
             .validateRow();
         case 4 -> trace
-            .arg1Hi(chunk.gas().orElseThrow().slice(0, 16).toUnsignedBigInteger())
-            .arg1Lo(chunk.gas().orElseThrow().slice(16, 16).toUnsignedBigInteger())
-            .arg2Lo(BigInteger.valueOf(getGDiff(chunk) - getGDiffOver64(chunk)))
+            .arg1Hi(chunk.gas().orElseThrow().slice(0, 16))
+            .arg1Lo(chunk.gas().orElseThrow().slice(16, 16))
+            .arg2Lo(Bytes.ofUnsignedLong(getGDiff(chunk) - getGDiffOver64(chunk)))
             .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
             .resLo(
-                booleanToBigInteger(
+                Bytes.of(
                     chunk
-                            .gas()
-                            .orElseThrow()
-                            .toUnsignedBigInteger()
-                            .compareTo(BigInteger.valueOf(get63of64GDiff(chunk)))
-                        < 0))
+                                .gas()
+                                .orElseThrow()
+                                .toUnsignedBigInteger()
+                                .compareTo(BigInteger.valueOf(get63of64GDiff(chunk)))
+                            < 0
+                        ? 1
+                        : 0))
             .wcpFlag(true)
             .modFlag(false)
             .validateRow();

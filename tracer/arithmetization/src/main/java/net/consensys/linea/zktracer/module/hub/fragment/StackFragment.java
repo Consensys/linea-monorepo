@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -35,6 +34,7 @@ import net.consensys.linea.zktracer.runtime.stack.Action;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackOperation;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.account.AccountState;
@@ -113,14 +113,14 @@ public final class StackFragment implements TraceFragment {
 
   @Override
   public Trace trace(Trace trace) {
-    final List<Function<BigInteger, Trace>> valHiTracers =
+    final List<Function<Bytes, Trace>> valHiTracers =
         List.of(
             trace::pStackStackItemValueHi1,
             trace::pStackStackItemValueHi2,
             trace::pStackStackItemValueHi3,
             trace::pStackStackItemValueHi4);
 
-    final List<Function<BigInteger, Trace>> valLoTracers =
+    final List<Function<Bytes, Trace>> valLoTracers =
         List.of(
             trace::pStackStackItemValueLo1,
             trace::pStackStackItemValueLo2,
@@ -134,14 +134,14 @@ public final class StackFragment implements TraceFragment {
             trace::pStackStackItemPop3,
             trace::pStackStackItemPop4);
 
-    final List<Function<BigInteger, Trace>> heightTracers =
+    final List<Function<Bytes, Trace>> heightTracers =
         List.of(
             trace::pStackStackItemHeight1,
             trace::pStackStackItemHeight2,
             trace::pStackStackItemHeight3,
             trace::pStackStackItemHeight4);
 
-    final List<Function<BigInteger, Trace>> stampTracers =
+    final List<Function<Bytes, Trace>> stampTracers =
         List.of(
             trace::pStackStackItemStamp1,
             trace::pStackStackItemStamp2,
@@ -169,23 +169,23 @@ public final class StackFragment implements TraceFragment {
       var op = it.next();
       final EWord eword = EWord.of(op.value());
 
-      heightTracers.get(i).apply(BigInteger.valueOf(op.height()));
-      valLoTracers.get(i).apply(eword.loBigInt());
-      valHiTracers.get(i).apply(eword.hiBigInt());
+      heightTracers.get(i).apply(Bytes.ofUnsignedShort(op.height()));
+      valLoTracers.get(i).apply(eword.lo());
+      valHiTracers.get(i).apply(eword.hi());
       popTracers.get(i).apply(op.action() == Action.POP);
-      stampTracers.get(i).apply(BigInteger.valueOf(op.stackStamp()));
+      stampTracers.get(i).apply(Bytes.ofUnsignedLong(op.stackStamp()));
     }
 
     return trace
         .peekAtStack(true)
         // Stack height
-        .pStackHeight(BigInteger.valueOf(stack.getHeight()))
-        .pStackHeightNew(BigInteger.valueOf(stack.getHeightNew()))
-        .pStackHeightUnder(BigInteger.valueOf(heightUnder))
-        .pStackHeightOver(BigInteger.valueOf(heightOver))
+        .pStackHeight(Bytes.ofUnsignedShort(stack.getHeight()))
+        .pStackHeightNew(Bytes.ofUnsignedShort(stack.getHeightNew()))
+        .pStackHeightUnder(Bytes.ofUnsignedShort(heightUnder))
+        .pStackHeightOver(Bytes.ofUnsignedShort(heightOver))
         // Instruction details
-        .pStackInst(BigInteger.valueOf(this.stack.getCurrentOpcodeData().value()))
-        .pStackStaticGas(BigInteger.valueOf(staticGas))
+        .pStackInst(Bytes.of(this.stack.getCurrentOpcodeData().value()))
+        .pStackStaticGas(Bytes.ofUnsignedInt(staticGas))
         .pStackDecodedFlag1(this.stack.getCurrentOpcodeData().stackSettings().flag1())
         .pStackDecodedFlag2(this.stack.getCurrentOpcodeData().stackSettings().flag2())
         .pStackDecodedFlag3(this.stack.getCurrentOpcodeData().stackSettings().flag3())
@@ -260,9 +260,9 @@ public final class StackFragment implements TraceFragment {
         .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackOobFlag(this.stack.getCurrentOpcodeData().stackSettings().oobFlag())
         // Hash data
-        .pStackHashInfoSize(BigInteger.valueOf(hashInfoSize))
-        .pStackHashInfoKecHi(this.hashInfoKeccak.hiBigInt())
-        .pStackHashInfoKecLo(this.hashInfoKeccak.loBigInt())
+        .pStackHashInfoSize(Bytes.ofUnsignedInt(hashInfoSize))
+        .pStackHashInfoKecHi(this.hashInfoKeccak.hi())
+        .pStackHashInfoKecLo(this.hashInfoKeccak.lo())
         .pStackHashInfoFlag(this.hashInfoFlag);
   }
 }

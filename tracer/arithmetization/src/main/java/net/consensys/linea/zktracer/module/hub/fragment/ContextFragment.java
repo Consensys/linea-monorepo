@@ -15,12 +15,11 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import java.math.BigInteger;
-
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 
 public record ContextFragment(
     CallStack callStack, CallFrame callFrame, boolean updateCallerReturndata)
@@ -35,30 +34,29 @@ public record ContextFragment(
 
     return trace
         .peekAtContext(true)
-        .pContextContextNumber(BigInteger.valueOf(callFrame.contextNumber()))
-        .pContextCallStackDepth(BigInteger.valueOf(callFrame.depth()))
-        .pContextIsStatic(callFrame.type().isStatic() ? BigInteger.ONE : BigInteger.ZERO)
-        .pContextAccountAddressHi(eAddress.hiBigInt())
-        .pContextAccountAddressLo(eAddress.loBigInt())
-        .pContextByteCodeAddressHi(eCodeAddress.hiBigInt())
-        .pContextByteCodeAddressLo(eCodeAddress.loBigInt())
-        .pContextAccountDeploymentNumber(BigInteger.valueOf(callFrame.accountDeploymentNumber()))
-        .pContextByteCodeDeploymentNumber(BigInteger.valueOf(callFrame.codeDeploymentNumber()))
-        .pContextByteCodeDeploymentStatus(
-            callFrame.underDeployment() ? BigInteger.ONE : BigInteger.ZERO)
-        .pContextCallerContextNumber(BigInteger.valueOf(parent.contextNumber()))
-        .pContextCallerAddressHi(parentAddress.hiBigInt())
-        .pContextCallerAddressLo(parentAddress.loBigInt())
-        .pContextCallValue(callFrame.value().toUnsignedBigInteger())
-        .pContextCallDataOffset(BigInteger.valueOf(callFrame.callDataPointer().offset()))
-        .pContextCallDataSize(BigInteger.valueOf(callFrame.callDataPointer().length()))
-        .pContextReturnAtOffset(BigInteger.valueOf(callFrame.returnDataTarget().offset()))
-        .pContextReturnAtSize(BigInteger.valueOf(callFrame.returnDataTarget().length()))
+        .pContextContextNumber(Bytes.ofUnsignedInt(callFrame.contextNumber()))
+        .pContextCallStackDepth(Bytes.ofUnsignedInt(callFrame.depth()))
+        .pContextIsStatic(callFrame.type().isStatic() ? Bytes.of(1) : Bytes.EMPTY)
+        .pContextAccountAddressHi(eAddress.hi())
+        .pContextAccountAddressLo(eAddress.lo())
+        .pContextByteCodeAddressHi(eCodeAddress.hi())
+        .pContextByteCodeAddressLo(eCodeAddress.lo())
+        .pContextAccountDeploymentNumber(Bytes.ofUnsignedInt(callFrame.accountDeploymentNumber()))
+        .pContextByteCodeDeploymentNumber(Bytes.ofUnsignedInt(callFrame.codeDeploymentNumber()))
+        .pContextByteCodeDeploymentStatus(callFrame.underDeployment() ? Bytes.of(1) : Bytes.EMPTY)
+        .pContextCallerContextNumber(Bytes.ofUnsignedInt(parent.contextNumber()))
+        .pContextCallerAddressHi(parentAddress.hi())
+        .pContextCallerAddressLo(parentAddress.lo())
+        .pContextCallValue(callFrame.value())
+        .pContextCallDataOffset(Bytes.ofUnsignedLong(callFrame.callDataPointer().offset()))
+        .pContextCallDataSize(Bytes.ofUnsignedLong(callFrame.callDataPointer().length()))
+        .pContextReturnAtOffset(Bytes.ofUnsignedLong(callFrame.returnDataTarget().offset()))
+        .pContextReturnAtSize(Bytes.ofUnsignedLong(callFrame.returnDataTarget().length()))
         .pContextUpdate(updateCallerReturndata)
         .pContextReturnerContextNumber(
-            BigInteger.valueOf(
+            Bytes.ofUnsignedInt(
                 callFrame.lastCallee().map(c -> callStack.get(c).contextNumber()).orElse(0)))
-        .pContextReturnDataOffset(BigInteger.valueOf(callFrame.returnDataPointer().offset()))
-        .pContextReturnDataSize(BigInteger.valueOf(callFrame.returnDataPointer().length()));
+        .pContextReturnDataOffset(Bytes.ofUnsignedLong(callFrame.returnDataPointer().offset()))
+        .pContextReturnDataSize(Bytes.ofUnsignedLong(callFrame.returnDataPointer().length()));
   }
 }
