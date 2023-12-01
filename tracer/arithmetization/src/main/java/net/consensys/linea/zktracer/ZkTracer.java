@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.google.common.base.Stopwatch;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,8 +84,6 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   @Override
   public void writeToFile(final Path filename) {
-    Stopwatch sw = Stopwatch.createStarted();
-
     final List<Module> modules = this.hub.getModulesToTrace();
     final List<ColumnHeader> traceMap =
         modules.stream().flatMap(m -> m.columnsHeaders().stream()).toList();

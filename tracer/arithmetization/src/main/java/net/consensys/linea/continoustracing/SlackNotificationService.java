@@ -55,11 +55,9 @@ public class SlackNotificationService {
                         section ->
                             section.text(
                                 markdownText(
-                                    "*Trace verification failure for block "
-                                        + blockNumber
-                                        + " ("
-                                        + blockHash
-                                        + ")*"))),
+                                    String.format(
+                                        "*Trace verification failure for block %d (%s)",
+                                        blockNumber, blockHash)))),
                     divider(),
                     section(
                         section ->
@@ -94,11 +92,9 @@ public class SlackNotificationService {
                         section ->
                             section.text(
                                 markdownText(
-                                    "*Error while tracing transaction "
-                                        + txHash.toHexString()
-                                        + " in block "
-                                        + blockNumber
-                                        + "*"))),
+                                    String.format(
+                                        "*Error while tracing transaction %s in block %d*",
+                                        txHash.toHexString(), blockNumber)))),
                     divider(),
                     section(
                         section ->

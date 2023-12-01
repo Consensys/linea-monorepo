@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.mxp;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -28,6 +27,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -73,48 +73,48 @@ public class Mxp implements Module {
 
     for (int i = 0; i < maxCt; i++) {
       trace
-          .stamp(BigInteger.valueOf(stamp))
-          .cn(BigInteger.valueOf(chunk.getContextNumber()))
-          .ct(BigInteger.valueOf(i))
+          .stamp(Bytes.ofUnsignedLong(stamp))
+          .cn(Bytes.ofUnsignedLong(chunk.getContextNumber()))
+          .ct(Bytes.of(i))
           .roob(chunk.isRoob())
           .noop(chunk.isNoOperation())
           .mxpx(chunk.isMxpx())
-          .inst(BigInteger.valueOf(chunk.getOpCodeData().value()))
+          .inst(Bytes.of(chunk.getOpCodeData().value()))
           .mxpType1(chunk.getOpCodeData().billing().type() == MxpType.TYPE_1)
           .mxpType2(chunk.getOpCodeData().billing().type() == MxpType.TYPE_2)
           .mxpType3(chunk.getOpCodeData().billing().type() == MxpType.TYPE_3)
           .mxpType4(chunk.getOpCodeData().billing().type() == MxpType.TYPE_4)
           .mxpType5(chunk.getOpCodeData().billing().type() == MxpType.TYPE_5)
           .gword(
-              BigInteger.valueOf(
+              Bytes.ofUnsignedLong(
                   chunk.getOpCodeData().billing().billingRate() == BillingRate.BY_WORD
                       ? chunk.getOpCodeData().billing().perUnit().cost()
                       : 0))
           .gbyte(
-              BigInteger.valueOf(
+              Bytes.ofUnsignedLong(
                   chunk.getOpCodeData().billing().billingRate() == BillingRate.BY_BYTE
                       ? chunk.getOpCodeData().billing().perUnit().cost()
                       : 0))
           .deploys(chunk.isDeploys())
-          .offset1Hi(chunk.getOffset1().hiBigInt())
-          .offset1Lo(chunk.getOffset1().loBigInt())
-          .offset2Hi(chunk.getOffset2().hiBigInt())
-          .offset2Lo(chunk.getOffset2().loBigInt())
-          .size1Hi(chunk.getSize1().hiBigInt())
-          .size1Lo(chunk.getSize1().loBigInt())
-          .size2Hi(chunk.getSize2().hiBigInt())
-          .size2Lo(chunk.getSize2().loBigInt())
-          .maxOffset1(chunk.getMaxOffset1())
-          .maxOffset2(chunk.getMaxOffset2())
-          .maxOffset(chunk.getMaxOffset())
+          .offset1Hi(chunk.getOffset1().hi())
+          .offset1Lo(chunk.getOffset1().lo())
+          .offset2Hi(chunk.getOffset2().hi())
+          .offset2Lo(chunk.getOffset2().lo())
+          .size1Hi(chunk.getSize1().hi())
+          .size1Lo(chunk.getSize1().lo())
+          .size2Hi(chunk.getSize2().hi())
+          .size2Lo(chunk.getSize2().lo())
+          .maxOffset1(bigIntegerToBytes(chunk.getMaxOffset1()))
+          .maxOffset2(bigIntegerToBytes(chunk.getMaxOffset2()))
+          .maxOffset(bigIntegerToBytes(chunk.getMaxOffset()))
           .comp(chunk.isComp())
-          .acc1(acc1Bytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .acc2(acc2Bytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .acc3(acc3Bytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .acc4(acc4Bytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .accA(accABytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .accW(accWBytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
-          .accQ(accQBytes32.slice(maxCtComplement, 1 + i).toUnsignedBigInteger())
+          .acc1(acc1Bytes32.slice(maxCtComplement, 1 + i))
+          .acc2(acc2Bytes32.slice(maxCtComplement, 1 + i))
+          .acc3(acc3Bytes32.slice(maxCtComplement, 1 + i))
+          .acc4(acc4Bytes32.slice(maxCtComplement, 1 + i))
+          .accA(accABytes32.slice(maxCtComplement, 1 + i))
+          .accW(accWBytes32.slice(maxCtComplement, 1 + i))
+          .accQ(accQBytes32.slice(maxCtComplement, 1 + i))
           .byte1(UnsignedByte.of(acc1Bytes32.get(maxCtComplement + i)))
           .byte2(UnsignedByte.of(acc2Bytes32.get(maxCtComplement + i)))
           .byte3(UnsignedByte.of(acc3Bytes32.get(maxCtComplement + i)))
@@ -122,17 +122,17 @@ public class Mxp implements Module {
           .byteA(UnsignedByte.of(accABytes32.get(maxCtComplement + i)))
           .byteW(UnsignedByte.of(accWBytes32.get(maxCtComplement + i)))
           .byteQ(UnsignedByte.of(accQBytes32.get(maxCtComplement + i)))
-          .byteQq(chunk.getByteQQ()[i].toBigInteger())
-          .byteR(chunk.getByteR()[i].toBigInteger())
-          .words(BigInteger.valueOf(chunk.getWords()))
+          .byteQq(Bytes.ofUnsignedLong(chunk.getByteQQ()[i].toInteger()))
+          .byteR(Bytes.ofUnsignedLong(chunk.getByteR()[i].toInteger()))
+          .words(Bytes.ofUnsignedLong(chunk.getWords()))
           .wordsNew(
-              BigInteger.valueOf(
+              Bytes.ofUnsignedLong(
                   chunk.getWordsNew())) // TODO: Could (should?) be set in tracePostOp?
-          .cMem(BigInteger.valueOf(chunk.getCMem())) // Returns current memory size in EVM words
-          .cMemNew(BigInteger.valueOf(chunk.getCMemNew()))
-          .quadCost(BigInteger.valueOf(chunk.getQuadCost()))
-          .linCost(BigInteger.valueOf(chunk.getLinCost()))
-          .gasMxp(BigInteger.valueOf(chunk.getQuadCost() + chunk.getEffectiveLinCost()))
+          .cMem(Bytes.ofUnsignedLong(chunk.getCMem())) // Returns current memory size in EVM words
+          .cMemNew(Bytes.ofUnsignedLong(chunk.getCMemNew()))
+          .quadCost(Bytes.ofUnsignedLong(chunk.getQuadCost()))
+          .linCost(Bytes.ofUnsignedLong(chunk.getLinCost()))
+          .gasMxp(Bytes.ofUnsignedLong(chunk.getQuadCost() + chunk.getEffectiveLinCost()))
           .expands(chunk.isExpands())
           .validateRow();
     }

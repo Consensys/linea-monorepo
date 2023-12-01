@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -138,122 +137,162 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace acc1(final BigInteger b) {
+  public Trace acc1(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("wcp.ACC_1 already set");
     } else {
       filled.set(0);
     }
 
-    acc1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc1.put((byte) 0);
+    }
+    acc1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc2(final BigInteger b) {
+  public Trace acc2(final Bytes b) {
     if (filled.get(1)) {
       throw new IllegalStateException("wcp.ACC_2 already set");
     } else {
       filled.set(1);
     }
 
-    acc2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc2.put((byte) 0);
+    }
+    acc2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc3(final BigInteger b) {
+  public Trace acc3(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("wcp.ACC_3 already set");
     } else {
       filled.set(2);
     }
 
-    acc3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc3.put((byte) 0);
+    }
+    acc3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc4(final BigInteger b) {
+  public Trace acc4(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("wcp.ACC_4 already set");
     } else {
       filled.set(3);
     }
 
-    acc4.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc4.put((byte) 0);
+    }
+    acc4.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc5(final BigInteger b) {
+  public Trace acc5(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("wcp.ACC_5 already set");
     } else {
       filled.set(4);
     }
 
-    acc5.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc5.put((byte) 0);
+    }
+    acc5.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace acc6(final BigInteger b) {
+  public Trace acc6(final Bytes b) {
     if (filled.get(5)) {
       throw new IllegalStateException("wcp.ACC_6 already set");
     } else {
       filled.set(5);
     }
 
-    acc6.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc6.put((byte) 0);
+    }
+    acc6.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace argument1Hi(final BigInteger b) {
+  public Trace argument1Hi(final Bytes b) {
     if (filled.get(6)) {
       throw new IllegalStateException("wcp.ARGUMENT_1_HI already set");
     } else {
       filled.set(6);
     }
 
-    argument1Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argument1Hi.put((byte) 0);
+    }
+    argument1Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace argument1Lo(final BigInteger b) {
+  public Trace argument1Lo(final Bytes b) {
     if (filled.get(7)) {
       throw new IllegalStateException("wcp.ARGUMENT_1_LO already set");
     } else {
       filled.set(7);
     }
 
-    argument1Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argument1Lo.put((byte) 0);
+    }
+    argument1Lo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace argument2Hi(final BigInteger b) {
+  public Trace argument2Hi(final Bytes b) {
     if (filled.get(8)) {
       throw new IllegalStateException("wcp.ARGUMENT_2_HI already set");
     } else {
       filled.set(8);
     }
 
-    argument2Hi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argument2Hi.put((byte) 0);
+    }
+    argument2Hi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace argument2Lo(final BigInteger b) {
+  public Trace argument2Lo(final Bytes b) {
     if (filled.get(9)) {
       throw new IllegalStateException("wcp.ARGUMENT_2_LO already set");
     } else {
       filled.set(9);
     }
 
-    argument2Lo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argument2Lo.put((byte) 0);
+    }
+    argument2Lo.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -390,26 +429,34 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final BigInteger b) {
+  public Trace counter(final Bytes b) {
     if (filled.get(21)) {
       throw new IllegalStateException("wcp.COUNTER already set");
     } else {
       filled.set(21);
     }
 
-    counter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      counter.put((byte) 0);
+    }
+    counter.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace inst(final BigInteger b) {
+  public Trace inst(final Bytes b) {
     if (filled.get(22)) {
       throw new IllegalStateException("wcp.INST already set");
     } else {
       filled.set(22);
     }
 
-    inst.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      inst.put((byte) 0);
+    }
+    inst.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -450,38 +497,50 @@ public class Trace {
     return this;
   }
 
-  public Trace resultHi(final BigInteger b) {
+  public Trace resultHi(final Bytes b) {
     if (filled.get(26)) {
       throw new IllegalStateException("wcp.RESULT_HI already set");
     } else {
       filled.set(26);
     }
 
-    resultHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resultHi.put((byte) 0);
+    }
+    resultHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace resultLo(final BigInteger b) {
+  public Trace resultLo(final Bytes b) {
     if (filled.get(27)) {
       throw new IllegalStateException("wcp.RESULT_LO already set");
     } else {
       filled.set(27);
     }
 
-    resultLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      resultLo.put((byte) 0);
+    }
+    resultLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace wordComparisonStamp(final BigInteger b) {
+  public Trace wordComparisonStamp(final Bytes b) {
     if (filled.get(28)) {
       throw new IllegalStateException("wcp.WORD_COMPARISON_STAMP already set");
     } else {
       filled.set(28);
     }
 
-    wordComparisonStamp.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      wordComparisonStamp.put((byte) 0);
+    }
+    wordComparisonStamp.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -732,10 +791,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }

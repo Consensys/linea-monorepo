@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -26,6 +25,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -64,16 +64,16 @@ public class Wcp implements Module {
     this.stamp++;
     for (int i = 0; i < op.maxCt(); i++) {
       trace
-          .wordComparisonStamp(BigInteger.valueOf(stamp))
+          .wordComparisonStamp(Bytes.ofUnsignedInt(stamp))
           .oneLineInstruction(op.isOneLineInstruction())
-          .counter(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(op.getOpCode().getData().value()))
-          .argument1Hi(op.getArg1Hi().toUnsignedBigInteger())
-          .argument1Lo(op.getArg1Lo().toUnsignedBigInteger())
-          .argument2Hi(op.getArg2Hi().toUnsignedBigInteger())
-          .argument2Lo(op.getArg2Lo().toUnsignedBigInteger())
-          .resultHi(op.getResHi() ? BigInteger.ONE : BigInteger.ZERO)
-          .resultLo(op.getResLo() ? BigInteger.ONE : BigInteger.ZERO)
+          .counter(Bytes.of(i))
+          .inst(Bytes.of(op.getOpCode().byteValue()))
+          .argument1Hi(op.getArg1Hi())
+          .argument1Lo(op.getArg1Lo())
+          .argument2Hi(op.getArg2Hi())
+          .argument2Lo(op.getArg2Lo())
+          .resultHi(op.getResHi() ? Bytes.of(1) : Bytes.EMPTY)
+          .resultLo(op.getResLo() ? Bytes.of(1) : Bytes.EMPTY)
           .bits(op.getBits().get(i))
           .neg1(op.getNeg1())
           .neg2(op.getNeg2())
@@ -83,12 +83,12 @@ public class Wcp implements Module {
           .byte4(UnsignedByte.of(op.getArg2Lo().get(i)))
           .byte5(UnsignedByte.of(op.getAdjHi().get(i)))
           .byte6(UnsignedByte.of(op.getAdjLo().get(i)))
-          .acc1(op.getArg1Hi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc2(op.getArg1Lo().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc3(op.getArg2Hi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc4(op.getArg2Lo().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc5(op.getAdjHi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc6(op.getAdjLo().slice(0, 1 + i).toUnsignedBigInteger())
+          .acc1(op.getArg1Hi().slice(0, 1 + i))
+          .acc2(op.getArg1Lo().slice(0, 1 + i))
+          .acc3(op.getArg2Hi().slice(0, 1 + i))
+          .acc4(op.getArg2Lo().slice(0, 1 + i))
+          .acc5(op.getAdjHi().slice(0, 1 + i))
+          .acc6(op.getAdjLo().slice(0, 1 + i))
           .bit1(op.getBit1())
           .bit2(op.getBit2())
           .bit3(op.getBit3())

@@ -17,8 +17,6 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
-import java.math.BigInteger;
-
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
@@ -27,6 +25,7 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 
@@ -71,19 +70,19 @@ public final class AccountFragment implements TraceFragment {
 
     return trace
         .peekAtAccount(true)
-        .pAccountAddrHi(eWho.hiBigInt())
-        .pAccountAddrLo(eWho.loBigInt())
+        .pAccountAddrHi(eWho.hi())
+        .pAccountAddrLo(eWho.lo())
         .pAccountIsPrecompile(isPrecompile(who))
-        .pAccountNonce(BigInteger.valueOf(oldState.nonce()))
-        .pAccountNonceNew(BigInteger.valueOf(newState.nonce()))
-        .pAccountBalance(oldState.balance().getAsBigInteger())
-        .pAccountBalanceNew(newState.balance().getAsBigInteger())
-        .pAccountCodeSize(BigInteger.valueOf(oldState.code().getSize()))
-        .pAccountCodeSizeNew(BigInteger.valueOf(newState.code().getSize()))
-        .pAccountCodeHashHi(eCodeHash.hiBigInt())
-        .pAccountCodeHashLo(eCodeHash.loBigInt())
-        .pAccountCodeHashHiNew(eCodeHashNew.hiBigInt())
-        .pAccountCodeHashLoNew(eCodeHashNew.loBigInt())
+        .pAccountNonce(Bytes.ofUnsignedLong(oldState.nonce()))
+        .pAccountNonceNew(Bytes.ofUnsignedLong(newState.nonce()))
+        .pAccountBalance(oldState.balance())
+        .pAccountBalanceNew(newState.balance())
+        .pAccountCodeSize(Bytes.ofUnsignedInt(oldState.code().getSize()))
+        .pAccountCodeSizeNew(Bytes.ofUnsignedInt(newState.code().getSize()))
+        .pAccountCodeHashHi(eCodeHash.hi())
+        .pAccountCodeHashLo(eCodeHash.lo())
+        .pAccountCodeHashHiNew(eCodeHashNew.hi())
+        .pAccountCodeHashLoNew(eCodeHashNew.lo())
         .pAccountHasCode(oldState.code().getCodeHash() != Hash.EMPTY)
         .pAccountHasCodeNew(newState.code().getCodeHash() != Hash.EMPTY)
         .pAccountExists(
@@ -96,14 +95,14 @@ public final class AccountFragment implements TraceFragment {
                 || !newState.balance().isZero())
         .pAccountWarm(oldState.warm())
         .pAccountWarmNew(newState.warm())
-        .pAccountDepNum(BigInteger.valueOf(oldState.deploymentNumber()))
-        .pAccountDepNumNew(BigInteger.valueOf(newState.deploymentNumber()))
+        .pAccountDepNum(Bytes.ofUnsignedInt(oldState.deploymentNumber()))
+        .pAccountDepNumNew(Bytes.ofUnsignedInt(newState.deploymentNumber()))
         .pAccountDepStatus(oldState.deploymentStatus())
         .pAccountDepStatusNew(newState.deploymentStatus())
         //      .pAccountDebit(debit)
         //      .pAccountCost(cost)
         //      .pAccountCreateAddress(createAddress)
-        .pAccountDeploymentNumberInfty(BigInteger.valueOf(deploymentNumberInfnty))
+        .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfnty))
     //    .pAccountExistsInfty(existsInfinity)
     ;
   }

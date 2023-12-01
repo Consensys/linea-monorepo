@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -30,6 +29,7 @@ import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -141,20 +141,20 @@ public class Add implements Module {
       overflowLo = (addRes.compareTo(TWO_TO_THE_128) >= 0);
 
       trace
-          .acc1(resHi.slice(0, 1 + i).toUnsignedBigInteger())
-          .acc2(resLo.slice(0, 1 + i).toUnsignedBigInteger())
-          .arg1Hi(arg1Hi.toUnsignedBigInteger())
-          .arg1Lo(arg1Lo.toUnsignedBigInteger())
-          .arg2Hi(arg2Hi.toUnsignedBigInteger())
-          .arg2Lo(arg2Lo.toUnsignedBigInteger())
+          .acc1(resHi.slice(0, 1 + i))
+          .acc2(resLo.slice(0, 1 + i))
+          .arg1Hi(arg1Hi)
+          .arg1Lo(arg1Lo)
+          .arg2Hi(arg2Hi)
+          .arg2Lo(arg2Lo)
           .byte1(UnsignedByte.of(resHi.get(i)))
           .byte2(UnsignedByte.of(resLo.get(i)))
-          .ct(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(opCodeData.value()))
+          .ct(Bytes.of(i))
+          .inst(Bytes.of(opCodeData.value()))
           .overflow(overflowBit(i, overflowHi, overflowLo))
-          .resHi(resHi.toUnsignedBigInteger())
-          .resLo(resLo.toUnsignedBigInteger())
-          .stamp(BigInteger.valueOf(stamp))
+          .resHi(resHi)
+          .resLo(resLo)
+          .stamp(Bytes.ofUnsignedLong(stamp))
           .validateRow();
     }
   }

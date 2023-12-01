@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.mul;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -26,6 +25,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -99,57 +99,57 @@ public class Mul implements Module {
 
   private void traceRow(final MulOperation op, final int i, Trace trace) {
     trace
-        .mulStamp(BigInteger.valueOf(stamp))
-        .counter(BigInteger.valueOf(i))
+        .mulStamp(Bytes.ofUnsignedLong(stamp))
+        .counter(Bytes.of(i))
         .oli(op.isOneLineInstruction())
         .tinyBase(op.isTinyBase())
         .tinyExponent(op.isTinyExponent())
         .resultVanishes(op.res.isZero())
-        .instruction(BigInteger.valueOf(op.getOpCode().getData().value()))
-        .arg1Hi(op.getArg1Hi().toUnsignedBigInteger())
-        .arg1Lo(op.getArg1Lo().toUnsignedBigInteger())
-        .arg2Hi(op.getArg2Hi().toUnsignedBigInteger())
-        .arg2Lo(op.getArg2Lo().toUnsignedBigInteger())
-        .resHi(op.res.getHigh().toUnsignedBigInteger())
-        .resLo(op.res.getLow().toUnsignedBigInteger())
+        .instruction(Bytes.of(op.getOpCode().byteValue()))
+        .arg1Hi(op.getArg1Hi())
+        .arg1Lo(op.getArg1Lo())
+        .arg2Hi(op.getArg2Hi())
+        .arg2Lo(op.getArg2Lo())
+        .resHi(op.res.getHigh())
+        .resLo(op.res.getLow())
         .bits(op.bits[i])
         .byteA3(UnsignedByte.of(op.aBytes.get(3, i)))
         .byteA2(UnsignedByte.of(op.aBytes.get(2, i)))
         .byteA1(UnsignedByte.of(op.aBytes.get(1, i)))
         .byteA0(UnsignedByte.of(op.aBytes.get(0, i)))
-        .accA3(op.aBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .accA2(op.aBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .accA1(op.aBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .accA0(op.aBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .accA3(op.aBytes.getRange(3, 0, i + 1))
+        .accA2(op.aBytes.getRange(2, 0, i + 1))
+        .accA1(op.aBytes.getRange(1, 0, i + 1))
+        .accA0(op.aBytes.getRange(0, 0, i + 1))
         .byteB3(UnsignedByte.of(op.bBytes.get(3, i)))
         .byteB2(UnsignedByte.of(op.bBytes.get(2, i)))
         .byteB1(UnsignedByte.of(op.bBytes.get(1, i)))
         .byteB0(UnsignedByte.of(op.bBytes.get(0, i)))
-        .accB3(op.bBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .accB2(op.bBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .accB1(op.bBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .accB0(op.bBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .accB3(op.bBytes.getRange(3, 0, i + 1))
+        .accB2(op.bBytes.getRange(2, 0, i + 1))
+        .accB1(op.bBytes.getRange(1, 0, i + 1))
+        .accB0(op.bBytes.getRange(0, 0, i + 1))
         .byteC3(UnsignedByte.of(op.cBytes.get(3, i)))
         .byteC2(UnsignedByte.of(op.cBytes.get(2, i)))
         .byteC1(UnsignedByte.of(op.cBytes.get(1, i)))
         .byteC0(UnsignedByte.of(op.cBytes.get(0, i)))
-        .accC3(op.cBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .accC2(op.cBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .accC1(op.cBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .accC0(op.cBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .accC3(op.cBytes.getRange(3, 0, i + 1))
+        .accC2(op.cBytes.getRange(2, 0, i + 1))
+        .accC1(op.cBytes.getRange(1, 0, i + 1))
+        .accC0(op.cBytes.getRange(0, 0, i + 1))
         .byteH3(UnsignedByte.of(op.hBytes.get(3, i)))
         .byteH2(UnsignedByte.of(op.hBytes.get(2, i)))
         .byteH1(UnsignedByte.of(op.hBytes.get(1, i)))
         .byteH0(UnsignedByte.of(op.hBytes.get(0, i)))
-        .accH3(op.hBytes.getRange(3, 0, i + 1).toUnsignedBigInteger())
-        .accH2(op.hBytes.getRange(2, 0, i + 1).toUnsignedBigInteger())
-        .accH1(op.hBytes.getRange(1, 0, i + 1).toUnsignedBigInteger())
-        .accH0(op.hBytes.getRange(0, 0, i + 1).toUnsignedBigInteger())
+        .accH3(op.hBytes.getRange(3, 0, i + 1))
+        .accH2(op.hBytes.getRange(2, 0, i + 1))
+        .accH1(op.hBytes.getRange(1, 0, i + 1))
+        .accH0(op.hBytes.getRange(0, 0, i + 1))
         .exponentBit(op.isExponentBitSet())
-        .exponentBitAccumulator(op.expAcc.toUnsignedBigInteger())
+        .exponentBitAccumulator(op.expAcc)
         .exponentBitSource(op.isExponentInSource())
         .squareAndMultiply(op.squareAndMultiply)
-        .bitNum(BigInteger.valueOf(op.getBitNum()))
+        .bitNum(Bytes.ofUnsignedShort(op.getBitNum()))
         .validateRow();
   }
 

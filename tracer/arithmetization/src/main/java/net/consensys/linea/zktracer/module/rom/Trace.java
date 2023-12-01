@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.rom;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -120,50 +119,66 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace acc(final BigInteger b) {
+  public Trace acc(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("rom.ACC already set");
     } else {
       filled.set(0);
     }
 
-    acc.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      acc.put((byte) 0);
+    }
+    acc.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeFragmentIndex(final BigInteger b) {
+  public Trace codeFragmentIndex(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("rom.CODE_FRAGMENT_INDEX already set");
     } else {
       filled.set(2);
     }
 
-    codeFragmentIndex.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeFragmentIndex.put((byte) 0);
+    }
+    codeFragmentIndex.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeFragmentIndexInfty(final BigInteger b) {
+  public Trace codeFragmentIndexInfty(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("rom.CODE_FRAGMENT_INDEX_INFTY already set");
     } else {
       filled.set(3);
     }
 
-    codeFragmentIndexInfty.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeFragmentIndexInfty.put((byte) 0);
+    }
+    codeFragmentIndexInfty.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeSize(final BigInteger b) {
+  public Trace codeSize(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("rom.CODE_SIZE already set");
     } else {
       filled.set(4);
     }
 
-    codeSize.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSize.put((byte) 0);
+    }
+    codeSize.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -180,50 +195,66 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final BigInteger b) {
+  public Trace counter(final Bytes b) {
     if (filled.get(5)) {
       throw new IllegalStateException("rom.COUNTER already set");
     } else {
       filled.set(5);
     }
 
-    counter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      counter.put((byte) 0);
+    }
+    counter.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace counterMax(final BigInteger b) {
+  public Trace counterMax(final Bytes b) {
     if (filled.get(6)) {
       throw new IllegalStateException("rom.COUNTER_MAX already set");
     } else {
       filled.set(6);
     }
 
-    counterMax.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      counterMax.put((byte) 0);
+    }
+    counterMax.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace counterPush(final BigInteger b) {
+  public Trace counterPush(final Bytes b) {
     if (filled.get(7)) {
       throw new IllegalStateException("rom.COUNTER_PUSH already set");
     } else {
       filled.set(7);
     }
 
-    counterPush.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      counterPush.put((byte) 0);
+    }
+    counterPush.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace index(final BigInteger b) {
+  public Trace index(final Bytes b) {
     if (filled.get(8)) {
       throw new IllegalStateException("rom.INDEX already set");
     } else {
       filled.set(8);
     }
 
-    index.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      index.put((byte) 0);
+    }
+    index.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -252,38 +283,50 @@ public class Trace {
     return this;
   }
 
-  public Trace limb(final BigInteger b) {
+  public Trace limb(final Bytes b) {
     if (filled.get(11)) {
       throw new IllegalStateException("rom.LIMB already set");
     } else {
       filled.set(11);
     }
 
-    limb.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      limb.put((byte) 0);
+    }
+    limb.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace nBytes(final BigInteger b) {
+  public Trace nBytes(final Bytes b) {
     if (filled.get(21)) {
       throw new IllegalStateException("rom.nBYTES already set");
     } else {
       filled.set(21);
     }
 
-    nBytes.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      nBytes.put((byte) 0);
+    }
+    nBytes.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace nBytesAcc(final BigInteger b) {
+  public Trace nBytesAcc(final Bytes b) {
     if (filled.get(22)) {
       throw new IllegalStateException("rom.nBYTES_ACC already set");
     } else {
       filled.set(22);
     }
 
-    nBytesAcc.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      nBytesAcc.put((byte) 0);
+    }
+    nBytesAcc.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -312,14 +355,18 @@ public class Trace {
     return this;
   }
 
-  public Trace programmeCounter(final BigInteger b) {
+  public Trace programmeCounter(final Bytes b) {
     if (filled.get(14)) {
       throw new IllegalStateException("rom.PROGRAMME_COUNTER already set");
     } else {
       filled.set(14);
     }
 
-    programmeCounter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      programmeCounter.put((byte) 0);
+    }
+    programmeCounter.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -336,50 +383,66 @@ public class Trace {
     return this;
   }
 
-  public Trace pushParameter(final BigInteger b) {
+  public Trace pushParameter(final Bytes b) {
     if (filled.get(16)) {
       throw new IllegalStateException("rom.PUSH_PARAMETER already set");
     } else {
       filled.set(16);
     }
 
-    pushParameter.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      pushParameter.put((byte) 0);
+    }
+    pushParameter.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pushValueAcc(final BigInteger b) {
+  public Trace pushValueAcc(final Bytes b) {
     if (filled.get(17)) {
       throw new IllegalStateException("rom.PUSH_VALUE_ACC already set");
     } else {
       filled.set(17);
     }
 
-    pushValueAcc.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      pushValueAcc.put((byte) 0);
+    }
+    pushValueAcc.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pushValueHigh(final BigInteger b) {
+  public Trace pushValueHigh(final Bytes b) {
     if (filled.get(18)) {
       throw new IllegalStateException("rom.PUSH_VALUE_HIGH already set");
     } else {
       filled.set(18);
     }
 
-    pushValueHigh.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      pushValueHigh.put((byte) 0);
+    }
+    pushValueHigh.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pushValueLow(final BigInteger b) {
+  public Trace pushValueLow(final Bytes b) {
     if (filled.get(19)) {
       throw new IllegalStateException("rom.PUSH_VALUE_LOW already set");
     } else {
       filled.set(19);
     }
 
-    pushValueLow.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      pushValueLow.put((byte) 0);
+    }
+    pushValueLow.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -594,10 +657,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }
