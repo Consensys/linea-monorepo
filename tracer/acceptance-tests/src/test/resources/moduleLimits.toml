@@ -40,6 +40,7 @@ RLP_ADDR            = 262144
 RLP_TXN             = 262144
 RLP_TXRCPT          = 262144
 TXN_DATA            = 262144
+STP                 = 262144
 
 #
 # Block-specific limits
