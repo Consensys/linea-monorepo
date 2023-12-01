@@ -75,7 +75,7 @@ public class GeneralStateReferenceTestTools {
     EIPS_TO_RUN = Arrays.asList(eips.split(","));
   }
 
-  private static final JsonTestParameters<?, ?> params =
+  private static final JsonTestParameters<?, ?> PARAMS =
       JsonTestParameters.create(GeneralStateTestCaseSpec.class, GeneralStateTestCaseEipSpec.class)
           .generator(
               (testName, fullPath, stateSpec, collector) -> {
@@ -100,23 +100,31 @@ public class GeneralStateReferenceTestTools {
 
   static {
     if (EIPS_TO_RUN.isEmpty()) {
-      params.ignoreAll();
+      PARAMS.ignoreAll();
     }
 
     // Consumes a huge amount of memory
-    params.ignore("static_Call1MB1024Calldepth-\\w");
-    params.ignore("ShanghaiLove_.*");
-    params.ignore("/GeneralStateTests/VMTests/vmPerformance/");
+    PARAMS.ignore("static_Call1MB1024Calldepth-\\w");
+    PARAMS.ignore("ShanghaiLove_.*");
+    PARAMS.ignore("VMTests/vmPerformance/");
 
     // Don't do time consuming tests
-    params.ignore("CALLBlake2f_MaxRounds.*");
-    params.ignore("loopMul-.*");
+    PARAMS.ignore("CALLBlake2f_MaxRounds.*");
+    PARAMS.ignore("loopMul-.*");
 
     // Reference Tests are old.  Max blob count is 6.
-    params.ignore("blobhashListBounds5");
+    PARAMS.ignore("blobhashListBounds5");
 
     // EOF tests are written against an older version of the spec
-    params.ignore("/stEOF/");
+    PARAMS.ignore("/stEOF/");
+
+    // Not compliant with the zkEVM requirements.
+    PARAMS.ignore("stPreCompiledContracts2/modexpRandomInput.*");
+    PARAMS.ignore("tQuadraticComplexityTest/Call50000_ecrec.*");
+    PARAMS.ignore("stStaticCall/static_Call50000_ecrec.*");
+    PARAMS.ignore("stRandom2/randomStatetest642.*");
+    PARAMS.ignore("stRandom2/randomStatetest644.*");
+    PARAMS.ignore("stRandom2/randomStatetest645.*");
   }
 
   private GeneralStateReferenceTestTools() {
@@ -124,7 +132,7 @@ public class GeneralStateReferenceTestTools {
   }
 
   public static Collection<Object[]> generateTestParametersForConfig(final String[] filePath) {
-    return params.generate(filePath);
+    return PARAMS.generate(filePath);
   }
 
   @SneakyThrows
