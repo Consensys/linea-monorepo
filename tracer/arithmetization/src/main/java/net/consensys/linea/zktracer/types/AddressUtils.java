@@ -29,15 +29,15 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public class AddressUtils {
   private static final List<Address> precompileAddress =
       List.of(
-          org.hyperledger.besu.datatypes.Address.ECREC,
-          org.hyperledger.besu.datatypes.Address.SHA256,
-          org.hyperledger.besu.datatypes.Address.RIPEMD160,
-          org.hyperledger.besu.datatypes.Address.ID,
-          org.hyperledger.besu.datatypes.Address.MODEXP,
-          org.hyperledger.besu.datatypes.Address.ALTBN128_ADD,
-          org.hyperledger.besu.datatypes.Address.ALTBN128_MUL,
-          org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING,
-          org.hyperledger.besu.datatypes.Address.BLAKE2B_F_COMPRESSION);
+          Address.ECREC,
+          Address.SHA256,
+          Address.RIPEMD160,
+          Address.ID,
+          Address.MODEXP,
+          Address.ALTBN128_ADD,
+          Address.ALTBN128_MUL,
+          Address.ALTBN128_PAIRING,
+          Address.BLAKE2B_F_COMPRESSION);
 
   public static boolean isPrecompile(Address to) {
     return precompileAddress.contains(to);
