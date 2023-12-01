@@ -46,7 +46,7 @@ public class BlockchainReferenceTestTools {
 
   private static final List<String> NETWORKS_TO_RUN = List.of("London");
 
-  private static final JsonTestParameters<?, ?> params =
+  private static final JsonTestParameters<?, ?> PARAMS =
       JsonTestParameters.create(BlockchainReferenceTestCaseSpec.class)
           .generator(
               (testName, fullPath, spec, collector) -> {
@@ -59,28 +59,28 @@ public class BlockchainReferenceTestTools {
 
   static {
     if (NETWORKS_TO_RUN.isEmpty()) {
-      params.ignoreAll();
+      PARAMS.ignoreAll();
     }
 
     // Consumes a huge amount of memory.
-    params.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
-    params.ignore("ShanghaiLove_.*");
-    params.ignore("/GeneralStateTests/VMTests/vmPerformance/");
+    PARAMS.ignore("static_Call1MB1024Calldepth_d1g0v0_\\w+");
+    PARAMS.ignore("ShanghaiLove_.*");
+    PARAMS.ignore("/GeneralStateTests/VMTests/vmPerformance/");
 
     // Absurd amount of gas, doesn't run in parallel.
-    params.ignore("randomStatetest94_\\w+");
+    PARAMS.ignore("randomStatetest94_\\w+");
 
     // Don't do time-consuming tests.
-    params.ignore("CALLBlake2f_MaxRounds.*");
-    params.ignore("loopMul_*");
+    PARAMS.ignore("CALLBlake2f_MaxRounds.*");
+    PARAMS.ignore("loopMul_*");
 
     // Inconclusive fork choice rule, since in merge CL should be choosing forks and setting the
     // chain head.
     // Perfectly valid test pre-merge.
-    params.ignore("UncleFromSideChain_(Merge|Shanghai|Cancun|Prague|Osaka|Bogota)");
+    PARAMS.ignore("UncleFromSideChain_(Merge|Shanghai|Cancun|Prague|Osaka|Bogota)");
 
     // EOF tests are written against an older version of the spec.
-    params.ignore("/stEOF/");
+    PARAMS.ignore("/stEOF/");
   }
 
   private BlockchainReferenceTestTools() {
@@ -88,7 +88,7 @@ public class BlockchainReferenceTestTools {
   }
 
   public static Collection<Object[]> generateTestParametersForConfig(final String[] filePath) {
-    return params.generate(
+    return PARAMS.generate(
         Arrays.stream(filePath)
             .map(f -> Paths.get("src/test/resources/ethereum-tests/" + f).toFile())
             .toList());
