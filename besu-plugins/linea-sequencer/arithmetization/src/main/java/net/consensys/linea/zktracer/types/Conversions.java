@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.stream.IntStream;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 
 public class Conversions {
   public static final BigInteger UNSIGNED_LONG_MASK =
@@ -67,5 +68,13 @@ public class Conversions {
           "a long can't be more than 64 bits long, and is" + output.bitLength());
     }
     return output;
+  }
+
+  public static Bytes32 longToBytes32(final long input) {
+    return Bytes32.leftPad(Bytes.minimalBytes(input));
+  }
+
+  public static Bytes longToBytes(final long input) {
+    return input == 0 ? Bytes.of(0) : Bytes.minimalBytes(input);
   }
 }

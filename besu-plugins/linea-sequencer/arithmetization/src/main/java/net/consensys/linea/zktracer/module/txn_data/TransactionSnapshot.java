@@ -234,7 +234,11 @@ public final class TransactionSnapshot {
       initialCost += (long) this.prewarmedStorageKeysCount() * G_accessliststorage;
     }
 
-    Preconditions.checkArgument(this.gasLimit() >= initialCost, "gasLimit < initialGasCost");
+    Preconditions.checkState(
+        this.gasLimit() >= initialCost,
+        "gasLimit ({}) < initialGasCost ({})",
+        this.gasLimit(),
+        initialCost);
 
     return initialCost;
   }
