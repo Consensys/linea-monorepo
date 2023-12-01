@@ -74,12 +74,11 @@ public class TxInfo implements StackedContainer {
         this.transaction.getGasPrice().map(Quantity::getAsBigInteger).orElse(BigInteger.ZERO));
   }
 
-  public static BigInteger computeInitGas(Transaction tx) {
+  public static long computeInitGas(Transaction tx) {
     boolean isDeployment = tx.getTo().isEmpty();
-    return BigInteger.valueOf(
-        tx.getGasLimit()
-            - gc.transactionIntrinsicGasCost(tx.getPayload(), isDeployment)
-            - tx.getAccessList().map(gc::accessListGasCost).orElse(0L));
+    return tx.getGasLimit()
+        - gc.transactionIntrinsicGasCost(tx.getPayload(), isDeployment)
+        - tx.getAccessList().map(gc::accessListGasCost).orElse(0L);
   }
 
   /**

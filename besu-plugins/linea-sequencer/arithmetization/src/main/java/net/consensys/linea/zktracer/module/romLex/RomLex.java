@@ -277,13 +277,13 @@ public class RomLex implements Module {
   private void traceChunk(
       final RomChunk chunk, int cfi, int codeFragmentIndexInfinity, Trace trace) {
     trace
-        .codeFragmentIndex(BigInteger.valueOf(cfi))
-        .codeFragmentIndexInfty(BigInteger.valueOf(codeFragmentIndexInfinity))
-        .codeSize(BigInteger.valueOf(chunk.byteCode().size()))
-        .addrHi(chunk.address().slice(0, 4).toUnsignedBigInteger())
-        .addrLo(chunk.address().slice(4, LLARGE).toUnsignedBigInteger())
+        .codeFragmentIndex(Bytes.ofUnsignedInt(cfi))
+        .codeFragmentIndexInfty(Bytes.ofUnsignedInt(codeFragmentIndexInfinity))
+        .codeSize(Bytes.ofUnsignedInt(chunk.byteCode().size()))
+        .addrHi(chunk.address().slice(0, 4))
+        .addrLo(chunk.address().slice(4, LLARGE))
         .commitToState(chunk.commitToTheState())
-        .depNumber(BigInteger.valueOf(chunk.deploymentNumber()))
+        .depNumber(Bytes.ofUnsignedInt(chunk.deploymentNumber()))
         .depStatus(chunk.deploymentStatus())
         .readFromState(chunk.readFromTheState())
         .validateRow();

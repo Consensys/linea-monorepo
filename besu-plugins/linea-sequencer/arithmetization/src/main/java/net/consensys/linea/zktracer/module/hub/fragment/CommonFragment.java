@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import java.math.BigInteger;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,6 +26,7 @@ import net.consensys.linea.zktracer.module.hub.TxState;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true, chain = false)
 @AllArgsConstructor
@@ -66,15 +65,15 @@ public final class CommonFragment implements TraceFragment {
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .absoluteTransactionNumber(BigInteger.valueOf(this.txNumber))
-        .batchNumber(BigInteger.valueOf(this.batchNumber))
+        .absoluteTransactionNumber(Bytes.ofUnsignedInt(this.txNumber))
+        .batchNumber(Bytes.ofUnsignedInt(this.batchNumber))
         .txSkip(this.txState == TxState.TX_SKIP)
         .txWarm(this.txState == TxState.TX_WARM)
         .txInit(this.txState == TxState.TX_INIT)
         .txExec(this.txState == TxState.TX_EXEC)
         .txFinl(this.txState == TxState.TX_FINAL)
-        .hubStamp(BigInteger.valueOf(this.stamp))
-        .hubStampTransactionEnd(BigInteger.valueOf(txEndStamp))
+        .hubStamp(Bytes.ofUnsignedInt(this.stamp))
+        .hubStampTransactionEnd(Bytes.ofUnsignedLong(txEndStamp))
         .transactionReverts(txReverts)
         .contextMayChangeFlag(
             (instructionFamily == InstructionFamily.CALL
@@ -85,30 +84,30 @@ public final class CommonFragment implements TraceFragment {
         .exceptionAhoyFlag(exceptions.any())
 
         // Context data
-        .contextNumber(BigInteger.valueOf(contextNumber))
-        .contextNumberNew(BigInteger.valueOf(newContextNumber))
-        .contextRevertStamp(BigInteger.valueOf(revertStamp))
+        .contextNumber(Bytes.ofUnsignedInt(contextNumber))
+        .contextNumberNew(Bytes.ofUnsignedInt(newContextNumber))
+        .contextRevertStamp(Bytes.ofUnsignedInt(revertStamp))
         .contextWillRevertFlag(getsReverted || selfReverts)
         .contextGetsRevertedFlag(getsReverted)
         .contextSelfRevertsFlag(selfReverts)
-        .programCounter(BigInteger.valueOf(pc))
-        .programCounterNew(BigInteger.valueOf(newPc))
+        .programCounter(Bytes.ofUnsignedInt(pc))
+        .programCounterNew(Bytes.ofUnsignedInt(newPc))
 
         // Bytecode metadata
-        .codeAddressHi(codeAddress.hiBigInt())
-        .codeAddressLo(codeAddress.loBigInt())
-        .codeDeploymentNumber(BigInteger.valueOf(codeDeploymentNumber))
+        .codeAddressHi(codeAddress.hi())
+        .codeAddressLo(codeAddress.lo())
+        .codeDeploymentNumber(Bytes.ofUnsignedInt(codeDeploymentNumber))
         .codeDeploymentStatus(codeDeploymentStatus)
-        .callerContextNumber(BigInteger.valueOf(callerContextNumber))
-        .gasExpected(BigInteger.valueOf(gasExpected))
-        .gasActual(BigInteger.valueOf(gasActual))
-        .gasCost(BigInteger.valueOf(gasCost))
-        .gasNext(BigInteger.valueOf(gasNext))
-        .gasRefund(BigInteger.valueOf(gasRefund))
+        .callerContextNumber(Bytes.ofUnsignedInt(callerContextNumber))
+        .gasExpected(Bytes.ofUnsignedLong(gasExpected))
+        .gasActual(Bytes.ofUnsignedLong(gasActual))
+        .gasCost(Bytes.ofUnsignedLong(gasCost))
+        .gasNext(Bytes.ofUnsignedLong(gasNext))
+        .gasRefund(Bytes.ofUnsignedLong(gasRefund))
         .twoLineInstruction(twoLinesInstruction)
         .counterTli(twoLinesInstructionCounter)
-        .numberOfNonStackRows(BigInteger.valueOf(numberOfNonStackRows))
-        .counterNsr(BigInteger.valueOf(nonStackRowsCounter));
+        .numberOfNonStackRows(Bytes.ofUnsignedShort(numberOfNonStackRows))
+        .counterNsr(Bytes.ofUnsignedShort(nonStackRowsCounter));
   }
 
   @Override

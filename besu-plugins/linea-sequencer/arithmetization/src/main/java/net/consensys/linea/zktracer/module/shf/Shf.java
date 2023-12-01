@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -24,6 +23,7 @@ import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -64,15 +64,15 @@ public class Shf implements Module {
           ByteChunks.fromBytes(UnsignedByte.of(op.arg2Lo().get(i)), op.mshp());
 
       trace
-          .acc1(op.arg1Lo().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc2(op.arg2Hi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc3(op.arg2Lo().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc4(op.res().getResHi().slice(0, 1 + i).toUnsignedBigInteger())
-          .acc5(op.res().getResLo().slice(0, 1 + i).toUnsignedBigInteger())
-          .arg1Hi(op.arg1Hi().toUnsignedBigInteger())
-          .arg1Lo(op.arg1Lo().toUnsignedBigInteger())
-          .arg2Hi(op.arg2Hi().toUnsignedBigInteger())
-          .arg2Lo(op.arg2Lo().toUnsignedBigInteger());
+          .acc1(op.arg1Lo().slice(0, 1 + i))
+          .acc2(op.arg2Hi().slice(0, 1 + i))
+          .acc3(op.arg2Lo().slice(0, 1 + i))
+          .acc4(op.res().getResHi().slice(0, 1 + i))
+          .acc5(op.res().getResLo().slice(0, 1 + i))
+          .arg1Hi(op.arg1Hi())
+          .arg1Lo(op.arg1Lo())
+          .arg2Hi(op.arg2Hi())
+          .arg2Lo(op.arg2Lo());
 
       if (op.isShiftRight()) {
         trace.bit1(i >= 1).bit2(i >= 2).bit3(i >= 4).bit4(i >= 8);
@@ -92,33 +92,33 @@ public class Shf implements Module {
           .byte4(UnsignedByte.of(op.res().getResHi().get(i)))
           .byte5(UnsignedByte.of(op.res().getResLo().get(i)))
           .bits(op.bits().get(i))
-          .counter(BigInteger.valueOf(i))
-          .inst(BigInteger.valueOf(op.opCode().byteValue()))
+          .counter(Bytes.of(i))
+          .inst(Bytes.of(op.opCode().byteValue()))
           .known(op.isKnown())
           .neg(op.isNegative())
           .oneLineInstruction(op.isOneLineInstruction())
-          .low3(BigInteger.valueOf(op.low3().toInteger()))
-          .microShiftParameter(BigInteger.valueOf(op.mshp().toInteger()))
-          .resHi(op.res().getResHi().toUnsignedBigInteger())
-          .resLo(op.res().getResLo().toUnsignedBigInteger())
-          .leftAlignedSuffixHigh(arg2HiByteChunks.la().toBigInteger())
-          .rightAlignedPrefixHigh(arg2HiByteChunks.ra().toBigInteger())
-          .ones(BigInteger.valueOf(arg2HiByteChunks.ones().toInteger()))
-          .leftAlignedSuffixLow(arg2LoByteChunks.la().toBigInteger())
-          .rightAlignedPrefixLow(arg2LoByteChunks.ra().toBigInteger())
-          .shb3Hi(op.shb().getShbHi()[0][i].toBigInteger())
-          .shb3Lo(op.shb().getShbLo()[0][i].toBigInteger())
-          .shb4Hi(op.shb().getShbHi()[4 - 3][i].toBigInteger())
-          .shb4Lo(op.shb().getShbLo()[4 - 3][i].toBigInteger())
-          .shb5Hi(op.shb().getShbHi()[5 - 3][i].toBigInteger())
-          .shb5Lo(op.shb().getShbLo()[5 - 3][i].toBigInteger())
-          .shb6Hi(op.shb().getShbHi()[6 - 3][i].toBigInteger())
-          .shb6Lo(op.shb().getShbLo()[6 - 3][i].toBigInteger())
-          .shb7Hi(op.shb().getShbHi()[7 - 3][i].toBigInteger())
-          .shb7Lo(op.shb().getShbLo()[7 - 3][i].toBigInteger())
+          .low3(Bytes.of(op.low3().toInteger()))
+          .microShiftParameter(Bytes.ofUnsignedInt(op.mshp().toInteger()))
+          .resHi(op.res().getResHi())
+          .resLo(op.res().getResLo())
+          .leftAlignedSuffixHigh(Bytes.ofUnsignedShort(arg2HiByteChunks.la().toInteger()))
+          .rightAlignedPrefixHigh(Bytes.ofUnsignedInt(arg2HiByteChunks.ra().toInteger()))
+          .ones(Bytes.ofUnsignedInt(arg2HiByteChunks.ones().toInteger()))
+          .leftAlignedSuffixLow(Bytes.ofUnsignedInt(arg2LoByteChunks.la().toInteger()))
+          .rightAlignedPrefixLow(Bytes.ofUnsignedInt(arg2LoByteChunks.ra().toInteger()))
+          .shb3Hi(Bytes.ofUnsignedInt(op.shb().getShbHi()[0][i].toInteger()))
+          .shb3Lo(Bytes.ofUnsignedInt(op.shb().getShbLo()[0][i].toInteger()))
+          .shb4Hi(Bytes.ofUnsignedInt(op.shb().getShbHi()[4 - 3][i].toInteger()))
+          .shb4Lo(Bytes.ofUnsignedInt(op.shb().getShbLo()[4 - 3][i].toInteger()))
+          .shb5Hi(Bytes.ofUnsignedInt(op.shb().getShbHi()[5 - 3][i].toInteger()))
+          .shb5Lo(Bytes.ofUnsignedInt(op.shb().getShbLo()[5 - 3][i].toInteger()))
+          .shb6Hi(Bytes.ofUnsignedInt(op.shb().getShbHi()[6 - 3][i].toInteger()))
+          .shb6Lo(Bytes.ofUnsignedInt(op.shb().getShbLo()[6 - 3][i].toInteger()))
+          .shb7Hi(Bytes.ofUnsignedInt(op.shb().getShbHi()[7 - 3][i].toInteger()))
+          .shb7Lo(Bytes.ofUnsignedInt(op.shb().getShbLo()[7 - 3][i].toInteger()))
           .shiftDirection(op.isShiftRight())
           .isData(stamp != 0)
-          .shiftStamp(BigInteger.valueOf(stamp))
+          .shiftStamp(Bytes.ofUnsignedInt(stamp))
           .validateRow();
     }
   }

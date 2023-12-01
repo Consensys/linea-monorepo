@@ -15,13 +15,12 @@
 
 package net.consensys.linea.zktracer.module.romLex;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -77,62 +76,82 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace addrHi(final BigInteger b) {
+  public Trace addrHi(final Bytes b) {
     if (filled.get(0)) {
       throw new IllegalStateException("romLex.ADDR_HI already set");
     } else {
       filled.set(0);
     }
 
-    addrHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      addrHi.put((byte) 0);
+    }
+    addrHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace addrLo(final BigInteger b) {
+  public Trace addrLo(final Bytes b) {
     if (filled.get(1)) {
       throw new IllegalStateException("romLex.ADDR_LO already set");
     } else {
       filled.set(1);
     }
 
-    addrLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      addrLo.put((byte) 0);
+    }
+    addrLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeFragmentIndex(final BigInteger b) {
+  public Trace codeFragmentIndex(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX already set");
     } else {
       filled.set(2);
     }
 
-    codeFragmentIndex.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeFragmentIndex.put((byte) 0);
+    }
+    codeFragmentIndex.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeFragmentIndexInfty(final BigInteger b) {
+  public Trace codeFragmentIndexInfty(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX_INFTY already set");
     } else {
       filled.set(3);
     }
 
-    codeFragmentIndexInfty.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeFragmentIndexInfty.put((byte) 0);
+    }
+    codeFragmentIndexInfty.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace codeSize(final BigInteger b) {
+  public Trace codeSize(final Bytes b) {
     if (filled.get(4)) {
       throw new IllegalStateException("romLex.CODE_SIZE already set");
     } else {
       filled.set(4);
     }
 
-    codeSize.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSize.put((byte) 0);
+    }
+    codeSize.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -149,14 +168,18 @@ public class Trace {
     return this;
   }
 
-  public Trace depNumber(final BigInteger b) {
+  public Trace depNumber(final Bytes b) {
     if (filled.get(6)) {
       throw new IllegalStateException("romLex.DEP_NUMBER already set");
     } else {
       filled.set(6);
     }
 
-    depNumber.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumber.put((byte) 0);
+    }
+    depNumber.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -271,10 +294,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }
