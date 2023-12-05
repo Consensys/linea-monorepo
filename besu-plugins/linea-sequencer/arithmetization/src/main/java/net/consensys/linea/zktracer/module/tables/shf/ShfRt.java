@@ -25,7 +25,7 @@ import org.apache.tuweni.bytes.Bytes;
 
 public record ShfRt() implements Module {
   @Override
-  public String jsonKey() {
+  public String moduleKey() {
     return "shfRT";
   }
 

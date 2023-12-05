@@ -46,8 +46,8 @@ public class Trm implements Module {
   private final StackedSet<EWord> trimmings = new StackedSet<>();
 
   @Override
-  public String jsonKey() {
-    return "trm";
+  public String moduleKey() {
+    return "TRM";
   }
 
   @Override

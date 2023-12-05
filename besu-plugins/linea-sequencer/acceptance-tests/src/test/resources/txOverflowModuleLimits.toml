@@ -34,13 +34,14 @@ ROM_LEX             = 20
 SHF                 = 20
 SHF_RT              = 2305
 TX_RLP              = 131072
+TRM                 = 120
 WCP                 = 120
 LOG_DATA            = 20
 LOG_INFO            = 20
 RLP_ADDR            = 20
 RLP_TXN             = 1300
-RLP_TXRCPT          = 90
-TXN_DATA            = 20
+RLP_TXRCPT          = 100
+TXN_DATA            = 30
 STP                 = 20
 
 #
@@ -61,4 +62,5 @@ PRECOMPILE_MODEXP    = 10000
 PRECOMPILE_ECADD     = 10000
 PRECOMPILE_ECMUL     = 10000
 PRECOMPILE_ECPAIRING = 10000
+PRECOMPILE_ECPAIRING_WEIGHTED = 10000
 PRECOMPILE_BLAKE2F   = 512

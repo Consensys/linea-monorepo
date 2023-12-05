@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.tracegeneration.rpc;
+package net.consensys.linea.rpc.counters;
 
 import java.security.InvalidParameterException;
 
@@ -21,25 +21,24 @@ import net.consensys.linea.zktracer.ZkTracer;
 
 /** Holds needed parameters for sending an execution trace generation request. */
 @SuppressWarnings("unused")
-public record TraceRequestParams(long fromBlock, long toBlock, String runtimeVersion) {
-  private static final int EXPECTED_PARAMS_SIZE = 3;
+public record CountersRequestParams(long blockNumber, String runtimeVersion) {
+  private static final int EXPECTED_PARAMS_SIZE = 2;
 
   /**
-   * Parses a list of params to a {@link TraceRequestParams} object.
+   * Parses a list of params to a {@link CountersRequestParams} object.
    *
    * @param params an array of parameters.
-   * @return a parsed {@link TraceRequestParams} object..
+   * @return a parsed {@link CountersRequestParams} object..
    */
-  public static TraceRequestParams createTraceParams(final Object[] params) {
+  public static CountersRequestParams createTraceParams(final Object[] params) {
     // validate params size
     if (params.length != EXPECTED_PARAMS_SIZE) {
       throw new InvalidParameterException(
           String.format("Expected %d parameters but got %d", EXPECTED_PARAMS_SIZE, params.length));
     }
 
-    long fromBlock = Long.parseLong(params[0].toString());
-    long toBlock = Long.parseLong(params[1].toString());
-    String version = params[2].toString();
+    long blockNumber = Long.parseLong(params[0].toString());
+    String version = params[1].toString();
 
     if (!version.equals(getTracerRuntime())) {
       throw new InvalidParameterException(
@@ -48,7 +47,7 @@ public record TraceRequestParams(long fromBlock, long toBlock, String runtimeVer
               getTracerRuntime(), version));
     }
 
-    return new TraceRequestParams(fromBlock, toBlock, version);
+    return new CountersRequestParams(blockNumber, version);
   }
 
   private static String getTracerRuntime() {

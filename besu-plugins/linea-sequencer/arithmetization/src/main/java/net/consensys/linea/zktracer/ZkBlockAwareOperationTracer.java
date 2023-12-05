@@ -40,11 +40,6 @@ public interface ZkBlockAwareOperationTracer extends BlockAwareOperationTracer {
   /** Trace the end of conflation for a number of blocks. */
   void traceEndConflation();
 
-  /**
-   * Get a JSON serialized version of the trace.
-   *
-   * @return a JSON string of the trace
-   */
   void writeToFile(final Path filename);
 
   void traceStartTransaction(WorldView worldView, Transaction transaction);

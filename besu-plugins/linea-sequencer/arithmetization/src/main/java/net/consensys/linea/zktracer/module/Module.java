@@ -30,7 +30,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 public interface Module {
-  String jsonKey();
+  String moduleKey();
 
   default void traceStartConflation(final long blockCount) {}
 

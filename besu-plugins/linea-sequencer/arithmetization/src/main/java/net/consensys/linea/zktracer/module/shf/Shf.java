@@ -32,8 +32,8 @@ public class Shf implements Module {
   private final StackedSet<ShfOperation> operations = new StackedSet<>();
 
   @Override
-  public String jsonKey() {
-    return "shf";
+  public String moduleKey() {
+    return "SHF";
   }
 
   @Override

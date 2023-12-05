@@ -50,8 +50,8 @@ public class Mmu implements Module {
   }
 
   @Override
-  public String jsonKey() {
-    return "mmu";
+  public String moduleKey() {
+    return "MMU";
   }
 
   @Override

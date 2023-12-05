@@ -34,8 +34,8 @@ public final class EcMul implements Module {
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
-  public String jsonKey() {
-    return "ecmul";
+  public String moduleKey() {
+    return "PRECOMPILE_ECMUL";
   }
 
   private final int precompileGasFee = 6000; // cf EIP-1108

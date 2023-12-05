@@ -164,7 +164,7 @@ public class Hub implements Module {
   private final Wcp wcp = new Wcp();
   private final RlpTxn rlpTxn;
   private final Module mxp;
-  private final Module mmu;
+  private final Mmu mmu;
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxrcpt);
   private final LogData logData = new LogData(rlpTxrcpt);
@@ -255,9 +255,34 @@ public class Hub implements Module {
         this.wcp);
   }
 
+  public List<Module> getModulesToCount() {
+    return Stream.concat(
+            Stream.of(
+                this,
+                this.romLex,
+                this.add,
+                this.ext,
+                this.logData,
+                this.logInfo,
+                this.mod,
+                this.mmu,
+                this.mul,
+                this.mxp,
+                this.rlpAddr,
+                this.rlpTxn,
+                this.rlpTxrcpt,
+                this.rom,
+                this.shf,
+                this.trm,
+                this.txnData,
+                this.wcp),
+            this.precompileLimitModules.stream())
+        .toList();
+  }
+
   @Override
-  public String jsonKey() {
-    return "hub_v2_off";
+  public String moduleKey() {
+    return "HUB";
   }
 
   public static boolean isValidPrecompileCall(MessageFrame frame, final OpCode opCode) {
