@@ -161,7 +161,7 @@ public class Hub implements Module {
   private final Mod mod = new Mod();
   private final Module mul = new Mul(this);
   private final Module shf = new Shf();
-  private final Wcp wcp = new Wcp();
+  private final Wcp wcp = new Wcp(this);
   private final RlpTxn rlpTxn;
   private final Module mxp;
   private final Mmu mmu;
