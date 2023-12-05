@@ -13,32 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.mmio;
+package net.consensys.linea.rpc.tracegeneration;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
-
-public class Mmio implements Module {
-  @Override
-  public String moduleKey() {
-    return "MMIO";
-  }
-
-  @Override
-  public void enterTransaction() {}
-
-  @Override
-  public void popTransaction() {}
-
-  @Override
-  public int lineCount() {
-    return 0;
-  }
-
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    throw new RuntimeException("TODO");
-  }
-}
+/** FileTrace represents an execution trace. */
+public record TraceFile(
+    @JsonProperty("tracesEngineVersion") String tracesEngineVersion,
+    @JsonProperty("traceFileName") String traceFileName) {}

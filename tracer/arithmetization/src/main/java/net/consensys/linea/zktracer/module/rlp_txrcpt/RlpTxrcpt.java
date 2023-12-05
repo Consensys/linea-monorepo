@@ -55,8 +55,8 @@ public class RlpTxrcpt implements Module {
   @Getter public StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
 
   @Override
-  public String jsonKey() {
-    return "rlpTxRcpt";
+  public String moduleKey() {
+    return "RLP_TXRCPT";
   }
 
   @Override

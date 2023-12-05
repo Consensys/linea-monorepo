@@ -79,8 +79,8 @@ public class RomLex implements Module {
   }
 
   @Override
-  public String jsonKey() {
-    return "romLex";
+  public String moduleKey() {
+    return "ROM_LEX";
   }
 
   public RomLex(Hub hub) {

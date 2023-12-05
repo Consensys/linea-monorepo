@@ -139,7 +139,7 @@ public final class InstructionDecoder implements Module {
   }
 
   @Override
-  public String jsonKey() {
+  public String moduleKey() {
     return "instruction-decoder";
   }
 

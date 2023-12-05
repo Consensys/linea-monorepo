@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.tracegeneration.rpc;
+package net.consensys.linea.rpc.tracegeneration;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +53,7 @@ public class RollupGenerateConflatedTracesToFileV0 {
    * @param request holds parameters of the RPC request.
    * @return an execution file trace.
    */
-  public FileTrace execute(final PluginRpcRequest request) {
+  public TraceFile execute(final PluginRpcRequest request) {
     Stopwatch sw = Stopwatch.createStarted();
     if (this.traceService == null) {
       this.traceService = getTraceService();
@@ -71,18 +71,14 @@ public class RollupGenerateConflatedTracesToFileV0 {
       traceService.trace(
           fromBlock,
           toBlock,
-          worldStateBeforeTracing -> {
-            tracer.traceStartConflation(toBlock - fromBlock + 1);
-          },
-          worldStateAfterTracing -> {
-            tracer.traceEndConflation();
-          },
+          worldStateBeforeTracing -> tracer.traceStartConflation(toBlock - fromBlock + 1),
+          worldStateAfterTracing -> tracer.traceEndConflation(),
           tracer);
-      log.info("[TRACING] trace computed in {}", sw);
+      log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
       sw.reset().start();
       final String path = writeTraceToFile(tracer, params.runtimeVersion());
-      log.info("[TRACING] trace serialized to {} in {}", path, sw);
-      return new FileTrace(params.runtimeVersion(), path);
+      log.info("[TRACING] trace for {}-{} serialized to {} in {}", path, toBlock, fromBlock, sw);
+      return new TraceFile(params.runtimeVersion(), path);
     } catch (Exception ex) {
       throw new PluginRpcEndpointException(ex.getMessage());
     }

@@ -13,14 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.tracegeneration;
+package net.consensys.linea.rpc.tracegeneration;
 
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.LineaRequiredPlugin;
-import net.consensys.linea.tracegeneration.rpc.RollupGenerateConflatedTracesToFileV0;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
@@ -54,7 +53,4 @@ public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
   public void start() {
     OpCodes.load();
   }
-
-  @Override
-  public void stop() {}
 }

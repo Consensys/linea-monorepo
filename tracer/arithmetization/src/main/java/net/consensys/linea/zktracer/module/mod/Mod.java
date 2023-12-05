@@ -35,8 +35,8 @@ public class Mod implements Module {
   private int stamp = 0;
 
   @Override
-  public String jsonKey() {
-    return "mod";
+  public String moduleKey() {
+    return "MOD";
   }
 
   private final StackedSet<ModOperation> chunks = new StackedSet<>();

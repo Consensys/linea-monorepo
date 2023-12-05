@@ -34,8 +34,8 @@ public class Wcp implements Module {
   private int stamp = 0;
 
   @Override
-  public String jsonKey() {
-    return "wcp";
+  public String moduleKey() {
+    return "WCP";
   }
 
   @Override

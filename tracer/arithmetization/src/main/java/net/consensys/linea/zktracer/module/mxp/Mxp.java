@@ -39,8 +39,8 @@ public class Mxp implements Module {
   private Hub hub;
 
   @Override
-  public String jsonKey() {
-    return "mxp";
+  public String moduleKey() {
+    return "MXP";
   }
 
   public Mxp(Hub hub) {

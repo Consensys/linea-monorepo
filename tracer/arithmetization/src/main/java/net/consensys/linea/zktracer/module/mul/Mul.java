@@ -41,8 +41,8 @@ public class Mul implements Module {
   private int stamp = 0;
 
   @Override
-  public String jsonKey() {
-    return "mul";
+  public String moduleKey() {
+    return "MUL";
   }
 
   @Override

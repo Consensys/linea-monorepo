@@ -34,8 +34,8 @@ public final class Sha256 implements Module {
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
-  public String jsonKey() {
-    return "sha256";
+  public String moduleKey() {
+    return "PRECOMPILE_SHA2";
   }
 
   private final int precompileBaseGasFee = 60;
