@@ -18,20 +18,25 @@ package net.consensys.linea.zktracer.module.wcp;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
+import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
+@RequiredArgsConstructor
 public class Wcp implements Module {
+
   private final StackedSet<WcpOperation> operations = new StackedSet<>();
   private int stamp = 0;
+
+  private final Hub hub;
 
   @Override
   public String moduleKey() {
@@ -50,18 +55,27 @@ public class Wcp implements Module {
 
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
-    final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opcode = this.hub.opCode();
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =
-        (opCode.mnemonic() != OpCode.ISZERO)
-            ? Bytes32.leftPad(frame.getStackItem(1))
-            : Bytes32.ZERO;
+        (opcode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
 
-    this.operations.add(new WcpOperation(opCode, arg1, arg2));
+    this.operations.add(new WcpOperation(opcode, arg1, arg2));
   }
 
   public void traceWcpOperation(WcpOperation op, Trace trace) {
     this.stamp++;
+    final Bytes resHi = op.getResHi() ? Bytes.of(1) : Bytes.EMPTY;
+    final Bytes resLo = op.getResLo() ? Bytes.of(1) : Bytes.EMPTY;
+    final List<Boolean> bits = op.getBits();
+    final boolean neg1 = op.getNeg1();
+    final boolean neg2 = op.getNeg2();
+    final Bytes16 adjHi = op.getAdjHi();
+    final Bytes16 adjLo = op.getAdjLo();
+    final boolean bit1 = op.getBit1();
+    final boolean bit2 = op.getBit2();
+    final boolean bit3 = op.getBit3();
+    final boolean bit4 = op.getBit4();
     for (int i = 0; i < op.maxCt(); i++) {
       trace
           .wordComparisonStamp(Bytes.ofUnsignedInt(stamp))
@@ -72,27 +86,27 @@ public class Wcp implements Module {
           .argument1Lo(op.getArg1Lo())
           .argument2Hi(op.getArg2Hi())
           .argument2Lo(op.getArg2Lo())
-          .resultHi(op.getResHi() ? Bytes.of(1) : Bytes.EMPTY)
-          .resultLo(op.getResLo() ? Bytes.of(1) : Bytes.EMPTY)
-          .bits(op.getBits().get(i))
-          .neg1(op.getNeg1())
-          .neg2(op.getNeg2())
+          .resultHi(resHi)
+          .resultLo(resLo)
+          .bits(bits.get(i))
+          .neg1(neg1)
+          .neg2(neg2)
           .byte1(UnsignedByte.of(op.getArg1Hi().get(i)))
           .byte2(UnsignedByte.of(op.getArg1Lo().get(i)))
           .byte3(UnsignedByte.of(op.getArg2Hi().get(i)))
           .byte4(UnsignedByte.of(op.getArg2Lo().get(i)))
-          .byte5(UnsignedByte.of(op.getAdjHi().get(i)))
-          .byte6(UnsignedByte.of(op.getAdjLo().get(i)))
+          .byte5(UnsignedByte.of(adjHi.get(i)))
+          .byte6(UnsignedByte.of(adjLo.get(i)))
           .acc1(op.getArg1Hi().slice(0, 1 + i))
           .acc2(op.getArg1Lo().slice(0, 1 + i))
           .acc3(op.getArg2Hi().slice(0, 1 + i))
           .acc4(op.getArg2Lo().slice(0, 1 + i))
-          .acc5(op.getAdjHi().slice(0, 1 + i))
-          .acc6(op.getAdjLo().slice(0, 1 + i))
-          .bit1(op.getBit1())
-          .bit2(op.getBit2())
-          .bit3(op.getBit3())
-          .bit4(op.getBit4())
+          .acc5(adjHi.slice(0, 1 + i))
+          .acc6(adjLo.slice(0, 1 + i))
+          .bit1(bit1)
+          .bit2(bit2)
+          .bit3(bit3)
+          .bit4(bit4)
           .validateRow();
     }
   }

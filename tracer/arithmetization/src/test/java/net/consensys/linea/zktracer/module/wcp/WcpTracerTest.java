@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.DynamicTests;
 import net.consensys.linea.zktracer.testing.OpcodeCall;
@@ -28,7 +29,8 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
 class WcpTracerTest {
-  private static final Module MODULE = new Wcp();
+  private static final Hub hub = new Hub();
+  private static final Module MODULE = new Wcp(hub);
 
   private static final DynamicTests DYN_TESTS = DynamicTests.forModule(MODULE);
 

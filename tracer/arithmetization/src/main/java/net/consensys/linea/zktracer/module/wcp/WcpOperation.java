@@ -26,7 +26,6 @@ import java.util.Objects;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -59,10 +58,6 @@ public class WcpOperation {
   @Getter private final Boolean resLo;
 
   @Getter final List<Boolean> bits;
-
-  public WcpOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
-    this(opCodeData.mnemonic(), arg1, arg2);
-  }
 
   public WcpOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;
