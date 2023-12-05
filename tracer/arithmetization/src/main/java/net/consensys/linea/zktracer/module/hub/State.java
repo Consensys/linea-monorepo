@@ -65,7 +65,11 @@ public class State implements StackedContainer {
    * @return the cumulated line numbers for all currently traced transactions
    */
   int lineCount() {
-    return this.state.stream().mapToInt(s -> s.txTrace.lineCount()).sum();
+    int sum = 0;
+    for (TxState s : this.state) {
+      sum += s.txTrace.lineCount();
+    }
+    return sum;
   }
 
   @Override
