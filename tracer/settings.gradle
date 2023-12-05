@@ -22,7 +22,7 @@
  * in the user manual at https://docs.gradle.org/5.2.1/userguide/multi_project_builds.html
  */
 
-rootProject.name = 'linea-besu-plugin'
+rootProject.name = 'besu-sequencer-plugins'
 include 'arithmetization'
 include 'acceptance-tests'
 include 'reference-tests'

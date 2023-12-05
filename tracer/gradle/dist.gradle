@@ -33,6 +33,8 @@ tasks.register('downloadLatestLineaBesu', Download) {
   onlyIfModified true
 }
 
+version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
+
 jar {
   dependsOn downloadLatestLineaBesu
 
