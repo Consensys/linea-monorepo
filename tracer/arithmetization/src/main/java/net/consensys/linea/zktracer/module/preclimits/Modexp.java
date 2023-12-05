@@ -43,8 +43,8 @@ public class Modexp implements Module {
   private final int gQuadDivisor = 3;
 
   @Override
-  public String jsonKey() {
-    return "modexp";
+  public String moduleKey() {
+    return "PRECOMPILE_MODEXP";
   }
 
   @Override

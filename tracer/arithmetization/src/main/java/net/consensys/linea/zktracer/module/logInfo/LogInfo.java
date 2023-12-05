@@ -36,8 +36,8 @@ public class LogInfo implements Module {
   private static final int LOG0 = 0xa0; // TODO why I don't get it from the .lisp ?
 
   @Override
-  public String jsonKey() {
-    return "logInfo";
+  public String moduleKey() {
+    return "PUB_LOG_INFO";
   }
 
   @Override

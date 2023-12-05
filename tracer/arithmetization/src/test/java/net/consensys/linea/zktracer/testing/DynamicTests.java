@@ -189,7 +189,7 @@ public class DynamicTests {
               String testName =
                   "[%s][%s] Test bytecode for opcode %s with opArgs %s"
                       .formatted(
-                          module.jsonKey().toUpperCase(), testCaseName, e.opCode(), e.args());
+                          module.moduleKey().toUpperCase(), testCaseName, e.opCode(), e.args());
 
               return DynamicTest.dynamicTest(
                   testName,

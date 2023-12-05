@@ -19,9 +19,9 @@ import java.io.File;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
@@ -43,7 +43,7 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionSelectorCliOptions options;
   private Optional<TransactionSelectionService> service;
-  private Map<String, Integer> limitsMap = new HashMap<>();
+  private final Map<String, Integer> limitsMap = new ConcurrentHashMap<>();
 
   public LineaTransactionSelectorPlugin() {
     options = LineaTransactionSelectorCliOptions.create();
@@ -86,7 +86,7 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
       table
           .toMap()
           .keySet()
-          .forEach(key -> limitsMap.put(toCamelCase(key), Math.toIntExact(table.getLong(key))));
+          .forEach(key -> limitsMap.put(key, Math.toIntExact(table.getLong(key))));
     } catch (final Exception e) {
       final String errorMsg =
           "Problem reading the toml file containing the limits for the modules: "

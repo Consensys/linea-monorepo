@@ -63,8 +63,8 @@ public class TxnData implements Module {
   private final Wcp wcp;
 
   @Override
-  public String jsonKey() {
-    return "txnData";
+  public String moduleKey() {
+    return "TXN_DATA";
   }
 
   private final List<BlockSnapshot> blocks = new ArrayList<>();

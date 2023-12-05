@@ -34,8 +34,8 @@ public final class EcAdd implements Module {
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
-  public String jsonKey() {
-    return "ecadd";
+  public String moduleKey() {
+    return "PRECOMPILE_ECADD";
   }
 
   private final int precompileGasFee = 150; // cf EIP-1108

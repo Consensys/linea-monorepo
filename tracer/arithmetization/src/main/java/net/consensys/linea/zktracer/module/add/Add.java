@@ -47,8 +47,8 @@ public class Add implements Module {
   private final StackedSet<AddOperation> chunks = new StackedSet<>();
 
   @Override
-  public String jsonKey() {
-    return "add";
+  public String moduleKey() {
+    return "ADD";
   }
 
   @Override

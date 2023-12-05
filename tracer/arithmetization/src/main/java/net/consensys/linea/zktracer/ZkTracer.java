@@ -25,14 +25,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.toml.Toml;
+import org.apache.tuweni.toml.TomlTable;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -47,19 +49,27 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Slf4j
-@RequiredArgsConstructor
 public class ZkTracer implements ZkBlockAwareOperationTracer {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
 
-  @Getter private final Hub hub;
+  @Getter private final Hub hub = new Hub();
+  private final Map<String, Integer> spillings = new HashMap<>();
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   public ZkTracer() {
     // Load opcodes configured in src/main/resources/opcodes.yml.
     OpCodes.load();
 
-    this.hub = new Hub();
+    // Load spillings configured in src/main/resources/spillings.toml.
+    try {
+      final TomlTable table =
+          Toml.parse(getClass().getClassLoader().getResourceAsStream("spillings.toml"))
+              .getTable("spillings");
+      table.toMap().keySet().forEach(k -> spillings.put(k, Math.toIntExact(table.getLong(k))));
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public Path writeToTmpFile() {
@@ -202,8 +212,20 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
 
   public Map<String, Integer> getModulesLineCount() {
     final HashMap<String, Integer> modulesLineCount = new HashMap<>();
-    hub.getModulesToTrace()
-        .forEach(m -> modulesLineCount.put(m.getClass().getSimpleName(), m.lineCount()));
+    hub.getModulesToCount()
+        .forEach(
+            m ->
+                modulesLineCount.put(
+                    m.moduleKey(),
+                    m.lineCount()
+                        + Optional.ofNullable(this.spillings.get(m.moduleKey()))
+                            .orElseThrow(
+                                () ->
+                                    new IllegalStateException(
+                                        "Module "
+                                            + m.moduleKey()
+                                            + " not found in spillings.toml"))));
+    modulesLineCount.put("BLOCK_TX", hub.tx().number());
     return modulesLineCount;
   }
 }

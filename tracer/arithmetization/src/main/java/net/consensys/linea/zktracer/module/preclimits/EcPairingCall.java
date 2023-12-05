@@ -39,8 +39,8 @@ public final class EcPairingCall implements Module {
   private final int ecPairingNbBytesperMillerLoop = 192;
 
   @Override
-  public String jsonKey() {
-    return "ecpairingCall";
+  public String moduleKey() {
+    return "PRECOMPILE_ECPAIRING";
   }
 
   @Override

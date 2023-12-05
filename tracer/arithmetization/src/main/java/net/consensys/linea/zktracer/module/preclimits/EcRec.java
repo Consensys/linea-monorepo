@@ -38,8 +38,8 @@ public final class EcRec implements Module {
   private final Stack<Integer> counts = new Stack<Integer>();
 
   @Override
-  public String jsonKey() {
-    return "ecrecover";
+  public String moduleKey() {
+    return "PRECOMPILE_ECRECOVER";
   }
 
   private final int ecrecGasFee = 3000;

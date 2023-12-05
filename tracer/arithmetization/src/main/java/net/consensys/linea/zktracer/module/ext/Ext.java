@@ -37,8 +37,8 @@ public class Ext implements Module {
   private final StackedSet<ExtOperation> operations = new StackedSet<>();
 
   @Override
-  public String jsonKey() {
-    return "ext";
+  public String moduleKey() {
+    return "EXT";
   }
 
   @Override
