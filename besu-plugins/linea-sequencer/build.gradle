@@ -7,3 +7,4 @@ buildscript {
     besuPluginDir = File.createTempDir("plugins")
   }
 }
+version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
