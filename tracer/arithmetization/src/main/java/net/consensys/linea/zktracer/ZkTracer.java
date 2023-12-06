@@ -225,7 +225,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
                                         "Module "
                                             + m.moduleKey()
                                             + " not found in spillings.toml"))));
-    modulesLineCount.put("BLOCK_TX", hub.tx().number());
+    modulesLineCount.put("BLOCK_TX", hub.cumulatedTxCount());
     return modulesLineCount;
   }
 }

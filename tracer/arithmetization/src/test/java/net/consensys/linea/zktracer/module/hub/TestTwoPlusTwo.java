@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class TwoPlusTwo {
+public class TestTwoPlusTwo {
   @Test
   void testAdd() {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(27).op(OpCode.ADD).compile())
