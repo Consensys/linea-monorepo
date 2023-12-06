@@ -48,8 +48,8 @@ import net.consensys.linea.zktracer.module.preclimits.Blake2f;
 import net.consensys.linea.zktracer.module.preclimits.EcAdd;
 import net.consensys.linea.zktracer.module.preclimits.EcMul;
 import net.consensys.linea.zktracer.module.preclimits.EcPairingCall;
-import net.consensys.linea.zktracer.module.preclimits.EcRec;
-import net.consensys.linea.zktracer.module.preclimits.EcpairingWeightedCall;
+import net.consensys.linea.zktracer.module.preclimits.EcPairingWeightedCall;
+import net.consensys.linea.zktracer.module.preclimits.EcRecover;
 import net.consensys.linea.zktracer.module.preclimits.Modexp;
 import net.consensys.linea.zktracer.module.preclimits.Rip160;
 import net.consensys.linea.zktracer.module.preclimits.Sha256;
@@ -194,13 +194,13 @@ public class Hub implements Module {
     this.precompileLimitModules =
         List.of(
             new Sha256(this),
-            new EcRec(this),
+            new EcRecover(this),
             new Rip160(this),
             this.modexp,
             new EcAdd(this),
             new EcMul(this),
             ecpairingCall,
-            new EcpairingWeightedCall(ecpairingCall),
+            new EcPairingWeightedCall(ecpairingCall),
             new Blake2f(this));
 
     this.modules =

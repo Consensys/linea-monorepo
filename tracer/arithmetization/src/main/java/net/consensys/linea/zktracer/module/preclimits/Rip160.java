@@ -38,12 +38,12 @@ public final class Rip160 implements Module {
     return "PRECOMPILE_RIPEMD";
   }
 
-  private final int precompileBaseGasFee = 600;
-  private final int precompileGasFeePerEWord = 120;
-  private final int ripmd160BlockSize = 64 * 8;
-  private final int ripmd160LengthAppend =
-      64; // If the length is > 2⁶4, we just use the lower 64 bits.
-  private final int ripmd160NbPaddedOne = 1;
+  private static final int PRECOMPILE_BASE_GAS_FEE = 600;
+  private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 120;
+  private static final int RIPEMD160_BLOCKSIZE = 64 * 8;
+  // If the length is > 2⁶4, we just use the lower 64 bits.
+  private static final int RIPEMD160_LENGTH_APPEND = 64;
+  private static final int RIPEMD160_ND_PADDED_ONE = 1;
 
   @Override
   public void enterTransaction() {
@@ -62,7 +62,7 @@ public final class Rip160 implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.RIPEMD160) {
+        if (target.equals(Address.RIPEMD160)) {
           long dataByteLength = 0;
           switch (opCode) {
             case CALL, CALLCODE -> dataByteLength = Words.clampedToLong(frame.getStackItem(4));
@@ -76,14 +76,14 @@ public final class Rip160 implements Module {
           final int blockCount =
               (int)
                       (dataByteLength * 8
-                          + ripmd160NbPaddedOne
-                          + ripmd160LengthAppend
-                          + (ripmd160BlockSize - 1))
-                  / ripmd160BlockSize;
+                          + RIPEMD160_ND_PADDED_ONE
+                          + RIPEMD160_LENGTH_APPEND
+                          + (RIPEMD160_BLOCKSIZE - 1))
+                  / RIPEMD160_BLOCKSIZE;
 
           final long wordCount = (dataByteLength + 31) / 32;
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          final long gasNeeded = precompileBaseGasFee + precompileGasFeePerEWord * wordCount;
+          final long gasNeeded = PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_GAS_FEE_PER_EWORD * wordCount;
 
           if (gasPaid >= gasNeeded) {
             this.counts.push(this.counts.pop() + blockCount);

@@ -33,18 +33,18 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
-public final class EcRec implements Module {
+public final class EcRecover implements Module {
   private final Hub hub;
-  private final Stack<Integer> counts = new Stack<Integer>();
+  private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
     return "PRECOMPILE_ECRECOVER";
   }
 
-  private final int ecrecGasFee = 3000;
-  private final int ewordSize = 32;
-  private final BigInteger secp256k1n =
+  private static final int ECRECOVER_GAS_FEE = 3000;
+  private static final int EWORD_SIZE = 32;
+  private static final BigInteger SECP_256_K1N =
       new BigInteger(
           "115792089237316195423570985008687907852837564279074904382605163141518161494337");
 
@@ -65,7 +65,7 @@ public final class EcRec implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.ECREC) {
+        if (target.equals(Address.ECREC)) {
           long length = 0;
           long offset = 0;
           switch (opCode) {
@@ -79,18 +79,17 @@ public final class EcRec implements Module {
             }
           }
           final Bytes inputData = frame.shadowReadMemory(offset, length);
-          final BigInteger h = slice(inputData, 0, ewordSize).toUnsignedBigInteger();
-          final BigInteger v = slice(inputData, ewordSize, ewordSize).toUnsignedBigInteger();
-          final BigInteger r = slice(inputData, ewordSize * 2, ewordSize).toUnsignedBigInteger();
-          final BigInteger s = slice(inputData, ewordSize * 3, ewordSize).toUnsignedBigInteger();
+          final BigInteger v = slice(inputData, EWORD_SIZE, EWORD_SIZE).toUnsignedBigInteger();
+          final BigInteger r = slice(inputData, EWORD_SIZE * 2, EWORD_SIZE).toUnsignedBigInteger();
+          final BigInteger s = slice(inputData, EWORD_SIZE * 3, EWORD_SIZE).toUnsignedBigInteger();
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
           // TODO: exclude case without valid signature
-          if (gasPaid >= ecrecGasFee
+          if (gasPaid >= ECRECOVER_GAS_FEE
               && (v.equals(BigInteger.valueOf(27)) || v.equals(BigInteger.valueOf(28)))
               && !r.equals(BigInteger.ZERO)
-              && r.compareTo(secp256k1n) < 0
+              && r.compareTo(SECP_256_K1N) < 0
               && !s.equals(BigInteger.ZERO)
-              && s.compareTo(secp256k1n) < 0) {
+              && s.compareTo(SECP_256_K1N) < 0) {
             this.counts.push(this.counts.pop() + 1);
           }
         }
