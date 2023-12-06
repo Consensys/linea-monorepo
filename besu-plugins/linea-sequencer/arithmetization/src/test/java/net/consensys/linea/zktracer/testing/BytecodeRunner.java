@@ -16,8 +16,12 @@
 package net.consensys.linea.zktracer.testing;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import com.google.common.base.Preconditions;
+import lombok.Setter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -29,13 +33,23 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 /**
  * A BytecodeRunner takes bytecode, then run it in a single transaction in a single block, and
  * ensures that it executed correctly.
- *
- * @param byteCode the byte code to test
  */
-public record BytecodeRunner(Bytes byteCode) {
+@Accessors(fluent = true)
+public final class BytecodeRunner {
+  private final Bytes byteCode;
+
+  /**
+   * @param byteCode the byte code to test
+   */
+  public BytecodeRunner(Bytes byteCode) {
+    this.byteCode = byteCode;
+  }
+
   public static BytecodeRunner of(Bytes byteCode) {
     return new BytecodeRunner(byteCode);
   }
+
+  @Setter private Consumer<ZkTracer> zkTracerValidator = zkTracer -> {};
 
   public void run() {
     Preconditions.checkArgument(byteCode != null, "byteCode cannot be empty");
@@ -68,6 +82,7 @@ public record BytecodeRunner(Bytes byteCode) {
     ToyExecutionEnvironment.builder()
         .testValidator(x -> {})
         .toyWorld(toyWorld)
+        .zkTracerValidator(zkTracerValidator)
         .transaction(tx)
         .build()
         .run();

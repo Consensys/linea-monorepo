@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.List;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -85,7 +87,8 @@ public class CallEmptyNoStopTest {
         .zkTracerValidator(
             zkTracer -> {
               // Ensure we don't have any superfluous STOP
-              assert zkTracer.getHub().state().currentTxTrace().getTrace().size() == 11;
+              assertThat(zkTracer.getHub().state().currentTxTrace().getTrace().size())
+                  .isEqualTo(10);
             })
         .build()
         .run();
