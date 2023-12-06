@@ -21,10 +21,10 @@ import java.util.List;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
-public final class EcpairingWeightedCall implements Module {
+public final class EcPairingWeightedCall implements Module {
   private final EcPairingCall ecpairingCall;
 
-  public EcpairingWeightedCall(EcPairingCall ecpairingCall) {
+  public EcPairingWeightedCall(EcPairingCall ecpairingCall) {
     this.ecpairingCall = ecpairingCall;
   }
 
@@ -41,7 +41,12 @@ public final class EcpairingWeightedCall implements Module {
 
   @Override
   public int lineCount() {
-    return ecpairingCall.counts.stream().mapToInt(EcpairingLimit::nMillerLoop).sum();
+    final long r = ecpairingCall.getCounts().stream().mapToLong(EcPairingLimit::nMillerLoop).sum();
+    if (r > Integer.MAX_VALUE) {
+      throw new RuntimeException("Ludicrous EcPairing calls");
+    }
+
+    return (int) r;
   }
 
   @Override

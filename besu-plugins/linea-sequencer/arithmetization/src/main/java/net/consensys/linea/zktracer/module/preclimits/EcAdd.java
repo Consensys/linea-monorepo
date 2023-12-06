@@ -31,14 +31,14 @@ import org.hyperledger.besu.evm.internal.Words;
 @RequiredArgsConstructor
 public final class EcAdd implements Module {
   private final Hub hub;
-  private final Stack<Integer> counts = new Stack<Integer>();
+  private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
     return "PRECOMPILE_ECADD";
   }
 
-  private final int precompileGasFee = 150; // cf EIP-1108
+  private static final int PRECOMPILE_GAS_FEE = 150; // cf EIP-1108
 
   @Override
   public void enterTransaction() {
@@ -57,9 +57,9 @@ public final class EcAdd implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.ALTBN128_ADD) {
+        if (target.equals(Address.ALTBN128_ADD)) {
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          if (gasPaid >= precompileGasFee) {
+          if (gasPaid >= PRECOMPILE_GAS_FEE) {
             this.counts.push(this.counts.pop() + 1);
           }
         }

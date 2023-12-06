@@ -31,19 +31,19 @@ import org.hyperledger.besu.evm.internal.Words;
 @RequiredArgsConstructor
 public final class Sha256 implements Module {
   private final Hub hub;
-  private final Stack<Integer> counts = new Stack<Integer>();
+  private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
     return "PRECOMPILE_SHA2";
   }
 
-  private final int precompileBaseGasFee = 60;
-  private final int precompileGasFeePerEWord = 12;
-  private final int sha256BlockSize = 64 * 8;
-  private final int sha256LengthPadding =
-      64; // The length of the data to be hashed is 2**64 maximum.
-  private final int sha256NbPaddedOne = 1;
+  private static final int PRECOMPILE_BASE_GAS_FEE = 60;
+  private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 12;
+  private static final int SHA256_BLOCKSIZE = 64 * 8;
+  // The length of the data to be hashed is 2**64 maximum.
+  private static final int SHA256_PADDING_LENGTH = 64;
+  private static final int SHA256_NB_PADDED_ONE = 1;
 
   @Override
   public void enterTransaction() {
@@ -62,7 +62,7 @@ public final class Sha256 implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target == Address.SHA256) {
+        if (target.equals(Address.SHA256)) {
           long dataByteLength = 0;
           switch (opCode) {
             case CALL, CALLCODE -> dataByteLength = Words.clampedToLong(frame.getStackItem(4));
@@ -75,14 +75,14 @@ public final class Sha256 implements Module {
           final int blockCount =
               (int)
                       (dataByteLength * 8
-                          + sha256NbPaddedOne
-                          + sha256LengthPadding
-                          + (sha256BlockSize - 1))
-                  / sha256BlockSize;
+                          + SHA256_NB_PADDED_ONE
+                          + SHA256_PADDING_LENGTH
+                          + (SHA256_BLOCKSIZE - 1))
+                  / SHA256_BLOCKSIZE;
 
           final long wordCount = (dataByteLength + 31) / 32;
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          final long gasNeeded = precompileBaseGasFee + precompileGasFeePerEWord * wordCount;
+          final long gasNeeded = PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_GAS_FEE_PER_EWORD * wordCount;
 
           if (gasPaid >= gasNeeded) {
             this.counts.push(this.counts.pop() + blockCount);
