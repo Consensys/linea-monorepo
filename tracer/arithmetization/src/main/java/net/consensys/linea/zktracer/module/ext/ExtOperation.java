@@ -67,10 +67,10 @@ public class ExtOperation {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     final ExtOperation that = (ExtOperation) o;
-    return Objects.equals(opCode, that.opCode)
-        && Objects.equals(arg1, that.arg1)
-        && Objects.equals(arg2, that.arg2)
-        && Objects.equals(arg3, that.arg3);
+    return Objects.equals(this.opCode, that.opCode)
+        && Objects.equals(this.arg1, that.arg1)
+        && Objects.equals(this.arg2, that.arg2)
+        && Objects.equals(this.arg3, that.arg3);
   }
 
   public ExtOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {

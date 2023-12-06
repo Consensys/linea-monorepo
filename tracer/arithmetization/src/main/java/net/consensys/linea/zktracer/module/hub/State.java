@@ -61,6 +61,10 @@ public class State implements StackedContainer {
     return hubTrace;
   }
 
+  int txCount() {
+    return this.state.size();
+  }
+
   /**
    * @return the cumulated line numbers for all currently traced transactions
    */

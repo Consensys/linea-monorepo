@@ -122,8 +122,6 @@ public class ToyExecutionEnvironment {
     tracer.traceStartBlock(header, mockBlockBody);
 
     for (Transaction tx : mockBlockBody.getTransactions()) {
-      tracer.traceStartTransaction(toyWorld.updater(), tx);
-
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
               null,
@@ -137,17 +135,6 @@ public class ToyExecutionEnvironment {
               },
               false,
               Wei.ZERO);
-
-      long transactionGasUsed = tx.getGasLimit() - result.getGasRemaining();
-
-      tracer.traceEndTransaction(
-          toyWorld.updater(),
-          tx,
-          result.isSuccessful(),
-          result.getOutput(),
-          result.getLogs(),
-          transactionGasUsed,
-          0);
 
       this.testValidator.accept(result);
       this.zkTracerValidator.accept(tracer);

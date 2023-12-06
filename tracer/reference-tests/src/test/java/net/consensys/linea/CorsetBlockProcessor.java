@@ -124,7 +124,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
       zkTracer.traceStartConflation(1);
       zkTracer.traceStartBlock(blockHeader, blockBody);
-      zkTracer.traceStartTransaction(worldState, transaction);
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
               blockchain,
@@ -138,14 +137,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
               TransactionValidationParams.processingBlock(),
               privateMetadataUpdater,
               blobGasPrice);
-      zkTracer.traceEndTransaction(
-          worldState,
-          transaction,
-          result.isSuccessful(),
-          result.getOutput(),
-          result.getLogs(),
-          transaction.getGasLimit() - result.getGasRemaining(),
-          0);
 
       if (result.isInvalid()) {
         String errorMessage =
