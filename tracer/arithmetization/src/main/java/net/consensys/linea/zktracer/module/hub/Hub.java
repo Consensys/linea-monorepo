@@ -33,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
@@ -60,6 +61,7 @@ import net.consensys.linea.zktracer.module.rom.Rom;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.stp.Stp;
+import net.consensys.linea.zktracer.module.tables.bin.BinRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRt;
 import net.consensys.linea.zktracer.module.trm.Trm;
@@ -157,6 +159,7 @@ public class Hub implements Module {
   }
 
   private final Module add = new Add(this);
+  private final Module bin = new Bin(this);
   private final Module ext = new Ext();
   private final Mod mod = new Mod();
   private final Module mul = new Mul(this);
@@ -208,6 +211,7 @@ public class Hub implements Module {
                 Stream.of(
                     this.romLex, // WARN: must be called first
                     this.add,
+                    this.bin,
                     this.ext,
                     this.logData,
                     this.logInfo,
@@ -233,6 +237,7 @@ public class Hub implements Module {
   public List<Module> getModulesToTrace() {
     return List.of(
         // Reference tables
+        new BinRt(),
         new InstructionDecoder(),
         new ShfRt(),
         // Modules
@@ -260,6 +265,7 @@ public class Hub implements Module {
             Stream.of(
                 this,
                 this.romLex,
+                this.bin,
                 this.add,
                 this.ext,
                 this.logData,
@@ -451,6 +457,9 @@ public class Hub implements Module {
     }
     if (this.pch.signals().add()) {
       this.add.tracePreOpcode(frame);
+    }
+    if (this.pch.signals().bin()) {
+      this.bin.tracePreOpcode(frame);
     }
     if (this.pch.signals().rlpAddr()) {
       this.rlpAddr.tracePreOpcode(frame);

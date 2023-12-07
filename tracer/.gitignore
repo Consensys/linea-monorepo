@@ -21,7 +21,7 @@ nohup.out
 .settings
 .springBeans
 .vertx
-bin/
+./bin
 local.properties
 target/
 tmp/
