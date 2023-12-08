@@ -17,12 +17,12 @@ package net.consensys.linea.zktracer.module.rlpAddr;
 
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
 import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
@@ -138,8 +138,7 @@ public class RlpAddr implements Module {
       switch (ct) {
         case 0 -> {
           trace.limb(
-              padToGivenSizeWithRightZero(
-                  Bytes.concatenate(CREATE2_SHIFT, chunk.address().slice(0, 4)), LLARGE));
+              rightPadTo(Bytes.concatenate(CREATE2_SHIFT, chunk.address().slice(0, 4)), LLARGE));
           trace.nBytes(Bytes.of(5));
         }
         case 1 -> trace.limb(chunk.address().slice(4, LLARGE)).nBytes(BYTES_LLARGE);
@@ -170,7 +169,7 @@ public class RlpAddr implements Module {
     final int RECIPE1_CT_MAX = 8;
     final BigInteger nonce = chunk.nonce().orElseThrow();
 
-    Bytes nonceShifted = padToGivenSizeWithLeftZero(bigIntegerToBytes(nonce), RECIPE1_CT_MAX);
+    Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), RECIPE1_CT_MAX);
     Boolean tinyNonZeroNonce = true;
     if (nonce.compareTo(BigInteger.ZERO) == 0 || nonce.compareTo(BigInteger.valueOf(128)) >= 0) {
       tinyNonZeroNonce = false;
@@ -234,7 +233,7 @@ public class RlpAddr implements Module {
         case 4 -> trace
             .lc(true)
             .limb(
-                padToGivenSizeWithRightZero(
+                rightPadTo(
                     bigIntegerToBytes(
                         BigInteger.valueOf(LIST_SHORT)
                             .add(BigInteger.valueOf(21))
@@ -245,7 +244,7 @@ public class RlpAddr implements Module {
         case 5 -> trace
             .lc(true)
             .limb(
-                padToGivenSizeWithRightZero(
+                rightPadTo(
                     Bytes.concatenate(
                         bigIntegerToBytes(BigInteger.valueOf(148)), chunk.address().slice(0, 4)),
                     LLARGE))
@@ -258,7 +257,7 @@ public class RlpAddr implements Module {
             .index(Bytes.of(2));
         case 7 -> trace
             .lc(true)
-            .limb(padToGivenSizeWithRightZero(rlpNonce, LLARGE))
+            .limb(rightPadTo(rlpNonce, LLARGE))
             .nBytes(Bytes.of(size_rlp_nonce))
             .index(Bytes.of(3));
       }

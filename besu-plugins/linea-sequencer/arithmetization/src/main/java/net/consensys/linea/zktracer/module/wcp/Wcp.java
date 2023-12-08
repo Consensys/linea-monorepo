@@ -130,15 +130,26 @@ public class Wcp implements Module {
     return this.operations.stream().mapToInt(WcpOperation::maxCt).sum();
   }
 
-  public void callLT(Bytes32 arg1, Bytes32 arg2) {
+  public boolean callLT(Bytes32 arg1, Bytes32 arg2) {
     this.operations.add(new WcpOperation(OpCode.LT, arg1, arg2));
+    return arg1.compareTo(arg2) < 0;
   }
 
-  public void callEQ(Bytes32 arg1, Bytes32 arg2) {
+  public boolean callLT(Bytes arg1, Bytes arg2) {
+    return this.callLT(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
+  }
+
+  public boolean callEQ(Bytes32 arg1, Bytes32 arg2) {
     this.operations.add(new WcpOperation(OpCode.EQ, arg1, arg2));
+    return arg1.compareTo(arg2) == 0;
   }
 
-  public void callISZERO(Bytes32 arg1) {
+  public boolean callEQ(Bytes arg1, Bytes arg2) {
+    return this.callEQ(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
+  }
+
+  public boolean callISZERO(Bytes32 arg1) {
     this.operations.add(new WcpOperation(OpCode.ISZERO, arg1, Bytes32.ZERO));
+    return arg1.isZero();
   }
 }

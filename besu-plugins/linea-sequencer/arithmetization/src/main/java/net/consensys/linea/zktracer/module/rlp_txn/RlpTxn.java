@@ -19,10 +19,10 @@ import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
 import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -426,7 +426,7 @@ public class RlpTxn implements Module {
       // Tracing the Data: several 16-rows ct-loop
       int nbstep = 16;
       int nbloop = (traceValue.phaseByteSize - 1) / nbstep + 1;
-      data = padToGivenSizeWithRightZero(data, nbstep * nbloop);
+      data = rightPadTo(data, nbstep * nbloop);
       for (int i = 0; i < nbloop; i++) {
         traceValue.partialReset(phase, nbstep, lt, lx);
         traceValue.input1 = data.slice(LLARGE * i, LLARGE);
@@ -650,7 +650,7 @@ public class RlpTxn implements Module {
     traceValue.depth1 = depth1;
     traceValue.depth2 = depth2;
 
-    Bytes input1RightShift = padToGivenSizeWithLeftZero(traceValue.input1, 8);
+    Bytes input1RightShift = leftPadTo(traceValue.input1, 8);
 
     long acc2LastRow;
     if (length >= 56) {
@@ -658,8 +658,7 @@ public class RlpTxn implements Module {
     } else {
       acc2LastRow = 55 - length;
     }
-    Bytes acc2LastRowShift =
-        padToGivenSizeWithLeftZero(bigIntegerToBytes(BigInteger.valueOf(acc2LastRow)), 8);
+    Bytes acc2LastRowShift = leftPadTo(bigIntegerToBytes(BigInteger.valueOf(acc2LastRow)), 8);
 
     for (int ct = 0; ct < 8; ct++) {
       traceValue.counter = ct;
@@ -727,7 +726,7 @@ public class RlpTxn implements Module {
     int inputSize = inputByte.size();
     ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, nStep);
 
-    Bytes inputBytePadded = padToGivenSizeWithLeftZero(inputByte, nStep);
+    Bytes inputBytePadded = leftPadTo(inputByte, nStep);
     BitDecOutput bitDecOutput =
         bitDecomposition(0xff & inputBytePadded.get(inputBytePadded.size() - 1), nStep);
 
@@ -775,7 +774,7 @@ public class RlpTxn implements Module {
       // General case
       Bytes inputByte = bigIntegerToBytes(input);
       int inputLen = inputByte.size();
-      Bytes inputByte32 = padToGivenSizeWithLeftZero(inputByte, 32);
+      Bytes inputByte32 = leftPadTo(inputByte, 32);
       traceValue.input1 = inputByte32.slice(0, LLARGE);
       traceValue.input2 = inputByte32.slice(LLARGE, LLARGE);
 
@@ -848,7 +847,7 @@ public class RlpTxn implements Module {
     boolean lt = true;
     boolean lx = true;
     traceValue.partialReset(phase, LLARGE, lt, lx);
-    traceValue.input1 = padToGivenSizeWithLeftZero(address.slice(0, 4), LLARGE);
+    traceValue.input1 = leftPadTo(address.slice(0, 4), LLARGE);
     traceValue.input2 = address.slice(4, LLARGE);
 
     if (phase == 10) {
@@ -1140,7 +1139,7 @@ public class RlpTxn implements Module {
         .input2(traceValue.input2)
         .lcCorrection(traceValue.lcCorrection)
         .isPrefix(traceValue.isPrefix)
-        .limb(padToGivenSizeWithRightZero(traceValue.limb, LLARGE))
+        .limb(rightPadTo(traceValue.limb, LLARGE))
         .limbConstructed(traceValue.limbConstructed)
         .lt(traceValue.lt)
         .lx(traceValue.lx)

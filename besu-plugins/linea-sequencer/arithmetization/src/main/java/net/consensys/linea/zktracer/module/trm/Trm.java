@@ -16,8 +16,8 @@
 package net.consensys.linea.zktracer.module.trm;
 
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -101,7 +101,7 @@ public class Trm implements Module {
 
   private void traceTrimming(EWord data, Trace trace) {
     this.stamp++;
-    Bytes trmHi = padToGivenSizeWithLeftZero(data.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
+    Bytes trmHi = leftPadTo(data.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
     Boolean isPrec = isPrecompile(Address.extract(data));
     final int accLastByte = isPrec ? 9 - (0xff & data.get(31)) : (0xff & data.get(31)) - 10;
     List<Boolean> ones = bitDecomposition(accLastByte, MAX_CT).bitDecList();
