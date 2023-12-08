@@ -127,7 +127,11 @@ public class Wcp implements Module {
 
   @Override
   public int lineCount() {
-    return this.operations.stream().mapToInt(WcpOperation::maxCt).sum();
+    int sum = 0;
+    for (WcpOperation wcpOperation : this.operations) {
+      sum += wcpOperation.maxCt();
+    }
+    return sum;
   }
 
   public boolean callLT(Bytes32 arg1, Bytes32 arg2) {
