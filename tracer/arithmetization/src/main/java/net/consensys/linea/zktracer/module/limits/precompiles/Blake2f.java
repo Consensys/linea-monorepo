@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -29,21 +29,14 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
-public final class Sha256 implements Module {
-  private final Hub hub;
+public final class Blake2f implements Module {
+  final Hub hub;
   private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_SHA2";
+    return "PRECOMPILE_BLAKE2F";
   }
-
-  private static final int PRECOMPILE_BASE_GAS_FEE = 60;
-  private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 12;
-  private static final int SHA256_BLOCKSIZE = 64 * 8;
-  // The length of the data to be hashed is 2**64 maximum.
-  private static final int SHA256_PADDING_LENGTH = 64;
-  private static final int SHA256_NB_PADDED_ONE = 1;
 
   @Override
   public void enterTransaction() {
@@ -62,30 +55,34 @@ public final class Sha256 implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.SHA256)) {
-          long dataByteLength = 0;
+        if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
+          long length = 0;
+          long offset = 0;
           switch (opCode) {
-            case CALL, CALLCODE -> dataByteLength = Words.clampedToLong(frame.getStackItem(4));
-            case DELEGATECALL, STATICCALL -> dataByteLength =
-                Words.clampedToLong(frame.getStackItem(3));
+            case CALL, CALLCODE -> {
+              length = Words.clampedToLong(frame.getStackItem(4));
+              offset = Words.clampedToLong(frame.getStackItem(3));
+            }
+            case DELEGATECALL, STATICCALL -> {
+              length = Words.clampedToLong(frame.getStackItem(3));
+              offset = Words.clampedToLong(frame.getStackItem(2));
+            }
           }
-          if (dataByteLength == 0) {
-            return;
-          } // skip trivial hash TODO: check the prover does skip it
-          final int blockCount =
-              (int)
-                      (dataByteLength * 8
-                          + SHA256_NB_PADDED_ONE
-                          + SHA256_PADDING_LENGTH
-                          + (SHA256_BLOCKSIZE - 1))
-                  / SHA256_BLOCKSIZE;
 
-          final long wordCount = (dataByteLength + 31) / 32;
-          final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          final long gasNeeded = PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_GAS_FEE_PER_EWORD * wordCount;
-
-          if (gasPaid >= gasNeeded) {
-            this.counts.push(this.counts.pop() + blockCount);
+          final int blake2fDataSize = 213;
+          if (length == blake2fDataSize) {
+            final int f = frame.shadowReadMemory(offset, length).get(blake2fDataSize - 1);
+            if (f == 0 || f == 1) {
+              final int r =
+                  frame
+                      .shadowReadMemory(offset, length)
+                      .slice(0, 4)
+                      .toInt(); // The number of round is equal to the gas to pay
+              final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
+              if (gasPaid >= r) {
+                this.counts.push(this.counts.pop() + r);
+              }
+            }
           }
         }
       }

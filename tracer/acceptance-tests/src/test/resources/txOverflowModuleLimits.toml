@@ -50,6 +50,7 @@ STP                 = 20
 BLOCK_TX       = 200 # max number of tx in an L2 block
 BLOCK_L2L1LOGS = 16
 BLOCK_KECCAK   = 8192
+BLOCK_L1SIZE   = 1000000
 
 #
 # Precompiles limits

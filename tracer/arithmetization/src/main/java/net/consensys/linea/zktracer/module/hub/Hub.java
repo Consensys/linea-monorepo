@@ -40,21 +40,24 @@ import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
 import net.consensys.linea.zktracer.module.hub.fragment.misc.MiscFragment;
 import net.consensys.linea.zktracer.module.hub.section.*;
+import net.consensys.linea.zktracer.module.limits.Keccak;
+import net.consensys.linea.zktracer.module.limits.L2Block;
+import net.consensys.linea.zktracer.module.limits.L2L1Logs;
+import net.consensys.linea.zktracer.module.limits.precompiles.Blake2f;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcAdd;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcMul;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingWeightedCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcRecover;
+import net.consensys.linea.zktracer.module.limits.precompiles.Modexp;
+import net.consensys.linea.zktracer.module.limits.precompiles.Rip160;
+import net.consensys.linea.zktracer.module.limits.precompiles.Sha256;
 import net.consensys.linea.zktracer.module.logData.LogData;
 import net.consensys.linea.zktracer.module.logInfo.LogInfo;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.mxp.Mxp;
-import net.consensys.linea.zktracer.module.preclimits.Blake2f;
-import net.consensys.linea.zktracer.module.preclimits.EcAdd;
-import net.consensys.linea.zktracer.module.preclimits.EcMul;
-import net.consensys.linea.zktracer.module.preclimits.EcPairingCall;
-import net.consensys.linea.zktracer.module.preclimits.EcPairingWeightedCall;
-import net.consensys.linea.zktracer.module.preclimits.EcRecover;
-import net.consensys.linea.zktracer.module.preclimits.Modexp;
-import net.consensys.linea.zktracer.module.preclimits.Rip160;
-import net.consensys.linea.zktracer.module.preclimits.Sha256;
 import net.consensys.linea.zktracer.module.rlpAddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlp_txn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
@@ -180,6 +183,7 @@ public class Hub implements Module {
   private final Trm trm = new Trm();
   private final Modexp modexp;
   private final Stp stp = new Stp(this, wcp, mod);
+  private final L2Block l2Block = new L2Block();
 
   private final List<Module> modules;
   /* Those modules are not traced, we just compute the number of calls to those precompile to meet the prover limits */
@@ -195,19 +199,24 @@ public class Hub implements Module {
     this.txnData = new TxnData(this, this.romLex, this.wcp);
     this.ecData = new EcData(this, this.wcp, this.ext);
 
+    final EcRecover ecRec = new EcRecover(this);
     this.modexp = new Modexp(this);
     final EcPairingCall ecpairingCall = new EcPairingCall(this);
     this.precompileLimitModules =
         List.of(
             new Sha256(this),
-            new EcRecover(this),
+            ecRec,
             new Rip160(this),
             this.modexp,
             new EcAdd(this),
             new EcMul(this),
             ecpairingCall,
             new EcPairingWeightedCall(ecpairingCall),
-            new Blake2f(this));
+            new Blake2f(this),
+            // Block level limits
+            this.l2Block,
+            new Keccak(this, ecRec, this.l2Block),
+            new L2L1Logs(this.l2Block));
 
     this.modules =
         Stream.concat(

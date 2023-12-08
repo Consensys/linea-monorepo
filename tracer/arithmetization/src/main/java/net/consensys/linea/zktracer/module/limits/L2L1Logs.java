@@ -13,24 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.limits;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
-public final class EcPairingWeightedCall implements Module {
-  private final EcPairingCall ecpairingCall;
-
-  public EcPairingWeightedCall(EcPairingCall ecpairingCall) {
-    this.ecpairingCall = ecpairingCall;
-  }
+@RequiredArgsConstructor
+public class L2L1Logs implements Module {
+  private final L2Block l2Block;
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECPAIRING_WEIGHTED";
+    return "BLOCK_L2L1LOGS";
   }
 
   @Override
@@ -41,21 +38,11 @@ public final class EcPairingWeightedCall implements Module {
 
   @Override
   public int lineCount() {
-    final long r = ecpairingCall.getCounts().stream().mapToLong(EcPairingLimit::nMillerLoop).sum();
-    if (r > Integer.MAX_VALUE) {
-      throw new RuntimeException("Ludicrous EcPairing calls");
-    }
-
-    return (int) r;
+    return this.l2Block.l2l1LogsCount();
   }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    throw new IllegalStateException("should never be called");
-  }
-
-  @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    throw new IllegalStateException("should never be called");
+    return null;
   }
 }

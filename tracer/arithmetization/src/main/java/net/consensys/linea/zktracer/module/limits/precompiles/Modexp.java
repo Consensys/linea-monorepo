@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import static net.consensys.linea.zktracer.module.Util.slice;
 
@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Stack;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -32,21 +33,18 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
+@Slf4j
 @RequiredArgsConstructor
-public final class EcRecover implements Module {
+public class Modexp implements Module {
   private final Hub hub;
   private final Stack<Integer> counts = new Stack<>();
+  private static final int PROVER_MAX_INPUT_BIT_SIZE = 4096;
+  private static final int EVM_WORD_SIZE = 32;
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECRECOVER";
+    return "PRECOMPILE_MODEXP";
   }
-
-  private static final int ECRECOVER_GAS_FEE = 3000;
-  private static final int EWORD_SIZE = 32;
-  private static final BigInteger SECP_256_K1N =
-      new BigInteger(
-          "115792089237316195423570985008687907852837564279074904382605163141518161494337");
 
   @Override
   public void enterTransaction() {
@@ -65,7 +63,7 @@ public final class EcRecover implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ECREC)) {
+        if (target.equals(Address.MODEXP)) {
           long length = 0;
           long offset = 0;
           switch (opCode) {
@@ -79,22 +77,67 @@ public final class EcRecover implements Module {
             }
           }
           final Bytes inputData = frame.shadowReadMemory(offset, length);
-          final BigInteger v = slice(inputData, EWORD_SIZE, EWORD_SIZE).toUnsignedBigInteger();
-          final BigInteger r = slice(inputData, EWORD_SIZE * 2, EWORD_SIZE).toUnsignedBigInteger();
-          final BigInteger s = slice(inputData, EWORD_SIZE * 3, EWORD_SIZE).toUnsignedBigInteger();
+
+          final int baseLength = slice(inputData, 0, EVM_WORD_SIZE).toInt();
+          if (baseLength * 8 > PROVER_MAX_INPUT_BIT_SIZE) {
+            log.info(
+                "Too big argument, base bit length = {} > {}",
+                baseLength,
+                PROVER_MAX_INPUT_BIT_SIZE);
+            this.counts.pop();
+            this.counts.push(Integer.MAX_VALUE);
+            return;
+          }
+          final int expLength = slice(inputData, EVM_WORD_SIZE, EVM_WORD_SIZE).toInt();
+          if (expLength * 8 > PROVER_MAX_INPUT_BIT_SIZE) {
+            log.info(
+                "Too big argument, exp bit length = {} > {}", expLength, PROVER_MAX_INPUT_BIT_SIZE);
+            this.counts.pop();
+            this.counts.push(Integer.MAX_VALUE);
+            return;
+          }
+          final int moduloLength = slice(inputData, 2 * EVM_WORD_SIZE, EVM_WORD_SIZE).toInt();
+          if (expLength * 8 > PROVER_MAX_INPUT_BIT_SIZE) {
+            log.info(
+                "Too big argument, modulo bit length = {} > {}",
+                moduloLength,
+                PROVER_MAX_INPUT_BIT_SIZE);
+            this.counts.pop();
+            this.counts.push(Integer.MAX_VALUE);
+            return;
+          }
+          final Bytes exp = slice(inputData, 3 * EVM_WORD_SIZE + baseLength, expLength);
+
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          // TODO: exclude case without valid signature
-          if (gasPaid >= ECRECOVER_GAS_FEE
-              && (v.equals(BigInteger.valueOf(27)) || v.equals(BigInteger.valueOf(28)))
-              && !r.equals(BigInteger.ZERO)
-              && r.compareTo(SECP_256_K1N) < 0
-              && !s.equals(BigInteger.ZERO)
-              && s.compareTo(SECP_256_K1N) < 0) {
+
+          if (gasPaid >= gasPrice(baseLength, expLength, moduloLength, exp)) {
             this.counts.push(this.counts.pop() + 1);
           }
         }
       }
       default -> {}
+    }
+  }
+
+  private long gasPrice(int lB, int lE, int lM, Bytes e) {
+    final long maxLbLmSquared = (long) Math.sqrt((double) (Math.max(lB, lM) + 7) / 8);
+    final long secondArg = (maxLbLmSquared * expLengthPrime(lE, e)) / 3;
+    return Math.max(200, secondArg);
+  }
+
+  private int expLengthPrime(int lE, Bytes e) {
+    if (lE <= 32) {
+      if (e.toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+        return 0;
+      } else {
+        return (e.toUnsignedBigInteger().bitLength() - 1);
+      }
+    } else {
+      if (e.slice(0, EVM_WORD_SIZE).toUnsignedBigInteger().compareTo(BigInteger.ZERO) != 0) {
+        return 8 * (lE - 32) + e.slice(0, EVM_WORD_SIZE).toUnsignedBigInteger().bitLength() - 1;
+      } else {
+        return 8 * (lE - 32);
+      }
     }
   }
 

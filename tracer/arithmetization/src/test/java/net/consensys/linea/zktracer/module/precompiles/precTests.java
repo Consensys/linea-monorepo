@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.precompiles;
 
 import net.consensys.linea.zktracer.testing.EvmExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
