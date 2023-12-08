@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
