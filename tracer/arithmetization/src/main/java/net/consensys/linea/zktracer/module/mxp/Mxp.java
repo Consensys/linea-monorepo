@@ -150,7 +150,11 @@ public class Mxp implements Module {
 
   @Override
   public int lineCount() {
-    return this.chunks.stream().mapToInt(MxpData::maxCt).sum();
+    int sum = 0;
+    for (MxpData chunk : this.chunks) {
+      sum += chunk.maxCt();
+    }
+    return sum;
   }
 
   @Override
