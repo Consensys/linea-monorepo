@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.1.3-SNAPSHOT
+## 0.1.3
+- perf: improve `StackedSet` performances  [#466](https://github.com/ConsenSys/besu-sequencer-plugins/pull/466) 
+- feat: implement L1 block & Keccak limits [#445](https://github.com/ConsenSys/besu-sequencer-plugins/pull/445)
+- feat: partially implement EC_DATA [#475](https://github.com/ConsenSys/besu-sequencer-plugins/pull/475)
+- fix: ensure trace files are always deleted [#462](https://github.com/ConsenSys/besu-sequencer-plugins/pull/462)
 
 
 ## 0.1.2
