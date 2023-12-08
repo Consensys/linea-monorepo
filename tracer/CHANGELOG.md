@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3-SNAPSHOT
+
+
 ## 0.1.2
 Release 8 for 23.10.4-SNAPSHOT of linea-besu
 - changed default file name to toml [#476](https://github.com/ConsenSys/besu-sequencer-plugins/pull/476)
