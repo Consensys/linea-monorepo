@@ -40,30 +40,6 @@ public class Pattern {
   }
 
   /**
-   * Add zeroes to the left of the {@link Bytes} to create {@link Bytes} of the given size. The
-   * wantedSize must be at least the size of the Bytes.
-   *
-   * @param input
-   * @param wantedSize
-   * @return
-   */
-  public static Bytes padToGivenSizeWithLeftZero(Bytes input, int wantedSize) {
-    Preconditions.checkArgument(
-        wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
-    byte nullByte = 0;
-
-    return Bytes.concatenate(Bytes.repeat(nullByte, wantedSize - input.size()), input);
-  }
-
-  public static Bytes padToGivenSizeWithRightZero(Bytes input, int wantedSize) {
-    Preconditions.checkArgument(
-        wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
-    byte nullByte = 0;
-
-    return Bytes.concatenate(input, Bytes.repeat(nullByte, wantedSize - input.size()));
-  }
-
-  /**
    * Create the Power and AccSize list of the ByteCountAndPower RLP pattern.
    *
    * @param inputByteLen represents the number of meaningful bytes of inputByte, i.e. without the

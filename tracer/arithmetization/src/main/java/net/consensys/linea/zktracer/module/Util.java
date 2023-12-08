@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 
 import java.math.BigInteger;
 
@@ -186,8 +186,7 @@ public class Util {
         output = EWord.of(data.slice(positionStart, size));
       } else {
         final int nbPresentBytes = dataSize - positionStart;
-        output =
-            EWord.of(padToGivenSizeWithRightZero(data.slice(positionStart, nbPresentBytes), size));
+        output = EWord.of(rightPadTo(data.slice(positionStart, nbPresentBytes), size));
       }
     }
     return output;

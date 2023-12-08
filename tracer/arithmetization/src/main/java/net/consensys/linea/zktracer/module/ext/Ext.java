@@ -18,11 +18,13 @@ package net.consensys.linea.zktracer.module.ext;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -30,7 +32,9 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+@RequiredArgsConstructor
 public class Ext implements Module {
+  private final Hub hub;
   private int stamp = 0;
 
   /** A set of the operations to trace */
@@ -58,13 +62,31 @@ public class Ext implements Module {
 
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
-    final OpCodeData opCode = OpCodes.of(frame.getCurrentOperation().getOpcode());
+    final OpCodeData opCode = hub.opCodeData();
     this.operations.add(
         new ExtOperation(
             opCode.mnemonic(),
             Bytes32.leftPad(frame.getStackItem(0)),
             Bytes32.leftPad(frame.getStackItem(1)),
             Bytes32.leftPad(frame.getStackItem(2))));
+  }
+
+  public Bytes call(OpCode opCode, Bytes _arg1, Bytes _arg2, Bytes _arg3) {
+    final Bytes32 arg1 = Bytes32.leftPad(_arg1);
+    final Bytes32 arg2 = Bytes32.leftPad(_arg2);
+    final Bytes32 arg3 = Bytes32.leftPad(_arg3);
+    final ExtOperation op = new ExtOperation(opCode, arg1, arg2, arg3);
+    final Bytes result = op.compute();
+    this.operations.add(op);
+    return result;
+  }
+
+  public Bytes callADDMOD(Bytes _arg1, Bytes _arg2, Bytes _arg3) {
+    return this.call(OpCode.ADDMOD, _arg1, _arg2, _arg3);
+  }
+
+  public Bytes callMULMOD(Bytes _arg1, Bytes _arg2, Bytes _arg3) {
+    return this.call(OpCode.MULMOD, _arg1, _arg2, _arg3);
   }
 
   public void traceExtOperation(ExtOperation op, Trace trace) {

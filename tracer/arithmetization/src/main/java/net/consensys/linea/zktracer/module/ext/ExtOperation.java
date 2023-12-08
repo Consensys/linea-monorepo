@@ -81,6 +81,12 @@ public class ExtOperation {
     this.oli = isOneLineInstruction();
   }
 
+  public UInt256 compute() {
+    AbstractExtCalculator computer = AbstractExtCalculator.create(this.opCode);
+    return computer.computeResult(
+        this.arg1.getBytes32(), this.arg2.getBytes32(), this.arg3.getBytes32());
+  }
+
   public void setup() {
     this.aBytes = BaseTheta.fromBytes32(this.arg1.getBytes32());
     this.bBytes = BaseTheta.fromBytes32(this.arg2.getBytes32());
@@ -91,11 +97,9 @@ public class ExtOperation {
     this.deltaBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
     this.hBytes = new BytesArray(6);
 
-    AbstractExtCalculator computer = AbstractExtCalculator.create(opCode);
-    UInt256 result =
-        computer.computeResult(
-            this.arg1.getBytes32(), this.arg2.getBytes32(), this.arg3.getBytes32());
+    AbstractExtCalculator computer = AbstractExtCalculator.create(this.opCode);
 
+    final UInt256 result = this.compute();
     this.result = BaseTheta.fromBytes32(result);
     this.rBytes = BaseTheta.fromBytes32(result);
 
