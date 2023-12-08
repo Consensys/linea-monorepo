@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.continoustracing;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -35,7 +37,7 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
   final TraceFailureHandler traceFailureHandler;
   final String zkEvmBin;
 
-  static final int BLOCK_PARALLELISM = 10; // Higher and IOs bite the dust
+  static final int BLOCK_PARALLELISM = 5;
   final ThreadPoolExecutor pool =
       new ThreadPoolExecutor(
           BLOCK_PARALLELISM,
@@ -44,7 +46,6 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
           TimeUnit.SECONDS,
           new ArrayBlockingQueue<>(BLOCK_PARALLELISM),
           new ThreadPoolExecutor.CallerRunsPolicy());
-  ;
 
   public ContinuousTracingBlockAddedListener(
       final ContinuousTracer continuousTracer,
@@ -66,13 +67,13 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
           try {
             final CorsetValidator.Result traceResult =
                 continuousTracer.verifyTraceOfBlock(blockHash, zkEvmBin, new ZkTracer());
+            Files.delete(traceResult.traceFile().toPath());
 
             if (!traceResult.isValid()) {
               log.error("Corset returned and error for block {}", blockHeader.getNumber());
               traceFailureHandler.handleCorsetFailure(blockHeader, traceResult);
               return;
             }
-
             log.info("Trace for block {} verified successfully", blockHeader.getNumber());
           } catch (InvalidBlockTraceException e) {
             log.error("Error while tracing block {}: {}", blockHeader.getNumber(), e.getMessage());
@@ -81,6 +82,8 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
             log.error(e.getMessage());
           } catch (InvalidTraceHandlerException e) {
             log.error("Error while handling invalid trace: {}", e.getMessage());
+          } catch (IOException e) {
+            log.error("IO error: {}", e.getMessage());
           } finally {
             log.info("End of tracing block {}", blockHeader.getNumber());
           }

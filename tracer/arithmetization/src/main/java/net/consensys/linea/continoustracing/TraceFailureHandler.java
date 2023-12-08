@@ -14,22 +14,17 @@
  */
 package net.consensys.linea.continoustracing;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.continoustracing.exception.InvalidTraceHandlerException;
 import net.consensys.linea.corset.CorsetValidator;
-import org.apache.commons.io.FileUtils;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @Slf4j
 public class TraceFailureHandler {
   final SlackNotificationService slackNotificationService;
-  static final File INVALID_TRACE_DIRECTORY =
-      new File(FileUtils.getUserDirectory(), "invalid-traces");
 
   public TraceFailureHandler(final SlackNotificationService slackNotificationService) {
     this.slackNotificationService = slackNotificationService;
@@ -38,36 +33,6 @@ public class TraceFailureHandler {
   public void handleCorsetFailure(
       final BlockHeader blockHeader, final CorsetValidator.Result result)
       throws InvalidTraceHandlerException {
-    final File traceFile =
-        FileUtils.getFile(
-            INVALID_TRACE_DIRECTORY,
-            "trace_"
-                + blockHeader.getNumber()
-                + "_"
-                + blockHeader.getBlockHash().toHexString()
-                + ".lt");
-    final File corsetOutputFile =
-        FileUtils.getFile(
-            INVALID_TRACE_DIRECTORY,
-            "corset_output_"
-                + blockHeader.getNumber()
-                + "_"
-                + blockHeader.getBlockHash().toHexString()
-                + ".txt");
-
-    try {
-      FileUtils.createParentDirectories(traceFile);
-
-      FileUtils.moveFile(FileUtils.getFile(result.traceFile()), traceFile);
-      FileUtils.writeStringToFile(corsetOutputFile, result.corsetOutput(), StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      log.error(
-          "Cannot save files for invalid trace to directory {}: {}",
-          INVALID_TRACE_DIRECTORY,
-          e.getMessage());
-      throw new InvalidTraceHandlerException(e);
-    }
-
     try {
       slackNotificationService.sendCorsetFailureNotification(
           blockHeader.getNumber(), blockHeader.getBlockHash().toHexString(), result);
