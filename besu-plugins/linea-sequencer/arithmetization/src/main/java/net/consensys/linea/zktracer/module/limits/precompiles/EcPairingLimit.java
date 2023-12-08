@@ -13,6 +13,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.preclimits;
+package net.consensys.linea.zktracer.module.limits.precompiles;
 
 record EcPairingLimit(int nPrecompileCall, long nMillerLoop) {}
