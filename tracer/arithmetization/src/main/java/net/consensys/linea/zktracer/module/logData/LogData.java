@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.logData;
 
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -115,7 +115,7 @@ public class LogData implements Module {
 
   public void traceLog(final Log log, final int absLogNum, final int absLogNumMax, Trace trace) {
     final int indexMax = indexMax(log);
-    final Bytes dataPadded = padToGivenSizeWithRightZero(log.getData(), (indexMax + 1) * 16);
+    final Bytes dataPadded = rightPadTo(log.getData(), (indexMax + 1) * 16);
     final int lastLimbSize = (log.getData().size() % 16 == 0) ? 16 : log.getData().size() % 16;
     for (int index = 0; index < indexMax + 1; index++) {
       trace

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rom;
 
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -77,7 +77,7 @@ public class Rom implements Module {
     final int chunkRowSize = chunkRowSize(chunk);
     final int codeSize = chunk.byteCode().size();
     final int nLimbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
-    final Bytes dataPadded = padToGivenSizeWithRightZero(chunk.byteCode(), chunkRowSize);
+    final Bytes dataPadded = rightPadTo(chunk.byteCode(), chunkRowSize);
     int nBytesLastRow = codeSize % LLARGE;
     if (nBytesLastRow == 0) {
       nBytesLastRow = LLARGE;

@@ -18,9 +18,9 @@ package net.consensys.linea.zktracer.module.rlp_txrcpt;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithLeftZero;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.padToGivenSizeWithRightZero;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
+import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -439,7 +439,7 @@ public class RlpTxrcpt implements Module {
               traceValue.localSize -= LLARGE;
             } else {
               traceValue.input1 =
-                  padToGivenSizeWithRightZero(
+                  rightPadTo(
                       logList.get(i).getData().slice(LLARGE * ct, sizeDataLastSlice), LLARGE);
               traceValue.limb = traceValue.input1;
               traceValue.nBytes = sizeDataLastSlice;
@@ -494,7 +494,7 @@ public class RlpTxrcpt implements Module {
       traceValue.input2 = Bytes.minimalBytes(valueInput2);
     }
 
-    Bytes input1RightShift = padToGivenSizeWithLeftZero(traceValue.input1, traceValue.nStep);
+    Bytes input1RightShift = leftPadTo(traceValue.input1, traceValue.nStep);
     long acc2LastRow;
 
     if (length >= 56) {
@@ -504,8 +504,7 @@ public class RlpTxrcpt implements Module {
     }
 
     Bytes acc2LastRowShift =
-        padToGivenSizeWithLeftZero(
-            bigIntegerToBytes(BigInteger.valueOf(acc2LastRow)), traceValue.nStep);
+        leftPadTo(bigIntegerToBytes(BigInteger.valueOf(acc2LastRow)), traceValue.nStep);
     for (int ct = 0; ct < 8; ct++) {
       traceValue.counter = ct;
       traceValue.accSize = byteCountingOutput.accByteSizeList().get(ct);
@@ -590,7 +589,7 @@ public class RlpTxrcpt implements Module {
     final int inputSize = inputBytes.size();
     ByteCountAndPowerOutput byteCountingOutput = byteCounting(inputSize, 8);
 
-    Bytes inputBytesPadded = padToGivenSizeWithLeftZero(inputBytes, 8);
+    Bytes inputBytesPadded = leftPadTo(inputBytes, 8);
     BitDecOutput bitDecOutput =
         bitDecomposition(0xff & inputBytesPadded.get(inputBytesPadded.size() - 1), 8);
 
@@ -673,7 +672,7 @@ public class RlpTxrcpt implements Module {
         .isPrefix(traceValue.isPrefix)
         .isTopic(traceValue.isTopic)
         .lcCorrection(traceValue.lcCorrection)
-        .limb(padToGivenSizeWithRightZero(traceValue.limb, LLARGE))
+        .limb(rightPadTo(traceValue.limb, LLARGE))
         .limbConstructed(traceValue.limbConstructed)
         .localSize(Bytes.ofUnsignedInt(traceValue.localSize))
         .logEntrySize(Bytes.ofUnsignedInt(traceValue.logEntrySize))
