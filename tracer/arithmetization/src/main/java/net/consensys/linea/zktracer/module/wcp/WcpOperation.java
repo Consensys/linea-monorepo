@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
+import static net.consensys.linea.zktracer.types.Conversions.reallyToSignedBigInteger;
 
 import java.math.BigInteger;
 import java.security.InvalidParameterException;
@@ -25,12 +26,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+@Slf4j
 public class WcpOperation {
   private static final int LIMB_SIZE = 16;
 
@@ -137,8 +140,8 @@ public class WcpOperation {
     return switch (opCode) {
       case LT -> arg1.compareTo(arg2) < 0;
       case GT -> arg1.compareTo(arg2) > 0;
-      case SLT -> arg1.toBigInteger().compareTo(arg2.toBigInteger()) < 0;
-      case SGT -> arg1.toBigInteger().compareTo(arg2.toBigInteger()) > 0;
+      case SLT -> reallyToSignedBigInteger(arg1).compareTo(reallyToSignedBigInteger(arg2)) < 0;
+      case SGT -> reallyToSignedBigInteger(arg1).compareTo(reallyToSignedBigInteger(arg2)) > 0;
       case EQ -> arg1.compareTo(arg2) == 0;
       case ISZERO -> arg1.isZero();
       default -> throw new InvalidParameterException("Invalid opcode");
@@ -159,6 +162,7 @@ public class WcpOperation {
 
   void trace(Trace trace, int stamp) {
     this.compute();
+
     final Bytes resHi = this.getResHi() ? Bytes.of(1) : Bytes.EMPTY;
     final Bytes resLo = this.resLo ? Bytes.of(1) : Bytes.EMPTY;
 
