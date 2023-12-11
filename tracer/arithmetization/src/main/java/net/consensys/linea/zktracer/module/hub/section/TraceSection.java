@@ -63,7 +63,7 @@ public abstract class TraceSection {
   private int nonStackRowsCounter;
 
   /** A list of {@link TraceLine} representing the trace lines associated with this section. */
-  @Getter List<TraceLine> lines = new ArrayList<>(16);
+  @Getter List<TraceLine> lines = new ArrayList<>(32);
 
   /**
    * Fill the columns shared by all operations.
