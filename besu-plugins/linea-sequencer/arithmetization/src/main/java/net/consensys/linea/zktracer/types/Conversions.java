@@ -91,6 +91,19 @@ public class Conversions {
     return output;
   }
 
+  /**
+   * Convert the given {@link Bytes} to a signed {@link BigInteger}, even if the Bytes.toBigInteger
+   * is overloaded to create unsigned BigInteger (e.g. in {@link
+   * org.apache.tuweni.units.bigints.UInt256}.
+   *
+   * @param a a object implement {@link Bytes}
+   * @return the signed BigInteger represented by a's bytes
+   */
+  public static BigInteger reallyToSignedBigInteger(Bytes a) {
+    byte[] bs = a.toArrayUnsafe();
+    return new BigInteger(bs, 0, bs.length);
+  }
+
   public static Bytes32 longToBytes32(final long input) {
     return Bytes32.leftPad(Bytes.minimalBytes(input));
   }

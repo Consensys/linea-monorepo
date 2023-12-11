@@ -114,7 +114,9 @@ public class BytecodeCompiler {
    * @return current instance
    */
   public BytecodeCompiler immediate(final UInt256 x) {
-    return this.immediate(x.toArray());
+    this.byteCode.add(x);
+
+    return this;
   }
 
   /**

@@ -31,6 +31,7 @@ import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.Bytes16;
+import net.consensys.linea.zktracer.types.Conversions;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -235,7 +236,7 @@ public class MulOperation {
       return 256;
     }
 
-    String baseStringBase2 = x.toBigInteger().toString(2);
+    String baseStringBase2 = Conversions.reallyToSignedBigInteger(x).toString(2);
 
     for (int i = 0; i < baseStringBase2.length(); i++) {
       int j = baseStringBase2.length() - i - 1;

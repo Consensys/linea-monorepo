@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Inc.
+ * Copyright Consensys Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,65 +13,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.wcp;
+package net.consensys.linea.zktracer.module.mod;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
-import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class wcpEdgeCaseTest {
+public class ModTest {
   @Test
-  void testZeroAndHugeArgs() {
+  void testSignedSmod() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
-                .push(Bytes.repeat((byte) 0xff, 32))
-                .push(Bytes.EMPTY)
-                .op(OpCode.SLT)
+                .immediate(UInt256.MAX_VALUE)
+                .immediate(UInt256.MAX_VALUE)
+                .op(OpCode.SMOD)
                 .compile())
         .run();
-  }
 
-  @Test
-  void testHugeAndZeroArgs() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
-                .push(Bytes.EMPTY)
-                .push(Bytes.repeat((byte) 0xff, 32))
-                .op(OpCode.SLT)
+                .immediate(UInt256.valueOf(132))
+                .immediate(UInt256.MAX_VALUE)
+                .op(OpCode.SMOD)
                 .compile())
         .run();
-  }
 
-  @Test
-  void failingOnShadowNodeBlock916394() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
-                .push(Bytes.EMPTY)
-                .push(
-                    Bytes.concatenate(
-                        Bytes.repeat((byte) 0xff, 29),
-                        Bytes.of(0xfe),
-                        Bytes.of(0x18),
-                        Bytes.of(0x59)))
-                .op(OpCode.SLT)
-                .compile())
-        .run();
-  }
-
-  @Test
-  void failingOnShadowNodeBlockWhatever() {
-    BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
-                .push(Bytes.EMPTY)
-                .push(
-                    Bytes.fromHexString(
-                        "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe1859"))
-                .op(OpCode.SLT)
+                .immediate(UInt256.MAX_VALUE)
+                .immediate(UInt256.valueOf(132))
+                .op(OpCode.SMOD)
                 .compile())
         .run();
   }

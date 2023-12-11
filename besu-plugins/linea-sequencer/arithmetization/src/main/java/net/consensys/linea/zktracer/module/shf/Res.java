@@ -38,7 +38,7 @@ public class Res {
 
   private static boolean allButLastByteZero(final Bytes32 bytes) {
     for (int i = 0; i < 31; i++) {
-      if (bytes.get(i) > 0) {
+      if (bytes.get(i) != 0) {
         return false;
       }
     }
