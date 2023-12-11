@@ -22,12 +22,12 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
 
-import lombok.Getter;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
@@ -35,21 +35,24 @@ import org.apache.tuweni.units.bigints.UInt64;
 public class ModOperation {
   private static final int MMEDIUM = 8;
 
-  @Getter private final OpCode opCode;
-  @Getter private final boolean oli;
-  @Getter private final BaseBytes arg1;
-  @Getter private final BaseBytes arg2;
-  @Getter private BaseBytes result = BaseBytes.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta aBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta bBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta qBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta rBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta hBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private BaseTheta dBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
-  @Getter private final boolean[] cmp1 = new boolean[8];
-  @Getter private final boolean[] cmp2 = new boolean[8];
-  @Getter private Boolean[] msb1 = new Boolean[8];
-  @Getter private Boolean[] msb2 = new Boolean[8];
+  private final OpCode opCode;
+  private final boolean oli;
+  private final Bytes32 rawArg1;
+  private final Bytes32 rawArg2;
+  private BaseBytes arg1;
+  private BaseBytes arg2;
+
+  private BaseBytes result = BaseBytes.fromBytes32(Bytes32.ZERO);
+  private BaseTheta aBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private BaseTheta bBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private BaseTheta qBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private BaseTheta rBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private BaseTheta hBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private BaseTheta dBytes = BaseTheta.fromBytes32(Bytes32.ZERO);
+  private final boolean[] cmp1 = new boolean[8];
+  private final boolean[] cmp2 = new boolean[8];
+  private Boolean[] msb1 = new Boolean[8];
+  private Boolean[] msb2 = new Boolean[8];
 
   /**
    * This custom hash function ensures that all identical operations are only traced once per
@@ -57,7 +60,7 @@ public class ModOperation {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(this.opCode, this.arg1, this.arg2);
+    return Objects.hash(this.opCode, this.rawArg1, this.rawArg2);
   }
 
   @Override
@@ -66,8 +69,8 @@ public class ModOperation {
     if (o == null || getClass() != o.getClass()) return false;
     final ModOperation that = (ModOperation) o;
     return Objects.equals(opCode, that.opCode)
-        && Objects.equals(arg1, that.arg1)
-        && Objects.equals(arg2, that.arg2);
+        && Objects.equals(rawArg1, that.rawArg1)
+        && Objects.equals(rawArg2, that.rawArg2);
   }
 
   public ModOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
@@ -75,22 +78,27 @@ public class ModOperation {
   }
 
   public ModOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
-    this.arg1 = BaseBytes.fromBytes32(arg1);
-    this.arg2 = BaseBytes.fromBytes32(arg2);
+    this.rawArg1 = arg1;
+    this.rawArg2 = arg2;
 
     this.opCode = opCode;
     this.oli = arg2.isZero();
+  }
+
+  private void compute() {
+    this.arg1 = BaseBytes.fromBytes32(this.rawArg1);
+    this.arg2 = BaseBytes.fromBytes32(this.rawArg2);
 
     Arrays.fill(msb1, false);
     Arrays.fill(msb2, false);
 
     if (!this.oli) {
-      this.result = getRes(opCode, arg1, arg2);
+      this.result = getRes(opCode, this.rawArg1, this.rawArg2);
 
-      UInt256 a = absoluteValueIfSignedInst(arg1);
+      UInt256 a = absoluteValueIfSignedInst(this.rawArg1);
       this.aBytes = BaseTheta.fromBytes32(a);
 
-      UInt256 b = absoluteValueIfSignedInst(arg2);
+      UInt256 b = absoluteValueIfSignedInst(this.rawArg2);
       this.bBytes = BaseTheta.fromBytes32(b);
 
       UInt256 q = a.divide(b);
@@ -118,7 +126,7 @@ public class ModOperation {
       case SDIV -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).sdiv0(UInt256.fromBytes(arg2)));
       case MOD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).mod(UInt256.fromBytes(arg2)));
       case SMOD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).smod0(UInt256.fromBytes(arg2)));
-      default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
+      default -> throw new IllegalArgumentException("Modular arithmetic was given wrong opcode");
     };
   }
 
@@ -214,19 +222,91 @@ public class ModOperation {
     }
   }
 
-  public boolean isSigned() {
+  boolean isSigned() {
     return this.opCode == OpCode.SDIV || this.opCode == OpCode.SMOD;
   }
 
-  public boolean isDiv() {
+  boolean isDiv() {
     return this.opCode == OpCode.DIV || this.opCode == OpCode.SDIV;
   }
 
   int maxCounter() {
-    if (this.isOli()) {
+    if (this.oli) {
       return 1;
     } else {
       return MMEDIUM;
+    }
+  }
+
+  public void trace(Trace trace, int stamp) {
+    this.compute();
+
+    for (int i = 0; i < this.maxCounter(); i++) {
+      final int accLength = i + 1;
+      trace
+          .stamp(Bytes.ofUnsignedLong(stamp))
+          .oli(this.oli)
+          .ct(Bytes.of(i))
+          .inst(Bytes.of(this.opCode.byteValue()))
+          .decSigned(this.isSigned())
+          .decOutput(this.isDiv())
+          .arg1Hi(this.arg1.getHigh())
+          .arg1Lo(this.arg1.getLow())
+          .arg2Hi(this.arg2.getHigh())
+          .arg2Lo(this.arg2.getLow())
+          .resHi(this.result.getHigh())
+          .resLo(this.result.getLow())
+          .acc12(this.arg1.getBytes32().slice(8, i + 1))
+          .acc13(this.arg1.getBytes32().slice(0, i + 1))
+          .acc22(this.arg2.getBytes32().slice(8, i + 1))
+          .acc23(this.arg2.getBytes32().slice(0, i + 1))
+          .accB0(this.bBytes.get(0).slice(0, accLength))
+          .accB1(this.bBytes.get(1).slice(0, accLength))
+          .accB2(this.bBytes.get(2).slice(0, accLength))
+          .accB3(this.bBytes.get(3).slice(0, accLength))
+          .accR0(this.rBytes.get(0).slice(0, accLength))
+          .accR1(this.rBytes.get(1).slice(0, accLength))
+          .accR2(this.rBytes.get(2).slice(0, accLength))
+          .accR3(this.rBytes.get(3).slice(0, accLength))
+          .accQ0(this.qBytes.get(0).slice(0, accLength))
+          .accQ1(this.qBytes.get(1).slice(0, accLength))
+          .accQ2(this.qBytes.get(2).slice(0, accLength))
+          .accQ3(this.qBytes.get(3).slice(0, accLength))
+          .accDelta0(this.dBytes.get(0).slice(0, accLength))
+          .accDelta1(this.dBytes.get(1).slice(0, accLength))
+          .accDelta2(this.dBytes.get(2).slice(0, accLength))
+          .accDelta3(this.dBytes.get(3).slice(0, accLength))
+          .byte22(UnsignedByte.of(this.arg2.getByte(i + 8)))
+          .byte23(UnsignedByte.of(this.arg2.getByte(i)))
+          .byte12(UnsignedByte.of(this.arg1.getByte(i + 8)))
+          .byte13(UnsignedByte.of(this.arg1.getByte(i)))
+          .byteB0(UnsignedByte.of(this.bBytes.get(0).get(i)))
+          .byteB1(UnsignedByte.of(this.bBytes.get(1).get(i)))
+          .byteB2(UnsignedByte.of(this.bBytes.get(2).get(i)))
+          .byteB3(UnsignedByte.of(this.bBytes.get(3).get(i)))
+          .byteR0(UnsignedByte.of(this.rBytes.get(0).get(i)))
+          .byteR1(UnsignedByte.of(this.rBytes.get(1).get(i)))
+          .byteR2(UnsignedByte.of(this.rBytes.get(2).get(i)))
+          .byteR3(UnsignedByte.of(this.rBytes.get(3).get(i)))
+          .byteQ0(UnsignedByte.of(this.qBytes.get(0).get(i)))
+          .byteQ1(UnsignedByte.of(this.qBytes.get(1).get(i)))
+          .byteQ2(UnsignedByte.of(this.qBytes.get(2).get(i)))
+          .byteQ3(UnsignedByte.of(this.qBytes.get(3).get(i)))
+          .byteDelta0(UnsignedByte.of(this.dBytes.get(0).get(i)))
+          .byteDelta1(UnsignedByte.of(this.dBytes.get(1).get(i)))
+          .byteDelta2(UnsignedByte.of(this.dBytes.get(2).get(i)))
+          .byteDelta3(UnsignedByte.of(this.dBytes.get(3).get(i)))
+          .byteH0(UnsignedByte.of(this.hBytes.get(0).get(i)))
+          .byteH1(UnsignedByte.of(this.hBytes.get(1).get(i)))
+          .byteH2(UnsignedByte.of(this.hBytes.get(2).get(i)))
+          .accH0(Bytes.wrap(this.hBytes.get(0)).slice(0, i + 1))
+          .accH1(Bytes.wrap(this.hBytes.get(1)).slice(0, i + 1))
+          .accH2(Bytes.wrap(this.hBytes.get(2)).slice(0, i + 1))
+          .cmp1(this.cmp1[i])
+          .cmp2(this.cmp2[i])
+          .msb1(this.msb1[i])
+          .msb2(this.msb2[i])
+          .validateRow();
     }
   }
 }
