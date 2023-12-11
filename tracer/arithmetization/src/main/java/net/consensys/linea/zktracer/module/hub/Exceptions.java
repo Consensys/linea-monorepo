@@ -297,7 +297,7 @@ public final class Exceptions {
    */
   public void prepare(final MessageFrame frame, GasProjector gp) {
     OpCode opCode = hub.opCode();
-    OpCodeData opCodeData = opCode.getData();
+    OpCodeData opCodeData = hub.opCodeData();
 
     this.reset();
 
