@@ -65,7 +65,15 @@ public class Bin implements Module {
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {}
+  public void commit(List<MappedByteBuffer> buffers) {
+    final Trace trace = new Trace(buffers);
+
+    int stamp = 0;
+    for (BinOperation op : this.chunks) {
+      stamp++;
+      op.traceBinOperation(stamp, trace);
+    }
+  }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {

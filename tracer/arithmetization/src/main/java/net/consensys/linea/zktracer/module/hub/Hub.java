@@ -256,6 +256,7 @@ public class Hub implements Module {
         // Modules
         this,
         this.add,
+        this.bin,
         this.ext,
         //        this.ecData, // TODO: not yet
         this.logData,

@@ -16,13 +16,14 @@
 package net.consensys.linea.zktracer.module.rlp_txn;
 
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
+import static net.consensys.linea.zktracer.module.rlputils.Pattern.innerRlpSize;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
 import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
-import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
+import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
+import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_BODY;
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
@@ -37,9 +38,9 @@ import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlputils.BitDecOutput;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
+import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -916,32 +917,6 @@ public class RlpTxn implements Module {
 
       traceRow(traceValue, trace);
     }
-  }
-
-  public static int innerRlpSize(int rlpSize) {
-    // If rlpSize >1, return size(something) where rlpSize = size(RLP(something)).
-    Preconditions.checkArgument(rlpSize >= 2, "rlpSize should be at least 2 to get its inner size");
-    int output = rlpSize;
-
-    if (rlpSize < 57) {
-      output -= 1;
-    } else if (rlpSize == 57) {
-      throw new RuntimeException("can't be of size 57");
-    } else if (rlpSize < 258) {
-      output -= 2;
-    } else if (rlpSize == 258) {
-      throw new RuntimeException("can't be of size 258");
-    } else {
-      for (int i = 1; i < 8; i++) {
-        if ((rlpSize - 2 - i >= Math.pow(2, 8 * i))
-            && (rlpSize - i - 1 <= Math.pow(2, 8 * (i + 1)))) {
-          output -= (2 + i);
-        } else if (rlpSize == Math.pow(2, i) + 1 + i) {
-          throw new RuntimeException("can't be this size");
-        }
-      }
-    }
-    return output;
   }
 
   private static Bytes frontierPreimage(
