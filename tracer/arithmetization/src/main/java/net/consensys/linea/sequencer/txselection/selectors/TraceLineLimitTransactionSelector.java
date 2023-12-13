@@ -25,10 +25,14 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.plugin.data.BlockBody;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 /**
  * This class implements TransactionSelector and provides a specific implementation for evaluating
@@ -37,7 +41,7 @@ import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelecto
  */
 @Slf4j
 public class TraceLineLimitTransactionSelector implements PluginTransactionSelector {
-
+  private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
   private final ZkTracer zkTracer;
   private final String limitFilePath;
   private final Map<String, Integer> moduleLimits;
@@ -47,7 +51,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   public TraceLineLimitTransactionSelector(
       final Supplier<Map<String, Integer>> moduleLimitsProvider, final String limitFilePath) {
     moduleLimits = moduleLimitsProvider.get();
-    zkTracer = new ZkTracer();
+    zkTracer = new ZkTracerWithLog();
     zkTracer.traceStartConflation(1L);
     this.limitFilePath = limitFilePath;
   }
@@ -156,5 +160,26 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
                     + "/"
                     + moduleLimits.get(e.getKey()))
         .collect(Collectors.joining(",", "[", "]"));
+  }
+
+  private class ZkTracerWithLog extends ZkTracer {
+    @Override
+    public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+      super.traceEndBlock(blockHeader, blockBody);
+      log.atDebug()
+          .addMarker(BLOCK_LINE_COUNT_MARKER)
+          .addKeyValue("blockNumber", blockHeader::getNumber)
+          .addKeyValue("blockHash", blockHeader::getBlockHash)
+          .addKeyValue(
+              "traceCounts",
+              () ->
+                  currCumulatedLineCount == null
+                      ? "null"
+                      : currCumulatedLineCount.entrySet().stream()
+                          .sorted(Map.Entry.comparingByKey())
+                          .map(e -> '"' + e.getKey() + "\":" + e.getValue())
+                          .collect(Collectors.joining(",")))
+          .log();
+    }
   }
 }
