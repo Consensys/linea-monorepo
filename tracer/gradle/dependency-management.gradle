@@ -42,6 +42,7 @@ configurations.all {
 apply plugin: 'io.spring.dependency-management'
 
 dependencyManagement {
+  applyMavenExclusions = false
   generatedPomCustomization {
     enabled = false
   }
