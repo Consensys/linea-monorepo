@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -183,10 +182,10 @@ public class Util {
 
     if (dataSize >= positionStart) {
       if (dataSize >= (positionStart + size)) {
-        output = EWord.of(data.slice(positionStart, size));
+        output = data.slice(positionStart, size);
       } else {
         final int nbPresentBytes = dataSize - positionStart;
-        output = EWord.of(rightPadTo(data.slice(positionStart, nbPresentBytes), size));
+        output = rightPadTo(data.slice(positionStart, nbPresentBytes), size);
       }
     }
     return output;
