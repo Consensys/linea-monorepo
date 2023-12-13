@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.module.rlputils.Pattern.bitDecomposition;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
-import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
+import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
+import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;

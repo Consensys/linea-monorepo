@@ -69,6 +69,14 @@ tasks.register('shfRT', TraceFilesTask) {
     module = "ShfRt"
     files = ["lookup_tables/shfRT/columns.lisp"]
 }
+tasks.register('binRT', TraceFilesTask) {
+    group "Trace files generation"
+    dependsOn corsetExists
+
+    moduleDir = "tables/bin"
+    module = "BinRt"
+    files = ["lookup_tables/binRT/columns.lisp"]
+}
 
 //
 // Modules requiring the library

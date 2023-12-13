@@ -29,7 +29,7 @@ public class Pattern {
   public static int outerRlpSize(int inputSize) {
     int rlpSize = inputSize;
     if (inputSize == 1) {
-      // TODO panic
+      throw new IllegalArgumentException("Input size must be different from 1");
     } else {
       rlpSize += 1;
       if (inputSize >= 56) {
@@ -37,6 +37,32 @@ public class Pattern {
       }
     }
     return rlpSize;
+  }
+
+  public static int innerRlpSize(int rlpSize) {
+    // If rlpSize >1, return size(something) where rlpSize = size(RLP(something)).
+    Preconditions.checkArgument(rlpSize >= 2, "rlpSize should be at least 2 to get its inner size");
+    int output = rlpSize;
+
+    if (rlpSize < 57) {
+      output -= 1;
+    } else if (rlpSize == 57) {
+      throw new RuntimeException("can't be of size 57");
+    } else if (rlpSize < 258) {
+      output -= 2;
+    } else if (rlpSize == 258) {
+      throw new RuntimeException("can't be of size 258");
+    } else {
+      for (int i = 1; i < 8; i++) {
+        if ((rlpSize - 2 - i >= Math.pow(2, 8 * i))
+            && (rlpSize - i - 1 <= Math.pow(2, 8 * (i + 1)))) {
+          output -= (2 + i);
+        } else if (rlpSize == Math.pow(2, i) + 1 + i) {
+          throw new RuntimeException("can't be this size");
+        }
+      }
+    }
+    return output;
   }
 
   /**
@@ -76,48 +102,6 @@ public class Pattern {
       }
       output.powerList().add(i, power);
       output.accByteSizeList().add(i, accByteSize);
-    }
-    return output;
-  }
-
-  /**
-   * Create the Bit and BitDec list of the RLP pattern of an int.
-   *
-   * @param input
-   * @param nbStep
-   * @return
-   */
-  public static BitDecOutput bitDecomposition(int input, int nbStep) {
-    final int nbStepMin = 8;
-    Preconditions.checkArgument(
-        nbStep >= nbStepMin, "Number of steps must be at least " + nbStepMin);
-
-    ArrayList<Boolean> bit = new ArrayList<>(nbStep);
-    ArrayList<Integer> acc = new ArrayList<>(nbStep);
-    for (int i = 0; i < nbStep - nbStepMin; i++) {
-      bit.add(i, false);
-      acc.add(i, 0);
-    }
-    BitDecOutput output = new BitDecOutput(bit, acc);
-
-    int bitAcc = 0;
-    boolean bitDec = false;
-    double div = 0;
-
-    for (int i = nbStepMin - 1; i >= 0; i--) {
-      div = Math.pow(2, i);
-      bitAcc *= 2;
-
-      if (input >= div) {
-        bitDec = true;
-        bitAcc += 1;
-        input -= (int) div;
-      } else {
-        bitDec = false;
-      }
-
-      output.bitDecList().add(nbStep - i - 1, bitDec);
-      output.bitAccList().add(nbStep - i - 1, bitAcc);
     }
     return output;
   }

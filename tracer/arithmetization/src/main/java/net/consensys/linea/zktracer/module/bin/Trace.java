@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -40,13 +40,10 @@ public class Trace {
   private final MappedByteBuffer acc4;
   private final MappedByteBuffer acc5;
   private final MappedByteBuffer acc6;
-  private final MappedByteBuffer andByteHi;
-  private final MappedByteBuffer andByteLo;
   private final MappedByteBuffer argument1Hi;
   private final MappedByteBuffer argument1Lo;
   private final MappedByteBuffer argument2Hi;
   private final MappedByteBuffer argument2Lo;
-  private final MappedByteBuffer binaryStamp;
   private final MappedByteBuffer bit1;
   private final MappedByteBuffer bitB4;
   private final MappedByteBuffer bits;
@@ -58,20 +55,23 @@ public class Trace {
   private final MappedByteBuffer byte6;
   private final MappedByteBuffer counter;
   private final MappedByteBuffer inst;
-  private final MappedByteBuffer isData;
+  private final MappedByteBuffer isAnd;
+  private final MappedByteBuffer isByte;
+  private final MappedByteBuffer isNot;
+  private final MappedByteBuffer isOr;
+  private final MappedByteBuffer isSignextend;
+  private final MappedByteBuffer isXor;
   private final MappedByteBuffer low4;
+  private final MappedByteBuffer mli;
   private final MappedByteBuffer neg;
-  private final MappedByteBuffer notByteHi;
-  private final MappedByteBuffer notByteLo;
   private final MappedByteBuffer oneLineInstruction;
-  private final MappedByteBuffer orByteHi;
-  private final MappedByteBuffer orByteLo;
   private final MappedByteBuffer pivot;
   private final MappedByteBuffer resultHi;
   private final MappedByteBuffer resultLo;
   private final MappedByteBuffer small;
-  private final MappedByteBuffer xorByteHi;
-  private final MappedByteBuffer xorByteLo;
+  private final MappedByteBuffer stamp;
+  private final MappedByteBuffer xxxByteHi;
+  private final MappedByteBuffer xxxByteLo;
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
@@ -81,13 +81,10 @@ public class Trace {
         new ColumnHeader("bin.ACC_4", 32, length),
         new ColumnHeader("bin.ACC_5", 32, length),
         new ColumnHeader("bin.ACC_6", 32, length),
-        new ColumnHeader("bin.AND_BYTE_HI", 32, length),
-        new ColumnHeader("bin.AND_BYTE_LO", 32, length),
         new ColumnHeader("bin.ARGUMENT_1_HI", 32, length),
         new ColumnHeader("bin.ARGUMENT_1_LO", 32, length),
         new ColumnHeader("bin.ARGUMENT_2_HI", 32, length),
         new ColumnHeader("bin.ARGUMENT_2_LO", 32, length),
-        new ColumnHeader("bin.BINARY_STAMP", 32, length),
         new ColumnHeader("bin.BIT_1", 1, length),
         new ColumnHeader("bin.BIT_B_4", 1, length),
         new ColumnHeader("bin.BITS", 1, length),
@@ -97,22 +94,25 @@ public class Trace {
         new ColumnHeader("bin.BYTE_4", 1, length),
         new ColumnHeader("bin.BYTE_5", 1, length),
         new ColumnHeader("bin.BYTE_6", 1, length),
-        new ColumnHeader("bin.COUNTER", 32, length),
-        new ColumnHeader("bin.INST", 32, length),
-        new ColumnHeader("bin.IS_DATA", 1, length),
-        new ColumnHeader("bin.LOW_4", 32, length),
+        new ColumnHeader("bin.COUNTER", 1, length),
+        new ColumnHeader("bin.INST", 1, length),
+        new ColumnHeader("bin.IS_AND", 1, length),
+        new ColumnHeader("bin.IS_BYTE", 1, length),
+        new ColumnHeader("bin.IS_NOT", 1, length),
+        new ColumnHeader("bin.IS_OR", 1, length),
+        new ColumnHeader("bin.IS_SIGNEXTEND", 1, length),
+        new ColumnHeader("bin.IS_XOR", 1, length),
+        new ColumnHeader("bin.LOW_4", 1, length),
+        new ColumnHeader("bin.MLI", 1, length),
         new ColumnHeader("bin.NEG", 1, length),
-        new ColumnHeader("bin.NOT_BYTE_HI", 32, length),
-        new ColumnHeader("bin.NOT_BYTE_LO", 32, length),
         new ColumnHeader("bin.ONE_LINE_INSTRUCTION", 1, length),
-        new ColumnHeader("bin.OR_BYTE_HI", 32, length),
-        new ColumnHeader("bin.OR_BYTE_LO", 32, length),
-        new ColumnHeader("bin.PIVOT", 32, length),
+        new ColumnHeader("bin.PIVOT", 1, length),
         new ColumnHeader("bin.RESULT_HI", 32, length),
         new ColumnHeader("bin.RESULT_LO", 32, length),
         new ColumnHeader("bin.SMALL", 1, length),
-        new ColumnHeader("bin.XOR_BYTE_HI", 32, length),
-        new ColumnHeader("bin.XOR_BYTE_LO", 32, length));
+        new ColumnHeader("bin.STAMP", 32, length),
+        new ColumnHeader("bin.XXX_BYTE_HI", 1, length),
+        new ColumnHeader("bin.XXX_BYTE_LO", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -122,38 +122,38 @@ public class Trace {
     this.acc4 = buffers.get(3);
     this.acc5 = buffers.get(4);
     this.acc6 = buffers.get(5);
-    this.andByteHi = buffers.get(6);
-    this.andByteLo = buffers.get(7);
-    this.argument1Hi = buffers.get(8);
-    this.argument1Lo = buffers.get(9);
-    this.argument2Hi = buffers.get(10);
-    this.argument2Lo = buffers.get(11);
-    this.binaryStamp = buffers.get(12);
-    this.bit1 = buffers.get(13);
-    this.bitB4 = buffers.get(14);
-    this.bits = buffers.get(15);
-    this.byte1 = buffers.get(16);
-    this.byte2 = buffers.get(17);
-    this.byte3 = buffers.get(18);
-    this.byte4 = buffers.get(19);
-    this.byte5 = buffers.get(20);
-    this.byte6 = buffers.get(21);
-    this.counter = buffers.get(22);
-    this.inst = buffers.get(23);
-    this.isData = buffers.get(24);
-    this.low4 = buffers.get(25);
-    this.neg = buffers.get(26);
-    this.notByteHi = buffers.get(27);
-    this.notByteLo = buffers.get(28);
-    this.oneLineInstruction = buffers.get(29);
-    this.orByteHi = buffers.get(30);
-    this.orByteLo = buffers.get(31);
-    this.pivot = buffers.get(32);
-    this.resultHi = buffers.get(33);
-    this.resultLo = buffers.get(34);
-    this.small = buffers.get(35);
-    this.xorByteHi = buffers.get(36);
-    this.xorByteLo = buffers.get(37);
+    this.argument1Hi = buffers.get(6);
+    this.argument1Lo = buffers.get(7);
+    this.argument2Hi = buffers.get(8);
+    this.argument2Lo = buffers.get(9);
+    this.bit1 = buffers.get(10);
+    this.bitB4 = buffers.get(11);
+    this.bits = buffers.get(12);
+    this.byte1 = buffers.get(13);
+    this.byte2 = buffers.get(14);
+    this.byte3 = buffers.get(15);
+    this.byte4 = buffers.get(16);
+    this.byte5 = buffers.get(17);
+    this.byte6 = buffers.get(18);
+    this.counter = buffers.get(19);
+    this.inst = buffers.get(20);
+    this.isAnd = buffers.get(21);
+    this.isByte = buffers.get(22);
+    this.isNot = buffers.get(23);
+    this.isOr = buffers.get(24);
+    this.isSignextend = buffers.get(25);
+    this.isXor = buffers.get(26);
+    this.low4 = buffers.get(27);
+    this.mli = buffers.get(28);
+    this.neg = buffers.get(29);
+    this.oneLineInstruction = buffers.get(30);
+    this.pivot = buffers.get(31);
+    this.resultHi = buffers.get(32);
+    this.resultLo = buffers.get(33);
+    this.small = buffers.get(34);
+    this.stamp = buffers.get(35);
+    this.xxxByteHi = buffers.get(36);
+    this.xxxByteLo = buffers.get(37);
   }
 
   public int size() {
@@ -260,43 +260,11 @@ public class Trace {
     return this;
   }
 
-  public Trace andByteHi(final Bytes b) {
-    if (filled.get(6)) {
-      throw new IllegalStateException("bin.AND_BYTE_HI already set");
-    } else {
-      filled.set(6);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      andByteHi.put((byte) 0);
-    }
-    andByteHi.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace andByteLo(final Bytes b) {
-    if (filled.get(7)) {
-      throw new IllegalStateException("bin.AND_BYTE_LO already set");
-    } else {
-      filled.set(7);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      andByteLo.put((byte) 0);
-    }
-    andByteLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
   public Trace argument1Hi(final Bytes b) {
-    if (filled.get(8)) {
+    if (filled.get(6)) {
       throw new IllegalStateException("bin.ARGUMENT_1_HI already set");
     } else {
-      filled.set(8);
+      filled.set(6);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -309,10 +277,10 @@ public class Trace {
   }
 
   public Trace argument1Lo(final Bytes b) {
-    if (filled.get(9)) {
+    if (filled.get(7)) {
       throw new IllegalStateException("bin.ARGUMENT_1_LO already set");
     } else {
-      filled.set(9);
+      filled.set(7);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -325,10 +293,10 @@ public class Trace {
   }
 
   public Trace argument2Hi(final Bytes b) {
-    if (filled.get(10)) {
+    if (filled.get(8)) {
       throw new IllegalStateException("bin.ARGUMENT_2_HI already set");
     } else {
-      filled.set(10);
+      filled.set(8);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -341,10 +309,10 @@ public class Trace {
   }
 
   public Trace argument2Lo(final Bytes b) {
-    if (filled.get(11)) {
+    if (filled.get(9)) {
       throw new IllegalStateException("bin.ARGUMENT_2_LO already set");
     } else {
-      filled.set(11);
+      filled.set(9);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -356,27 +324,11 @@ public class Trace {
     return this;
   }
 
-  public Trace binaryStamp(final Bytes b) {
-    if (filled.get(12)) {
-      throw new IllegalStateException("bin.BINARY_STAMP already set");
-    } else {
-      filled.set(12);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      binaryStamp.put((byte) 0);
-    }
-    binaryStamp.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
   public Trace bit1(final Boolean b) {
-    if (filled.get(14)) {
+    if (filled.get(11)) {
       throw new IllegalStateException("bin.BIT_1 already set");
     } else {
-      filled.set(14);
+      filled.set(11);
     }
 
     bit1.put((byte) (b ? 1 : 0));
@@ -385,10 +337,10 @@ public class Trace {
   }
 
   public Trace bitB4(final Boolean b) {
-    if (filled.get(15)) {
+    if (filled.get(12)) {
       throw new IllegalStateException("bin.BIT_B_4 already set");
     } else {
-      filled.set(15);
+      filled.set(12);
     }
 
     bitB4.put((byte) (b ? 1 : 0));
@@ -397,10 +349,10 @@ public class Trace {
   }
 
   public Trace bits(final Boolean b) {
-    if (filled.get(13)) {
+    if (filled.get(10)) {
       throw new IllegalStateException("bin.BITS already set");
     } else {
-      filled.set(13);
+      filled.set(10);
     }
 
     bits.put((byte) (b ? 1 : 0));
@@ -409,10 +361,10 @@ public class Trace {
   }
 
   public Trace byte1(final UnsignedByte b) {
-    if (filled.get(16)) {
+    if (filled.get(13)) {
       throw new IllegalStateException("bin.BYTE_1 already set");
     } else {
-      filled.set(16);
+      filled.set(13);
     }
 
     byte1.put(b.toByte());
@@ -421,10 +373,10 @@ public class Trace {
   }
 
   public Trace byte2(final UnsignedByte b) {
-    if (filled.get(17)) {
+    if (filled.get(14)) {
       throw new IllegalStateException("bin.BYTE_2 already set");
     } else {
-      filled.set(17);
+      filled.set(14);
     }
 
     byte2.put(b.toByte());
@@ -433,10 +385,10 @@ public class Trace {
   }
 
   public Trace byte3(final UnsignedByte b) {
-    if (filled.get(18)) {
+    if (filled.get(15)) {
       throw new IllegalStateException("bin.BYTE_3 already set");
     } else {
-      filled.set(18);
+      filled.set(15);
     }
 
     byte3.put(b.toByte());
@@ -445,10 +397,10 @@ public class Trace {
   }
 
   public Trace byte4(final UnsignedByte b) {
-    if (filled.get(19)) {
+    if (filled.get(16)) {
       throw new IllegalStateException("bin.BYTE_4 already set");
     } else {
-      filled.set(19);
+      filled.set(16);
     }
 
     byte4.put(b.toByte());
@@ -457,10 +409,10 @@ public class Trace {
   }
 
   public Trace byte5(final UnsignedByte b) {
-    if (filled.get(20)) {
+    if (filled.get(17)) {
       throw new IllegalStateException("bin.BYTE_5 already set");
     } else {
-      filled.set(20);
+      filled.set(17);
     }
 
     byte5.put(b.toByte());
@@ -469,10 +421,10 @@ public class Trace {
   }
 
   public Trace byte6(final UnsignedByte b) {
-    if (filled.get(21)) {
+    if (filled.get(18)) {
       throw new IllegalStateException("bin.BYTE_6 already set");
     } else {
-      filled.set(21);
+      filled.set(18);
     }
 
     byte6.put(b.toByte());
@@ -480,71 +432,131 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final Bytes b) {
-    if (filled.get(22)) {
+  public Trace counter(final UnsignedByte b) {
+    if (filled.get(19)) {
       throw new IllegalStateException("bin.COUNTER already set");
+    } else {
+      filled.set(19);
+    }
+
+    counter.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace inst(final UnsignedByte b) {
+    if (filled.get(20)) {
+      throw new IllegalStateException("bin.INST already set");
+    } else {
+      filled.set(20);
+    }
+
+    inst.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace isAnd(final Boolean b) {
+    if (filled.get(21)) {
+      throw new IllegalStateException("bin.IS_AND already set");
+    } else {
+      filled.set(21);
+    }
+
+    isAnd.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isByte(final Boolean b) {
+    if (filled.get(22)) {
+      throw new IllegalStateException("bin.IS_BYTE already set");
     } else {
       filled.set(22);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      counter.put((byte) 0);
-    }
-    counter.put(b.toArrayUnsafe());
+    isByte.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace inst(final Bytes b) {
+  public Trace isNot(final Boolean b) {
     if (filled.get(23)) {
-      throw new IllegalStateException("bin.INST already set");
+      throw new IllegalStateException("bin.IS_NOT already set");
     } else {
       filled.set(23);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      inst.put((byte) 0);
-    }
-    inst.put(b.toArrayUnsafe());
+    isNot.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace isData(final Boolean b) {
+  public Trace isOr(final Boolean b) {
     if (filled.get(24)) {
-      throw new IllegalStateException("bin.IS_DATA already set");
+      throw new IllegalStateException("bin.IS_OR already set");
     } else {
       filled.set(24);
     }
 
-    isData.put((byte) (b ? 1 : 0));
+    isOr.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace low4(final Bytes b) {
+  public Trace isSignextend(final Boolean b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("bin.LOW_4 already set");
+      throw new IllegalStateException("bin.IS_SIGNEXTEND already set");
     } else {
       filled.set(25);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      low4.put((byte) 0);
+    isSignextend.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isXor(final Boolean b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("bin.IS_XOR already set");
+    } else {
+      filled.set(26);
     }
-    low4.put(b.toArrayUnsafe());
+
+    isXor.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace low4(final UnsignedByte b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("bin.LOW_4 already set");
+    } else {
+      filled.set(27);
+    }
+
+    low4.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace mli(final Boolean b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("bin.MLI already set");
+    } else {
+      filled.set(28);
+    }
+
+    mli.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace neg(final Boolean b) {
-    if (filled.get(26)) {
+    if (filled.get(29)) {
       throw new IllegalStateException("bin.NEG already set");
     } else {
-      filled.set(26);
+      filled.set(29);
     }
 
     neg.put((byte) (b ? 1 : 0));
@@ -552,43 +564,11 @@ public class Trace {
     return this;
   }
 
-  public Trace notByteHi(final Bytes b) {
-    if (filled.get(27)) {
-      throw new IllegalStateException("bin.NOT_BYTE_HI already set");
-    } else {
-      filled.set(27);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      notByteHi.put((byte) 0);
-    }
-    notByteHi.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace notByteLo(final Bytes b) {
-    if (filled.get(28)) {
-      throw new IllegalStateException("bin.NOT_BYTE_LO already set");
-    } else {
-      filled.set(28);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      notByteLo.put((byte) 0);
-    }
-    notByteLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
   public Trace oneLineInstruction(final Boolean b) {
-    if (filled.get(29)) {
+    if (filled.get(30)) {
       throw new IllegalStateException("bin.ONE_LINE_INSTRUCTION already set");
     } else {
-      filled.set(29);
+      filled.set(30);
     }
 
     oneLineInstruction.put((byte) (b ? 1 : 0));
@@ -596,59 +576,23 @@ public class Trace {
     return this;
   }
 
-  public Trace orByteHi(final Bytes b) {
-    if (filled.get(30)) {
-      throw new IllegalStateException("bin.OR_BYTE_HI already set");
-    } else {
-      filled.set(30);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      orByteHi.put((byte) 0);
-    }
-    orByteHi.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace orByteLo(final Bytes b) {
+  public Trace pivot(final UnsignedByte b) {
     if (filled.get(31)) {
-      throw new IllegalStateException("bin.OR_BYTE_LO already set");
+      throw new IllegalStateException("bin.PIVOT already set");
     } else {
       filled.set(31);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      orByteLo.put((byte) 0);
-    }
-    orByteLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pivot(final Bytes b) {
-    if (filled.get(32)) {
-      throw new IllegalStateException("bin.PIVOT already set");
-    } else {
-      filled.set(32);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      pivot.put((byte) 0);
-    }
-    pivot.put(b.toArrayUnsafe());
+    pivot.put(b.toByte());
 
     return this;
   }
 
   public Trace resultHi(final Bytes b) {
-    if (filled.get(33)) {
+    if (filled.get(32)) {
       throw new IllegalStateException("bin.RESULT_HI already set");
     } else {
-      filled.set(33);
+      filled.set(32);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -661,10 +605,10 @@ public class Trace {
   }
 
   public Trace resultLo(final Bytes b) {
-    if (filled.get(34)) {
+    if (filled.get(33)) {
       throw new IllegalStateException("bin.RESULT_LO already set");
     } else {
-      filled.set(34);
+      filled.set(33);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -677,10 +621,10 @@ public class Trace {
   }
 
   public Trace small(final Boolean b) {
-    if (filled.get(35)) {
+    if (filled.get(34)) {
       throw new IllegalStateException("bin.SMALL already set");
     } else {
-      filled.set(35);
+      filled.set(34);
     }
 
     small.put((byte) (b ? 1 : 0));
@@ -688,34 +632,42 @@ public class Trace {
     return this;
   }
 
-  public Trace xorByteHi(final Bytes b) {
-    if (filled.get(36)) {
-      throw new IllegalStateException("bin.XOR_BYTE_HI already set");
+  public Trace stamp(final Bytes b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("bin.STAMP already set");
     } else {
-      filled.set(36);
+      filled.set(35);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      xorByteHi.put((byte) 0);
+      stamp.put((byte) 0);
     }
-    xorByteHi.put(b.toArrayUnsafe());
+    stamp.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace xorByteLo(final Bytes b) {
+  public Trace xxxByteHi(final UnsignedByte b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("bin.XXX_BYTE_HI already set");
+    } else {
+      filled.set(36);
+    }
+
+    xxxByteHi.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace xxxByteLo(final UnsignedByte b) {
     if (filled.get(37)) {
-      throw new IllegalStateException("bin.XOR_BYTE_LO already set");
+      throw new IllegalStateException("bin.XXX_BYTE_LO already set");
     } else {
       filled.set(37);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      xorByteLo.put((byte) 0);
-    }
-    xorByteLo.put(b.toArrayUnsafe());
+    xxxByteLo.put(b.toByte());
 
     return this;
   }
@@ -746,131 +698,131 @@ public class Trace {
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("bin.AND_BYTE_HI has not been filled");
-    }
-
-    if (!filled.get(7)) {
-      throw new IllegalStateException("bin.AND_BYTE_LO has not been filled");
-    }
-
-    if (!filled.get(8)) {
       throw new IllegalStateException("bin.ARGUMENT_1_HI has not been filled");
     }
 
-    if (!filled.get(9)) {
+    if (!filled.get(7)) {
       throw new IllegalStateException("bin.ARGUMENT_1_LO has not been filled");
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(8)) {
       throw new IllegalStateException("bin.ARGUMENT_2_HI has not been filled");
     }
 
-    if (!filled.get(11)) {
+    if (!filled.get(9)) {
       throw new IllegalStateException("bin.ARGUMENT_2_LO has not been filled");
     }
 
-    if (!filled.get(12)) {
-      throw new IllegalStateException("bin.BINARY_STAMP has not been filled");
-    }
-
-    if (!filled.get(14)) {
+    if (!filled.get(11)) {
       throw new IllegalStateException("bin.BIT_1 has not been filled");
     }
 
-    if (!filled.get(15)) {
+    if (!filled.get(12)) {
       throw new IllegalStateException("bin.BIT_B_4 has not been filled");
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(10)) {
       throw new IllegalStateException("bin.BITS has not been filled");
     }
 
-    if (!filled.get(16)) {
+    if (!filled.get(13)) {
       throw new IllegalStateException("bin.BYTE_1 has not been filled");
     }
 
-    if (!filled.get(17)) {
+    if (!filled.get(14)) {
       throw new IllegalStateException("bin.BYTE_2 has not been filled");
     }
 
-    if (!filled.get(18)) {
+    if (!filled.get(15)) {
       throw new IllegalStateException("bin.BYTE_3 has not been filled");
     }
 
-    if (!filled.get(19)) {
+    if (!filled.get(16)) {
       throw new IllegalStateException("bin.BYTE_4 has not been filled");
     }
 
-    if (!filled.get(20)) {
+    if (!filled.get(17)) {
       throw new IllegalStateException("bin.BYTE_5 has not been filled");
     }
 
-    if (!filled.get(21)) {
+    if (!filled.get(18)) {
       throw new IllegalStateException("bin.BYTE_6 has not been filled");
     }
 
-    if (!filled.get(22)) {
+    if (!filled.get(19)) {
       throw new IllegalStateException("bin.COUNTER has not been filled");
     }
 
-    if (!filled.get(23)) {
+    if (!filled.get(20)) {
       throw new IllegalStateException("bin.INST has not been filled");
     }
 
+    if (!filled.get(21)) {
+      throw new IllegalStateException("bin.IS_AND has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("bin.IS_BYTE has not been filled");
+    }
+
+    if (!filled.get(23)) {
+      throw new IllegalStateException("bin.IS_NOT has not been filled");
+    }
+
     if (!filled.get(24)) {
-      throw new IllegalStateException("bin.IS_DATA has not been filled");
+      throw new IllegalStateException("bin.IS_OR has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("bin.LOW_4 has not been filled");
+      throw new IllegalStateException("bin.IS_SIGNEXTEND has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("bin.NEG has not been filled");
+      throw new IllegalStateException("bin.IS_XOR has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("bin.NOT_BYTE_HI has not been filled");
+      throw new IllegalStateException("bin.LOW_4 has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("bin.NOT_BYTE_LO has not been filled");
+      throw new IllegalStateException("bin.MLI has not been filled");
     }
 
     if (!filled.get(29)) {
-      throw new IllegalStateException("bin.ONE_LINE_INSTRUCTION has not been filled");
+      throw new IllegalStateException("bin.NEG has not been filled");
     }
 
     if (!filled.get(30)) {
-      throw new IllegalStateException("bin.OR_BYTE_HI has not been filled");
+      throw new IllegalStateException("bin.ONE_LINE_INSTRUCTION has not been filled");
     }
 
     if (!filled.get(31)) {
-      throw new IllegalStateException("bin.OR_BYTE_LO has not been filled");
-    }
-
-    if (!filled.get(32)) {
       throw new IllegalStateException("bin.PIVOT has not been filled");
     }
 
-    if (!filled.get(33)) {
+    if (!filled.get(32)) {
       throw new IllegalStateException("bin.RESULT_HI has not been filled");
     }
 
-    if (!filled.get(34)) {
+    if (!filled.get(33)) {
       throw new IllegalStateException("bin.RESULT_LO has not been filled");
     }
 
-    if (!filled.get(35)) {
+    if (!filled.get(34)) {
       throw new IllegalStateException("bin.SMALL has not been filled");
     }
 
+    if (!filled.get(35)) {
+      throw new IllegalStateException("bin.STAMP has not been filled");
+    }
+
     if (!filled.get(36)) {
-      throw new IllegalStateException("bin.XOR_BYTE_HI has not been filled");
+      throw new IllegalStateException("bin.XXX_BYTE_HI has not been filled");
     }
 
     if (!filled.get(37)) {
-      throw new IllegalStateException("bin.XOR_BYTE_LO has not been filled");
+      throw new IllegalStateException("bin.XXX_BYTE_LO has not been filled");
     }
 
     filled.clear();
@@ -905,131 +857,131 @@ public class Trace {
     }
 
     if (!filled.get(6)) {
-      andByteHi.position(andByteHi.position() + 32);
-    }
-
-    if (!filled.get(7)) {
-      andByteLo.position(andByteLo.position() + 32);
-    }
-
-    if (!filled.get(8)) {
       argument1Hi.position(argument1Hi.position() + 32);
     }
 
-    if (!filled.get(9)) {
+    if (!filled.get(7)) {
       argument1Lo.position(argument1Lo.position() + 32);
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(8)) {
       argument2Hi.position(argument2Hi.position() + 32);
     }
 
-    if (!filled.get(11)) {
+    if (!filled.get(9)) {
       argument2Lo.position(argument2Lo.position() + 32);
     }
 
-    if (!filled.get(12)) {
-      binaryStamp.position(binaryStamp.position() + 32);
-    }
-
-    if (!filled.get(14)) {
+    if (!filled.get(11)) {
       bit1.position(bit1.position() + 1);
     }
 
-    if (!filled.get(15)) {
+    if (!filled.get(12)) {
       bitB4.position(bitB4.position() + 1);
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(10)) {
       bits.position(bits.position() + 1);
     }
 
-    if (!filled.get(16)) {
+    if (!filled.get(13)) {
       byte1.position(byte1.position() + 1);
     }
 
-    if (!filled.get(17)) {
+    if (!filled.get(14)) {
       byte2.position(byte2.position() + 1);
     }
 
-    if (!filled.get(18)) {
+    if (!filled.get(15)) {
       byte3.position(byte3.position() + 1);
     }
 
-    if (!filled.get(19)) {
+    if (!filled.get(16)) {
       byte4.position(byte4.position() + 1);
     }
 
-    if (!filled.get(20)) {
+    if (!filled.get(17)) {
       byte5.position(byte5.position() + 1);
     }
 
-    if (!filled.get(21)) {
+    if (!filled.get(18)) {
       byte6.position(byte6.position() + 1);
     }
 
+    if (!filled.get(19)) {
+      counter.position(counter.position() + 1);
+    }
+
+    if (!filled.get(20)) {
+      inst.position(inst.position() + 1);
+    }
+
+    if (!filled.get(21)) {
+      isAnd.position(isAnd.position() + 1);
+    }
+
     if (!filled.get(22)) {
-      counter.position(counter.position() + 32);
+      isByte.position(isByte.position() + 1);
     }
 
     if (!filled.get(23)) {
-      inst.position(inst.position() + 32);
+      isNot.position(isNot.position() + 1);
     }
 
     if (!filled.get(24)) {
-      isData.position(isData.position() + 1);
+      isOr.position(isOr.position() + 1);
     }
 
     if (!filled.get(25)) {
-      low4.position(low4.position() + 32);
+      isSignextend.position(isSignextend.position() + 1);
     }
 
     if (!filled.get(26)) {
-      neg.position(neg.position() + 1);
+      isXor.position(isXor.position() + 1);
     }
 
     if (!filled.get(27)) {
-      notByteHi.position(notByteHi.position() + 32);
+      low4.position(low4.position() + 1);
     }
 
     if (!filled.get(28)) {
-      notByteLo.position(notByteLo.position() + 32);
+      mli.position(mli.position() + 1);
     }
 
     if (!filled.get(29)) {
-      oneLineInstruction.position(oneLineInstruction.position() + 1);
+      neg.position(neg.position() + 1);
     }
 
     if (!filled.get(30)) {
-      orByteHi.position(orByteHi.position() + 32);
+      oneLineInstruction.position(oneLineInstruction.position() + 1);
     }
 
     if (!filled.get(31)) {
-      orByteLo.position(orByteLo.position() + 32);
+      pivot.position(pivot.position() + 1);
     }
 
     if (!filled.get(32)) {
-      pivot.position(pivot.position() + 32);
-    }
-
-    if (!filled.get(33)) {
       resultHi.position(resultHi.position() + 32);
     }
 
-    if (!filled.get(34)) {
+    if (!filled.get(33)) {
       resultLo.position(resultLo.position() + 32);
     }
 
-    if (!filled.get(35)) {
+    if (!filled.get(34)) {
       small.position(small.position() + 1);
     }
 
+    if (!filled.get(35)) {
+      stamp.position(stamp.position() + 32);
+    }
+
     if (!filled.get(36)) {
-      xorByteHi.position(xorByteHi.position() + 32);
+      xxxByteHi.position(xxxByteHi.position() + 1);
     }
 
     if (!filled.get(37)) {
-      xorByteLo.position(xorByteLo.position() + 32);
+      xxxByteLo.position(xxxByteLo.position() + 1);
     }
 
     filled.clear();

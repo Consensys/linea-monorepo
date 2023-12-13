@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,14 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.tables.bin;
+package net.consensys.linea.zktracer.module.BinRt;
 
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /**
  * WARNING: This code is generated automatically.
@@ -29,36 +29,28 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
+
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
 
-  private final MappedByteBuffer andByte;
-  private final MappedByteBuffer byteArg1;
-  private final MappedByteBuffer byteArg2;
-  private final MappedByteBuffer isInRt;
-  private final MappedByteBuffer notByte;
-  private final MappedByteBuffer orByte;
-  private final MappedByteBuffer xorByte;
+  private final MappedByteBuffer inputByte1;
+  private final MappedByteBuffer inputByte2;
+  private final MappedByteBuffer inst;
+  private final MappedByteBuffer resultByte;
 
-  static List<ColumnHeader> headers(int length) {
+  public static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("binRT.AND_BYTE", 32, length),
-        new ColumnHeader("binRT.BYTE_ARG_1", 32, length),
-        new ColumnHeader("binRT.BYTE_ARG_2", 32, length),
-        new ColumnHeader("binRT.IS_IN_RT", 32, length),
-        new ColumnHeader("binRT.NOT_BYTE", 32, length),
-        new ColumnHeader("binRT.OR_BYTE", 32, length),
-        new ColumnHeader("binRT.XOR_BYTE", 32, length));
+        new ColumnHeader("binRT.INPUT_BYTE_1", 1, length),
+        new ColumnHeader("binRT.INPUT_BYTE_2", 1, length),
+        new ColumnHeader("binRT.INST", 1, length),
+        new ColumnHeader("binRT.RESULT_BYTE", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
-    this.andByte = buffers.get(0);
-    this.byteArg1 = buffers.get(1);
-    this.byteArg2 = buffers.get(2);
-    this.isInRt = buffers.get(3);
-    this.notByte = buffers.get(4);
-    this.orByte = buffers.get(5);
-    this.xorByte = buffers.get(6);
+    this.inputByte1 = buffers.get(0);
+    this.inputByte2 = buffers.get(1);
+    this.inst = buffers.get(2);
+    this.resultByte = buffers.get(3);
   }
 
   public int size() {
@@ -69,145 +61,69 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace andByte(final Bytes b) {
+  public Trace inputByte1(final UnsignedByte b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("binRT.AND_BYTE already set");
+      throw new IllegalStateException("binRT.INPUT_BYTE_1 already set");
     } else {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      andByte.put((byte) 0);
-    }
-    andByte.put(b.toArrayUnsafe());
+    inputByte1.put(b.toByte());
 
     return this;
   }
 
-  public Trace byteArg1(final Bytes b) {
+  public Trace inputByte2(final UnsignedByte b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("binRT.BYTE_ARG_1 already set");
+      throw new IllegalStateException("binRT.INPUT_BYTE_2 already set");
     } else {
       filled.set(1);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      byteArg1.put((byte) 0);
-    }
-    byteArg1.put(b.toArrayUnsafe());
+    inputByte2.put(b.toByte());
 
     return this;
   }
 
-  public Trace byteArg2(final Bytes b) {
+  public Trace inst(final UnsignedByte b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("binRT.BYTE_ARG_2 already set");
+      throw new IllegalStateException("binRT.INST already set");
     } else {
       filled.set(2);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      byteArg2.put((byte) 0);
-    }
-    byteArg2.put(b.toArrayUnsafe());
+    inst.put(b.toByte());
 
     return this;
   }
 
-  public Trace isInRt(final Bytes b) {
+  public Trace resultByte(final UnsignedByte b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("binRT.IS_IN_RT already set");
+      throw new IllegalStateException("binRT.RESULT_BYTE already set");
     } else {
       filled.set(3);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      isInRt.put((byte) 0);
-    }
-    isInRt.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace notByte(final Bytes b) {
-    if (filled.get(4)) {
-      throw new IllegalStateException("binRT.NOT_BYTE already set");
-    } else {
-      filled.set(4);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      notByte.put((byte) 0);
-    }
-    notByte.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace orByte(final Bytes b) {
-    if (filled.get(5)) {
-      throw new IllegalStateException("binRT.OR_BYTE already set");
-    } else {
-      filled.set(5);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      orByte.put((byte) 0);
-    }
-    orByte.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace xorByte(final Bytes b) {
-    if (filled.get(6)) {
-      throw new IllegalStateException("binRT.XOR_BYTE already set");
-    } else {
-      filled.set(6);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      xorByte.put((byte) 0);
-    }
-    xorByte.put(b.toArrayUnsafe());
+    resultByte.put(b.toByte());
 
     return this;
   }
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("binRT.AND_BYTE has not been filled");
+      throw new IllegalStateException("binRT.INPUT_BYTE_1 has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("binRT.BYTE_ARG_1 has not been filled");
+      throw new IllegalStateException("binRT.INPUT_BYTE_2 has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("binRT.BYTE_ARG_2 has not been filled");
+      throw new IllegalStateException("binRT.INST has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("binRT.IS_IN_RT has not been filled");
-    }
-
-    if (!filled.get(4)) {
-      throw new IllegalStateException("binRT.NOT_BYTE has not been filled");
-    }
-
-    if (!filled.get(5)) {
-      throw new IllegalStateException("binRT.OR_BYTE has not been filled");
-    }
-
-    if (!filled.get(6)) {
-      throw new IllegalStateException("binRT.XOR_BYTE has not been filled");
+      throw new IllegalStateException("binRT.RESULT_BYTE has not been filled");
     }
 
     filled.clear();
@@ -218,31 +134,19 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      andByte.position(andByte.position() + 32);
+      inputByte1.position(inputByte1.position() + 1);
     }
 
     if (!filled.get(1)) {
-      byteArg1.position(byteArg1.position() + 32);
+      inputByte2.position(inputByte2.position() + 1);
     }
 
     if (!filled.get(2)) {
-      byteArg2.position(byteArg2.position() + 32);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(3)) {
-      isInRt.position(isInRt.position() + 32);
-    }
-
-    if (!filled.get(4)) {
-      notByte.position(notByte.position() + 32);
-    }
-
-    if (!filled.get(5)) {
-      orByte.position(orByte.position() + 32);
-    }
-
-    if (!filled.get(6)) {
-      xorByte.position(xorByte.position() + 32);
+      resultByte.position(resultByte.position() + 1);
     }
 
     filled.clear();
