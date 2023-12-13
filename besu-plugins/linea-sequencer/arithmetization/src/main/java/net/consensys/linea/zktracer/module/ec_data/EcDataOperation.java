@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.ec_data;
 
 import static net.consensys.linea.zktracer.types.Containers.repeat;
-import static net.consensys.linea.zktracer.types.Conversions.leftPadTo;
+import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
 import java.util.List;
 import java.util.Set;

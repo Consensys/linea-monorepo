@@ -19,10 +19,13 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.module.BinRt.Trace;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
-public record BinRt() implements Module {
+public class BinRt implements Module {
   @Override
   public String moduleKey() {
     return "binRT";
@@ -36,7 +39,7 @@ public record BinRt() implements Module {
 
   @Override
   public int lineCount() {
-    return 256 * 256 + 1;
+    return 3 * 256 * 256 + 256; // 256*256 lines for AND, OR and XOR, and 256 lines for NOT
   }
 
   @Override
@@ -47,32 +50,83 @@ public record BinRt() implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
 
-    for (short a = 0; a <= 255; a++) {
-      final Bytes aByte = Bytes.of((byte) a);
-      for (short b = 0; b <= 255; b++) {
-        final Bytes bByte = Bytes.of((byte) b);
+    // AND
+    UnsignedByte opCode = UnsignedByte.of(OpCode.AND.byteValue());
 
+    for (short input1 = 0; input1 <= 255; input1++) {
+      final Bytes input1Bytes = Bytes.of(input1);
+      final UnsignedByte input1UByte = UnsignedByte.of(input1);
+
+      for (short input2 = 0; input2 <= 255; input2++) {
+        final Bytes input2Bytes = Bytes.of(input2);
+        final UnsignedByte input2UByte = UnsignedByte.of(input2);
+
+        final UnsignedByte result = UnsignedByte.of(input1Bytes.and(input2Bytes).get(0));
         trace
-            .byteArg1(aByte)
-            .byteArg2(bByte)
-            .andByte(aByte.and(bByte))
-            .orByte(aByte.or(bByte))
-            .xorByte(aByte.xor(bByte))
-            .notByte(aByte.not())
-            .isInRt(Bytes.of(1))
+            .inst(opCode)
+            .resultByte(result)
+            .inputByte1(input1UByte)
+            .inputByte2(input2UByte)
             .validateRow();
       }
     }
 
-    // zero row
-    trace
-        .byteArg1(Bytes.EMPTY)
-        .byteArg2(Bytes.EMPTY)
-        .andByte(Bytes.EMPTY)
-        .orByte(Bytes.EMPTY)
-        .xorByte(Bytes.EMPTY)
-        .notByte(Bytes.EMPTY)
-        .isInRt(Bytes.EMPTY)
-        .validateRow();
+    // OR
+    opCode = UnsignedByte.of(OpCode.OR.byteValue());
+
+    for (short input1 = 0; input1 <= 255; input1++) {
+      final Bytes input1Bytes = Bytes.of(input1);
+      final UnsignedByte input1UByte = UnsignedByte.of(input1);
+
+      for (short input2 = 0; input2 <= 255; input2++) {
+        final Bytes input2Bytes = Bytes.of(input2);
+        final UnsignedByte input2UByte = UnsignedByte.of(input2);
+
+        final UnsignedByte result = UnsignedByte.of(input1Bytes.or(input2Bytes).get(0));
+        trace
+            .inst(opCode)
+            .resultByte(result)
+            .inputByte1(input1UByte)
+            .inputByte2(input2UByte)
+            .validateRow();
+      }
+    }
+
+    // XOR
+    opCode = UnsignedByte.of(OpCode.XOR.byteValue());
+
+    for (short input1 = 0; input1 <= 255; input1++) {
+      final Bytes input1Bytes = Bytes.of(input1);
+      final UnsignedByte input1UByte = UnsignedByte.of(input1);
+
+      for (short input2 = 0; input2 <= 255; input2++) {
+        final Bytes input2Bytes = Bytes.of(input2);
+        final UnsignedByte input2UByte = UnsignedByte.of(input2);
+
+        final UnsignedByte result = UnsignedByte.of(input1Bytes.xor(input2Bytes).get(0));
+        trace
+            .inst(opCode)
+            .resultByte(result)
+            .inputByte1(input1UByte)
+            .inputByte2(input2UByte)
+            .validateRow();
+      }
+    }
+
+    // NOT
+    opCode = UnsignedByte.of(OpCode.NOT.byteValue());
+
+    for (short input1 = 0; input1 <= 255; input1++) {
+      final Bytes input1Bytes = Bytes.of(input1);
+      final UnsignedByte input1UByte = UnsignedByte.of(input1);
+
+      final UnsignedByte result = UnsignedByte.of(input1Bytes.not().get(0));
+      trace
+          .inst(opCode)
+          .resultByte(result)
+          .inputByte1(input1UByte)
+          .inputByte2(UnsignedByte.ZERO)
+          .validateRow();
+    }
   }
 }

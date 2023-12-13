@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.logData;
 
-import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;

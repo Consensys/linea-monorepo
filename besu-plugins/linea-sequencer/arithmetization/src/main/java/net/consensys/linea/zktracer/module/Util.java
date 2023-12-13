@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.types.Conversions.rightPadTo;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
 

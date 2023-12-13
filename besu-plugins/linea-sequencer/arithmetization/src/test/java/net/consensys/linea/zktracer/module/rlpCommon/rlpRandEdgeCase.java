@@ -24,11 +24,8 @@ public class rlpRandEdgeCase {
   private static Random rnd = new Random(666);
 
   public static final BigInteger randBigInt(boolean onlySixteenByte) {
-    int selectorBound = 4;
-    if (!onlySixteenByte) {
-      selectorBound += 1;
-    }
-    int selector = rnd.nextInt(0, selectorBound);
+    final int selectorBound = onlySixteenByte ? 4 : 5;
+    final int selector = rnd.nextInt(0, selectorBound);
 
     return switch (selector) {
       case 0 -> BigInteger.ZERO;
