@@ -29,6 +29,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class TxTrace {
   /** The {@link TraceSection} of which this transaction trace is made of */
   @Getter private final List<TraceSection> trace = new ArrayList<>();
+  /** A cache for the line count of this transaction */
+  private int cachedLineCount = 0;
 
   public int size() {
     return this.trace.size();
@@ -112,13 +114,14 @@ public class TxTrace {
   }
 
   /**
-   * @return the line number in this transaction trace
+   * @return the line count in this transaction trace
    */
   public int lineCount() {
-    int sum = 0;
-    for (TraceSection s : trace) {
-      sum += s.getLines().size();
+    if (this.cachedLineCount == 0) {
+      for (TraceSection s : trace) {
+        this.cachedLineCount += s.getLines().size();
+      }
     }
-    return sum;
+    return this.cachedLineCount;
   }
 }
