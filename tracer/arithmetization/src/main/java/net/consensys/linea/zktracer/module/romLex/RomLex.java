@@ -17,10 +17,8 @@ package net.consensys.linea.zktracer.module.romLex;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,7 +41,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RomLex implements Module {
   private static final int LLARGE = 16;
-  private static final Bytes CREATE2_SHIFT = bigIntegerToBytes(BigInteger.valueOf(0xff));
   private static final RomChunkComparator romChunkComparator = new RomChunkComparator();
 
   private final Hub hub;

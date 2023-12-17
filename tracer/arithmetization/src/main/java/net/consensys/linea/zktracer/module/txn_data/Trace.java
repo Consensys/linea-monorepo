@@ -20,6 +20,7 @@ import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
@@ -107,7 +108,7 @@ public class Trace {
         new ColumnHeader("txnData.CODE_FRAGMENT_INDEX", 32, length),
         new ColumnHeader("txnData.COINBASE_HI", 32, length),
         new ColumnHeader("txnData.COINBASE_LO", 32, length),
-        new ColumnHeader("txnData.CT", 32, length),
+        new ColumnHeader("txnData.CT", 1, length),
         new ColumnHeader("txnData.CUMULATIVE_CONSUMED_GAS", 32, length),
         new ColumnHeader("txnData.FROM_HI", 32, length),
         new ColumnHeader("txnData.FROM_LO", 32, length),
@@ -122,8 +123,8 @@ public class Trace {
         new ColumnHeader("txnData.OUTGOING_HI", 32, length),
         new ColumnHeader("txnData.OUTGOING_LO", 32, length),
         new ColumnHeader("txnData.OUTGOING_RLP_TXNRCPT", 32, length),
-        new ColumnHeader("txnData.PHASE_RLP_TXN", 32, length),
-        new ColumnHeader("txnData.PHASE_RLP_TXNRCPT", 32, length),
+        new ColumnHeader("txnData.PHASE_RLP_TXN", 1, length),
+        new ColumnHeader("txnData.PHASE_RLP_TXNRCPT", 1, length),
         new ColumnHeader("txnData.REFUND_AMOUNT", 32, length),
         new ColumnHeader("txnData.REFUND_COUNTER", 32, length),
         new ColumnHeader("txnData.REL_TX_NUM", 32, length),
@@ -138,7 +139,7 @@ public class Trace {
         new ColumnHeader("txnData.VALUE", 32, length),
         new ColumnHeader("txnData.WCP_ARG_ONE_LO", 32, length),
         new ColumnHeader("txnData.WCP_ARG_TWO_LO", 32, length),
-        new ColumnHeader("txnData.WCP_INST", 32, length),
+        new ColumnHeader("txnData.WCP_INST", 1, length),
         new ColumnHeader("txnData.WCP_RES_LO", 1, length));
   }
 
@@ -339,18 +340,14 @@ public class Trace {
     return this;
   }
 
-  public Trace ct(final Bytes b) {
+  public Trace ct(final UnsignedByte b) {
     if (filled.get(9)) {
       throw new IllegalStateException("txnData.CT already set");
     } else {
       filled.set(9);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      ct.put((byte) 0);
-    }
-    ct.put(b.toArrayUnsafe());
+    ct.put(b.toByte());
 
     return this;
   }
@@ -575,34 +572,26 @@ public class Trace {
     return this;
   }
 
-  public Trace phaseRlpTxn(final Bytes b) {
+  public Trace phaseRlpTxn(final UnsignedByte b) {
     if (filled.get(24)) {
       throw new IllegalStateException("txnData.PHASE_RLP_TXN already set");
     } else {
       filled.set(24);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      phaseRlpTxn.put((byte) 0);
-    }
-    phaseRlpTxn.put(b.toArrayUnsafe());
+    phaseRlpTxn.put(b.toByte());
 
     return this;
   }
 
-  public Trace phaseRlpTxnrcpt(final Bytes b) {
+  public Trace phaseRlpTxnrcpt(final UnsignedByte b) {
     if (filled.get(25)) {
       throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT already set");
     } else {
       filled.set(25);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      phaseRlpTxnrcpt.put((byte) 0);
-    }
-    phaseRlpTxnrcpt.put(b.toArrayUnsafe());
+    phaseRlpTxnrcpt.put(b.toByte());
 
     return this;
   }
@@ -811,18 +800,14 @@ public class Trace {
     return this;
   }
 
-  public Trace wcpInst(final Bytes b) {
+  public Trace wcpInst(final UnsignedByte b) {
     if (filled.get(40)) {
       throw new IllegalStateException("txnData.WCP_INST already set");
     } else {
       filled.set(40);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      wcpInst.put((byte) 0);
-    }
-    wcpInst.put(b.toArrayUnsafe());
+    wcpInst.put(b.toByte());
 
     return this;
   }
@@ -1052,7 +1037,7 @@ public class Trace {
     }
 
     if (!filled.get(9)) {
-      ct.position(ct.position() + 32);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(10)) {
@@ -1112,11 +1097,11 @@ public class Trace {
     }
 
     if (!filled.get(24)) {
-      phaseRlpTxn.position(phaseRlpTxn.position() + 32);
+      phaseRlpTxn.position(phaseRlpTxn.position() + 1);
     }
 
     if (!filled.get(25)) {
-      phaseRlpTxnrcpt.position(phaseRlpTxnrcpt.position() + 32);
+      phaseRlpTxnrcpt.position(phaseRlpTxnrcpt.position() + 1);
     }
 
     if (!filled.get(26)) {
@@ -1176,7 +1161,7 @@ public class Trace {
     }
 
     if (!filled.get(40)) {
-      wcpInst.position(wcpInst.position() + 32);
+      wcpInst.position(wcpInst.position() + 1);
     }
 
     if (!filled.get(41)) {
