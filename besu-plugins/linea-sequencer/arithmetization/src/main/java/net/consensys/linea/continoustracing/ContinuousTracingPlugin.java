@@ -63,6 +63,12 @@ public class ContinuousTracingPlugin implements BesuPlugin {
   public void start() {
     log.info("Starting {} with configuration: {}", NAME, options);
 
+    final ContinuousTracingConfiguration tracingConfiguration = options.toDomainObject();
+
+    if (!tracingConfiguration.continuousTracing()) {
+      return;
+    }
+
     // BesuEvents can only be requested after the plugin has been registered.
     final BesuEvents besuEvents =
         context
@@ -78,30 +84,26 @@ public class ContinuousTracingPlugin implements BesuPlugin {
             .orElseThrow(
                 () -> new IllegalStateException("Expecting a TraceService, but none found."));
 
-    final ContinuousTracingConfiguration tracingConfiguration = options.toDomainObject();
-
-    if (tracingConfiguration.continuousTracing() && (tracingConfiguration.zkEvmBin() == null)) {
+    if (tracingConfiguration.zkEvmBin() == null) {
       log.error("zkEvmBin must be specified when continuousTracing is enabled");
       System.exit(1);
     }
 
     final String webHookUrl = System.getenv(ENV_WEBHOOK_URL);
-    if (tracingConfiguration.continuousTracing() && (webHookUrl == null)) {
+    if (webHookUrl == null) {
       log.error(
           "Webhook URL must be specified as environment variable {} when continuousTracing is enabled",
           ENV_WEBHOOK_URL);
       System.exit(1);
     }
 
-    if (tracingConfiguration.continuousTracing()) {
-      OpCodes.load(); // must be loaded explicitly
+    OpCodes.load(); // must be loaded explicitly
 
-      besuEvents.addBlockAddedListener(
-          new ContinuousTracingBlockAddedListener(
-              new ContinuousTracer(traceService, new CorsetValidator()),
-              new TraceFailureHandler(SlackNotificationService.create(webHookUrl)),
-              tracingConfiguration.zkEvmBin()));
-    }
+    besuEvents.addBlockAddedListener(
+        new ContinuousTracingBlockAddedListener(
+            new ContinuousTracer(traceService, new CorsetValidator()),
+            new TraceFailureHandler(SlackNotificationService.create(webHookUrl)),
+            tracingConfiguration.zkEvmBin()));
   }
 
   @Override
