@@ -224,11 +224,11 @@ public class RomLex implements Module {
       }
 
       case EXTCODECOPY -> {
-        final Address calledAddress = Words.toAddress(frame.getStackItem(1));
-        final long size = Words.clampedToLong(frame.getStackItem(3));
+        final Address calledAddress = Words.toAddress(frame.getStackItem(0));
+        final long length = Words.clampedToLong(frame.getStackItem(3));
         final boolean isDeploying =
             hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
-        if (size == 0 || isDeploying) {
+        if (length == 0 || isDeploying) {
           return;
         }
         final int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
