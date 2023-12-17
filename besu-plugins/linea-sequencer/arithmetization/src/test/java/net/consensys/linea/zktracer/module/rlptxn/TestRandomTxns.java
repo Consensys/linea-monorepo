@@ -179,7 +179,7 @@ class TestRandomTxns {
   final ToyAccount randToyAccount(Address senderAddress) {
 
     return ToyAccount.builder()
-        .balance(Wei.MAX_WEI)
+        .balance(Wei.wrap(Bytes.random(16, rnd)))
         .nonce(randLong())
         .address(senderAddress)
         .build();

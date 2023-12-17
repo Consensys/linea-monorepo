@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.stp;
 
+import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randBigInt;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
@@ -59,7 +60,7 @@ public class StpTest {
       final OpCode opcode = randOpCodeCall();
       final boolean toExists = RAND.nextBoolean();
       final boolean toWarm = toExists && RAND.nextBoolean();
-      final Wei balance = Wei.MAX_WEI;
+      final Wei balance = Wei.of(randBigInt(true));
       final long gasCall = RAND.nextLong(0, 100000L);
       final BigInteger value = BigInteger.valueOf(RAND.nextLong(0, 100000L));
       final long gasLimit = RAND.nextLong(23400, 1000000L);
@@ -205,7 +206,7 @@ public class StpTest {
     final long value = RAND.nextLong();
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.MAX_WEI)
+            .balance(Wei.of(randBigInt(true)))
             .nonce(Math.abs(RAND.nextInt()))
             .address(senderAddress)
             .build();
@@ -247,7 +248,7 @@ public class StpTest {
     final long value = RAND.nextLong();
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.MAX_WEI)
+            .balance(Wei.of(randBigInt(true)))
             .nonce(Math.abs(RAND.nextInt()))
             .address(senderAddress)
             .build();

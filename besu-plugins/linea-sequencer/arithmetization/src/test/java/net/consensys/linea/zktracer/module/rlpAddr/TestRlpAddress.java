@@ -155,7 +155,7 @@ public class TestRlpAddress {
 
   final ToyAccount randSenderAccount(Address senderAddress) {
     return ToyAccount.builder()
-        .balance(Wei.MAX_WEI)
+        .balance(Wei.of(randBigInt(true)))
         .nonce(randLong())
         .address(senderAddress)
         .build();
