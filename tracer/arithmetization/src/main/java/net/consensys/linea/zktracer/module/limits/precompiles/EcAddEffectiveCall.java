@@ -29,16 +29,16 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
-public final class EcMul implements Module {
+public final class EcAddEffectiveCall implements Module {
   private final Hub hub;
   private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECMUL";
+    return "PRECOMPILE_ECADD_EFFECTIVE_CALL";
   }
 
-  private static final int PRECOMPILE_GAS_FEE = 6000; // cf EIP-1108
+  private static final int PRECOMPILE_GAS_FEE = 150; // cf EIP-1108
 
   @Override
   public void enterTransaction() {
@@ -57,7 +57,7 @@ public final class EcMul implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_MUL)) {
+        if (target.equals(Address.ALTBN128_ADD)) {
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
           if (gasPaid >= PRECOMPILE_GAS_FEE) {
             this.counts.push(this.counts.pop() + 1);
