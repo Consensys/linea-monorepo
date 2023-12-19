@@ -27,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcRecover;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
@@ -41,7 +41,7 @@ public class Keccak implements Module {
   private static final int PUBKEY_BYTES = 64;
 
   private final Hub hub;
-  private final EcRecover ecRec;
+  private final EcRecoverEffectiveCall ecRec;
   private final L2Block l2Block;
 
   private final Deque<List<Long>> deployedCodesizes = new ArrayDeque<>();

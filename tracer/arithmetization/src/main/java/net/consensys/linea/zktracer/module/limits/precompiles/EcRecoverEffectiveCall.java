@@ -15,38 +15,42 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import static net.consensys.linea.zktracer.module.Util.slice;
+
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-@Slf4j
 @RequiredArgsConstructor
-public final class EcPairingCall implements Module {
+public final class EcRecoverEffectiveCall implements Module {
   private final Hub hub;
-  @Getter private final Stack<EcPairingLimit> counts = new Stack<>();
-  private static final int PRECOMPILE_BASE_GAS_FEE = 45000; // cf EIP-1108
-  private static final int PRECOMPILE_MILLER_LOOP_GAS_FEE = 34000; // cf EIP-1108
-  private static final int ECPAIRING_NB_BYTES_PER_MILLER_LOOP = 192;
+  private final Stack<Integer> counts = new Stack<>();
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECPAIRING";
+    return "PRECOMPILE_ECRECOVER_EFFECTIVE_CALL";
   }
+
+  private static final int ECRECOVER_GAS_FEE = 3000;
+  private static final int EWORD_SIZE = 32;
+  private static final BigInteger SECP_256_K1N =
+      new BigInteger(
+          "115792089237316195423570985008687907852837564279074904382605163141518161494337");
 
   @Override
   public void enterTransaction() {
-    counts.push(new EcPairingLimit(0, 0));
+    counts.push(0);
   }
 
   @Override
@@ -61,26 +65,32 @@ public final class EcPairingCall implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_PAIRING)) {
+        if (target.equals(Address.ECREC)) {
           long length = 0;
+          long offset = 0;
           switch (opCode) {
-            case CALL, CALLCODE -> length = Words.clampedToLong(frame.getStackItem(4));
-            case DELEGATECALL, STATICCALL -> length = Words.clampedToLong(frame.getStackItem(3));
+            case CALL, CALLCODE -> {
+              length = Words.clampedToLong(frame.getStackItem(4));
+              offset = Words.clampedToLong(frame.getStackItem(3));
+            }
+            case DELEGATECALL, STATICCALL -> {
+              length = Words.clampedToLong(frame.getStackItem(3));
+              offset = Words.clampedToLong(frame.getStackItem(2));
+            }
           }
-
-          final long nMillerLoop = (length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP);
-          if (nMillerLoop * ECPAIRING_NB_BYTES_PER_MILLER_LOOP != length) {
-            log.warn("[ECPairing] Argument is not a right size: " + length);
-            return;
-          }
-
+          final Bytes inputData = frame.shadowReadMemory(offset, length);
+          final BigInteger v = slice(inputData, EWORD_SIZE, EWORD_SIZE).toUnsignedBigInteger();
+          final BigInteger r = slice(inputData, EWORD_SIZE * 2, EWORD_SIZE).toUnsignedBigInteger();
+          final BigInteger s = slice(inputData, EWORD_SIZE * 3, EWORD_SIZE).toUnsignedBigInteger();
           final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          if (gasPaid >= PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * nMillerLoop) {
-            final EcPairingLimit lastEcpairingLimit = this.counts.pop();
-            this.counts.push(
-                new EcPairingLimit(
-                    lastEcpairingLimit.nPrecompileCall() + 1,
-                    lastEcpairingLimit.nMillerLoop() + nMillerLoop));
+          // TODO: exclude case without valid signature
+          if (gasPaid >= ECRECOVER_GAS_FEE
+              && (v.equals(BigInteger.valueOf(27)) || v.equals(BigInteger.valueOf(28)))
+              && !r.equals(BigInteger.ZERO)
+              && r.compareTo(SECP_256_K1N) < 0
+              && !s.equals(BigInteger.ZERO)
+              && s.compareTo(SECP_256_K1N) < 0) {
+            this.counts.push(this.counts.pop() + 1);
           }
         }
       }
@@ -90,7 +100,7 @@ public final class EcPairingCall implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(EcPairingLimit::nPrecompileCall).sum();
+    return this.counts.stream().mapToInt(x -> x).sum();
   }
 
   @Override
