@@ -21,16 +21,16 @@ import java.util.List;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
-public final class EcPairingWeightedCall implements Module {
-  private final EcPairingCall ecpairingCall;
+public final class EcPairingMillerLoop implements Module {
+  private final EcPairingCallEffectiveCall ecpairingCall;
 
-  public EcPairingWeightedCall(EcPairingCall ecpairingCall) {
+  public EcPairingMillerLoop(EcPairingCallEffectiveCall ecpairingCall) {
     this.ecpairingCall = ecpairingCall;
   }
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECPAIRING_WEIGHTED";
+    return "PRECOMPILE_ECPAIRING_MILLER_LOOP";
   }
 
   @Override
