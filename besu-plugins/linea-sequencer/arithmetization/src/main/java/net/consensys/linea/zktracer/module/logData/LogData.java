@@ -23,8 +23,8 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcpt;
-import net.consensys.linea.zktracer.module.rlp_txrcpt.RlpTxrcptChunk;
+import net.consensys.linea.zktracer.module.rlp.txrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlp.txrcpt.RlpTxrcptChunk;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.log.Log;
 

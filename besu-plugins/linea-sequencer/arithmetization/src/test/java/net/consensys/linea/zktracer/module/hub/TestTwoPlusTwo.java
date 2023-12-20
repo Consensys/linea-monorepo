@@ -29,4 +29,9 @@ public class TestTwoPlusTwo {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(27).op(OpCode.ADD).compile())
         .run();
   }
+
+  @Test
+  void testBreakingCall() {
+    BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).op(OpCode.CALL).compile()).run();
+  }
 }
