@@ -28,7 +28,12 @@ import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
-/** Responsible for conflated file traces generation. */
+/**
+ * Sets up an RPC endpoint for generating conflated file trace. This class provides an RPC endpoint
+ * named 'generateConflatedTracesToFileV0' under the 'rollup' namespace. When this endpoint is
+ * called, it triggers the execution of the 'execute' method, which generates conflated file traces
+ * based on the provided request parameters and writes them to a file.
+ */
 @Slf4j
 public class RollupGenerateConflatedTracesToFileV0 {
   private final BesuContext besuContext;

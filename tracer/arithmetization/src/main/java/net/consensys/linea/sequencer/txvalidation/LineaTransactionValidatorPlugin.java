@@ -24,17 +24,22 @@ import java.util.stream.Stream;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.LineaRequiredPlugin;
+import net.consensys.linea.AbstractLineaRequiredPlugin;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 
-/** Implementation of the base {@link BesuPlugin} interface for Linea Transaction Validation. */
+/**
+ * This class extends the default transaction validation rules for adding transactions to the
+ * transaction pool. It leverages the PluginTransactionValidatorService to manage and customize the
+ * process of transaction validation. This includes, for example, setting a deny list of addresses
+ * that are not allowed to add transactions to the pool.
+ */
 @Slf4j
 @AutoService(BesuPlugin.class)
-public class LineaTransactionValidatorPlugin extends LineaRequiredPlugin {
+public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionValidatorCliOptions options;
   private final Set<Address> denied = new HashSet<>();

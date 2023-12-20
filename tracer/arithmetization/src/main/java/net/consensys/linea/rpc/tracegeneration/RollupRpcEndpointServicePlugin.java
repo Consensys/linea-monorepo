@@ -19,16 +19,27 @@ import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.LineaRequiredPlugin;
+import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
-/** Plugin with RPC endpoints. */
+/**
+ * Registers RPC endpoints .This class provides an RPC endpoint named
+ * 'generateConflatedTracesToFileV0' under the 'rollup' namespace. It uses {@link
+ * RollupGenerateConflatedTracesToFileV0} to generate conflated file traces. This class provides an
+ * RPC endpoint named 'generateConflatedTracesToFileV0' under the 'rollup' namespace.
+ */
 @AutoService(BesuPlugin.class)
 @Slf4j
-public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
+public class RollupRpcEndpointServicePlugin extends AbstractLineaRequiredPlugin {
+
+  /**
+   * Register the RPC service.
+   *
+   * @param context the BesuContext to be used.
+   */
   @Override
   public void doRegister(final BesuContext context) {
     RollupGenerateConflatedTracesToFileV0 method =
@@ -42,6 +53,12 @@ public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
                 new RuntimeException("Failed to obtain RpcEndpointService from the BesuContext.")));
   }
 
+  /**
+   * Create and register the RPC service.
+   *
+   * @param method the RollupGenerateConflatedTracesToFileV0 method to be used.
+   * @param rpcEndpointService the RpcEndpointService to be registered.
+   */
   private void createAndRegister(
       final RollupGenerateConflatedTracesToFileV0 method,
       final RpcEndpointService rpcEndpointService) {
@@ -49,6 +66,7 @@ public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
         method.getNamespace(), method.getName(), method::execute);
   }
 
+  /** Start the RPC service. This method loads the OpCodes. */
   @Override
   public void start() {
     OpCodes.load();

@@ -18,7 +18,6 @@ package net.consensys.linea.sequencer.txselection;
 import java.io.File;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
 import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.LineaRequiredPlugin;
+import net.consensys.linea.AbstractLineaRequiredPlugin;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlParseResult;
 import org.apache.tuweni.toml.TomlTable;
@@ -36,10 +35,14 @@ import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
-/** Implementation of the base {@link BesuPlugin} interface for Linea Transaction Selection. */
+/**
+ * This class extends the default transaction selection rules used by Besu. It leverages the
+ * TransactionSelectionService to manage and customize the process of transaction selection. This
+ * includes setting limits such as 'TraceLineLimit', 'maxBlockGas', and 'maxCallData'.
+ */
 @Slf4j
 @AutoService(BesuPlugin.class)
-public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
+public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
   private final LineaTransactionSelectorCliOptions options;
   private Optional<TransactionSelectionService> service;
@@ -95,17 +98,6 @@ public class LineaTransactionSelectorPlugin extends LineaRequiredPlugin {
       throw new RuntimeException(errorMsg, e);
     }
   }
-
-  private String toCamelCase(final String in) {
-    final String[] parts = in.toLowerCase().split("_");
-    final StringBuilder sb = new StringBuilder();
-    Arrays.stream(parts)
-        .forEach(p -> sb.append(p.substring(0, 1).toUpperCase()).append(p.substring(1)));
-    return sb.toString();
-  }
-
-  @Override
-  public void stop() {}
 
   private void createAndRegister(final TransactionSelectionService transactionSelectionService) {
     transactionSelectionService.registerTransactionSelectorFactory(
