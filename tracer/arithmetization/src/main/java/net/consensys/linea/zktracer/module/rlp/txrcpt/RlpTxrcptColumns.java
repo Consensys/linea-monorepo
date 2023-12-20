@@ -13,86 +13,80 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txn;
+package net.consensys.linea.zktracer.module.rlp.txrcpt;
 
 import java.math.BigInteger;
 
 import org.apache.tuweni.bytes.Bytes;
 
-class RlpTxnColumnsValue {
+class RlpTxrcptColumns {
+  int absTxNum;
+  int absLogNumMax;
   Bytes acc1;
   Bytes acc2;
-  int accByteSize;
-  int accessTupleByteSize;
-  Bytes addrHi;
-  Bytes addrLo;
+  Bytes acc3;
+  Bytes acc4;
+  int accSize;
   boolean bit;
   int bitAcc;
   byte byte1;
   byte byte2;
+  byte byte3;
+  byte byte4;
   int counter;
-  BigInteger dataHi;
-  BigInteger dataLo;
-  int dataGasCost;
   boolean depth1;
-  boolean depth2;
-  boolean phaseEnd;
-  int indexData;
-  int indexLt;
-  int indexLx;
+  int index;
+  int indexLocal;
   Bytes input1;
   Bytes input2;
-  boolean lcCorrection;
+  Bytes input3;
+  Bytes input4;
+  boolean isData;
   boolean isPrefix;
+  boolean isTopic;
+  boolean lcCorrection;
   Bytes limb;
   boolean limbConstructed;
-  boolean lt;
-  boolean lx;
+  int localSize;
+  int logEntrySize;
   int nBytes;
-  int nbAddr;
-  int nbSto;
-  int nbStoPerAddr;
   int nStep;
   int phase;
-  int phaseByteSize;
+  boolean phaseEnd;
+  int phaseSize;
   BigInteger power;
-  int rlpLtByteSize;
-  int rlpLxByteSize;
-  boolean requiresEvmExecution;
-  int absTxNum;
-  int codeFragmentIndex;
-  int txType;
+  int txrcptSize;
 
-  void partialReset(int phase, int numberStep, boolean lt, boolean lx) {
+  void partialReset(int phase, int nStep) {
     this.phase = phase;
-    this.nStep = numberStep;
-    this.lt = lt;
-    this.lx = lx;
+    this.nStep = nStep;
 
-    // Set to default local values
-    this.limbConstructed = false;
-    this.acc1 = Bytes.of(0);
-    this.acc2 = Bytes.of(0);
-    this.accByteSize = 0;
+    // Set to default local values.
+    this.acc1 = Bytes.ofUnsignedShort(0);
+    this.acc2 = Bytes.ofUnsignedShort(0);
+    this.acc3 = Bytes.ofUnsignedShort(0);
+    this.acc4 = Bytes.ofUnsignedShort(0);
+    this.accSize = 0;
     this.bit = false;
     this.bitAcc = 0;
     this.byte1 = 0;
     this.byte2 = 0;
+    this.byte3 = 0;
+    this.byte4 = 0;
     this.counter = 0;
     this.depth1 = false;
-    this.depth2 = false;
-    this.phaseEnd = false;
-    this.input1 = Bytes.of(0);
-    this.input2 = Bytes.of(0);
-    this.lcCorrection = false;
+    this.input1 = Bytes.ofUnsignedShort(0);
+    this.input2 = Bytes.ofUnsignedShort(0);
+    this.input3 = Bytes.ofUnsignedShort(0);
+    this.input4 = Bytes.ofUnsignedShort(0);
+    this.isData = false;
     this.isPrefix = false;
-    this.limb = Bytes.of(0);
+    this.isTopic = false;
+    this.lcCorrection = false;
+    this.limb = Bytes.ofUnsignedShort(0);
+    this.limbConstructed = false;
     this.nBytes = 0;
-    this.power = BigInteger.ZERO;
-  }
-
-  void resetDataHiLo() {
-    this.dataHi = BigInteger.ZERO;
-    this.dataLo = BigInteger.ZERO;
+    this.phaseEnd = false;
+    this.power = BigInteger.valueOf(0);
   }
 }

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpAddr;
+package net.consensys.linea.zktracer.module.rlp.addr;
 
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
