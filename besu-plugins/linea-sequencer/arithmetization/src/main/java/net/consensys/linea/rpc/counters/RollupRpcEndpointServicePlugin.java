@@ -18,15 +18,28 @@ package net.consensys.linea.rpc.counters;
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
-import net.consensys.linea.LineaRequiredPlugin;
+import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
-/** Plugin with RPC endpoints. */
+/**
+ * Sets up an RPC endpoint for generating trace counters.
+ *
+ * <p>The RollupRpcEndpointServicePlugin registers an RPC endpoint named
+ * 'getTracesCountersByBlockNumberV0' under the 'rollup' namespace. When this endpoint is called,
+ * returns trace counters based on the provided request parameters. See {@link
+ * RollupGenerateCountersV0}
+ */
 @AutoService(BesuPlugin.class)
-public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
+public class RollupRpcEndpointServicePlugin extends AbstractLineaRequiredPlugin {
+
+  /**
+   * Register the RPC service.
+   *
+   * @param context the BesuContext to be used.
+   */
   @Override
   public void doRegister(final BesuContext context) {
     RollupGenerateCountersV0 method = new RollupGenerateCountersV0(context);
@@ -39,12 +52,19 @@ public class RollupRpcEndpointServicePlugin extends LineaRequiredPlugin {
                 new RuntimeException("Failed to obtain RpcEndpointService from the BesuContext.")));
   }
 
+  /**
+   * Create and register the RPC service.
+   *
+   * @param method the RollupGenerateCountersV0 method to be used.
+   * @param rpcEndpointService the RpcEndpointService to be registered.
+   */
   private void createAndRegister(
       final RollupGenerateCountersV0 method, final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
   }
 
+  /** Start the RPC service. This method loads the OpCodes. */
   @Override
   public void start() {
     OpCodes.load();
