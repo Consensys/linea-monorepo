@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txn;
+package net.consensys.linea.zktracer.module.rlp.txn;
 
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
@@ -65,7 +65,7 @@ public class RlpTxn implements Module {
 
   @Override
   public String moduleKey() {
-    return "RLP_TXN";
+    return "TX_RLP";
   }
 
   public static final int LLARGE = TxnrlpTrace.LLARGE.intValue();
