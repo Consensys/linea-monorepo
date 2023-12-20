@@ -27,7 +27,7 @@ import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
-/** Responsible for trace counters generation. */
+/** This class is used to generate trace counters. */
 @Slf4j
 public class RollupGenerateCountersV0 {
   private static final int CACHE_SIZE = 10_000;
@@ -37,6 +37,11 @@ public class RollupGenerateCountersV0 {
   private final BesuContext besuContext;
   private TraceService traceService;
 
+  /**
+   * Constructor for RollupGenerateCountersV0.
+   *
+   * @param besuContext the BesuContext to be used.
+   */
   public RollupGenerateCountersV0(final BesuContext besuContext) {
     this.besuContext = besuContext;
   }
@@ -50,10 +55,14 @@ public class RollupGenerateCountersV0 {
   }
 
   /**
-   * Handles execution traces generation logic.
+   * Executes an RPC request to generate trace counters.
    *
-   * @param request holds parameters of the RPC request.
-   * @return an execution file trace.
+   * @param request The PluginRpcRequest object encapsulating the parameters of the RPC request.
+   * @return A Counters object encapsulating the results of the counters generation (Modules Line
+   *     Count). The method uses a caching mechanism to store and retrieve previously computed trace
+   *     counters for specific block numbers
+   *     <p>If an exception occurs during the execution of the request, it is caught and wrapped in
+   *     a PluginRpcEndpointException and rethrown.
    */
   public Counters execute(final PluginRpcRequest request) {
     if (traceService == null) {
@@ -92,6 +101,11 @@ public class RollupGenerateCountersV0 {
     }
   }
 
+  /**
+   * Initialize the TraceService.
+   *
+   * @return the initialized TraceService.
+   */
   private TraceService initTraceService() {
     return besuContext
         .getService(TraceService.class)
