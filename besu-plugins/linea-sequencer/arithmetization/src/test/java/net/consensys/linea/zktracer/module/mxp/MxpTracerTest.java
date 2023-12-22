@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.mxp;
 import static net.consensys.linea.zktracer.opcode.OpCode.MLOAD;
 import static net.consensys.linea.zktracer.opcode.OpCode.MSTORE;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -49,9 +50,11 @@ public class MxpTracerTest {
     return DYN_TESTS.newModuleArgumentsProvider(
         (arguments, opCode) -> {
           for (int i = 0; i < TEST_REPETITIONS; i++) {
+            final List<Bytes32> args = new ArrayList<>(12);
             for (int j = 0; j < opCode.getData().numberOfArguments(); j++) {
-              arguments.add(new OpcodeCall(opCode, List.of(UInt256.valueOf(j))));
+              args.add(UInt256.valueOf(j));
             }
+            arguments.add(new OpcodeCall(opCode, args));
           }
         });
   }
