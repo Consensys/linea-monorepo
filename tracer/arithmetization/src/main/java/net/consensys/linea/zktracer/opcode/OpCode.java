@@ -163,6 +163,16 @@ public enum OpCode {
   SELFDESTRUCT;
 
   /**
+   * Convert a mnemonic in any case into the matching {@link OpCode}.
+   *
+   * @param mnemonic the opcode menmonic
+   * @return the corresponding OpCode
+   */
+  public static OpCode fromMnemonic(final String mnemonic) {
+    return OpCode.valueOf(mnemonic.toUpperCase());
+  }
+
+  /**
    * Retrieves {@link OpCode} metadata of type {@link OpCodeData}.
    *
    * @return the current {@link OpCode}'s {@link OpCodeData}
