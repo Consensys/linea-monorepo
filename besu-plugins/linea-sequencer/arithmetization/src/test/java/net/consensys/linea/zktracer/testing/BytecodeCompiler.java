@@ -17,6 +17,9 @@ package net.consensys.linea.zktracer.testing;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +47,41 @@ public class BytecodeCompiler {
 
   private static Bytes toBytes(final int x) {
     return Bytes.ofUnsignedLong(x).trimLeadingZeros();
+  }
+
+  /**
+   * Assemble an EVM program into bytecode. Requirement are: one instruction per line; `;` mark a
+   * line as a comment; no more than one word per line, safe for PUSHs.
+   *
+   * @param program
+   * @return the bytecode corresponding to the assembly code
+   */
+  public BytecodeCompiler assemble(final String program) {
+    BufferedReader bufReader = new BufferedReader(new StringReader(program));
+    String line;
+    while (true) {
+      try {
+        if ((line = bufReader.readLine()) == null) break;
+        if (line.isBlank()) continue;
+        if (line.startsWith(";")) continue;
+
+        String[] ls = line.split("\\s+");
+        final OpCode opCode = OpCode.fromMnemonic(ls[0]);
+        this.op(opCode);
+        final int pushSize = opCode.byteValue() - (int) OpCode.PUSH1.byteValue() + 1;
+        final boolean isPush = pushSize >= 1 && pushSize <= 32;
+        if (isPush) {
+          this.immediate(Bytes.fromHexString(ls[1], pushSize));
+        } else {
+          if (ls.length > 1) {
+            throw new IllegalArgumentException("expected nothing, found" + ls[1]);
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return this;
   }
 
   /**
