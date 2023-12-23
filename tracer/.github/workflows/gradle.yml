@@ -77,7 +77,6 @@ jobs:
       - uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: |
-            ${{ secrets.CORSET_SSH_KEY }}
             ${{ secrets.CONSTRAINTS_SSH_KEY }}
 
 
@@ -99,11 +98,17 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
 
-      - name: Install Rust
-        run: sudo apt-get update && sudo apt-get install -y cargo
-
-      - name: Install corset
-        run: cargo install --git ssh://git@github.com/Consensys/corset.git --locked
+      - name: Install Corset
+        run: |
+          curl -L \
+          -H "Accept: application/octet-stream" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          -o corset.tar.gz \
+          https://api.github.com/repos/Consensys/corset/releases/assets/141813824
+          tar xzf corset.tar.gz
+          mv corset $HOME
+          echo $HOME >> $GITHUB_PATH
 
       - name: Run unit tests
         run: ./gradlew :arithmetization:test
