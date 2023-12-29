@@ -487,7 +487,7 @@ public class TxnData implements Module {
           .outgoingLo(bigIntegerToBytes(outgoingLos.get(ct)))
           .wcpArgOneLo(wcpArgOneLo.get(ct))
           .wcpArgTwoLo(wcpArgTwoLo.get(ct))
-          .wcpResLo(wcpRes.get(ct))
+          .wcpRes(wcpRes.get(ct))
           .wcpInst(UnsignedByte.of(wcpInsts.get(ct)))
           .phaseRlpTxnrcpt(UnsignedByte.of(phaseRlpTxnRcpt.get(ct)))
           .outgoingRlpTxnrcpt(Bytes.ofUnsignedLong(outgoingRlpTxnRcpt.get(ct)))

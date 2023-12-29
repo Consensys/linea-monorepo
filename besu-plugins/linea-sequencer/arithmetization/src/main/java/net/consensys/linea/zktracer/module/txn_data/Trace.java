@@ -95,7 +95,7 @@ public class Trace {
   private final MappedByteBuffer wcpArgOneLo;
   private final MappedByteBuffer wcpArgTwoLo;
   private final MappedByteBuffer wcpInst;
-  private final MappedByteBuffer wcpResLo;
+  private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
@@ -140,7 +140,7 @@ public class Trace {
         new ColumnHeader("txnData.WCP_ARG_ONE_LO", 32, length),
         new ColumnHeader("txnData.WCP_ARG_TWO_LO", 32, length),
         new ColumnHeader("txnData.WCP_INST", 1, length),
-        new ColumnHeader("txnData.WCP_RES_LO", 1, length));
+        new ColumnHeader("txnData.WCP_RES", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -185,7 +185,7 @@ public class Trace {
     this.wcpArgOneLo = buffers.get(38);
     this.wcpArgTwoLo = buffers.get(39);
     this.wcpInst = buffers.get(40);
-    this.wcpResLo = buffers.get(41);
+    this.wcpRes = buffers.get(41);
   }
 
   public int size() {
@@ -812,14 +812,14 @@ public class Trace {
     return this;
   }
 
-  public Trace wcpResLo(final Boolean b) {
+  public Trace wcpRes(final Boolean b) {
     if (filled.get(41)) {
-      throw new IllegalStateException("txnData.WCP_RES_LO already set");
+      throw new IllegalStateException("txnData.WCP_RES already set");
     } else {
       filled.set(41);
     }
 
-    wcpResLo.put((byte) (b ? 1 : 0));
+    wcpRes.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -990,7 +990,7 @@ public class Trace {
     }
 
     if (!filled.get(41)) {
-      throw new IllegalStateException("txnData.WCP_RES_LO has not been filled");
+      throw new IllegalStateException("txnData.WCP_RES has not been filled");
     }
 
     filled.clear();
@@ -1165,7 +1165,7 @@ public class Trace {
     }
 
     if (!filled.get(41)) {
-      wcpResLo.position(wcpResLo.position() + 1);
+      wcpRes.position(wcpRes.position() + 1);
     }
 
     filled.clear();
