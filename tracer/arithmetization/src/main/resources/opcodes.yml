@@ -120,6 +120,8 @@ opcodes:
       nbAdded: 1
       nbRemoved: 2
       staticGas: G_VERY_LOW
+      # assigned SLT opcode for WCP module with value 0x0E. Change this value if Linéa/EVM uses this opcode.
+      # assigned SGT opcode for WCP module with value 0x0F. Change this value if Linéa/EVM uses this opcode.
   - mnemonic: LT
     value: 0x10
     instructionFamily: WCP
