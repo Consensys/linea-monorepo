@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.GEQbv;
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.LEQbv;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -56,7 +59,7 @@ public class Wcp implements Module {
     final Bytes32 arg2 =
         (opcode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
 
-    this.operations.add(new WcpOperation(opcode, arg1, arg2));
+    this.operations.add(new WcpOperation(opcode.byteValue(), arg1, arg2));
   }
 
   @Override
@@ -79,13 +82,13 @@ public class Wcp implements Module {
   public int lineCount() {
     int sum = 0;
     for (WcpOperation wcpOperation : this.operations) {
-      sum += wcpOperation.maxCt();
+      sum += wcpOperation.ctMax + 1;
     }
     return sum;
   }
 
   public boolean callLT(Bytes32 arg1, Bytes32 arg2) {
-    this.operations.add(new WcpOperation(OpCode.LT, arg1, arg2));
+    this.operations.add(new WcpOperation(OpCode.LT.byteValue(), arg1, arg2));
     return arg1.compareTo(arg2) < 0;
   }
 
@@ -94,7 +97,7 @@ public class Wcp implements Module {
   }
 
   public boolean callEQ(Bytes32 arg1, Bytes32 arg2) {
-    this.operations.add(new WcpOperation(OpCode.EQ, arg1, arg2));
+    this.operations.add(new WcpOperation(OpCode.EQ.byteValue(), arg1, arg2));
     return arg1.compareTo(arg2) == 0;
   }
 
@@ -103,7 +106,17 @@ public class Wcp implements Module {
   }
 
   public boolean callISZERO(Bytes32 arg1) {
-    this.operations.add(new WcpOperation(OpCode.ISZERO, arg1, Bytes32.ZERO));
+    this.operations.add(new WcpOperation(OpCode.ISZERO.byteValue(), arg1, Bytes32.ZERO));
     return arg1.isZero();
+  }
+
+  public boolean callLEQ(Bytes32 arg1, Bytes32 arg2) {
+    this.operations.add(new WcpOperation(LEQbv, arg1, arg2));
+    return arg1.compareTo(arg2) <= 0;
+  }
+
+  public boolean callGEQ(Bytes32 arg1, Bytes32 arg2) {
+    this.operations.add(new WcpOperation(GEQbv, arg1, arg2));
+    return arg1.compareTo(arg2) >= 0;
   }
 }

@@ -56,12 +56,21 @@ public class Trace {
   private final MappedByteBuffer byte5;
   private final MappedByteBuffer byte6;
   private final MappedByteBuffer counter;
+  private final MappedByteBuffer ctMax;
   private final MappedByteBuffer inst;
+  private final MappedByteBuffer isEq;
+  private final MappedByteBuffer isGeq;
+  private final MappedByteBuffer isGt;
+  private final MappedByteBuffer isIszero;
+  private final MappedByteBuffer isLeq;
+  private final MappedByteBuffer isLt;
+  private final MappedByteBuffer isSgt;
+  private final MappedByteBuffer isSlt;
   private final MappedByteBuffer neg1;
   private final MappedByteBuffer neg2;
   private final MappedByteBuffer oneLineInstruction;
-  private final MappedByteBuffer resultHi;
-  private final MappedByteBuffer resultLo;
+  private final MappedByteBuffer result;
+  private final MappedByteBuffer variableLengthInstruction;
   private final MappedByteBuffer wordComparisonStamp;
 
   static List<ColumnHeader> headers(int length) {
@@ -87,13 +96,22 @@ public class Trace {
         new ColumnHeader("wcp.BYTE_4", 1, length),
         new ColumnHeader("wcp.BYTE_5", 1, length),
         new ColumnHeader("wcp.BYTE_6", 1, length),
-        new ColumnHeader("wcp.COUNTER", 32, length),
-        new ColumnHeader("wcp.INST", 32, length),
+        new ColumnHeader("wcp.COUNTER", 1, length),
+        new ColumnHeader("wcp.CT_MAX", 1, length),
+        new ColumnHeader("wcp.INST", 1, length),
+        new ColumnHeader("wcp.IS_EQ", 1, length),
+        new ColumnHeader("wcp.IS_GEQ", 1, length),
+        new ColumnHeader("wcp.IS_GT", 1, length),
+        new ColumnHeader("wcp.IS_ISZERO", 1, length),
+        new ColumnHeader("wcp.IS_LEQ", 1, length),
+        new ColumnHeader("wcp.IS_LT", 1, length),
+        new ColumnHeader("wcp.IS_SGT", 1, length),
+        new ColumnHeader("wcp.IS_SLT", 1, length),
         new ColumnHeader("wcp.NEG_1", 1, length),
         new ColumnHeader("wcp.NEG_2", 1, length),
         new ColumnHeader("wcp.ONE_LINE_INSTRUCTION", 1, length),
-        new ColumnHeader("wcp.RESULT_HI", 32, length),
-        new ColumnHeader("wcp.RESULT_LO", 32, length),
+        new ColumnHeader("wcp.RESULT", 1, length),
+        new ColumnHeader("wcp.VARIABLE_LENGTH_INSTRUCTION", 1, length),
         new ColumnHeader("wcp.WORD_COMPARISON_STAMP", 32, length));
   }
 
@@ -120,13 +138,22 @@ public class Trace {
     this.byte5 = buffers.get(19);
     this.byte6 = buffers.get(20);
     this.counter = buffers.get(21);
-    this.inst = buffers.get(22);
-    this.neg1 = buffers.get(23);
-    this.neg2 = buffers.get(24);
-    this.oneLineInstruction = buffers.get(25);
-    this.resultHi = buffers.get(26);
-    this.resultLo = buffers.get(27);
-    this.wordComparisonStamp = buffers.get(28);
+    this.ctMax = buffers.get(22);
+    this.inst = buffers.get(23);
+    this.isEq = buffers.get(24);
+    this.isGeq = buffers.get(25);
+    this.isGt = buffers.get(26);
+    this.isIszero = buffers.get(27);
+    this.isLeq = buffers.get(28);
+    this.isLt = buffers.get(29);
+    this.isSgt = buffers.get(30);
+    this.isSlt = buffers.get(31);
+    this.neg1 = buffers.get(32);
+    this.neg2 = buffers.get(33);
+    this.oneLineInstruction = buffers.get(34);
+    this.result = buffers.get(35);
+    this.variableLengthInstruction = buffers.get(36);
+    this.wordComparisonStamp = buffers.get(37);
   }
 
   public int size() {
@@ -429,43 +456,143 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final Bytes b) {
+  public Trace counter(final UnsignedByte b) {
     if (filled.get(21)) {
       throw new IllegalStateException("wcp.COUNTER already set");
     } else {
       filled.set(21);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      counter.put((byte) 0);
-    }
-    counter.put(b.toArrayUnsafe());
+    counter.put(b.toByte());
 
     return this;
   }
 
-  public Trace inst(final Bytes b) {
+  public Trace ctMax(final UnsignedByte b) {
     if (filled.get(22)) {
-      throw new IllegalStateException("wcp.INST already set");
+      throw new IllegalStateException("wcp.CT_MAX already set");
     } else {
       filled.set(22);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      inst.put((byte) 0);
+    ctMax.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace inst(final UnsignedByte b) {
+    if (filled.get(23)) {
+      throw new IllegalStateException("wcp.INST already set");
+    } else {
+      filled.set(23);
     }
-    inst.put(b.toArrayUnsafe());
+
+    inst.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace isEq(final Boolean b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("wcp.IS_EQ already set");
+    } else {
+      filled.set(24);
+    }
+
+    isEq.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isGeq(final Boolean b) {
+    if (filled.get(25)) {
+      throw new IllegalStateException("wcp.IS_GEQ already set");
+    } else {
+      filled.set(25);
+    }
+
+    isGeq.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isGt(final Boolean b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("wcp.IS_GT already set");
+    } else {
+      filled.set(26);
+    }
+
+    isGt.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isIszero(final Boolean b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("wcp.IS_ISZERO already set");
+    } else {
+      filled.set(27);
+    }
+
+    isIszero.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isLeq(final Boolean b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("wcp.IS_LEQ already set");
+    } else {
+      filled.set(28);
+    }
+
+    isLeq.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isLt(final Boolean b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("wcp.IS_LT already set");
+    } else {
+      filled.set(29);
+    }
+
+    isLt.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isSgt(final Boolean b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("wcp.IS_SGT already set");
+    } else {
+      filled.set(30);
+    }
+
+    isSgt.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isSlt(final Boolean b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("wcp.IS_SLT already set");
+    } else {
+      filled.set(31);
+    }
+
+    isSlt.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace neg1(final Boolean b) {
-    if (filled.get(23)) {
+    if (filled.get(32)) {
       throw new IllegalStateException("wcp.NEG_1 already set");
     } else {
-      filled.set(23);
+      filled.set(32);
     }
 
     neg1.put((byte) (b ? 1 : 0));
@@ -474,10 +601,10 @@ public class Trace {
   }
 
   public Trace neg2(final Boolean b) {
-    if (filled.get(24)) {
+    if (filled.get(33)) {
       throw new IllegalStateException("wcp.NEG_2 already set");
     } else {
-      filled.set(24);
+      filled.set(33);
     }
 
     neg2.put((byte) (b ? 1 : 0));
@@ -486,10 +613,10 @@ public class Trace {
   }
 
   public Trace oneLineInstruction(final Boolean b) {
-    if (filled.get(25)) {
+    if (filled.get(34)) {
       throw new IllegalStateException("wcp.ONE_LINE_INSTRUCTION already set");
     } else {
-      filled.set(25);
+      filled.set(34);
     }
 
     oneLineInstruction.put((byte) (b ? 1 : 0));
@@ -497,43 +624,35 @@ public class Trace {
     return this;
   }
 
-  public Trace resultHi(final Bytes b) {
-    if (filled.get(26)) {
-      throw new IllegalStateException("wcp.RESULT_HI already set");
+  public Trace result(final Boolean b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("wcp.RESULT already set");
     } else {
-      filled.set(26);
+      filled.set(35);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      resultHi.put((byte) 0);
-    }
-    resultHi.put(b.toArrayUnsafe());
+    result.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace resultLo(final Bytes b) {
-    if (filled.get(27)) {
-      throw new IllegalStateException("wcp.RESULT_LO already set");
+  public Trace variableLengthInstruction(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("wcp.VARIABLE_LENGTH_INSTRUCTION already set");
     } else {
-      filled.set(27);
+      filled.set(36);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      resultLo.put((byte) 0);
-    }
-    resultLo.put(b.toArrayUnsafe());
+    variableLengthInstruction.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace wordComparisonStamp(final Bytes b) {
-    if (filled.get(28)) {
+    if (filled.get(37)) {
       throw new IllegalStateException("wcp.WORD_COMPARISON_STAMP already set");
     } else {
-      filled.set(28);
+      filled.set(37);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -635,30 +754,66 @@ public class Trace {
     }
 
     if (!filled.get(22)) {
-      throw new IllegalStateException("wcp.INST has not been filled");
+      throw new IllegalStateException("wcp.CT_MAX has not been filled");
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("wcp.NEG_1 has not been filled");
+      throw new IllegalStateException("wcp.INST has not been filled");
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("wcp.NEG_2 has not been filled");
+      throw new IllegalStateException("wcp.IS_EQ has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("wcp.ONE_LINE_INSTRUCTION has not been filled");
+      throw new IllegalStateException("wcp.IS_GEQ has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("wcp.RESULT_HI has not been filled");
+      throw new IllegalStateException("wcp.IS_GT has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("wcp.RESULT_LO has not been filled");
+      throw new IllegalStateException("wcp.IS_ISZERO has not been filled");
     }
 
     if (!filled.get(28)) {
+      throw new IllegalStateException("wcp.IS_LEQ has not been filled");
+    }
+
+    if (!filled.get(29)) {
+      throw new IllegalStateException("wcp.IS_LT has not been filled");
+    }
+
+    if (!filled.get(30)) {
+      throw new IllegalStateException("wcp.IS_SGT has not been filled");
+    }
+
+    if (!filled.get(31)) {
+      throw new IllegalStateException("wcp.IS_SLT has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException("wcp.NEG_1 has not been filled");
+    }
+
+    if (!filled.get(33)) {
+      throw new IllegalStateException("wcp.NEG_2 has not been filled");
+    }
+
+    if (!filled.get(34)) {
+      throw new IllegalStateException("wcp.ONE_LINE_INSTRUCTION has not been filled");
+    }
+
+    if (!filled.get(35)) {
+      throw new IllegalStateException("wcp.RESULT has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("wcp.VARIABLE_LENGTH_INSTRUCTION has not been filled");
+    }
+
+    if (!filled.get(37)) {
       throw new IllegalStateException("wcp.WORD_COMPARISON_STAMP has not been filled");
     }
 
@@ -754,34 +909,70 @@ public class Trace {
     }
 
     if (!filled.get(21)) {
-      counter.position(counter.position() + 32);
+      counter.position(counter.position() + 1);
     }
 
     if (!filled.get(22)) {
-      inst.position(inst.position() + 32);
+      ctMax.position(ctMax.position() + 1);
     }
 
     if (!filled.get(23)) {
-      neg1.position(neg1.position() + 1);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(24)) {
-      neg2.position(neg2.position() + 1);
+      isEq.position(isEq.position() + 1);
     }
 
     if (!filled.get(25)) {
-      oneLineInstruction.position(oneLineInstruction.position() + 1);
+      isGeq.position(isGeq.position() + 1);
     }
 
     if (!filled.get(26)) {
-      resultHi.position(resultHi.position() + 32);
+      isGt.position(isGt.position() + 1);
     }
 
     if (!filled.get(27)) {
-      resultLo.position(resultLo.position() + 32);
+      isIszero.position(isIszero.position() + 1);
     }
 
     if (!filled.get(28)) {
+      isLeq.position(isLeq.position() + 1);
+    }
+
+    if (!filled.get(29)) {
+      isLt.position(isLt.position() + 1);
+    }
+
+    if (!filled.get(30)) {
+      isSgt.position(isSgt.position() + 1);
+    }
+
+    if (!filled.get(31)) {
+      isSlt.position(isSlt.position() + 1);
+    }
+
+    if (!filled.get(32)) {
+      neg1.position(neg1.position() + 1);
+    }
+
+    if (!filled.get(33)) {
+      neg2.position(neg2.position() + 1);
+    }
+
+    if (!filled.get(34)) {
+      oneLineInstruction.position(oneLineInstruction.position() + 1);
+    }
+
+    if (!filled.get(35)) {
+      result.position(result.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      variableLengthInstruction.position(variableLengthInstruction.position() + 1);
+    }
+
+    if (!filled.get(37)) {
       wordComparisonStamp.position(wordComparisonStamp.position() + 32);
     }
 
