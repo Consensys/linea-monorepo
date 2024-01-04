@@ -22,13 +22,6 @@ jobs:
           java-version: '17'
           distribution: 'adopt'
 
-#      - name: Cache Gradle dependencies
-#        uses: actions/cache@v3
-#        with:
-#          path: ~/.gradle/caches
-#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-#          restore-keys: ${{ runner.os }}-gradle
-
       - name: Build without tests
         run: ./gradlew build -x test -x spotlessCheck
         env:
@@ -51,13 +44,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
 
       - name: Run acceptance tests
         run: ./gradlew :acceptance-tests:acceptanceTests
@@ -90,13 +76,6 @@ jobs:
         with:
           java-version: '17'
           distribution: 'adopt'
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
 
       - name: Install Corset
         run: |
@@ -131,6 +110,5 @@ jobs:
         with:
           distribution: adopt
           java-version: 17
-          cache: gradle
       - name: spotless
         run: ./gradlew --no-daemon --parallel clean spotlessCheck

@@ -18,8 +18,6 @@ package net.consensys.linea.zktracer.module.add;
 import com.google.common.base.Objects;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -28,10 +26,13 @@ import org.apache.tuweni.units.bigints.UInt256;
 
 public final class AddOperation {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
+  private static final int LLARGE = 16;
 
   private final OpCode opCode;
   private final Bytes32 arg1;
   private final Bytes32 arg2;
+  private final BaseBytes res;
+  public final int ctMax;
 
   /**
    * Returns the appropriate state of the overflow bit depending on the position within the cycle.
@@ -41,13 +42,13 @@ public final class AddOperation {
    * @param overflowLo putative overflow bit of the high part
    * @return the overflow bit to trace
    */
-  private static boolean overflowBit(
+  private boolean overflowBit(
       final int counter, final boolean overflowHi, final boolean overflowLo) {
-    if (counter == 14) {
+    if (counter == this.ctMax - 1) {
       return overflowHi;
     }
 
-    if (counter == 15) {
+    if (counter == this.ctMax) {
       return overflowLo;
     }
 
@@ -58,25 +59,36 @@ public final class AddOperation {
     this.opCode = opCode;
     this.arg1 = Bytes32.leftPad(arg1);
     this.arg2 = Bytes32.leftPad(arg2);
+    this.res = Adder.addSub(this.opCode, this.arg1, this.arg2);
+
+    this.ctMax = maxCT();
+  }
+
+  private int maxCT() {
+    return Math.max(
+        1,
+        Math.max(
+                this.res.getHigh().trimLeadingZeros().size(),
+                this.res.getLow().trimLeadingZeros().size())
+            - 1);
   }
 
   void trace(int stamp, Trace trace) {
     final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
-    final Bytes32 arg1Lo = Bytes32.leftPad(arg1.slice(16));
+    final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
     final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));
     final Bytes16 arg2Lo = Bytes16.wrap(arg2.slice(16));
 
-    boolean overflowHi = false;
-
-    final OpCodeData opCodeData = OpCodes.of(opCode);
-
-    final BaseBytes res = Adder.addSub(opCode, arg1, arg2);
-
-    final Bytes16 resHi = res.getHigh();
-    final Bytes16 resLo = res.getLow();
+    final int length = this.ctMax + 1;
+    final int offset = LLARGE - length;
+    final Bytes resHi = res.getHigh().slice(offset, length);
+    final Bytes resLo = res.getLow().slice(offset, length);
 
     final UInt256 arg1Int = UInt256.fromBytes(arg1);
     final UInt256 arg2Int = UInt256.fromBytes(arg2);
+
+    // set OverflowHi
+    boolean overflowHi = false;
 
     if (opCode == OpCode.ADD) {
       final UInt256 resultBytes = arg1Int.add(arg2Int);
@@ -89,27 +101,30 @@ public final class AddOperation {
       }
     }
 
-    for (int i = 0; i < 16; i++) {
-      Bytes32 addRes;
-      if (opCode == OpCode.ADD) {
-        addRes = Bytes32.wrap((UInt256.fromBytes(arg1Lo)).add(UInt256.fromBytes(arg2Lo)));
-      } else {
-        addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
-      }
-      final boolean overflowLo = (addRes.compareTo(TWO_TO_THE_128) >= 0);
+    // Set OverFlowLo
+    Bytes32 addRes;
+    if (opCode == OpCode.ADD) {
+      addRes = Bytes32.wrap((UInt256.fromBytes(arg1Lo)).add(UInt256.fromBytes(arg2Lo)));
+    } else {
+      addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
+    }
+    final boolean overflowLo = (addRes.compareTo(TWO_TO_THE_128) >= 0);
+
+    for (int ct = 0; ct <= this.ctMax; ct++) {
 
       trace
-          .acc1(resHi.slice(0, 1 + i))
-          .acc2(resLo.slice(0, 1 + i))
+          .acc1(resHi.slice(0, 1 + ct))
+          .acc2(resLo.slice(0, 1 + ct))
           .arg1Hi(arg1Hi)
           .arg1Lo(arg1Lo)
           .arg2Hi(arg2Hi)
           .arg2Lo(arg2Lo)
-          .byte1(UnsignedByte.of(resHi.get(i)))
-          .byte2(UnsignedByte.of(resLo.get(i)))
-          .ct(Bytes.of(i))
-          .inst(Bytes.of(opCodeData.value()))
-          .overflow(overflowBit(i, overflowHi, overflowLo))
+          .byte1(UnsignedByte.of(resHi.get(ct)))
+          .byte2(UnsignedByte.of(resLo.get(ct)))
+          .ct(UnsignedByte.of(ct))
+          .ctMax(UnsignedByte.of(this.ctMax))
+          .inst(UnsignedByte.of(opCode.byteValue()))
+          .overflow(overflowBit(ct, overflowHi, overflowLo))
           .resHi(resHi)
           .resLo(resLo)
           .stamp(Bytes.ofUnsignedLong(stamp))

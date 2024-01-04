@@ -34,12 +34,11 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
   private static final BigInteger GAS_PRICE = BigInteger.TEN.pow(9);
-  private static final BigInteger NONCE = BigInteger.ONE;
 
   @Override
   public List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-module-limit-file-path=", getResourcePath("/moduleLimits.toml"))
+        .set("--plugin-linea-module-limit-file-path=", getResourcePath("/strictModuleLimits.toml"))
         .build();
   }
 
