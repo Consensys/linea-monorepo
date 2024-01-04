@@ -43,6 +43,7 @@ public class Trace {
   private final MappedByteBuffer byte1;
   private final MappedByteBuffer byte2;
   private final MappedByteBuffer ct;
+  private final MappedByteBuffer ctMax;
   private final MappedByteBuffer inst;
   private final MappedByteBuffer overflow;
   private final MappedByteBuffer resHi;
@@ -59,8 +60,9 @@ public class Trace {
         new ColumnHeader("add.ARG_2_LO", 32, length),
         new ColumnHeader("add.BYTE_1", 1, length),
         new ColumnHeader("add.BYTE_2", 1, length),
-        new ColumnHeader("add.CT", 32, length),
-        new ColumnHeader("add.INST", 32, length),
+        new ColumnHeader("add.CT", 1, length),
+        new ColumnHeader("add.CT_MAX", 1, length),
+        new ColumnHeader("add.INST", 1, length),
         new ColumnHeader("add.OVERFLOW", 1, length),
         new ColumnHeader("add.RES_HI", 32, length),
         new ColumnHeader("add.RES_LO", 32, length),
@@ -77,11 +79,12 @@ public class Trace {
     this.byte1 = buffers.get(6);
     this.byte2 = buffers.get(7);
     this.ct = buffers.get(8);
-    this.inst = buffers.get(9);
-    this.overflow = buffers.get(10);
-    this.resHi = buffers.get(11);
-    this.resLo = buffers.get(12);
-    this.stamp = buffers.get(13);
+    this.ctMax = buffers.get(9);
+    this.inst = buffers.get(10);
+    this.overflow = buffers.get(11);
+    this.resHi = buffers.get(12);
+    this.resLo = buffers.get(13);
+    this.stamp = buffers.get(14);
   }
 
   public int size() {
@@ -212,43 +215,47 @@ public class Trace {
     return this;
   }
 
-  public Trace ct(final Bytes b) {
+  public Trace ct(final UnsignedByte b) {
     if (filled.get(8)) {
       throw new IllegalStateException("add.CT already set");
     } else {
       filled.set(8);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      ct.put((byte) 0);
-    }
-    ct.put(b.toArrayUnsafe());
+    ct.put(b.toByte());
 
     return this;
   }
 
-  public Trace inst(final Bytes b) {
+  public Trace ctMax(final UnsignedByte b) {
     if (filled.get(9)) {
-      throw new IllegalStateException("add.INST already set");
+      throw new IllegalStateException("add.CT_MAX already set");
     } else {
       filled.set(9);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      inst.put((byte) 0);
+    ctMax.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace inst(final UnsignedByte b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("add.INST already set");
+    } else {
+      filled.set(10);
     }
-    inst.put(b.toArrayUnsafe());
+
+    inst.put(b.toByte());
 
     return this;
   }
 
   public Trace overflow(final Boolean b) {
-    if (filled.get(10)) {
+    if (filled.get(11)) {
       throw new IllegalStateException("add.OVERFLOW already set");
     } else {
-      filled.set(10);
+      filled.set(11);
     }
 
     overflow.put((byte) (b ? 1 : 0));
@@ -257,10 +264,10 @@ public class Trace {
   }
 
   public Trace resHi(final Bytes b) {
-    if (filled.get(11)) {
+    if (filled.get(12)) {
       throw new IllegalStateException("add.RES_HI already set");
     } else {
-      filled.set(11);
+      filled.set(12);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -273,10 +280,10 @@ public class Trace {
   }
 
   public Trace resLo(final Bytes b) {
-    if (filled.get(12)) {
+    if (filled.get(13)) {
       throw new IllegalStateException("add.RES_LO already set");
     } else {
-      filled.set(12);
+      filled.set(13);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -289,10 +296,10 @@ public class Trace {
   }
 
   public Trace stamp(final Bytes b) {
-    if (filled.get(13)) {
+    if (filled.get(14)) {
       throw new IllegalStateException("add.STAMP already set");
     } else {
-      filled.set(13);
+      filled.set(14);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -342,22 +349,26 @@ public class Trace {
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException("add.INST has not been filled");
+      throw new IllegalStateException("add.CT_MAX has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException("add.OVERFLOW has not been filled");
+      throw new IllegalStateException("add.INST has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("add.RES_HI has not been filled");
+      throw new IllegalStateException("add.OVERFLOW has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("add.RES_LO has not been filled");
+      throw new IllegalStateException("add.RES_HI has not been filled");
     }
 
     if (!filled.get(13)) {
+      throw new IllegalStateException("add.RES_LO has not been filled");
+    }
+
+    if (!filled.get(14)) {
       throw new IllegalStateException("add.STAMP has not been filled");
     }
 
@@ -401,26 +412,30 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      ct.position(ct.position() + 32);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(9)) {
-      inst.position(inst.position() + 32);
+      ctMax.position(ctMax.position() + 1);
     }
 
     if (!filled.get(10)) {
-      overflow.position(overflow.position() + 1);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(11)) {
-      resHi.position(resHi.position() + 32);
+      overflow.position(overflow.position() + 1);
     }
 
     if (!filled.get(12)) {
-      resLo.position(resLo.position() + 32);
+      resHi.position(resHi.position() + 32);
     }
 
     if (!filled.get(13)) {
+      resLo.position(resLo.position() + 32);
+    }
+
+    if (!filled.get(14)) {
       stamp.position(stamp.position() + 32);
     }
 
