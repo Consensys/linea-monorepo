@@ -43,7 +43,7 @@ public class Adder {
     return switch (opCode) {
       case ADD -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2)));
       case SUB -> BaseBytes.fromBytes32(UInt256.fromBytes(arg1).subtract(UInt256.fromBytes(arg2)));
-      default -> throw new RuntimeException("Modular arithmetic was given wrong opcode");
+      default -> throw new IllegalStateException("Modular arithmetic was given wrong opcode");
     };
   }
 }
