@@ -70,10 +70,6 @@ public class Add implements Module {
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (AddOperation addOperation : this.chunks) {
-      sum += addOperation.ctMax + 1;
-    }
-    return sum;
+    return this.chunks.lineCount();
   }
 }

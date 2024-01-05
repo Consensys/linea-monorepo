@@ -28,8 +28,8 @@ import java.util.Objects;
 import lombok.Getter;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.Conversions;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -37,7 +37,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public class MulOperation {
+public class MulOperation extends ModuleOperation {
   private static final int MMEDIUM = 8;
 
   @Getter private final OpCode opCode;
@@ -86,10 +86,6 @@ public class MulOperation {
     return Objects.equals(opCode, that.opCode)
         && Objects.equals(arg1, that.arg1)
         && Objects.equals(arg2, that.arg2);
-  }
-
-  public MulOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
-    this(opCodeData.mnemonic(), arg1, arg2);
   }
 
   public MulOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
@@ -253,7 +249,7 @@ public class MulOperation {
     return tinyBase || tinyExponent;
   }
 
-  public Regime getRegime() {
+  Regime getRegime() {
     if (isOneLineInstruction()) {
       return Regime.TRIVIAL_MUL;
     }
@@ -419,5 +415,108 @@ public class MulOperation {
 
   public int maxCt() {
     return isOneLineInstruction() ? 1 : MMEDIUM;
+  }
+
+  void trace(Trace trace, int stamp) {
+    switch (this.getRegime()) {
+      case EXPONENT_ZERO_RESULT -> this.traceSubOp(trace, stamp);
+
+      case EXPONENT_NON_ZERO_RESULT -> {
+        while (this.carryOn()) {
+          this.update();
+          this.traceSubOp(trace, stamp);
+        }
+      }
+
+      case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
+        this.setHsAndBits(UInt256.fromBytes(this.getArg1()), UInt256.fromBytes(this.getArg2()));
+        this.traceSubOp(trace, stamp);
+      }
+
+      default -> throw new RuntimeException("regime not supported");
+    }
+  }
+
+  private void traceSubOp(Trace trace, int stamp) {
+    for (int i = 0; i < this.maxCt(); i++) {
+      trace
+          .mulStamp(Bytes.ofUnsignedLong(stamp))
+          .counter(Bytes.of(i))
+          .oli(this.isOneLineInstruction())
+          .tinyBase(this.isTinyBase())
+          .tinyExponent(this.isTinyExponent())
+          .resultVanishes(this.res.isZero())
+          .instruction(Bytes.of(this.getOpCode().byteValue()))
+          .arg1Hi(this.getArg1Hi())
+          .arg1Lo(this.getArg1Lo())
+          .arg2Hi(this.getArg2Hi())
+          .arg2Lo(this.getArg2Lo())
+          .resHi(this.res.getHigh())
+          .resLo(this.res.getLow())
+          .bits(this.bits[i])
+          .byteA3(UnsignedByte.of(this.aBytes.get(3, i)))
+          .byteA2(UnsignedByte.of(this.aBytes.get(2, i)))
+          .byteA1(UnsignedByte.of(this.aBytes.get(1, i)))
+          .byteA0(UnsignedByte.of(this.aBytes.get(0, i)))
+          .accA3(this.aBytes.getRange(3, 0, i + 1))
+          .accA2(this.aBytes.getRange(2, 0, i + 1))
+          .accA1(this.aBytes.getRange(1, 0, i + 1))
+          .accA0(this.aBytes.getRange(0, 0, i + 1))
+          .byteB3(UnsignedByte.of(this.bBytes.get(3, i)))
+          .byteB2(UnsignedByte.of(this.bBytes.get(2, i)))
+          .byteB1(UnsignedByte.of(this.bBytes.get(1, i)))
+          .byteB0(UnsignedByte.of(this.bBytes.get(0, i)))
+          .accB3(this.bBytes.getRange(3, 0, i + 1))
+          .accB2(this.bBytes.getRange(2, 0, i + 1))
+          .accB1(this.bBytes.getRange(1, 0, i + 1))
+          .accB0(this.bBytes.getRange(0, 0, i + 1))
+          .byteC3(UnsignedByte.of(this.cBytes.get(3, i)))
+          .byteC2(UnsignedByte.of(this.cBytes.get(2, i)))
+          .byteC1(UnsignedByte.of(this.cBytes.get(1, i)))
+          .byteC0(UnsignedByte.of(this.cBytes.get(0, i)))
+          .accC3(this.cBytes.getRange(3, 0, i + 1))
+          .accC2(this.cBytes.getRange(2, 0, i + 1))
+          .accC1(this.cBytes.getRange(1, 0, i + 1))
+          .accC0(this.cBytes.getRange(0, 0, i + 1))
+          .byteH3(UnsignedByte.of(this.hBytes.get(3, i)))
+          .byteH2(UnsignedByte.of(this.hBytes.get(2, i)))
+          .byteH1(UnsignedByte.of(this.hBytes.get(1, i)))
+          .byteH0(UnsignedByte.of(this.hBytes.get(0, i)))
+          .accH3(this.hBytes.getRange(3, 0, i + 1))
+          .accH2(this.hBytes.getRange(2, 0, i + 1))
+          .accH1(this.hBytes.getRange(1, 0, i + 1))
+          .accH0(this.hBytes.getRange(0, 0, i + 1))
+          .exponentBit(this.isExponentBitSet())
+          .exponentBitAccumulator(this.expAcc)
+          .exponentBitSource(this.isExponentInSource())
+          .squareAndMultiply(this.squareAndMultiply)
+          .bitNum(Bytes.ofUnsignedShort(this.getBitNum()))
+          .validateRow();
+    }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    final MulOperation op = this.clone();
+
+    return switch (this.getRegime()) {
+      case EXPONENT_ZERO_RESULT -> op.maxCt();
+
+      case EXPONENT_NON_ZERO_RESULT -> {
+        int r = 0;
+        while (op.carryOn()) {
+          op.update();
+          r += op.maxCt();
+        }
+        yield r;
+      }
+
+      case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
+        op.setHsAndBits(UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
+        yield op.maxCt();
+      }
+
+      default -> throw new RuntimeException("regime not supported");
+    };
   }
 }

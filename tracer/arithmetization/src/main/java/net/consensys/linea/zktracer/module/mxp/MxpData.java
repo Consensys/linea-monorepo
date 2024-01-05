@@ -25,6 +25,7 @@ import java.util.Arrays;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -40,7 +41,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Getter
-public class MxpData {
+public class MxpData extends ModuleOperation {
   public static final BigInteger TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
   public static final BigInteger TWO_POW_32 = BigInteger.ONE.shiftLeft(32);
 
@@ -105,6 +106,11 @@ public class MxpData {
     setAccAAndFirstTwoBytesOfByteR();
     setExpands();
     setWordsNew(frame);
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.maxCt();
   }
 
   void compute() {

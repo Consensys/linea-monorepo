@@ -24,6 +24,7 @@ import java.util.Objects;
 
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -32,7 +33,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.apache.tuweni.units.bigints.UInt64;
 
-public class ModOperation {
+public class ModOperation extends ModuleOperation {
   private static final int MMEDIUM = 8;
 
   private final OpCode opCode;
@@ -308,5 +309,10 @@ public class ModOperation {
           .msb2(this.msb2[i])
           .validateRow();
     }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.maxCounter();
   }
 }

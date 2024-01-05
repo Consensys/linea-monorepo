@@ -23,6 +23,7 @@ import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Quantity;
@@ -36,7 +37,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 /** Gathers all the information required to trace a {@link Transaction} in {@link TxnData}. */
 @Accessors(fluent = true)
 @Getter
-public final class TransactionSnapshot {
+public final class TransactionSnapshot extends ModuleOperation {
   private static final int nROWS0 = 6;
   private static final int nROWS1 = 7;
   private static final int nROWS2 = 7;
@@ -249,5 +250,10 @@ public final class TransactionSnapshot {
 
   BigInteger getLimitMinusLeftoverGasDividedByTwo() {
     return this.getLimitMinusLeftoverGas().divide(BigInteger.TWO);
+  }
+
+  @Override
+  protected int computeLineCount() {
+    throw new IllegalStateException("should never be called");
   }
 }

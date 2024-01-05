@@ -18,17 +18,25 @@ package net.consensys.linea.zktracer.module.rlp.addr;
 import java.math.BigInteger;
 import java.util.Optional;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
-public record RlpAddrChunk(
-    Address depAddress,
-    OpCode opCode,
-    Optional<BigInteger> nonce,
-    Address address,
-    Optional<Bytes32> salt,
-    Optional<Bytes32> keccak) {
+@RequiredArgsConstructor
+@Getter
+@Accessors(fluent = true)
+public final class RlpAddrChunk extends ModuleOperation {
+  private final Address depAddress;
+  private final OpCode opCode;
+  private final Optional<BigInteger> nonce;
+  private final Address address;
+  private final Optional<Bytes32> salt;
+  private final Optional<Bytes32> keccak;
+
   public RlpAddrChunk(Address depAddress, OpCode opCode, BigInteger nonce, Address address) {
     this(depAddress, opCode, Optional.of(nonce), address, Optional.empty(), Optional.empty());
   }
@@ -36,5 +44,10 @@ public record RlpAddrChunk(
   public RlpAddrChunk(
       Address depAddress, OpCode opCode, Address address, Bytes32 salt, Bytes32 kec) {
     this(depAddress, opCode, Optional.empty(), address, Optional.of(salt), Optional.of(kec));
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.opCode.equals(OpCode.CREATE) ? 8 : 6;
   }
 }
