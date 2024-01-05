@@ -66,7 +66,7 @@ public class Mmu implements Module {
 
   @Override
   public int lineCount() {
-    return this.state.stream().mapToInt(m -> maxCounter(m.pointers().oob())).sum();
+    return this.state.lineCount();
   }
 
   @Override
@@ -240,7 +240,7 @@ public class Mmu implements Module {
     return microData.accs()[accIndex][32 - maxCounter + microData.counter()];
   }
 
-  private int maxCounter(final boolean oob) {
+  static int maxCounter(final boolean oob) {
     return oob ? 16 : 3;
   }
 }

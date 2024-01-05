@@ -27,13 +27,14 @@ import java.util.List;
 import java.util.Objects;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @Slf4j
-public class WcpOperation {
+public class WcpOperation extends ModuleOperation {
   private static final int LLARGEMO = 15;
   private static final int LLARGE = 16;
   public static final byte LEQbv = 0x0E;
@@ -50,8 +51,7 @@ public class WcpOperation {
   private final Bytes32 arg1;
   private final Bytes32 arg2;
   final int ctMax;
-  private int length;
-  private int offset;
+
   private Bytes arg1Hi;
   private Bytes arg1Lo;
   private Bytes arg2Hi;
@@ -79,8 +79,8 @@ public class WcpOperation {
   }
 
   private void compute() {
-    this.length = this.isOli() ? LLARGE : this.ctMax + 1;
-    this.offset = LLARGE - length;
+    final int length = this.isOli() ? LLARGE : this.ctMax + 1;
+    final int offset = LLARGE - length;
     this.arg1Hi = arg1.slice(offset, length);
     this.arg1Lo = arg1.slice(LLARGE + offset, length);
     this.arg2Hi = arg2.slice(offset, length);
@@ -247,5 +247,10 @@ public class WcpOperation {
       }
       default -> throw new IllegalStateException("Unexpected value: " + this.wcpInst);
     }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.ctMax + 1;
   }
 }

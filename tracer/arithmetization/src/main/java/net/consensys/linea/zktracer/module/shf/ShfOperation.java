@@ -22,13 +22,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-final class ShfOperation {
+final class ShfOperation extends ModuleOperation {
   private static final int LIMB_SIZE = 16;
 
   private final OpCode opCode;
@@ -212,5 +213,10 @@ final class ShfOperation {
           .shiftStamp(Bytes.ofUnsignedInt(stamp))
           .validateRow();
     }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.maxCt();
   }
 }

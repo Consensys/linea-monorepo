@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
-import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -32,7 +32,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 @Accessors(fluent = true)
-public class EcDataOperation {
+public class EcDataOperation extends ModuleOperation {
   private static final int EC_RECOVER = 1;
   private static final int EC_ADD = 6;
   private static final int EC_MUL = 7;
@@ -54,7 +54,7 @@ public class EcDataOperation {
   private final Bytes input;
 
   private final int ecType;
-  @Getter private final int nRows;
+  private final int nRows;
   /** -1 if no switch off (i.e. preliminary checks passed) */
   private int hurdleSwitchOffRow;
 
@@ -343,5 +343,10 @@ public class EcDataOperation {
     for (int i = 0; i < this.nRows; i++) {
       this.traceRow(trace, i);
     }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.nRows;
   }
 }

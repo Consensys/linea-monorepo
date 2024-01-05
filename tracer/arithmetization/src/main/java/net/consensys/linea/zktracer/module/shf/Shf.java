@@ -59,8 +59,8 @@ public class Shf implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    int stamp = 0;
 
+    int stamp = 0;
     for (ShfOperation op : this.operations) {
       stamp++;
       op.trace(trace, stamp);
@@ -69,10 +69,6 @@ public class Shf implements Module {
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (ShfOperation shfOperation : this.operations) {
-      sum += shfOperation.maxCt();
-    }
-    return sum;
+    return this.operations.lineCount();
   }
 }

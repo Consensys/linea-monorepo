@@ -17,14 +17,11 @@ package net.consensys.linea.zktracer.module.stp;
 
 import static java.lang.Long.max;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
@@ -34,8 +31,6 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
-import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -66,7 +61,7 @@ public class Stp implements Module {
 
   @Override
   public int lineCount() {
-    return this.chunks.stream().mapToInt(chunk -> ctMax(chunk) + 1).sum();
+    return this.chunks.lineCount();
   }
 
   @Override
@@ -85,7 +80,7 @@ public class Stp implements Module {
         this.wcp.callLT(longToBytes32(chunk.gasActual()), Bytes32.ZERO);
         this.wcp.callLT(longToBytes32(chunk.gasActual()), longToBytes32(chunk.gasPrelim()));
         if (!chunk.oogx()) {
-          this.mod.callDiv(longToBytes32(getGDiff(chunk)), longToBytes32(64L));
+          this.mod.callDiv(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
         }
       }
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
@@ -97,8 +92,8 @@ public class Stp implements Module {
         }
         this.wcp.callLT(longToBytes32(chunk.gasActual()), longToBytes32(chunk.gasPrelim()));
         if (!chunk.oogx()) {
-          this.mod.callDiv(longToBytes32(getGDiff(chunk)), longToBytes32(64L));
-          this.wcp.callLT(chunk.gas().orElseThrow(), longToBytes32(get63of64GDiff(chunk)));
+          this.mod.callDiv(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
+          this.wcp.callLT(chunk.gas().orElseThrow(), longToBytes32(chunk.get63of64GDiff()));
         }
       }
     }
@@ -106,9 +101,9 @@ public class Stp implements Module {
 
   private StpChunk getCreateData(final MessageFrame frame) {
     final Address to = getDeploymentAddress(frame);
-    final Long gasRemaining = frame.getRemainingGas();
-    final Long gasMxp = getGasMxpCreate(frame);
-    final Long gasPrelim = GasConstants.G_CREATE.cost() + gasMxp;
+    final long gasRemaining = frame.getRemainingGas();
+    final long gasMxp = getGasMxpCreate(frame);
+    final long gasPrelim = GasConstants.G_CREATE.cost() + gasMxp;
     return new StpChunk(
         this.hub.opCode(),
         gasRemaining,
@@ -126,7 +121,7 @@ public class Stp implements Module {
     final Bytes32 value =
         callCanTransferValue(opcode) ? Bytes32.leftPad(frame.getStackItem(2)) : Bytes32.ZERO;
     final Address to = Words.toAddress(frame.getStackItem(1));
-    final Long gasMxp = getGasMxpCall(frame);
+    final long gasMxp = getGasMxpCall(frame);
     final boolean toWarm = frame.isAddressWarm(to);
     final boolean toExists =
         opcode == OpCode.CALLCODE
@@ -160,12 +155,12 @@ public class Stp implements Module {
         Bytes32.leftPad(frame.getStackItem(0)));
   }
 
-  private boolean callCanTransferValue(OpCode opCode) {
+  static boolean callCanTransferValue(OpCode opCode) {
     return (opCode == OpCode.CALL) || (opCode == OpCode.CALLCODE);
   }
 
   // TODO get from Hub.GasProjector
-  private Long getGasMxpCreate(final MessageFrame frame) {
+  private long getGasMxpCreate(final MessageFrame frame) {
     long gasMxp = 0;
     final long offset = Words.clampedToLong(frame.getStackItem(1));
     final long length = Words.clampedToLong(frame.getStackItem(2));
@@ -188,7 +183,7 @@ public class Stp implements Module {
   }
 
   // TODO get from Hub.GasProjector
-  private Long getGasMxpCall(final MessageFrame frame) {
+  private long getGasMxpCall(final MessageFrame frame) {
     long gasMxp = 0;
 
     final int offset =
@@ -213,213 +208,14 @@ public class Stp implements Module {
     return gasMxp;
   }
 
-  private void traceChunks(StpChunk chunk, int stamp, Trace trace) {
-    if (chunk.opCode().isCreate()) {
-      traceCreate(chunk, stamp, trace);
-    } else {
-      traceCall(chunk, stamp, trace);
-    }
-  }
-
-  private long getGDiff(StpChunk chunk) {
-    Preconditions.checkArgument(!chunk.oogx());
-    return chunk.gasActual() - chunk.gasPrelim();
-  }
-
-  private long getGDiffOver64(StpChunk chunk) {
-    return getGDiff(chunk) / 64;
-  }
-
-  private long get63of64GDiff(StpChunk chunk) {
-    return getGDiff(chunk) - getGDiffOver64(chunk);
-  }
-
-  private void traceCreate(StpChunk chunk, int stamp, Trace trace) {
-    final int ctMax = ctMax(chunk);
-    final long gasOopkt = chunk.oogx() ? 0 : get63of64GDiff(chunk);
-
-    for (int ct = 0; ct <= ctMax; ct++) {
-      trace
-          .stamp(Bytes.ofUnsignedInt(stamp))
-          .ct(Bytes.of(ct))
-          .ctMax(Bytes.of(ctMax))
-          .instruction(UnsignedByte.of(chunk.opCode().byteValue()))
-          .isCreate(chunk.opCode() == OpCode.CREATE)
-          .isCreate2(chunk.opCode() == OpCode.CREATE2)
-          .isCall(false)
-          .isCallcode(false)
-          .isDelegatecall(false)
-          .isStaticcall(false)
-          .gasHi(Bytes.EMPTY)
-          .gasLo(Bytes.EMPTY)
-          .valHi(chunk.value().slice(0, 16))
-          .valLo(chunk.value().slice(16, 16))
-          .exists(false) // TODO document this
-          .warm(false) // TODO document this
-          .outOfGasException(chunk.oogx())
-          .gasActual(Bytes.ofUnsignedLong(chunk.gasActual()))
-          .gasMxp(Bytes.ofUnsignedLong(chunk.gasMxp()))
-          .gasUpfront(Bytes.ofUnsignedLong(chunk.gasPrelim()))
-          .gasOopkt(Bytes.ofUnsignedLong(gasOopkt))
-          .gasStipend(Bytes.EMPTY)
-          .arg1Hi(Bytes.EMPTY);
-
-      switch (ct) {
-        case 0 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 1 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
-            .arg2Lo(Bytes.ofUnsignedLong(chunk.gasPrelim()))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.of(chunk.oogx() ? 1 : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 2 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(getGDiff(chunk)))
-            .arg2Lo(Bytes.of(64))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(Bytes.ofUnsignedLong(getGDiffOver64(chunk)))
-            .wcpFlag(false)
-            .modFlag(true)
-            .validateRow();
-        default -> throw new IllegalArgumentException("counter too big, should be <=" + ctMax);
-      }
-    }
-  }
-
-  private void traceCall(StpChunk chunk, int stamp, Trace trace) {
-    final int ctMax = ctMax(chunk);
-    final long gasStipend =
-        (!chunk.oogx() && callCanTransferValue(chunk.opCode()) && !chunk.value().isZero())
-            ? GasConstants.G_CALL_STIPEND.cost()
-            : 0;
-    final Bytes gasOopkt =
-        chunk.oogx()
-            ? Bytes.EMPTY
-            : bigIntegerToBytes(
-                chunk
-                    .gas()
-                    .orElseThrow()
-                    .toUnsignedBigInteger()
-                    .min(BigInteger.valueOf(get63of64GDiff(chunk))));
-
-    for (int ct = 0; ct <= ctMax; ct++) {
-      trace
-          .stamp(Bytes.ofUnsignedInt(stamp))
-          .ct(Bytes.of(ct))
-          .ctMax(Bytes.of(ctMax))
-          .instruction(UnsignedByte.of(chunk.opCode().byteValue()))
-          .isCreate(false)
-          .isCreate2(false)
-          .isCall(chunk.opCode() == OpCode.CALL)
-          .isCallcode(chunk.opCode() == OpCode.CALLCODE)
-          .isDelegatecall(chunk.opCode() == OpCode.DELEGATECALL)
-          .isStaticcall(chunk.opCode() == OpCode.STATICCALL)
-          .gasHi(chunk.gas().orElseThrow().slice(0, 16))
-          .gasLo(chunk.gas().orElseThrow().slice(16))
-          .valHi(chunk.value().slice(0, 16))
-          .valLo(chunk.value().slice(16))
-          .exists(chunk.toExists().orElseThrow())
-          .warm(chunk.toWarm().orElseThrow())
-          .outOfGasException(chunk.oogx())
-          .gasActual(Bytes.ofUnsignedLong(chunk.gasActual()))
-          .gasMxp(Bytes.ofUnsignedLong(chunk.gasMxp()))
-          .gasUpfront(Bytes.ofUnsignedLong(chunk.gasPrelim()))
-          .gasOopkt(gasOopkt)
-          .gasStipend(Bytes.ofUnsignedLong(gasStipend));
-
-      switch (ct) {
-        case 0 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 1 -> trace
-            .arg1Hi(chunk.value().slice(0, 16))
-            .arg1Lo(chunk.value().slice(16, 16))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.ISZERO.byteValue()))
-            .resLo(Bytes.of(chunk.value().isZero() ? 1 : 0))
-            .wcpFlag(callCanTransferValue(chunk.opCode()))
-            .modFlag(false)
-            .validateRow();
-        case 2 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(chunk.gasActual()))
-            .arg2Lo(Bytes.ofUnsignedLong(chunk.gasPrelim()))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.of(chunk.oogx() ? 1 : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-          // the following rows are only filled in if no out of gas exception
-        case 3 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(getGDiff(chunk)))
-            .arg2Lo(Bytes.of(64))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(Bytes.ofUnsignedLong(getGDiffOver64(chunk)))
-            .wcpFlag(false)
-            .modFlag(true)
-            .validateRow();
-        case 4 -> trace
-            .arg1Hi(chunk.gas().orElseThrow().slice(0, 16))
-            .arg1Lo(chunk.gas().orElseThrow().slice(16, 16))
-            .arg2Lo(Bytes.ofUnsignedLong(getGDiff(chunk) - getGDiffOver64(chunk)))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(
-                Bytes.of(
-                    chunk
-                                .gas()
-                                .orElseThrow()
-                                .toUnsignedBigInteger()
-                                .compareTo(BigInteger.valueOf(get63of64GDiff(chunk)))
-                            < 0
-                        ? 1
-                        : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        default -> throw new IllegalArgumentException("counter too big, should be <=" + ctMax);
-      }
-    }
-  }
-
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
-
     final Trace trace = new Trace(buffers);
+
     int stamp = 0;
     for (StpChunk chunk : chunks) {
       stamp++;
-      traceChunks(chunk, stamp, trace);
-    }
-  }
-
-  private int ctMax(StpChunk chunk) {
-    if (chunk.oogx()) {
-      if (chunk.opCode().isCreate()) {
-        return 1;
-      } else {
-        return 2;
-      }
-    } else {
-      if (chunk.opCode().isCreate()) {
-        return 2;
-      } else {
-        return 4;
-      }
+      chunk.trace(trace, stamp);
     }
   }
 }

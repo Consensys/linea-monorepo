@@ -80,11 +80,7 @@ public class Wcp implements Module {
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (WcpOperation wcpOperation : this.operations) {
-      sum += wcpOperation.ctMax + 1;
-    }
-    return sum;
+    return this.operations.lineCount();
   }
 
   public boolean callLT(Bytes32 arg1, Bytes32 arg2) {
