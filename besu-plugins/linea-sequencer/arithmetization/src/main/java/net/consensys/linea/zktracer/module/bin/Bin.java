@@ -82,10 +82,6 @@ public class Bin implements Module {
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (BinOperation op : this.chunks) {
-      sum += op.maxCt();
-    }
-    return sum;
+    return this.chunks.lineCount();
   }
 }

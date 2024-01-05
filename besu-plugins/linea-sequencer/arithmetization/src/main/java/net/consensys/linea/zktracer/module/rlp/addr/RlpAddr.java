@@ -280,21 +280,9 @@ public class RlpAddr implements Module {
     }
   }
 
-  public int chunkRowSize(RlpAddrChunk chunk) {
-    if (chunk.opCode().equals(OpCode.CREATE)) {
-      return 8;
-    } else {
-      return 6;
-    }
-  }
-
   @Override
   public int lineCount() {
-    int traceRowSize = 0;
-    for (RlpAddrChunk chunk : this.chunkList) {
-      traceRowSize += chunkRowSize(chunk);
-    }
-    return traceRowSize;
+    return this.chunkList.lineCount();
   }
 
   @Override

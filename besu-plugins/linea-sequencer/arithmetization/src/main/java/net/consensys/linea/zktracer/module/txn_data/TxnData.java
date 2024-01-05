@@ -44,6 +44,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
+import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor
 public class TxnData implements Module {
@@ -360,6 +361,12 @@ public class TxnData implements Module {
             COMMON_RLP_TXN_PHASE_NUMBER_5 // ct = 5
             );
 
+    List<Integer> phaseDependentSuffix = computePhaseDependentSuffix(tx);
+    return Stream.concat(common.stream(), phaseDependentSuffix.stream()).toList();
+  }
+
+  @NotNull
+  private static List<Integer> computePhaseDependentSuffix(TransactionSnapshot tx) {
     List<Integer> phaseDependentSuffix;
 
     switch (tx.type()) {
@@ -379,7 +386,7 @@ public class TxnData implements Module {
               );
       default -> throw new IllegalStateException("transaction type not supported:" + tx.type());
     }
-    return Stream.concat(common.stream(), phaseDependentSuffix.stream()).toList();
+    return phaseDependentSuffix;
   }
 
   private List<Integer> setPhaseRlpTxnRcpt() {

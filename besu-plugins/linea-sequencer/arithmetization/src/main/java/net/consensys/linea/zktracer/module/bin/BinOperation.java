@@ -25,6 +25,7 @@ import com.google.common.base.Objects;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -33,7 +34,7 @@ import org.apache.tuweni.bytes.Bytes32;
 
 @Getter
 @Accessors(fluent = true)
-public class BinOperation {
+public class BinOperation extends ModuleOperation {
   public BinOperation(OpCode opCode, BaseBytes arg1, BaseBytes arg2) {
     this.opCode = opCode;
     this.arg1 = arg1;
@@ -70,7 +71,12 @@ public class BinOperation {
     return (opCode == OpCode.BYTE || opCode == OpCode.SIGNEXTEND) && !arg1.getHigh().isZero();
   }
 
-  public int maxCt() {
+  @Override
+  protected int computeLineCount() {
+    return this.maxCt();
+  }
+
+  private int maxCt() {
     return isOneLineInstruction() ? 1 : LIMB_SIZE;
   }
 

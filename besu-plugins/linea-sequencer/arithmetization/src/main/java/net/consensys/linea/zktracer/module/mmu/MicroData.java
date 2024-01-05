@@ -25,6 +25,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -34,7 +35,7 @@ import org.apache.tuweni.bytes.Bytes;
 
 @AllArgsConstructor
 @Accessors(fluent = true)
-class MicroData {
+class MicroData extends ModuleOperation {
   private static final UnsignedByte[] DEFAULT_NIBBLES = new UnsignedByte[9];
   private static final UnsignedByte[][] DEFAULT_ACCS = new UnsignedByte[8][32];
   private static final boolean[] DEFAULT_BITS = new boolean[8];
@@ -127,6 +128,11 @@ class MicroData {
         DEFAULT_VAL_C_CACHE,
         0,
         0);
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return Mmu.maxCounter(this.pointers.oob());
   }
 
   boolean isErf() {

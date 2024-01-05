@@ -15,14 +15,14 @@
 
 package net.consensys.linea.zktracer.container.stacked.list;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
-import java.util.Stack;
 
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.container.StackedContainer;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,14 +32,15 @@ import org.jetbrains.annotations.NotNull;
  *
  * @param <E> the type of elements stored in the list
  */
-public class StackedList<E> implements List<E>, StackedContainer {
-  private final Stack<List<E>> lists = new Stack<>();
+public class StackedList<E extends ModuleOperation> implements List<E>, StackedContainer {
+
+  private final LinkedList<CountedList<E>> lists = new LinkedList<>();
   /** The cached number of elements in this container */
   private int totalSize;
 
   @Override
   public String toString() {
-    StringBuffer r = new StringBuffer();
+    StringBuilder r = new StringBuilder();
     r.append("[[");
     for (var l : this.lists) {
       r.append(l.toString());
@@ -50,7 +51,11 @@ public class StackedList<E> implements List<E>, StackedContainer {
 
   @Override
   public void enter() {
-    this.lists.push(new ArrayList<>());
+    this.lists.push(new CountedList<>());
+  }
+
+  public void enter(int initialCapacity) {
+    this.lists.push(new CountedList<>(initialCapacity));
   }
 
   @Override
@@ -66,6 +71,15 @@ public class StackedList<E> implements List<E>, StackedContainer {
     return this.totalSize;
   }
 
+  public int lineCount() {
+    int sum = 0;
+    // Deliberate use of old-style for loops out of performances concerns
+    for (int i = 0; i < this.lists.size(); i++) {
+      sum += this.lists.get(i).lineCount();
+    }
+    return sum;
+  }
+
   @Override
   public boolean isEmpty() {
     return this.totalSize == 0;
@@ -73,11 +87,12 @@ public class StackedList<E> implements List<E>, StackedContainer {
 
   @Override
   public boolean contains(Object o) {
-    for (List<E> l : this.lists) {
+    for (CountedList<E> l : this.lists) {
       if (l.contains(o)) {
         return true;
       }
     }
+
     return false;
   }
 
@@ -156,7 +171,7 @@ public class StackedList<E> implements List<E>, StackedContainer {
 
   @Override
   public E get(int i) {
-    for (List<E> list : this.lists) {
+    for (CountedList<E> list : this.lists) {
       if (i >= list.size()) {
         i -= list.size();
       } else {
@@ -217,7 +232,8 @@ public class StackedList<E> implements List<E>, StackedContainer {
     throw new UnsupportedOperationException("subList not supported");
   }
 
-  private static class StackedListIterator<F> implements Iterator<F>, ListIterator<F> {
+  private static class StackedListIterator<F extends ModuleOperation>
+      implements Iterator<F>, ListIterator<F> {
     private final StackedList<F> sl;
     /** Position of the iterator in the list of lists */
     private int head = 0;
@@ -229,7 +245,7 @@ public class StackedList<E> implements List<E>, StackedContainer {
     }
 
     private List<F> list() {
-      if (sl.lists.size() == 0) {
+      if (sl.lists.isEmpty()) {
         return List.of();
       }
       return this.sl.lists.get(this.head);

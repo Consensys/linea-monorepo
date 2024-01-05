@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.container.StackedContainer;
 import org.jetbrains.annotations.NotNull;
 
@@ -35,9 +36,9 @@ import org.jetbrains.annotations.NotNull;
  *
  * @param <E> the type of elements stored in the set
  */
-public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
+public class StackedSet<E extends ModuleOperation> implements StackedContainer, java.util.Set<E> {
   private final Deque<Set<E>> sets = new ArrayDeque<>();
-  private final Map<E, Integer> occurences = new HashMap<>();
+  private final Map<E, Integer> occurrences = new HashMap<>();
 
   @Override
   public void enter() {
@@ -48,21 +49,31 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
   public void pop() {
     Set<E> set = this.sets.pop();
     for (E e : set) {
-      Integer count = occurences.get(e);
-      if (count > 0) occurences.put(e, count - 1);
-      else throw new IllegalStateException("asymetric element removal !");
+      Integer count = occurrences.get(e);
+      if (count > 0) occurrences.put(e, count - 1);
+      else throw new IllegalStateException("asymmetric element removal !");
     }
   }
 
   @Override
   public int size() {
     int size = 0;
-    for (Integer count : occurences.values()) {
+    for (Integer count : occurrences.values()) {
       if (count != 0) {
         size++;
       }
     }
     return size;
+  }
+
+  public int lineCount() {
+    int sum = 0;
+    for (Map.Entry<E, Integer> entry : occurrences.entrySet()) {
+      if (entry.getValue() > 0) {
+        sum += entry.getKey().lineCount();
+      }
+    }
+    return sum;
   }
 
   @Override
@@ -72,14 +83,14 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
 
   @Override
   public boolean contains(Object o) {
-    return occurences.containsKey(o) && occurences.get(o) > 0;
+    return occurrences.containsKey(o) && occurrences.get(o) > 0;
   }
 
   @NotNull
   @Override
   public Iterator<E> iterator() {
-    List<E> list = new ArrayList<>();
-    for (Map.Entry<E, Integer> entry : occurences.entrySet()) {
+    final List<E> list = new ArrayList<>();
+    for (Map.Entry<E, Integer> entry : occurrences.entrySet()) {
       if (entry.getValue() > 0) {
         list.add(entry.getKey());
       }
@@ -89,12 +100,11 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
 
   @NotNull
   @Override
-  @SuppressWarnings("unchecked")
-  public E[] toArray() {
-    return occurences.entrySet().stream()
+  public Object[] toArray() {
+    return occurrences.entrySet().stream()
         .filter(entry -> entry.getValue() > 0)
         .map(Map.Entry::getKey)
-        .toArray(size -> (E[]) new Object[size]);
+        .toArray();
   }
 
   @NotNull
@@ -106,7 +116,7 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
   @Override
   public boolean add(E e) {
     final boolean added = this.sets.peek().add(e);
-    occurences.put(e, occurences.getOrDefault(e, 0) + 1);
+    occurrences.put(e, occurrences.getOrDefault(e, 0) + 1);
     return added;
   }
 
@@ -147,6 +157,6 @@ public class StackedSet<E> implements StackedContainer, java.util.Set<E> {
   @Override
   public void clear() {
     this.sets.clear();
-    this.occurences.clear();
+    this.occurrences.clear();
   }
 }

@@ -108,11 +108,7 @@ public class EcData implements Module {
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (EcDataOperation op : this.operations) {
-      sum += op.nRows();
-    }
-    return sum;
+    return this.operations.lineCount();
   }
 
   @Override

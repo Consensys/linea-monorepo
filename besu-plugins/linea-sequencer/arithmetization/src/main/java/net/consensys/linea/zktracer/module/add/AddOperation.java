@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.add;
 
 import com.google.common.base.Objects;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
+import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -24,7 +25,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
-public final class AddOperation {
+public final class AddOperation extends ModuleOperation {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
   private static final int LLARGE = 16;
 
@@ -130,6 +131,11 @@ public final class AddOperation {
           .stamp(Bytes.ofUnsignedLong(stamp))
           .validateRow();
     }
+  }
+
+  @Override
+  protected int computeLineCount() {
+    return this.ctMax + 1;
   }
 
   @Override

@@ -761,49 +761,9 @@ public class RlpTxrcpt implements Module {
     return logSize;
   }
 
-  public int ChunkRowSize(RlpTxrcptChunk chunk) {
-    // Phase 0 is always 1+8=9 row long, Phase 1, 1 row long, Phase 2 8 row long,
-    // Phase 3 65 = 1 +
-    // 64 row long
-    int rowSize = 83;
-
-    // add the number of rows for Phase 4 : Log entry
-    if (chunk.logs().isEmpty()) {
-      rowSize += 1;
-    } else {
-      // Rlp prefix of the list of log entries is always 8 rows long
-      rowSize += 8;
-
-      for (int i = 0; i < chunk.logs().size(); i++) {
-        // Rlp prefix of a log entry is always 8, Log entry address is always 3 row
-        // long, Log topics
-        // rlp prefix always 1
-        rowSize += 12;
-
-        // Each log Topics is 3 rows long
-        rowSize += 3 * chunk.logs().get(i).getTopics().size();
-
-        // Row size of data is 1 if empty
-        if (chunk.logs().get(i).getData().isEmpty()) {
-          rowSize += 1;
-        }
-        // Row size of the data is 8 (RLP prefix)+ integer part (data-size - 1 /16) +1
-        else {
-          rowSize += 8 + (chunk.logs().get(i).getData().size() - 1) / 16 + 1;
-        }
-      }
-    }
-
-    return rowSize;
-  }
-
   @Override
   public int lineCount() {
-    int traceRowSize = 0;
-    for (RlpTxrcptChunk chunk : this.chunkList) {
-      traceRowSize += ChunkRowSize(chunk);
-    }
-    return traceRowSize;
+    return this.chunkList.lineCount();
   }
 
   @Override
