@@ -13,6 +13,7 @@ ADD                 = 262144
 BIN                 = 262144
 BIN_RT              = 262144
 EC_DATA             = 4096
+EUC                 = 16384 # can probably be lower
 EXT                 = 32768
 HUB                 = 2097152
 INSTRUCTION_DECODER = 512 # Ugly hack, TODO: @franklin
