@@ -35,6 +35,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.ec_data.EcData;
+import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
@@ -166,6 +167,7 @@ public class Hub implements Module {
   private final Module bin = new Bin(this);
   private final Ext ext = new Ext(this);
   private final EcData ecData;
+  private final Euc euc;
   private final Mod mod = new Mod();
   private final Module mul = new Mul(this);
   private final Module shf = new Shf();
@@ -198,6 +200,7 @@ public class Hub implements Module {
     this.rlpTxn = new RlpTxn(this.romLex);
     this.txnData = new TxnData(this, this.romLex, this.wcp);
     this.ecData = new EcData(this, this.wcp, this.ext);
+    this.euc = new Euc(this.wcp);
 
     final EcRecoverEffectiveCall ecRec = new EcRecoverEffectiveCall(this);
     this.modexp = new ModexpEffectiveCall(this);
@@ -225,6 +228,7 @@ public class Hub implements Module {
                     this.add,
                     this.bin,
                     this.ecData,
+                    this.euc,
                     this.ext,
                     this.logData,
                     this.logInfo,
@@ -259,6 +263,7 @@ public class Hub implements Module {
         this.bin,
         this.ext,
         //        this.ecData, // TODO: not yet
+        this.euc,
         this.logData,
         this.logInfo,
         this.mod,
@@ -284,6 +289,7 @@ public class Hub implements Module {
                 this.add,
                 this.ext,
                 this.ecData,
+                this.euc,
                 this.logData,
                 this.logInfo,
                 this.mod,
