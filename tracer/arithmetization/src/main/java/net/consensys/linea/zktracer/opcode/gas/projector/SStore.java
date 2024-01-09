@@ -30,9 +30,12 @@ public final class SStore implements GasProjection {
   public SStore(MessageFrame frame) {
     this.frame = frame;
     if (frame.stackSize() > 1) {
-      final Account account = frame.getWorldUpdater().getAccount(frame.getRecipientAddress());
-
       this.key = UInt256.fromBytes(frame.getStackItem(0));
+      final Account account = frame.getWorldUpdater().getAccount(frame.getRecipientAddress());
+      if (account == null) {
+        return;
+      }
+
       this.originalValue = account.getOriginalStorageValue(key);
       this.currentValue = account.getStorageValue(key);
       this.newValue = UInt256.fromBytes(frame.getStackItem(1));
