@@ -45,7 +45,7 @@ public class TestCommandLineOptionsBuilder {
   }
 
   public List<String> build() {
-    List<String> optionsList = new ArrayList<>();
+    List<String> optionsList = new ArrayList<>(cliOptions.size());
     for (String key : cliOptions.stringPropertyNames()) {
       optionsList.add(key + cliOptions.getProperty(key));
     }

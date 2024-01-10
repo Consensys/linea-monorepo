@@ -25,12 +25,14 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -59,25 +61,25 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   /**
    * No checking is done pre-processing.
    *
-   * @param pendingTransaction The transaction to evaluate.
+   * @param evaluationContext The current selection context.
    * @return TransactionSelectionResult.SELECTED
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final PendingTransaction pendingTransaction) {
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
     return SELECTED;
   }
 
   @Override
   public void onTransactionNotSelected(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionSelectionResult transactionSelectionResult) {
-    zkTracer.popTransaction(pendingTransaction);
+    zkTracer.popTransaction(evaluationContext.getPendingTransaction());
   }
 
   @Override
   public void onTransactionSelected(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
     prevCumulatedLineCount = currCumulatedLineCount;
   }
@@ -85,7 +87,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   /**
    * Checking the created trace lines is performed post-processing.
    *
-   * @param pendingTransaction The processed transaction.
+   * @param evaluationContext The current selection context.
    * @param processingResult The result of the transaction processing.
    * @return BLOCK_MODULE_LINE_COUNT_FULL if the trace lines for a module are over the limit for the
    *     block, TX_MODULE_LINE_COUNT_OVERFLOW if the trace lines are over the limit for the single
@@ -93,15 +95,17 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
 
-    // check that we are not exceed line number for any module
+    // check that we are not exceeding line number for any module
     currCumulatedLineCount = zkTracer.getModulesLineCount();
+
+    final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
 
     log.atTrace()
         .setMessage("Tx {} line count per module: {}")
-        .addArgument(pendingTransaction.getTransaction()::getHash)
+        .addArgument(transaction::getHash)
         .addArgument(this::logTxLineCount)
         .log();
 
@@ -121,7 +125,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
       if (txModuleLineCount > moduleLineCountLimit) {
         log.warn(
             "Tx {} line count for module {}={} is above the limit {}, removing from the txpool",
-            pendingTransaction.getTransaction().getHash(),
+            transaction.getHash(),
             module,
             txModuleLineCount,
             moduleLineCountLimit);

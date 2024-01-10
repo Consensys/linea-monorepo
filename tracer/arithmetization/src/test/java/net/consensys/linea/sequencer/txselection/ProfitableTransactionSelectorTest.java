@@ -14,79 +14,75 @@
  */
 package net.consensys.linea.sequencer.txselection;
 
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_TOO_LARGE_FOR_REMAINING_USER_GAS;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import net.consensys.linea.sequencer.txselection.selectors.MaxBlockGasTransactionSelector;
+import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class MaxBlockGasTransactionSelectorTest {
-  private static final int MAX_GAS_PER_BLOCK = 1000;
-  private static final int MAX_GAS_PER_BLOCK_20_PERCENTAGE = 200;
-  private static final int MAX_GAS_PER_BLOCK_80_PERCENTAGE = 800;
+public class ProfitableTransactionSelectorTest {
+  private static final int VERIFICATION_GAS_COST = 1_200_000;
+  private static final int VERIFICATION_CAPACITY = 90_000;
+  private static final int GAS_PRICE_RATIO = 15;
+  private static final double MIN_MARGIN = 1.0;
 
   private PluginTransactionSelector transactionSelector;
 
   @BeforeEach
   public void initialize() {
-    transactionSelector = new MaxBlockGasTransactionSelector(MAX_GAS_PER_BLOCK);
+    transactionSelector =
+        new ProfitableTransactionSelector(
+            VERIFICATION_GAS_COST, VERIFICATION_CAPACITY, GAS_PRICE_RATIO, MIN_MARGIN);
   }
 
   @Test
-  public void shouldSelectWhen_GasUsedByTransaction_IsLessThan_MaxGasPerBlock() {
-    var mockTransactionProcessingResult = mockTransactionProcessingResult(MAX_GAS_PER_BLOCK - 1);
-    verifyTransactionSelection(
-        transactionSelector, mockEvaluationContext(), mockTransactionProcessingResult, SELECTED);
-  }
-
-  @Test
-  public void shouldSelectWhen_GasUsedByTransaction_IsEqual_MaxGasPerBlock() {
-    var mockTransactionProcessingResult = mockTransactionProcessingResult(MAX_GAS_PER_BLOCK);
-    verifyTransactionSelection(
-        transactionSelector, mockEvaluationContext(), mockTransactionProcessingResult, SELECTED);
-  }
-
-  @Test
-  public void shouldNotSelectWhen_GasUsedByTransaction_IsGreaterThan_MaxGasPerBlock() {
-    var mockTransactionProcessingResult = mockTransactionProcessingResult(MAX_GAS_PER_BLOCK + 1);
+  public void shouldSelectWhenProfitable() {
+    var mockTransactionProcessingResult = mockTransactionProcessingResult(21000);
     verifyTransactionSelection(
         transactionSelector,
-        mockEvaluationContext(),
+        mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000)),
         mockTransactionProcessingResult,
-        TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS);
+        SELECTED);
   }
 
   @Test
-  public void shouldNotSelectWhen_CumulativeGasUsed_IsGreaterThan_MaxGasPerBlock() {
-    // block empty, transaction 80% max gas, should select
+  public void shouldNotSelectWhenUnprofitable() {
+    var mockTransactionProcessingResult = mockTransactionProcessingResult(21000);
     verifyTransactionSelection(
         transactionSelector,
-        mockEvaluationContext(),
-        mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_80_PERCENTAGE),
+        mockEvaluationContext(false, 1000, Wei.of(1_100_000_000), Wei.of(1_000_000_000)),
+        mockTransactionProcessingResult,
+        TX_UNPROFITABLE);
+  }
+
+  @Test
+  public void shouldSelectPrevUnprofitableAfterGasPriceBump() {
+    var mockTransactionProcessingResult = mockTransactionProcessingResult(21000);
+    verifyTransactionSelection(
+        transactionSelector,
+        mockEvaluationContext(
+            false, 1000, Wei.of(1_100_000_000).multiply(9), Wei.of(1_000_000_000)),
+        mockTransactionProcessingResult,
         SELECTED);
+  }
 
-    // block 80% full, transaction 80% max gas, should not select
+  @Test
+  public void shouldSelectPriorityTxEvenWhenUnprofitable() {
+    var mockTransactionProcessingResult = mockTransactionProcessingResult(21000);
     verifyTransactionSelection(
         transactionSelector,
-        mockEvaluationContext(),
-        mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_80_PERCENTAGE),
-        TX_TOO_LARGE_FOR_REMAINING_USER_GAS);
-
-    // block 80% full, transaction 20% max gas, should select
-    verifyTransactionSelection(
-        transactionSelector,
-        mockEvaluationContext(),
-        mockTransactionProcessingResult(MAX_GAS_PER_BLOCK_20_PERCENTAGE),
+        mockEvaluationContext(true, 1000, Wei.of(1_100_000_000), Wei.of(1_000_000_000)),
+        mockTransactionProcessingResult,
         SELECTED);
   }
 
@@ -101,11 +97,17 @@ public class MaxBlockGasTransactionSelectorTest {
     notifySelector(selector, evaluationContext, processingResult, selectionResult);
   }
 
-  private TestTransactionEvaluationContext mockEvaluationContext() {
+  private TestTransactionEvaluationContext mockEvaluationContext(
+      final boolean hasPriority,
+      final int size,
+      final Wei effectiveGasPrice,
+      final Wei minGasPrice) {
     PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     Transaction transaction = mock(Transaction.class);
+    when(transaction.getSize()).thenReturn(size);
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
-    return new TestTransactionEvaluationContext(pendingTransaction);
+    when(pendingTransaction.hasPriority()).thenReturn(hasPriority);
+    return new TestTransactionEvaluationContext(pendingTransaction, effectiveGasPrice, minGasPrice);
   }
 
   private TransactionProcessingResult mockTransactionProcessingResult(long gasUsedByTransaction) {

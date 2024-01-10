@@ -31,6 +31,8 @@ import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
+import org.hyperledger.besu.ethereum.eth.transactions.TransactionPoolConfiguration;
 import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
@@ -65,6 +67,11 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     minerNode =
         besu.createCliqueNodeWithExtraCliOptions(
             "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions());
+    minerNode.setTransactionPoolConfiguration(
+        ImmutableTransactionPoolConfiguration.builder()
+            .from(TransactionPoolConfiguration.DEFAULT)
+            .noLocalPriority(true)
+            .build());
     cluster.start(minerNode);
   }
 

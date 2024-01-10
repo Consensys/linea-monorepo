@@ -119,5 +119,7 @@ dependencyManagement {
     dependency 'io.vertx:vertx-core:4.3.8'
 
     dependency 'com.slack.api:slack-api-client:1.32.1'
+
+    dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
   }
 }

@@ -24,6 +24,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 /**
  * This class implements TransactionSelector and provides a specific implementation for evaluating
@@ -41,22 +42,22 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
    * Evaluates a transaction before processing. Checks if adding the transaction to the block pushes
    * the call data size of the block over the limit.
    *
-   * @param pendingTransaction The transaction to evaluate.
+   * @param evaluationContext The current selection context.
    * @return BLOCK_CALLDATA_FULL if the call data size of a transactions pushes the size for the
    *     block over the limit, otherwise SELECTED.
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final PendingTransaction pendingTransaction) {
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
 
-    final Transaction transaction = pendingTransaction.getTransaction();
+    final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
     final int transactionCallDataSize = transaction.getPayload().size();
 
     if (isTransactionExceedingBlockCallDataSizeLimit(transactionCallDataSize)) {
       log.atTrace()
           .setMessage(
               "Cumulative block calldata size including tx {} is {} greater than the max allowed {}, skipping tx")
-          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(transaction::getHash)
           .addArgument(() -> cumulativeBlockCallDataSize + transactionCallDataSize)
           .addArgument(maxBlockCallDataSize)
           .log();
@@ -65,7 +66,7 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
 
     log.atTrace()
         .setMessage("Cumulative block calldata size including tx {} is {}")
-        .addArgument(pendingTransaction.getTransaction()::getHash)
+        .addArgument(transaction::getHash)
         .addArgument(cumulativeBlockCallDataSize)
         .log();
 
@@ -91,9 +92,10 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
    */
   @Override
   public void onTransactionSelected(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult transactionProcessingResult) {
-    final int transactionCallDataSize = pendingTransaction.getTransaction().getPayload().size();
+    final int transactionCallDataSize =
+        evaluationContext.getPendingTransaction().getTransaction().getPayload().size();
     cumulativeBlockCallDataSize =
         Math.addExact(cumulativeBlockCallDataSize, transactionCallDataSize);
   }
@@ -101,13 +103,13 @@ public class MaxBlockCallDataTransactionSelector implements PluginTransactionSel
   /**
    * No evaluation is performed post-processing.
    *
-   * @param pendingTransaction The processed transaction.
+   * @param evaluationContext The current selection context.
    * @param processingResult The result of the transaction processing.
    * @return Always returns SELECTED.
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
     // Evaluation done in pre-processing, no action needed here.
     return SELECTED;

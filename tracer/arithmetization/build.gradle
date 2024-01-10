@@ -60,6 +60,7 @@ dependencies {
   implementation 'io.tmio:tuweni-units'
 
   implementation 'org.bouncycastle:bcprov-jdk18on'
+  implementation 'org.hibernate.validator:hibernate-validator'
 
   testImplementation "${besuArtifactGroup}:evm"
   testImplementation "${besuArtifactGroup}:besu-datatypes"
