@@ -79,29 +79,29 @@ public class MaxBlockCallDataSizeTransactionSelectorTest {
 
   private void verifyTransactionSelection(
       final PluginTransactionSelector selector,
-      final PendingTransaction transaction,
+      final TestTransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult expectedSelectionResult) {
-    var selectionResult = selector.evaluateTransactionPreProcessing(transaction);
+    var selectionResult = selector.evaluateTransactionPreProcessing(evaluationContext);
     assertThat(selectionResult).isEqualTo(expectedSelectionResult);
-    notifySelector(selector, transaction, selectionResult);
+    notifySelector(selector, evaluationContext, selectionResult);
   }
 
   private void notifySelector(
       final PluginTransactionSelector selector,
-      final PendingTransaction transaction,
+      final TestTransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult selectionResult) {
     if (selectionResult.equals(SELECTED)) {
-      selector.onTransactionSelected(transaction, mock(TransactionProcessingResult.class));
+      selector.onTransactionSelected(evaluationContext, mock(TransactionProcessingResult.class));
     } else {
-      selector.onTransactionNotSelected(transaction, selectionResult);
+      selector.onTransactionNotSelected(evaluationContext, selectionResult);
     }
   }
 
-  private PendingTransaction mockTransactionOfCallDataSize(final int size) {
-    PendingTransaction mockTransaction = mock(PendingTransaction.class);
+  private TestTransactionEvaluationContext mockTransactionOfCallDataSize(final int size) {
+    PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     Transaction transaction = mock(Transaction.class);
-    when(mockTransaction.getTransaction()).thenReturn(transaction);
+    when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(transaction.getPayload()).thenReturn(Bytes.repeat((byte) 1, size));
-    return mockTransaction;
+    return new TestTransactionEvaluationContext(pendingTransaction);
   }
 }
