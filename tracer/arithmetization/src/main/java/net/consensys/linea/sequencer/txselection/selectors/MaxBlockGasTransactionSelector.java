@@ -21,9 +21,11 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
+import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -34,9 +36,10 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
 
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
 
+    final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
     final long gasUsedByTransaction = processingResult.getEstimateGasUsedByTransaction();
 
     if (gasUsedByTransaction > maxGasPerBlock) {
@@ -44,7 +47,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
           .setMessage(
               "Not selecting transaction {}, its gas used {} is greater than max user gas per block {},"
                   + " removing it from the txpool")
-          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(transaction::getHash)
           .addArgument(gasUsedByTransaction)
           .addArgument(maxGasPerBlock)
           .log();
@@ -56,7 +59,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
           .setMessage(
               "Not selecting transaction {}, its cumulative block gas used {} greater than max user gas per block {},"
                   + " skipping it")
-          .addArgument(pendingTransaction.getTransaction()::getHash)
+          .addArgument(transaction::getHash)
           .addArgument(cumulativeBlockGasUsed)
           .addArgument(maxGasPerBlock)
           .log();
@@ -76,7 +79,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
 
   @Override
   public void onTransactionSelected(
-      final PendingTransaction pendingTransaction,
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
     cumulativeBlockGasUsed =
         Math.addExact(cumulativeBlockGasUsed, processingResult.getEstimateGasUsedByTransaction());
@@ -84,7 +87,7 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
 
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
-      final PendingTransaction pendingTransaction) {
+      final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
     // Evaluation done in post-processing, no action needed here.
     return SELECTED;
   }
