@@ -113,13 +113,13 @@ public class TxnData implements Module {
   public void traceEndTx(
       WorldView worldView,
       Transaction tx,
-      boolean status,
+      boolean isSuccessful,
       Bytes output,
       List<Log> logs,
       long cumulativeGasUsed) {
     final long refundCounter = hub.refundedGas();
     final long leftoverGas = hub.remainingGas();
-    this.currentBlock().endTx(cumulativeGasUsed, leftoverGas, refundCounter, status);
+    this.currentBlock().endTx(cumulativeGasUsed, leftoverGas, refundCounter, isSuccessful);
 
     // Call the wcp module:
     if (!this.currentBlock().getTxs().isEmpty()) {
