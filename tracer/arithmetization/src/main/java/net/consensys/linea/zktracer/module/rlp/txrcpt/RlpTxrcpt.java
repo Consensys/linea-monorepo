@@ -72,11 +72,11 @@ public class RlpTxrcpt implements Module {
   public void traceEndTx(
       WorldView worldView,
       Transaction tx,
-      boolean status,
+      boolean isSuccessful,
       Bytes output,
       List<Log> logList,
       long gasUsed) {
-    RlpTxrcptChunk chunk = new RlpTxrcptChunk(tx.getType(), status, gasUsed, logList);
+    RlpTxrcptChunk chunk = new RlpTxrcptChunk(tx.getType(), isSuccessful, gasUsed, logList);
     this.chunkList.add(chunk);
   }
 

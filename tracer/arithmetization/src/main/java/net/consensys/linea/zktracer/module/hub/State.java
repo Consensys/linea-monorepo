@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -55,7 +56,8 @@ public class State implements StackedContainer {
    * @return the trace builder
    */
   Trace commit(Trace hubTrace) {
-    for (TxState txState : this.state) {
+    for (Iterator<TxState> it = this.state.descendingIterator(); it.hasNext(); ) {
+      final TxState txState = it.next();
       txState.txTrace().commit(hubTrace);
     }
     return hubTrace;

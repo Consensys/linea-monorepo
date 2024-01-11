@@ -139,7 +139,7 @@ public class L2Block implements Module {
   public void traceEndTx(
       WorldView worldView,
       Transaction tx,
-      boolean status,
+      boolean isSuccessful,
       Bytes output,
       List<Log> logs,
       long gasUsed) {

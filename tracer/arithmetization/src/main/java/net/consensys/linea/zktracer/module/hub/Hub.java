@@ -662,14 +662,19 @@ public class Hub implements Module {
 
   @Override
   public void traceEndTx(
-      WorldView world, Transaction tx, boolean status, Bytes output, List<Log> logs, long gasUsed) {
+      WorldView world,
+      Transaction tx,
+      boolean isSuccessful,
+      Bytes output,
+      List<Log> logs,
+      long gasUsed) {
     if (this.tx.state() != TxState.TX_SKIP) {
       this.tx.state(TxState.TX_FINAL);
     }
-    this.tx.status(status);
+    this.tx.status(!isSuccessful);
 
     if (this.tx.state() != TxState.TX_SKIP) {
-      this.processStateFinal(world, tx, status);
+      this.processStateFinal(world, tx, isSuccessful);
     }
 
     this.defers.runPostTx(this, world, tx);
@@ -677,7 +682,7 @@ public class Hub implements Module {
     this.state.currentTxTrace().postTxRetcon(this);
 
     for (Module m : this.modules) {
-      m.traceEndTx(world, tx, status, output, logs, gasUsed);
+      m.traceEndTx(world, tx, isSuccessful, output, logs, gasUsed);
     }
   }
 

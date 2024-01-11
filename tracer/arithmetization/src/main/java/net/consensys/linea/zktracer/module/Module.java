@@ -45,7 +45,7 @@ public interface Module {
   default void traceEndTx(
       WorldView worldView,
       Transaction tx,
-      boolean status,
+      boolean isSuccessful,
       Bytes output,
       List<Log> logs,
       long gasUsed) {}
