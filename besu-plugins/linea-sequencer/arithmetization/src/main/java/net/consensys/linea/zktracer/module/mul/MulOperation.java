@@ -23,8 +23,8 @@ import static net.consensys.linea.zktracer.module.Util.getOverflow;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Objects;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
@@ -37,13 +37,13 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class MulOperation extends ModuleOperation {
   private static final int MMEDIUM = 8;
 
-  @Getter private final OpCode opCode;
-
-  @Getter private final Bytes32 arg1;
-  @Getter private final Bytes32 arg2;
+  @EqualsAndHashCode.Include @Getter private final OpCode opCode;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg1;
+  @EqualsAndHashCode.Include @Getter private final Bytes32 arg2;
 
   @Getter private final Bytes16 arg1Hi;
   @Getter private final Bytes16 arg1Lo;
@@ -68,25 +68,6 @@ public class MulOperation extends ModuleOperation {
   String exponentBits = "0";
 
   BaseBytes res;
-
-  /**
-   * This custom hash function ensures that all identical operations are only traced once per
-   * conflation block.
-   */
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.opCode, this.arg1, this.arg2);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final MulOperation that = (MulOperation) o;
-    return Objects.equals(opCode, that.opCode)
-        && Objects.equals(arg1, that.arg1)
-        && Objects.equals(arg2, that.arg2);
-  }
 
   public MulOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;

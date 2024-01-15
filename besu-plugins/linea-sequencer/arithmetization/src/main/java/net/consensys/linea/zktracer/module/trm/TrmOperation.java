@@ -24,7 +24,7 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
 import java.util.List;
 
-import com.google.common.base.Objects;
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.EWord;
@@ -33,8 +33,9 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class TrmOperation extends ModuleOperation {
-  private final EWord value;
+  @EqualsAndHashCode.Include private final EWord value;
 
   void trace(Trace trace, int stamp) {
     Bytes trmHi = leftPadTo(this.value.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
@@ -65,17 +66,5 @@ public class TrmOperation extends ModuleOperation {
   @Override
   protected int computeLineCount() {
     return MAX_CT;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(this.value);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    return this.value.equals(((TrmOperation) o).value);
   }
 }
