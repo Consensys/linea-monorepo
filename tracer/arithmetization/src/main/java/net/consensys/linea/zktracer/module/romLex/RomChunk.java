@@ -17,8 +17,7 @@ package net.consensys.linea.zktracer.module.romLex;
 
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
-import java.util.Objects;
-
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -31,6 +30,7 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 @Getter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class RomChunk extends ModuleOperation {
   private static final int LLARGE = 16;
   private static final Bytes BYTES_LLARGE = Bytes.of(LLARGE);
@@ -43,12 +43,12 @@ public final class RomChunk extends ModuleOperation {
   private static final UnsignedByte INVALID = UnsignedByte.of(0xFE);
   private static final int JUMPDEST = 0x5b;
 
+  @EqualsAndHashCode.Include private final int id;
   private final Address address;
   private final int deploymentNumber;
   private final boolean deploymentStatus;
   private final boolean readFromTheState;
   private final boolean commitToTheState;
-  private final int id;
   private final Bytes byteCode;
 
   public void trace(Trace trace, int cfi, int cfiInfty) {
@@ -164,23 +164,6 @@ public final class RomChunk extends ModuleOperation {
 
       trace.validateRow();
     }
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.id);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    final RomChunk that = (RomChunk) o;
-    return Objects.equals(this.id, that.id);
   }
 
   @Override

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import com.google.common.base.Objects;
+import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -25,13 +25,14 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class AddOperation extends ModuleOperation {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
   private static final int LLARGE = 16;
 
-  private final OpCode opCode;
-  private final Bytes32 arg1;
-  private final Bytes32 arg2;
+  @EqualsAndHashCode.Include private final OpCode opCode;
+  @EqualsAndHashCode.Include private final Bytes32 arg1;
+  @EqualsAndHashCode.Include private final Bytes32 arg2;
   private final BaseBytes res;
   public final int ctMax;
 
@@ -109,10 +110,9 @@ public final class AddOperation extends ModuleOperation {
     } else {
       addRes = Bytes32.wrap((UInt256.fromBytes(resLo)).add(UInt256.fromBytes(arg2Lo)));
     }
+
     final boolean overflowLo = (addRes.compareTo(TWO_TO_THE_128) >= 0);
-
     for (int ct = 0; ct <= this.ctMax; ct++) {
-
       trace
           .acc1(resHi.slice(0, 1 + ct))
           .acc2(resLo.slice(0, 1 + ct))
@@ -136,20 +136,5 @@ public final class AddOperation extends ModuleOperation {
   @Override
   protected int computeLineCount() {
     return this.ctMax + 1;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(this.opCode, this.arg1, this.arg2);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final AddOperation that = (AddOperation) o;
-    return java.util.Objects.equals(this.opCode, that.opCode)
-        && java.util.Objects.equals(this.arg1, that.arg1)
-        && java.util.Objects.equals(this.arg2, that.arg2);
   }
 }

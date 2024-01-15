@@ -120,12 +120,12 @@ public class RomLex implements Module {
       codeIdentifierBeforeLexOrder += 1;
       this.chunks.add(
           new RomChunk(
+              codeIdentifierBeforeLexOrder,
               Address.contractAddress(tx.getSender(), tx.getNonce()),
               1,
               true,
               false,
               false,
-              codeIdentifierBeforeLexOrder,
               tx.getInit().get()));
     }
 
@@ -141,12 +141,12 @@ public class RomLex implements Module {
 
               this.chunks.add(
                   new RomChunk(
+                      codeIdentifierBeforeLexOrder,
                       tx.getTo().get(),
                       depNumber,
                       depStatus,
                       true,
                       false,
-                      codeIdentifierBeforeLexOrder,
                       code));
             });
   }
@@ -188,12 +188,12 @@ public class RomLex implements Module {
           int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
           this.chunks.add(
               new RomChunk(
+                  codeIdentifierBeforeLexOrder,
                   frame.getContractAddress(),
                   depNumber,
                   depStatus,
                   true,
                   false,
-                  codeIdentifierBeforeLexOrder,
                   code));
         }
       }
@@ -210,12 +210,12 @@ public class RomLex implements Module {
                   codeIdentifierBeforeLexOrder += 1;
                   this.chunks.add(
                       new RomChunk(
+                          codeIdentifierBeforeLexOrder,
                           calledAddress,
                           depNumber,
                           depStatus,
                           true,
                           false,
-                          codeIdentifierBeforeLexOrder,
                           byteCode));
                 });
       }
@@ -237,12 +237,12 @@ public class RomLex implements Module {
                     codeIdentifierBeforeLexOrder += 1;
                     this.chunks.add(
                         new RomChunk(
+                            codeIdentifierBeforeLexOrder,
                             calledAddress,
                             depNumber,
                             isDeploying,
                             true,
                             false,
-                            codeIdentifierBeforeLexOrder,
                             byteCode));
                   }
                 });
@@ -260,12 +260,12 @@ public class RomLex implements Module {
 
         this.chunks.add(
             new RomChunk(
+                codeIdentifierBeforeLexOrder,
                 this.address,
                 depNumber,
                 depStatus,
                 true,
                 false,
-                codeIdentifierBeforeLexOrder,
                 this.byteCode));
       }
     }

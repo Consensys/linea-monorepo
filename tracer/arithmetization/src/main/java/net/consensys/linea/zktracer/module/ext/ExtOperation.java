@@ -17,8 +17,7 @@ package net.consensys.linea.zktracer.module.ext;
 
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
 
-import java.util.Objects;
-
+import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
@@ -30,14 +29,15 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ExtOperation extends ModuleOperation {
   private static final int MMEDIUM = 8;
 
-  private final OpCode opCode;
+  @EqualsAndHashCode.Include private final OpCode opCode;
+  @EqualsAndHashCode.Include private final BaseBytes arg1;
+  @EqualsAndHashCode.Include private final BaseBytes arg2;
+  @EqualsAndHashCode.Include private final BaseBytes arg3;
   private final boolean isOneLineInstruction;
-  private final BaseBytes arg1;
-  private final BaseBytes arg2;
-  private final BaseBytes arg3;
 
   private BaseTheta result;
   private BaseTheta aBytes;
@@ -54,26 +54,6 @@ public class ExtOperation extends ModuleOperation {
   boolean[] overflowJ = new boolean[8];
   boolean[] overflowRes = new boolean[8];
   boolean[] overflowI = new boolean[8];
-
-  /**
-   * This custom hash function ensures that all identical operations are only traced once per
-   * conflation block.
-   */
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.opCode, this.arg1, this.arg2, this.arg3);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final ExtOperation that = (ExtOperation) o;
-    return Objects.equals(this.opCode, that.opCode)
-        && Objects.equals(this.arg1, that.arg1)
-        && Objects.equals(this.arg2, that.arg2)
-        && Objects.equals(this.arg3, that.arg3);
-  }
 
   public ExtOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2, Bytes32 arg3) {
     this.opCode = opCode;
