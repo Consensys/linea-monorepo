@@ -20,8 +20,8 @@ import static net.consensys.linea.zktracer.module.Util.byteBits;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
+import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -29,12 +29,13 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 final class ShfOperation extends ModuleOperation {
   private static final int LIMB_SIZE = 16;
 
-  private final OpCode opCode;
-  private final Bytes32 arg1;
-  private final Bytes32 arg2;
+  @EqualsAndHashCode.Include private final OpCode opCode;
+  @EqualsAndHashCode.Include private final Bytes32 arg1;
+  @EqualsAndHashCode.Include private final Bytes32 arg2;
   private final boolean isOneLineInstruction;
   private boolean isNegative;
   private boolean isShiftRight;
@@ -49,6 +50,13 @@ final class ShfOperation extends ModuleOperation {
   private boolean isBitB5;
   private boolean isBitB6;
   private boolean isBitB7;
+
+  public ShfOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
+    this.opCode = opCode;
+    this.arg1 = arg1;
+    this.arg2 = arg2;
+    this.isOneLineInstruction = isOneLineInstruction(opCode, arg1Hi());
+  }
 
   private static boolean isOneLineInstruction(final OpCode opCode, final Bytes16 arg1Hi) {
     return (opCode == OpCode.SHR || opCode == OpCode.SHL) && !arg1Hi.isZero();
@@ -70,13 +78,6 @@ final class ShfOperation extends ModuleOperation {
     }
 
     return true;
-  }
-
-  public ShfOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
-    this.opCode = opCode;
-    this.arg1 = arg1;
-    this.arg2 = arg2;
-    this.isOneLineInstruction = isOneLineInstruction(opCode, arg1Hi());
   }
 
   private void compute() {
@@ -125,21 +126,6 @@ final class ShfOperation extends ModuleOperation {
 
   public Bytes16 arg2Lo() {
     return Bytes16.wrap(arg2.slice(16));
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.opCode, this.arg1, this.arg2);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final ShfOperation that = (ShfOperation) o;
-    return Objects.equals(opCode, that.opCode)
-        && Objects.equals(arg1, that.arg1)
-        && Objects.equals(arg2, that.arg2);
   }
 
   public int maxCt() {

@@ -24,8 +24,8 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -34,6 +34,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
 @Slf4j
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class WcpOperation extends ModuleOperation {
   private static final int LLARGEMO = 15;
   private static final int LLARGE = 16;
@@ -47,9 +48,9 @@ public class WcpOperation extends ModuleOperation {
 
   private static final byte ISZERObv = 0x15;
 
-  private final byte wcpInst;
-  private final Bytes32 arg1;
-  private final Bytes32 arg2;
+  @EqualsAndHashCode.Include private final byte wcpInst;
+  @EqualsAndHashCode.Include private final Bytes32 arg1;
+  @EqualsAndHashCode.Include private final Bytes32 arg2;
   final int ctMax;
 
   private Bytes arg1Hi;
@@ -123,21 +124,6 @@ public class WcpOperation extends ModuleOperation {
     // Set bit 1 and 2
     this.bit1 = this.arg1Hi.compareTo(this.arg2Hi) == 0;
     this.bit2 = this.arg1Lo.compareTo(this.arg2Lo) == 0;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.wcpInst, this.arg1, this.arg2);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final WcpOperation that = (WcpOperation) o;
-    return Objects.equals(wcpInst, that.wcpInst)
-        && Objects.equals(arg1, that.arg1)
-        && Objects.equals(arg2, that.arg2);
   }
 
   private boolean calculateResLow(byte opCode, Bytes32 arg1, Bytes32 arg2) {

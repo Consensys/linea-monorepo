@@ -15,8 +15,7 @@
 
 package net.consensys.linea.zktracer.bytestheta;
 
-import java.util.Objects;
-
+import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes32;
@@ -26,11 +25,16 @@ import org.apache.tuweni.bytes.MutableBytes32;
  * The `BaseBytes` class provides a base implementation for manipulating 256-bit (32-byte) blocks of
  * data.
  */
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class BaseBytes implements HighLowBytes {
   /** The size in bytes of the high and low sections of the 256-bit block. */
   private static final int LOW_HIGH_SIZE = 16;
-  /** The mutable `Bytes32` object that stores the 256-bit block of data. */
-  protected MutableBytes32 bytes32;
+  /**
+   * The mutable `Bytes32` object that stores the 256-bit block of data. Equals and hashCode must
+   * only be computed on the numeric value wrapped by this class, so that sets of operations
+   * parameterized by these values hash correctly.
+   */
+  @EqualsAndHashCode.Include protected MutableBytes32 bytes32;
 
   /**
    * This static factory method returns a new instance of the `BaseBytes` class, initialized with
@@ -51,31 +55,6 @@ public class BaseBytes implements HighLowBytes {
    */
   protected BaseBytes(final Bytes32 arg) {
     bytes32 = arg.mutableCopy();
-  }
-
-  /**
-   * The hashing must only be done on the numeric value wrapped by this class, so that sets of
-   * operations parameterized by these values hash correctly.
-   *
-   * @return this instance hash
-   */
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.bytes32);
-  }
-
-  /**
-   * The equality must only be computed on the numeric value wrapped by this class, so that sets of
-   * operations parameterized by these values hash correctly.
-   *
-   * @return whether this == o
-   */
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    final BaseBytes that = (BaseBytes) o;
-    return Objects.equals(this.bytes32, that.bytes32);
   }
 
   /**
