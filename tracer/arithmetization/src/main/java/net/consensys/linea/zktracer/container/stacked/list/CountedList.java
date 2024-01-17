@@ -100,6 +100,10 @@ class CountedList<E extends ModuleOperation> extends ArrayList<E> {
     super.replaceAll(operator);
   }
 
+  public E getLast() {
+    return this.get(this.size() - 1);
+  }
+
   int lineCount() {
     if (this.countDirty) {
       this.count = 0;
