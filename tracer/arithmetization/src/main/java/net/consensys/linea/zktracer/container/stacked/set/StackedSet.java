@@ -49,9 +49,15 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
   public void pop() {
     Set<E> set = this.sets.pop();
     for (E e : set) {
-      Integer count = occurrences.get(e);
-      if (count > 0) occurrences.put(e, count - 1);
-      else throw new IllegalStateException("asymmetric element removal !");
+      occurrences.computeIfPresent(
+          e,
+          (k, count) -> {
+            if (count > 0) {
+              return count - 1;
+            } else {
+              throw new IllegalStateException("asymmetric element removal !");
+            }
+          });
     }
   }
 

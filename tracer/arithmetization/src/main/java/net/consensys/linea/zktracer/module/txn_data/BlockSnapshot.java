@@ -50,7 +50,7 @@ public class BlockSnapshot {
    * @return the latest {@link TransactionSnapshot}
    */
   TransactionSnapshot currentTx() {
-    return this.txs.get(this.txs.size() - 1);
+    return this.txs.getLast();
   }
 
   /**
