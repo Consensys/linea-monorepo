@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4-test10
+Test pre-release 10 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* fix: semantics of LinkedList (#544)
+* refactor: add @EqualsAndHashCode annotations and remove corresponding methods (#541)
+
+## 0.1.4-test9
+Test pre-release 9 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Bump Linea Besu to 24.1.1-SNAPSHOT
+
 ## 0.1.4-test8
 Test pre-release 8 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Add profitable transaction selector [#530](https://github.com/Consensys/besu-sequencer-plugins/pull/530)
@@ -38,12 +47,12 @@ Testing pre-release from branch test-release/v0.1.4-test2
 Temporary line counting release for testnet.
 
 * count stack temporary impl: make loginfo counts closer to Geth [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
---
-* fix: `Bytes.toUnsignedInteger` [#484](https://github.com/ConsenSys/besu-sequencer-plugins/pull/484) 
+  --
+* fix: `Bytes.toUnsignedInteger` [#484](https://github.com/ConsenSys/besu-sequencer-plugins/pull/484)
 * perf: delay computations at trace time [#483](https://github.com/ConsenSys/besu-sequencer-plugins/pull/483)
 
 ## 0.1.3
-- perf: improve `StackedSet` performances  [#466](https://github.com/ConsenSys/besu-sequencer-plugins/pull/466) 
+- perf: improve `StackedSet` performances  [#466](https://github.com/ConsenSys/besu-sequencer-plugins/pull/466)
 - feat: implement L1 block & Keccak limits [#445](https://github.com/ConsenSys/besu-sequencer-plugins/pull/445)
 - feat: partially implement EC_DATA [#475](https://github.com/ConsenSys/besu-sequencer-plugins/pull/475)
 - fix: ensure trace files are always deleted [#462](https://github.com/ConsenSys/besu-sequencer-plugins/pull/462)
