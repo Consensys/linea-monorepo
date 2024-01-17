@@ -51,11 +51,15 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
 
   @Override
   public void enter() {
-    this.lists.push(new CountedList<>());
+    this.lists.addLast(new CountedList<>());
   }
 
   public void enter(int initialCapacity) {
-    this.lists.push(new CountedList<>(initialCapacity));
+    this.lists.addLast(new CountedList<>(initialCapacity));
+  }
+
+  public E getLast() {
+    return this.lists.getLast().getLast();
   }
 
   @Override
@@ -63,7 +67,7 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
     if (this.lists.isEmpty()) {
       throw new RuntimeException("asymmetric pop");
     }
-    this.totalSize -= this.lists.pop().size();
+    this.totalSize -= this.lists.removeLast().size();
   }
 
   @Override
@@ -117,7 +121,7 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
   @Override
   public boolean add(E e) {
     this.totalSize++;
-    return this.lists.get(this.lists.size() - 1).add(e);
+    return this.lists.getLast().add(e);
   }
 
   @Override
