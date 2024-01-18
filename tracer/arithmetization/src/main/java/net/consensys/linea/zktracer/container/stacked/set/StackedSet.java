@@ -42,12 +42,12 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
 
   @Override
   public void enter() {
-    this.sets.push(new HashSet<>());
+    this.sets.addLast(new HashSet<>());
   }
 
   @Override
   public void pop() {
-    Set<E> set = this.sets.pop();
+    Set<E> set = this.sets.removeLast();
     for (E e : set) {
       occurrences.computeIfPresent(
           e,
@@ -121,9 +121,11 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
 
   @Override
   public boolean add(E e) {
-    final boolean added = this.sets.peek().add(e);
-    occurrences.put(e, occurrences.getOrDefault(e, 0) + 1);
-    return added;
+    final boolean isNew = this.sets.peek().add(e);
+    if (isNew) {
+      occurrences.put(e, occurrences.getOrDefault(e, 0) + 1);
+    }
+    return isNew;
   }
 
   @Override
