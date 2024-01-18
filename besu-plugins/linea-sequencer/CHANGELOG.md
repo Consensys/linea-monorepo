@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4-test12
+Test pre-release 12 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* fix: stacked set multiple insertions in a single transaction (#548)
+
+## 0.1.4-test11
+Test pre-release 11 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* same as 0.1.4-test10
+
 ## 0.1.4-test10
 Test pre-release 10 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * fix: semantics of LinkedList (#544)
