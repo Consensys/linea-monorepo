@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.containers;
 
 import java.math.BigInteger;
 
+import com.google.common.collect.ImmutableList;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -25,20 +26,46 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class StackedSetTests {
+
+  private static final AddOperation ONE_PLUS_ONE =
+      new AddOperation(
+          OpCode.ADD,
+          Bytes.wrap(BigInteger.ONE.toByteArray()),
+          Bytes.wrap(BigInteger.ONE.toByteArray()));
+
+  private static final AddOperation ONE_PLUS_TWO =
+      new AddOperation(
+          OpCode.ADD,
+          Bytes.wrap(BigInteger.ONE.toByteArray()),
+          Bytes.wrap(BigInteger.TWO.toByteArray()));
+
   @Test
   public void push() {
     StackedSet<AddOperation> chunks = new StackedSet<>();
     chunks.enter();
-    AddOperation addOperation =
-        new AddOperation(
-            OpCode.ADD,
-            Bytes.wrap(BigInteger.ONE.toByteArray()),
-            Bytes.wrap(BigInteger.ONE.toByteArray()));
-    chunks.add(addOperation);
-    chunks.add(addOperation);
-    chunks.add(addOperation);
+
+    chunks.add(ONE_PLUS_ONE);
+    chunks.add(ONE_PLUS_ONE);
+    chunks.add(ONE_PLUS_ONE);
     Assertions.assertEquals(1, chunks.size());
     chunks.pop();
     Assertions.assertEquals(0, chunks.size());
+  }
+
+  @Test
+  public void multiplePushPop() {
+    StackedSet<AddOperation> chunks = new StackedSet<>();
+    chunks.enter();
+    chunks.add(ONE_PLUS_ONE);
+    chunks.add(ONE_PLUS_ONE);
+    Assertions.assertEquals(1, chunks.size());
+
+    chunks.enter();
+    chunks.add(ONE_PLUS_ONE);
+    Assertions.assertEquals(1, chunks.size());
+    chunks.add(ONE_PLUS_TWO);
+    Assertions.assertEquals(2, chunks.size());
+    chunks.pop();
+    Assertions.assertEquals(1, ImmutableList.copyOf(chunks.iterator()).size());
   }
 }

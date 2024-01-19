@@ -47,8 +47,8 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
 
   @Override
   public void pop() {
-    Set<E> set = this.sets.removeLast();
-    for (E e : set) {
+    Set<E> lastSet = this.sets.removeLast();
+    for (E e : lastSet) {
       occurrences.computeIfPresent(
           e,
           (k, count) -> {
@@ -121,7 +121,7 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
 
   @Override
   public boolean add(E e) {
-    final boolean isNew = this.sets.peek().add(e);
+    final boolean isNew = this.sets.peekLast().add(e);
     if (isNew) {
       occurrences.put(e, occurrences.getOrDefault(e, 0) + 1);
     }
