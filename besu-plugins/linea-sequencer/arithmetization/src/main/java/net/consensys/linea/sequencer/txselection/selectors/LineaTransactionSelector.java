@@ -31,8 +31,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 @Slf4j
 public class LineaTransactionSelector implements PluginTransactionSelector {
 
-  private static TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
-  List<PluginTransactionSelector> selectors;
+  private TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
+  private List<PluginTransactionSelector> selectors;
 
   public LineaTransactionSelector(
       LineaTransactionSelectorConfiguration lineaConfiguration,
@@ -47,7 +47,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param limitsMapSupplier The supplier for the limits map.
    * @return A list of selectors.
    */
-  private static List<PluginTransactionSelector> createTransactionSelectors(
+  private List<PluginTransactionSelector> createTransactionSelectors(
       final LineaTransactionSelectorConfiguration lineaConfiguration,
       final Supplier<Map<String, Integer>> limitsMapSupplier) {
 
