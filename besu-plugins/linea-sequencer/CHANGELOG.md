@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4-test13
+Test pre-release 13 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* fix stackedSet [c3f226775f24508b93a758e4226a51ae386d76a5](https://github.com/Consensys/besu-sequencer-plugins/commit/c3f226775f24508b93a758e4226a51ae386d76a5)
+
 ## 0.1.4-test12
 Test pre-release 12 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * fix: stacked set multiple insertions in a single transaction (#548)
