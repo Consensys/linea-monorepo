@@ -47,7 +47,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private final ZkTracer zkTracer;
   private final String limitFilePath;
   private final Map<String, Integer> moduleLimits;
-  private Map<String, Integer> prevCumulatedLineCount = Map.of();
+  private Map<String, Integer> consolidatedCumulatedLineCount = Map.of();
   private Map<String, Integer> currCumulatedLineCount;
 
   public TraceLineLimitTransactionSelector(
@@ -81,7 +81,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   public void onTransactionSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
-    prevCumulatedLineCount = currCumulatedLineCount;
+    consolidatedCumulatedLineCount = currCumulatedLineCount;
   }
 
   /**
@@ -120,7 +120,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
 
       final int cumulatedModuleLineCount = currCumulatedLineCount.get(module);
       final int txModuleLineCount =
-          cumulatedModuleLineCount - prevCumulatedLineCount.getOrDefault(module, 0);
+          cumulatedModuleLineCount - consolidatedCumulatedLineCount.getOrDefault(module, 0);
 
       if (txModuleLineCount > moduleLineCountLimit) {
         log.warn(
@@ -158,7 +158,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
                 // tx line count / cumulated line count / line count limit
                 e.getKey()
                     + "="
-                    + (e.getValue() - prevCumulatedLineCount.getOrDefault(e.getKey(), 0))
+                    + (e.getValue() - consolidatedCumulatedLineCount.getOrDefault(e.getKey(), 0))
                     + "/"
                     + e.getValue()
                     + "/"
@@ -177,12 +177,10 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
           .addKeyValue(
               "traceCounts",
               () ->
-                  currCumulatedLineCount == null
-                      ? "null"
-                      : currCumulatedLineCount.entrySet().stream()
-                          .sorted(Map.Entry.comparingByKey())
-                          .map(e -> '"' + e.getKey() + "\":" + e.getValue())
-                          .collect(Collectors.joining(",")))
+                  consolidatedCumulatedLineCount.entrySet().stream()
+                      .sorted(Map.Entry.comparingByKey())
+                      .map(e -> '"' + e.getKey() + "\":" + e.getValue())
+                      .collect(Collectors.joining(",")))
           .log();
     }
   }

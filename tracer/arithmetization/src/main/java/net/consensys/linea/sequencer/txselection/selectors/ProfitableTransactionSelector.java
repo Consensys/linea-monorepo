@@ -69,7 +69,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
 
       if (margin < minMargin) {
         log(
-            log.atInfo(),
+            log.atDebug(),
             transaction,
             margin,
             effectiveGasPrice,
