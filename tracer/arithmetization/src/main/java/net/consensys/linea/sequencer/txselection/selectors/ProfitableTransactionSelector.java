@@ -34,6 +34,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
   private final int verificationCapacity;
   private final int gasPriceRatio;
   private final double minMargin;
+  private final int adjustTxSize;
 
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
@@ -50,7 +51,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
 
       final double minGasPrice = evaluationContext.getMinGasPrice().getAsBigInteger().doubleValue();
       final double l1GasPrice = minGasPrice * gasPriceRatio;
-      final int serializedSize = transaction.getSize();
+      final int serializedSize = Math.max(0, transaction.getSize() + adjustTxSize);
       final double verificationGasCostSlice =
           (((double) serializedSize) / verificationCapacity) * verificationGasCost;
       final double cost = l1GasPrice * verificationGasCostSlice;
@@ -65,7 +66,8 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           gasUsed,
           minGasPrice,
           l1GasPrice,
-          serializedSize);
+          serializedSize,
+          adjustTxSize);
 
       if (margin < minMargin) {
         log(
@@ -76,7 +78,8 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
             gasUsed,
             minGasPrice,
             l1GasPrice,
-            serializedSize);
+            serializedSize,
+            adjustTxSize);
         return TX_UNPROFITABLE;
       }
     }
@@ -97,11 +100,12 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final long gasUsed,
       final double minGasPrice,
       final double l1GasPrice,
-      final int serializedSize) {
+      final int serializedSize,
+      final int adjustTxSize) {
     leb.setMessage(
             "Transaction {} has a margin of {}, minMargin={}, verificationCapacity={}, "
                 + "verificationGasCost={}, gasPriceRatio={}, effectiveGasPrice={}, gasUsed={}, minGasPrice={}, "
-                + "l1GasPrice={}, serializedSize={}")
+                + "l1GasPrice={}, serializedSize={}, adjustTxSize={}")
         .addArgument(transaction::getHash)
         .addArgument(margin)
         .addArgument(minMargin)
@@ -113,6 +117,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
         .addArgument(minGasPrice)
         .addArgument(l1GasPrice)
         .addArgument(serializedSize)
+        .addArgument(adjustTxSize)
         .log();
   }
 }
