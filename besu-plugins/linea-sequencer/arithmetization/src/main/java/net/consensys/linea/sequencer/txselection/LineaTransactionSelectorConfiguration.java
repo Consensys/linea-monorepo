@@ -24,6 +24,7 @@ public final class LineaTransactionSelectorConfiguration {
   private final int verificationCapacity;
   private final int gasPriceRatio;
   private final double minMargin;
+  private final int adjustTxSize;
 
   private LineaTransactionSelectorConfiguration(
       final int maxBlockCallDataSize,
@@ -32,7 +33,8 @@ public final class LineaTransactionSelectorConfiguration {
       final int verificationGasCost,
       final int verificationCapacity,
       final int gasPriceRatio,
-      final double minMargin) {
+      final double minMargin,
+      final int adjustTxSize) {
     this.maxBlockCallDataSize = maxBlockCallDataSize;
     this.moduleLimitsFilePath = moduleLimitsFilePath;
     this.maxGasPerBlock = maxGasPerBlock;
@@ -40,6 +42,7 @@ public final class LineaTransactionSelectorConfiguration {
     this.verificationCapacity = verificationCapacity;
     this.gasPriceRatio = gasPriceRatio;
     this.minMargin = minMargin;
+    this.adjustTxSize = adjustTxSize;
   }
 
   public int maxBlockCallDataSize() {
@@ -70,6 +73,10 @@ public final class LineaTransactionSelectorConfiguration {
     return minMargin;
   }
 
+  public int getAdjustTxSize() {
+    return adjustTxSize;
+  }
+
   public static class Builder {
     private int maxBlockCallDataSize;
     private String moduleLimitsFilePath;
@@ -78,6 +85,7 @@ public final class LineaTransactionSelectorConfiguration {
     private int verificationCapacity;
     private int gasPriceRatio;
     private double minMargin;
+    private int adjustTxSize;
 
     public Builder maxBlockCallDataSize(final int maxBlockCallDataSize) {
       this.maxBlockCallDataSize = maxBlockCallDataSize;
@@ -114,6 +122,11 @@ public final class LineaTransactionSelectorConfiguration {
       return this;
     }
 
+    public Builder adjustTxSize(final int adjustTxSize) {
+      this.adjustTxSize = adjustTxSize;
+      return this;
+    }
+
     public LineaTransactionSelectorConfiguration build() {
       return new LineaTransactionSelectorConfiguration(
           maxBlockCallDataSize,
@@ -122,7 +135,8 @@ public final class LineaTransactionSelectorConfiguration {
           verificationGasCost,
           verificationCapacity,
           gasPriceRatio,
-          minMargin);
+          minMargin,
+          adjustTxSize);
     }
   }
 }

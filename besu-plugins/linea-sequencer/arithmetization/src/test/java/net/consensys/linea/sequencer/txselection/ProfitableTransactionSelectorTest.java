@@ -35,6 +35,7 @@ public class ProfitableTransactionSelectorTest {
   private static final int VERIFICATION_CAPACITY = 90_000;
   private static final int GAS_PRICE_RATIO = 15;
   private static final double MIN_MARGIN = 1.0;
+  private static final int ADJUST_TX_SIZE = -45;
 
   private PluginTransactionSelector transactionSelector;
 
@@ -42,7 +43,11 @@ public class ProfitableTransactionSelectorTest {
   public void initialize() {
     transactionSelector =
         new ProfitableTransactionSelector(
-            VERIFICATION_GAS_COST, VERIFICATION_CAPACITY, GAS_PRICE_RATIO, MIN_MARGIN);
+            VERIFICATION_GAS_COST,
+            VERIFICATION_CAPACITY,
+            GAS_PRICE_RATIO,
+            MIN_MARGIN,
+            ADJUST_TX_SIZE);
   }
 
   @Test
@@ -51,6 +56,16 @@ public class ProfitableTransactionSelectorTest {
     verifyTransactionSelection(
         transactionSelector,
         mockEvaluationContext(false, 100, Wei.of(1_100_000_000), Wei.of(1_000_000_000)),
+        mockTransactionProcessingResult,
+        SELECTED);
+  }
+
+  @Test
+  public void shouldSelectWhenProfitableWithAdjustedSize() {
+    var mockTransactionProcessingResult = mockTransactionProcessingResult(21000);
+    verifyTransactionSelection(
+        transactionSelector,
+        mockEvaluationContext(false, 150, Wei.of(1_100_000_000), Wei.of(1_000_000_000)),
         mockTransactionProcessingResult,
         SELECTED);
   }
