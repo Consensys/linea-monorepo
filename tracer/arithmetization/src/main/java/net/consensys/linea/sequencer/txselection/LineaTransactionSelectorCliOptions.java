@@ -30,6 +30,7 @@ public class LineaTransactionSelectorCliOptions {
   public static final int DEFAULT_VERIFICATION_CAPACITY = 90_000;
   public static final int DEFAULT_GAS_PRICE_RATIO = 15;
   public static final BigDecimal DEFAULT_MIN_MARGIN = BigDecimal.ONE;
+  public static final int DEFAULT_ADJUST_TX_SIZE = -45;
   private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
   private static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
   private static final String MAX_GAS_PER_BLOCK = "--plugin-linea-max-block-gas";
@@ -37,6 +38,7 @@ public class LineaTransactionSelectorCliOptions {
   private static final String VERIFICATION_CAPACITY = "--plugin-linea-verification-capacity";
   private static final String GAS_PRICE_RATIO = "--plugin-linea-gas-price-ratio";
   private static final String MIN_MARGIN = "--plugin-linea-min-margin";
+  private static final String ADJUST_TX_SIZE = "--plugin-linea-adjust-tx-size";
 
   @Positive
   @CommandLine.Option(
@@ -94,6 +96,15 @@ public class LineaTransactionSelectorCliOptions {
       description = "Minimum margin of a transaction to be selected (default: ${DEFAULT-VALUE})")
   private BigDecimal minMargin = DEFAULT_MIN_MARGIN;
 
+  @Positive
+  @CommandLine.Option(
+      names = {ADJUST_TX_SIZE},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "Adjust transaction size for profitability calculation (default: ${DEFAULT-VALUE})")
+  private int adjustTxSize = DEFAULT_ADJUST_TX_SIZE;
+
   private LineaTransactionSelectorCliOptions() {}
 
   /**
@@ -121,6 +132,7 @@ public class LineaTransactionSelectorCliOptions {
     options.verificationCapacity = config.getVerificationCapacity();
     options.gasPriceRatio = config.getGasPriceRatio();
     options.minMargin = BigDecimal.valueOf(config.getMinMargin());
+    options.adjustTxSize = config.getAdjustTxSize();
     return options;
   }
 
@@ -138,6 +150,7 @@ public class LineaTransactionSelectorCliOptions {
         .verificationCapacity(verificationCapacity)
         .gasPriceRatio(gasPriceRatio)
         .minMargin(minMargin.doubleValue())
+        .adjustTxSize(adjustTxSize)
         .build();
   }
 

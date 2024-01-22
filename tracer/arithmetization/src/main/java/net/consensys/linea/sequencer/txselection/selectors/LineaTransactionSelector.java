@@ -62,7 +62,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             lineaConfiguration.getVerificationGasCost(),
             lineaConfiguration.getVerificationCapacity(),
             lineaConfiguration.getGasPriceRatio(),
-            lineaConfiguration.getMinMargin()),
+            lineaConfiguration.getMinMargin(),
+            lineaConfiguration.getAdjustTxSize()),
         traceLineLimitTransactionSelector);
   }
 
