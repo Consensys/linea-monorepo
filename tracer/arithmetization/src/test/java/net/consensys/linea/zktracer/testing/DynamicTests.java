@@ -22,7 +22,6 @@ import java.util.Random;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import com.google.common.collect.Multimap;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
@@ -52,8 +51,6 @@ public class DynamicTests {
     OpCodes.load();
     this.module = module;
     this.testCaseRegistry = new LinkedList<>();
-    this.testCaseRegistry.add(
-        new DynamicTestCase("random arguments test", provideRandomArguments(), null));
   }
 
   /**
@@ -167,18 +164,6 @@ public class DynamicTests {
     return arguments;
   }
 
-  /**
-   * Get a random {@link OpCode} from the list of supported opcodes per module tracer.
-   *
-   * @return a random {@link OpCode} from the list of supported opcodes per module tracer.
-   */
-  public OpCode getRandomSupportedOpcode() {
-    List<OpCode> supportedOpCodes = supportedOpCodes(module);
-    int index = RAND.nextInt(supportedOpCodes.size());
-
-    return supportedOpCodes.get(index);
-  }
-
   private Stream<DynamicTest> generateTestCases(
       final String testCaseName,
       final List<OpcodeCall> args,
@@ -201,24 +186,5 @@ public class DynamicTests {
                     }
                   });
             });
-  }
-
-  /**
-   * Converts supported opcodes per module tracer into a {@link Multimap} for dynamic tests.
-   *
-   * @return a {@link Stream} of {@link DynamicTests} for dynamic test execution via {@link
-   *     org.junit.jupiter.api.TestFactory}.
-   */
-  private List<OpcodeCall> provideRandomArguments() {
-    return newModuleArgumentsProvider(
-        (testCases, opCode) -> {
-          for (int i = 0; i <= TEST_REPETITIONS; i++) {
-            List<Bytes32> args = new ArrayList<>();
-            for (int j = 0; j < opCode.getData().numberOfArguments(); j++) {
-              args.add(Bytes32.random(RAND));
-            }
-            testCases.add(new OpcodeCall(opCode, args));
-          }
-        });
   }
 }
