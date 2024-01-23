@@ -26,8 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
 public class TrmTracerTest {
-
-  private final Bytes32 randomStringFromTheInternet =
+  private final Bytes32 RANDOM_STRING_FROM_THE_INTERNET =
       Bytes32.fromHexString(
           "0x"
               + "b18cd834"
@@ -38,7 +37,7 @@ public class TrmTracerTest {
               + "b3e8d512"
               + "3273df51"
               + "9650f978");
-  private final Bytes32 clearingString =
+  private final Bytes32 CLEARING_STRING =
       Bytes32.fromHexString(
           "0x"
               + "00000000"
@@ -48,7 +47,7 @@ public class TrmTracerTest {
               + "ffffffff"
               + "ffffffff"
               + "ffffffff");
-  private final Bytes32 extractDisregardedPrefixString =
+  private final Bytes32 EXTRACT_DISREGARDED_PREFIX_STRING =
       Bytes32.fromHexString(
           "0x"
               + "ffffffff"
@@ -78,15 +77,15 @@ public class TrmTracerTest {
   void testNonCallAddressParameterTinyAfterTrimming() {
     for (int tiny = 0; tiny < 16; tiny++) {
       nonCall(
-          randomStringFromTheInternet
-              .and(extractDisregardedPrefixString)
+          RANDOM_STRING_FROM_THE_INTERNET
+              .and(EXTRACT_DISREGARDED_PREFIX_STRING)
               .or(Bytes32.leftPad(Bytes.of(tiny))));
     }
   }
 
   @Test
   void testNonCallRandomLarge() {
-    nonCall(randomStringFromTheInternet);
+    nonCall(RANDOM_STRING_FROM_THE_INTERNET);
   }
 
   @Test

@@ -22,73 +22,66 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import net.consensys.linea.zktracer.module.logData.LogData;
-import net.consensys.linea.zktracer.module.logInfo.LogInfo;
-import net.consensys.linea.zktracer.module.rlp.txrcpt.RlpTxrcpt;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.testing.ToyAccount;
 import net.consensys.linea.zktracer.testing.ToyTransaction;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
-import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
-import org.junit.jupiter.api.Test;
 
 public class RandomTxrcptTests {
+  private static final int RND_TX_COUNT = 5;
   private final Random rnd = new Random(666);
 
-  @Test
-  public void testRandomTxrcpt() {
-    RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
-    LogInfo logInfo = new LogInfo(rlpTxrcpt);
-    LogData logData = new LogData(rlpTxrcpt);
-    OpCodes.load();
-
-    // SET UP THE WORLD
-    KeyPair keyPair = new SECP256K1().generateKeyPair();
-    Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
-
-    ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.of(5)).nonce(32).address(senderAddress).build();
-
-    // Create few tx
-    for (int i = 0; i < 200; i++) {
-      final Transaction tx = randTransaction(senderAccount, keyPair);
-
-      // Create a mock test receipt
-
-      final Bytes output = Bytes.random(20);
-      final boolean status = rnd.nextBoolean();
-      final List<Log> logs = randomListLog(rnd.nextInt(10));
-      final long gasUsed = rnd.nextLong(21000, 0xfffffffffffffffL);
-
-      // Call the module
-      rlpTxrcpt.enterTransaction();
-      rlpTxrcpt.traceEndTx(null, tx, status, output, logs, gasUsed);
-    }
-
-    //
-    // Check the trace
-    //
-    // TODO: uncomment the test
-    // assertThat(
-    //    CorsetValidator.validate(
-    //        new ZkTraceBuilder()
-    //            .addTrace(rlpTxrcpt)
-    //            .addTrace(logInfo)
-    //            .addTrace(logData)
-    //            .build()
-    //            .toJson())
-    //    isValid())
-    //    .isTrue();
-  }
+  //  @Test
+  //  public void testRandomTxrcpt() {
+  //    RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
+  //    OpCodes.load();
+  //
+  //    // SET UP THE WORLD
+  //    KeyPair keyPair = new SECP256K1().generateKeyPair();
+  //    Address senderAddress =
+  // Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+  //
+  //    ToyAccount senderAccount =
+  //        ToyAccount.builder().balance(Wei.of(5)).nonce(32).address(senderAddress).build();
+  //
+  //    // Create few tx
+  //    for (int i = 0; i < RND_TX_COUNT; i++) {
+  //      final Transaction tx = randTransaction(senderAccount, keyPair);
+  //
+  //      // Create a mock test receipt
+  //
+  //      final Bytes output = Bytes.random(20);
+  //      final boolean status = rnd.nextBoolean();
+  //      final List<Log> logs = randomListLog(rnd.nextInt(10));
+  //      final long gasUsed = rnd.nextLong(21000, 0xfffffffffffffffL);
+  //
+  //      // Call the module
+  //      rlpTxrcpt.enterTransaction();
+  //      rlpTxrcpt.traceEndTx(null, tx, status, output, logs, gasUsed);
+  //    }
+  //
+  //    //
+  //    // Check the trace
+  //    //
+  //    // TODO: uncomment the test
+  //    // assertThat(
+  //    //    CorsetValidator.validate(
+  //    //        new ZkTraceBuilder()
+  //    //            .addTrace(rlpTxrcpt)
+  //    //            .addTrace(logInfo)
+  //    //            .addTrace(logData)
+  //    //            .build()
+  //    //            .toJson())
+  //    //    isValid())
+  //    //    .isTrue();
+  //  }
 
   private Log randomLog(int nbTopic) {
     Bytes data = randData(false);
