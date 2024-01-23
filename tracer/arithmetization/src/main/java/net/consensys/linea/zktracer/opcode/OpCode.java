@@ -211,4 +211,20 @@ public enum OpCode {
         || this == OpCode.DELEGATECALL
         || this == OpCode.STATICCALL;
   }
+
+  /**
+   * Matches if the current {@link OpCode} is contained within a list of {@link OpCode}s.
+   *
+   * @param opCodes list of {@link OpCode}s to match against.
+   * @return if the current {@link OpCode} is contained within the list.
+   */
+  public boolean isAnyOf(OpCode... opCodes) {
+    for (OpCode opCode : opCodes) {
+      if (opCode.equals(this)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }

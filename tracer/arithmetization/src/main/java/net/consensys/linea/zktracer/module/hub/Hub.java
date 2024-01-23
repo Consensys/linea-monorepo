@@ -190,6 +190,7 @@ public class Hub implements Module {
   private final List<Module> modules;
   /* Those modules are not traced, we just compute the number of calls to those precompile to meet the prover limits */
   private final List<Module> precompileLimitModules;
+  private final List<Module> refTableModules;
 
   public Hub() {
     this.pch = new PlatformController(this);
@@ -221,6 +222,8 @@ public class Hub implements Module {
             new Keccak(this, ecRec, this.l2Block),
             new L2L1Logs(this.l2Block));
 
+    this.refTableModules = List.of(new BinRt(), new InstructionDecoder(), new ShfRt());
+
     this.modules =
         Stream.concat(
                 Stream.of(
@@ -240,9 +243,9 @@ public class Hub implements Module {
                     this.rlpTxrcpt,
                     this.rom,
                     this.shf,
+                    this.stp,
                     this.trm,
                     this.txnData,
-                    this.stp,
                     this.wcp),
                 this.precompileLimitModules.stream())
             .toList();
@@ -252,32 +255,32 @@ public class Hub implements Module {
    * @return a list of all modules for which to generate traces
    */
   public List<Module> getModulesToTrace() {
-    return List.of(
-        // Reference tables
-        new BinRt(),
-        new InstructionDecoder(),
-        new ShfRt(),
-        // Modules
-        this,
-        this.add,
-        this.bin,
-        this.ext,
-        //        this.ecData, // TODO: not yet
-        this.euc,
-        this.logData,
-        this.logInfo,
-        this.mod,
-        this.mul,
-        this.mxp,
-        this.rlpAddr,
-        this.rlpTxn,
-        this.rlpTxrcpt,
-        this.rom,
-        this.romLex,
-        this.shf,
-        this.stp,
-        this.txnData,
-        this.wcp);
+    return Stream.concat(
+            this.refTableModules.stream(),
+            // Modules
+            Stream.of(
+                this,
+                this.romLex,
+                this.add,
+                this.bin,
+                this.ext,
+                //        this.ecData, // TODO: not yet
+                this.euc,
+                this.logData,
+                this.logInfo,
+                this.mod,
+                this.modexp.data(),
+                this.mul,
+                this.mxp,
+                this.rlpAddr,
+                this.rlpTxn,
+                this.rlpTxrcpt,
+                this.rom,
+                this.shf,
+                this.stp,
+                this.txnData,
+                this.wcp))
+        .toList();
   }
 
   public List<Module> getModulesToCount() {
