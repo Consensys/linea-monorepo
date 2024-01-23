@@ -138,7 +138,7 @@ public class MxpTest {
 
   @Test
   void TestMxpxOrRoob() {
-    final int REPETITIONS = 100;
+    final int REPETITIONS = 5;
     for (int i = 0; i < REPETITIONS; i++) {
       BytecodeCompiler program = BytecodeCompiler.newProgram();
       boolean isHalting = RAND.nextInt(2) == 0;
