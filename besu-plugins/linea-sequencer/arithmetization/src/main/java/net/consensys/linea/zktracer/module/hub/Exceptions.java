@@ -32,7 +32,7 @@ import org.hyperledger.besu.evm.internal.Words;
 @Accessors(fluent = true)
 public final class Exceptions {
   private static final byte EIP_3541_MARKER = (byte) 0xEF;
-  private static final int MAX_CODE_SIZE = 24576;
+  public static final int MAX_CODE_SIZE = 24576;
 
   private final Hub hub;
 

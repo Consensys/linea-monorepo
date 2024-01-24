@@ -49,7 +49,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Slf4j
-public class ZkTracer implements ZkBlockAwareOperationTracer {
+public class ZkTracer implements ConflationAwareOperationTracer {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
 
@@ -92,7 +92,6 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
     }
   }
 
-  @Override
   public void writeToFile(final Path filename) {
     final List<Module> modules = this.hub.getModulesToTrace();
     final List<ColumnHeader> traceMap =
@@ -153,7 +152,7 @@ public class ZkTracer implements ZkBlockAwareOperationTracer {
   }
 
   @Override
-  public void traceStartTransaction(WorldView worldView, Transaction transaction) {
+  public void tracePrepareTransaction(WorldView worldView, Transaction transaction) {
     hashOfLastTransactionTraced = transaction.getHash();
     this.hub.traceStartTx(worldView, transaction);
   }
