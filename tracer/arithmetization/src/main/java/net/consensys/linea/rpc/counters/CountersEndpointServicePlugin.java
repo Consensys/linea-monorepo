@@ -33,7 +33,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  * RollupGenerateCountersV0}
  */
 @AutoService(BesuPlugin.class)
-public class RollupRpcEndpointServicePlugin extends AbstractLineaRequiredPlugin {
+public class CountersEndpointServicePlugin extends AbstractLineaRequiredPlugin {
 
   /**
    * Register the RPC service.

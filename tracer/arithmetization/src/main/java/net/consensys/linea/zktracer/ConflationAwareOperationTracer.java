@@ -15,20 +15,13 @@
 
 package net.consensys.linea.zktracer;
 
-import java.nio.file.Path;
-import java.util.List;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.log.Log;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
 /**
  * An extended operation tracer that can trace the start and end of a number of blocks in
  * conflation.
  */
-public interface ZkBlockAwareOperationTracer extends BlockAwareOperationTracer {
+public interface ConflationAwareOperationTracer extends BlockAwareOperationTracer {
 
   /**
    * Trace the start of conflation for a number of blocks.
@@ -39,17 +32,4 @@ public interface ZkBlockAwareOperationTracer extends BlockAwareOperationTracer {
 
   /** Trace the end of conflation for a number of blocks. */
   void traceEndConflation();
-
-  void writeToFile(final Path filename);
-
-  void traceStartTransaction(WorldView worldView, Transaction transaction);
-
-  void traceEndTransaction(
-      WorldView worldView,
-      Transaction tx,
-      boolean status,
-      Bytes output,
-      List<Log> logs,
-      long gasUsed,
-      long timeNs);
 }
