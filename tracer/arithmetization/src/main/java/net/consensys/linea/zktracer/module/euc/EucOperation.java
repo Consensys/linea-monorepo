@@ -69,7 +69,6 @@ public class EucOperation extends ModuleOperation {
           .quotient(quotient)
           .remainder(remainder)
           .ceil(ceil)
-          .dividendByte(UnsignedByte.of(dividend.get(ct)))
           .divisorByte(UnsignedByte.of(divisor.get(ct)))
           .quotientByte(UnsignedByte.of(quotient.get(ct)))
           .remainderByte(UnsignedByte.of(remainder.get(ct)))
