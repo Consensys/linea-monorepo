@@ -38,7 +38,6 @@ public class Trace {
   private final MappedByteBuffer ct;
   private final MappedByteBuffer ctMax;
   private final MappedByteBuffer dividend;
-  private final MappedByteBuffer dividendByte;
   private final MappedByteBuffer divisor;
   private final MappedByteBuffer divisorByte;
   private final MappedByteBuffer done;
@@ -50,18 +49,17 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("euc.CEIL", 1, length),
+        new ColumnHeader("euc.CEIL", 8, length),
         new ColumnHeader("euc.CT", 1, length),
         new ColumnHeader("euc.CT_MAX", 1, length),
-        new ColumnHeader("euc.DIVIDEND", 1, length),
-        new ColumnHeader("euc.DIVIDEND_BYTE", 1, length),
-        new ColumnHeader("euc.DIVISOR", 1, length),
+        new ColumnHeader("euc.DIVIDEND", 8, length),
+        new ColumnHeader("euc.DIVISOR", 8, length),
         new ColumnHeader("euc.DIVISOR_BYTE", 1, length),
         new ColumnHeader("euc.DONE", 1, length),
         new ColumnHeader("euc.IOMF", 1, length),
-        new ColumnHeader("euc.QUOTIENT", 1, length),
+        new ColumnHeader("euc.QUOTIENT", 8, length),
         new ColumnHeader("euc.QUOTIENT_BYTE", 1, length),
-        new ColumnHeader("euc.REMAINDER", 1, length),
+        new ColumnHeader("euc.REMAINDER", 8, length),
         new ColumnHeader("euc.REMAINDER_BYTE", 1, length));
   }
 
@@ -70,15 +68,14 @@ public class Trace {
     this.ct = buffers.get(1);
     this.ctMax = buffers.get(2);
     this.dividend = buffers.get(3);
-    this.dividendByte = buffers.get(4);
-    this.divisor = buffers.get(5);
-    this.divisorByte = buffers.get(6);
-    this.done = buffers.get(7);
-    this.iomf = buffers.get(8);
-    this.quotient = buffers.get(9);
-    this.quotientByte = buffers.get(10);
-    this.remainder = buffers.get(11);
-    this.remainderByte = buffers.get(12);
+    this.divisor = buffers.get(4);
+    this.divisorByte = buffers.get(5);
+    this.done = buffers.get(6);
+    this.iomf = buffers.get(7);
+    this.quotient = buffers.get(8);
+    this.quotientByte = buffers.get(9);
+    this.remainder = buffers.get(10);
+    this.remainderByte = buffers.get(11);
   }
 
   public int size() {
@@ -145,23 +142,11 @@ public class Trace {
     return this;
   }
 
-  public Trace dividendByte(final UnsignedByte b) {
-    if (filled.get(4)) {
-      throw new IllegalStateException("euc.DIVIDEND_BYTE already set");
-    } else {
-      filled.set(4);
-    }
-
-    dividendByte.put(b.toByte());
-
-    return this;
-  }
-
   public Trace divisor(final Bytes b) {
-    if (filled.get(5)) {
+    if (filled.get(4)) {
       throw new IllegalStateException("euc.DIVISOR already set");
     } else {
-      filled.set(5);
+      filled.set(4);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -174,10 +159,10 @@ public class Trace {
   }
 
   public Trace divisorByte(final UnsignedByte b) {
-    if (filled.get(6)) {
+    if (filled.get(5)) {
       throw new IllegalStateException("euc.DIVISOR_BYTE already set");
     } else {
-      filled.set(6);
+      filled.set(5);
     }
 
     divisorByte.put(b.toByte());
@@ -186,10 +171,10 @@ public class Trace {
   }
 
   public Trace done(final Boolean b) {
-    if (filled.get(7)) {
+    if (filled.get(6)) {
       throw new IllegalStateException("euc.DONE already set");
     } else {
-      filled.set(7);
+      filled.set(6);
     }
 
     done.put((byte) (b ? 1 : 0));
@@ -198,10 +183,10 @@ public class Trace {
   }
 
   public Trace iomf(final Boolean b) {
-    if (filled.get(8)) {
+    if (filled.get(7)) {
       throw new IllegalStateException("euc.IOMF already set");
     } else {
-      filled.set(8);
+      filled.set(7);
     }
 
     iomf.put((byte) (b ? 1 : 0));
@@ -210,10 +195,10 @@ public class Trace {
   }
 
   public Trace quotient(final Bytes b) {
-    if (filled.get(9)) {
+    if (filled.get(8)) {
       throw new IllegalStateException("euc.QUOTIENT already set");
     } else {
-      filled.set(9);
+      filled.set(8);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -226,10 +211,10 @@ public class Trace {
   }
 
   public Trace quotientByte(final UnsignedByte b) {
-    if (filled.get(10)) {
+    if (filled.get(9)) {
       throw new IllegalStateException("euc.QUOTIENT_BYTE already set");
     } else {
-      filled.set(10);
+      filled.set(9);
     }
 
     quotientByte.put(b.toByte());
@@ -238,10 +223,10 @@ public class Trace {
   }
 
   public Trace remainder(final Bytes b) {
-    if (filled.get(11)) {
+    if (filled.get(10)) {
       throw new IllegalStateException("euc.REMAINDER already set");
     } else {
-      filled.set(11);
+      filled.set(10);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -254,10 +239,10 @@ public class Trace {
   }
 
   public Trace remainderByte(final UnsignedByte b) {
-    if (filled.get(12)) {
+    if (filled.get(11)) {
       throw new IllegalStateException("euc.REMAINDER_BYTE already set");
     } else {
-      filled.set(12);
+      filled.set(11);
     }
 
     remainderByte.put(b.toByte());
@@ -283,38 +268,34 @@ public class Trace {
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("euc.DIVIDEND_BYTE has not been filled");
-    }
-
-    if (!filled.get(5)) {
       throw new IllegalStateException("euc.DIVISOR has not been filled");
     }
 
-    if (!filled.get(6)) {
+    if (!filled.get(5)) {
       throw new IllegalStateException("euc.DIVISOR_BYTE has not been filled");
     }
 
-    if (!filled.get(7)) {
+    if (!filled.get(6)) {
       throw new IllegalStateException("euc.DONE has not been filled");
     }
 
-    if (!filled.get(8)) {
+    if (!filled.get(7)) {
       throw new IllegalStateException("euc.IOMF has not been filled");
     }
 
-    if (!filled.get(9)) {
+    if (!filled.get(8)) {
       throw new IllegalStateException("euc.QUOTIENT has not been filled");
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(9)) {
       throw new IllegalStateException("euc.QUOTIENT_BYTE has not been filled");
     }
 
-    if (!filled.get(11)) {
+    if (!filled.get(10)) {
       throw new IllegalStateException("euc.REMAINDER has not been filled");
     }
 
-    if (!filled.get(12)) {
+    if (!filled.get(11)) {
       throw new IllegalStateException("euc.REMAINDER_BYTE has not been filled");
     }
 
@@ -326,7 +307,7 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      ceil.position(ceil.position() + 1);
+      ceil.position(ceil.position() + 8);
     }
 
     if (!filled.get(1)) {
@@ -338,42 +319,38 @@ public class Trace {
     }
 
     if (!filled.get(3)) {
-      dividend.position(dividend.position() + 1);
+      dividend.position(dividend.position() + 8);
     }
 
     if (!filled.get(4)) {
-      dividendByte.position(dividendByte.position() + 1);
+      divisor.position(divisor.position() + 8);
     }
 
     if (!filled.get(5)) {
-      divisor.position(divisor.position() + 1);
-    }
-
-    if (!filled.get(6)) {
       divisorByte.position(divisorByte.position() + 1);
     }
 
-    if (!filled.get(7)) {
+    if (!filled.get(6)) {
       done.position(done.position() + 1);
     }
 
-    if (!filled.get(8)) {
+    if (!filled.get(7)) {
       iomf.position(iomf.position() + 1);
     }
 
-    if (!filled.get(9)) {
-      quotient.position(quotient.position() + 1);
+    if (!filled.get(8)) {
+      quotient.position(quotient.position() + 8);
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(9)) {
       quotientByte.position(quotientByte.position() + 1);
     }
 
-    if (!filled.get(11)) {
-      remainder.position(remainder.position() + 1);
+    if (!filled.get(10)) {
+      remainder.position(remainder.position() + 8);
     }
 
-    if (!filled.get(12)) {
+    if (!filled.get(11)) {
       remainderByte.position(remainderByte.position() + 1);
     }
 
