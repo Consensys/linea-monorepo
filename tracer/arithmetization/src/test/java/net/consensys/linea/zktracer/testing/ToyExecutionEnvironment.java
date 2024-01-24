@@ -19,18 +19,24 @@ import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 
+import com.google.gson.Gson;
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
+import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
+import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.hub.Exceptions;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
@@ -73,6 +79,7 @@ public class ToyExecutionEnvironment {
 
   private final ToyWorld toyWorld;
   private final EVM evm;
+  @Builder.Default private BigInteger chainId = CHAIN_ID;
   @Singular private final List<Transaction> transactions;
 
   /**
@@ -95,10 +102,10 @@ public class ToyExecutionEnvironment {
     return MainnetEVMs.london(EvmConfiguration.DEFAULT);
   }
 
-  public static void checkTracer(ZkTracer tracer) {
+  public void checkTracer() {
     try {
       final Path traceFile = Files.createTempFile(null, ".lt");
-      tracer.writeToFile(traceFile);
+      this.tracer.writeToFile(traceFile);
       log.info("trace written to `{}`", traceFile);
       assertThat(corsetValidator.validate(traceFile).isValid()).isTrue();
     } catch (IOException e) {
@@ -107,13 +114,80 @@ public class ToyExecutionEnvironment {
   }
 
   public void run() {
-    execute();
-    checkTracer(this.tracer);
+    this.execute();
+    this.checkTracer();
+  }
+
+  /**
+   * Given a file containing the JSON serialization of a {@link ConflationSnapshot}, loads it,
+   * updates this's state to mirror it, and replays it.
+   *
+   * @param replayFile the file containing the conflation
+   */
+  public void replay(final Reader replayFile) {
+    Gson gson = new Gson();
+    ConflationSnapshot conflation;
+    try {
+      conflation = gson.fromJson(replayFile, ConflationSnapshot.class);
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      return;
+    }
+    this.executeFrom(conflation);
+    this.checkTracer();
+  }
+
+  /**
+   * Loads the states and the conflation defined in a {@link ConflationSnapshot}, mimick the
+   * accounts, storage and blocks state as it was on the blockchain before the conflation played
+   * out, then execute and check it.
+   *
+   * @param conflation the conflation to replay
+   */
+  private void executeFrom(final ConflationSnapshot conflation) {
+    final ToyWorld overridenToyWorld = ToyWorld.of(conflation);
+    for (BlockSnapshot blockSnapshot : conflation.blocks()) {
+      for (TransactionSnapshot tx : blockSnapshot.txs()) {
+        this.chainId = tx.chainId();
+      }
+    }
+    final MainnetTransactionProcessor transactionProcessor = getMainnetTransactionProcessor();
+
+    tracer.traceStartConflation(conflation.blocks().size());
+    for (BlockSnapshot blockSnapshot : conflation.blocks()) {
+      BlockHeader header = blockSnapshot.header().toBlockHeader();
+      BlockBody body =
+          new BlockBody(
+              blockSnapshot.txs().stream().map(TransactionSnapshot::toTransaction).toList(),
+              new ArrayList<>());
+      tracer.traceStartBlock(header, body);
+
+      for (Transaction tx : body.getTransactions()) {
+        final TransactionProcessingResult result =
+            transactionProcessor.processTransaction(
+                null,
+                overridenToyWorld.updater(),
+                (ProcessableBlockHeader) header,
+                tx,
+                header.getCoinbase(),
+                tracer,
+                blockId -> {
+                  throw new RuntimeException("Block hash lookup not yet supported");
+                },
+                false,
+                Wei.ZERO);
+      }
+      tracer.traceEndBlock(header, body);
+    }
+    tracer.traceEndConflation();
   }
 
   private void execute() {
     BlockHeader header =
-        BlockHeaderBuilder.createDefault().baseFee(DEFAULT_BASE_FEE).buildBlockHeader();
+        BlockHeaderBuilder.createDefault()
+            .baseFee(DEFAULT_BASE_FEE)
+            .coinbase(minerAddress)
+            .buildBlockHeader();
     BlockBody mockBlockBody = new BlockBody(transactions, new ArrayList<>());
 
     final MainnetTransactionProcessor transactionProcessor = getMainnetTransactionProcessor();
@@ -128,7 +202,7 @@ public class ToyExecutionEnvironment {
               toyWorld.updater(),
               (ProcessableBlockHeader) header,
               tx,
-              minerAddress,
+              header.getCoinbase(),
               tracer,
               blockId -> {
                 throw new RuntimeException("Block hash lookup not yet supported");
@@ -139,7 +213,6 @@ public class ToyExecutionEnvironment {
       this.testValidator.accept(result);
       this.zkTracerValidator.accept(tracer);
     }
-
     tracer.traceEndBlock(header, mockBlockBody);
     tracer.traceEndConflation();
   }
@@ -156,9 +229,11 @@ public class ToyExecutionEnvironment {
         new TransactionValidatorFactory(
             gasCalculator,
             new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0, Optional.empty())),
+            new LondonFeeMarket(0L),
             false,
-            Optional.of(CHAIN_ID),
-            Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559)),
+            Optional.of(this.chainId),
+            Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559),
+            Exceptions.MAX_CODE_SIZE),
         contractCreationProcessor,
         messageCallProcessor,
         true,

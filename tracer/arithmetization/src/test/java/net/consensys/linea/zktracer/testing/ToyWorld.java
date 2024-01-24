@@ -25,11 +25,16 @@ import java.util.Optional;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Singular;
+import net.consensys.linea.blockcapture.snapshots.AccountSnapshot;
+import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
+import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.MutableAccount;
+import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
@@ -54,6 +59,28 @@ public class ToyWorld implements WorldUpdater {
 
   public static ToyWorld empty() {
     return builder().build();
+  }
+
+  public static ToyWorld of(final ConflationSnapshot conflation) {
+    final ToyWorldBuilder protoWorld = builder();
+    for (AccountSnapshot account : conflation.accounts()) {
+      protoWorld.account(
+          ToyAccount.builder()
+              .address(Words.toAddress(Address.fromHexString(account.address())))
+              .nonce(account.nonce())
+              .balance(Wei.fromHexString(account.balance()))
+              .code(Bytes.fromHexString(account.code()))
+              .build());
+    }
+    final ToyWorld world = protoWorld.build();
+
+    for (StorageSnapshot s : conflation.storage()) {
+      world
+          .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
+          .setStorageValue(UInt256.fromHexString(s.key()), UInt256.fromHexString(s.value()));
+    }
+
+    return world;
   }
 
   @Override
