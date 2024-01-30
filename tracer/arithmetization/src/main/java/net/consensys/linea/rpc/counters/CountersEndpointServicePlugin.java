@@ -27,7 +27,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 /**
  * Sets up an RPC endpoint for generating trace counters.
  *
- * <p>The RollupRpcEndpointServicePlugin registers an RPC endpoint named
+ * <p>The CountersEndpointServicePlugin registers an RPC endpoint named
  * 'getTracesCountersByBlockNumberV0' under the 'rollup' namespace. When this endpoint is called,
  * returns trace counters based on the provided request parameters. See {@link
  * RollupGenerateCountersV0}
