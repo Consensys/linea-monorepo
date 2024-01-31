@@ -32,3 +32,6 @@ site/
 /.envrc
 reference-tests/src/test/java/net/consensys/linea/generated/*
 !reference-tests/src/test/java/net/consensys/linea/generated/.gitkeep
+arithmetization/bin/
+acceptance-tests/bin/
+reference-tests/bin/

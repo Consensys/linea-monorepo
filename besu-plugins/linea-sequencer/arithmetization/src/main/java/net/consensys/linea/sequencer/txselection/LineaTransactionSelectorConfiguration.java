@@ -15,7 +15,12 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import lombok.Builder;
+import lombok.Getter;
+
 /** The Linea configuration. */
+@Getter
+@Builder
 public final class LineaTransactionSelectorConfiguration {
   private final int maxBlockCallDataSize;
   private final String moduleLimitsFilePath;
@@ -25,118 +30,6 @@ public final class LineaTransactionSelectorConfiguration {
   private final int gasPriceRatio;
   private final double minMargin;
   private final int adjustTxSize;
-
-  private LineaTransactionSelectorConfiguration(
-      final int maxBlockCallDataSize,
-      final String moduleLimitsFilePath,
-      final long maxGasPerBlock,
-      final int verificationGasCost,
-      final int verificationCapacity,
-      final int gasPriceRatio,
-      final double minMargin,
-      final int adjustTxSize) {
-    this.maxBlockCallDataSize = maxBlockCallDataSize;
-    this.moduleLimitsFilePath = moduleLimitsFilePath;
-    this.maxGasPerBlock = maxGasPerBlock;
-    this.verificationGasCost = verificationGasCost;
-    this.verificationCapacity = verificationCapacity;
-    this.gasPriceRatio = gasPriceRatio;
-    this.minMargin = minMargin;
-    this.adjustTxSize = adjustTxSize;
-  }
-
-  public int maxBlockCallDataSize() {
-    return maxBlockCallDataSize;
-  }
-
-  public String moduleLimitsFilePath() {
-    return moduleLimitsFilePath;
-  }
-
-  public long maxGasPerBlock() {
-    return maxGasPerBlock;
-  }
-
-  public int getVerificationGasCost() {
-    return verificationGasCost;
-  }
-
-  public int getVerificationCapacity() {
-    return verificationCapacity;
-  }
-
-  public int getGasPriceRatio() {
-    return gasPriceRatio;
-  }
-
-  public double getMinMargin() {
-    return minMargin;
-  }
-
-  public int getAdjustTxSize() {
-    return adjustTxSize;
-  }
-
-  public static class Builder {
-    private int maxBlockCallDataSize;
-    private String moduleLimitsFilePath;
-    private long maxGasPerBlock;
-    private int verificationGasCost;
-    private int verificationCapacity;
-    private int gasPriceRatio;
-    private double minMargin;
-    private int adjustTxSize;
-
-    public Builder maxBlockCallDataSize(final int maxBlockCallDataSize) {
-      this.maxBlockCallDataSize = maxBlockCallDataSize;
-      return this;
-    }
-
-    public Builder moduleLimits(final String moduleLimitFilePath) {
-      this.moduleLimitsFilePath = moduleLimitFilePath;
-      return this;
-    }
-
-    public Builder maxGasPerBlock(final long maxGasPerBlock) {
-      this.maxGasPerBlock = maxGasPerBlock;
-      return this;
-    }
-
-    public Builder verificationGasCost(final int verificationGasCost) {
-      this.verificationGasCost = verificationGasCost;
-      return this;
-    }
-
-    public Builder verificationCapacity(final int verificationCapacity) {
-      this.verificationCapacity = verificationCapacity;
-      return this;
-    }
-
-    public Builder gasPriceRatio(final int gasPriceRatio) {
-      this.gasPriceRatio = gasPriceRatio;
-      return this;
-    }
-
-    public Builder minMargin(final double minMargin) {
-      this.minMargin = minMargin;
-      return this;
-    }
-
-    public Builder adjustTxSize(final int adjustTxSize) {
-      this.adjustTxSize = adjustTxSize;
-      return this;
-    }
-
-    public LineaTransactionSelectorConfiguration build() {
-      return new LineaTransactionSelectorConfiguration(
-          maxBlockCallDataSize,
-          moduleLimitsFilePath,
-          maxGasPerBlock,
-          verificationGasCost,
-          verificationCapacity,
-          gasPriceRatio,
-          minMargin,
-          adjustTxSize);
-    }
-  }
+  private final int unprofitableCacheSize;
+  private final int unprofitableRetryLimit;
 }
