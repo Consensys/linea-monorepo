@@ -82,7 +82,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     ObjectMapper objectMapper = new ObjectMapper();
 
     try {
-      URL url = new File(lineaConfiguration.moduleLimitsFilePath()).toURI().toURL();
+      URL url = new File(lineaConfiguration.getModuleLimitsFilePath()).toURI().toURL();
       final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
       TomlParseResult result = Toml.parse(tomlString);
       final TomlTable table = result.getTable("traces-limits");
@@ -93,7 +93,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     } catch (final Exception e) {
       final String errorMsg =
           "Problem reading the toml file containing the limits for the modules: "
-              + lineaConfiguration.moduleLimitsFilePath();
+              + lineaConfiguration.getModuleLimitsFilePath();
       log.error(errorMsg);
       throw new RuntimeException(errorMsg, e);
     }

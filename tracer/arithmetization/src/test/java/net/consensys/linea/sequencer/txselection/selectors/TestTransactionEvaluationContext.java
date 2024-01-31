@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.sequencer.txselection;
+package net.consensys.linea.sequencer.txselection.selectors;
 
 import com.google.common.base.Stopwatch;
 import org.hyperledger.besu.datatypes.PendingTransaction;
@@ -20,9 +20,9 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 class TestTransactionEvaluationContext implements TransactionEvaluationContext<PendingTransaction> {
-  private final PendingTransaction pendingTransaction;
-  private final Wei transactionGasPrice;
-  private final Wei minGasPrice;
+  private PendingTransaction pendingTransaction;
+  private Wei transactionGasPrice;
+  private Wei minGasPrice;
 
   public TestTransactionEvaluationContext(
       final PendingTransaction pendingTransaction,
@@ -55,5 +55,21 @@ class TestTransactionEvaluationContext implements TransactionEvaluationContext<P
   @Override
   public Wei getMinGasPrice() {
     return minGasPrice;
+  }
+
+  public TestTransactionEvaluationContext setMinGasPrice(final Wei minGasPrice) {
+    this.minGasPrice = minGasPrice;
+    return this;
+  }
+
+  public TestTransactionEvaluationContext setPendingTransaction(
+      final PendingTransaction pendingTransaction) {
+    this.pendingTransaction = pendingTransaction;
+    return this;
+  }
+
+  public TestTransactionEvaluationContext setTransactionGasPrice(final Wei transactionGasPrice) {
+    this.transactionGasPrice = transactionGasPrice;
+    return this;
   }
 }

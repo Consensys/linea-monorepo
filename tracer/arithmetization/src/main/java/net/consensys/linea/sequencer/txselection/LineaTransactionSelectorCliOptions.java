@@ -31,6 +31,8 @@ public class LineaTransactionSelectorCliOptions {
   public static final int DEFAULT_GAS_PRICE_RATIO = 15;
   public static final BigDecimal DEFAULT_MIN_MARGIN = BigDecimal.ONE;
   public static final int DEFAULT_ADJUST_TX_SIZE = -45;
+  public static final int DEFAULT_UNPROFITABLE_CACHE_SIZE = 100_000;
+  public static final int DEFAULT_UNPROFITABLE_RETRY_LIMIT = 10;
   private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
   private static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
   private static final String MAX_GAS_PER_BLOCK = "--plugin-linea-max-block-gas";
@@ -39,6 +41,8 @@ public class LineaTransactionSelectorCliOptions {
   private static final String GAS_PRICE_RATIO = "--plugin-linea-gas-price-ratio";
   private static final String MIN_MARGIN = "--plugin-linea-min-margin";
   private static final String ADJUST_TX_SIZE = "--plugin-linea-adjust-tx-size";
+  private static final String UNPROFITABLE_CACHE_SIZE = "--plugin-linea-unprofitable-cache-size";
+  private static final String UNPROFITABLE_RETRY_LIMIT = "--plugin-linea-unprofitable-retry-limit";
 
   @Positive
   @CommandLine.Option(
@@ -105,6 +109,24 @@ public class LineaTransactionSelectorCliOptions {
           "Adjust transaction size for profitability calculation (default: ${DEFAULT-VALUE})")
   private int adjustTxSize = DEFAULT_ADJUST_TX_SIZE;
 
+  @Positive
+  @CommandLine.Option(
+      names = {UNPROFITABLE_CACHE_SIZE},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "Max number of unprofitable transactions we keep track of (default: ${DEFAULT-VALUE})")
+  private int unprofitableCacheSize = DEFAULT_UNPROFITABLE_CACHE_SIZE;
+
+  @Positive
+  @CommandLine.Option(
+      names = {UNPROFITABLE_RETRY_LIMIT},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "Max number of unprofitable transactions we retry on each block creation (default: ${DEFAULT-VALUE})")
+  private int unprofitableRetryLimit = DEFAULT_UNPROFITABLE_RETRY_LIMIT;
+
   private LineaTransactionSelectorCliOptions() {}
 
   /**
@@ -125,14 +147,16 @@ public class LineaTransactionSelectorCliOptions {
   public static LineaTransactionSelectorCliOptions fromConfig(
       final LineaTransactionSelectorConfiguration config) {
     final LineaTransactionSelectorCliOptions options = create();
-    options.maxBlockCallDataSize = config.maxBlockCallDataSize();
-    options.moduleLimitFilePath = config.moduleLimitsFilePath();
-    options.maxGasPerBlock = config.maxGasPerBlock();
+    options.maxBlockCallDataSize = config.getMaxBlockCallDataSize();
+    options.moduleLimitFilePath = config.getModuleLimitsFilePath();
+    options.maxGasPerBlock = config.getMaxGasPerBlock();
     options.verificationGasCost = config.getVerificationGasCost();
     options.verificationCapacity = config.getVerificationCapacity();
     options.gasPriceRatio = config.getGasPriceRatio();
     options.minMargin = BigDecimal.valueOf(config.getMinMargin());
     options.adjustTxSize = config.getAdjustTxSize();
+    options.unprofitableCacheSize = config.getUnprofitableCacheSize();
+    options.unprofitableRetryLimit = config.getUnprofitableRetryLimit();
     return options;
   }
 
@@ -142,15 +166,17 @@ public class LineaTransactionSelectorCliOptions {
    * @return the Linea factory configuration
    */
   public LineaTransactionSelectorConfiguration toDomainObject() {
-    return new LineaTransactionSelectorConfiguration.Builder()
+    return LineaTransactionSelectorConfiguration.builder()
         .maxBlockCallDataSize(maxBlockCallDataSize)
-        .moduleLimits(moduleLimitFilePath)
+        .moduleLimitsFilePath(moduleLimitFilePath)
         .maxGasPerBlock(maxGasPerBlock)
         .verificationGasCost(verificationGasCost)
         .verificationCapacity(verificationCapacity)
         .gasPriceRatio(gasPriceRatio)
         .minMargin(minMargin.doubleValue())
         .adjustTxSize(adjustTxSize)
+        .unprofitableCacheSize(unprofitableCacheSize)
+        .unprofitableRetryLimit(unprofitableRetryLimit)
         .build();
   }
 
@@ -164,6 +190,9 @@ public class LineaTransactionSelectorCliOptions {
         .add(VERIFICATION_CAPACITY, verificationCapacity)
         .add(GAS_PRICE_RATIO, gasPriceRatio)
         .add(MIN_MARGIN, minMargin)
+        .add(ADJUST_TX_SIZE, adjustTxSize)
+        .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
+        .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
         .toString();
   }
 }
