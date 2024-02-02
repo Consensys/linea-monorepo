@@ -25,6 +25,7 @@ import picocli.CommandLine;
 public class LineaTransactionSelectorCliOptions {
   public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 70_000;
   private static final String DEFAULT_MODULE_LIMIT_FILE_PATH = "moduleLimitFile.toml";
+  private static final int DEFAULT_OVER_LINE_COUNT_LIMIT_CACHE_SIZE = 10_000;
   public static final long DEFAULT_MAX_GAS_PER_BLOCK = 30_000_000L;
   public static final int DEFAULT_VERIFICATION_GAS_COST = 1_200_000;
   public static final int DEFAULT_VERIFICATION_CAPACITY = 90_000;
@@ -35,6 +36,8 @@ public class LineaTransactionSelectorCliOptions {
   public static final int DEFAULT_UNPROFITABLE_RETRY_LIMIT = 10;
   private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
   private static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
+  private static final String OVER_LINE_COUNT_LIMIT_CACHE_SIZE =
+      "--plugin-linea-over-line-count-limit-cache-size";
   private static final String MAX_GAS_PER_BLOCK = "--plugin-linea-max-block-gas";
   private static final String VERIFICATION_GAS_COST = "--plugin-linea-verification-gas-cost";
   private static final String VERIFICATION_CAPACITY = "--plugin-linea-verification-capacity";
@@ -59,6 +62,15 @@ public class LineaTransactionSelectorCliOptions {
       description =
           "Path to the toml file containing the module limits (default: ${DEFAULT-VALUE})")
   private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
+
+  @Positive
+  @CommandLine.Option(
+      names = {OVER_LINE_COUNT_LIMIT_CACHE_SIZE},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "Max number of transactions that go over the line count limit we keep track of (default: ${DEFAULT-VALUE})")
+  private int overLineCountLimitCacheSize = DEFAULT_OVER_LINE_COUNT_LIMIT_CACHE_SIZE;
 
   @Positive
   @CommandLine.Option(
@@ -147,16 +159,17 @@ public class LineaTransactionSelectorCliOptions {
   public static LineaTransactionSelectorCliOptions fromConfig(
       final LineaTransactionSelectorConfiguration config) {
     final LineaTransactionSelectorCliOptions options = create();
-    options.maxBlockCallDataSize = config.getMaxBlockCallDataSize();
-    options.moduleLimitFilePath = config.getModuleLimitsFilePath();
-    options.maxGasPerBlock = config.getMaxGasPerBlock();
-    options.verificationGasCost = config.getVerificationGasCost();
-    options.verificationCapacity = config.getVerificationCapacity();
-    options.gasPriceRatio = config.getGasPriceRatio();
-    options.minMargin = BigDecimal.valueOf(config.getMinMargin());
-    options.adjustTxSize = config.getAdjustTxSize();
-    options.unprofitableCacheSize = config.getUnprofitableCacheSize();
-    options.unprofitableRetryLimit = config.getUnprofitableRetryLimit();
+    options.maxBlockCallDataSize = config.maxBlockCallDataSize();
+    options.moduleLimitFilePath = config.moduleLimitsFilePath();
+    options.overLineCountLimitCacheSize = config.overLinesLimitCacheSize();
+    options.maxGasPerBlock = config.maxGasPerBlock();
+    options.verificationGasCost = config.verificationGasCost();
+    options.verificationCapacity = config.verificationCapacity();
+    options.gasPriceRatio = config.gasPriceRatio();
+    options.minMargin = BigDecimal.valueOf(config.minMargin());
+    options.adjustTxSize = config.adjustTxSize();
+    options.unprofitableCacheSize = config.unprofitableCacheSize();
+    options.unprofitableRetryLimit = config.unprofitableRetryLimit();
     return options;
   }
 
@@ -169,6 +182,7 @@ public class LineaTransactionSelectorCliOptions {
     return LineaTransactionSelectorConfiguration.builder()
         .maxBlockCallDataSize(maxBlockCallDataSize)
         .moduleLimitsFilePath(moduleLimitFilePath)
+        .overLinesLimitCacheSize(overLineCountLimitCacheSize)
         .maxGasPerBlock(maxGasPerBlock)
         .verificationGasCost(verificationGasCost)
         .verificationCapacity(verificationCapacity)
@@ -185,6 +199,7 @@ public class LineaTransactionSelectorCliOptions {
     return MoreObjects.toStringHelper(this)
         .add(MAX_BLOCK_CALLDATA_SIZE, maxBlockCallDataSize)
         .add(MODULE_LIMIT_FILE_PATH, moduleLimitFilePath)
+        .add(OVER_LINE_COUNT_LIMIT_CACHE_SIZE, overLineCountLimitCacheSize)
         .add(MAX_GAS_PER_BLOCK, maxGasPerBlock)
         .add(VERIFICATION_GAS_COST, verificationGasCost)
         .add(VERIFICATION_CAPACITY, verificationCapacity)

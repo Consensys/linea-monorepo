@@ -128,7 +128,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final long gasUsed = processingResult.getEstimateGasUsedByTransaction();
 
       if (!isProfitable("PostProcessing", transaction, minGasPrice, effectiveGasPrice, gasUsed)) {
-        registerAsUnProfitable(transaction);
+        rememberUnprofitable(transaction);
         return TX_UNPROFITABLE;
       }
     }
@@ -197,8 +197,8 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     }
   }
 
-  private void registerAsUnProfitable(final Transaction transaction) {
-    if (unprofitableCache.size() >= unprofitableCacheSize) {
+  private void rememberUnprofitable(final Transaction transaction) {
+    while (unprofitableCache.size() >= unprofitableCacheSize) {
       final var it = unprofitableCache.iterator();
       if (it.hasNext()) {
         it.next();
@@ -206,6 +206,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       }
     }
     unprofitableCache.add(transaction.getHash());
+    log.atTrace().setMessage("unprofitableCache={}").addArgument(unprofitableCache::size).log();
   }
 
   private void log(
