@@ -16,20 +16,19 @@
 package net.consensys.linea.sequencer.txselection;
 
 import lombok.Builder;
-import lombok.Getter;
 
-/** The Linea configuration. */
-@Getter
+/** The Linea transaction selectors configuration. */
 @Builder
-public final class LineaTransactionSelectorConfiguration {
-  private final int maxBlockCallDataSize;
-  private final String moduleLimitsFilePath;
-  private final long maxGasPerBlock;
-  private final int verificationGasCost;
-  private final int verificationCapacity;
-  private final int gasPriceRatio;
-  private final double minMargin;
-  private final int adjustTxSize;
-  private final int unprofitableCacheSize;
-  private final int unprofitableRetryLimit;
-}
+public record LineaTransactionSelectorConfiguration(
+    int maxBlockCallDataSize,
+    String moduleLimitsFilePath,
+    int overLinesLimitCacheSize,
+    long maxGasPerBlock,
+    int verificationGasCost,
+    int verificationCapacity,
+    int gasPriceRatio,
+    double minMargin,
+    int adjustTxSize,
+    int unprofitableCacheSize,
+    int unprofitableRetryLimit) {}
+;
