@@ -53,19 +53,21 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
-            limitsMapSupplier, lineaConfiguration.getModuleLimitsFilePath());
+            limitsMapSupplier,
+            lineaConfiguration.moduleLimitsFilePath(),
+            lineaConfiguration.overLinesLimitCacheSize());
 
     return List.of(
-        new MaxBlockCallDataTransactionSelector(lineaConfiguration.getMaxBlockCallDataSize()),
-        new MaxBlockGasTransactionSelector(lineaConfiguration.getMaxGasPerBlock()),
+        new MaxBlockCallDataTransactionSelector(lineaConfiguration.maxBlockCallDataSize()),
+        new MaxBlockGasTransactionSelector(lineaConfiguration.maxGasPerBlock()),
         new ProfitableTransactionSelector(
-            lineaConfiguration.getVerificationGasCost(),
-            lineaConfiguration.getVerificationCapacity(),
-            lineaConfiguration.getGasPriceRatio(),
-            lineaConfiguration.getMinMargin(),
-            lineaConfiguration.getAdjustTxSize(),
-            lineaConfiguration.getUnprofitableCacheSize(),
-            lineaConfiguration.getUnprofitableRetryLimit()),
+            lineaConfiguration.verificationGasCost(),
+            lineaConfiguration.verificationCapacity(),
+            lineaConfiguration.gasPriceRatio(),
+            lineaConfiguration.minMargin(),
+            lineaConfiguration.adjustTxSize(),
+            lineaConfiguration.unprofitableCacheSize(),
+            lineaConfiguration.unprofitableRetryLimit()),
         traceLineLimitTransactionSelector);
   }
 

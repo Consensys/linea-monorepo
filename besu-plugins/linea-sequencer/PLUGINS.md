@@ -5,16 +5,26 @@
 
 This plugin extends the standard transaction selection protocols employed by Besu for block creation. 
 It leverages the TransactionSelectionService to manage and customize the process of transaction selection. 
-This includes setting limits such as `TraceLineLimit`, `maxBlockGas`, and `maxCallData`.
+This includes setting limits such as `TraceLineLimit`, `maxBlockGas`, and `maxCallData`, and check the profitability
+of a transaction.
 
 
 #### CLI Options
 
-| Option Name             | Default Value | Command Line Argument |
-|-------------------------| --- | --- |
-| MAX_BLOCK_CALLDATA_SIZE | 70000 | `--plugin-linea-max-block-calldata-size` |
-| MODULE_LIMIT_FILE_PATH  | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path` |
-| MAX_GAS_PER_BLOCK       | 30_000_000L | `--plugin-linea-max-block-gas` |
+| Option Name              | Default Value | Command Line Argument                  |
+|--------------------------|---------|----------------------------------------|
+| MAX_BLOCK_CALLDATA_SIZE  | 70000   | `--plugin-linea-max-block-calldata-size` |
+| MODULE_LIMIT_FILE_PATH   | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path` |
+| OVER_LINE_COUNT_LIMIT_CACHE_SIZE | 10_000 | `--plugin-linea-over-line-count-limit-cache-size` |
+| MAX_GAS_PER_BLOCK        | 30_000_000L | `--plugin-linea-max-block-gas`         |
+| L1_VERIFICATION_GAS_COST | 1_200_000 | `--plugin-linea-verification-gas-cost` |
+| L1_VERIFICATION_CAPACITY | 90_000  | `--plugin-linea-verification-capacity` |
+| L1_L2_GAS_PRICE_RATIO    | 15      | `--plugin-linea-gas-price-ratio`       |
+| MIN_MARGIN               | 1.0     | `--plugin-linea-min-margin`  |
+| ADJUST_TX_SIZE           | -45     | `--plugin-linea-adjust-tx-size`        |
+| UNPROFITABLE_CACHE_SIZE  | 100_000 | `--plugin-linea-unprofitable-cache-size`  |
+| UNPROFITABLE_RETRY_LIMIT | 10      | `--plugin-linea-unprofitable-retry-limit` |
+
 
 ### Transaction validation - LineaTransactionValidatorPlugin
 

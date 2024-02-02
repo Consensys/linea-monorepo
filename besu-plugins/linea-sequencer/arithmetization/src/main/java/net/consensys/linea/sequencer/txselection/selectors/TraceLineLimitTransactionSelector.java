@@ -16,14 +16,19 @@ package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_MODULE_LINE_COUNT_FULL;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -44,29 +49,43 @@ import org.slf4j.MarkerFactory;
 @Slf4j
 public class TraceLineLimitTransactionSelector implements PluginTransactionSelector {
   private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
+  @VisibleForTesting protected static Set<Hash> overLineCountLimitCache = new LinkedHashSet<>();
   private final ZkTracer zkTracer;
   private final String limitFilePath;
   private final Map<String, Integer> moduleLimits;
+  private final int overLimitCacheSize;
   private Map<String, Integer> consolidatedCumulatedLineCount = Map.of();
   private Map<String, Integer> currCumulatedLineCount;
 
   public TraceLineLimitTransactionSelector(
-      final Supplier<Map<String, Integer>> moduleLimitsProvider, final String limitFilePath) {
+      final Supplier<Map<String, Integer>> moduleLimitsProvider,
+      final String limitFilePath,
+      final int overLimitCacheSize) {
     moduleLimits = moduleLimitsProvider.get();
     zkTracer = new ZkTracerWithLog();
     zkTracer.traceStartConflation(1L);
     this.limitFilePath = limitFilePath;
+    this.overLimitCacheSize = overLimitCacheSize;
   }
 
   /**
-   * No checking is done pre-processing.
+   * Check if the tx is already known to go over the limit to avoid reprocessing it
    *
    * @param evaluationContext The current selection context.
-   * @return TransactionSelectionResult.SELECTED
+   * @return transaction selection result
    */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
+    if (overLineCountLimitCache.contains(
+        evaluationContext.getPendingTransaction().getTransaction().getHash())) {
+      log.atTrace()
+          .setMessage(
+              "Transaction {} was already identified to go over line count limit, dropping it")
+          .addArgument(evaluationContext.getPendingTransaction().getTransaction()::getHash)
+          .log();
+      return TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
+    }
     return SELECTED;
   }
 
@@ -129,6 +148,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
             module,
             txModuleLineCount,
             moduleLineCountLimit);
+        rememberOverLineCountLimitTransaction(transaction);
         return TX_MODULE_LINE_COUNT_OVERFLOW;
       }
 
@@ -149,6 +169,21 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   @Override
   public BlockAwareOperationTracer getOperationTracer() {
     return zkTracer;
+  }
+
+  private void rememberOverLineCountLimitTransaction(final Transaction transaction) {
+    while (overLineCountLimitCache.size() >= overLimitCacheSize) {
+      final var it = overLineCountLimitCache.iterator();
+      if (it.hasNext()) {
+        it.next();
+        it.remove();
+      }
+    }
+    overLineCountLimitCache.add(transaction.getHash());
+    log.atTrace()
+        .setMessage("overLineCountLimitCache={}")
+        .addArgument(overLineCountLimitCache::size)
+        .log();
   }
 
   private String logTxLineCount() {
