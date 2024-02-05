@@ -72,6 +72,8 @@ public final class TransactionSnapshot extends ModuleOperation {
   /** The payload of the transaction, calldata or initcode */
   private final Bytes payload;
 
+  private final int callDataSize;
+
   private final long gasLimit;
   private final BigInteger effectiveGasPrice;
   private final Optional<? extends Quantity> maxFeePerGas;
@@ -116,6 +118,7 @@ public final class TransactionSnapshot extends ModuleOperation {
     this.effectiveGasPrice = effectiveGasPrice;
     this.maxFeePerGas = maxFeePerGas;
     this.maxPriorityFeePerGas = maxPriorityFeePerGas;
+    this.callDataSize = this.isDeployment ? 0 : this.payload.size();
   }
 
   public static TransactionSnapshot fromTransaction(
