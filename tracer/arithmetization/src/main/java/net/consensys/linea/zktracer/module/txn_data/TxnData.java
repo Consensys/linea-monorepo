@@ -54,6 +54,7 @@ public class TxnData implements Module {
   private static final int N_ROWS_TX_MAX =
       Math.max(Math.max(N_ROWS_FRONTIER_TX, N_ROWS_ACCESS_LIST_TX), N_ROWS_EIP_1559_TX);
   private static final int LT = 16;
+  private static final int ISZERO = 21;
   static final int COMMON_RLP_TXN_PHASE_NUMBER_0 = 0;
   static final int COMMON_RLP_TXN_PHASE_NUMBER_1 = 7;
   static final int COMMON_RLP_TXN_PHASE_NUMBER_2 = 2;
@@ -131,11 +132,15 @@ public class TxnData implements Module {
     final List<Bytes16> wcpArgOneLo = setWcpArgumentOne(this.currentBlock().currentTx());
     final List<Bytes16> wcpArgTwoLo =
         setWcpArgumentTwo(this.currentBlock(), this.currentBlock().currentTx());
+    // wcp call row from 0 to 3
     for (int ct = 0; ct < 4; ct++) {
       this.wcp.callLT(Bytes32.leftPad(wcpArgOneLo.get(ct)), Bytes32.leftPad(wcpArgTwoLo.get(ct)));
     }
+    // wcp call row 4
+    this.wcp.callISZERO(Bytes32.leftPad(wcpArgOneLo.get(4)));
+    // wcp call row 5 to 7 for Type 2 transaction only
     if (this.currentBlock().currentTx().type() == TransactionType.EIP1559) {
-      for (int ct = 4; ct < 7; ct++) {
+      for (int ct = 5; ct < 8; ct++) {
         this.wcp.callLT(Bytes32.leftPad(wcpArgOneLo.get(ct)), Bytes32.leftPad(wcpArgTwoLo.get(ct)));
       }
     }
@@ -232,21 +237,20 @@ public class TxnData implements Module {
             LT, // ct = 0
             LT, // ct = 1
             LT, // ct = 2
-            LT // ct = 3
+            LT, // ct = 3
+            ISZERO // ct = 4
             );
     List<Integer> suffix =
         switch (tx.type()) {
           case FRONTIER, ACCESS_LIST -> List.of(
-              0, // ct = 4
               0, // ct = 5
               0, // ct = 6
               0 // ct = 7
               );
           case EIP1559 -> List.of(
-              LT, // ct = 4
               LT, // ct = 5
               LT, // ct = 6
-              0 // ct = 7
+              LT // ct = 7
               );
           default -> throw new RuntimeException("transaction type not supported");
         };
@@ -260,10 +264,10 @@ public class TxnData implements Module {
     output.add(1, Bytes16.leftPad(Bytes.ofUnsignedLong(tx.gasLimit()))); // ct = 1
     output.add(2, Bytes16.leftPad(bigIntegerToBytes(tx.getLimitMinusLeftoverGas()))); // ct = 2
     output.add(3, Bytes16.leftPad(Bytes.ofUnsignedLong(tx.refundCounter()))); // ct = 3
+    output.add(4, Bytes16.leftPad(Bytes.ofUnsignedLong(tx.callDataSize()))); // ct = 4
 
     switch (tx.type()) {
       case FRONTIER, ACCESS_LIST -> {
-        output.add(4, Bytes16.ZERO); // ct = 4
         output.add(5, Bytes16.ZERO); // ct = 5
         output.add(6, Bytes16.ZERO); // ct = 6
         output.add(7, Bytes16.ZERO); // ct = 7
@@ -272,10 +276,9 @@ public class TxnData implements Module {
       case EIP1559 -> {
         final Bytes16 maxFeePerGas =
             Bytes16.leftPad(bigIntegerToBytes(tx.maxFeePerGas().orElseThrow().getAsBigInteger()));
-        output.add(4, maxFeePerGas); // ct = 4
         output.add(5, maxFeePerGas); // ct = 5
         output.add(6, maxFeePerGas); // ct = 6
-        output.add(7, Bytes16.ZERO); // ct = 7
+        output.add(7, maxFeePerGas); // ct = 7
       }
       default -> throw new RuntimeException("transaction type not supported");
     }
@@ -291,23 +294,23 @@ public class TxnData implements Module {
             Bytes16.leftPad(bigIntegerToBytes(tx.getMaximalUpfrontCost())), // ct = 0
             Bytes16.leftPad(Bytes.ofUnsignedLong(tx.getUpfrontGasCost())), // ct = 1
             limitMinusLeftOverGasDividedByTwo, // ct = 2
-            limitMinusLeftOverGasDividedByTwo // ct = 3
+            limitMinusLeftOverGasDividedByTwo, // ct = 3
+            Bytes16.ZERO // ct = 4
             );
 
     List<Bytes16> suffixTwos =
         switch (tx.type()) {
           case FRONTIER, ACCESS_LIST -> List.of(
-              Bytes16.ZERO, // ct = 4
               Bytes16.ZERO, // ct = 5
               Bytes16.ZERO, // ct = 6
               Bytes16.ZERO // ct =7
               );
           case EIP1559 -> List.of(
               Bytes16.leftPad(
-                  bigIntegerToBytes(block.getBaseFee().orElseThrow().getAsBigInteger())), // ct = 4
+                  bigIntegerToBytes(block.getBaseFee().orElseThrow().getAsBigInteger())), // ct = 5
               Bytes16.leftPad(
                   bigIntegerToBytes(
-                      tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger())), // ct = 5
+                      tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger())), // ct = 6
               Bytes16.leftPad(
                   bigIntegerToBytes(
                       block
@@ -315,10 +318,7 @@ public class TxnData implements Module {
                           .orElseThrow()
                           .getAsBigInteger()
                           .add(
-                              tx.maxPriorityFeePerGas()
-                                  .orElseThrow()
-                                  .getAsBigInteger()))), // ct = 6
-              Bytes16.ZERO // ct = 7
+                              tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger()))) // ct = 7
               );
           default -> throw new IllegalStateException("transaction type not supported:" + tx.type());
         };
@@ -333,8 +333,9 @@ public class TxnData implements Module {
         false, // ct = 2
         tx.getLimitMinusLeftoverGasDividedByTwo().compareTo(BigInteger.valueOf(tx.refundCounter()))
             >= 0, // ct = 3,
-        false, // ct = 4
+        tx.callDataSize() == 0, // ct = 4
         false, // ct = 5
+        false, // ct = 6
         tx.type() == TransactionType.EIP1559
             && tx.maxFeePerGas()
                     .orElseThrow()
@@ -345,8 +346,7 @@ public class TxnData implements Module {
                             .orElseThrow()
                             .getAsBigInteger()
                             .add(tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger()))
-                < 0, // ct = 6,
-        false // ct = 7
+                < 0 // ct = 7,
         );
   }
 
@@ -454,6 +454,7 @@ public class TxnData implements Module {
     final List<Integer> phaseNumbers = setPhaseRlpTxnNumbers(tx);
     final List<Integer> phaseRlpTxnRcpt = setPhaseRlpTxnRcpt();
     final List<Long> outgoingRlpTxnRcpt = setOutgoingRlpTxnRcpt(tx);
+    final boolean copyTxCd = tx.requiresEvmExecution() && tx.callDataSize() != 0;
     for (int ct = 0; ct < tx.maxCounter(); ct++) {
       trace
           .absTxNumMax(Bytes.ofUnsignedInt(absTxNumMax))
@@ -477,12 +478,13 @@ public class TxnData implements Module {
           .basefee(block.getBaseFee().orElseThrow())
           .coinbaseHi(coinbase.hi())
           .coinbaseLo(coinbase.lo())
-          .callDataSize(tx.isDeployment() ? Bytes.EMPTY : Bytes.ofUnsignedInt(tx.payload().size()))
+          .callDataSize(Bytes.ofUnsignedShort(tx.callDataSize()))
           .initCodeSize(tx.isDeployment() ? Bytes.ofUnsignedInt(tx.payload().size()) : Bytes.EMPTY)
           .type0(tx.type() == TransactionType.FRONTIER)
           .type1(tx.type() == TransactionType.ACCESS_LIST)
           .type2(tx.type() == TransactionType.EIP1559)
           .requiresEvmExecution(tx.requiresEvmExecution())
+          .copyTxcdAtInitialisation(copyTxCd)
           .leftoverGas(Bytes.ofUnsignedLong(tx.leftoverGas()))
           .refundCounter(Bytes.ofUnsignedLong(tx.refundCounter()))
           .refundAmount(Bytes.ofUnsignedLong(tx.effectiveGasRefund()))
