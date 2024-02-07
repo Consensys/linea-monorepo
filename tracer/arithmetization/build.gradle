@@ -43,6 +43,7 @@ dependencies {
   implementation "${besuArtifactGroup}:evm"
   implementation "${besuArtifactGroup}:plugin-api"
   implementation "${besuArtifactGroup}:besu-datatypes"
+  implementation "${besuArtifactGroup}.internal:api:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"

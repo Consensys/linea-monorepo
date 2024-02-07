@@ -22,7 +22,6 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -58,10 +57,10 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private Map<String, Integer> currCumulatedLineCount;
 
   public TraceLineLimitTransactionSelector(
-      final Supplier<Map<String, Integer>> moduleLimitsProvider,
+      final Map<String, Integer> moduleLimits,
       final String limitFilePath,
       final int overLimitCacheSize) {
-    moduleLimits = moduleLimitsProvider.get();
+    this.moduleLimits = moduleLimits;
     zkTracer = new ZkTracerWithLog();
     zkTracer.traceStartConflation(1L);
     this.limitFilePath = limitFilePath;

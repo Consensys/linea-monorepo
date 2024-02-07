@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txselection;
+package net.consensys.linea.config;
 
 import java.math.BigDecimal;
 
@@ -31,7 +31,9 @@ public class LineaTransactionSelectorCliOptions {
   public static final int DEFAULT_VERIFICATION_CAPACITY = 90_000;
   public static final int DEFAULT_GAS_PRICE_RATIO = 15;
   public static final BigDecimal DEFAULT_MIN_MARGIN = BigDecimal.ONE;
+  public static final BigDecimal DEFAULT_ESTIMATE_GAS_MIN_MARGIN = BigDecimal.ONE;
   public static final int DEFAULT_ADJUST_TX_SIZE = -45;
+  public static final int DEFAULT_TX_COMPRESSION_RATIO = 5;
   public static final int DEFAULT_UNPROFITABLE_CACHE_SIZE = 100_000;
   public static final int DEFAULT_UNPROFITABLE_RETRY_LIMIT = 10;
   private static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
@@ -43,7 +45,9 @@ public class LineaTransactionSelectorCliOptions {
   private static final String VERIFICATION_CAPACITY = "--plugin-linea-verification-capacity";
   private static final String GAS_PRICE_RATIO = "--plugin-linea-gas-price-ratio";
   private static final String MIN_MARGIN = "--plugin-linea-min-margin";
+  private static final String ESTIMATE_GAS_MIN_MARGIN = "--plugin-linea-estimate-gas-min-margin";
   private static final String ADJUST_TX_SIZE = "--plugin-linea-adjust-tx-size";
+  private static final String TX_COMPRESSION_RATIO = "--plugin-linea-tx-compression-ratio";
   private static final String UNPROFITABLE_CACHE_SIZE = "--plugin-linea-unprofitable-cache-size";
   private static final String UNPROFITABLE_RETRY_LIMIT = "--plugin-linea-unprofitable-retry-limit";
 
@@ -114,12 +118,30 @@ public class LineaTransactionSelectorCliOptions {
 
   @Positive
   @CommandLine.Option(
+      names = {ESTIMATE_GAS_MIN_MARGIN},
+      hidden = true,
+      paramLabel = "<FLOAT>",
+      description =
+          "Recommend a specific gas price when using linea_estimateGas (default: ${DEFAULT-VALUE})")
+  private BigDecimal estimageGasMinMargin = DEFAULT_ESTIMATE_GAS_MIN_MARGIN;
+
+  @Positive
+  @CommandLine.Option(
       names = {ADJUST_TX_SIZE},
       hidden = true,
       paramLabel = "<INTEGER>",
       description =
           "Adjust transaction size for profitability calculation (default: ${DEFAULT-VALUE})")
   private int adjustTxSize = DEFAULT_ADJUST_TX_SIZE;
+
+  @Positive
+  @CommandLine.Option(
+      names = {TX_COMPRESSION_RATIO},
+      hidden = true,
+      paramLabel = "<INTEGER>",
+      description =
+          "The ratio between tx serialized size and its compressed size (default: ${DEFAULT-VALUE})")
+  private int txCompressionRatio = DEFAULT_TX_COMPRESSION_RATIO;
 
   @Positive
   @CommandLine.Option(
@@ -168,6 +190,7 @@ public class LineaTransactionSelectorCliOptions {
     options.gasPriceRatio = config.gasPriceRatio();
     options.minMargin = BigDecimal.valueOf(config.minMargin());
     options.adjustTxSize = config.adjustTxSize();
+    options.txCompressionRatio = config.txCompressionRatio();
     options.unprofitableCacheSize = config.unprofitableCacheSize();
     options.unprofitableRetryLimit = config.unprofitableRetryLimit();
     return options;
@@ -188,7 +211,9 @@ public class LineaTransactionSelectorCliOptions {
         .verificationCapacity(verificationCapacity)
         .gasPriceRatio(gasPriceRatio)
         .minMargin(minMargin.doubleValue())
+        .estimateGasMinMargin((estimageGasMinMargin.doubleValue()))
         .adjustTxSize(adjustTxSize)
+        .txCompressionRatio(txCompressionRatio)
         .unprofitableCacheSize(unprofitableCacheSize)
         .unprofitableRetryLimit(unprofitableRetryLimit)
         .build();
@@ -205,7 +230,9 @@ public class LineaTransactionSelectorCliOptions {
         .add(VERIFICATION_CAPACITY, verificationCapacity)
         .add(GAS_PRICE_RATIO, gasPriceRatio)
         .add(MIN_MARGIN, minMargin)
+        .add(ESTIMATE_GAS_MIN_MARGIN, estimageGasMinMargin)
         .add(ADJUST_TX_SIZE, adjustTxSize)
+        .add(TX_COMPRESSION_RATIO, txCompressionRatio)
         .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
         .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
         .toString();
