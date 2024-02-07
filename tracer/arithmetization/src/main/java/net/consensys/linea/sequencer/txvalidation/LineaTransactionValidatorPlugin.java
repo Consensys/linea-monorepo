@@ -15,20 +15,21 @@
 
 package net.consensys.linea.sequencer.txvalidation;
 
+import java.io.File;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.HashSet;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 
 /**
@@ -41,12 +42,7 @@ import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
-  private final LineaTransactionValidatorCliOptions options;
-  private final Set<Address> denied = new HashSet<>();
-
-  public LineaTransactionValidatorPlugin() {
-    options = LineaTransactionValidatorCliOptions.create();
-  }
+  private PluginTransactionValidatorService transactionValidatorService;
 
   @Override
   public Optional<String> getName() {
@@ -55,43 +51,34 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
 
   @Override
   public void doRegister(final BesuContext context) {
-    final Optional<PicoCLIOptions> cmdlineOptions = context.getService(PicoCLIOptions.class);
 
-    if (cmdlineOptions.isEmpty()) {
-      throw new IllegalStateException("Failed to obtain PicoCLI options from the BesuContext");
-    }
-
-    cmdlineOptions.get().addPicoCLIOptions(NAME, options);
-
-    Optional<PluginTransactionValidatorService> service =
-        context.getService(PluginTransactionValidatorService.class);
-    createAndRegister(
-        service.orElseThrow(
-            () ->
-                new RuntimeException(
-                    "Failed to obtain TransactionValidationService from the BesuContext.")));
+    transactionValidatorService =
+        context
+            .getService(PluginTransactionValidatorService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain TransactionValidationService from the BesuContext."));
   }
 
   @Override
-  public void start() {
-    final LineaTransactionValidatorConfiguration config = options.toDomainObject();
-
-    try (Stream<String> lines = Files.lines(Paths.get(config.denyListPath()))) {
-      lines.forEach(
-          l -> {
-            final Address address = Address.fromHexString(l.trim());
-            denied.add(address);
-          });
+  public void beforeExternalServices() {
+    super.beforeExternalServices();
+    try (Stream<String> lines =
+        Files.lines(Path.of(new File(transactionValidatorConfiguration.denyListPath()).toURI()))) {
+      final Set<Address> denied =
+          lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
+      createAndRegister(transactionValidatorService, transactionValidatorConfiguration, denied);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-
-    log.debug("Starting {} with configuration: {}", NAME, options);
   }
 
   private void createAndRegister(
-      final PluginTransactionValidatorService transactionValidationService) {
+      final PluginTransactionValidatorService transactionValidationService,
+      final LineaTransactionValidatorConfiguration transactionValidatorConfiguration,
+      final Set<Address> denied) {
     transactionValidationService.registerTransactionValidatorFactory(
-        new LineaTransactionValidatorFactory(options, denied));
+        new LineaTransactionValidatorFactory(transactionValidatorConfiguration, denied));
   }
 }

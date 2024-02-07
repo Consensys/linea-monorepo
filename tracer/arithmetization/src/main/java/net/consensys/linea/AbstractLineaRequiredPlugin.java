@@ -20,7 +20,7 @@ import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 
 @Slf4j
-public abstract class AbstractLineaRequiredPlugin implements BesuPlugin {
+public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOptionsPlugin {
 
   /**
    * Linea plugins extending this class will halt startup of Besu in case of exception during
@@ -32,6 +32,7 @@ public abstract class AbstractLineaRequiredPlugin implements BesuPlugin {
    */
   @Override
   public void register(final BesuContext context) {
+    super.register(context);
     try {
       log.info("Registering Linea plugin " + this.getClass().getName());
 
@@ -44,17 +45,4 @@ public abstract class AbstractLineaRequiredPlugin implements BesuPlugin {
       System.exit(1);
     }
   }
-
-  /**
-   * Linea plugins need to implement this method. Called by {@link BesuPlugin} register method
-   *
-   * @param context
-   */
-  public abstract void doRegister(final BesuContext context);
-
-  @Override
-  public void start() {}
-
-  @Override
-  public void stop() {}
 }

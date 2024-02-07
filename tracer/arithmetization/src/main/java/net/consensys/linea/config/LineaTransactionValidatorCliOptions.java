@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txvalidation;
+package net.consensys.linea.config;
 
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;

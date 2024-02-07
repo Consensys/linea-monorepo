@@ -20,19 +20,18 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auto.service.AutoService;
 import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlParseResult;
 import org.apache.tuweni.toml.TomlTable;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
 /**
@@ -44,13 +43,7 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
-  private final LineaTransactionSelectorCliOptions options;
-  private Optional<TransactionSelectionService> service;
-  private final Map<String, Integer> limitsMap = new ConcurrentHashMap<>();
-
-  public LineaTransactionSelectorPlugin() {
-    options = LineaTransactionSelectorCliOptions.create();
-  }
+  private TransactionSelectionService transactionSelectionService;
 
   @Override
   public Optional<String> getName() {
@@ -59,48 +52,44 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
   @Override
   public void doRegister(final BesuContext context) {
-    final Optional<PicoCLIOptions> cmdlineOptions = context.getService(PicoCLIOptions.class);
-
-    if (cmdlineOptions.isEmpty()) {
-      throw new IllegalStateException("Failed to obtain PicoCLI options from the BesuContext");
-    }
-
-    cmdlineOptions.get().addPicoCLIOptions(getName().get(), options);
-
-    service = context.getService(TransactionSelectionService.class);
-    createAndRegister(
-        service.orElseThrow(
-            () ->
-                new RuntimeException(
-                    "Failed to obtain TransactionSelectionService from the BesuContext.")));
+    transactionSelectionService =
+        context
+            .getService(TransactionSelectionService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain TransactionSelectionService from the BesuContext."));
   }
 
   @Override
-  public void start() {
-    log.debug("Starting {} with configuration: {}", NAME, options);
-    final LineaTransactionSelectorConfiguration lineaConfiguration = options.toDomainObject();
-    ObjectMapper objectMapper = new ObjectMapper();
-
+  public void beforeExternalServices() {
+    super.beforeExternalServices();
     try {
-      URL url = new File(lineaConfiguration.moduleLimitsFilePath()).toURI().toURL();
+      URL url = new File(transactionSelectorConfiguration.moduleLimitsFilePath()).toURI().toURL();
       final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
       TomlParseResult result = Toml.parse(tomlString);
       final TomlTable table = result.getTable("traces-limits");
-      table
-          .toMap()
-          .keySet()
-          .forEach(key -> limitsMap.put(key, Math.toIntExact(table.getLong(key))));
+      final Map<String, Integer> limitsMap =
+          table.toMap().entrySet().stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      Map.Entry::getKey, e -> Math.toIntExact((Long) e.getValue())));
+
+      createAndRegister(transactionSelectionService, transactionSelectorConfiguration, limitsMap);
     } catch (final Exception e) {
       final String errorMsg =
           "Problem reading the toml file containing the limits for the modules: "
-              + lineaConfiguration.moduleLimitsFilePath();
+              + transactionSelectorConfiguration.moduleLimitsFilePath();
       log.error(errorMsg);
       throw new RuntimeException(errorMsg, e);
     }
   }
 
-  private void createAndRegister(final TransactionSelectionService transactionSelectionService) {
+  private void createAndRegister(
+      final TransactionSelectionService transactionSelectionService,
+      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final Map<String, Integer> limitsMap) {
     transactionSelectionService.registerTransactionSelectorFactory(
-        new LineaTransactionSelectorFactory(options, () -> this.limitsMap));
+        new LineaTransactionSelectorFactory(txSelectorConfiguration, limitsMap));
   }
 }

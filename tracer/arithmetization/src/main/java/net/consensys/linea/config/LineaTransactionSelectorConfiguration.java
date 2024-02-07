@@ -13,14 +13,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txvalidation;
+package net.consensys.linea.config;
 
-/**
- * The Linea configuration.
- *
- * @param denyListPath the path to the file containing the addresses that are denied.
- * @param maxTxGasLimit the maximum gas limit allowed for transactions
- * @param maxTxCalldataSize the maximum size of calldata allowed for transactions
- */
-public record LineaTransactionValidatorConfiguration(
-    String denyListPath, int maxTxGasLimit, int maxTxCalldataSize) {}
+import lombok.Builder;
+
+/** The Linea transaction selectors configuration. */
+@Builder(toBuilder = true)
+public record LineaTransactionSelectorConfiguration(
+    int maxBlockCallDataSize,
+    String moduleLimitsFilePath,
+    int overLinesLimitCacheSize,
+    long maxGasPerBlock,
+    int verificationGasCost,
+    int verificationCapacity,
+    int gasPriceRatio,
+    double minMargin,
+    double estimateGasMinMargin,
+    int adjustTxSize,
+    int txCompressionRatio,
+    int unprofitableCacheSize,
+    int unprofitableRetryLimit) {}
+;
