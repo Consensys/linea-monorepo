@@ -24,7 +24,6 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.tuweni.bytes.Bytes32;
@@ -53,7 +52,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   private TestableTraceLineLimitTransactionSelector newSelectorForNewBlock() {
     return new TestableTraceLineLimitTransactionSelector(
-        () -> lineCountLimits, "line-limits.toml", OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+        lineCountLimits, "line-limits.toml", OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
   }
 
   private Map<String, Integer> loadLineCountLimitConf() {
@@ -218,10 +217,10 @@ public class TraceLineLimitTransactionSelectorTest {
   private class TestableTraceLineLimitTransactionSelector
       extends TraceLineLimitTransactionSelector {
     TestableTraceLineLimitTransactionSelector(
-        final Supplier<Map<String, Integer>> moduleLimitsProvider,
+        final Map<String, Integer> moduleLimits,
         final String limitFilePath,
         final int overLimitCacheSize) {
-      super(moduleLimitsProvider, limitFilePath, overLimitCacheSize);
+      super(moduleLimits, limitFilePath, overLimitCacheSize);
     }
 
     void reset() {

@@ -23,6 +23,8 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
+import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
@@ -42,7 +44,16 @@ public class ProfitableTransactionSelectorTest {
   private static final int ADJUST_TX_SIZE = -45;
   private static final int UNPROFITABLE_CACHE_SIZE = 2;
   private static final int UNPROFITABLE_RETRY_LIMIT = 1;
-
+  private final LineaTransactionSelectorConfiguration conf =
+      LineaTransactionSelectorCliOptions.create().toDomainObject().toBuilder()
+          .gasPriceRatio(GAS_PRICE_RATIO)
+          .adjustTxSize(ADJUST_TX_SIZE)
+          .minMargin(MIN_MARGIN)
+          .unprofitableCacheSize(UNPROFITABLE_CACHE_SIZE)
+          .unprofitableRetryLimit(UNPROFITABLE_RETRY_LIMIT)
+          .verificationCapacity(VERIFICATION_CAPACITY)
+          .verificationGasCost(VERIFICATION_GAS_COST)
+          .build();
   private TestableProfitableTransactionSelector transactionSelector;
 
   @BeforeEach
@@ -52,14 +63,7 @@ public class ProfitableTransactionSelectorTest {
   }
 
   private TestableProfitableTransactionSelector newSelectorForNewBlock() {
-    return new TestableProfitableTransactionSelector(
-        VERIFICATION_GAS_COST,
-        VERIFICATION_CAPACITY,
-        GAS_PRICE_RATIO,
-        MIN_MARGIN,
-        ADJUST_TX_SIZE,
-        UNPROFITABLE_CACHE_SIZE,
-        UNPROFITABLE_RETRY_LIMIT);
+    return new TestableProfitableTransactionSelector(conf);
   }
 
   @Test
@@ -423,22 +427,8 @@ public class ProfitableTransactionSelectorTest {
 
   private static class TestableProfitableTransactionSelector extends ProfitableTransactionSelector {
 
-    TestableProfitableTransactionSelector(
-        final int verificationGasCost,
-        final int verificationCapacity,
-        final int gasPriceRatio,
-        final double minMargin,
-        final int adjustTxSize,
-        final int unprofitableCacheSize,
-        final int unprofitableRetryLimit) {
-      super(
-          verificationGasCost,
-          verificationCapacity,
-          gasPriceRatio,
-          minMargin,
-          adjustTxSize,
-          unprofitableCacheSize,
-          unprofitableRetryLimit);
+    TestableProfitableTransactionSelector(final LineaTransactionSelectorConfiguration conf) {
+      super(conf);
     }
 
     boolean isUnprofitableTxCached(final Hash txHash) {
