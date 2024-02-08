@@ -20,6 +20,7 @@ import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantit
 import java.math.BigInteger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
@@ -42,8 +43,9 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 @Slf4j
 public class LineaEstimateGas {
+  @VisibleForTesting public static final SECPSignature FAKE_SIGNATURE_FOR_SIZE_CALCULATION;
+
   private static final double SUB_CALL_REMAINING_GAS_RATIO = 65D / 64D;
-  private static final SECPSignature FAKE_SIGNATURE_FOR_SIZE_CALCULATION;
 
   static {
     final X9ECParameters params = SECNamedCurves.getByName("secp256k1");
@@ -94,22 +96,26 @@ public class LineaEstimateGas {
 
   public LineaEstimateGas.Response execute(final PluginRpcRequest request) {
     final var callParameters = parseRequest(request.getParams());
+    final var minGasPrice = besuConfiguration.getMinGasPrice();
+
     final var transaction =
-        createTransactionOverridingGasLimit(callParameters, txValidatorConf.maxTxGasLimit());
+        createTransactionForSimulation(
+            callParameters, txValidatorConf.maxTxGasLimit(), minGasPrice);
     log.atTrace()
         .setMessage("Parsed call parameters: {}; Transaction: {}")
         .addArgument(callParameters)
         .addArgument(transaction::toTraceLog)
         .log();
-    final var estimatedGasUsed = estimateGasUsed(callParameters, transaction);
+    final var estimatedGasUsed = estimateGasUsed(callParameters, transaction, minGasPrice);
+
+    final Wei estimatedPriorityFee =
+        txProfitabilityCalculator.profitablePriorityFeePerGas(
+            transaction, minGasPrice, estimatedGasUsed);
+
     final Wei baseFee =
         blockchainService
             .getNextBlockBaseFee()
             .orElseThrow(() -> new IllegalStateException("Not on a baseFee market"));
-
-    final Wei estimatedPriorityFee =
-        txProfitabilityCalculator.profitablePriorityFeePerGas(
-            transaction, besuConfiguration.getMinGasPrice(), estimatedGasUsed);
 
     final var response =
         new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
@@ -119,7 +125,9 @@ public class LineaEstimateGas {
   }
 
   private Long estimateGasUsed(
-      final JsonCallParameter callParameters, final Transaction transaction) {
+      final JsonCallParameter callParameters,
+      final Transaction transaction,
+      final Wei minGasPrice) {
     final var tracer = new EstimateGasOperationTracer();
     final var chainHeadHash = blockchainService.getChainHeadHash();
     final var maybeSimulationResults =
@@ -146,7 +154,7 @@ public class LineaEstimateGas {
               final var lowGasEstimation = r.result().getEstimateGasUsedByTransaction();
               final var lowResult =
                   transactionSimulationService.simulate(
-                      createTransactionOverridingGasLimit(callParameters, lowGasEstimation),
+                      createTransactionForSimulation(callParameters, lowGasEstimation, minGasPrice),
                       chainHeadHash,
                       tracer,
                       true);
@@ -178,7 +186,8 @@ public class LineaEstimateGas {
 
                             final var binarySearchResult =
                                 transactionSimulationService.simulate(
-                                    createTransactionOverridingGasLimit(callParameters, mid),
+                                    createTransactionForSimulation(
+                                        callParameters, mid, minGasPrice),
                                     chainHeadHash,
                                     tracer,
                                     true);
@@ -252,8 +261,8 @@ public class LineaEstimateGas {
     return ((long) ((gasEstimation + gasStipend) * subCallMultiplier));
   }
 
-  private Transaction createTransactionOverridingGasLimit(
-      final JsonCallParameter callParameters, final long maxTxGasLimit) {
+  private Transaction createTransactionForSimulation(
+      final JsonCallParameter callParameters, final long maxTxGasLimit, final Wei minGasPrice) {
 
     final var txBuilder =
         Transaction.builder()
@@ -262,8 +271,9 @@ public class LineaEstimateGas {
             .gasLimit(maxTxGasLimit)
             .payload(
                 callParameters.getPayload() == null ? Bytes.EMPTY : callParameters.getPayload())
-            .gasPrice(callParameters.getGasPrice())
-            .value(callParameters.getValue())
+            .gasPrice(
+                callParameters.getGasPrice() == null ? minGasPrice : callParameters.getGasPrice())
+            .value(callParameters.getValue() == null ? Wei.ZERO : callParameters.getValue())
             .signature(FAKE_SIGNATURE_FOR_SIZE_CALCULATION);
 
     callParameters.getMaxFeePerGas().ifPresent(txBuilder::maxFeePerGas);
