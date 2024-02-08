@@ -1,14 +1,22 @@
 # Changelog
 
+## 0.1.4-test18-RC2
+Test pre-release 18-RC2 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+*  Fix linea_estimateGas reports Internal error when value or gas price is missing [#587](https://github.com/Consensys/besu-sequencer-plugins/pull/587)
+
+## 0.1.4-test18-RC1
+Test pre-release 18-RC1 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Linea estimate gas endpoint [#585](https://github.com/Consensys/besu-sequencer-plugins/pull/585)
+
 ## 0.1.4-test17
 Test pre-release 17 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
-* tests: drop huge random tests [https://github.com/Consensys/besu-sequencer-plugins/pull/563](#563)
-* feat(modexp-data): implement MODEXP_DATA module [https://github.com/Consensys/besu-sequencer-plugins/pull/547](#547)
-* feat: mechanics to capture conflations & replay them as test cases [https://github.com/Consensys/besu-sequencer-plugins/pull/561](#561)
-* perf(EUC): one less column [https://github.com/Consensys/besu-sequencer-plugins/pull/570](#570)
-* docs: Add basic plugins doc [https://github.com/Consensys/besu-sequencer-plugins/pull/509](#509)
-* Check upfront profitability + Unprofitable txs cache and retry limit [https://github.com/Consensys/besu-sequencer-plugins/pull/565](#565)
-* Avoid reprocessing txs that go over line count limit [https://github.com/Consensys/besu-sequencer-plugins/pull/571](#571)
+* tests: drop huge random tests [#563](https://github.com/Consensys/besu-sequencer-plugins/pull/563)
+* feat(modexp-data): implement MODEXP_DATA module [#547](https://github.com/Consensys/besu-sequencer-plugins/pull/547)
+* feat: mechanics to capture conflations & replay them as test cases [#561](https://github.com/Consensys/besu-sequencer-plugins/pull/561)
+* perf(EUC): one less column [#570](https://github.com/Consensys/besu-sequencer-plugins/pull/570)
+* docs: Add basic plugins doc [#509](https://github.com/Consensys/besu-sequencer-plugins/pull/509)
+* Check upfront profitability + Unprofitable txs cache and retry limit [#565](https://github.com/Consensys/besu-sequencer-plugins/pull/565)
+* Avoid reprocessing txs that go over line count limit [#571](https://github.com/Consensys/besu-sequencer-plugins/pull/571)
 
 ## 0.1.4-test16
 Test pre-release 16 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
