@@ -78,5 +78,7 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   public void start() {}
 
   @Override
-  public void stop() {}
+  public void stop() {
+    cliOptionsRegistered = false;
+  }
 }

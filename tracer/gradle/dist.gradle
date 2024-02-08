@@ -49,7 +49,10 @@ jar {
     )
   }
 
-  from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+  from {
+    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ )} )
+            .collect {it.isDirectory() ? it : zipTree(it) }
+  }
   exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
   duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }

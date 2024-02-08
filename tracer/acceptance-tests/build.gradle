@@ -54,6 +54,7 @@ tasks.register('acceptanceTests', Test) {
 }
 
 dependencies {
+  testImplementation project(":arithmetization")
   testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
   testImplementation "${besuArtifactGroup}:besu-datatypes:$besuVersion"
   testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion"
