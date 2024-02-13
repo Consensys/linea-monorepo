@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txrcpt;
+package net.consensys.linea.zktracer.module.rlp_txrcpt;
 
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
@@ -30,26 +30,40 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  static final int CREATE2_SHIFT = 255;
-  static final int G_TXDATA_NONZERO = 16;
-  static final int G_TXDATA_ZERO = 4;
-  static final int INT_LONG = 183;
-  static final int INT_SHORT = 128;
-  static final int LIST_LONG = 247;
-  static final int LIST_SHORT = 192;
-  static final int LLARGE = 16;
-  static final int LLARGEMO = 15;
-  static final int RLPADDR_CONST_RECIPE_1 = 1;
-  static final int RLPADDR_CONST_RECIPE_2 = 2;
-  static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
-  static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
-  static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
-  static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
-  static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
-  static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
-  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
-  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
-  static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+  public static final int CREATE2_SHIFT = 255;
+  public static final int G_TXDATA_NONZERO = 16;
+  public static final int G_TXDATA_ZERO = 4;
+  public static final int INT_LONG = 183;
+  public static final int INT_SHORT = 128;
+  public static final int LIST_LONG = 247;
+  public static final int LIST_SHORT = 192;
+  public static final int LLARGE = 16;
+  public static final int LLARGEMO = 15;
+  public static final int RLPADDR_CONST_RECIPE_1 = 1;
+  public static final int RLPADDR_CONST_RECIPE_2 = 2;
+  public static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
+  public static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
+  public static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
+  public static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
+  public static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
+  public static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
+  public static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
+  public static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
+  public static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+  public static final int SUBPHASE_ID_ADDR = 53;
+  public static final int SUBPHASE_ID_CUMUL_GAS = 3;
+  public static final int SUBPHASE_ID_DATA_LIMB = 77;
+  public static final int SUBPHASE_ID_DATA_SIZE = 83;
+  public static final int SUBPHASE_ID_NO_LOG_ENTRY = 11;
+  public static final int SUBPHASE_ID_STATUS_CODE = 2;
+  public static final int SUBPHASE_ID_TOPIC_BASE = 65;
+  public static final int SUBPHASE_ID_TOPIC_DELTA = 96;
+  public static final int SUBPHASE_ID_TYPE = 7;
+  public static final int SUBPHASE_ID_WEIGHT_DEPTH = 48;
+  public static final int SUBPHASE_ID_WEIGHT_INDEX_LOCAL = 96;
+  public static final int SUBPHASE_ID_WEIGHT_IS_OD = 24;
+  public static final int SUBPHASE_ID_WEIGHT_IS_OT = 12;
+  public static final int SUBPHASE_ID_WEIGHT_IS_PREFIX = 6;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -94,11 +108,12 @@ public class Trace {
   private final MappedByteBuffer phase4;
   private final MappedByteBuffer phase5;
   private final MappedByteBuffer phaseEnd;
+  private final MappedByteBuffer phaseId;
   private final MappedByteBuffer phaseSize;
   private final MappedByteBuffer power;
   private final MappedByteBuffer txrcptSize;
 
-  static List<ColumnHeader> headers(int length) {
+  public static List<ColumnHeader> headers(int length) {
     return List.of(
         new ColumnHeader("rlpTxRcpt.ABS_LOG_NUM", 32, length),
         new ColumnHeader("rlpTxRcpt.ABS_LOG_NUM_MAX", 32, length),
@@ -132,7 +147,7 @@ public class Trace {
         new ColumnHeader("rlpTxRcpt.LIMB_CONSTRUCTED", 1, length),
         new ColumnHeader("rlpTxRcpt.LOCAL_SIZE", 32, length),
         new ColumnHeader("rlpTxRcpt.LOG_ENTRY_SIZE", 32, length),
-        new ColumnHeader("rlpTxRcpt.nBYTES", 1, length),
+        new ColumnHeader("rlpTxRcpt.nBYTES", 32, length),
         new ColumnHeader("rlpTxRcpt.nSTEP", 32, length),
         new ColumnHeader("rlpTxRcpt.PHASE_1", 1, length),
         new ColumnHeader("rlpTxRcpt.PHASE_2", 1, length),
@@ -140,6 +155,7 @@ public class Trace {
         new ColumnHeader("rlpTxRcpt.PHASE_4", 1, length),
         new ColumnHeader("rlpTxRcpt.PHASE_5", 1, length),
         new ColumnHeader("rlpTxRcpt.PHASE_END", 1, length),
+        new ColumnHeader("rlpTxRcpt.PHASE_ID", 32, length),
         new ColumnHeader("rlpTxRcpt.PHASE_SIZE", 32, length),
         new ColumnHeader("rlpTxRcpt.POWER", 32, length),
         new ColumnHeader("rlpTxRcpt.TXRCPT_SIZE", 32, length));
@@ -186,9 +202,10 @@ public class Trace {
     this.phase4 = buffers.get(37);
     this.phase5 = buffers.get(38);
     this.phaseEnd = buffers.get(39);
-    this.phaseSize = buffers.get(40);
-    this.power = buffers.get(41);
-    this.txrcptSize = buffers.get(42);
+    this.phaseId = buffers.get(40);
+    this.phaseSize = buffers.get(41);
+    this.power = buffers.get(42);
+    this.txrcptSize = buffers.get(43);
   }
 
   public int size() {
@@ -659,23 +676,27 @@ public class Trace {
     return this;
   }
 
-  public Trace nBytes(final UnsignedByte b) {
-    if (filled.get(41)) {
+  public Trace nBytes(final Bytes b) {
+    if (filled.get(42)) {
       throw new IllegalStateException("rlpTxRcpt.nBYTES already set");
     } else {
-      filled.set(41);
+      filled.set(42);
     }
 
-    nBytes.put(b.toByte());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      nBytes.put((byte) 0);
+    }
+    nBytes.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace nStep(final Bytes b) {
-    if (filled.get(42)) {
+    if (filled.get(43)) {
       throw new IllegalStateException("rlpTxRcpt.nSTEP already set");
     } else {
-      filled.set(42);
+      filled.set(43);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -759,11 +780,27 @@ public class Trace {
     return this;
   }
 
-  public Trace phaseSize(final Bytes b) {
+  public Trace phaseId(final Bytes b) {
     if (filled.get(38)) {
-      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE already set");
+      throw new IllegalStateException("rlpTxRcpt.PHASE_ID already set");
     } else {
       filled.set(38);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      phaseId.put((byte) 0);
+    }
+    phaseId.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace phaseSize(final Bytes b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE already set");
+    } else {
+      filled.set(39);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -776,10 +813,10 @@ public class Trace {
   }
 
   public Trace power(final Bytes b) {
-    if (filled.get(39)) {
+    if (filled.get(40)) {
       throw new IllegalStateException("rlpTxRcpt.POWER already set");
     } else {
-      filled.set(39);
+      filled.set(40);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -792,10 +829,10 @@ public class Trace {
   }
 
   public Trace txrcptSize(final Bytes b) {
-    if (filled.get(40)) {
+    if (filled.get(41)) {
       throw new IllegalStateException("rlpTxRcpt.TXRCPT_SIZE already set");
     } else {
-      filled.set(40);
+      filled.set(41);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -936,11 +973,11 @@ public class Trace {
       throw new IllegalStateException("rlpTxRcpt.LOG_ENTRY_SIZE has not been filled");
     }
 
-    if (!filled.get(41)) {
+    if (!filled.get(42)) {
       throw new IllegalStateException("rlpTxRcpt.nBYTES has not been filled");
     }
 
-    if (!filled.get(42)) {
+    if (!filled.get(43)) {
       throw new IllegalStateException("rlpTxRcpt.nSTEP has not been filled");
     }
 
@@ -969,14 +1006,18 @@ public class Trace {
     }
 
     if (!filled.get(38)) {
-      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE has not been filled");
+      throw new IllegalStateException("rlpTxRcpt.PHASE_ID has not been filled");
     }
 
     if (!filled.get(39)) {
-      throw new IllegalStateException("rlpTxRcpt.POWER has not been filled");
+      throw new IllegalStateException("rlpTxRcpt.PHASE_SIZE has not been filled");
     }
 
     if (!filled.get(40)) {
+      throw new IllegalStateException("rlpTxRcpt.POWER has not been filled");
+    }
+
+    if (!filled.get(41)) {
       throw new IllegalStateException("rlpTxRcpt.TXRCPT_SIZE has not been filled");
     }
 
@@ -1115,11 +1156,11 @@ public class Trace {
       logEntrySize.position(logEntrySize.position() + 32);
     }
 
-    if (!filled.get(41)) {
-      nBytes.position(nBytes.position() + 1);
+    if (!filled.get(42)) {
+      nBytes.position(nBytes.position() + 32);
     }
 
-    if (!filled.get(42)) {
+    if (!filled.get(43)) {
       nStep.position(nStep.position() + 32);
     }
 
@@ -1148,14 +1189,18 @@ public class Trace {
     }
 
     if (!filled.get(38)) {
-      phaseSize.position(phaseSize.position() + 32);
+      phaseId.position(phaseId.position() + 32);
     }
 
     if (!filled.get(39)) {
-      power.position(power.position() + 32);
+      phaseSize.position(phaseSize.position() + 32);
     }
 
     if (!filled.get(40)) {
+      power.position(power.position() + 32);
+    }
+
+    if (!filled.get(41)) {
       txrcptSize.position(txrcptSize.position() + 32);
     }
 

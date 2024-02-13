@@ -15,8 +15,11 @@
 
 package net.consensys.linea.zktracer.module.rlp.txrcpt;
 
+import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
+
 import java.math.BigInteger;
 
+import net.consensys.linea.zktracer.module.rlp_txrcpt.Trace;
 import org.apache.tuweni.bytes.Bytes;
 
 class RlpTxrcptColumns {
@@ -88,5 +91,14 @@ class RlpTxrcptColumns {
     this.nBytes = 0;
     this.phaseEnd = false;
     this.power = BigInteger.valueOf(0);
+  }
+
+  public int getPhaseId() {
+    return this.phase
+        + Trace.SUBPHASE_ID_WEIGHT_IS_PREFIX * booleanToInt(this.isPrefix)
+        + Trace.SUBPHASE_ID_WEIGHT_IS_OT * booleanToInt(this.isTopic)
+        + Trace.SUBPHASE_ID_WEIGHT_IS_OD * booleanToInt(this.isData)
+        + Trace.SUBPHASE_ID_WEIGHT_DEPTH * booleanToInt(this.depth1)
+        + Trace.SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
   }
 }
