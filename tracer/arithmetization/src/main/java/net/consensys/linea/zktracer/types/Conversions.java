@@ -61,6 +61,10 @@ public class Conversions {
     return input ? BigInteger.ONE : BigInteger.ZERO;
   }
 
+  public static int booleanToInt(final boolean input) {
+    return input ? 1 : 0;
+  }
+
   public static BigInteger longToUnsignedBigInteger(final long input) {
     final BigInteger output = BigInteger.valueOf(input).and(UNSIGNED_LONG_MASK);
     if (output.bitLength() > 64) {

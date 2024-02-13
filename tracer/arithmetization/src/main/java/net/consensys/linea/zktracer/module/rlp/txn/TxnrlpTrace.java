@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record TxnrlpTrace(@JsonProperty("Trace") Trace trace) {
+record TxnrlpTrace(@JsonProperty("Trace") net.consensys.linea.zktracer.module.rlp_txn.Trace trace) {
   static final BigInteger G_txdatanonzero = new BigInteger("16");
   static final BigInteger G_txdatazero = new BigInteger("4");
   static final BigInteger LLARGE = new BigInteger("16");

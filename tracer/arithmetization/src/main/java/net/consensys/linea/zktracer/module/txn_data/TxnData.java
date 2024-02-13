@@ -55,17 +55,28 @@ public class TxnData implements Module {
       Math.max(Math.max(N_ROWS_FRONTIER_TX, N_ROWS_ACCESS_LIST_TX), N_ROWS_EIP_1559_TX);
   private static final int LT = 16;
   private static final int ISZERO = 21;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_0 = 0;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_1 = 7;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_2 = 2;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_3 = 8;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_4 = 9;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_5 = 6;
-  static final int TYPE_0_RLP_TXN_PHASE_NUMBER_6 = 3;
-  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_6 = 3;
-  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_7 = 10;
-  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_6 = 5;
-  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_7 = 10;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_0 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_RLP_PREFIX_VALUE;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_1 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_TO_VALUE;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_2 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_NONCE_VALUE;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_3 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_VALUE_VALUE;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_4 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_DATA_VALUE;
+  static final int COMMON_RLP_TXN_PHASE_NUMBER_5 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_LIMIT_VALUE;
+  static final int TYPE_0_RLP_TXN_PHASE_NUMBER_6 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_PRICE_VALUE;
+  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_6 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_PRICE_VALUE;
+  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_7 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_ACCESS_LIST_VALUE;
+  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_6 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_MAX_FEE_PER_GAS_VALUE;
+  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_7 =
+      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_ACCESS_LIST_VALUE;
 
   private final Hub hub;
   private final RomLex romLex;
