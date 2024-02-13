@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4-test18-RC3
+Test pre-release 18-RC3 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+*  Use compressed tx size also when selecting txs from block creation [#590](https://github.com/Consensys/besu-sequencer-plugins/pull/590)
+
 ## 0.1.4-test18-RC2
 Test pre-release 18-RC2 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 *  Fix linea_estimateGas reports Internal error when value or gas price is missing [#587](https://github.com/Consensys/besu-sequencer-plugins/pull/587)
