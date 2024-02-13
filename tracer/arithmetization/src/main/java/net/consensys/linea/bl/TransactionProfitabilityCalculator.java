@@ -36,12 +36,11 @@ public class TransactionProfitabilityCalculator {
 
   public Wei profitablePriorityFeePerGas(
       final Transaction transaction, final Wei minGasPrice, final long gas) {
-    final double txSize = Math.max(0, transaction.getSize() + conf.adjustTxSize());
-    final double compressedSerializedSize = txSize / conf.txCompressionRatio();
+    final double compressedTxSize = getCompressedTxSize(transaction);
 
     final var profitAt =
         preComputedValue
-            * txSize
+            * compressedTxSize
             * minGasPrice.getAsBigInteger().doubleValue()
             / (gas * conf.verificationCapacity());
 
@@ -49,17 +48,20 @@ public class TransactionProfitabilityCalculator {
 
     log.atDebug()
         .setMessage(
-            "Estimated profitable priorityFeePerGas: {}; estimateGasMinMargin={}, gasPriceRatio={}, "
-                + "verificationGasCost={}, txSize={}, compressedTxSize={}, minGasPrice={}, gas={}, verificationCapacity={}")
+            "Estimated profitable priorityFeePerGas: {}; estimateGasMinMargin={}, verificationCapacity={}, "
+                + "verificationGasCost={}, gasPriceRatio={}, gas={}, minGasPrice={}, "
+                + "l1GasPrice={}, txSize={}, compressedTxSize={}, adjustTxSize={}")
         .addArgument(profitAtWei::toHumanReadableString)
         .addArgument(conf.estimateGasMinMargin())
-        .addArgument(conf.gasPriceRatio())
-        .addArgument(conf.verificationGasCost())
-        .addArgument(txSize)
-        .addArgument(compressedSerializedSize)
-        .addArgument(minGasPrice::toHumanReadableString)
-        .addArgument(gas)
         .addArgument(conf.verificationCapacity())
+        .addArgument(conf.verificationGasCost())
+        .addArgument(conf.gasPriceRatio())
+        .addArgument(gas)
+        .addArgument(minGasPrice::toHumanReadableString)
+        .addArgument(() -> minGasPrice.multiply(conf.gasPriceRatio()).toHumanReadableString())
+        .addArgument(transaction::getSize)
+        .addArgument(compressedTxSize)
+        .addArgument(conf.adjustTxSize())
         .log();
 
     return profitAtWei;
@@ -74,9 +76,9 @@ public class TransactionProfitabilityCalculator {
     final double revenue = effectiveGasPrice * gas;
 
     final double l1GasPrice = minGasPrice * conf.gasPriceRatio();
-    final int serializedSize = Math.max(0, transaction.getSize() + conf.adjustTxSize());
+    final double compressedTxSize = getCompressedTxSize(transaction);
     final double verificationGasCostSlice =
-        (((double) serializedSize) / conf.verificationCapacity()) * conf.verificationGasCost();
+        (compressedTxSize / conf.verificationCapacity()) * conf.verificationGasCost();
     final double cost = l1GasPrice * verificationGasCostSlice;
 
     final double margin = revenue / cost;
@@ -91,7 +93,7 @@ public class TransactionProfitabilityCalculator {
           gas,
           minGasPrice,
           l1GasPrice,
-          serializedSize,
+          compressedTxSize,
           conf.adjustTxSize());
       return false;
     } else {
@@ -104,10 +106,17 @@ public class TransactionProfitabilityCalculator {
           gas,
           minGasPrice,
           l1GasPrice,
-          serializedSize,
+          compressedTxSize,
           conf.adjustTxSize());
       return true;
     }
+  }
+
+  private double getCompressedTxSize(final Transaction transaction) {
+    // this is just a temporary estimation, that will be replaced by gnarkCompression when available
+    // at that point conf.txCompressionRatio and conf.adjustTxSize options can be removed
+    final double adjustedTxSize = Math.max(0, transaction.getSize() + conf.adjustTxSize());
+    return adjustedTxSize / conf.txCompressionRatio();
   }
 
   private void log(
@@ -119,12 +128,12 @@ public class TransactionProfitabilityCalculator {
       final long gasUsed,
       final double minGasPrice,
       final double l1GasPrice,
-      final int serializedSize,
+      final double compressedTxSize,
       final int adjustTxSize) {
     leb.setMessage(
             "Context {}. Transaction {} has a margin of {}, minMargin={}, verificationCapacity={}, "
                 + "verificationGasCost={}, gasPriceRatio={}, effectiveGasPrice={}, gasUsed={}, minGasPrice={}, "
-                + "l1GasPrice={}, serializedSize={}, adjustTxSize={}")
+                + "l1GasPrice={}, txSize={}, compressedTxSize={}, adjustTxSize={}")
         .addArgument(context)
         .addArgument(transaction::getHash)
         .addArgument(margin)
@@ -136,7 +145,8 @@ public class TransactionProfitabilityCalculator {
         .addArgument(gasUsed)
         .addArgument(minGasPrice)
         .addArgument(l1GasPrice)
-        .addArgument(serializedSize)
+        .addArgument(transaction::getSize)
+        .addArgument(compressedTxSize)
         .addArgument(adjustTxSize)
         .log();
   }
