@@ -12,7 +12,7 @@
     }
   },
     "zeroBaseFee": false,
-    "baseFeePerGas": "1000000000",
+    "baseFeePerGas": "7",
   "nonce": "0x0",
   "timestamp": "0x6391BFF3",
   "extraData": "%extraData%",

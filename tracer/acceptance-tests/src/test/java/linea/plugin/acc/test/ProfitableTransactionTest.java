@@ -57,7 +57,7 @@ public class ProfitableTransactionTest extends LineaPluginTestBase {
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
     TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
 
-    final String txData = "not profitable transaction".repeat(10);
+    final String txData = "not profitable transaction".repeat(60);
 
     final var txUnprofitable =
         txManager.sendTransaction(
