@@ -69,7 +69,7 @@ public class CaptureToFile {
           tracer.setWorld(worldStateBeforeTracing);
           tracer.traceStartConflation(toBlock - fromBlock + 1);
         },
-        worldStateAfterTracing -> tracer.traceEndConflation(),
+        tracer::traceEndConflation,
         tracer);
     log.info("[CAPTURE] capture for {}-{} computed in {}", fromBlock, toBlock, sw);
     return new Capture(tracer.toJson());

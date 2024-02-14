@@ -27,6 +27,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -58,43 +59,57 @@ public final class EcRecoverEffectiveCall implements Module {
     counts.pop();
   }
 
-  @Override
-  public void tracePreOpcode(MessageFrame frame) {
+  public static boolean hasEnoughGas(Hub hub) {
     final OpCode opCode = hub.opCode();
+    final MessageFrame frame = hub.messageFrame();
 
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
         if (target.equals(Address.ECREC)) {
-          long length = 0;
-          long offset = 0;
-          switch (opCode) {
-            case CALL, CALLCODE -> {
-              length = Words.clampedToLong(frame.getStackItem(4));
-              offset = Words.clampedToLong(frame.getStackItem(3));
-            }
-            case DELEGATECALL, STATICCALL -> {
-              length = Words.clampedToLong(frame.getStackItem(3));
-              offset = Words.clampedToLong(frame.getStackItem(2));
-            }
-          }
-          final Bytes inputData = frame.shadowReadMemory(offset, length);
+          return hub.transients().op().gasAllowanceForCall() >= ECRECOVER_GAS_FEE;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  public static boolean isValid(final Hub hub) {
+    final OpCode opCode = hub.opCode();
+    final MessageFrame frame = hub.messageFrame();
+
+    switch (opCode) {
+      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
+        final Address target = Words.toAddress(frame.getStackItem(1));
+        if (target.equals(Address.ECREC)) {
+          final MemorySpan callData = hub.transients().op().callDataSegment();
+          final Bytes inputData = frame.shadowReadMemory(callData.offset(), callData.length());
           final BigInteger v = slice(inputData, EWORD_SIZE, EWORD_SIZE).toUnsignedBigInteger();
           final BigInteger r = slice(inputData, EWORD_SIZE * 2, EWORD_SIZE).toUnsignedBigInteger();
           final BigInteger s = slice(inputData, EWORD_SIZE * 3, EWORD_SIZE).toUnsignedBigInteger();
-          final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
           // TODO: exclude case without valid signature
-          if (gasPaid >= ECRECOVER_GAS_FEE
+          return hasEnoughGas(hub)
               && (v.equals(BigInteger.valueOf(27)) || v.equals(BigInteger.valueOf(28)))
               && !r.equals(BigInteger.ZERO)
               && r.compareTo(SECP_256_K1N) < 0
               && !s.equals(BigInteger.ZERO)
-              && s.compareTo(SECP_256_K1N) < 0) {
-            this.counts.push(this.counts.pop() + 1);
-          }
+              && s.compareTo(SECP_256_K1N) < 0;
         }
       }
-      default -> {}
+    }
+
+    return false;
+  }
+
+  public static long gasCost() {
+    return ECRECOVER_GAS_FEE;
+  }
+
+  @Override
+  public void tracePreOpcode(MessageFrame frame) {
+    if (isValid(hub)) {
+      this.counts.push(this.counts.pop() + 1);
     }
   }
 

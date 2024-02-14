@@ -23,7 +23,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
@@ -34,7 +33,7 @@ public interface Module {
 
   default void traceStartConflation(final long blockCount) {}
 
-  default void traceEndConflation() {}
+  default void traceEndConflation(final WorldView state) {}
 
   default void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {}
 
@@ -56,7 +55,7 @@ public interface Module {
 
   default void tracePreOpcode(MessageFrame frame) {}
 
-  default void tracePostOp(MessageFrame frame) {}
+  default void tracePostOpcode(MessageFrame frame) {}
 
   /**
    * Called at the eve of a new transaction; intended to create a new modification context for the
@@ -68,12 +67,6 @@ public interface Module {
   void popTransaction();
 
   int lineCount();
-
-  default void tracePreExecution(
-      final MessageFrame frame, final Operation.OperationResult operationResult) {}
-
-  default void tracePostExecution(
-      final MessageFrame frame, final Operation.OperationResult operationResult) {}
 
   List<ColumnHeader> columnsHeaders();
 

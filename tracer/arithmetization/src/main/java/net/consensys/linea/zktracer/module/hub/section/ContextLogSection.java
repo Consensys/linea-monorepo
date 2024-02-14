@@ -20,7 +20,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class ContextLogSection extends TraceSection {
   public ContextLogSection(Hub hub, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, chunks);
+    this.addFragmentsAndStack(hub, chunks);
   }
 
   @Override

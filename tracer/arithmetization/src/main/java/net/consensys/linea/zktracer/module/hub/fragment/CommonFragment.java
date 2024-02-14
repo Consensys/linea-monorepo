@@ -19,13 +19,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Exceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.hub.TxState;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.TxState;
 import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true, chain = false)
@@ -112,10 +112,10 @@ public final class CommonFragment implements TraceFragment {
 
   @Override
   public void postTxRetcon(Hub hub) {
-    CallFrame frame = hub.callStack().get(this.callFrameId);
+    CallFrame frame = hub.callStack().getById(this.callFrameId);
 
     this.txEndStamp = hub.stamp();
-    this.txReverts = hub.tx().status();
+    this.txReverts = hub.transients().tx().status();
     this.selfReverts = frame.selfRevertsAt() > 0;
     this.getsReverted = frame.getsRevertedAt() > 0;
   }

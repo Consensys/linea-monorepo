@@ -16,11 +16,12 @@
 package net.consensys.linea.zktracer.module.modexpdata;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.bytesToUnsignedBytes;
+import static net.consensys.linea.zktracer.types.Conversions.bytesToUnsignedBytesList;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import com.google.common.base.Preconditions;
 import lombok.EqualsAndHashCode;
@@ -60,8 +61,11 @@ public class ModexpDataOperation extends ModuleOperation {
     final BigInteger baseBigInt = base.toUnsignedBigInteger();
     final BigInteger expBigInt = exp.toUnsignedBigInteger();
     final BigInteger modBigInt = mod.toUnsignedBigInteger();
-
-    result = bigIntegerToBytes(baseBigInt.modPow(expBigInt, modBigInt));
+    if (modBigInt.equals(BigInteger.ZERO)) {
+      result = Bytes.EMPTY;
+    } else {
+      result = bigIntegerToBytes(baseBigInt.modPow(expBigInt, modBigInt));
+    }
   }
 
   void trace(Trace trace, int stamp) {
@@ -84,8 +88,8 @@ public class ModexpDataOperation extends ModuleOperation {
         hubStampDiff.compareTo(BigInteger.valueOf(256 ^ 6)) < 0,
         "Hub stamp difference should never exceed 256 ^ 6");
 
-    UnsignedByte[] hubStampDiffBytes =
-        bytesToUnsignedBytes(
+    List<UnsignedByte> hubStampDiffBytes =
+        bytesToUnsignedBytesList(
             rightPadTo(leftPadTo(bigIntegerToBytes(hubStampDiff), 6), 128).toArray());
 
     for (int bemrIndex = 1; bemrIndex <= 4; bemrIndex++) {
@@ -106,7 +110,7 @@ public class ModexpDataOperation extends ModuleOperation {
             .ct(UnsignedByte.of(counter))
             .bemr(UnsignedByte.of(bemrIndex))
             .phase(phase)
-            .bytes(hubStampDiffBytes[counter])
+            .bytes(hubStampDiffBytes.get(counter))
             .limb(bemrLimb.slice(16 * counter, 16))
             .index(UnsignedByte.of(index))
             .resultDataContext(currentHubStamp)

@@ -28,7 +28,6 @@ import java.util.function.Consumer;
 
 import com.google.gson.Gson;
 import lombok.Builder;
-import lombok.RequiredArgsConstructor;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
@@ -36,9 +35,8 @@ import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.module.hub.Exceptions;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -60,7 +58,6 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 
 /** Fluent API for executing EVM transactions in tests. */
 @Builder
-@RequiredArgsConstructor
 @Slf4j
 public class ToyExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
@@ -78,7 +75,7 @@ public class ToyExecutionEnvironment {
   private static final Address minerAddress = Address.fromHexString("0x1234532342");
 
   private final ToyWorld toyWorld;
-  private final EVM evm;
+  private final EVM evm = MainnetEVMs.london(EvmConfiguration.DEFAULT);
   @Builder.Default private BigInteger chainId = CHAIN_ID;
   @Singular private final List<Transaction> transactions;
 
@@ -86,21 +83,12 @@ public class ToyExecutionEnvironment {
    * A function applied to the {@link TransactionProcessingResult} of each transaction; by default,
    * asserts that the transaction is successful.
    */
-  private final Consumer<TransactionProcessingResult> testValidator;
+  @Builder.Default private final Consumer<TransactionProcessingResult> testValidator = x -> {};
 
-  private final Consumer<ZkTracer> zkTracerValidator;
+  @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
   private static final FeeMarket feeMarket = FeeMarket.london(-1);
   private final ZkTracer tracer = new ZkTracer();
-
-  /**
-   * Gets the default EVM implementation, i.e. London.
-   *
-   * @return default EVM implementation
-   */
-  public static EVM defaultEvm() {
-    return MainnetEVMs.london(EvmConfiguration.DEFAULT);
-  }
 
   public void checkTracer() {
     try {
@@ -163,23 +151,22 @@ public class ToyExecutionEnvironment {
       tracer.traceStartBlock(header, body);
 
       for (Transaction tx : body.getTransactions()) {
-        final TransactionProcessingResult result =
-            transactionProcessor.processTransaction(
-                null,
-                overridenToyWorld.updater(),
-                (ProcessableBlockHeader) header,
-                tx,
-                header.getCoinbase(),
-                tracer,
-                blockId -> {
-                  throw new RuntimeException("Block hash lookup not yet supported");
-                },
-                false,
-                Wei.ZERO);
+        transactionProcessor.processTransaction(
+            null,
+            overridenToyWorld.updater(),
+            (ProcessableBlockHeader) header,
+            tx,
+            header.getCoinbase(),
+            tracer,
+            blockId -> {
+              throw new RuntimeException("Block hash lookup not yet supported");
+            },
+            false,
+            Wei.ZERO);
       }
       tracer.traceEndBlock(header, body);
     }
-    tracer.traceEndConflation();
+    tracer.traceEndConflation(overridenToyWorld.updater());
   }
 
   private void execute() {
@@ -214,7 +201,7 @@ public class ToyExecutionEnvironment {
       this.zkTracerValidator.accept(tracer);
     }
     tracer.traceEndBlock(header, mockBlockBody);
-    tracer.traceEndConflation();
+    tracer.traceEndConflation(toyWorld.updater());
   }
 
   private MainnetTransactionProcessor getMainnetTransactionProcessor() {
@@ -228,7 +215,7 @@ public class ToyExecutionEnvironment {
         gasCalculator,
         new TransactionValidatorFactory(
             gasCalculator,
-            new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0, Optional.empty())),
+            new LondonTargetingGasLimitCalculator(0L, new LondonFeeMarket(0)),
             new LondonFeeMarket(0L),
             false,
             Optional.of(this.chainId),
@@ -241,39 +228,5 @@ public class ToyExecutionEnvironment {
         MAX_STACK_SIZE,
         feeMarket,
         CoinbaseFeePriceCalculator.eip1559());
-  }
-
-  private static Transaction defaultTransaction() {
-    return Transaction.builder()
-        .nonce(123L)
-        .type(TransactionType.FRONTIER)
-        .gasPrice(Wei.of(1500))
-        .gasLimit(DEFAULT_GAS_LIMIT)
-        .to(Address.fromHexString("0x1234567890"))
-        .value(DEFAULT_VALUE)
-        .payload(DEFAULT_INPUT_DATA)
-        .sender(DEFAULT_SENDER_ADDRESS)
-        .chainId(CHAIN_ID)
-        .signAndBuild(new SECP256K1().generateKeyPair());
-  }
-
-  /** Customizations applied to the Lombok generated builder. */
-  public static class ToyExecutionEnvironmentBuilder {
-    /**
-     * Builder method returning an instance of {@link ToyExecutionEnvironment}.
-     *
-     * @return an instance of {@link ToyExecutionEnvironment}
-     */
-    public ToyExecutionEnvironment build() {
-      var defaultTxList = new ArrayList<>(List.of(defaultTransaction()));
-
-      return new ToyExecutionEnvironment(
-          Optional.ofNullable(toyWorld).orElse(DEFAULT_TOY_WORLD),
-          Optional.ofNullable(evm).orElse(defaultEvm()),
-          Optional.ofNullable(transactions).orElse(defaultTxList),
-          Optional.ofNullable(testValidator)
-              .orElse(result -> assertThat(result.isSuccessful()).isTrue()),
-          Optional.ofNullable(zkTracerValidator).orElse(zkTracer -> {}));
-    }
   }
 }

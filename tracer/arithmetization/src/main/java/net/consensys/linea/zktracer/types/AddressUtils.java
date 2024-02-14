@@ -15,18 +15,19 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
-
 import java.util.List;
 
+import net.consensys.linea.zktracer.module.hub.transients.Operation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.Hash;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class AddressUtils {
+  private static final Bytes CREATE2_PREFIX = Bytes.of(0xff);
   private static final List<Address> precompileAddress =
       List.of(
           Address.ECREC,
@@ -43,27 +44,30 @@ public class AddressUtils {
     return precompileAddress.contains(to);
   }
 
+  /**
+   * Compute the effective address of a transaction target, i.e. the specified target if explicitly
+   * set, or the to-be-deployed address otherwise.
+   *
+   * @return the effective target address of tx
+   */
+  public static Address effectiveToAddress(Transaction tx) {
+    return tx.getTo()
+        .map(x -> (Address) x)
+        .orElse(Address.contractAddress(tx.getSender(), tx.getNonce()));
+  }
+
   public static Address getCreateAddress(final MessageFrame frame) {
-    if (!OpCode.of(frame.getCurrentOperation().getOpcode()).equals(OpCode.CREATE)) {
-      throw new IllegalArgumentException("Must be called only for CREATE opcode");
-    }
     final Address currentAddress = frame.getRecipientAddress();
     return Address.contractAddress(
         currentAddress, frame.getWorldUpdater().get(currentAddress).getNonce());
   }
 
   public static Address getCreate2Address(final MessageFrame frame) {
-    if (!OpCode.of(frame.getCurrentOperation().getOpcode()).equals(OpCode.CREATE2)) {
-      throw new IllegalArgumentException("Must be called only for CREATE2 opcode");
-    }
     final Address sender = frame.getRecipientAddress();
     final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-    final long offset = clampedToLong(frame.getStackItem(1));
-    final long length = clampedToLong(frame.getStackItem(2));
-    final Bytes initCode = frame.shadowReadMemory(offset, length);
-    Bytes PREFIX = Bytes.fromHexString("0xff");
+    final Bytes initCode = Operation.callData(frame);
     final Bytes32 hash =
-        Hash.keccak256(Bytes.concatenate(PREFIX, sender, salt, Hash.keccak256(initCode)));
+        Hash.keccak256(Bytes.concatenate(CREATE2_PREFIX, sender, salt, Hash.keccak256(initCode)));
     return Address.extract(hash);
   }
 

@@ -21,6 +21,6 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class KeccakSection extends TraceSection {
   public KeccakSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, callFrame, chunks);
+    this.addFragmentsAndStack(hub, callFrame, chunks);
   }
 }

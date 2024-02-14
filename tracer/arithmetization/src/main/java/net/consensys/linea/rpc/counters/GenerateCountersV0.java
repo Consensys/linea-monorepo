@@ -89,7 +89,7 @@ public class GenerateCountersV0 {
                             blockNumber,
                             blockNumber,
                             worldStateBeforeTracing -> tracer.traceStartConflation(1),
-                            worldStateAfterTracing -> tracer.traceEndConflation(),
+                            tracer::traceEndConflation,
                             tracer);
 
                         return tracer.getModulesLineCount();

@@ -23,7 +23,7 @@ import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 
 public class ModexpData implements Module {
-  private StackedSet<ModexpDataOperation> state = new StackedSet<>();
+  private final StackedSet<ModexpDataOperation> state = new StackedSet<>();
 
   @Override
   public String moduleKey() {

@@ -22,6 +22,9 @@ import java.util.Iterator;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.StackedContainer;
+import net.consensys.linea.zktracer.module.hub.State.TxState.Stamps;
+import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class State implements StackedContainer {
   private final Deque<TxState> state = new ArrayDeque<>(50);
@@ -32,7 +35,7 @@ public class State implements StackedContainer {
     return this.state.peek();
   }
 
-  TxState.Stamps stamps() {
+  public Stamps stamps() {
     return this.current().stamps;
   }
 
@@ -43,9 +46,9 @@ public class State implements StackedContainer {
     return this.current().txTrace;
   }
 
-  void postConflationRetcon(Hub hub) {
+  void postConflationRetcon(final Hub hub, final WorldView state) {
     for (TxState txState : this.state) {
-      txState.txTrace.postConflationRetcon(hub, null /* TODO WorldView */);
+      txState.txTrace.postConflationRetcon(hub, state);
     }
   }
 
@@ -116,7 +119,7 @@ public class State implements StackedContainer {
     /** Stores all the stamps associated to the tracing of a transaction. */
     @Accessors(fluent = true)
     @Getter
-    static class Stamps {
+    public static class Stamps {
       private int hub = 0;
       private int mmu = 0;
       private int mxp = 0;

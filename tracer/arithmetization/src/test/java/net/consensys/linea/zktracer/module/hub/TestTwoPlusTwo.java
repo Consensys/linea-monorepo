@@ -46,6 +46,25 @@ public class TestTwoPlusTwo {
   }
 
   @Test
+  void ensureCorrectReturnDataInModexp() {
+    BytecodeRunner.of(
+            BytecodeCompiler.newProgram()
+                .assemble(
+                    """
+; Call MODEXP
+PUSH1 0     ; retSize
+PUSH1 0     ; retOffset
+PUSH1 0     ; argsSize
+PUSH1 0     ; argsOffset
+PUSH1 5     ; MODEXP precompile
+PUSH4 20000 ; gas
+STATICCALL
+""")
+                .compile())
+        .run();
+  }
+
+  @Test
   void testBreakingCall() {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).op(OpCode.CALL).compile()).run();
   }

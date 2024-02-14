@@ -23,6 +23,7 @@ import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.CurveOperations;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -102,14 +103,6 @@ public class EcDataOperation extends ModuleOperation {
       case EC_PAIRING -> input.size() / 16;
       default -> throw new IllegalArgumentException("invalid EC type");
     };
-  }
-
-  private static boolean isOnG2(Bytes arg) {
-    return true; // TODO:
-  }
-
-  private static boolean isInfinity() {
-    return false; // TODO:
   }
 
   private EcDataOperation(
@@ -326,7 +319,7 @@ public class EcDataOperation extends ModuleOperation {
 
     if (this.preliminaryChecksPassed()) {
       for (int i = 0; i < this.nPairings; i++) {
-        if (!isOnG2(this.input.slice(192 * i + 64, 192 - 64))) {
+        if (!CurveOperations.isOnG2(this.input.slice(192 * i + 64, 192 - 64))) {
           this.thisIsNotOnG2Index = i;
           break;
         }

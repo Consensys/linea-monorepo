@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
+import net.consensys.linea.zktracer.module.hub.transients.Operation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -155,17 +156,11 @@ public class GasProjector {
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Account recipient = frame.getWorldUpdater().get(to);
           final Wei value = Wei.wrap(frame.getStackItem(2));
-          final long inputDataOffset = clampedToLong(frame.getStackItem(3));
-          final long inputDataLength = clampedToLong(frame.getStackItem(4));
-          final long returnDataOffset = clampedToLong(frame.getStackItem(5));
-          final long returnDataLength = clampedToLong(frame.getStackItem(6));
           yield new Call(
               frame,
               stipend,
-              inputDataOffset,
-              inputDataLength,
-              returnDataOffset,
-              returnDataLength,
+              Operation.callDataSegment(frame),
+              Operation.returnDataRequestedSegment(frame),
               value,
               recipient,
               to);
@@ -179,17 +174,11 @@ public class GasProjector {
           final Account recipient = frame.getWorldUpdater().get(frame.getRecipientAddress());
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Wei value = Wei.wrap(frame.getStackItem(2));
-          final long inputDataOffset = clampedToLong(frame.getStackItem(3));
-          final long inputDataLength = clampedToLong(frame.getStackItem(4));
-          final long returnDataOffset = clampedToLong(frame.getStackItem(5));
-          final long returnDataLength = clampedToLong(frame.getStackItem(6));
           yield new Call(
               frame,
               stipend,
-              inputDataOffset,
-              inputDataLength,
-              returnDataOffset,
-              returnDataLength,
+              Operation.callDataSegment(frame),
+              Operation.returnDataRequestedSegment(frame),
               value,
               recipient,
               to);
@@ -202,17 +191,11 @@ public class GasProjector {
           final long stipend = clampedToLong(frame.getStackItem(0));
           final Account recipient = frame.getWorldUpdater().get(frame.getRecipientAddress());
           final Address to = Words.toAddress(frame.getStackItem(1));
-          final long inputDataOffset = clampedToLong(frame.getStackItem(2));
-          final long inputDataLength = clampedToLong(frame.getStackItem(3));
-          final long returnDataOffset = clampedToLong(frame.getStackItem(4));
-          final long returnDataLength = clampedToLong(frame.getStackItem(5));
           yield new Call(
               frame,
               stipend,
-              inputDataOffset,
-              inputDataLength,
-              returnDataOffset,
-              returnDataLength,
+              Operation.callDataSegment(frame),
+              Operation.returnDataRequestedSegment(frame),
               Wei.ZERO,
               recipient,
               to);
@@ -225,17 +208,11 @@ public class GasProjector {
           final long stipend = clampedToLong(frame.getStackItem(0));
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Account recipient = frame.getWorldUpdater().get(to);
-          final long inputDataOffset = clampedToLong(frame.getStackItem(2));
-          final long inputDataLength = clampedToLong(frame.getStackItem(3));
-          final long returnDataOffset = clampedToLong(frame.getStackItem(4));
-          final long returnDataLength = clampedToLong(frame.getStackItem(5));
           yield new Call(
               frame,
               stipend,
-              inputDataOffset,
-              inputDataLength,
-              returnDataOffset,
-              returnDataLength,
+              Operation.callDataSegment(frame),
+              Operation.returnDataRequestedSegment(frame),
               Wei.ZERO,
               recipient,
               to);

@@ -22,10 +22,11 @@ import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
-import net.consensys.linea.zktracer.module.hub.Exceptions;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
@@ -53,6 +54,7 @@ public final class StackFragment implements TraceFragment {
   @Getter private final OpCode opCode;
 
   private StackFragment(
+      final Hub hub,
       Stack stack,
       List<StackOperation> stackOps,
       Exceptions exceptions,
@@ -77,9 +79,14 @@ public final class StackFragment implements TraceFragment {
         };
     this.hashInfoSize = this.hashInfoFlag ? gp.messageSize() : 0;
     this.staticGas = gp.staticGas();
+    if (this.opCode == OpCode.RETURN && exceptions.none()) {
+      this.hashInfoKeccak =
+          EWord.of(org.hyperledger.besu.crypto.Hash.keccak256(hub.transients().op().returnData()));
+    }
   }
 
   public static StackFragment prepare(
+      final Hub hub,
       final Stack stack,
       final List<StackOperation> stackOperations,
       final Exceptions exceptions,
@@ -87,14 +94,20 @@ public final class StackFragment implements TraceFragment {
       final GasProjection gp,
       boolean isDeploying) {
     return new StackFragment(
-        stack, stackOperations, exceptions, aborts, DeploymentExceptions.empty(), gp, isDeploying);
+        hub,
+        stack,
+        stackOperations,
+        exceptions,
+        aborts,
+        DeploymentExceptions.empty(),
+        gp,
+        isDeploying);
   }
 
   public void feedHashedValue(MessageFrame frame) {
     if (hashInfoFlag) {
       switch (this.opCode) {
         case SHA3 -> this.hashInfoKeccak = EWord.of(frame.getStackItem(0));
-        case RETURN -> this.hashInfoKeccak = EWord.ZERO; // TODO: fixme
         case CREATE2 -> {
           Address newAddress = EWord.of(frame.getStackItem(0)).toAddress();
           // zero address indicates a failed deployment
@@ -105,6 +118,9 @@ public final class StackFragment implements TraceFragment {
                         .map(AccountState::getCodeHash)
                         .orElse(Hash.EMPTY));
           }
+        }
+        case RETURN -> {
+          /* already set at opcode invocation */
         }
         default -> throw new IllegalStateException("unexpected opcode");
       }

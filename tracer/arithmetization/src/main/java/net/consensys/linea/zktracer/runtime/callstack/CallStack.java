@@ -22,9 +22,8 @@ import java.util.Optional;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Bytecode;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.memory.MemorySpan;
+import net.consensys.linea.zktracer.types.Bytecode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -49,6 +48,49 @@ public final class CallStack {
 
   public void newBedrock(
       int hubStamp,
+      //      Address from,
+      Address to,
+      CallFrameType type,
+      Bytecode toCode,
+      Wei value,
+      long gas,
+      Bytes callData,
+      int accountDeploymentNumber,
+      int codeDeploymentNumber,
+      boolean codeDeploymentStatus) {
+    this.depth = 0;
+    this.enter(
+        hubStamp,
+        to,
+        to,
+        toCode == null ? Bytecode.EMPTY : toCode,
+        type,
+        value,
+        gas,
+        callData,
+        accountDeploymentNumber,
+        codeDeploymentNumber,
+        codeDeploymentStatus);
+    this.current = this.frames.size() - 1;
+  }
+
+  /**
+   * A “mantle” {@link CallFrame} holds the call data for a message call with a non-empty call data
+   *
+   * @param hubStamp
+   * @param from
+   * @param to
+   * @param type
+   * @param toCode
+   * @param value
+   * @param gas
+   * @param callData
+   * @param accountDeploymentNumber
+   * @param codeDeploymentNumber
+   * @param codeDeploymentStatus
+   */
+  public void newMantleAndBedrock(
+      int hubStamp,
       Address from,
       Address to,
       CallFrameType type,
@@ -60,7 +102,7 @@ public final class CallStack {
       int codeDeploymentNumber,
       boolean codeDeploymentStatus) {
     this.depth = 0;
-    this.frames.add(new CallFrame(from));
+    this.frames.add(new CallFrame(callData, hubStamp));
     this.enter(
         hubStamp,
         to,
@@ -95,7 +137,11 @@ public final class CallStack {
    * @return the parent {@link CallFrame} of the current frame
    */
   public CallFrame parent() {
-    return this.frames.get(this.current().parentFrame());
+    if (this.current().parentFrame() != -1) {
+      return this.frames.get(this.current().parentFrame());
+    } else {
+      return CallFrame.EMPTY;
+    }
   }
 
   public Optional<CallFrame> maybeCurrent() {
@@ -128,7 +174,7 @@ public final class CallStack {
       int accountDeploymentNumber,
       int codeDeploymentNumber,
       boolean isDeployment) {
-    final int caller = this.current;
+    final int caller = this.depth == 0 ? -1 : this.current;
     final int newTop = this.frames.size();
     Bytes callData;
     if (type != CallFrameType.INIT_CODE) {
@@ -157,23 +203,20 @@ public final class CallStack {
 
     this.frames.add(newFrame);
     this.current = newTop;
-    this.frames.get(caller).childFrames().add(newTop);
+    if (caller != -1) {
+      this.frames.get(caller).latestReturnData(Bytes.EMPTY);
+      this.frames.get(caller).childFrames().add(newTop);
+    }
   }
 
   /**
    * Exit the current context, sets it return data for the caller to read, and marks its last
    * position in the hub traces.
-   *
-   * @param returnData the return data of the current frame
    */
-  public void exit(Bytes returnData) {
+  public void exit() {
     this.depth -= 1;
     Preconditions.checkState(this.depth >= 0);
-    this.current().returnDataPointer(new MemorySpan(0, 0)); // TODO: fix me Franklin
-    final int parent = this.current().parentFrame();
-    this.frames.get(parent).childFrames().add(this.current);
-    this.frames.get(parent).returnData(returnData);
-    this.current = parent;
+    this.current = this.current().parentFrame();
   }
 
   /**
@@ -213,15 +256,28 @@ public final class CallStack {
    * @return the ith call frame
    * @throws IndexOutOfBoundsException if the index is out of range
    */
-  public CallFrame get(int i) {
-    // The case where the CF #0 is called on an empty stack stems from a skipped
-    // transaction, where
-    // no CF of interest is available to trace.
-    // TODO: use an explicit -1 as marker
-    if (i == 0 && this.frames.isEmpty()) {
+  public CallFrame getById(int i) {
+    if (i < 0 || this.frames.isEmpty()) {
       return CallFrame.EMPTY;
     }
     return this.frames.get(i);
+  }
+
+  /**
+   * Returns the {@link CallFrame} in this call stack of the given context number.
+   *
+   * @param i context number of the call frame to fetch
+   * @return the call frame with the specifies
+   * @throws IndexOutOfBoundsException if the index is out of range
+   */
+  public CallFrame getByContextNumber(int i) {
+    for (CallFrame f : this.frames) {
+      if (f.contextNumber() == i) {
+        return f;
+      }
+    }
+
+    throw new IllegalArgumentException("call frame not found");
   }
 
   /**
@@ -232,10 +288,22 @@ public final class CallStack {
    * @throws IndexOutOfBoundsException if the index is out of range
    */
   public CallFrame getParentOf(int i) {
-    return this.get(this.frames.get(i).parentFrame());
+    return this.getById(this.frames.get(i).parentFrame());
   }
 
   public void revert(int stamp) {
     this.current().revert(this, stamp);
+  }
+
+  public String pretty() {
+    StringBuilder r = new StringBuilder(2000);
+    for (CallFrame c : this.frames) {
+      final CallFrame parent = this.getParentOf(c.id());
+      r.append(" ".repeat(c.depth()));
+      r.append(
+          "%d/%d (<- %d/%d): %s"
+              .formatted(c.id(), c.contextNumber(), parent.id(), parent.contextNumber(), c.type()));
+    }
+    return r.toString();
   }
 }

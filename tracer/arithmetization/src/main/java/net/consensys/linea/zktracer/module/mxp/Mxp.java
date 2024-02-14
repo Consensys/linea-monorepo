@@ -75,8 +75,4 @@ public class Mxp implements Module {
       this.chunks.get(i).trace(i + 1, trace);
     }
   }
-
-  @Override
-  public void tracePostOp(MessageFrame frame) { // This is paired with tracePreOp
-  }
 }

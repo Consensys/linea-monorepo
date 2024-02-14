@@ -88,7 +88,7 @@ public class CallEmptyNoStopTest {
             zkTracer -> {
               // Ensure we don't have any superfluous STOP
               assertThat(zkTracer.getHub().state().currentTxTrace().getTrace().size())
-                  .isEqualTo(10);
+                  .isEqualTo(11);
             })
         .build()
         .run();

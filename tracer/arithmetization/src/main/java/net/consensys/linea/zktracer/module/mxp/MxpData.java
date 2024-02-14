@@ -27,12 +27,14 @@ import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.transients.Operation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -168,17 +170,15 @@ public class MxpData extends ModuleOperation {
         offset1 = EWord.of(frame.getStackItem(1));
         size1 = EWord.of(frame.getStackItem(2));
       }
-      case CALL, CALLCODE -> {
-        offset1 = EWord.of(frame.getStackItem(3));
-        size1 = EWord.of(frame.getStackItem(4));
-        offset2 = EWord.of(frame.getStackItem(5));
-        size2 = EWord.of(frame.getStackItem(6));
-      }
-      case DELEGATECALL, STATICCALL -> {
-        offset1 = EWord.of(frame.getStackItem(2));
-        size1 = EWord.of(frame.getStackItem(3));
-        offset2 = EWord.of(frame.getStackItem(4));
-        size2 = EWord.of(frame.getStackItem(5));
+      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
+        final MemorySpan callDataSegment = Operation.callDataSegment(frame);
+        final MemorySpan returnDataSegment = Operation.returnDataRequestedSegment(frame);
+
+        offset1 = EWord.of(callDataSegment.offset());
+        size1 = EWord.of(callDataSegment.length());
+
+        offset2 = EWord.of(returnDataSegment.offset());
+        size2 = EWord.of(returnDataSegment.length());
       }
       default -> throw new IllegalStateException("Unexpected value: " + opCode);
     }

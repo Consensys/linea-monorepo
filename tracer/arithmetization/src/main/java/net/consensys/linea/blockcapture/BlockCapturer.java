@@ -58,7 +58,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
   public void traceStartConflation(long numBlocksInConflation) {}
 
   @Override
-  public void traceEndConflation() {}
+  public void traceEndConflation(WorldView state) {}
 
   @Override
   public void traceStartBlock(BlockHeader blockHeader, BlockBody blockBody) {

@@ -46,24 +46,27 @@ public record SkippedPostTransactionDefer(
     Address fromAddress = this.oldFromAccount.address();
     Address toAddress = this.oldToAccount.address();
     Address minerAddress = this.oldMinerAccount.address();
-    hub.conflation().deploymentInfo().unmarkDeploying(toAddress);
+    hub.transients().conflation().deploymentInfo().unmarkDeploying(toAddress);
 
     AccountSnapshot newFromAccount =
         AccountSnapshot.fromAccount(
             state.get(fromAddress),
             true,
-            hub.conflation().deploymentInfo().number(fromAddress),
+            hub.transients().conflation().deploymentInfo().number(fromAddress),
             false);
 
     AccountSnapshot newToAccount =
         AccountSnapshot.fromAccount(
-            state.get(toAddress), true, hub.conflation().deploymentInfo().number(toAddress), false);
+            state.get(toAddress),
+            true,
+            hub.transients().conflation().deploymentInfo().number(toAddress),
+            false);
 
     AccountSnapshot newMinerAccount =
         AccountSnapshot.fromAccount(
             state.get(minerAddress),
             true,
-            hub.conflation().deploymentInfo().number(minerAddress),
+            hub.transients().conflation().deploymentInfo().number(minerAddress),
             false);
 
     // Append the final chunk to the hub chunks
@@ -80,12 +83,12 @@ public record SkippedPostTransactionDefer(
 
             // 1 line -- transaction data
             TransactionFragment.prepare(
-                hub.conflation().number(),
+                hub.transients().conflation().number(),
                 minerAddress,
                 tx,
                 false,
                 gasPrice,
                 baseFee,
-                hub.tx().initialGas())));
+                hub.transients().tx().initialGas())));
   }
 }

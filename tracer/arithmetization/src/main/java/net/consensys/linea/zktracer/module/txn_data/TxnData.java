@@ -455,7 +455,7 @@ public class TxnData implements Module {
     final EWord to = EWord.of(tx.to());
     final EWord coinbase = EWord.of(block.getCoinbaseAddress());
     final int codeFragmentIndex =
-        tx.codeIdBeforeLex() == 0 ? 0 : this.romLex.getCFIById(tx.codeIdBeforeLex());
+        tx.codeIdBeforeLex() == 0 ? 0 : this.romLex.getSortedCfiByCfi(tx.codeIdBeforeLex());
     final List<BigInteger> outgoingHis = setOutgoingHisAndLos(tx).get(0);
     final List<BigInteger> outgoingLos = setOutgoingHisAndLos(tx).get(1);
     final List<Bytes16> wcpArgOneLo = setWcpArgumentOne(tx);
