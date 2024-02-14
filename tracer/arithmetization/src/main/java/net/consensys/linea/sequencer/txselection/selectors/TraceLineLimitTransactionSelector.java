@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.Module;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -62,6 +63,12 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
       final int overLimitCacheSize) {
     this.moduleLimits = moduleLimits;
     zkTracer = new ZkTracerWithLog();
+    for (Module m : zkTracer.getHub().getModulesToCount()) {
+      if (!moduleLimits.containsKey(m.moduleKey())) {
+        throw new IllegalStateException(
+            "Limit for module %s not defined in %s".formatted(m.moduleKey(), limitFilePath));
+      }
+    }
     zkTracer.traceStartConflation(1L);
     this.limitFilePath = limitFilePath;
     this.overLimitCacheSize = overLimitCacheSize;
