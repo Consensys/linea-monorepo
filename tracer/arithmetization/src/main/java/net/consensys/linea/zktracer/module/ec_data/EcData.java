@@ -26,7 +26,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -34,7 +34,7 @@ import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
 public class EcData implements Module {
-  private static final Set<Address> EC_PRECOMPILES =
+  public static final Set<Address> EC_PRECOMPILES =
       Set.of(Address.ECREC, Address.ALTBN128_ADD, Address.ALTBN128_MUL, Address.ALTBN128_PAIRING);
 
   private final StackedSet<EcDataOperation> operations = new StackedSet<>();
@@ -60,50 +60,28 @@ public class EcData implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = hub.opCode();
-    // TODO: in the PCH
-    if (frame.stackSize() < 5) {
+    final Address to = Words.toAddress(frame.getStackItem(1));
+    if (!EC_PRECOMPILES.contains(to)) {
+      return;
+    }
+    final MemorySpan callDataSource = hub.transients().op().callDataSegment();
+
+    if (to.equals(Address.ALTBN128_PAIRING)
+        && (callDataSource.isEmpty() || callDataSource.length() % 192 != 0)) {
       return;
     }
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final Address to = Words.toAddress(frame.getStackItem(1));
-        if (!EC_PRECOMPILES.contains(to)) {
-          return;
-        }
+    final Bytes input = hub.transients().op().callData();
 
-        long length = 0;
-        long offset = 0;
-        switch (opCode) {
-          case CALL, CALLCODE -> {
-            length = Words.clampedToLong(frame.getStackItem(4));
-            offset = Words.clampedToLong(frame.getStackItem(3));
-          }
-          case DELEGATECALL, STATICCALL -> {
-            length = Words.clampedToLong(frame.getStackItem(3));
-            offset = Words.clampedToLong(frame.getStackItem(2));
-          }
-        }
-
-        if (to.equals(Address.ALTBN128_PAIRING) && (length == 0 || length % 192 != 0)) {
-          return;
-        }
-
-        final Bytes input = frame.shadowReadMemory(offset, length);
-
-        this.operations.add(
-            EcDataOperation.of(
-                this.wcp,
-                this.ext,
-                to,
-                input,
-                this.hub.currentFrame().contextNumber(),
-                this.previousContextNumber));
-        this.previousContextNumber = this.hub.currentFrame().contextNumber();
-      }
-      default -> {}
-    }
+    this.operations.add(
+        EcDataOperation.of(
+            this.wcp,
+            this.ext,
+            to,
+            input,
+            this.hub.currentFrame().contextNumber(),
+            this.previousContextNumber));
+    this.previousContextNumber = this.hub.currentFrame().contextNumber();
   }
 
   @Override

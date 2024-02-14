@@ -45,10 +45,6 @@ public class TxTrace {
     return this.trace.get(this.size() - 1);
   }
 
-  public TraceSection getSection(int i) {
-    return this.trace.get(i);
-  }
-
   /**
    * @return whether this trace is empty
    */
@@ -78,7 +74,7 @@ public class TxTrace {
   /**
    * Run the action required at the end of the transaction to finish this trace.
    *
-   * @param hub the exection context
+   * @param hub the execution context
    */
   public void postTxRetcon(Hub hub) {
     long leftoverGas = hub.getRemainingGas();
@@ -92,7 +88,7 @@ public class TxTrace {
   /**
    * Run the action required at the end of the conflation to finish this trace.
    *
-   * @param hub the exection context
+   * @param hub the execution context
    */
   public void postConflationRetcon(Hub hub, WorldView world) {
     for (TraceSection section : this.trace) {

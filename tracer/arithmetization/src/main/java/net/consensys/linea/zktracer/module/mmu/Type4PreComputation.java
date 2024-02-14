@@ -473,8 +473,8 @@ class Type4PreComputation implements MmuPreComputation {
         final Address address = Words.toAddress(microData.value());
         topCallFrame.frame().getWorldUpdater().get(address).getCode().size();
       }
-      case CALLDATACOPY -> callStack.caller().callDataRange().length();
-      case RETURNDATACOPY -> topCallFrame.returnDataRange().length();
+      case CALLDATACOPY -> callStack.caller().callDataSource().length();
+      case RETURNDATACOPY -> topCallFrame.returnDataSource().length();
       default -> throw new IllegalArgumentException(
           "OpCode.%s not supported for type 4 reference size calculation.".formatted(opCode));
     }
@@ -551,8 +551,8 @@ class Type4PreComputation implements MmuPreComputation {
   private int calculateReferenceOffset(final MicroData microData, final CallStack callStack) {
     return switch (microData.opCode()) {
       case CODECOPY, EXTCODECOPY -> 0;
-      case CALLDATACOPY -> callStack.caller().callDataRange().absolute().toInt();
-      case RETURNDATACOPY -> callStack.current().returnDataRange().absolute().toInt();
+      case CALLDATACOPY -> (int) callStack.caller().callDataSource().absolute();
+      case RETURNDATACOPY -> (int) callStack.current().returnDataSource().absolute();
       default -> throw new IllegalArgumentException(
           "OpCode.%s not supported for type 4 reference offset calculation"
               .formatted(microData.opCode()));

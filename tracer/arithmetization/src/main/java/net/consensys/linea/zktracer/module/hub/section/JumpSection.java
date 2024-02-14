@@ -20,7 +20,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class JumpSection extends TraceSection {
   public JumpSection(Hub hub, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, chunks);
+    this.addFragmentsAndStack(hub, chunks);
   }
 
   @Override

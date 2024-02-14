@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
 public final class AccountFragment implements TraceFragment {
@@ -37,8 +38,8 @@ public final class AccountFragment implements TraceFragment {
   private final boolean debit;
   private final long cost;
   private final boolean createAddress;
-  @Setter private int deploymentNumberInfnty;
-  @Setter private boolean existsInfinity;
+  @Setter private int deploymentNumberInfnty = 0; // retconned on conflation end
+  @Setter private boolean existsInfinity = false; // retconned on conflation end
 
   public AccountFragment(AccountSnapshot oldState, AccountSnapshot newState) {
     this(oldState, newState, false, 0, false);
@@ -58,8 +59,6 @@ public final class AccountFragment implements TraceFragment {
     this.debit = debit;
     this.cost = cost;
     this.createAddress = createAddress;
-    this.deploymentNumberInfnty = 0; // will be retconned on conflation end
-    this.existsInfinity = false; // will be retconned on conflation end
   }
 
   @Override
@@ -103,15 +102,13 @@ public final class AccountFragment implements TraceFragment {
         //      .pAccountCost(cost)
         //      .pAccountCreateAddress(createAddress)
         .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfnty))
-    //    .pAccountExistsInfty(existsInfinity)
+    //        .pAccountExistsInfty(existsInfinity)
     ;
   }
 
   @Override
-  public void postConflationRetcon(Hub hub /* TODO WorldState state */) {
-    this.deploymentNumberInfnty = hub.conflation().deploymentInfo().number(this.who);
-    this.existsInfinity =
-        false; // TODO should be account != null; see with Besu team if we can get a view on
-    // the state in traceEndConflation
+  public void postConflationRetcon(final Hub hub, final WorldView world) {
+    this.deploymentNumberInfnty = hub.transients().conflation().deploymentInfo().number(this.who);
+    this.existsInfinity = world.get(this.who) != null;
   }
 }

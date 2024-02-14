@@ -20,7 +20,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class EndTransaction extends TraceSection {
   public EndTransaction(Hub hub, TraceFragment... fragments) {
-    this.addChunksWithoutStack(hub, fragments);
+    this.addFragmentsWithoutStack(hub, fragments);
   }
 
   @Override

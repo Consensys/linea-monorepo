@@ -1208,7 +1208,7 @@ public class RlpTxn implements Module {
     int absTxNum = 0;
     for (RlpTxnChunk chunk : this.chunkList) {
       absTxNum += 1;
-      final int codeFragmentIndex = chunk.id().map(romLex::getCFIById).orElse(0);
+      final int codeFragmentIndex = chunk.id().map(romLex::getSortedCfiByCfi).orElse(0);
       traceChunk(chunk, absTxNum, codeFragmentIndex, trace);
     }
   }

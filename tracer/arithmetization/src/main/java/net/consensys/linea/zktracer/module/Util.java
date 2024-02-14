@@ -27,7 +27,6 @@ import org.hyperledger.besu.datatypes.TransactionType;
 
 /** Utility class that provides various helper methods. */
 public class Util {
-
   /**
    * Converts the bits of an unsigned byte into an array of Booleans.
    *

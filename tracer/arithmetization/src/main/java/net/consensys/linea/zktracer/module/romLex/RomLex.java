@@ -36,7 +36,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
-import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RomLex implements Module {
@@ -50,6 +49,10 @@ public class RomLex implements Module {
   public final List<RomChunk> sortedChunks = new ArrayList<>();
   private Bytes byteCode = Bytes.EMPTY;
   private Address address = Address.ZERO;
+
+  public int nextCfiBeforeReordering() {
+    return this.codeIdentifierBeforeLexOrder + 1;
+  }
 
   static class RomChunkComparator implements Comparator<RomChunk> {
     // Initialize the ChunkList
@@ -94,23 +97,57 @@ public class RomLex implements Module {
     this.chunks.pop();
   }
 
-  public int getCFIById(int value) {
+  public int getSortedCfiByCfi(int value) {
     if (this.sortedChunks.isEmpty()) {
       throw new RuntimeException("Chunks have not been sorted yet");
     }
 
-    int codeFragmentIndex = -1;
+    if (value == 0) {
+      return 0;
+    }
+
     for (int i = 0; i < this.sortedChunks.size(); i++) {
       if (this.sortedChunks.get(i).id() == value) {
-        codeFragmentIndex = i + 1;
+        return i + 1;
       }
     }
 
-    if (codeFragmentIndex < 0) {
-      throw new RuntimeException("RomChunk n°" + value + " not found");
+    throw new RuntimeException("RomChunk n°" + value + " not found");
+  }
+
+  public int getCfiByMetadata(
+      final Address address, final int deploymentNumber, final boolean deploymentStatus) {
+    if (this.sortedChunks.isEmpty()) {
+      throw new RuntimeException("Chunks have not been sorted yet");
     }
 
-    return codeFragmentIndex;
+    for (int i = 0; i < this.sortedChunks.size(); i++) {
+      final RomChunk c = this.sortedChunks.get(i);
+      if (c.address().equals(address)
+          && c.deploymentNumber() == deploymentNumber
+          && c.deploymentStatus() == deploymentStatus) {
+        return i + 1;
+      }
+    }
+
+    throw new RuntimeException("RomChunk not found");
+  }
+
+  public Optional<RomChunk> getChunkByMetadata(
+      final Address address, final int deploymentNumber, final boolean deploymentStatus) {
+    if (this.sortedChunks.isEmpty()) {
+      throw new RuntimeException("Chunks have not been sorted yet");
+    }
+
+    for (RomChunk c : this.chunks) {
+      if (c.address().equals(address)
+          && c.deploymentNumber() == deploymentNumber
+          && c.deploymentStatus() == deploymentStatus) {
+        return Optional.of(c);
+      }
+    }
+
+    return Optional.empty();
   }
 
   @Override
@@ -136,8 +173,10 @@ public class RomLex implements Module {
         .ifPresent(
             code -> {
               codeIdentifierBeforeLexOrder += 1;
-              int depNumber = hub.conflation().deploymentInfo().number(tx.getTo().get());
-              boolean depStatus = hub.conflation().deploymentInfo().isDeploying(tx.getTo().get());
+              int depNumber =
+                  hub.transients().conflation().deploymentInfo().number(tx.getTo().get());
+              boolean depStatus =
+                  hub.transients().conflation().deploymentInfo().isDeploying(tx.getTo().get());
 
               this.chunks.add(
                   new RomChunk(
@@ -182,10 +221,11 @@ public class RomLex implements Module {
         final long length = clampedToLong(frame.getStackItem(1));
         final Bytes code = frame.shadowReadMemory(offset, length);
         final boolean depStatus =
-            hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
+            hub.transients().conflation().deploymentInfo().isDeploying(frame.getContractAddress());
         if (!code.isEmpty() && depStatus) {
           codeIdentifierBeforeLexOrder += 1;
-          int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
+          int depNumber =
+              hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
           this.chunks.add(
               new RomChunk(
                   codeIdentifierBeforeLexOrder,
@@ -201,8 +241,9 @@ public class RomLex implements Module {
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         final Address calledAddress = Words.toAddress(frame.getStackItem(1));
         final boolean depStatus =
-            hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
-        final int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
+            hub.transients().conflation().deploymentInfo().isDeploying(frame.getContractAddress());
+        final int depNumber =
+            hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
         Optional.ofNullable(frame.getWorldUpdater().get(calledAddress))
             .map(AccountState::getCode)
             .ifPresent(
@@ -224,11 +265,12 @@ public class RomLex implements Module {
         final Address calledAddress = Words.toAddress(frame.getStackItem(0));
         final long length = Words.clampedToLong(frame.getStackItem(3));
         final boolean isDeploying =
-            hub.conflation().deploymentInfo().isDeploying(frame.getContractAddress());
+            hub.transients().conflation().deploymentInfo().isDeploying(frame.getContractAddress());
         if (length == 0 || isDeploying) {
           return;
         }
-        final int depNumber = hub.conflation().deploymentInfo().number(frame.getContractAddress());
+        final int depNumber =
+            hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
         Optional.ofNullable(frame.getWorldUpdater().get(calledAddress))
             .map(AccountState::getCode)
             .ifPresent(
@@ -251,12 +293,13 @@ public class RomLex implements Module {
   }
 
   @Override
-  public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
+  public void tracePostOpcode(MessageFrame frame) {
     OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
     switch (opcode) {
       case CREATE, CREATE2 -> {
-        final int depNumber = hub.conflation().deploymentInfo().number(this.address);
-        final boolean depStatus = hub.conflation().deploymentInfo().isDeploying(this.address);
+        final int depNumber = hub.transients().conflation().deploymentInfo().number(this.address);
+        final boolean depStatus =
+            hub.transients().conflation().deploymentInfo().isDeploying(this.address);
 
         this.chunks.add(
             new RomChunk(
@@ -287,7 +330,7 @@ public class RomLex implements Module {
   }
 
   @Override
-  public void traceEndConflation() {
+  public void traceEndConflation(final WorldView state) {
     this.sortedChunks.addAll(this.chunks);
     this.sortedChunks.sort(romChunkComparator);
   }

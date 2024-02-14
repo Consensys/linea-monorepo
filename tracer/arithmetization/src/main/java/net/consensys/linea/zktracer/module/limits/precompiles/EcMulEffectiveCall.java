@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import static net.consensys.linea.zktracer.CurveOperations.isOnC1;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
@@ -24,6 +27,8 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.MemorySpan;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
@@ -57,15 +62,28 @@ public final class EcMulEffectiveCall implements Module {
     switch (opCode) {
       case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
         final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_MUL)) {
-          final long gasPaid = Words.clampedToLong(frame.getStackItem(0));
-          if (gasPaid >= PRECOMPILE_GAS_FEE) {
-            this.counts.push(this.counts.pop() + 1);
-          }
+        if (target.equals(Address.ALTBN128_MUL)
+            && hub.transients().op().gasAllowanceForCall() >= PRECOMPILE_GAS_FEE) {
+          this.counts.push(this.counts.pop() + 1);
         }
       }
       default -> {}
     }
+  }
+
+  public static boolean isRamFailure(final Hub hub) {
+    final MessageFrame frame = hub.messageFrame();
+    final MemorySpan callDataSource = hub.transients().op().callDataSegment();
+
+    final Bytes callData =
+        rightPadTo(
+            frame.shadowReadMemory(callDataSource.offset(), Math.min(callDataSource.length(), 96)),
+            96);
+    return !isOnC1(callData);
+  }
+
+  public static long gasCost() {
+    return PRECOMPILE_GAS_FEE;
   }
 
   @Override

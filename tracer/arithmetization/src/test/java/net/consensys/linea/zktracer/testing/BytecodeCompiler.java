@@ -71,7 +71,7 @@ public class BytecodeCompiler {
         final int pushSize = opCode.byteValue() - (int) OpCode.PUSH1.byteValue() + 1;
         final boolean isPush = pushSize >= 1 && pushSize <= 32;
         if (isPush) {
-          this.immediate(Bytes.fromHexString(ls[1], pushSize));
+          this.immediate(Bytes.fromHexStringLenient(ls[1], pushSize));
         } else {
           if (ls.length > 1) {
             throw new IllegalArgumentException("expected nothing, found" + ls[1]);

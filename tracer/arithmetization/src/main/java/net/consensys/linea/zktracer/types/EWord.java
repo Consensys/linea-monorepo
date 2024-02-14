@@ -159,6 +159,10 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
     return this.toBytes().slice(16);
   }
 
+  public Bytes tail(int i) {
+    return this.toBytes().slice(32 - i);
+  }
+
   /**
    * Returns a {@link BigInteger} containing the high half of the EWord
    *

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer;
 
+import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
 /**
@@ -31,5 +32,5 @@ public interface ConflationAwareOperationTracer extends BlockAwareOperationTrace
   void traceStartConflation(final long numBlocksInConflation);
 
   /** Trace the end of conflation for a number of blocks. */
-  void traceEndConflation();
+  void traceEndConflation(final WorldView state);
 }

@@ -33,7 +33,7 @@ tasks.register("hub", TraceFilesTask) {
 
     module = 'hub'
     files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction', 'scenario', 'miscellaneous']
-            .collect {"hub_v2/columns/${it}.lisp"}
+            .collect {"hub_v2/columns/${it}.lisp"} + 'hub_v2/constants.lisp'
 }
 
 // Special case: PUB modules
@@ -111,7 +111,7 @@ tasks.register('binRT', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'modexpdata'].each {moduleName ->
+['mmu', 'modexpdata', 'oob'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

@@ -35,6 +35,8 @@ public class DeferRegistry {
   /** A list of actions deferred until the end of the current opcode execution */
   private final List<PostExecDefer> postExecDefers = new ArrayList<>();
   /** A list of actions deferred until the end of the current opcode execution */
+  private final List<ReEnterContextDefer> reEntryDefers = new ArrayList<>();
+  /** A list of actions deferred until the end of the current opcode execution */
   private final List<Pair<Integer, NextContextDefer>> contextReentry = new ArrayList<>();
 
   /** Schedule an action to be executed after the completion of the current opcode. */
@@ -50,6 +52,11 @@ public class DeferRegistry {
   /** Schedule an action to be executed at the end of the current transaction. */
   public void postTx(PostTransactionDefer defer) {
     this.txDefers.add(defer);
+  }
+
+  /** Schedule an action to be executed at the re-entry in the current context. */
+  public void reEntry(ReEnterContextDefer defer) {
+    this.reEntryDefers.add(defer);
   }
 
   /**
@@ -91,6 +98,19 @@ public class DeferRegistry {
   public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult result) {
     for (PostExecDefer defer : this.postExecDefers) {
       defer.runPostExec(hub, frame, result);
+    }
+    this.postExecDefers.clear();
+  }
+
+  /**
+   * Trigger the execution of the actions deferred to the re-entry in the current context.
+   *
+   * @param hub the {@link Hub} context
+   * @param frame the {@link MessageFrame} of the transaction
+   */
+  public void runReEntry(Hub hub, MessageFrame frame) {
+    for (ReEnterContextDefer defer : this.reEntryDefers) {
+      defer.runAtReEnter(hub, frame);
     }
     this.postExecDefers.clear();
   }

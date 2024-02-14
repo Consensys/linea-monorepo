@@ -15,8 +15,11 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 
 public interface TraceSubFragment {
   Trace trace(Trace trace);
+
+  default void postConflationRetcon(final Hub hub) {}
 }

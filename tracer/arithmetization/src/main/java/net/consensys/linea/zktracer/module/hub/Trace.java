@@ -29,8 +29,26 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  static final int N_FAILURE = 4;
-  static final int N_SUCCESS = 4;
+  public static final long PHASE_BLAKE_DATA = 0x622be6d4b1572927L;
+  public static final long PHASE_BLAKE_PARAMETERS = 0x2e80fde96b141758L;
+  public static final long PHASE_BLAKE_RESULT = 0x160014673f271430L;
+  public static final long PHASE_ECADD_DATA = 0x6c91f926ba9d5411L;
+  public static final long PHASE_ECADD_RESULT = 0x68f448e345258b49L;
+  public static final long PHASE_ECMUL_DATA = 0x5085e9b2080beb8aL;
+  public static final long PHASE_ECMUL_RESULT = 0x744473be8f6b243bL;
+  public static final long PHASE_ECRECOVER_DATA = 0x5cca334705d87f45L;
+  public static final long PHASE_ECRECOVER_RESULT = 0x11f815bf19ad632dL;
+  public static final long PHASE_MODEXP_BASE = 0x45e8c5b591b510bfL;
+  public static final long PHASE_MODEXP_EXPONENT = 0x138bcdb54832cea6L;
+  public static final long PHASE_MODEXP_MODULUS = 0x223a6d8012de8c97L;
+  public static final long PHASE_MODEXP_RESULT = 0x6208e4802a925144L;
+  public static final long PHASE_PAIRING_DATA = 0x4c64af76266164e5L;
+  public static final long PHASE_PAIRING_RESULT = 0xff4e03954b8449bL;
+  public static final long PHASE_RIPEMD_160_DATA = 0x853e4fa950b7671L;
+  public static final long PHASE_RIPEMD_160_RESULT = 0x372bdf04e6b5c9c5L;
+  public static final long PHASE_SHA2_256_DATA = 0x22ba2e4070d18a69L;
+  public static final long PHASE_SHA2_256_RESULT = 0x15115bb4671a9706L;
+  public static final int PHASE_TRANSACTION_CALL_DATA = 0x9;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -39,11 +57,11 @@ public class Trace {
   private final MappedByteBuffer
       addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee;
   private final MappedByteBuffer
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize;
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize;
   private final MappedByteBuffer
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo;
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo;
   private final MappedByteBuffer
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi;
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi;
   private final MappedByteBuffer batchNumber;
   private final MappedByteBuffer callerContextNumber;
   private final MappedByteBuffer codeAddressHi;
@@ -52,17 +70,17 @@ public class Trace {
   private final MappedByteBuffer codeDeploymentStatus;
   private final MappedByteBuffer codeFragmentIndex;
   private final MappedByteBuffer
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo;
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo;
   private final MappedByteBuffer
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi;
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi;
   private final MappedByteBuffer
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice;
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice;
   private final MappedByteBuffer
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit;
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit;
   private final MappedByteBuffer
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal;
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal;
   private final MappedByteBuffer
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount;
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount;
   private final MappedByteBuffer contextGetsRevertedFlag;
   private final MappedByteBuffer contextMayChangeFlag;
   private final MappedByteBuffer contextNumber;
@@ -72,24 +90,31 @@ public class Trace {
   private final MappedByteBuffer contextWillRevertFlag;
   private final MappedByteBuffer counterNsr;
   private final MappedByteBuffer counterTli;
+  private final MappedByteBuffer createNonemptyInitCodeFailureWillRevertXorKecFlag;
+  private final MappedByteBuffer createNonemptyInitCodeFailureWontRevertXorLogFlag;
+  private final MappedByteBuffer createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag;
+  private final MappedByteBuffer createNonemptyInitCodeSuccessWontRevertXorMaxcsx;
+  private final MappedByteBuffer depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas;
   private final MappedByteBuffer
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas;
-  private final MappedByteBuffer
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize;
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize;
   private final MappedByteBuffer
       depStatusNewXorMmuFlagXorCallEoaSuccessCallerWillRevertXorBinFlagXorValCurrIsZeroXorStatusCode;
   private final MappedByteBuffer
       depStatusXorExpFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559;
   private final MappedByteBuffer
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance;
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance;
   private final MappedByteBuffer
       deploymentStatusInftyXorUpdateXorCcsrFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment;
   private final MappedByteBuffer domStamp;
+  private final MappedByteBuffer ecaddXorModFlag;
+  private final MappedByteBuffer ecmulXorMulFlag;
+  private final MappedByteBuffer ecpairingXorMxpx;
+  private final MappedByteBuffer ecrecoverXorMxpFlag;
   private final MappedByteBuffer exceptionAhoyFlag;
+  private final MappedByteBuffer existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig;
   private final MappedByteBuffer
-      existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig;
-  private final MappedByteBuffer
-      existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution;
+      existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution;
+  private final MappedByteBuffer expInstXorPrcCalleeGas;
   private final MappedByteBuffer gasActual;
   private final MappedByteBuffer gasCost;
   private final MappedByteBuffer gasExpected;
@@ -98,41 +123,48 @@ public class Trace {
   private final MappedByteBuffer gasRefundNew;
   private final MappedByteBuffer
       hasCodeNewXorMxpMxpxXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero;
-  private final MappedByteBuffer
-      hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero;
+  private final MappedByteBuffer hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero;
   private final MappedByteBuffer hashInfoStamp;
   private final MappedByteBuffer hubStamp;
   private final MappedByteBuffer hubStampTransactionEnd;
+  private final MappedByteBuffer identityXorOobFlag;
   private final MappedByteBuffer
-      isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm;
+      isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm;
   private final MappedByteBuffer
-      isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew;
-  private final MappedByteBuffer isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2;
+      isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew;
+  private final MappedByteBuffer isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2;
   private final MappedByteBuffer
-      isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3;
+      isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3;
   private final MappedByteBuffer
-      isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4;
-  private final MappedByteBuffer isIdentityXorStpOogxXorCodedepositXorDupFlag;
-  private final MappedByteBuffer isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag;
+      isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4;
+  private final MappedByteBuffer isIdentityXorCodedepositXorDupFlag;
+  private final MappedByteBuffer isModexpXorCodedepositInvalidCodePrefixXorExtFlag;
   private final MappedByteBuffer isPrecompileXorCodedepositValidCodePrefixXorHaltFlag;
-  private final MappedByteBuffer isRipemd160XorEcaddXorHashInfoFlag;
-  private final MappedByteBuffer isSha2256XorEcmulXorInvalidFlag;
+  private final MappedByteBuffer isRipemd160XorCreateAbortXorHashInfoFlag;
+  private final MappedByteBuffer isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag;
+  private final MappedByteBuffer mmuAuxIdXorPrcCallerGas;
+  private final MappedByteBuffer mmuExoSumXorPrcCdo;
+  private final MappedByteBuffer mmuInstXorPrcCds;
+  private final MappedByteBuffer mmuPhaseXorPrcRac;
+  private final MappedByteBuffer mmuRefOffsetXorPrcRao;
+  private final MappedByteBuffer mmuRefSizeXorPrcReturnGas;
+  private final MappedByteBuffer mmuSize;
+  private final MappedByteBuffer mmuSrcId;
   private final MappedByteBuffer mmuStamp;
-  private final MappedByteBuffer mxpSize1LoXorStackItemValueLo2;
-  private final MappedByteBuffer mxpSize2HiXorStackItemValueLo3;
-  private final MappedByteBuffer mxpSize2LoXorStackItemValueLo4;
+  private final MappedByteBuffer mmuTgtId;
+  private final MappedByteBuffer modexpXorOogx;
   private final MappedByteBuffer mxpStamp;
-  private final MappedByteBuffer mxpWordsXorStaticGas;
-  private final MappedByteBuffer nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce;
-  private final MappedByteBuffer nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas;
+  private final MappedByteBuffer nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce;
+  private final MappedByteBuffer nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas;
   private final MappedByteBuffer numberOfNonStackRows;
+  private final MappedByteBuffer oobData2XorStackItemValueLo2;
+  private final MappedByteBuffer oobData3XorStackItemValueLo3;
+  private final MappedByteBuffer oobData4XorStackItemValueLo4;
+  private final MappedByteBuffer oobData5XorStaticGas;
+  private final MappedByteBuffer oobData6;
+  private final MappedByteBuffer oobData7;
+  private final MappedByteBuffer oobData8;
   private final MappedByteBuffer oobInst;
-  private final MappedByteBuffer oobOutgoingData1;
-  private final MappedByteBuffer oobOutgoingData2;
-  private final MappedByteBuffer oobOutgoingData3;
-  private final MappedByteBuffer oobOutgoingData4;
-  private final MappedByteBuffer oobOutgoingData5;
-  private final MappedByteBuffer oobOutgoingData6;
   private final MappedByteBuffer peekAtAccount;
   private final MappedByteBuffer peekAtContext;
   private final MappedByteBuffer peekAtMiscellaneous;
@@ -140,48 +172,38 @@ public class Trace {
   private final MappedByteBuffer peekAtStack;
   private final MappedByteBuffer peekAtStorage;
   private final MappedByteBuffer peekAtTransaction;
+  private final MappedByteBuffer prcFailureKnownToHubXorOpcx;
+  private final MappedByteBuffer prcFailureKnownToRamXorPushpopFlag;
+  private final MappedByteBuffer prcSuccessWillRevertXorRdcx;
+  private final MappedByteBuffer prcSuccessWontRevertXorShfFlag;
   private final MappedByteBuffer programCounter;
   private final MappedByteBuffer programCounterNew;
-  private final MappedByteBuffer pushpopFlag;
-  private final MappedByteBuffer rdcx;
-  private final MappedByteBuffer ripemd160XorKecFlag;
+  private final MappedByteBuffer ripemd160XorSox;
   private final MappedByteBuffer
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi;
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi;
   private final MappedByteBuffer
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo;
-  private final MappedByteBuffer rlpaddrFlagXorEcpairingXorInvprex;
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo;
+  private final MappedByteBuffer rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex;
   private final MappedByteBuffer
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue;
-  private final MappedByteBuffer rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1;
-  private final MappedByteBuffer rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2;
-  private final MappedByteBuffer
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3;
-  private final MappedByteBuffer rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4;
-  private final MappedByteBuffer scnFailure1XorLogFlag;
-  private final MappedByteBuffer scnFailure2XorMachineStateFlag;
-  private final MappedByteBuffer scnFailure3XorMaxcsx;
-  private final MappedByteBuffer scnFailure4XorModFlag;
-  private final MappedByteBuffer scnSuccess1XorMulFlag;
-  private final MappedByteBuffer scnSuccess2XorMxpx;
-  private final MappedByteBuffer scnSuccess3XorMxpFlag;
-  private final MappedByteBuffer scnSuccess4XorOobFlag;
-  private final MappedByteBuffer selfdestructXorOogx;
-  private final MappedByteBuffer sha2256XorOpcx;
-  private final MappedByteBuffer shfFlag;
-  private final MappedByteBuffer sox;
-  private final MappedByteBuffer sstorex;
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue;
+  private final MappedByteBuffer rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1;
+  private final MappedByteBuffer rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2;
+  private final MappedByteBuffer rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3;
+  private final MappedByteBuffer rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4;
+  private final MappedByteBuffer selfdestructXorSstorex;
+  private final MappedByteBuffer sha2256XorStackramFlag;
   private final MappedByteBuffer stackItemPop1;
   private final MappedByteBuffer stackItemPop2;
   private final MappedByteBuffer stackItemPop3;
   private final MappedByteBuffer stackItemPop4;
-  private final MappedByteBuffer stackramFlag;
   private final MappedByteBuffer staticFlag;
   private final MappedByteBuffer staticx;
   private final MappedByteBuffer stoFlag;
   private final MappedByteBuffer stpGasHi;
   private final MappedByteBuffer stpGasLo;
-  private final MappedByteBuffer stpGasOopkt;
-  private final MappedByteBuffer stpGasStpd;
+  private final MappedByteBuffer stpGasPaidOutOfPocket;
+  private final MappedByteBuffer stpGasStipend;
+  private final MappedByteBuffer stpGasUpfrontGasCost;
   private final MappedByteBuffer stpInst;
   private final MappedByteBuffer stpValHi;
   private final MappedByteBuffer stpValLo;
@@ -190,8 +212,8 @@ public class Trace {
   private final MappedByteBuffer swapFlag;
   private final MappedByteBuffer transactionReverts;
   private final MappedByteBuffer trmFlag;
-  private final MappedByteBuffer trmFlagXorEcrecoverXorJumpx;
-  private final MappedByteBuffer trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1;
+  private final MappedByteBuffer trmFlagXorCreateExceptionXorJumpx;
+  private final MappedByteBuffer trmRawAddrHiXorOobData1XorStackItemValueLo1;
   private final MappedByteBuffer twoLineInstruction;
   private final MappedByteBuffer txExec;
   private final MappedByteBuffer txFinl;
@@ -199,8 +221,9 @@ public class Trace {
   private final MappedByteBuffer txSkip;
   private final MappedByteBuffer txWarm;
   private final MappedByteBuffer txnFlag;
-  private final MappedByteBuffer warmNewXorModexpXorJumpFlag;
-  private final MappedByteBuffer warmXorIdentityXorJumpDestinationVettingRequired;
+  private final MappedByteBuffer warmNewXorCreateFailureConditionWontRevertXorJumpFlag;
+  private final MappedByteBuffer
+      warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired;
   private final MappedByteBuffer wcpFlag;
 
   static List<ColumnHeader> headers(int length) {
@@ -211,15 +234,15 @@ public class Trace {
             32,
             length),
         new ColumnHeader(
-            "hub_v2.ADDR_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP___DYNCOST_xor_HASH_INFO___KEC_LO_xor_ADDRESS_LO_xor_CALL_DATA_SIZE",
+            "hub_v2.ADDR_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP___DATA_1_xor_HASH_INFO___KEC_LO_xor_ADDRESS_LO_xor_CALL_DATA_SIZE",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.BALANCE_NEW_xor_BYTE_CODE_ADDRESS_HI_xor_EXP___EXPONENT_LO_xor_HEIGHT_xor_STORAGE_KEY_HI_xor_COINBASE_ADDRESS_LO",
+            "hub_v2.BALANCE_NEW_xor_BYTE_CODE_ADDRESS_HI_xor_EXP___DATA_3_xor_HEIGHT_xor_STORAGE_KEY_HI_xor_COINBASE_ADDRESS_LO",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.BALANCE_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP___EXPONENT_HI_xor_HASH_INFO___SIZE_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI",
+            "hub_v2.BALANCE_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP___DATA_2_xor_HASH_INFO___SIZE_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI",
             32,
             length),
         new ColumnHeader("hub_v2.BATCH_NUMBER", 32, length),
@@ -230,27 +253,27 @@ public class Trace {
         new ColumnHeader("hub_v2.CODE_DEPLOYMENT_STATUS", 1, length),
         new ColumnHeader("hub_v2.CODE_FRAGMENT_INDEX", 32, length),
         new ColumnHeader(
-            "hub_v2.CODE_HASH_HI_NEW_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_MMU___INST_xor_HEIGHT_OVER_xor_VAL_CURR_HI_xor_FROM_ADDRESS_LO",
+            "hub_v2.CODE_HASH_HI_NEW_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_EXP___DATA_5_xor_HEIGHT_OVER_xor_VAL_CURR_HI_xor_FROM_ADDRESS_LO",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.CODE_HASH_HI_xor_BYTE_CODE_ADDRESS_LO_xor_MMU___EXO_SUM_xor_HEIGHT_NEW_xor_STORAGE_KEY_LO_xor_FROM_ADDRESS_HI",
+            "hub_v2.CODE_HASH_HI_xor_BYTE_CODE_ADDRESS_LO_xor_EXP___DATA_4_xor_HEIGHT_NEW_xor_STORAGE_KEY_LO_xor_FROM_ADDRESS_HI",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.CODE_HASH_LO_NEW_xor_CALLER_ADDRESS_HI_xor_MMU___OFFSET_2_HI_xor_INST_xor_VAL_NEXT_HI_xor_GAS_PRICE",
+            "hub_v2.CODE_HASH_LO_NEW_xor_CALLER_ADDRESS_HI_xor_MMU___LIMB_2_xor_INST_xor_VAL_NEXT_HI_xor_GAS_PRICE",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.CODE_HASH_LO_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU___OFFSET_1_LO_xor_HEIGHT_UNDER_xor_VAL_CURR_LO_xor_GAS_LIMIT",
+            "hub_v2.CODE_HASH_LO_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU___LIMB_1_xor_HEIGHT_UNDER_xor_VAL_CURR_LO_xor_GAS_LIMIT",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.CODE_SIZE_NEW_xor_CALLER_CONTEXT_NUMBER_xor_MMU___PARAM_1_xor_PUSH_VALUE_LO_xor_VAL_ORIG_HI_xor_GAS_REFUND_COUNTER_FINAL",
+            "hub_v2.CODE_SIZE_NEW_xor_CALLER_CONTEXT_NUMBER_xor_MMU___SRC_OFFSET_LO_xor_PUSH_VALUE_LO_xor_VAL_ORIG_HI_xor_GAS_REFUND_COUNTER_FINAL",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.CODE_SIZE_xor_CALLER_ADDRESS_LO_xor_MMU___OFFSET_2_LO_xor_PUSH_VALUE_HI_xor_VAL_NEXT_LO_xor_GAS_REFUND_AMOUNT",
+            "hub_v2.CODE_SIZE_xor_CALLER_ADDRESS_LO_xor_MMU___SRC_OFFSET_HI_xor_PUSH_VALUE_HI_xor_VAL_NEXT_LO_xor_GAS_REFUND_AMOUNT",
             32,
             length),
         new ColumnHeader("hub_v2.CONTEXT_GETS_REVERTED_FLAG", 1, length),
@@ -263,11 +286,21 @@ public class Trace {
         new ColumnHeader("hub_v2.COUNTER_NSR", 32, length),
         new ColumnHeader("hub_v2.COUNTER_TLI", 1, length),
         new ColumnHeader(
-            "hub_v2.DEP_NUM_NEW_xor_CALL_STACK_DEPTH_xor_MMU___REF_SIZE_xor_STACK_ITEM_HEIGHT_3_xor_INIT_GAS",
+            "hub_v2.CREATE_NONEMPTY_INIT_CODE_FAILURE_WILL_REVERT_xor_KEC_FLAG", 1, length),
+        new ColumnHeader(
+            "hub_v2.CREATE_NONEMPTY_INIT_CODE_FAILURE_WONT_REVERT_xor_LOG_FLAG", 1, length),
+        new ColumnHeader(
+            "hub_v2.CREATE_NONEMPTY_INIT_CODE_SUCCESS_WILL_REVERT_xor_MACHINE_STATE_FLAG",
+            1,
+            length),
+        new ColumnHeader(
+            "hub_v2.CREATE_NONEMPTY_INIT_CODE_SUCCESS_WONT_REVERT_xor_MAXCSX", 1, length),
+        new ColumnHeader(
+            "hub_v2.DEP_NUM_NEW_xor_CALL_STACK_DEPTH_xor_MXP___INST_xor_STACK_ITEM_HEIGHT_3_xor_INIT_GAS",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.DEP_NUM_xor_CALL_DATA_SIZE_xor_MMU___REF_OFFSET_xor_STACK_ITEM_HEIGHT_2_xor_INIT_CODE_SIZE",
+            "hub_v2.DEP_NUM_xor_CALL_DATA_SIZE_xor_MXP___GAS_MXP_xor_STACK_ITEM_HEIGHT_2_xor_INIT_CODE_SIZE",
             32,
             length),
         new ColumnHeader(
@@ -279,7 +312,7 @@ public class Trace {
             1,
             length),
         new ColumnHeader(
-            "hub_v2.DEPLOYMENT_NUMBER_INFTY_xor_CALL_DATA_OFFSET_xor_MMU___PARAM_2_xor_STACK_ITEM_HEIGHT_1_xor_VAL_ORIG_LO_xor_INITIAL_BALANCE",
+            "hub_v2.DEPLOYMENT_NUMBER_INFTY_xor_CALL_DATA_OFFSET_xor_MMU___TGT_OFFSET_LO_xor_STACK_ITEM_HEIGHT_1_xor_VAL_ORIG_LO_xor_INITIAL_BALANCE",
             32,
             length),
         new ColumnHeader(
@@ -287,15 +320,20 @@ public class Trace {
             1,
             length),
         new ColumnHeader("hub_v2.DOM_STAMP", 32, length),
+        new ColumnHeader("hub_v2.ECADD_xor_MOD_FLAG", 1, length),
+        new ColumnHeader("hub_v2.ECMUL_xor_MUL_FLAG", 1, length),
+        new ColumnHeader("hub_v2.ECPAIRING_xor_MXPX", 1, length),
+        new ColumnHeader("hub_v2.ECRECOVER_xor_MXP_FLAG", 1, length),
         new ColumnHeader("hub_v2.EXCEPTION_AHOY_FLAG", 1, length),
         new ColumnHeader(
-            "hub_v2.EXISTS_NEW_xor_MXP___DEPLOYS_xor_CALL_PRC_FAILURE_CALLER_WILL_REVERT_xor_CALL_FLAG_xor_VAL_NEXT_IS_ORIG",
+            "hub_v2.EXISTS_NEW_xor_MXP___DEPLOYS_xor_CALL_EXCEPTION_xor_CALL_FLAG_xor_VAL_NEXT_IS_ORIG",
             1,
             length),
         new ColumnHeader(
-            "hub_v2.EXISTS_xor_MMU___INFO_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VAL_NEXT_IS_CURR_xor_TXN_REQUIRES_EVM_EXECUTION",
+            "hub_v2.EXISTS_xor_MMU___SUCCESS_BIT_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VAL_NEXT_IS_CURR_xor_TXN_REQUIRES_EVM_EXECUTION",
             1,
             length),
+        new ColumnHeader("hub_v2.EXP___INST_xor_PRC_CALLEE_GAS", 8, length),
         new ColumnHeader("hub_v2.GAS_ACTUAL", 32, length),
         new ColumnHeader("hub_v2.GAS_COST", 32, length),
         new ColumnHeader("hub_v2.GAS_EXPECTED", 32, length),
@@ -307,64 +345,72 @@ public class Trace {
             1,
             length),
         new ColumnHeader(
-            "hub_v2.HAS_CODE_xor_MXP___FLAG_xor_CALL_PRC_FAILURE_CALLER_WONT_REVERT_xor_CON_FLAG_xor_VAL_NEXT_IS_ZERO",
+            "hub_v2.HAS_CODE_xor_MXP___FLAG_xor_CALL_PRC_FAILURE_xor_CON_FLAG_xor_VAL_NEXT_IS_ZERO",
             1,
             length),
         new ColumnHeader("hub_v2.HASH_INFO_STAMP", 32, length),
         new ColumnHeader("hub_v2.HUB_STAMP", 32, length),
         new ColumnHeader("hub_v2.HUB_STAMP_TRANSACTION_END", 32, length),
+        new ColumnHeader("hub_v2.IDENTITY_xor_OOB_FLAG", 1, length),
         new ColumnHeader(
-            "hub_v2.IS_BLAKE2f_xor_OOB___EVENT_1_xor_CALL_PRC_SUCCESS_CALLER_WONT_REVERT_xor_CREATE_FLAG_xor_WARM",
+            "hub_v2.IS_BLAKE2f_xor_OOB___FLAG_xor_CALL_PRC_SUCCESS_CALLER_WONT_REVERT_xor_CREATE_FLAG_xor_WARM",
             1,
             length),
         new ColumnHeader(
-            "hub_v2.IS_ECADD_xor_OOB___EVENT_2_xor_CALL_SMC_FAILURE_CALLER_WILL_REVERT_xor_DECODED_FLAG_1_xor_WARM_NEW",
+            "hub_v2.IS_ECADD_xor_STP___EXISTS_xor_CALL_SMC_FAILURE_CALLER_WILL_REVERT_xor_DECODED_FLAG_1_xor_WARM_NEW",
             1,
             length),
         new ColumnHeader(
-            "hub_v2.IS_ECMUL_xor_OOB___FLAG_xor_CALL_SMC_FAILURE_CALLER_WONT_REVERT_xor_DECODED_FLAG_2",
+            "hub_v2.IS_ECMUL_xor_STP___FLAG_xor_CALL_SMC_FAILURE_CALLER_WONT_REVERT_xor_DECODED_FLAG_2",
             1,
             length),
         new ColumnHeader(
-            "hub_v2.IS_ECPAIRING_xor_STP___EXISTS_xor_CALL_SMC_SUCCESS_CALLER_WILL_REVERT_xor_DECODED_FLAG_3",
+            "hub_v2.IS_ECPAIRING_xor_STP___OOGX_xor_CALL_SMC_SUCCESS_CALLER_WILL_REVERT_xor_DECODED_FLAG_3",
             1,
             length),
         new ColumnHeader(
-            "hub_v2.IS_ECRECOVER_xor_STP___FLAG_xor_CALL_SMC_SUCCESS_CALLER_WONT_REVERT_xor_DECODED_FLAG_4",
+            "hub_v2.IS_ECRECOVER_xor_STP___WARMTH_xor_CALL_SMC_SUCCESS_CALLER_WONT_REVERT_xor_DECODED_FLAG_4",
             1,
             length),
+        new ColumnHeader("hub_v2.IS_IDENTITY_xor_CODEDEPOSIT_xor_DUP_FLAG", 1, length),
         new ColumnHeader(
-            "hub_v2.IS_IDENTITY_xor_STP___OOGX_xor_CODEDEPOSIT_xor_DUP_FLAG", 1, length),
-        new ColumnHeader(
-            "hub_v2.IS_MODEXP_xor_STP___WARM_xor_CODEDEPOSIT_INVALID_CODE_PREFIX_xor_EXT_FLAG",
-            1,
-            length),
+            "hub_v2.IS_MODEXP_xor_CODEDEPOSIT_INVALID_CODE_PREFIX_xor_EXT_FLAG", 1, length),
         new ColumnHeader(
             "hub_v2.IS_PRECOMPILE_xor_CODEDEPOSIT_VALID_CODE_PREFIX_xor_HALT_FLAG", 1, length),
-        new ColumnHeader("hub_v2.IS_RIPEMD-160_xor_ECADD_xor_HASH_INFO_FLAG", 1, length),
-        new ColumnHeader("hub_v2.IS_SHA2-256_xor_ECMUL_xor_INVALID_FLAG", 1, length),
-        new ColumnHeader("hub_v2.MMU_STAMP", 32, length),
-        new ColumnHeader("hub_v2.MXP___SIZE_1_LO_xor_STACK_ITEM_VALUE_LO_2", 32, length),
-        new ColumnHeader("hub_v2.MXP___SIZE_2_HI_xor_STACK_ITEM_VALUE_LO_3", 32, length),
-        new ColumnHeader("hub_v2.MXP___SIZE_2_LO_xor_STACK_ITEM_VALUE_LO_4", 32, length),
-        new ColumnHeader("hub_v2.MXP_STAMP", 32, length),
-        new ColumnHeader("hub_v2.MXP___WORDS_xor_STATIC_GAS", 32, length),
+        new ColumnHeader("hub_v2.IS_RIPEMD-160_xor_CREATE_ABORT_xor_HASH_INFO_FLAG", 1, length),
         new ColumnHeader(
-            "hub_v2.NONCE_NEW_xor_CONTEXT_NUMBER_xor_MMU___STACK_VAL_HI_xor_STACK_ITEM_STAMP_1_xor_NONCE",
+            "hub_v2.IS_SHA2-256_xor_CREATE_EMPTY_INIT_CODE_WILL_REVERT_xor_INVALID_FLAG",
+            1,
+            length),
+        new ColumnHeader("hub_v2.MMU___AUX_ID_xor_PRC_CALLER_GAS", 8, length),
+        new ColumnHeader("hub_v2.MMU___EXO_SUM_xor_PRC_CDO", 8, length),
+        new ColumnHeader("hub_v2.MMU___INST_xor_PRC_CDS", 8, length),
+        new ColumnHeader("hub_v2.MMU___PHASE_xor_PRC_RAC", 8, length),
+        new ColumnHeader("hub_v2.MMU___REF_OFFSET_xor_PRC_RAO", 8, length),
+        new ColumnHeader("hub_v2.MMU___REF_SIZE_xor_PRC_RETURN_GAS", 8, length),
+        new ColumnHeader("hub_v2.MMU___SIZE", 8, length),
+        new ColumnHeader("hub_v2.MMU___SRC_ID", 8, length),
+        new ColumnHeader("hub_v2.MMU_STAMP", 32, length),
+        new ColumnHeader("hub_v2.MMU___TGT_ID", 8, length),
+        new ColumnHeader("hub_v2.MODEXP_xor_OOGX", 1, length),
+        new ColumnHeader("hub_v2.MXP_STAMP", 32, length),
+        new ColumnHeader(
+            "hub_v2.NONCE_NEW_xor_CONTEXT_NUMBER_xor_MXP___OFFSET_1_LO_xor_STACK_ITEM_STAMP_1_xor_NONCE",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.NONCE_xor_CALL_VALUE_xor_MMU___SIZE_xor_STACK_ITEM_HEIGHT_4_xor_LEFTOVER_GAS",
+            "hub_v2.NONCE_xor_CALL_VALUE_xor_MXP___OFFSET_1_HI_xor_STACK_ITEM_HEIGHT_4_xor_LEFTOVER_GAS",
             32,
             length),
         new ColumnHeader("hub_v2.NUMBER_OF_NON_STACK_ROWS", 32, length),
-        new ColumnHeader("hub_v2.OOB___INST", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_1", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_2", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_3", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_4", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_5", 32, length),
-        new ColumnHeader("hub_v2.OOB___OUTGOING_DATA_6", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_2_xor_STACK_ITEM_VALUE_LO_2", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_3_xor_STACK_ITEM_VALUE_LO_3", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_4_xor_STACK_ITEM_VALUE_LO_4", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_5_xor_STATIC_GAS", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_6", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_7", 32, length),
+        new ColumnHeader("hub_v2.OOB____DATA_8", 32, length),
+        new ColumnHeader("hub_v2.OOB___INST", 8, length),
         new ColumnHeader("hub_v2.PEEK_AT_ACCOUNT", 1, length),
         new ColumnHeader("hub_v2.PEEK_AT_CONTEXT", 1, length),
         new ColumnHeader("hub_v2.PEEK_AT_MISCELLANEOUS", 1, length),
@@ -372,65 +418,57 @@ public class Trace {
         new ColumnHeader("hub_v2.PEEK_AT_STACK", 1, length),
         new ColumnHeader("hub_v2.PEEK_AT_STORAGE", 1, length),
         new ColumnHeader("hub_v2.PEEK_AT_TRANSACTION", 1, length),
+        new ColumnHeader("hub_v2.PRC_FAILURE_KNOWN_TO_HUB_xor_OPCX", 1, length),
+        new ColumnHeader("hub_v2.PRC_FAILURE_KNOWN_TO_RAM_xor_PUSHPOP_FLAG", 1, length),
+        new ColumnHeader("hub_v2.PRC_SUCCESS_WILL_REVERT_xor_RDCX", 1, length),
+        new ColumnHeader("hub_v2.PRC_SUCCESS_WONT_REVERT_xor_SHF_FLAG", 1, length),
         new ColumnHeader("hub_v2.PROGRAM_COUNTER", 32, length),
         new ColumnHeader("hub_v2.PROGRAM_COUNTER_NEW", 32, length),
-        new ColumnHeader("hub_v2.PUSHPOP_FLAG", 1, length),
-        new ColumnHeader("hub_v2.RDCX", 1, length),
-        new ColumnHeader("hub_v2.RIPEMD-160_xor_KEC_FLAG", 1, length),
+        new ColumnHeader("hub_v2.RIPEMD-160_xor_SOX", 1, length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___DEP_ADDR_HI_xor_IS_STATIC_xor_MMU___STACK_VAL_LO_xor_STACK_ITEM_STAMP_2_xor_TO_ADDRESS_HI",
+            "hub_v2.RLPADDR___DEP_ADDR_HI_xor_IS_STATIC_xor_MXP___OFFSET_2_HI_xor_STACK_ITEM_STAMP_2_xor_TO_ADDRESS_HI",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___DEP_ADDR_LO_xor_RETURNER_CONTEXT_NUMBER_xor_MXP___GAS_MXP_xor_STACK_ITEM_STAMP_3_xor_TO_ADDRESS_LO",
-            32,
-            length),
-        new ColumnHeader("hub_v2.RLPADDR___FLAG_xor_ECPAIRING_xor_INVPREX", 1, length),
-        new ColumnHeader(
-            "hub_v2.RLPADDR___KEC_HI_xor_RETURNER_IS_PRECOMPILE_xor_MXP___INST_xor_STACK_ITEM_STAMP_4_xor_VALUE",
+            "hub_v2.RLPADDR___DEP_ADDR_LO_xor_RETURNER_CONTEXT_NUMBER_xor_MXP___OFFSET_2_LO_xor_STACK_ITEM_STAMP_3_xor_TO_ADDRESS_LO",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___KEC_LO_xor_RETURN_AT_OFFSET_xor_MXP___OFFSET_1_HI_xor_STACK_ITEM_VALUE_HI_1",
+            "hub_v2.RLPADDR___FLAG_xor_CREATE_EMPTY_INIT_CODE_WONT_REVERT_xor_INVPREX", 1, length),
+        new ColumnHeader(
+            "hub_v2.RLPADDR___KEC_HI_xor_RETURNER_IS_PRECOMPILE_xor_MXP___SIZE_1_HI_xor_STACK_ITEM_STAMP_4_xor_VALUE",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___RECIPE_xor_RETURN_AT_SIZE_xor_MXP___OFFSET_1_LO_xor_STACK_ITEM_VALUE_HI_2",
+            "hub_v2.RLPADDR___KEC_LO_xor_RETURN_AT_OFFSET_xor_MXP___SIZE_1_LO_xor_STACK_ITEM_VALUE_HI_1",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___SALT_HI_xor_RETURN_DATA_OFFSET_xor_MXP___OFFSET_2_HI_xor_STACK_ITEM_VALUE_HI_3",
+            "hub_v2.RLPADDR___RECIPE_xor_RETURN_AT_SIZE_xor_MXP___SIZE_2_HI_xor_STACK_ITEM_VALUE_HI_2",
             32,
             length),
         new ColumnHeader(
-            "hub_v2.RLPADDR___SALT_LO_xor_RETURN_DATA_SIZE_xor_MXP___OFFSET_2_LO_xor_STACK_ITEM_VALUE_HI_4",
+            "hub_v2.RLPADDR___SALT_HI_xor_RETURN_DATA_OFFSET_xor_MXP___SIZE_2_LO_xor_STACK_ITEM_VALUE_HI_3",
             32,
             length),
-        new ColumnHeader("hub_v2.SCN_FAILURE_1_xor_LOG_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SCN_FAILURE_2_xor_MACHINE_STATE_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SCN_FAILURE_3_xor_MAXCSX", 1, length),
-        new ColumnHeader("hub_v2.SCN_FAILURE_4_xor_MOD_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SCN_SUCCESS_1_xor_MUL_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SCN_SUCCESS_2_xor_MXPX", 1, length),
-        new ColumnHeader("hub_v2.SCN_SUCCESS_3_xor_MXP_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SCN_SUCCESS_4_xor_OOB_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SELFDESTRUCT_xor_OOGX", 1, length),
-        new ColumnHeader("hub_v2.SHA2-256_xor_OPCX", 1, length),
-        new ColumnHeader("hub_v2.SHF_FLAG", 1, length),
-        new ColumnHeader("hub_v2.SOX", 1, length),
-        new ColumnHeader("hub_v2.SSTOREX", 1, length),
+        new ColumnHeader(
+            "hub_v2.RLPADDR___SALT_LO_xor_RETURN_DATA_SIZE_xor_MXP___WORDS_xor_STACK_ITEM_VALUE_HI_4",
+            32,
+            length),
+        new ColumnHeader("hub_v2.SELFDESTRUCT_xor_SSTOREX", 1, length),
+        new ColumnHeader("hub_v2.SHA2-256_xor_STACKRAM_FLAG", 1, length),
         new ColumnHeader("hub_v2.STACK_ITEM_POP_1", 1, length),
         new ColumnHeader("hub_v2.STACK_ITEM_POP_2", 1, length),
         new ColumnHeader("hub_v2.STACK_ITEM_POP_3", 1, length),
         new ColumnHeader("hub_v2.STACK_ITEM_POP_4", 1, length),
-        new ColumnHeader("hub_v2.STACKRAM_FLAG", 1, length),
         new ColumnHeader("hub_v2.STATIC_FLAG", 1, length),
         new ColumnHeader("hub_v2.STATICX", 1, length),
         new ColumnHeader("hub_v2.STO_FLAG", 1, length),
         new ColumnHeader("hub_v2.STP___GAS_HI", 32, length),
         new ColumnHeader("hub_v2.STP___GAS_LO", 32, length),
-        new ColumnHeader("hub_v2.STP___GAS_OOPKT", 32, length),
-        new ColumnHeader("hub_v2.STP___GAS_STPD", 32, length),
+        new ColumnHeader("hub_v2.STP___GAS_PAID_OUT_OF_POCKET", 32, length),
+        new ColumnHeader("hub_v2.STP___GAS_STIPEND", 32, length),
+        new ColumnHeader("hub_v2.STP___GAS_UPFRONT_GAS_COST", 32, length),
         new ColumnHeader("hub_v2.STP___INST", 32, length),
         new ColumnHeader("hub_v2.STP___VAL_HI", 32, length),
         new ColumnHeader("hub_v2.STP___VAL_LO", 32, length),
@@ -439,9 +477,9 @@ public class Trace {
         new ColumnHeader("hub_v2.SWAP_FLAG", 1, length),
         new ColumnHeader("hub_v2.TRANSACTION_REVERTS", 1, length),
         new ColumnHeader("hub_v2.TRM_FLAG", 1, length),
-        new ColumnHeader("hub_v2.TRM___FLAG_xor_ECRECOVER_xor_JUMPX", 1, length),
+        new ColumnHeader("hub_v2.TRM___FLAG_xor_CREATE_EXCEPTION_xor_JUMPX", 1, length),
         new ColumnHeader(
-            "hub_v2.TRM___RAW_ADDR_HI_xor_MXP___SIZE_1_HI_xor_STACK_ITEM_VALUE_LO_1", 32, length),
+            "hub_v2.TRM___RAW_ADDR_HI_xor_OOB____DATA_1_xor_STACK_ITEM_VALUE_LO_1", 32, length),
         new ColumnHeader("hub_v2.TWO_LINE_INSTRUCTION", 1, length),
         new ColumnHeader("hub_v2.TX_EXEC", 1, length),
         new ColumnHeader("hub_v2.TX_FINL", 1, length),
@@ -449,9 +487,12 @@ public class Trace {
         new ColumnHeader("hub_v2.TX_SKIP", 1, length),
         new ColumnHeader("hub_v2.TX_WARM", 1, length),
         new ColumnHeader("hub_v2.TXN_FLAG", 1, length),
-        new ColumnHeader("hub_v2.WARM_NEW_xor_MODEXP_xor_JUMP_FLAG", 1, length),
         new ColumnHeader(
-            "hub_v2.WARM_xor_IDENTITY_xor_JUMP_DESTINATION_VETTING_REQUIRED", 1, length),
+            "hub_v2.WARM_NEW_xor_CREATE_FAILURE_CONDITION_WONT_REVERT_xor_JUMP_FLAG", 1, length),
+        new ColumnHeader(
+            "hub_v2.WARM_xor_CREATE_FAILURE_CONDITION_WILL_REVERT_xor_JUMP_DESTINATION_VETTING_REQUIRED",
+            1,
+            length),
         new ColumnHeader("hub_v2.WCP_FLAG", 1, length));
   }
 
@@ -459,13 +500,12 @@ public class Trace {
     this.absoluteTransactionNumber = buffers.get(0);
     this.addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee =
         buffers.get(1);
-    this.addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize =
+    this.addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize =
         buffers.get(2);
-    this
-            .balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo =
+    this.balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo =
         buffers.get(3);
     this
-            .balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi =
+            .balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi =
         buffers.get(4);
     this.batchNumber = buffers.get(5);
     this.callerContextNumber = buffers.get(6);
@@ -475,18 +515,17 @@ public class Trace {
     this.codeDeploymentStatus = buffers.get(10);
     this.codeFragmentIndex = buffers.get(11);
     this
-            .codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo =
+            .codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo =
         buffers.get(12);
-    this.codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi =
+    this.codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi =
         buffers.get(13);
-    this.codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice =
-        buffers.get(14);
-    this.codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit =
+    this.codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice = buffers.get(14);
+    this.codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit =
         buffers.get(15);
     this
-            .codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal =
+            .codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal =
         buffers.get(16);
-    this.codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount =
+    this.codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount =
         buffers.get(17);
     this.contextGetsRevertedFlag = buffers.get(18);
     this.contextMayChangeFlag = buffers.get(19);
@@ -497,133 +536,140 @@ public class Trace {
     this.contextWillRevertFlag = buffers.get(24);
     this.counterNsr = buffers.get(25);
     this.counterTli = buffers.get(26);
-    this.depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas = buffers.get(27);
-    this.depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize = buffers.get(28);
+    this.createNonemptyInitCodeFailureWillRevertXorKecFlag = buffers.get(27);
+    this.createNonemptyInitCodeFailureWontRevertXorLogFlag = buffers.get(28);
+    this.createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag = buffers.get(29);
+    this.createNonemptyInitCodeSuccessWontRevertXorMaxcsx = buffers.get(30);
+    this.depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas = buffers.get(31);
+    this.depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize = buffers.get(32);
     this
             .depStatusNewXorMmuFlagXorCallEoaSuccessCallerWillRevertXorBinFlagXorValCurrIsZeroXorStatusCode =
-        buffers.get(29);
-    this.depStatusXorExpFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559 = buffers.get(30);
+        buffers.get(33);
+    this.depStatusXorExpFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559 = buffers.get(34);
     this
-            .deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance =
-        buffers.get(31);
-    this
-            .deploymentStatusInftyXorUpdateXorCcsrFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment =
-        buffers.get(32);
-    this.domStamp = buffers.get(33);
-    this.exceptionAhoyFlag = buffers.get(34);
-    this.existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig =
+            .deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance =
         buffers.get(35);
     this
-            .existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution =
+            .deploymentStatusInftyXorUpdateXorCcsrFlagXorBlake2FXorAccFlagXorValCurrChangesXorIsDeployment =
         buffers.get(36);
-    this.gasActual = buffers.get(37);
-    this.gasCost = buffers.get(38);
-    this.gasExpected = buffers.get(39);
-    this.gasNext = buffers.get(40);
-    this.gasRefund = buffers.get(41);
-    this.gasRefundNew = buffers.get(42);
-    this.hasCodeNewXorMxpMxpxXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero =
-        buffers.get(43);
-    this.hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero =
+    this.domStamp = buffers.get(37);
+    this.ecaddXorModFlag = buffers.get(38);
+    this.ecmulXorMulFlag = buffers.get(39);
+    this.ecpairingXorMxpx = buffers.get(40);
+    this.ecrecoverXorMxpFlag = buffers.get(41);
+    this.exceptionAhoyFlag = buffers.get(42);
+    this.existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig = buffers.get(43);
+    this
+            .existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution =
         buffers.get(44);
-    this.hashInfoStamp = buffers.get(45);
-    this.hubStamp = buffers.get(46);
-    this.hubStampTransactionEnd = buffers.get(47);
-    this.isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm =
-        buffers.get(48);
-    this.isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew =
-        buffers.get(49);
-    this.isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2 = buffers.get(50);
-    this.isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3 = buffers.get(51);
-    this.isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4 = buffers.get(52);
-    this.isIdentityXorStpOogxXorCodedepositXorDupFlag = buffers.get(53);
-    this.isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag = buffers.get(54);
-    this.isPrecompileXorCodedepositValidCodePrefixXorHaltFlag = buffers.get(55);
-    this.isRipemd160XorEcaddXorHashInfoFlag = buffers.get(56);
-    this.isSha2256XorEcmulXorInvalidFlag = buffers.get(57);
-    this.mmuStamp = buffers.get(58);
-    this.mxpSize1LoXorStackItemValueLo2 = buffers.get(59);
-    this.mxpSize2HiXorStackItemValueLo3 = buffers.get(60);
-    this.mxpSize2LoXorStackItemValueLo4 = buffers.get(61);
-    this.mxpStamp = buffers.get(62);
-    this.mxpWordsXorStaticGas = buffers.get(63);
-    this.nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce = buffers.get(64);
-    this.nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas = buffers.get(65);
-    this.numberOfNonStackRows = buffers.get(66);
-    this.oobInst = buffers.get(67);
-    this.oobOutgoingData1 = buffers.get(68);
-    this.oobOutgoingData2 = buffers.get(69);
-    this.oobOutgoingData3 = buffers.get(70);
-    this.oobOutgoingData4 = buffers.get(71);
-    this.oobOutgoingData5 = buffers.get(72);
-    this.oobOutgoingData6 = buffers.get(73);
-    this.peekAtAccount = buffers.get(74);
-    this.peekAtContext = buffers.get(75);
-    this.peekAtMiscellaneous = buffers.get(76);
-    this.peekAtScenario = buffers.get(77);
-    this.peekAtStack = buffers.get(78);
-    this.peekAtStorage = buffers.get(79);
-    this.peekAtTransaction = buffers.get(80);
-    this.programCounter = buffers.get(81);
-    this.programCounterNew = buffers.get(82);
-    this.pushpopFlag = buffers.get(83);
-    this.rdcx = buffers.get(84);
-    this.ripemd160XorKecFlag = buffers.get(85);
-    this.rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi =
-        buffers.get(86);
-    this.rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo =
-        buffers.get(87);
-    this.rlpaddrFlagXorEcpairingXorInvprex = buffers.get(88);
-    this.rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue = buffers.get(89);
-    this.rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1 = buffers.get(90);
-    this.rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2 = buffers.get(91);
-    this.rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3 = buffers.get(92);
-    this.rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4 = buffers.get(93);
-    this.scnFailure1XorLogFlag = buffers.get(94);
-    this.scnFailure2XorMachineStateFlag = buffers.get(95);
-    this.scnFailure3XorMaxcsx = buffers.get(96);
-    this.scnFailure4XorModFlag = buffers.get(97);
-    this.scnSuccess1XorMulFlag = buffers.get(98);
-    this.scnSuccess2XorMxpx = buffers.get(99);
-    this.scnSuccess3XorMxpFlag = buffers.get(100);
-    this.scnSuccess4XorOobFlag = buffers.get(101);
-    this.selfdestructXorOogx = buffers.get(102);
-    this.sha2256XorOpcx = buffers.get(103);
-    this.shfFlag = buffers.get(104);
-    this.sox = buffers.get(105);
-    this.sstorex = buffers.get(106);
-    this.stackItemPop1 = buffers.get(107);
-    this.stackItemPop2 = buffers.get(108);
-    this.stackItemPop3 = buffers.get(109);
-    this.stackItemPop4 = buffers.get(110);
-    this.stackramFlag = buffers.get(111);
-    this.staticFlag = buffers.get(112);
-    this.staticx = buffers.get(113);
-    this.stoFlag = buffers.get(114);
-    this.stpGasHi = buffers.get(115);
-    this.stpGasLo = buffers.get(116);
-    this.stpGasOopkt = buffers.get(117);
-    this.stpGasStpd = buffers.get(118);
-    this.stpInst = buffers.get(119);
-    this.stpValHi = buffers.get(120);
-    this.stpValLo = buffers.get(121);
-    this.subStamp = buffers.get(122);
-    this.sux = buffers.get(123);
-    this.swapFlag = buffers.get(124);
-    this.transactionReverts = buffers.get(125);
-    this.trmFlag = buffers.get(126);
-    this.trmFlagXorEcrecoverXorJumpx = buffers.get(127);
-    this.trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1 = buffers.get(128);
-    this.twoLineInstruction = buffers.get(129);
-    this.txExec = buffers.get(130);
-    this.txFinl = buffers.get(131);
-    this.txInit = buffers.get(132);
-    this.txSkip = buffers.get(133);
-    this.txWarm = buffers.get(134);
-    this.txnFlag = buffers.get(135);
-    this.warmNewXorModexpXorJumpFlag = buffers.get(136);
-    this.warmXorIdentityXorJumpDestinationVettingRequired = buffers.get(137);
-    this.wcpFlag = buffers.get(138);
+    this.expInstXorPrcCalleeGas = buffers.get(45);
+    this.gasActual = buffers.get(46);
+    this.gasCost = buffers.get(47);
+    this.gasExpected = buffers.get(48);
+    this.gasNext = buffers.get(49);
+    this.gasRefund = buffers.get(50);
+    this.gasRefundNew = buffers.get(51);
+    this.hasCodeNewXorMxpMxpxXorCallPrcSuccessCallerWillRevertXorCopyFlagXorValOrigIsZero =
+        buffers.get(52);
+    this.hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero = buffers.get(53);
+    this.hashInfoStamp = buffers.get(54);
+    this.hubStamp = buffers.get(55);
+    this.hubStampTransactionEnd = buffers.get(56);
+    this.identityXorOobFlag = buffers.get(57);
+    this.isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm = buffers.get(58);
+    this.isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew =
+        buffers.get(59);
+    this.isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2 = buffers.get(60);
+    this.isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3 = buffers.get(61);
+    this.isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4 = buffers.get(62);
+    this.isIdentityXorCodedepositXorDupFlag = buffers.get(63);
+    this.isModexpXorCodedepositInvalidCodePrefixXorExtFlag = buffers.get(64);
+    this.isPrecompileXorCodedepositValidCodePrefixXorHaltFlag = buffers.get(65);
+    this.isRipemd160XorCreateAbortXorHashInfoFlag = buffers.get(66);
+    this.isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag = buffers.get(67);
+    this.mmuAuxIdXorPrcCallerGas = buffers.get(68);
+    this.mmuExoSumXorPrcCdo = buffers.get(69);
+    this.mmuInstXorPrcCds = buffers.get(70);
+    this.mmuPhaseXorPrcRac = buffers.get(71);
+    this.mmuRefOffsetXorPrcRao = buffers.get(72);
+    this.mmuRefSizeXorPrcReturnGas = buffers.get(73);
+    this.mmuSize = buffers.get(74);
+    this.mmuSrcId = buffers.get(75);
+    this.mmuStamp = buffers.get(76);
+    this.mmuTgtId = buffers.get(77);
+    this.modexpXorOogx = buffers.get(78);
+    this.mxpStamp = buffers.get(79);
+    this.nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce = buffers.get(80);
+    this.nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas = buffers.get(81);
+    this.numberOfNonStackRows = buffers.get(82);
+    this.oobData2XorStackItemValueLo2 = buffers.get(83);
+    this.oobData3XorStackItemValueLo3 = buffers.get(84);
+    this.oobData4XorStackItemValueLo4 = buffers.get(85);
+    this.oobData5XorStaticGas = buffers.get(86);
+    this.oobData6 = buffers.get(87);
+    this.oobData7 = buffers.get(88);
+    this.oobData8 = buffers.get(89);
+    this.oobInst = buffers.get(90);
+    this.peekAtAccount = buffers.get(91);
+    this.peekAtContext = buffers.get(92);
+    this.peekAtMiscellaneous = buffers.get(93);
+    this.peekAtScenario = buffers.get(94);
+    this.peekAtStack = buffers.get(95);
+    this.peekAtStorage = buffers.get(96);
+    this.peekAtTransaction = buffers.get(97);
+    this.prcFailureKnownToHubXorOpcx = buffers.get(98);
+    this.prcFailureKnownToRamXorPushpopFlag = buffers.get(99);
+    this.prcSuccessWillRevertXorRdcx = buffers.get(100);
+    this.prcSuccessWontRevertXorShfFlag = buffers.get(101);
+    this.programCounter = buffers.get(102);
+    this.programCounterNew = buffers.get(103);
+    this.ripemd160XorSox = buffers.get(104);
+    this.rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi =
+        buffers.get(105);
+    this.rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo =
+        buffers.get(106);
+    this.rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex = buffers.get(107);
+    this.rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue =
+        buffers.get(108);
+    this.rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1 = buffers.get(109);
+    this.rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2 = buffers.get(110);
+    this.rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3 = buffers.get(111);
+    this.rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4 = buffers.get(112);
+    this.selfdestructXorSstorex = buffers.get(113);
+    this.sha2256XorStackramFlag = buffers.get(114);
+    this.stackItemPop1 = buffers.get(115);
+    this.stackItemPop2 = buffers.get(116);
+    this.stackItemPop3 = buffers.get(117);
+    this.stackItemPop4 = buffers.get(118);
+    this.staticFlag = buffers.get(119);
+    this.staticx = buffers.get(120);
+    this.stoFlag = buffers.get(121);
+    this.stpGasHi = buffers.get(122);
+    this.stpGasLo = buffers.get(123);
+    this.stpGasPaidOutOfPocket = buffers.get(124);
+    this.stpGasStipend = buffers.get(125);
+    this.stpGasUpfrontGasCost = buffers.get(126);
+    this.stpInst = buffers.get(127);
+    this.stpValHi = buffers.get(128);
+    this.stpValLo = buffers.get(129);
+    this.subStamp = buffers.get(130);
+    this.sux = buffers.get(131);
+    this.swapFlag = buffers.get(132);
+    this.transactionReverts = buffers.get(133);
+    this.trmFlag = buffers.get(134);
+    this.trmFlagXorCreateExceptionXorJumpx = buffers.get(135);
+    this.trmRawAddrHiXorOobData1XorStackItemValueLo1 = buffers.get(136);
+    this.twoLineInstruction = buffers.get(137);
+    this.txExec = buffers.get(138);
+    this.txFinl = buffers.get(139);
+    this.txInit = buffers.get(140);
+    this.txSkip = buffers.get(141);
+    this.txWarm = buffers.get(142);
+    this.txnFlag = buffers.get(143);
+    this.warmNewXorCreateFailureConditionWontRevertXorJumpFlag = buffers.get(144);
+    this.warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired =
+        buffers.get(145);
+    this.wcpFlag = buffers.get(146);
   }
 
   public int size() {
@@ -1103,10 +1149,10 @@ public class Trace {
   }
 
   public Trace pAccountAddrHi(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.account/ADDR_HI already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -1120,194 +1166,192 @@ public class Trace {
   }
 
   public Trace pAccountAddrLo(final Bytes b) {
-    if (filled.get(99)) {
-      throw new IllegalStateException("hub_v2.account/ADDR_LO already set");
-    } else {
-      filled.set(99);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
-    }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountBalance(final Bytes b) {
-    if (filled.get(100)) {
-      throw new IllegalStateException("hub_v2.account/BALANCE already set");
-    } else {
-      filled.set(100);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-          .put((byte) 0);
-    }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountBalanceNew(final Bytes b) {
-    if (filled.get(101)) {
-      throw new IllegalStateException("hub_v2.account/BALANCE_NEW already set");
-    } else {
-      filled.set(101);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
-          .put((byte) 0);
-    }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeHashHi(final Bytes b) {
-    if (filled.get(102)) {
-      throw new IllegalStateException("hub_v2.account/CODE_HASH_HI already set");
-    } else {
-      filled.set(102);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-          (byte) 0);
-    }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeHashHiNew(final Bytes b) {
-    if (filled.get(103)) {
-      throw new IllegalStateException("hub_v2.account/CODE_HASH_HI_NEW already set");
-    } else {
-      filled.set(103);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
-          .put((byte) 0);
-    }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeHashLo(final Bytes b) {
-    if (filled.get(104)) {
-      throw new IllegalStateException("hub_v2.account/CODE_HASH_LO already set");
-    } else {
-      filled.set(104);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-          (byte) 0);
-    }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeHashLoNew(final Bytes b) {
-    if (filled.get(105)) {
-      throw new IllegalStateException("hub_v2.account/CODE_HASH_LO_NEW already set");
-    } else {
-      filled.set(105);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
-    }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeSize(final Bytes b) {
-    if (filled.get(106)) {
-      throw new IllegalStateException("hub_v2.account/CODE_SIZE already set");
-    } else {
-      filled.set(106);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-          (byte) 0);
-    }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountCodeSizeNew(final Bytes b) {
-    if (filled.get(107)) {
-      throw new IllegalStateException("hub_v2.account/CODE_SIZE_NEW already set");
-    } else {
-      filled.set(107);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
-          .put((byte) 0);
-    }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountDepNum(final Bytes b) {
-    if (filled.get(109)) {
-      throw new IllegalStateException("hub_v2.account/DEP_NUM already set");
-    } else {
-      filled.set(109);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put((byte) 0);
-    }
-    depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pAccountDepNumNew(final Bytes b) {
     if (filled.get(110)) {
-      throw new IllegalStateException("hub_v2.account/DEP_NUM_NEW already set");
+      throw new IllegalStateException("hub_v2.account/ADDR_LO already set");
     } else {
       filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put((byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountBalance(final Bytes b) {
+    if (filled.get(111)) {
+      throw new IllegalStateException("hub_v2.account/BALANCE already set");
+    } else {
+      filled.set(111);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+          .put((byte) 0);
+    }
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountBalanceNew(final Bytes b) {
+    if (filled.get(112)) {
+      throw new IllegalStateException("hub_v2.account/BALANCE_NEW already set");
+    } else {
+      filled.set(112);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
+    }
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeHashHi(final Bytes b) {
+    if (filled.get(113)) {
+      throw new IllegalStateException("hub_v2.account/CODE_HASH_HI already set");
+    } else {
+      filled.set(113);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+          (byte) 0);
+    }
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeHashHiNew(final Bytes b) {
+    if (filled.get(114)) {
+      throw new IllegalStateException("hub_v2.account/CODE_HASH_HI_NEW already set");
+    } else {
+      filled.set(114);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+          .put((byte) 0);
+    }
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeHashLo(final Bytes b) {
+    if (filled.get(115)) {
+      throw new IllegalStateException("hub_v2.account/CODE_HASH_LO already set");
+    } else {
+      filled.set(115);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+          (byte) 0);
+    }
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeHashLoNew(final Bytes b) {
+    if (filled.get(116)) {
+      throw new IllegalStateException("hub_v2.account/CODE_HASH_LO_NEW already set");
+    } else {
+      filled.set(116);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
+    }
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeSize(final Bytes b) {
+    if (filled.get(117)) {
+      throw new IllegalStateException("hub_v2.account/CODE_SIZE already set");
+    } else {
+      filled.set(117);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+          (byte) 0);
+    }
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountCodeSizeNew(final Bytes b) {
+    if (filled.get(118)) {
+      throw new IllegalStateException("hub_v2.account/CODE_SIZE_NEW already set");
+    } else {
+      filled.set(118);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+          .put((byte) 0);
+    }
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountDepNum(final Bytes b) {
+    if (filled.get(120)) {
+      throw new IllegalStateException("hub_v2.account/DEP_NUM already set");
+    } else {
+      filled.set(120);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put((byte) 0);
+    }
+    depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pAccountDepNumNew(final Bytes b) {
+    if (filled.get(121)) {
+      throw new IllegalStateException("hub_v2.account/DEP_NUM_NEW already set");
+    } else {
+      filled.set(121);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put((byte) 0);
+    }
+    depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1338,18 +1382,18 @@ public class Trace {
   }
 
   public Trace pAccountDeploymentNumberInfty(final Bytes b) {
-    if (filled.get(108)) {
+    if (filled.get(119)) {
       throw new IllegalStateException("hub_v2.account/DEPLOYMENT_NUMBER_INFTY already set");
     } else {
-      filled.set(108);
+      filled.set(119);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .put((byte) 0);
     }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
         .put(b.toArrayUnsafe());
 
     return this;
@@ -1375,7 +1419,7 @@ public class Trace {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
@@ -1388,8 +1432,7 @@ public class Trace {
       filled.set(52);
     }
 
-    existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.put(
-        (byte) (b ? 1 : 0));
+    existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1401,8 +1444,7 @@ public class Trace {
       filled.set(53);
     }
 
-    hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.put(
-        (byte) (b ? 1 : 0));
+    hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1427,7 +1469,7 @@ public class Trace {
       filled.set(55);
     }
 
-    isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
+    isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -1440,7 +1482,7 @@ public class Trace {
       filled.set(56);
     }
 
-    isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
+    isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -1453,7 +1495,7 @@ public class Trace {
       filled.set(57);
     }
 
-    isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
+    isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1465,7 +1507,7 @@ public class Trace {
       filled.set(58);
     }
 
-    isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
+    isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1477,7 +1519,7 @@ public class Trace {
       filled.set(59);
     }
 
-    isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
+    isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1489,7 +1531,7 @@ public class Trace {
       filled.set(60);
     }
 
-    isIdentityXorStpOogxXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
+    isIdentityXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1501,7 +1543,7 @@ public class Trace {
       filled.set(61);
     }
 
-    isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
+    isModexpXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1525,7 +1567,7 @@ public class Trace {
       filled.set(63);
     }
 
-    isRipemd160XorEcaddXorHashInfoFlag.put((byte) (b ? 1 : 0));
+    isRipemd160XorCreateAbortXorHashInfoFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1537,73 +1579,73 @@ public class Trace {
       filled.set(64);
     }
 
-    isSha2256XorEcmulXorInvalidFlag.put((byte) (b ? 1 : 0));
+    isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pAccountNonce(final Bytes b) {
-    if (filled.get(111)) {
+    if (filled.get(122)) {
       throw new IllegalStateException("hub_v2.account/NONCE already set");
     } else {
-      filled.set(111);
+      filled.set(122);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put((byte) 0);
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put((byte) 0);
     }
-    nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
+    nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountNonceNew(final Bytes b) {
-    if (filled.get(112)) {
+    if (filled.get(123)) {
       throw new IllegalStateException("hub_v2.account/NONCE_NEW already set");
     } else {
-      filled.set(112);
+      filled.set(123);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put((byte) 0);
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put((byte) 0);
     }
-    nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
+    nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrDepAddrHi(final Bytes b) {
-    if (filled.get(113)) {
+    if (filled.get(124)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___DEP_ADDR_HI already set");
     } else {
-      filled.set(113);
+      filled.set(124);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put((byte) 0);
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put((byte) 0);
     }
-    rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put(
+    rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrDepAddrLo(final Bytes b) {
-    if (filled.get(114)) {
+    if (filled.get(125)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___DEP_ADDR_LO already set");
     } else {
-      filled.set(114);
+      filled.set(125);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
           (byte) 0);
     }
-    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
+    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
         b.toArrayUnsafe());
 
     return this;
@@ -1616,87 +1658,88 @@ public class Trace {
       filled.set(65);
     }
 
-    rlpaddrFlagXorEcpairingXorInvprex.put((byte) (b ? 1 : 0));
+    rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pAccountRlpaddrKecHi(final Bytes b) {
-    if (filled.get(115)) {
+    if (filled.get(126)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___KEC_HI already set");
     } else {
-      filled.set(115);
+      filled.set(126);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put((byte) 0);
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put((byte) 0);
     }
-    rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put(b.toArrayUnsafe());
+    rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrKecLo(final Bytes b) {
-    if (filled.get(116)) {
+    if (filled.get(127)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___KEC_LO already set");
     } else {
-      filled.set(116);
+      filled.set(127);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put((byte) 0);
+      rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put((byte) 0);
     }
-    rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put(b.toArrayUnsafe());
+    rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrRecipe(final Bytes b) {
-    if (filled.get(117)) {
+    if (filled.get(128)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___RECIPE already set");
     } else {
-      filled.set(117);
+      filled.set(128);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put((byte) 0);
+      rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put((byte) 0);
     }
-    rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put(b.toArrayUnsafe());
+    rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrSaltHi(final Bytes b) {
-    if (filled.get(118)) {
+    if (filled.get(129)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___SALT_HI already set");
     } else {
-      filled.set(118);
+      filled.set(129);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put((byte) 0);
+      rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put((byte) 0);
     }
-    rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put(b.toArrayUnsafe());
+    rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pAccountRlpaddrSaltLo(final Bytes b) {
-    if (filled.get(119)) {
+    if (filled.get(130)) {
       throw new IllegalStateException("hub_v2.account/RLPADDR___SALT_LO already set");
     } else {
-      filled.set(119);
+      filled.set(130);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put((byte) 0);
+      rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put((byte) 0);
     }
-    rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put(b.toArrayUnsafe());
+    rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1708,23 +1751,23 @@ public class Trace {
       filled.set(66);
     }
 
-    trmFlagXorEcrecoverXorJumpx.put((byte) (b ? 1 : 0));
+    trmFlagXorCreateExceptionXorJumpx.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pAccountTrmRawAddrHi(final Bytes b) {
-    if (filled.get(120)) {
+    if (filled.get(131)) {
       throw new IllegalStateException("hub_v2.account/TRM___RAW_ADDR_HI already set");
     } else {
-      filled.set(120);
+      filled.set(131);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put((byte) 0);
+      trmRawAddrHiXorOobData1XorStackItemValueLo1.put((byte) 0);
     }
-    trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put(b.toArrayUnsafe());
+    trmRawAddrHiXorOobData1XorStackItemValueLo1.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1736,7 +1779,8 @@ public class Trace {
       filled.set(67);
     }
 
-    warmXorIdentityXorJumpDestinationVettingRequired.put((byte) (b ? 1 : 0));
+    warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired.put(
+        (byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1748,16 +1792,16 @@ public class Trace {
       filled.set(68);
     }
 
-    warmNewXorModexpXorJumpFlag.put((byte) (b ? 1 : 0));
+    warmNewXorCreateFailureConditionWontRevertXorJumpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pContextAccountAddressHi(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.context/ACCOUNT_ADDRESS_HI already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -1771,359 +1815,358 @@ public class Trace {
   }
 
   public Trace pContextAccountAddressLo(final Bytes b) {
-    if (filled.get(99)) {
-      throw new IllegalStateException("hub_v2.context/ACCOUNT_ADDRESS_LO already set");
-    } else {
-      filled.set(99);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
-    }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextAccountDeploymentNumber(final Bytes b) {
-    if (filled.get(100)) {
-      throw new IllegalStateException("hub_v2.context/ACCOUNT_DEPLOYMENT_NUMBER already set");
-    } else {
-      filled.set(100);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-          .put((byte) 0);
-    }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextByteCodeAddressHi(final Bytes b) {
-    if (filled.get(101)) {
-      throw new IllegalStateException("hub_v2.context/BYTE_CODE_ADDRESS_HI already set");
-    } else {
-      filled.set(101);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
-          .put((byte) 0);
-    }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextByteCodeAddressLo(final Bytes b) {
-    if (filled.get(102)) {
-      throw new IllegalStateException("hub_v2.context/BYTE_CODE_ADDRESS_LO already set");
-    } else {
-      filled.set(102);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-          (byte) 0);
-    }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextByteCodeDeploymentNumber(final Bytes b) {
-    if (filled.get(103)) {
-      throw new IllegalStateException("hub_v2.context/BYTE_CODE_DEPLOYMENT_NUMBER already set");
-    } else {
-      filled.set(103);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
-          .put((byte) 0);
-    }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextByteCodeDeploymentStatus(final Bytes b) {
-    if (filled.get(104)) {
-      throw new IllegalStateException("hub_v2.context/BYTE_CODE_DEPLOYMENT_STATUS already set");
-    } else {
-      filled.set(104);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-          (byte) 0);
-    }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallDataOffset(final Bytes b) {
-    if (filled.get(108)) {
-      throw new IllegalStateException("hub_v2.context/CALL_DATA_OFFSET already set");
-    } else {
-      filled.set(108);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
-          .put((byte) 0);
-    }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallDataSize(final Bytes b) {
-    if (filled.get(109)) {
-      throw new IllegalStateException("hub_v2.context/CALL_DATA_SIZE already set");
-    } else {
-      filled.set(109);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put((byte) 0);
-    }
-    depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallStackDepth(final Bytes b) {
     if (filled.get(110)) {
-      throw new IllegalStateException("hub_v2.context/CALL_STACK_DEPTH already set");
+      throw new IllegalStateException("hub_v2.context/ACCOUNT_ADDRESS_LO already set");
     } else {
       filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put((byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pContextCallValue(final Bytes b) {
+  public Trace pContextAccountDeploymentNumber(final Bytes b) {
     if (filled.get(111)) {
-      throw new IllegalStateException("hub_v2.context/CALL_VALUE already set");
+      throw new IllegalStateException("hub_v2.context/ACCOUNT_DEPLOYMENT_NUMBER already set");
     } else {
       filled.set(111);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put((byte) 0);
-    }
-    nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallerAddressHi(final Bytes b) {
-    if (filled.get(105)) {
-      throw new IllegalStateException("hub_v2.context/CALLER_ADDRESS_HI already set");
-    } else {
-      filled.set(105);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
-    }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallerAddressLo(final Bytes b) {
-    if (filled.get(106)) {
-      throw new IllegalStateException("hub_v2.context/CALLER_ADDRESS_LO already set");
-    } else {
-      filled.set(106);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-          (byte) 0);
-    }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextCallerContextNumber(final Bytes b) {
-    if (filled.get(107)) {
-      throw new IllegalStateException("hub_v2.context/CALLER_CONTEXT_NUMBER already set");
-    } else {
-      filled.set(107);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
           .put((byte) 0);
     }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
         .put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pContextContextNumber(final Bytes b) {
+  public Trace pContextByteCodeAddressHi(final Bytes b) {
     if (filled.get(112)) {
-      throw new IllegalStateException("hub_v2.context/CONTEXT_NUMBER already set");
+      throw new IllegalStateException("hub_v2.context/BYTE_CODE_ADDRESS_HI already set");
     } else {
       filled.set(112);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put((byte) 0);
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
     }
-    nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pContextIsStatic(final Bytes b) {
+  public Trace pContextByteCodeAddressLo(final Bytes b) {
     if (filled.get(113)) {
-      throw new IllegalStateException("hub_v2.context/IS_STATIC already set");
+      throw new IllegalStateException("hub_v2.context/BYTE_CODE_ADDRESS_LO already set");
     } else {
       filled.set(113);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put((byte) 0);
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+          (byte) 0);
     }
-    rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put(
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pContextReturnAtOffset(final Bytes b) {
-    if (filled.get(116)) {
-      throw new IllegalStateException("hub_v2.context/RETURN_AT_OFFSET already set");
-    } else {
-      filled.set(116);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put((byte) 0);
-    }
-    rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextReturnAtSize(final Bytes b) {
-    if (filled.get(117)) {
-      throw new IllegalStateException("hub_v2.context/RETURN_AT_SIZE already set");
-    } else {
-      filled.set(117);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put((byte) 0);
-    }
-    rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextReturnDataOffset(final Bytes b) {
-    if (filled.get(118)) {
-      throw new IllegalStateException("hub_v2.context/RETURN_DATA_OFFSET already set");
-    } else {
-      filled.set(118);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put((byte) 0);
-    }
-    rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextReturnDataSize(final Bytes b) {
-    if (filled.get(119)) {
-      throw new IllegalStateException("hub_v2.context/RETURN_DATA_SIZE already set");
-    } else {
-      filled.set(119);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put((byte) 0);
-    }
-    rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pContextReturnerContextNumber(final Bytes b) {
+  public Trace pContextByteCodeDeploymentNumber(final Bytes b) {
     if (filled.get(114)) {
-      throw new IllegalStateException("hub_v2.context/RETURNER_CONTEXT_NUMBER already set");
+      throw new IllegalStateException("hub_v2.context/BYTE_CODE_DEPLOYMENT_NUMBER already set");
     } else {
       filled.set(114);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-          (byte) 0);
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+          .put((byte) 0);
     }
-    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-        b.toArrayUnsafe());
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pContextReturnerIsPrecompile(final Bytes b) {
+  public Trace pContextByteCodeDeploymentStatus(final Bytes b) {
     if (filled.get(115)) {
-      throw new IllegalStateException("hub_v2.context/RETURNER_IS_PRECOMPILE already set");
+      throw new IllegalStateException("hub_v2.context/BYTE_CODE_DEPLOYMENT_STATUS already set");
     } else {
       filled.set(115);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put((byte) 0);
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+          (byte) 0);
     }
-    rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put(b.toArrayUnsafe());
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallDataOffset(final Bytes b) {
+    if (filled.get(119)) {
+      throw new IllegalStateException("hub_v2.context/CALL_DATA_OFFSET already set");
+    } else {
+      filled.set(119);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
+          .put((byte) 0);
+    }
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallDataSize(final Bytes b) {
+    if (filled.get(120)) {
+      throw new IllegalStateException("hub_v2.context/CALL_DATA_SIZE already set");
+    } else {
+      filled.set(120);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put((byte) 0);
+    }
+    depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallStackDepth(final Bytes b) {
+    if (filled.get(121)) {
+      throw new IllegalStateException("hub_v2.context/CALL_STACK_DEPTH already set");
+    } else {
+      filled.set(121);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put((byte) 0);
+    }
+    depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallValue(final Bytes b) {
+    if (filled.get(122)) {
+      throw new IllegalStateException("hub_v2.context/CALL_VALUE already set");
+    } else {
+      filled.set(122);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put((byte) 0);
+    }
+    nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallerAddressHi(final Bytes b) {
+    if (filled.get(116)) {
+      throw new IllegalStateException("hub_v2.context/CALLER_ADDRESS_HI already set");
+    } else {
+      filled.set(116);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
+    }
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallerAddressLo(final Bytes b) {
+    if (filled.get(117)) {
+      throw new IllegalStateException("hub_v2.context/CALLER_ADDRESS_LO already set");
+    } else {
+      filled.set(117);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+          (byte) 0);
+    }
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextCallerContextNumber(final Bytes b) {
+    if (filled.get(118)) {
+      throw new IllegalStateException("hub_v2.context/CALLER_CONTEXT_NUMBER already set");
+    } else {
+      filled.set(118);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+          .put((byte) 0);
+    }
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextContextNumber(final Bytes b) {
+    if (filled.get(123)) {
+      throw new IllegalStateException("hub_v2.context/CONTEXT_NUMBER already set");
+    } else {
+      filled.set(123);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put((byte) 0);
+    }
+    nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextIsStatic(final Bytes b) {
+    if (filled.get(124)) {
+      throw new IllegalStateException("hub_v2.context/IS_STATIC already set");
+    } else {
+      filled.set(124);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put((byte) 0);
+    }
+    rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnAtOffset(final Bytes b) {
+    if (filled.get(127)) {
+      throw new IllegalStateException("hub_v2.context/RETURN_AT_OFFSET already set");
+    } else {
+      filled.set(127);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put((byte) 0);
+    }
+    rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnAtSize(final Bytes b) {
+    if (filled.get(128)) {
+      throw new IllegalStateException("hub_v2.context/RETURN_AT_SIZE already set");
+    } else {
+      filled.set(128);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put((byte) 0);
+    }
+    rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnDataOffset(final Bytes b) {
+    if (filled.get(129)) {
+      throw new IllegalStateException("hub_v2.context/RETURN_DATA_OFFSET already set");
+    } else {
+      filled.set(129);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put((byte) 0);
+    }
+    rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnDataSize(final Bytes b) {
+    if (filled.get(130)) {
+      throw new IllegalStateException("hub_v2.context/RETURN_DATA_SIZE already set");
+    } else {
+      filled.set(130);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put((byte) 0);
+    }
+    rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnerContextNumber(final Bytes b) {
+    if (filled.get(125)) {
+      throw new IllegalStateException("hub_v2.context/RETURNER_CONTEXT_NUMBER already set");
+    } else {
+      filled.set(125);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+          (byte) 0);
+    }
+    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pContextReturnerIsPrecompile(final Bytes b) {
+    if (filled.get(126)) {
+      throw new IllegalStateException("hub_v2.context/RETURNER_IS_PRECOMPILE already set");
+    } else {
+      filled.set(126);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put((byte) 0);
+    }
+    rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put(
+        b.toArrayUnsafe());
 
     return this;
   }
@@ -2142,10 +2185,10 @@ public class Trace {
   }
 
   public Trace pMiscellaneousCcrsStamp(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.miscellaneous/CCRS_STAMP already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2171,56 +2214,91 @@ public class Trace {
     return this;
   }
 
-  public Trace pMiscellaneousExpDyncost(final Bytes b) {
-    if (filled.get(99)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DYNCOST already set");
+  public Trace pMiscellaneousExpData1(final Bytes b) {
+    if (filled.get(110)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DATA_1 already set");
     } else {
-      filled.set(99);
+      filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousExpExponentHi(final Bytes b) {
-    if (filled.get(100)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/EXP___EXPONENT_HI already set");
+  public Trace pMiscellaneousExpData2(final Bytes b) {
+    if (filled.get(111)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DATA_2 already set");
     } else {
-      filled.set(100);
+      filled.set(111);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
           .put((byte) 0);
     }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
         .put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousExpExponentLo(final Bytes b) {
-    if (filled.get(101)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/EXP___EXPONENT_LO already set");
+  public Trace pMiscellaneousExpData3(final Bytes b) {
+    if (filled.get(112)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DATA_3 already set");
     } else {
-      filled.set(101);
+      filled.set(112);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
+    }
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousExpData4(final Bytes b) {
+    if (filled.get(113)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DATA_4 already set");
+    } else {
+      filled.set(113);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+          (byte) 0);
+    }
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousExpData5(final Bytes b) {
+    if (filled.get(114)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___DATA_5 already set");
+    } else {
+      filled.set(114);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
           .put((byte) 0);
     }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
-        b.toArrayUnsafe());
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
 
     return this;
   }
@@ -2237,20 +2315,38 @@ public class Trace {
     return this;
   }
 
-  public Trace pMiscellaneousMmuExoSum(final Bytes b) {
-    if (filled.get(102)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___EXO_SUM already set");
+  public Trace pMiscellaneousExpInst(final long b) {
+    if (filled.get(98)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/EXP___INST already set");
     } else {
-      filled.set(102);
+      filled.set(98);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-          (byte) 0);
+    expInstXorPrcCalleeGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuAuxId(final long b) {
+    if (filled.get(99)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___AUX_ID already set");
+    } else {
+      filled.set(99);
     }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-        b.toArrayUnsafe());
+
+    mmuAuxIdXorPrcCallerGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuExoSum(final long b) {
+    if (filled.get(100)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___EXO_SUM already set");
+    } else {
+      filled.set(100);
+    }
+
+    mmuExoSumXorPrcCdo.putLong(b);
 
     return this;
   }
@@ -2268,203 +2364,187 @@ public class Trace {
     return this;
   }
 
-  public Trace pMiscellaneousMmuInfo(final Boolean b) {
+  public Trace pMiscellaneousMmuInst(final long b) {
+    if (filled.get(101)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___INST already set");
+    } else {
+      filled.set(101);
+    }
+
+    mmuInstXorPrcCds.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuLimb1(final Bytes b) {
+    if (filled.get(115)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___LIMB_1 already set");
+    } else {
+      filled.set(115);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+          (byte) 0);
+    }
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuLimb2(final Bytes b) {
+    if (filled.get(116)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___LIMB_2 already set");
+    } else {
+      filled.set(116);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
+    }
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuPhase(final long b) {
+    if (filled.get(102)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___PHASE already set");
+    } else {
+      filled.set(102);
+    }
+
+    mmuPhaseXorPrcRac.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuRefOffset(final long b) {
+    if (filled.get(103)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___REF_OFFSET already set");
+    } else {
+      filled.set(103);
+    }
+
+    mmuRefOffsetXorPrcRao.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuRefSize(final long b) {
+    if (filled.get(104)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___REF_SIZE already set");
+    } else {
+      filled.set(104);
+    }
+
+    mmuRefSizeXorPrcReturnGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuSize(final long b) {
+    if (filled.get(105)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SIZE already set");
+    } else {
+      filled.set(105);
+    }
+
+    mmuSize.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuSrcId(final long b) {
+    if (filled.get(106)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SRC_ID already set");
+    } else {
+      filled.set(106);
+    }
+
+    mmuSrcId.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuSrcOffsetHi(final Bytes b) {
+    if (filled.get(117)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SRC_OFFSET_HI already set");
+    } else {
+      filled.set(117);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+          (byte) 0);
+    }
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuSrcOffsetLo(final Bytes b) {
+    if (filled.get(118)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SRC_OFFSET_LO already set");
+    } else {
+      filled.set(118);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+          .put((byte) 0);
+    }
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuSuccessBit(final Boolean b) {
     if (filled.get(51)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___INFO already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SUCCESS_BIT already set");
     } else {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace pMiscellaneousMmuInst(final Bytes b) {
-    if (filled.get(103)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___INST already set");
-    } else {
-      filled.set(103);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
-          .put((byte) 0);
-    }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuOffset1Lo(final Bytes b) {
-    if (filled.get(104)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___OFFSET_1_LO already set");
-    } else {
-      filled.set(104);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-          (byte) 0);
-    }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuOffset2Hi(final Bytes b) {
-    if (filled.get(105)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___OFFSET_2_HI already set");
-    } else {
-      filled.set(105);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
-    }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuOffset2Lo(final Bytes b) {
-    if (filled.get(106)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___OFFSET_2_LO already set");
-    } else {
-      filled.set(106);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-          (byte) 0);
-    }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuParam1(final Bytes b) {
+  public Trace pMiscellaneousMmuTgtId(final long b) {
     if (filled.get(107)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___PARAM_1 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___TGT_ID already set");
     } else {
       filled.set(107);
     }
 
+    mmuTgtId.putLong(b);
+
+    return this;
+  }
+
+  public Trace pMiscellaneousMmuTgtOffsetLo(final Bytes b) {
+    if (filled.get(119)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/MMU___TGT_OFFSET_LO already set");
+    } else {
+      filled.set(119);
+    }
+
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .put((byte) 0);
     }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
         .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuParam2(final Bytes b) {
-    if (filled.get(108)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___PARAM_2 already set");
-    } else {
-      filled.set(108);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
-          .put((byte) 0);
-    }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuRefOffset(final Bytes b) {
-    if (filled.get(109)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___REF_OFFSET already set");
-    } else {
-      filled.set(109);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put((byte) 0);
-    }
-    depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuRefSize(final Bytes b) {
-    if (filled.get(110)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___REF_SIZE already set");
-    } else {
-      filled.set(110);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put((byte) 0);
-    }
-    depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuSize(final Bytes b) {
-    if (filled.get(111)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___SIZE already set");
-    } else {
-      filled.set(111);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put((byte) 0);
-    }
-    nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuStackValHi(final Bytes b) {
-    if (filled.get(112)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___STACK_VAL_HI already set");
-    } else {
-      filled.set(112);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put((byte) 0);
-    }
-    nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMmuStackValLo(final Bytes b) {
-    if (filled.get(113)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MMU___STACK_VAL_LO already set");
-    } else {
-      filled.set(113);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put((byte) 0);
-    }
-    rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put(
-        b.toArrayUnsafe());
 
     return this;
   }
@@ -2476,8 +2556,7 @@ public class Trace {
       filled.set(52);
     }
 
-    existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.put(
-        (byte) (b ? 1 : 0));
+    existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -2489,42 +2568,39 @@ public class Trace {
       filled.set(53);
     }
 
-    hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.put(
-        (byte) (b ? 1 : 0));
+    hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pMiscellaneousMxpGasMxp(final Bytes b) {
-    if (filled.get(114)) {
+    if (filled.get(120)) {
       throw new IllegalStateException("hub_v2.miscellaneous/MXP___GAS_MXP already set");
     } else {
-      filled.set(114);
+      filled.set(120);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-          (byte) 0);
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put((byte) 0);
     }
-    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-        b.toArrayUnsafe());
+    depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pMiscellaneousMxpInst(final Bytes b) {
-    if (filled.get(115)) {
+    if (filled.get(121)) {
       throw new IllegalStateException("hub_v2.miscellaneous/MXP___INST already set");
     } else {
-      filled.set(115);
+      filled.set(121);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put((byte) 0);
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put((byte) 0);
     }
-    rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put(b.toArrayUnsafe());
+    depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -2543,328 +2619,336 @@ public class Trace {
   }
 
   public Trace pMiscellaneousMxpOffset1Hi(final Bytes b) {
-    if (filled.get(116)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_1_HI already set");
-    } else {
-      filled.set(116);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put((byte) 0);
-    }
-    rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpOffset1Lo(final Bytes b) {
-    if (filled.get(117)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_1_LO already set");
-    } else {
-      filled.set(117);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put((byte) 0);
-    }
-    rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpOffset2Hi(final Bytes b) {
-    if (filled.get(118)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_2_HI already set");
-    } else {
-      filled.set(118);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put((byte) 0);
-    }
-    rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpOffset2Lo(final Bytes b) {
-    if (filled.get(119)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_2_LO already set");
-    } else {
-      filled.set(119);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put((byte) 0);
-    }
-    rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpSize1Hi(final Bytes b) {
-    if (filled.get(120)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_1_HI already set");
-    } else {
-      filled.set(120);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put((byte) 0);
-    }
-    trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpSize1Lo(final Bytes b) {
-    if (filled.get(121)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_1_LO already set");
-    } else {
-      filled.set(121);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      mxpSize1LoXorStackItemValueLo2.put((byte) 0);
-    }
-    mxpSize1LoXorStackItemValueLo2.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pMiscellaneousMxpSize2Hi(final Bytes b) {
     if (filled.get(122)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_2_HI already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_1_HI already set");
     } else {
       filled.set(122);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      mxpSize2HiXorStackItemValueLo3.put((byte) 0);
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put((byte) 0);
     }
-    mxpSize2HiXorStackItemValueLo3.put(b.toArrayUnsafe());
+    nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousMxpSize2Lo(final Bytes b) {
+  public Trace pMiscellaneousMxpOffset1Lo(final Bytes b) {
     if (filled.get(123)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_2_LO already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_1_LO already set");
     } else {
       filled.set(123);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      mxpSize2LoXorStackItemValueLo4.put((byte) 0);
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put((byte) 0);
     }
-    mxpSize2LoXorStackItemValueLo4.put(b.toArrayUnsafe());
+    nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousMxpWords(final Bytes b) {
+  public Trace pMiscellaneousMxpOffset2Hi(final Bytes b) {
     if (filled.get(124)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/MXP___WORDS already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_2_HI already set");
     } else {
       filled.set(124);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      mxpWordsXorStaticGas.put((byte) 0);
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put((byte) 0);
     }
-    mxpWordsXorStaticGas.put(b.toArrayUnsafe());
+    rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobEvent1(final Boolean b) {
-    if (filled.get(55)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___EVENT_1 already set");
-    } else {
-      filled.set(55);
-    }
-
-    isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
-        (byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pMiscellaneousOobEvent2(final Boolean b) {
-    if (filled.get(56)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___EVENT_2 already set");
-    } else {
-      filled.set(56);
-    }
-
-    isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
-        (byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pMiscellaneousOobFlag(final Boolean b) {
-    if (filled.get(57)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___FLAG already set");
-    } else {
-      filled.set(57);
-    }
-
-    isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pMiscellaneousOobInst(final Bytes b) {
+  public Trace pMiscellaneousMxpOffset2Lo(final Bytes b) {
     if (filled.get(125)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___INST already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___OFFSET_2_LO already set");
     } else {
       filled.set(125);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobInst.put((byte) 0);
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+          (byte) 0);
     }
-    oobInst.put(b.toArrayUnsafe());
+    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData1(final Bytes b) {
+  public Trace pMiscellaneousMxpSize1Hi(final Bytes b) {
     if (filled.get(126)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_1 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_1_HI already set");
     } else {
       filled.set(126);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData1.put((byte) 0);
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put((byte) 0);
     }
-    oobOutgoingData1.put(b.toArrayUnsafe());
+    rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put(
+        b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData2(final Bytes b) {
+  public Trace pMiscellaneousMxpSize1Lo(final Bytes b) {
     if (filled.get(127)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_2 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_1_LO already set");
     } else {
       filled.set(127);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData2.put((byte) 0);
+      rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put((byte) 0);
     }
-    oobOutgoingData2.put(b.toArrayUnsafe());
+    rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData3(final Bytes b) {
+  public Trace pMiscellaneousMxpSize2Hi(final Bytes b) {
     if (filled.get(128)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_3 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_2_HI already set");
     } else {
       filled.set(128);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData3.put((byte) 0);
+      rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put((byte) 0);
     }
-    oobOutgoingData3.put(b.toArrayUnsafe());
+    rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData4(final Bytes b) {
+  public Trace pMiscellaneousMxpSize2Lo(final Bytes b) {
     if (filled.get(129)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_4 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___SIZE_2_LO already set");
     } else {
       filled.set(129);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData4.put((byte) 0);
+      rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put((byte) 0);
     }
-    oobOutgoingData4.put(b.toArrayUnsafe());
+    rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData5(final Bytes b) {
+  public Trace pMiscellaneousMxpWords(final Bytes b) {
     if (filled.get(130)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_5 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/MXP___WORDS already set");
     } else {
       filled.set(130);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData5.put((byte) 0);
+      rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put((byte) 0);
     }
-    oobOutgoingData5.put(b.toArrayUnsafe());
+    rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousOobOutgoingData6(final Bytes b) {
+  public Trace pMiscellaneousOobData1(final Bytes b) {
     if (filled.get(131)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/OOB___OUTGOING_DATA_6 already set");
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_1 already set");
     } else {
       filled.set(131);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      oobOutgoingData6.put((byte) 0);
+      trmRawAddrHiXorOobData1XorStackItemValueLo1.put((byte) 0);
     }
-    oobOutgoingData6.put(b.toArrayUnsafe());
+    trmRawAddrHiXorOobData1XorStackItemValueLo1.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData2(final Bytes b) {
+    if (filled.get(132)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_2 already set");
+    } else {
+      filled.set(132);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData2XorStackItemValueLo2.put((byte) 0);
+    }
+    oobData2XorStackItemValueLo2.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData3(final Bytes b) {
+    if (filled.get(133)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_3 already set");
+    } else {
+      filled.set(133);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData3XorStackItemValueLo3.put((byte) 0);
+    }
+    oobData3XorStackItemValueLo3.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData4(final Bytes b) {
+    if (filled.get(134)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_4 already set");
+    } else {
+      filled.set(134);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData4XorStackItemValueLo4.put((byte) 0);
+    }
+    oobData4XorStackItemValueLo4.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData5(final Bytes b) {
+    if (filled.get(135)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_5 already set");
+    } else {
+      filled.set(135);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData5XorStaticGas.put((byte) 0);
+    }
+    oobData5XorStaticGas.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData6(final Bytes b) {
+    if (filled.get(136)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_6 already set");
+    } else {
+      filled.set(136);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData6.put((byte) 0);
+    }
+    oobData6.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData7(final Bytes b) {
+    if (filled.get(137)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_7 already set");
+    } else {
+      filled.set(137);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData7.put((byte) 0);
+    }
+    oobData7.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobData8(final Bytes b) {
+    if (filled.get(138)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB____DATA_8 already set");
+    } else {
+      filled.set(138);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData8.put((byte) 0);
+    }
+    oobData8.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobFlag(final Boolean b) {
+    if (filled.get(55)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB___FLAG already set");
+    } else {
+      filled.set(55);
+    }
+
+    isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
+        (byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pMiscellaneousOobInst(final long b) {
+    if (filled.get(108)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/OOB___INST already set");
+    } else {
+      filled.set(108);
+    }
+
+    oobInst.putLong(b);
 
     return this;
   }
 
   public Trace pMiscellaneousStpExists(final Boolean b) {
-    if (filled.get(58)) {
+    if (filled.get(56)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___EXISTS already set");
     } else {
-      filled.set(58);
+      filled.set(56);
     }
 
-    isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
+    isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
+        (byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pMiscellaneousStpFlag(final Boolean b) {
-    if (filled.get(59)) {
+    if (filled.get(57)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___FLAG already set");
     } else {
-      filled.set(59);
+      filled.set(57);
     }
 
-    isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
+    isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pMiscellaneousStpGasHi(final Bytes b) {
-    if (filled.get(132)) {
+    if (filled.get(139)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___GAS_HI already set");
     } else {
-      filled.set(132);
+      filled.set(139);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2877,10 +2961,10 @@ public class Trace {
   }
 
   public Trace pMiscellaneousStpGasLo(final Bytes b) {
-    if (filled.get(133)) {
+    if (filled.get(140)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___GAS_LO already set");
     } else {
-      filled.set(133);
+      filled.set(140);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2892,43 +2976,61 @@ public class Trace {
     return this;
   }
 
-  public Trace pMiscellaneousStpGasOopkt(final Bytes b) {
-    if (filled.get(134)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/STP___GAS_OOPKT already set");
+  public Trace pMiscellaneousStpGasPaidOutOfPocket(final Bytes b) {
+    if (filled.get(141)) {
+      throw new IllegalStateException(
+          "hub_v2.miscellaneous/STP___GAS_PAID_OUT_OF_POCKET already set");
     } else {
-      filled.set(134);
+      filled.set(141);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      stpGasOopkt.put((byte) 0);
+      stpGasPaidOutOfPocket.put((byte) 0);
     }
-    stpGasOopkt.put(b.toArrayUnsafe());
+    stpGasPaidOutOfPocket.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace pMiscellaneousStpGasStpd(final Bytes b) {
-    if (filled.get(135)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/STP___GAS_STPD already set");
+  public Trace pMiscellaneousStpGasStipend(final Bytes b) {
+    if (filled.get(142)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/STP___GAS_STIPEND already set");
     } else {
-      filled.set(135);
+      filled.set(142);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      stpGasStpd.put((byte) 0);
+      stpGasStipend.put((byte) 0);
     }
-    stpGasStpd.put(b.toArrayUnsafe());
+    stpGasStipend.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pMiscellaneousStpGasUpfrontGasCost(final Bytes b) {
+    if (filled.get(143)) {
+      throw new IllegalStateException(
+          "hub_v2.miscellaneous/STP___GAS_UPFRONT_GAS_COST already set");
+    } else {
+      filled.set(143);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      stpGasUpfrontGasCost.put((byte) 0);
+    }
+    stpGasUpfrontGasCost.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pMiscellaneousStpInst(final Bytes b) {
-    if (filled.get(136)) {
+    if (filled.get(144)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___INST already set");
     } else {
-      filled.set(136);
+      filled.set(144);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2941,22 +3043,22 @@ public class Trace {
   }
 
   public Trace pMiscellaneousStpOogx(final Boolean b) {
-    if (filled.get(60)) {
+    if (filled.get(58)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___OOGX already set");
     } else {
-      filled.set(60);
+      filled.set(58);
     }
 
-    isIdentityXorStpOogxXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
+    isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pMiscellaneousStpValHi(final Bytes b) {
-    if (filled.get(137)) {
+    if (filled.get(145)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___VAL_HI already set");
     } else {
-      filled.set(137);
+      filled.set(145);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2969,10 +3071,10 @@ public class Trace {
   }
 
   public Trace pMiscellaneousStpValLo(final Bytes b) {
-    if (filled.get(138)) {
+    if (filled.get(146)) {
       throw new IllegalStateException("hub_v2.miscellaneous/STP___VAL_LO already set");
     } else {
-      filled.set(138);
+      filled.set(146);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -2984,14 +3086,14 @@ public class Trace {
     return this;
   }
 
-  public Trace pMiscellaneousStpWarm(final Boolean b) {
-    if (filled.get(61)) {
-      throw new IllegalStateException("hub_v2.miscellaneous/STP___WARM already set");
+  public Trace pMiscellaneousStpWarmth(final Boolean b) {
+    if (filled.get(59)) {
+      throw new IllegalStateException("hub_v2.miscellaneous/STP___WARMTH already set");
     } else {
-      filled.set(61);
+      filled.set(59);
     }
 
-    isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
+    isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3043,36 +3145,32 @@ public class Trace {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace pScenarioCallPrcFailureCallerWillRevert(final Boolean b) {
+  public Trace pScenarioCallException(final Boolean b) {
     if (filled.get(52)) {
-      throw new IllegalStateException(
-          "hub_v2.scenario/CALL_PRC_FAILURE_CALLER_WILL_REVERT already set");
+      throw new IllegalStateException("hub_v2.scenario/CALL_EXCEPTION already set");
     } else {
       filled.set(52);
     }
 
-    existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.put(
-        (byte) (b ? 1 : 0));
+    existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace pScenarioCallPrcFailureCallerWontRevert(final Boolean b) {
+  public Trace pScenarioCallPrcFailure(final Boolean b) {
     if (filled.get(53)) {
-      throw new IllegalStateException(
-          "hub_v2.scenario/CALL_PRC_FAILURE_CALLER_WONT_REVERT already set");
+      throw new IllegalStateException("hub_v2.scenario/CALL_PRC_FAILURE already set");
     } else {
       filled.set(53);
     }
 
-    hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.put(
-        (byte) (b ? 1 : 0));
+    hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3099,7 +3197,7 @@ public class Trace {
       filled.set(55);
     }
 
-    isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
+    isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -3113,7 +3211,7 @@ public class Trace {
       filled.set(56);
     }
 
-    isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
+    isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -3127,7 +3225,7 @@ public class Trace {
       filled.set(57);
     }
 
-    isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
+    isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3140,7 +3238,7 @@ public class Trace {
       filled.set(58);
     }
 
-    isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
+    isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3153,7 +3251,7 @@ public class Trace {
       filled.set(59);
     }
 
-    isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
+    isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3165,7 +3263,7 @@ public class Trace {
       filled.set(60);
     }
 
-    isIdentityXorStpOogxXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
+    isIdentityXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3178,7 +3276,7 @@ public class Trace {
       filled.set(61);
     }
 
-    isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
+    isModexpXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3195,206 +3293,371 @@ public class Trace {
     return this;
   }
 
-  public Trace pScenarioEcadd(final Boolean b) {
+  public Trace pScenarioCreateAbort(final Boolean b) {
     if (filled.get(63)) {
-      throw new IllegalStateException("hub_v2.scenario/ECADD already set");
+      throw new IllegalStateException("hub_v2.scenario/CREATE_ABORT already set");
     } else {
       filled.set(63);
     }
 
-    isRipemd160XorEcaddXorHashInfoFlag.put((byte) (b ? 1 : 0));
+    isRipemd160XorCreateAbortXorHashInfoFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateEmptyInitCodeWillRevert(final Boolean b) {
+    if (filled.get(64)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_EMPTY_INIT_CODE_WILL_REVERT already set");
+    } else {
+      filled.set(64);
+    }
+
+    isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateEmptyInitCodeWontRevert(final Boolean b) {
+    if (filled.get(65)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_EMPTY_INIT_CODE_WONT_REVERT already set");
+    } else {
+      filled.set(65);
+    }
+
+    rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateException(final Boolean b) {
+    if (filled.get(66)) {
+      throw new IllegalStateException("hub_v2.scenario/CREATE_EXCEPTION already set");
+    } else {
+      filled.set(66);
+    }
+
+    trmFlagXorCreateExceptionXorJumpx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateFailureConditionWillRevert(final Boolean b) {
+    if (filled.get(67)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_FAILURE_CONDITION_WILL_REVERT already set");
+    } else {
+      filled.set(67);
+    }
+
+    warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired.put(
+        (byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateFailureConditionWontRevert(final Boolean b) {
+    if (filled.get(68)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_FAILURE_CONDITION_WONT_REVERT already set");
+    } else {
+      filled.set(68);
+    }
+
+    warmNewXorCreateFailureConditionWontRevertXorJumpFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateNonemptyInitCodeFailureWillRevert(final Boolean b) {
+    if (filled.get(69)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_NONEMPTY_INIT_CODE_FAILURE_WILL_REVERT already set");
+    } else {
+      filled.set(69);
+    }
+
+    createNonemptyInitCodeFailureWillRevertXorKecFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateNonemptyInitCodeFailureWontRevert(final Boolean b) {
+    if (filled.get(70)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_NONEMPTY_INIT_CODE_FAILURE_WONT_REVERT already set");
+    } else {
+      filled.set(70);
+    }
+
+    createNonemptyInitCodeFailureWontRevertXorLogFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateNonemptyInitCodeSuccessWillRevert(final Boolean b) {
+    if (filled.get(71)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_NONEMPTY_INIT_CODE_SUCCESS_WILL_REVERT already set");
+    } else {
+      filled.set(71);
+    }
+
+    createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioCreateNonemptyInitCodeSuccessWontRevert(final Boolean b) {
+    if (filled.get(72)) {
+      throw new IllegalStateException(
+          "hub_v2.scenario/CREATE_NONEMPTY_INIT_CODE_SUCCESS_WONT_REVERT already set");
+    } else {
+      filled.set(72);
+    }
+
+    createNonemptyInitCodeSuccessWontRevertXorMaxcsx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioEcadd(final Boolean b) {
+    if (filled.get(73)) {
+      throw new IllegalStateException("hub_v2.scenario/ECADD already set");
+    } else {
+      filled.set(73);
+    }
+
+    ecaddXorModFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioEcmul(final Boolean b) {
-    if (filled.get(64)) {
+    if (filled.get(74)) {
       throw new IllegalStateException("hub_v2.scenario/ECMUL already set");
     } else {
-      filled.set(64);
+      filled.set(74);
     }
 
-    isSha2256XorEcmulXorInvalidFlag.put((byte) (b ? 1 : 0));
+    ecmulXorMulFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioEcpairing(final Boolean b) {
-    if (filled.get(65)) {
+    if (filled.get(75)) {
       throw new IllegalStateException("hub_v2.scenario/ECPAIRING already set");
     } else {
-      filled.set(65);
+      filled.set(75);
     }
 
-    rlpaddrFlagXorEcpairingXorInvprex.put((byte) (b ? 1 : 0));
+    ecpairingXorMxpx.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioEcrecover(final Boolean b) {
-    if (filled.get(66)) {
+    if (filled.get(76)) {
       throw new IllegalStateException("hub_v2.scenario/ECRECOVER already set");
     } else {
-      filled.set(66);
+      filled.set(76);
     }
 
-    trmFlagXorEcrecoverXorJumpx.put((byte) (b ? 1 : 0));
+    ecrecoverXorMxpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioIdentity(final Boolean b) {
-    if (filled.get(67)) {
+    if (filled.get(77)) {
       throw new IllegalStateException("hub_v2.scenario/IDENTITY already set");
     } else {
-      filled.set(67);
+      filled.set(77);
     }
 
-    warmXorIdentityXorJumpDestinationVettingRequired.put((byte) (b ? 1 : 0));
+    identityXorOobFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioModexp(final Boolean b) {
-    if (filled.get(68)) {
+    if (filled.get(78)) {
       throw new IllegalStateException("hub_v2.scenario/MODEXP already set");
     } else {
-      filled.set(68);
+      filled.set(78);
     }
 
-    warmNewXorModexpXorJumpFlag.put((byte) (b ? 1 : 0));
+    modexpXorOogx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioPrcCalleeGas(final long b) {
+    if (filled.get(98)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_CALLEE_GAS already set");
+    } else {
+      filled.set(98);
+    }
+
+    expInstXorPrcCalleeGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcCallerGas(final long b) {
+    if (filled.get(99)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_CALLER_GAS already set");
+    } else {
+      filled.set(99);
+    }
+
+    mmuAuxIdXorPrcCallerGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcCdo(final long b) {
+    if (filled.get(100)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_CDO already set");
+    } else {
+      filled.set(100);
+    }
+
+    mmuExoSumXorPrcCdo.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcCds(final long b) {
+    if (filled.get(101)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_CDS already set");
+    } else {
+      filled.set(101);
+    }
+
+    mmuInstXorPrcCds.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcFailureKnownToHub(final Boolean b) {
+    if (filled.get(79)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_FAILURE_KNOWN_TO_HUB already set");
+    } else {
+      filled.set(79);
+    }
+
+    prcFailureKnownToHubXorOpcx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioPrcFailureKnownToRam(final Boolean b) {
+    if (filled.get(80)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_FAILURE_KNOWN_TO_RAM already set");
+    } else {
+      filled.set(80);
+    }
+
+    prcFailureKnownToRamXorPushpopFlag.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioPrcRac(final long b) {
+    if (filled.get(102)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_RAC already set");
+    } else {
+      filled.set(102);
+    }
+
+    mmuPhaseXorPrcRac.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcRao(final long b) {
+    if (filled.get(103)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_RAO already set");
+    } else {
+      filled.set(103);
+    }
+
+    mmuRefOffsetXorPrcRao.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcReturnGas(final long b) {
+    if (filled.get(104)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_RETURN_GAS already set");
+    } else {
+      filled.set(104);
+    }
+
+    mmuRefSizeXorPrcReturnGas.putLong(b);
+
+    return this;
+  }
+
+  public Trace pScenarioPrcSuccessWillRevert(final Boolean b) {
+    if (filled.get(81)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_SUCCESS_WILL_REVERT already set");
+    } else {
+      filled.set(81);
+    }
+
+    prcSuccessWillRevertXorRdcx.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace pScenarioPrcSuccessWontRevert(final Boolean b) {
+    if (filled.get(82)) {
+      throw new IllegalStateException("hub_v2.scenario/PRC_SUCCESS_WONT_REVERT already set");
+    } else {
+      filled.set(82);
+    }
+
+    prcSuccessWontRevertXorShfFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioRipemd160(final Boolean b) {
-    if (filled.get(69)) {
+    if (filled.get(83)) {
       throw new IllegalStateException("hub_v2.scenario/RIPEMD-160 already set");
     } else {
-      filled.set(69);
+      filled.set(83);
     }
 
-    ripemd160XorKecFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnFailure1(final Boolean b) {
-    if (filled.get(70)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_FAILURE_1 already set");
-    } else {
-      filled.set(70);
-    }
-
-    scnFailure1XorLogFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnFailure2(final Boolean b) {
-    if (filled.get(71)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_FAILURE_2 already set");
-    } else {
-      filled.set(71);
-    }
-
-    scnFailure2XorMachineStateFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnFailure3(final Boolean b) {
-    if (filled.get(72)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_FAILURE_3 already set");
-    } else {
-      filled.set(72);
-    }
-
-    scnFailure3XorMaxcsx.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnFailure4(final Boolean b) {
-    if (filled.get(73)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_FAILURE_4 already set");
-    } else {
-      filled.set(73);
-    }
-
-    scnFailure4XorModFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnSuccess1(final Boolean b) {
-    if (filled.get(74)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_SUCCESS_1 already set");
-    } else {
-      filled.set(74);
-    }
-
-    scnSuccess1XorMulFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnSuccess2(final Boolean b) {
-    if (filled.get(75)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_SUCCESS_2 already set");
-    } else {
-      filled.set(75);
-    }
-
-    scnSuccess2XorMxpx.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnSuccess3(final Boolean b) {
-    if (filled.get(76)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_SUCCESS_3 already set");
-    } else {
-      filled.set(76);
-    }
-
-    scnSuccess3XorMxpFlag.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace pScenarioScnSuccess4(final Boolean b) {
-    if (filled.get(77)) {
-      throw new IllegalStateException("hub_v2.scenario/SCN_SUCCESS_4 already set");
-    } else {
-      filled.set(77);
-    }
-
-    scnSuccess4XorOobFlag.put((byte) (b ? 1 : 0));
+    ripemd160XorSox.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioSelfdestruct(final Boolean b) {
-    if (filled.get(78)) {
+    if (filled.get(84)) {
       throw new IllegalStateException("hub_v2.scenario/SELFDESTRUCT already set");
     } else {
-      filled.set(78);
+      filled.set(84);
     }
 
-    selfdestructXorOogx.put((byte) (b ? 1 : 0));
+    selfdestructXorSstorex.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pScenarioSha2256(final Boolean b) {
-    if (filled.get(79)) {
+    if (filled.get(85)) {
       throw new IllegalStateException("hub_v2.scenario/SHA2-256 already set");
     } else {
-      filled.set(79);
+      filled.set(85);
     }
 
-    sha2256XorOpcx.put((byte) (b ? 1 : 0));
+    sha2256XorStackramFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3444,7 +3707,7 @@ public class Trace {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
@@ -3457,8 +3720,7 @@ public class Trace {
       filled.set(52);
     }
 
-    existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.put(
-        (byte) (b ? 1 : 0));
+    existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3470,8 +3732,7 @@ public class Trace {
       filled.set(53);
     }
 
-    hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.put(
-        (byte) (b ? 1 : 0));
+    hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3496,7 +3757,7 @@ public class Trace {
       filled.set(55);
     }
 
-    isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
+    isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -3509,7 +3770,7 @@ public class Trace {
       filled.set(56);
     }
 
-    isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
+    isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -3522,7 +3783,7 @@ public class Trace {
       filled.set(57);
     }
 
-    isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
+    isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3534,7 +3795,7 @@ public class Trace {
       filled.set(58);
     }
 
-    isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
+    isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3546,7 +3807,7 @@ public class Trace {
       filled.set(59);
     }
 
-    isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
+    isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3558,7 +3819,7 @@ public class Trace {
       filled.set(60);
     }
 
-    isIdentityXorStpOogxXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
+    isIdentityXorCodedepositXorDupFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3570,7 +3831,7 @@ public class Trace {
       filled.set(61);
     }
 
-    isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
+    isModexpXorCodedepositInvalidCodePrefixXorExtFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3594,16 +3855,16 @@ public class Trace {
       filled.set(63);
     }
 
-    isRipemd160XorEcaddXorHashInfoFlag.put((byte) (b ? 1 : 0));
+    isRipemd160XorCreateAbortXorHashInfoFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pStackHashInfoKecHi(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.stack/HASH_INFO___KEC_HI already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -3617,126 +3878,124 @@ public class Trace {
   }
 
   public Trace pStackHashInfoKecLo(final Bytes b) {
-    if (filled.get(99)) {
+    if (filled.get(110)) {
       throw new IllegalStateException("hub_v2.stack/HASH_INFO___KEC_LO already set");
     } else {
-      filled.set(99);
+      filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackHashInfoSize(final Bytes b) {
-    if (filled.get(100)) {
+    if (filled.get(111)) {
       throw new IllegalStateException("hub_v2.stack/HASH_INFO___SIZE already set");
     } else {
-      filled.set(100);
+      filled.set(111);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
           .put((byte) 0);
     }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
         .put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackHeight(final Bytes b) {
-    if (filled.get(101)) {
+    if (filled.get(112)) {
       throw new IllegalStateException("hub_v2.stack/HEIGHT already set");
     } else {
-      filled.set(101);
+      filled.set(112);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
-          .put((byte) 0);
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
     }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackHeightNew(final Bytes b) {
-    if (filled.get(102)) {
+    if (filled.get(113)) {
       throw new IllegalStateException("hub_v2.stack/HEIGHT_NEW already set");
     } else {
-      filled.set(102);
+      filled.set(113);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
           (byte) 0);
     }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackHeightOver(final Bytes b) {
-    if (filled.get(103)) {
+    if (filled.get(114)) {
       throw new IllegalStateException("hub_v2.stack/HEIGHT_OVER already set");
     } else {
-      filled.set(103);
+      filled.set(114);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
           .put((byte) 0);
     }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackHeightUnder(final Bytes b) {
-    if (filled.get(104)) {
+    if (filled.get(115)) {
       throw new IllegalStateException("hub_v2.stack/HEIGHT_UNDER already set");
     } else {
-      filled.set(104);
+      filled.set(115);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
           (byte) 0);
     }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackInst(final Bytes b) {
-    if (filled.get(105)) {
+    if (filled.get(116)) {
       throw new IllegalStateException("hub_v2.stack/INST already set");
     } else {
-      filled.set(105);
+      filled.set(116);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
     }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -3748,7 +4007,7 @@ public class Trace {
       filled.set(64);
     }
 
-    isSha2256XorEcmulXorInvalidFlag.put((byte) (b ? 1 : 0));
+    isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3760,7 +4019,7 @@ public class Trace {
       filled.set(65);
     }
 
-    rlpaddrFlagXorEcpairingXorInvprex.put((byte) (b ? 1 : 0));
+    rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3772,7 +4031,8 @@ public class Trace {
       filled.set(67);
     }
 
-    warmXorIdentityXorJumpDestinationVettingRequired.put((byte) (b ? 1 : 0));
+    warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired.put(
+        (byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3784,7 +4044,7 @@ public class Trace {
       filled.set(68);
     }
 
-    warmNewXorModexpXorJumpFlag.put((byte) (b ? 1 : 0));
+    warmNewXorCreateFailureConditionWontRevertXorJumpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3796,7 +4056,7 @@ public class Trace {
       filled.set(66);
     }
 
-    trmFlagXorEcrecoverXorJumpx.put((byte) (b ? 1 : 0));
+    trmFlagXorCreateExceptionXorJumpx.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3808,7 +4068,7 @@ public class Trace {
       filled.set(69);
     }
 
-    ripemd160XorKecFlag.put((byte) (b ? 1 : 0));
+    createNonemptyInitCodeFailureWillRevertXorKecFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3820,7 +4080,7 @@ public class Trace {
       filled.set(70);
     }
 
-    scnFailure1XorLogFlag.put((byte) (b ? 1 : 0));
+    createNonemptyInitCodeFailureWontRevertXorLogFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3832,7 +4092,7 @@ public class Trace {
       filled.set(71);
     }
 
-    scnFailure2XorMachineStateFlag.put((byte) (b ? 1 : 0));
+    createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3844,7 +4104,7 @@ public class Trace {
       filled.set(72);
     }
 
-    scnFailure3XorMaxcsx.put((byte) (b ? 1 : 0));
+    createNonemptyInitCodeSuccessWontRevertXorMaxcsx.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3856,7 +4116,7 @@ public class Trace {
       filled.set(73);
     }
 
-    scnFailure4XorModFlag.put((byte) (b ? 1 : 0));
+    ecaddXorModFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3868,7 +4128,7 @@ public class Trace {
       filled.set(74);
     }
 
-    scnSuccess1XorMulFlag.put((byte) (b ? 1 : 0));
+    ecmulXorMulFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3880,7 +4140,7 @@ public class Trace {
       filled.set(76);
     }
 
-    scnSuccess3XorMxpFlag.put((byte) (b ? 1 : 0));
+    ecrecoverXorMxpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3892,7 +4152,7 @@ public class Trace {
       filled.set(75);
     }
 
-    scnSuccess2XorMxpx.put((byte) (b ? 1 : 0));
+    ecpairingXorMxpx.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3904,7 +4164,7 @@ public class Trace {
       filled.set(77);
     }
 
-    scnSuccess4XorOobFlag.put((byte) (b ? 1 : 0));
+    identityXorOobFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3916,7 +4176,7 @@ public class Trace {
       filled.set(78);
     }
 
-    selfdestructXorOogx.put((byte) (b ? 1 : 0));
+    modexpXorOogx.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3928,42 +4188,42 @@ public class Trace {
       filled.set(79);
     }
 
-    sha2256XorOpcx.put((byte) (b ? 1 : 0));
+    prcFailureKnownToHubXorOpcx.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pStackPushValueHi(final Bytes b) {
-    if (filled.get(106)) {
+    if (filled.get(117)) {
       throw new IllegalStateException("hub_v2.stack/PUSH_VALUE_HI already set");
     } else {
-      filled.set(106);
+      filled.set(117);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
           (byte) 0);
     }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackPushValueLo(final Bytes b) {
-    if (filled.get(107)) {
+    if (filled.get(118)) {
       throw new IllegalStateException("hub_v2.stack/PUSH_VALUE_LO already set");
     } else {
-      filled.set(107);
+      filled.set(118);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
           .put((byte) 0);
     }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
         .put(b.toArrayUnsafe());
 
     return this;
@@ -3976,7 +4236,7 @@ public class Trace {
       filled.set(80);
     }
 
-    pushpopFlag.put((byte) (b ? 1 : 0));
+    prcFailureKnownToRamXorPushpopFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -3988,7 +4248,7 @@ public class Trace {
       filled.set(81);
     }
 
-    rdcx.put((byte) (b ? 1 : 0));
+    prcSuccessWillRevertXorRdcx.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -4000,7 +4260,7 @@ public class Trace {
       filled.set(82);
     }
 
-    shfFlag.put((byte) (b ? 1 : 0));
+    prcSuccessWontRevertXorShfFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -4012,7 +4272,7 @@ public class Trace {
       filled.set(83);
     }
 
-    sox.put((byte) (b ? 1 : 0));
+    ripemd160XorSox.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -4024,73 +4284,73 @@ public class Trace {
       filled.set(84);
     }
 
-    sstorex.put((byte) (b ? 1 : 0));
+    selfdestructXorSstorex.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pStackStackItemHeight1(final Bytes b) {
-    if (filled.get(108)) {
+    if (filled.get(119)) {
       throw new IllegalStateException("hub_v2.stack/STACK_ITEM_HEIGHT_1 already set");
     } else {
-      filled.set(108);
+      filled.set(119);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .put((byte) 0);
     }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
         .put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackStackItemHeight2(final Bytes b) {
-    if (filled.get(109)) {
+    if (filled.get(120)) {
       throw new IllegalStateException("hub_v2.stack/STACK_ITEM_HEIGHT_2 already set");
     } else {
-      filled.set(109);
+      filled.set(120);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put((byte) 0);
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put((byte) 0);
     }
-    depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
+    depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackStackItemHeight3(final Bytes b) {
-    if (filled.get(110)) {
+    if (filled.get(121)) {
       throw new IllegalStateException("hub_v2.stack/STACK_ITEM_HEIGHT_3 already set");
     } else {
-      filled.set(110);
+      filled.set(121);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put((byte) 0);
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put((byte) 0);
     }
-    depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
+    depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStackStackItemHeight4(final Bytes b) {
-    if (filled.get(111)) {
+    if (filled.get(122)) {
       throw new IllegalStateException("hub_v2.stack/STACK_ITEM_HEIGHT_4 already set");
     } else {
-      filled.set(111);
+      filled.set(122);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put((byte) 0);
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put((byte) 0);
     }
-    nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
+    nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -4144,196 +4404,197 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp1(final Bytes b) {
-    if (filled.get(112)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_1 already set");
-    } else {
-      filled.set(112);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put((byte) 0);
-    }
-    nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemStamp2(final Bytes b) {
-    if (filled.get(113)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_2 already set");
-    } else {
-      filled.set(113);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put((byte) 0);
-    }
-    rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemStamp3(final Bytes b) {
-    if (filled.get(114)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_3 already set");
-    } else {
-      filled.set(114);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-          (byte) 0);
-    }
-    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemStamp4(final Bytes b) {
-    if (filled.get(115)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_4 already set");
-    } else {
-      filled.set(115);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put((byte) 0);
-    }
-    rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueHi1(final Bytes b) {
-    if (filled.get(116)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_1 already set");
-    } else {
-      filled.set(116);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put((byte) 0);
-    }
-    rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueHi2(final Bytes b) {
-    if (filled.get(117)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_2 already set");
-    } else {
-      filled.set(117);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put((byte) 0);
-    }
-    rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueHi3(final Bytes b) {
-    if (filled.get(118)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_3 already set");
-    } else {
-      filled.set(118);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put((byte) 0);
-    }
-    rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueHi4(final Bytes b) {
-    if (filled.get(119)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_4 already set");
-    } else {
-      filled.set(119);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put((byte) 0);
-    }
-    rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueLo1(final Bytes b) {
-    if (filled.get(120)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_1 already set");
-    } else {
-      filled.set(120);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put((byte) 0);
-    }
-    trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueLo2(final Bytes b) {
-    if (filled.get(121)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_2 already set");
-    } else {
-      filled.set(121);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      mxpSize1LoXorStackItemValueLo2.put((byte) 0);
-    }
-    mxpSize1LoXorStackItemValueLo2.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueLo3(final Bytes b) {
-    if (filled.get(122)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_3 already set");
-    } else {
-      filled.set(122);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      mxpSize2HiXorStackItemValueLo3.put((byte) 0);
-    }
-    mxpSize2HiXorStackItemValueLo3.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pStackStackItemValueLo4(final Bytes b) {
     if (filled.get(123)) {
-      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_4 already set");
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_1 already set");
     } else {
       filled.set(123);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      mxpSize2LoXorStackItemValueLo4.put((byte) 0);
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put((byte) 0);
     }
-    mxpSize2LoXorStackItemValueLo4.put(b.toArrayUnsafe());
+    nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemStamp2(final Bytes b) {
+    if (filled.get(124)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_2 already set");
+    } else {
+      filled.set(124);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put((byte) 0);
+    }
+    rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemStamp3(final Bytes b) {
+    if (filled.get(125)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_3 already set");
+    } else {
+      filled.set(125);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+          (byte) 0);
+    }
+    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemStamp4(final Bytes b) {
+    if (filled.get(126)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_STAMP_4 already set");
+    } else {
+      filled.set(126);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put((byte) 0);
+    }
+    rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueHi1(final Bytes b) {
+    if (filled.get(127)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_1 already set");
+    } else {
+      filled.set(127);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put((byte) 0);
+    }
+    rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueHi2(final Bytes b) {
+    if (filled.get(128)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_2 already set");
+    } else {
+      filled.set(128);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put((byte) 0);
+    }
+    rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueHi3(final Bytes b) {
+    if (filled.get(129)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_3 already set");
+    } else {
+      filled.set(129);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put((byte) 0);
+    }
+    rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueHi4(final Bytes b) {
+    if (filled.get(130)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_HI_4 already set");
+    } else {
+      filled.set(130);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put((byte) 0);
+    }
+    rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueLo1(final Bytes b) {
+    if (filled.get(131)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_1 already set");
+    } else {
+      filled.set(131);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      trmRawAddrHiXorOobData1XorStackItemValueLo1.put((byte) 0);
+    }
+    trmRawAddrHiXorOobData1XorStackItemValueLo1.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueLo2(final Bytes b) {
+    if (filled.get(132)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_2 already set");
+    } else {
+      filled.set(132);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData2XorStackItemValueLo2.put((byte) 0);
+    }
+    oobData2XorStackItemValueLo2.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueLo3(final Bytes b) {
+    if (filled.get(133)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_3 already set");
+    } else {
+      filled.set(133);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData3XorStackItemValueLo3.put((byte) 0);
+    }
+    oobData3XorStackItemValueLo3.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pStackStackItemValueLo4(final Bytes b) {
+    if (filled.get(134)) {
+      throw new IllegalStateException("hub_v2.stack/STACK_ITEM_VALUE_LO_4 already set");
+    } else {
+      filled.set(134);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      oobData4XorStackItemValueLo4.put((byte) 0);
+    }
+    oobData4XorStackItemValueLo4.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -4345,7 +4606,7 @@ public class Trace {
       filled.set(85);
     }
 
-    stackramFlag.put((byte) (b ? 1 : 0));
+    sha2256XorStackramFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -4363,17 +4624,17 @@ public class Trace {
   }
 
   public Trace pStackStaticGas(final Bytes b) {
-    if (filled.get(124)) {
+    if (filled.get(135)) {
       throw new IllegalStateException("hub_v2.stack/STATIC_GAS already set");
     } else {
-      filled.set(124);
+      filled.set(135);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      mxpWordsXorStaticGas.put((byte) 0);
+      oobData5XorStaticGas.put((byte) 0);
     }
-    mxpWordsXorStaticGas.put(b.toArrayUnsafe());
+    oobData5XorStaticGas.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -4463,10 +4724,10 @@ public class Trace {
   }
 
   public Trace pStorageAddressHi(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.storage/ADDRESS_HI already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -4480,72 +4741,71 @@ public class Trace {
   }
 
   public Trace pStorageAddressLo(final Bytes b) {
-    if (filled.get(99)) {
+    if (filled.get(110)) {
       throw new IllegalStateException("hub_v2.storage/ADDRESS_LO already set");
     } else {
-      filled.set(99);
+      filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStorageDeploymentNumber(final Bytes b) {
-    if (filled.get(100)) {
+    if (filled.get(111)) {
       throw new IllegalStateException("hub_v2.storage/DEPLOYMENT_NUMBER already set");
     } else {
-      filled.set(100);
+      filled.set(111);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
           .put((byte) 0);
     }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
         .put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStorageStorageKeyHi(final Bytes b) {
-    if (filled.get(101)) {
+    if (filled.get(112)) {
       throw new IllegalStateException("hub_v2.storage/STORAGE_KEY_HI already set");
     } else {
-      filled.set(101);
+      filled.set(112);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
-          .put((byte) 0);
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
     }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStorageStorageKeyLo(final Bytes b) {
-    if (filled.get(102)) {
+    if (filled.get(113)) {
       throw new IllegalStateException("hub_v2.storage/STORAGE_KEY_LO already set");
     } else {
-      filled.set(102);
+      filled.set(113);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
           (byte) 0);
     }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
         b.toArrayUnsafe());
 
     return this;
@@ -4565,19 +4825,19 @@ public class Trace {
   }
 
   public Trace pStorageValCurrHi(final Bytes b) {
-    if (filled.get(103)) {
+    if (filled.get(114)) {
       throw new IllegalStateException("hub_v2.storage/VAL_CURR_HI already set");
     } else {
-      filled.set(103);
+      filled.set(114);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
           .put((byte) 0);
     }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
 
     return this;
   }
@@ -4608,36 +4868,35 @@ public class Trace {
   }
 
   public Trace pStorageValCurrLo(final Bytes b) {
-    if (filled.get(104)) {
+    if (filled.get(115)) {
       throw new IllegalStateException("hub_v2.storage/VAL_CURR_LO already set");
     } else {
-      filled.set(104);
+      filled.set(115);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
           (byte) 0);
     }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStorageValNextHi(final Bytes b) {
-    if (filled.get(105)) {
+    if (filled.get(116)) {
       throw new IllegalStateException("hub_v2.storage/VAL_NEXT_HI already set");
     } else {
-      filled.set(105);
+      filled.set(116);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
     }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -4649,7 +4908,7 @@ public class Trace {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
@@ -4662,8 +4921,7 @@ public class Trace {
       filled.set(52);
     }
 
-    existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.put(
-        (byte) (b ? 1 : 0));
+    existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -4675,43 +4933,42 @@ public class Trace {
       filled.set(53);
     }
 
-    hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.put(
-        (byte) (b ? 1 : 0));
+    hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pStorageValNextLo(final Bytes b) {
-    if (filled.get(106)) {
+    if (filled.get(117)) {
       throw new IllegalStateException("hub_v2.storage/VAL_NEXT_LO already set");
     } else {
-      filled.set(106);
+      filled.set(117);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
           (byte) 0);
     }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pStorageValOrigHi(final Bytes b) {
-    if (filled.get(107)) {
+    if (filled.get(118)) {
       throw new IllegalStateException("hub_v2.storage/VAL_ORIG_HI already set");
     } else {
-      filled.set(107);
+      filled.set(118);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
           .put((byte) 0);
     }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
         .put(b.toArrayUnsafe());
 
     return this;
@@ -4731,18 +4988,18 @@ public class Trace {
   }
 
   public Trace pStorageValOrigLo(final Bytes b) {
-    if (filled.get(108)) {
+    if (filled.get(119)) {
       throw new IllegalStateException("hub_v2.storage/VAL_ORIG_LO already set");
     } else {
-      filled.set(108);
+      filled.set(119);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .put((byte) 0);
     }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
         .put(b.toArrayUnsafe());
 
     return this;
@@ -4755,7 +5012,7 @@ public class Trace {
       filled.set(55);
     }
 
-    isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
+    isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.put(
         (byte) (b ? 1 : 0));
 
     return this;
@@ -4768,17 +5025,17 @@ public class Trace {
       filled.set(56);
     }
 
-    isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
+    isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.put(
         (byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pTransactionBasefee(final Bytes b) {
-    if (filled.get(98)) {
+    if (filled.get(109)) {
       throw new IllegalStateException("hub_v2.transaction/BASEFEE already set");
     } else {
-      filled.set(98);
+      filled.set(109);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -4792,211 +5049,209 @@ public class Trace {
   }
 
   public Trace pTransactionCallDataSize(final Bytes b) {
-    if (filled.get(99)) {
-      throw new IllegalStateException("hub_v2.transaction/CALL_DATA_SIZE already set");
-    } else {
-      filled.set(99);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-          (byte) 0);
-    }
-    addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionCoinbaseAddressHi(final Bytes b) {
-    if (filled.get(100)) {
-      throw new IllegalStateException("hub_v2.transaction/COINBASE_ADDRESS_HI already set");
-    } else {
-      filled.set(100);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-          .put((byte) 0);
-    }
-    balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionCoinbaseAddressLo(final Bytes b) {
-    if (filled.get(101)) {
-      throw new IllegalStateException("hub_v2.transaction/COINBASE_ADDRESS_LO already set");
-    } else {
-      filled.set(101);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
-          .put((byte) 0);
-    }
-    balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionFromAddressHi(final Bytes b) {
-    if (filled.get(102)) {
-      throw new IllegalStateException("hub_v2.transaction/FROM_ADDRESS_HI already set");
-    } else {
-      filled.set(102);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-          (byte) 0);
-    }
-    codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionFromAddressLo(final Bytes b) {
-    if (filled.get(103)) {
-      throw new IllegalStateException("hub_v2.transaction/FROM_ADDRESS_LO already set");
-    } else {
-      filled.set(103);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
-          .put((byte) 0);
-    }
-    codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionGasLimit(final Bytes b) {
-    if (filled.get(104)) {
-      throw new IllegalStateException("hub_v2.transaction/GAS_LIMIT already set");
-    } else {
-      filled.set(104);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-          (byte) 0);
-    }
-    codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionGasPrice(final Bytes b) {
-    if (filled.get(105)) {
-      throw new IllegalStateException("hub_v2.transaction/GAS_PRICE already set");
-    } else {
-      filled.set(105);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put((byte) 0);
-    }
-    codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionGasRefundAmount(final Bytes b) {
-    if (filled.get(106)) {
-      throw new IllegalStateException("hub_v2.transaction/GAS_REFUND_AMOUNT already set");
-    } else {
-      filled.set(106);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-          (byte) 0);
-    }
-    codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount.put(
-        b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionGasRefundCounterFinal(final Bytes b) {
-    if (filled.get(107)) {
-      throw new IllegalStateException("hub_v2.transaction/GAS_REFUND_COUNTER_FINAL already set");
-    } else {
-      filled.set(107);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
-          .put((byte) 0);
-    }
-    codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
-        .put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionInitCodeSize(final Bytes b) {
-    if (filled.get(109)) {
-      throw new IllegalStateException("hub_v2.transaction/INIT_CODE_SIZE already set");
-    } else {
-      filled.set(109);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put((byte) 0);
-    }
-    depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace pTransactionInitGas(final Bytes b) {
     if (filled.get(110)) {
-      throw new IllegalStateException("hub_v2.transaction/INIT_GAS already set");
+      throw new IllegalStateException("hub_v2.transaction/CALL_DATA_SIZE already set");
     } else {
       filled.set(110);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put((byte) 0);
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put((byte) 0);
     }
-    depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
+    addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionCoinbaseAddressHi(final Bytes b) {
+    if (filled.get(111)) {
+      throw new IllegalStateException("hub_v2.transaction/COINBASE_ADDRESS_HI already set");
+    } else {
+      filled.set(111);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+          .put((byte) 0);
+    }
+    balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionCoinbaseAddressLo(final Bytes b) {
+    if (filled.get(112)) {
+      throw new IllegalStateException("hub_v2.transaction/COINBASE_ADDRESS_LO already set");
+    } else {
+      filled.set(112);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+          (byte) 0);
+    }
+    balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionFromAddressHi(final Bytes b) {
+    if (filled.get(113)) {
+      throw new IllegalStateException("hub_v2.transaction/FROM_ADDRESS_HI already set");
+    } else {
+      filled.set(113);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+          (byte) 0);
+    }
+    codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionFromAddressLo(final Bytes b) {
+    if (filled.get(114)) {
+      throw new IllegalStateException("hub_v2.transaction/FROM_ADDRESS_LO already set");
+    } else {
+      filled.set(114);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+          .put((byte) 0);
+    }
+    codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionGasLimit(final Bytes b) {
+    if (filled.get(115)) {
+      throw new IllegalStateException("hub_v2.transaction/GAS_LIMIT already set");
+    } else {
+      filled.set(115);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+          (byte) 0);
+    }
+    codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionGasPrice(final Bytes b) {
+    if (filled.get(116)) {
+      throw new IllegalStateException("hub_v2.transaction/GAS_PRICE already set");
+    } else {
+      filled.set(116);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put((byte) 0);
+    }
+    codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionGasRefundAmount(final Bytes b) {
+    if (filled.get(117)) {
+      throw new IllegalStateException("hub_v2.transaction/GAS_REFUND_AMOUNT already set");
+    } else {
+      filled.set(117);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+          (byte) 0);
+    }
+    codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount.put(
+        b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionGasRefundCounterFinal(final Bytes b) {
+    if (filled.get(118)) {
+      throw new IllegalStateException("hub_v2.transaction/GAS_REFUND_COUNTER_FINAL already set");
+    } else {
+      filled.set(118);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+          .put((byte) 0);
+    }
+    codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+        .put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionInitCodeSize(final Bytes b) {
+    if (filled.get(120)) {
+      throw new IllegalStateException("hub_v2.transaction/INIT_CODE_SIZE already set");
+    } else {
+      filled.set(120);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put((byte) 0);
+    }
+    depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace pTransactionInitGas(final Bytes b) {
+    if (filled.get(121)) {
+      throw new IllegalStateException("hub_v2.transaction/INIT_GAS already set");
+    } else {
+      filled.set(121);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put((byte) 0);
+    }
+    depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pTransactionInitialBalance(final Bytes b) {
-    if (filled.get(108)) {
+    if (filled.get(119)) {
       throw new IllegalStateException("hub_v2.transaction/INITIAL_BALANCE already set");
     } else {
-      filled.set(108);
+      filled.set(119);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .put((byte) 0);
     }
-    deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+    deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
         .put(b.toArrayUnsafe());
 
     return this;
@@ -5028,33 +5283,33 @@ public class Trace {
   }
 
   public Trace pTransactionLeftoverGas(final Bytes b) {
-    if (filled.get(111)) {
+    if (filled.get(122)) {
       throw new IllegalStateException("hub_v2.transaction/LEFTOVER_GAS already set");
     } else {
-      filled.set(111);
+      filled.set(122);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put((byte) 0);
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put((byte) 0);
     }
-    nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
+    nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pTransactionNonce(final Bytes b) {
-    if (filled.get(112)) {
+    if (filled.get(123)) {
       throw new IllegalStateException("hub_v2.transaction/NONCE already set");
     } else {
-      filled.set(112);
+      filled.set(123);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put((byte) 0);
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put((byte) 0);
     }
-    nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
+    nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -5073,35 +5328,35 @@ public class Trace {
   }
 
   public Trace pTransactionToAddressHi(final Bytes b) {
-    if (filled.get(113)) {
+    if (filled.get(124)) {
       throw new IllegalStateException("hub_v2.transaction/TO_ADDRESS_HI already set");
     } else {
-      filled.set(113);
+      filled.set(124);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put((byte) 0);
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put((byte) 0);
     }
-    rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.put(
+    rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.put(
         b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace pTransactionToAddressLo(final Bytes b) {
-    if (filled.get(114)) {
+    if (filled.get(125)) {
       throw new IllegalStateException("hub_v2.transaction/TO_ADDRESS_LO already set");
     } else {
-      filled.set(114);
+      filled.set(125);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
           (byte) 0);
     }
-    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.put(
+    rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo.put(
         b.toArrayUnsafe());
 
     return this;
@@ -5114,24 +5369,25 @@ public class Trace {
       filled.set(51);
     }
 
-    existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+    existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
         .put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace pTransactionValue(final Bytes b) {
-    if (filled.get(115)) {
+    if (filled.get(126)) {
       throw new IllegalStateException("hub_v2.transaction/VALUE already set");
     } else {
-      filled.set(115);
+      filled.set(126);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put((byte) 0);
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put((byte) 0);
     }
-    rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.put(b.toArrayUnsafe());
+    rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.put(
+        b.toArrayUnsafe());
 
     return this;
   }
@@ -5357,24 +5613,24 @@ public class Trace {
       throw new IllegalStateException("hub_v2.ABSOLUTE_TRANSACTION_NUMBER has not been filled");
     }
 
-    if (!filled.get(98)) {
+    if (!filled.get(109)) {
       throw new IllegalStateException(
           "hub_v2.ADDR_HI_xor_ACCOUNT_ADDRESS_HI_xor_CCRS_STAMP_xor_HASH_INFO___KEC_HI_xor_ADDRESS_HI_xor_BASEFEE has not been filled");
     }
 
-    if (!filled.get(99)) {
+    if (!filled.get(110)) {
       throw new IllegalStateException(
-          "hub_v2.ADDR_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP___DYNCOST_xor_HASH_INFO___KEC_LO_xor_ADDRESS_LO_xor_CALL_DATA_SIZE has not been filled");
+          "hub_v2.ADDR_LO_xor_ACCOUNT_ADDRESS_LO_xor_EXP___DATA_1_xor_HASH_INFO___KEC_LO_xor_ADDRESS_LO_xor_CALL_DATA_SIZE has not been filled");
     }
 
-    if (!filled.get(101)) {
+    if (!filled.get(112)) {
       throw new IllegalStateException(
-          "hub_v2.BALANCE_NEW_xor_BYTE_CODE_ADDRESS_HI_xor_EXP___EXPONENT_LO_xor_HEIGHT_xor_STORAGE_KEY_HI_xor_COINBASE_ADDRESS_LO has not been filled");
+          "hub_v2.BALANCE_NEW_xor_BYTE_CODE_ADDRESS_HI_xor_EXP___DATA_3_xor_HEIGHT_xor_STORAGE_KEY_HI_xor_COINBASE_ADDRESS_LO has not been filled");
     }
 
-    if (!filled.get(100)) {
+    if (!filled.get(111)) {
       throw new IllegalStateException(
-          "hub_v2.BALANCE_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP___EXPONENT_HI_xor_HASH_INFO___SIZE_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI has not been filled");
+          "hub_v2.BALANCE_xor_ACCOUNT_DEPLOYMENT_NUMBER_xor_EXP___DATA_2_xor_HASH_INFO___SIZE_xor_DEPLOYMENT_NUMBER_xor_COINBASE_ADDRESS_HI has not been filled");
     }
 
     if (!filled.get(1)) {
@@ -5405,34 +5661,34 @@ public class Trace {
       throw new IllegalStateException("hub_v2.CODE_FRAGMENT_INDEX has not been filled");
     }
 
-    if (!filled.get(103)) {
+    if (!filled.get(114)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_HASH_HI_NEW_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_MMU___INST_xor_HEIGHT_OVER_xor_VAL_CURR_HI_xor_FROM_ADDRESS_LO has not been filled");
+          "hub_v2.CODE_HASH_HI_NEW_xor_BYTE_CODE_DEPLOYMENT_NUMBER_xor_EXP___DATA_5_xor_HEIGHT_OVER_xor_VAL_CURR_HI_xor_FROM_ADDRESS_LO has not been filled");
     }
 
-    if (!filled.get(102)) {
+    if (!filled.get(113)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_HASH_HI_xor_BYTE_CODE_ADDRESS_LO_xor_MMU___EXO_SUM_xor_HEIGHT_NEW_xor_STORAGE_KEY_LO_xor_FROM_ADDRESS_HI has not been filled");
+          "hub_v2.CODE_HASH_HI_xor_BYTE_CODE_ADDRESS_LO_xor_EXP___DATA_4_xor_HEIGHT_NEW_xor_STORAGE_KEY_LO_xor_FROM_ADDRESS_HI has not been filled");
     }
 
-    if (!filled.get(105)) {
+    if (!filled.get(116)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_HASH_LO_NEW_xor_CALLER_ADDRESS_HI_xor_MMU___OFFSET_2_HI_xor_INST_xor_VAL_NEXT_HI_xor_GAS_PRICE has not been filled");
+          "hub_v2.CODE_HASH_LO_NEW_xor_CALLER_ADDRESS_HI_xor_MMU___LIMB_2_xor_INST_xor_VAL_NEXT_HI_xor_GAS_PRICE has not been filled");
     }
 
-    if (!filled.get(104)) {
+    if (!filled.get(115)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_HASH_LO_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU___OFFSET_1_LO_xor_HEIGHT_UNDER_xor_VAL_CURR_LO_xor_GAS_LIMIT has not been filled");
+          "hub_v2.CODE_HASH_LO_xor_BYTE_CODE_DEPLOYMENT_STATUS_xor_MMU___LIMB_1_xor_HEIGHT_UNDER_xor_VAL_CURR_LO_xor_GAS_LIMIT has not been filled");
     }
 
-    if (!filled.get(107)) {
+    if (!filled.get(118)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_SIZE_NEW_xor_CALLER_CONTEXT_NUMBER_xor_MMU___PARAM_1_xor_PUSH_VALUE_LO_xor_VAL_ORIG_HI_xor_GAS_REFUND_COUNTER_FINAL has not been filled");
+          "hub_v2.CODE_SIZE_NEW_xor_CALLER_CONTEXT_NUMBER_xor_MMU___SRC_OFFSET_LO_xor_PUSH_VALUE_LO_xor_VAL_ORIG_HI_xor_GAS_REFUND_COUNTER_FINAL has not been filled");
     }
 
-    if (!filled.get(106)) {
+    if (!filled.get(117)) {
       throw new IllegalStateException(
-          "hub_v2.CODE_SIZE_xor_CALLER_ADDRESS_LO_xor_MMU___OFFSET_2_LO_xor_PUSH_VALUE_HI_xor_VAL_NEXT_LO_xor_GAS_REFUND_AMOUNT has not been filled");
+          "hub_v2.CODE_SIZE_xor_CALLER_ADDRESS_LO_xor_MMU___SRC_OFFSET_HI_xor_PUSH_VALUE_HI_xor_VAL_NEXT_LO_xor_GAS_REFUND_AMOUNT has not been filled");
     }
 
     if (!filled.get(8)) {
@@ -5471,14 +5727,34 @@ public class Trace {
       throw new IllegalStateException("hub_v2.COUNTER_TLI has not been filled");
     }
 
-    if (!filled.get(110)) {
+    if (!filled.get(69)) {
       throw new IllegalStateException(
-          "hub_v2.DEP_NUM_NEW_xor_CALL_STACK_DEPTH_xor_MMU___REF_SIZE_xor_STACK_ITEM_HEIGHT_3_xor_INIT_GAS has not been filled");
+          "hub_v2.CREATE_NONEMPTY_INIT_CODE_FAILURE_WILL_REVERT_xor_KEC_FLAG has not been filled");
     }
 
-    if (!filled.get(109)) {
+    if (!filled.get(70)) {
       throw new IllegalStateException(
-          "hub_v2.DEP_NUM_xor_CALL_DATA_SIZE_xor_MMU___REF_OFFSET_xor_STACK_ITEM_HEIGHT_2_xor_INIT_CODE_SIZE has not been filled");
+          "hub_v2.CREATE_NONEMPTY_INIT_CODE_FAILURE_WONT_REVERT_xor_LOG_FLAG has not been filled");
+    }
+
+    if (!filled.get(71)) {
+      throw new IllegalStateException(
+          "hub_v2.CREATE_NONEMPTY_INIT_CODE_SUCCESS_WILL_REVERT_xor_MACHINE_STATE_FLAG has not been filled");
+    }
+
+    if (!filled.get(72)) {
+      throw new IllegalStateException(
+          "hub_v2.CREATE_NONEMPTY_INIT_CODE_SUCCESS_WONT_REVERT_xor_MAXCSX has not been filled");
+    }
+
+    if (!filled.get(121)) {
+      throw new IllegalStateException(
+          "hub_v2.DEP_NUM_NEW_xor_CALL_STACK_DEPTH_xor_MXP___INST_xor_STACK_ITEM_HEIGHT_3_xor_INIT_GAS has not been filled");
+    }
+
+    if (!filled.get(120)) {
+      throw new IllegalStateException(
+          "hub_v2.DEP_NUM_xor_CALL_DATA_SIZE_xor_MXP___GAS_MXP_xor_STACK_ITEM_HEIGHT_2_xor_INIT_CODE_SIZE has not been filled");
     }
 
     if (!filled.get(50)) {
@@ -5491,9 +5767,9 @@ public class Trace {
           "hub_v2.DEP_STATUS_xor_EXP___FLAG_xor_CALL_ABORT_xor_ADD_FLAG_xor_VAL_CURR_IS_ORIG_xor_IS_EIP1559 has not been filled");
     }
 
-    if (!filled.get(108)) {
+    if (!filled.get(119)) {
       throw new IllegalStateException(
-          "hub_v2.DEPLOYMENT_NUMBER_INFTY_xor_CALL_DATA_OFFSET_xor_MMU___PARAM_2_xor_STACK_ITEM_HEIGHT_1_xor_VAL_ORIG_LO_xor_INITIAL_BALANCE has not been filled");
+          "hub_v2.DEPLOYMENT_NUMBER_INFTY_xor_CALL_DATA_OFFSET_xor_MMU___TGT_OFFSET_LO_xor_STACK_ITEM_HEIGHT_1_xor_VAL_ORIG_LO_xor_INITIAL_BALANCE has not been filled");
     }
 
     if (!filled.get(48)) {
@@ -5505,18 +5781,38 @@ public class Trace {
       throw new IllegalStateException("hub_v2.DOM_STAMP has not been filled");
     }
 
+    if (!filled.get(73)) {
+      throw new IllegalStateException("hub_v2.ECADD_xor_MOD_FLAG has not been filled");
+    }
+
+    if (!filled.get(74)) {
+      throw new IllegalStateException("hub_v2.ECMUL_xor_MUL_FLAG has not been filled");
+    }
+
+    if (!filled.get(75)) {
+      throw new IllegalStateException("hub_v2.ECPAIRING_xor_MXPX has not been filled");
+    }
+
+    if (!filled.get(76)) {
+      throw new IllegalStateException("hub_v2.ECRECOVER_xor_MXP_FLAG has not been filled");
+    }
+
     if (!filled.get(18)) {
       throw new IllegalStateException("hub_v2.EXCEPTION_AHOY_FLAG has not been filled");
     }
 
     if (!filled.get(52)) {
       throw new IllegalStateException(
-          "hub_v2.EXISTS_NEW_xor_MXP___DEPLOYS_xor_CALL_PRC_FAILURE_CALLER_WILL_REVERT_xor_CALL_FLAG_xor_VAL_NEXT_IS_ORIG has not been filled");
+          "hub_v2.EXISTS_NEW_xor_MXP___DEPLOYS_xor_CALL_EXCEPTION_xor_CALL_FLAG_xor_VAL_NEXT_IS_ORIG has not been filled");
     }
 
     if (!filled.get(51)) {
       throw new IllegalStateException(
-          "hub_v2.EXISTS_xor_MMU___INFO_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VAL_NEXT_IS_CURR_xor_TXN_REQUIRES_EVM_EXECUTION has not been filled");
+          "hub_v2.EXISTS_xor_MMU___SUCCESS_BIT_xor_CALL_EOA_SUCCESS_CALLER_WONT_REVERT_xor_BTC_FLAG_xor_VAL_NEXT_IS_CURR_xor_TXN_REQUIRES_EVM_EXECUTION has not been filled");
+    }
+
+    if (!filled.get(98)) {
+      throw new IllegalStateException("hub_v2.EXP___INST_xor_PRC_CALLEE_GAS has not been filled");
     }
 
     if (!filled.get(19)) {
@@ -5550,7 +5846,7 @@ public class Trace {
 
     if (!filled.get(53)) {
       throw new IllegalStateException(
-          "hub_v2.HAS_CODE_xor_MXP___FLAG_xor_CALL_PRC_FAILURE_CALLER_WONT_REVERT_xor_CON_FLAG_xor_VAL_NEXT_IS_ZERO has not been filled");
+          "hub_v2.HAS_CODE_xor_MXP___FLAG_xor_CALL_PRC_FAILURE_xor_CON_FLAG_xor_VAL_NEXT_IS_ZERO has not been filled");
     }
 
     if (!filled.get(25)) {
@@ -5565,39 +5861,43 @@ public class Trace {
       throw new IllegalStateException("hub_v2.HUB_STAMP_TRANSACTION_END has not been filled");
     }
 
+    if (!filled.get(77)) {
+      throw new IllegalStateException("hub_v2.IDENTITY_xor_OOB_FLAG has not been filled");
+    }
+
     if (!filled.get(55)) {
       throw new IllegalStateException(
-          "hub_v2.IS_BLAKE2f_xor_OOB___EVENT_1_xor_CALL_PRC_SUCCESS_CALLER_WONT_REVERT_xor_CREATE_FLAG_xor_WARM has not been filled");
+          "hub_v2.IS_BLAKE2f_xor_OOB___FLAG_xor_CALL_PRC_SUCCESS_CALLER_WONT_REVERT_xor_CREATE_FLAG_xor_WARM has not been filled");
     }
 
     if (!filled.get(56)) {
       throw new IllegalStateException(
-          "hub_v2.IS_ECADD_xor_OOB___EVENT_2_xor_CALL_SMC_FAILURE_CALLER_WILL_REVERT_xor_DECODED_FLAG_1_xor_WARM_NEW has not been filled");
+          "hub_v2.IS_ECADD_xor_STP___EXISTS_xor_CALL_SMC_FAILURE_CALLER_WILL_REVERT_xor_DECODED_FLAG_1_xor_WARM_NEW has not been filled");
     }
 
     if (!filled.get(57)) {
       throw new IllegalStateException(
-          "hub_v2.IS_ECMUL_xor_OOB___FLAG_xor_CALL_SMC_FAILURE_CALLER_WONT_REVERT_xor_DECODED_FLAG_2 has not been filled");
+          "hub_v2.IS_ECMUL_xor_STP___FLAG_xor_CALL_SMC_FAILURE_CALLER_WONT_REVERT_xor_DECODED_FLAG_2 has not been filled");
     }
 
     if (!filled.get(58)) {
       throw new IllegalStateException(
-          "hub_v2.IS_ECPAIRING_xor_STP___EXISTS_xor_CALL_SMC_SUCCESS_CALLER_WILL_REVERT_xor_DECODED_FLAG_3 has not been filled");
+          "hub_v2.IS_ECPAIRING_xor_STP___OOGX_xor_CALL_SMC_SUCCESS_CALLER_WILL_REVERT_xor_DECODED_FLAG_3 has not been filled");
     }
 
     if (!filled.get(59)) {
       throw new IllegalStateException(
-          "hub_v2.IS_ECRECOVER_xor_STP___FLAG_xor_CALL_SMC_SUCCESS_CALLER_WONT_REVERT_xor_DECODED_FLAG_4 has not been filled");
+          "hub_v2.IS_ECRECOVER_xor_STP___WARMTH_xor_CALL_SMC_SUCCESS_CALLER_WONT_REVERT_xor_DECODED_FLAG_4 has not been filled");
     }
 
     if (!filled.get(60)) {
       throw new IllegalStateException(
-          "hub_v2.IS_IDENTITY_xor_STP___OOGX_xor_CODEDEPOSIT_xor_DUP_FLAG has not been filled");
+          "hub_v2.IS_IDENTITY_xor_CODEDEPOSIT_xor_DUP_FLAG has not been filled");
     }
 
     if (!filled.get(61)) {
       throw new IllegalStateException(
-          "hub_v2.IS_MODEXP_xor_STP___WARM_xor_CODEDEPOSIT_INVALID_CODE_PREFIX_xor_EXT_FLAG has not been filled");
+          "hub_v2.IS_MODEXP_xor_CODEDEPOSIT_INVALID_CODE_PREFIX_xor_EXT_FLAG has not been filled");
     }
 
     if (!filled.get(62)) {
@@ -5607,81 +5907,110 @@ public class Trace {
 
     if (!filled.get(63)) {
       throw new IllegalStateException(
-          "hub_v2.IS_RIPEMD-160_xor_ECADD_xor_HASH_INFO_FLAG has not been filled");
+          "hub_v2.IS_RIPEMD-160_xor_CREATE_ABORT_xor_HASH_INFO_FLAG has not been filled");
     }
 
     if (!filled.get(64)) {
       throw new IllegalStateException(
-          "hub_v2.IS_SHA2-256_xor_ECMUL_xor_INVALID_FLAG has not been filled");
+          "hub_v2.IS_SHA2-256_xor_CREATE_EMPTY_INIT_CODE_WILL_REVERT_xor_INVALID_FLAG has not been filled");
+    }
+
+    if (!filled.get(99)) {
+      throw new IllegalStateException("hub_v2.MMU___AUX_ID_xor_PRC_CALLER_GAS has not been filled");
+    }
+
+    if (!filled.get(100)) {
+      throw new IllegalStateException("hub_v2.MMU___EXO_SUM_xor_PRC_CDO has not been filled");
+    }
+
+    if (!filled.get(101)) {
+      throw new IllegalStateException("hub_v2.MMU___INST_xor_PRC_CDS has not been filled");
+    }
+
+    if (!filled.get(102)) {
+      throw new IllegalStateException("hub_v2.MMU___PHASE_xor_PRC_RAC has not been filled");
+    }
+
+    if (!filled.get(103)) {
+      throw new IllegalStateException("hub_v2.MMU___REF_OFFSET_xor_PRC_RAO has not been filled");
+    }
+
+    if (!filled.get(104)) {
+      throw new IllegalStateException(
+          "hub_v2.MMU___REF_SIZE_xor_PRC_RETURN_GAS has not been filled");
+    }
+
+    if (!filled.get(105)) {
+      throw new IllegalStateException("hub_v2.MMU___SIZE has not been filled");
+    }
+
+    if (!filled.get(106)) {
+      throw new IllegalStateException("hub_v2.MMU___SRC_ID has not been filled");
     }
 
     if (!filled.get(28)) {
       throw new IllegalStateException("hub_v2.MMU_STAMP has not been filled");
     }
 
-    if (!filled.get(121)) {
-      throw new IllegalStateException(
-          "hub_v2.MXP___SIZE_1_LO_xor_STACK_ITEM_VALUE_LO_2 has not been filled");
+    if (!filled.get(107)) {
+      throw new IllegalStateException("hub_v2.MMU___TGT_ID has not been filled");
     }
 
-    if (!filled.get(122)) {
-      throw new IllegalStateException(
-          "hub_v2.MXP___SIZE_2_HI_xor_STACK_ITEM_VALUE_LO_3 has not been filled");
-    }
-
-    if (!filled.get(123)) {
-      throw new IllegalStateException(
-          "hub_v2.MXP___SIZE_2_LO_xor_STACK_ITEM_VALUE_LO_4 has not been filled");
+    if (!filled.get(78)) {
+      throw new IllegalStateException("hub_v2.MODEXP_xor_OOGX has not been filled");
     }
 
     if (!filled.get(29)) {
       throw new IllegalStateException("hub_v2.MXP_STAMP has not been filled");
     }
 
-    if (!filled.get(124)) {
-      throw new IllegalStateException("hub_v2.MXP___WORDS_xor_STATIC_GAS has not been filled");
+    if (!filled.get(123)) {
+      throw new IllegalStateException(
+          "hub_v2.NONCE_NEW_xor_CONTEXT_NUMBER_xor_MXP___OFFSET_1_LO_xor_STACK_ITEM_STAMP_1_xor_NONCE has not been filled");
     }
 
-    if (!filled.get(112)) {
+    if (!filled.get(122)) {
       throw new IllegalStateException(
-          "hub_v2.NONCE_NEW_xor_CONTEXT_NUMBER_xor_MMU___STACK_VAL_HI_xor_STACK_ITEM_STAMP_1_xor_NONCE has not been filled");
-    }
-
-    if (!filled.get(111)) {
-      throw new IllegalStateException(
-          "hub_v2.NONCE_xor_CALL_VALUE_xor_MMU___SIZE_xor_STACK_ITEM_HEIGHT_4_xor_LEFTOVER_GAS has not been filled");
+          "hub_v2.NONCE_xor_CALL_VALUE_xor_MXP___OFFSET_1_HI_xor_STACK_ITEM_HEIGHT_4_xor_LEFTOVER_GAS has not been filled");
     }
 
     if (!filled.get(30)) {
       throw new IllegalStateException("hub_v2.NUMBER_OF_NON_STACK_ROWS has not been filled");
     }
 
-    if (!filled.get(125)) {
+    if (!filled.get(132)) {
+      throw new IllegalStateException(
+          "hub_v2.OOB____DATA_2_xor_STACK_ITEM_VALUE_LO_2 has not been filled");
+    }
+
+    if (!filled.get(133)) {
+      throw new IllegalStateException(
+          "hub_v2.OOB____DATA_3_xor_STACK_ITEM_VALUE_LO_3 has not been filled");
+    }
+
+    if (!filled.get(134)) {
+      throw new IllegalStateException(
+          "hub_v2.OOB____DATA_4_xor_STACK_ITEM_VALUE_LO_4 has not been filled");
+    }
+
+    if (!filled.get(135)) {
+      throw new IllegalStateException("hub_v2.OOB____DATA_5_xor_STATIC_GAS has not been filled");
+    }
+
+    if (!filled.get(136)) {
+      throw new IllegalStateException("hub_v2.OOB____DATA_6 has not been filled");
+    }
+
+    if (!filled.get(137)) {
+      throw new IllegalStateException("hub_v2.OOB____DATA_7 has not been filled");
+    }
+
+    if (!filled.get(138)) {
+      throw new IllegalStateException("hub_v2.OOB____DATA_8 has not been filled");
+    }
+
+    if (!filled.get(108)) {
       throw new IllegalStateException("hub_v2.OOB___INST has not been filled");
-    }
-
-    if (!filled.get(126)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_1 has not been filled");
-    }
-
-    if (!filled.get(127)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_2 has not been filled");
-    }
-
-    if (!filled.get(128)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_3 has not been filled");
-    }
-
-    if (!filled.get(129)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_4 has not been filled");
-    }
-
-    if (!filled.get(130)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_5 has not been filled");
-    }
-
-    if (!filled.get(131)) {
-      throw new IllegalStateException("hub_v2.OOB___OUTGOING_DATA_6 has not been filled");
     }
 
     if (!filled.get(31)) {
@@ -5712,6 +6041,26 @@ public class Trace {
       throw new IllegalStateException("hub_v2.PEEK_AT_TRANSACTION has not been filled");
     }
 
+    if (!filled.get(79)) {
+      throw new IllegalStateException(
+          "hub_v2.PRC_FAILURE_KNOWN_TO_HUB_xor_OPCX has not been filled");
+    }
+
+    if (!filled.get(80)) {
+      throw new IllegalStateException(
+          "hub_v2.PRC_FAILURE_KNOWN_TO_RAM_xor_PUSHPOP_FLAG has not been filled");
+    }
+
+    if (!filled.get(81)) {
+      throw new IllegalStateException(
+          "hub_v2.PRC_SUCCESS_WILL_REVERT_xor_RDCX has not been filled");
+    }
+
+    if (!filled.get(82)) {
+      throw new IllegalStateException(
+          "hub_v2.PRC_SUCCESS_WONT_REVERT_xor_SHF_FLAG has not been filled");
+    }
+
     if (!filled.get(38)) {
       throw new IllegalStateException("hub_v2.PROGRAM_COUNTER has not been filled");
     }
@@ -5720,109 +6069,56 @@ public class Trace {
       throw new IllegalStateException("hub_v2.PROGRAM_COUNTER_NEW has not been filled");
     }
 
-    if (!filled.get(80)) {
-      throw new IllegalStateException("hub_v2.PUSHPOP_FLAG has not been filled");
+    if (!filled.get(83)) {
+      throw new IllegalStateException("hub_v2.RIPEMD-160_xor_SOX has not been filled");
     }
 
-    if (!filled.get(81)) {
-      throw new IllegalStateException("hub_v2.RDCX has not been filled");
-    }
-
-    if (!filled.get(69)) {
-      throw new IllegalStateException("hub_v2.RIPEMD-160_xor_KEC_FLAG has not been filled");
-    }
-
-    if (!filled.get(113)) {
+    if (!filled.get(124)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___DEP_ADDR_HI_xor_IS_STATIC_xor_MMU___STACK_VAL_LO_xor_STACK_ITEM_STAMP_2_xor_TO_ADDRESS_HI has not been filled");
+          "hub_v2.RLPADDR___DEP_ADDR_HI_xor_IS_STATIC_xor_MXP___OFFSET_2_HI_xor_STACK_ITEM_STAMP_2_xor_TO_ADDRESS_HI has not been filled");
     }
 
-    if (!filled.get(114)) {
+    if (!filled.get(125)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___DEP_ADDR_LO_xor_RETURNER_CONTEXT_NUMBER_xor_MXP___GAS_MXP_xor_STACK_ITEM_STAMP_3_xor_TO_ADDRESS_LO has not been filled");
+          "hub_v2.RLPADDR___DEP_ADDR_LO_xor_RETURNER_CONTEXT_NUMBER_xor_MXP___OFFSET_2_LO_xor_STACK_ITEM_STAMP_3_xor_TO_ADDRESS_LO has not been filled");
     }
 
     if (!filled.get(65)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___FLAG_xor_ECPAIRING_xor_INVPREX has not been filled");
+          "hub_v2.RLPADDR___FLAG_xor_CREATE_EMPTY_INIT_CODE_WONT_REVERT_xor_INVPREX has not been filled");
     }
 
-    if (!filled.get(115)) {
+    if (!filled.get(126)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___KEC_HI_xor_RETURNER_IS_PRECOMPILE_xor_MXP___INST_xor_STACK_ITEM_STAMP_4_xor_VALUE has not been filled");
+          "hub_v2.RLPADDR___KEC_HI_xor_RETURNER_IS_PRECOMPILE_xor_MXP___SIZE_1_HI_xor_STACK_ITEM_STAMP_4_xor_VALUE has not been filled");
     }
 
-    if (!filled.get(116)) {
+    if (!filled.get(127)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___KEC_LO_xor_RETURN_AT_OFFSET_xor_MXP___OFFSET_1_HI_xor_STACK_ITEM_VALUE_HI_1 has not been filled");
+          "hub_v2.RLPADDR___KEC_LO_xor_RETURN_AT_OFFSET_xor_MXP___SIZE_1_LO_xor_STACK_ITEM_VALUE_HI_1 has not been filled");
     }
 
-    if (!filled.get(117)) {
+    if (!filled.get(128)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___RECIPE_xor_RETURN_AT_SIZE_xor_MXP___OFFSET_1_LO_xor_STACK_ITEM_VALUE_HI_2 has not been filled");
+          "hub_v2.RLPADDR___RECIPE_xor_RETURN_AT_SIZE_xor_MXP___SIZE_2_HI_xor_STACK_ITEM_VALUE_HI_2 has not been filled");
     }
 
-    if (!filled.get(118)) {
+    if (!filled.get(129)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___SALT_HI_xor_RETURN_DATA_OFFSET_xor_MXP___OFFSET_2_HI_xor_STACK_ITEM_VALUE_HI_3 has not been filled");
+          "hub_v2.RLPADDR___SALT_HI_xor_RETURN_DATA_OFFSET_xor_MXP___SIZE_2_LO_xor_STACK_ITEM_VALUE_HI_3 has not been filled");
     }
 
-    if (!filled.get(119)) {
+    if (!filled.get(130)) {
       throw new IllegalStateException(
-          "hub_v2.RLPADDR___SALT_LO_xor_RETURN_DATA_SIZE_xor_MXP___OFFSET_2_LO_xor_STACK_ITEM_VALUE_HI_4 has not been filled");
-    }
-
-    if (!filled.get(70)) {
-      throw new IllegalStateException("hub_v2.SCN_FAILURE_1_xor_LOG_FLAG has not been filled");
-    }
-
-    if (!filled.get(71)) {
-      throw new IllegalStateException(
-          "hub_v2.SCN_FAILURE_2_xor_MACHINE_STATE_FLAG has not been filled");
-    }
-
-    if (!filled.get(72)) {
-      throw new IllegalStateException("hub_v2.SCN_FAILURE_3_xor_MAXCSX has not been filled");
-    }
-
-    if (!filled.get(73)) {
-      throw new IllegalStateException("hub_v2.SCN_FAILURE_4_xor_MOD_FLAG has not been filled");
-    }
-
-    if (!filled.get(74)) {
-      throw new IllegalStateException("hub_v2.SCN_SUCCESS_1_xor_MUL_FLAG has not been filled");
-    }
-
-    if (!filled.get(75)) {
-      throw new IllegalStateException("hub_v2.SCN_SUCCESS_2_xor_MXPX has not been filled");
-    }
-
-    if (!filled.get(76)) {
-      throw new IllegalStateException("hub_v2.SCN_SUCCESS_3_xor_MXP_FLAG has not been filled");
-    }
-
-    if (!filled.get(77)) {
-      throw new IllegalStateException("hub_v2.SCN_SUCCESS_4_xor_OOB_FLAG has not been filled");
-    }
-
-    if (!filled.get(78)) {
-      throw new IllegalStateException("hub_v2.SELFDESTRUCT_xor_OOGX has not been filled");
-    }
-
-    if (!filled.get(79)) {
-      throw new IllegalStateException("hub_v2.SHA2-256_xor_OPCX has not been filled");
-    }
-
-    if (!filled.get(82)) {
-      throw new IllegalStateException("hub_v2.SHF_FLAG has not been filled");
-    }
-
-    if (!filled.get(83)) {
-      throw new IllegalStateException("hub_v2.SOX has not been filled");
+          "hub_v2.RLPADDR___SALT_LO_xor_RETURN_DATA_SIZE_xor_MXP___WORDS_xor_STACK_ITEM_VALUE_HI_4 has not been filled");
     }
 
     if (!filled.get(84)) {
-      throw new IllegalStateException("hub_v2.SSTOREX has not been filled");
+      throw new IllegalStateException("hub_v2.SELFDESTRUCT_xor_SSTOREX has not been filled");
+    }
+
+    if (!filled.get(85)) {
+      throw new IllegalStateException("hub_v2.SHA2-256_xor_STACKRAM_FLAG has not been filled");
     }
 
     if (!filled.get(86)) {
@@ -5841,10 +6137,6 @@ public class Trace {
       throw new IllegalStateException("hub_v2.STACK_ITEM_POP_4 has not been filled");
     }
 
-    if (!filled.get(85)) {
-      throw new IllegalStateException("hub_v2.STACKRAM_FLAG has not been filled");
-    }
-
     if (!filled.get(91)) {
       throw new IllegalStateException("hub_v2.STATIC_FLAG has not been filled");
     }
@@ -5857,31 +6149,35 @@ public class Trace {
       throw new IllegalStateException("hub_v2.STO_FLAG has not been filled");
     }
 
-    if (!filled.get(132)) {
+    if (!filled.get(139)) {
       throw new IllegalStateException("hub_v2.STP___GAS_HI has not been filled");
     }
 
-    if (!filled.get(133)) {
+    if (!filled.get(140)) {
       throw new IllegalStateException("hub_v2.STP___GAS_LO has not been filled");
     }
 
-    if (!filled.get(134)) {
-      throw new IllegalStateException("hub_v2.STP___GAS_OOPKT has not been filled");
+    if (!filled.get(141)) {
+      throw new IllegalStateException("hub_v2.STP___GAS_PAID_OUT_OF_POCKET has not been filled");
     }
 
-    if (!filled.get(135)) {
-      throw new IllegalStateException("hub_v2.STP___GAS_STPD has not been filled");
+    if (!filled.get(142)) {
+      throw new IllegalStateException("hub_v2.STP___GAS_STIPEND has not been filled");
     }
 
-    if (!filled.get(136)) {
+    if (!filled.get(143)) {
+      throw new IllegalStateException("hub_v2.STP___GAS_UPFRONT_GAS_COST has not been filled");
+    }
+
+    if (!filled.get(144)) {
       throw new IllegalStateException("hub_v2.STP___INST has not been filled");
     }
 
-    if (!filled.get(137)) {
+    if (!filled.get(145)) {
       throw new IllegalStateException("hub_v2.STP___VAL_HI has not been filled");
     }
 
-    if (!filled.get(138)) {
+    if (!filled.get(146)) {
       throw new IllegalStateException("hub_v2.STP___VAL_LO has not been filled");
     }
 
@@ -5907,12 +6203,12 @@ public class Trace {
 
     if (!filled.get(66)) {
       throw new IllegalStateException(
-          "hub_v2.TRM___FLAG_xor_ECRECOVER_xor_JUMPX has not been filled");
+          "hub_v2.TRM___FLAG_xor_CREATE_EXCEPTION_xor_JUMPX has not been filled");
     }
 
-    if (!filled.get(120)) {
+    if (!filled.get(131)) {
       throw new IllegalStateException(
-          "hub_v2.TRM___RAW_ADDR_HI_xor_MXP___SIZE_1_HI_xor_STACK_ITEM_VALUE_LO_1 has not been filled");
+          "hub_v2.TRM___RAW_ADDR_HI_xor_OOB____DATA_1_xor_STACK_ITEM_VALUE_LO_1 has not been filled");
     }
 
     if (!filled.get(42)) {
@@ -5945,12 +6241,12 @@ public class Trace {
 
     if (!filled.get(68)) {
       throw new IllegalStateException(
-          "hub_v2.WARM_NEW_xor_MODEXP_xor_JUMP_FLAG has not been filled");
+          "hub_v2.WARM_NEW_xor_CREATE_FAILURE_CONDITION_WONT_REVERT_xor_JUMP_FLAG has not been filled");
     }
 
     if (!filled.get(67)) {
       throw new IllegalStateException(
-          "hub_v2.WARM_xor_IDENTITY_xor_JUMP_DESTINATION_VETTING_REQUIRED has not been filled");
+          "hub_v2.WARM_xor_CREATE_FAILURE_CONDITION_WILL_REVERT_xor_JUMP_DESTINATION_VETTING_REQUIRED has not been filled");
     }
 
     if (!filled.get(97)) {
@@ -5968,31 +6264,30 @@ public class Trace {
       absoluteTransactionNumber.position(absoluteTransactionNumber.position() + 32);
     }
 
-    if (!filled.get(98)) {
+    if (!filled.get(109)) {
       addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee.position(
           addrHiXorAccountAddressHiXorCcrsStampXorHashInfoKecHiXorAddressHiXorBasefee.position()
               + 32);
     }
 
-    if (!filled.get(99)) {
-      addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize.position(
-          addrLoXorAccountAddressLoXorExpDyncostXorHashInfoKecLoXorAddressLoXorCallDataSize
-                  .position()
+    if (!filled.get(110)) {
+      addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.position(
+          addrLoXorAccountAddressLoXorExpData1XorHashInfoKecLoXorAddressLoXorCallDataSize.position()
               + 32);
     }
 
-    if (!filled.get(101)) {
-      balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
+    if (!filled.get(112)) {
+      balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo
           .position(
-              balanceNewXorByteCodeAddressHiXorExpExponentLoXorHeightXorStorageKeyHiXorCoinbaseAddressLo
+              balanceNewXorByteCodeAddressHiXorExpData3XorHeightXorStorageKeyHiXorCoinbaseAddressLo
                       .position()
                   + 32);
     }
 
-    if (!filled.get(100)) {
-      balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+    if (!filled.get(111)) {
+      balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
           .position(
-              balanceXorAccountDeploymentNumberXorExpExponentHiXorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
+              balanceXorAccountDeploymentNumberXorExpData2XorHashInfoSizeXorDeploymentNumberXorCoinbaseAddressHi
                       .position()
                   + 32);
     }
@@ -6025,48 +6320,46 @@ public class Trace {
       codeFragmentIndex.position(codeFragmentIndex.position() + 32);
     }
 
-    if (!filled.get(103)) {
-      codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
+    if (!filled.get(114)) {
+      codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
           .position(
-              codeHashHiNewXorByteCodeDeploymentNumberXorMmuInstXorHeightOverXorValCurrHiXorFromAddressLo
+              codeHashHiNewXorByteCodeDeploymentNumberXorExpData5XorHeightOverXorValCurrHiXorFromAddressLo
                       .position()
                   + 32);
     }
 
-    if (!filled.get(102)) {
-      codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi
-          .position(
-              codeHashHiXorByteCodeAddressLoXorMmuExoSumXorHeightNewXorStorageKeyLoXorFromAddressHi
-                      .position()
-                  + 32);
-    }
-
-    if (!filled.get(105)) {
-      codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.position(
-          codeHashLoNewXorCallerAddressHiXorMmuOffset2HiXorInstXorValNextHiXorGasPrice.position()
+    if (!filled.get(113)) {
+      codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi.position(
+          codeHashHiXorByteCodeAddressLoXorExpData4XorHeightNewXorStorageKeyLoXorFromAddressHi
+                  .position()
               + 32);
     }
 
-    if (!filled.get(104)) {
-      codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit
+    if (!filled.get(116)) {
+      codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.position(
+          codeHashLoNewXorCallerAddressHiXorMmuLimb2XorInstXorValNextHiXorGasPrice.position() + 32);
+    }
+
+    if (!filled.get(115)) {
+      codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit
           .position(
-              codeHashLoXorByteCodeDeploymentStatusXorMmuOffset1LoXorHeightUnderXorValCurrLoXorGasLimit
+              codeHashLoXorByteCodeDeploymentStatusXorMmuLimb1XorHeightUnderXorValCurrLoXorGasLimit
                       .position()
                   + 32);
     }
 
-    if (!filled.get(107)) {
-      codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+    if (!filled.get(118)) {
+      codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
           .position(
-              codeSizeNewXorCallerContextNumberXorMmuParam1XorPushValueLoXorValOrigHiXorGasRefundCounterFinal
+              codeSizeNewXorCallerContextNumberXorMmuSrcOffsetLoXorPushValueLoXorValOrigHiXorGasRefundCounterFinal
                       .position()
                   + 32);
     }
 
-    if (!filled.get(106)) {
-      codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount
+    if (!filled.get(117)) {
+      codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount
           .position(
-              codeSizeXorCallerAddressLoXorMmuOffset2LoXorPushValueHiXorValNextLoXorGasRefundAmount
+              codeSizeXorCallerAddressLoXorMmuSrcOffsetHiXorPushValueHiXorValNextLoXorGasRefundAmount
                       .position()
                   + 32);
     }
@@ -6107,14 +6400,34 @@ public class Trace {
       counterTli.position(counterTli.position() + 1);
     }
 
-    if (!filled.get(110)) {
-      depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.position(
-          depNumNewXorCallStackDepthXorMmuRefSizeXorStackItemHeight3XorInitGas.position() + 32);
+    if (!filled.get(69)) {
+      createNonemptyInitCodeFailureWillRevertXorKecFlag.position(
+          createNonemptyInitCodeFailureWillRevertXorKecFlag.position() + 1);
     }
 
-    if (!filled.get(109)) {
-      depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.position(
-          depNumXorCallDataSizeXorMmuRefOffsetXorStackItemHeight2XorInitCodeSize.position() + 32);
+    if (!filled.get(70)) {
+      createNonemptyInitCodeFailureWontRevertXorLogFlag.position(
+          createNonemptyInitCodeFailureWontRevertXorLogFlag.position() + 1);
+    }
+
+    if (!filled.get(71)) {
+      createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag.position(
+          createNonemptyInitCodeSuccessWillRevertXorMachineStateFlag.position() + 1);
+    }
+
+    if (!filled.get(72)) {
+      createNonemptyInitCodeSuccessWontRevertXorMaxcsx.position(
+          createNonemptyInitCodeSuccessWontRevertXorMaxcsx.position() + 1);
+    }
+
+    if (!filled.get(121)) {
+      depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.position(
+          depNumNewXorCallStackDepthXorMxpInstXorStackItemHeight3XorInitGas.position() + 32);
+    }
+
+    if (!filled.get(120)) {
+      depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.position(
+          depNumXorCallDataSizeXorMxpGasMxpXorStackItemHeight2XorInitCodeSize.position() + 32);
     }
 
     if (!filled.get(50)) {
@@ -6130,10 +6443,10 @@ public class Trace {
           depStatusXorExpFlagXorCallAbortXorAddFlagXorValCurrIsOrigXorIsEip1559.position() + 1);
     }
 
-    if (!filled.get(108)) {
-      deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+    if (!filled.get(119)) {
+      deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
           .position(
-              deploymentNumberInftyXorCallDataOffsetXorMmuParam2XorStackItemHeight1XorValOrigLoXorInitialBalance
+              deploymentNumberInftyXorCallDataOffsetXorMmuTgtOffsetLoXorStackItemHeight1XorValOrigLoXorInitialBalance
                       .position()
                   + 32);
     }
@@ -6150,23 +6463,41 @@ public class Trace {
       domStamp.position(domStamp.position() + 32);
     }
 
+    if (!filled.get(73)) {
+      ecaddXorModFlag.position(ecaddXorModFlag.position() + 1);
+    }
+
+    if (!filled.get(74)) {
+      ecmulXorMulFlag.position(ecmulXorMulFlag.position() + 1);
+    }
+
+    if (!filled.get(75)) {
+      ecpairingXorMxpx.position(ecpairingXorMxpx.position() + 1);
+    }
+
+    if (!filled.get(76)) {
+      ecrecoverXorMxpFlag.position(ecrecoverXorMxpFlag.position() + 1);
+    }
+
     if (!filled.get(18)) {
       exceptionAhoyFlag.position(exceptionAhoyFlag.position() + 1);
     }
 
     if (!filled.get(52)) {
-      existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig.position(
-          existsNewXorMxpDeploysXorCallPrcFailureCallerWillRevertXorCallFlagXorValNextIsOrig
-                  .position()
-              + 1);
+      existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.position(
+          existsNewXorMxpDeploysXorCallExceptionXorCallFlagXorValNextIsOrig.position() + 1);
     }
 
     if (!filled.get(51)) {
-      existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+      existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
           .position(
-              existsXorMmuInfoXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
+              existsXorMmuSuccessBitXorCallEoaSuccessCallerWontRevertXorBtcFlagXorValNextIsCurrXorTxnRequiresEvmExecution
                       .position()
                   + 1);
+    }
+
+    if (!filled.get(98)) {
+      expInstXorPrcCalleeGas.position(expInstXorPrcCalleeGas.position() + 8);
     }
 
     if (!filled.get(19)) {
@@ -6201,9 +6532,8 @@ public class Trace {
     }
 
     if (!filled.get(53)) {
-      hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.position(
-          hasCodeXorMxpFlagXorCallPrcFailureCallerWontRevertXorConFlagXorValNextIsZero.position()
-              + 1);
+      hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.position(
+          hasCodeXorMxpFlagXorCallPrcFailureXorConFlagXorValNextIsZero.position() + 1);
     }
 
     if (!filled.get(25)) {
@@ -6218,41 +6548,44 @@ public class Trace {
       hubStampTransactionEnd.position(hubStampTransactionEnd.position() + 32);
     }
 
+    if (!filled.get(77)) {
+      identityXorOobFlag.position(identityXorOobFlag.position() + 1);
+    }
+
     if (!filled.get(55)) {
-      isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.position(
-          isBlake2FXorOobEvent1XorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.position()
-              + 1);
+      isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.position(
+          isBlake2FXorOobFlagXorCallPrcSuccessCallerWontRevertXorCreateFlagXorWarm.position() + 1);
     }
 
     if (!filled.get(56)) {
-      isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.position(
-          isEcaddXorOobEvent2XorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.position()
+      isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.position(
+          isEcaddXorStpExistsXorCallSmcFailureCallerWillRevertXorDecodedFlag1XorWarmNew.position()
               + 1);
     }
 
     if (!filled.get(57)) {
-      isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.position(
-          isEcmulXorOobFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.position() + 1);
+      isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.position(
+          isEcmulXorStpFlagXorCallSmcFailureCallerWontRevertXorDecodedFlag2.position() + 1);
     }
 
     if (!filled.get(58)) {
-      isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.position(
-          isEcpairingXorStpExistsXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.position() + 1);
+      isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.position(
+          isEcpairingXorStpOogxXorCallSmcSuccessCallerWillRevertXorDecodedFlag3.position() + 1);
     }
 
     if (!filled.get(59)) {
-      isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.position(
-          isEcrecoverXorStpFlagXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.position() + 1);
+      isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.position(
+          isEcrecoverXorStpWarmthXorCallSmcSuccessCallerWontRevertXorDecodedFlag4.position() + 1);
     }
 
     if (!filled.get(60)) {
-      isIdentityXorStpOogxXorCodedepositXorDupFlag.position(
-          isIdentityXorStpOogxXorCodedepositXorDupFlag.position() + 1);
+      isIdentityXorCodedepositXorDupFlag.position(
+          isIdentityXorCodedepositXorDupFlag.position() + 1);
     }
 
     if (!filled.get(61)) {
-      isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.position(
-          isModexpXorStpWarmXorCodedepositInvalidCodePrefixXorExtFlag.position() + 1);
+      isModexpXorCodedepositInvalidCodePrefixXorExtFlag.position(
+          isModexpXorCodedepositInvalidCodePrefixXorExtFlag.position() + 1);
     }
 
     if (!filled.get(62)) {
@@ -6261,78 +6594,107 @@ public class Trace {
     }
 
     if (!filled.get(63)) {
-      isRipemd160XorEcaddXorHashInfoFlag.position(
-          isRipemd160XorEcaddXorHashInfoFlag.position() + 1);
+      isRipemd160XorCreateAbortXorHashInfoFlag.position(
+          isRipemd160XorCreateAbortXorHashInfoFlag.position() + 1);
     }
 
     if (!filled.get(64)) {
-      isSha2256XorEcmulXorInvalidFlag.position(isSha2256XorEcmulXorInvalidFlag.position() + 1);
+      isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag.position(
+          isSha2256XorCreateEmptyInitCodeWillRevertXorInvalidFlag.position() + 1);
+    }
+
+    if (!filled.get(99)) {
+      mmuAuxIdXorPrcCallerGas.position(mmuAuxIdXorPrcCallerGas.position() + 8);
+    }
+
+    if (!filled.get(100)) {
+      mmuExoSumXorPrcCdo.position(mmuExoSumXorPrcCdo.position() + 8);
+    }
+
+    if (!filled.get(101)) {
+      mmuInstXorPrcCds.position(mmuInstXorPrcCds.position() + 8);
+    }
+
+    if (!filled.get(102)) {
+      mmuPhaseXorPrcRac.position(mmuPhaseXorPrcRac.position() + 8);
+    }
+
+    if (!filled.get(103)) {
+      mmuRefOffsetXorPrcRao.position(mmuRefOffsetXorPrcRao.position() + 8);
+    }
+
+    if (!filled.get(104)) {
+      mmuRefSizeXorPrcReturnGas.position(mmuRefSizeXorPrcReturnGas.position() + 8);
+    }
+
+    if (!filled.get(105)) {
+      mmuSize.position(mmuSize.position() + 8);
+    }
+
+    if (!filled.get(106)) {
+      mmuSrcId.position(mmuSrcId.position() + 8);
     }
 
     if (!filled.get(28)) {
       mmuStamp.position(mmuStamp.position() + 32);
     }
 
-    if (!filled.get(121)) {
-      mxpSize1LoXorStackItemValueLo2.position(mxpSize1LoXorStackItemValueLo2.position() + 32);
+    if (!filled.get(107)) {
+      mmuTgtId.position(mmuTgtId.position() + 8);
     }
 
-    if (!filled.get(122)) {
-      mxpSize2HiXorStackItemValueLo3.position(mxpSize2HiXorStackItemValueLo3.position() + 32);
-    }
-
-    if (!filled.get(123)) {
-      mxpSize2LoXorStackItemValueLo4.position(mxpSize2LoXorStackItemValueLo4.position() + 32);
+    if (!filled.get(78)) {
+      modexpXorOogx.position(modexpXorOogx.position() + 1);
     }
 
     if (!filled.get(29)) {
       mxpStamp.position(mxpStamp.position() + 32);
     }
 
-    if (!filled.get(124)) {
-      mxpWordsXorStaticGas.position(mxpWordsXorStaticGas.position() + 32);
+    if (!filled.get(123)) {
+      nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.position(
+          nonceNewXorContextNumberXorMxpOffset1LoXorStackItemStamp1XorNonce.position() + 32);
     }
 
-    if (!filled.get(112)) {
-      nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.position(
-          nonceNewXorContextNumberXorMmuStackValHiXorStackItemStamp1XorNonce.position() + 32);
-    }
-
-    if (!filled.get(111)) {
-      nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.position(
-          nonceXorCallValueXorMmuSizeXorStackItemHeight4XorLeftoverGas.position() + 32);
+    if (!filled.get(122)) {
+      nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.position(
+          nonceXorCallValueXorMxpOffset1HiXorStackItemHeight4XorLeftoverGas.position() + 32);
     }
 
     if (!filled.get(30)) {
       numberOfNonStackRows.position(numberOfNonStackRows.position() + 32);
     }
 
-    if (!filled.get(125)) {
-      oobInst.position(oobInst.position() + 32);
+    if (!filled.get(132)) {
+      oobData2XorStackItemValueLo2.position(oobData2XorStackItemValueLo2.position() + 32);
     }
 
-    if (!filled.get(126)) {
-      oobOutgoingData1.position(oobOutgoingData1.position() + 32);
+    if (!filled.get(133)) {
+      oobData3XorStackItemValueLo3.position(oobData3XorStackItemValueLo3.position() + 32);
     }
 
-    if (!filled.get(127)) {
-      oobOutgoingData2.position(oobOutgoingData2.position() + 32);
+    if (!filled.get(134)) {
+      oobData4XorStackItemValueLo4.position(oobData4XorStackItemValueLo4.position() + 32);
     }
 
-    if (!filled.get(128)) {
-      oobOutgoingData3.position(oobOutgoingData3.position() + 32);
+    if (!filled.get(135)) {
+      oobData5XorStaticGas.position(oobData5XorStaticGas.position() + 32);
     }
 
-    if (!filled.get(129)) {
-      oobOutgoingData4.position(oobOutgoingData4.position() + 32);
+    if (!filled.get(136)) {
+      oobData6.position(oobData6.position() + 32);
     }
 
-    if (!filled.get(130)) {
-      oobOutgoingData5.position(oobOutgoingData5.position() + 32);
+    if (!filled.get(137)) {
+      oobData7.position(oobData7.position() + 32);
     }
 
-    if (!filled.get(131)) {
-      oobOutgoingData6.position(oobOutgoingData6.position() + 32);
+    if (!filled.get(138)) {
+      oobData8.position(oobData8.position() + 32);
+    }
+
+    if (!filled.get(108)) {
+      oobInst.position(oobInst.position() + 8);
     }
 
     if (!filled.get(31)) {
@@ -6363,6 +6725,23 @@ public class Trace {
       peekAtTransaction.position(peekAtTransaction.position() + 1);
     }
 
+    if (!filled.get(79)) {
+      prcFailureKnownToHubXorOpcx.position(prcFailureKnownToHubXorOpcx.position() + 1);
+    }
+
+    if (!filled.get(80)) {
+      prcFailureKnownToRamXorPushpopFlag.position(
+          prcFailureKnownToRamXorPushpopFlag.position() + 1);
+    }
+
+    if (!filled.get(81)) {
+      prcSuccessWillRevertXorRdcx.position(prcSuccessWillRevertXorRdcx.position() + 1);
+    }
+
+    if (!filled.get(82)) {
+      prcSuccessWontRevertXorShfFlag.position(prcSuccessWontRevertXorShfFlag.position() + 1);
+    }
+
     if (!filled.get(38)) {
       programCounter.position(programCounter.position() + 32);
     }
@@ -6371,110 +6750,61 @@ public class Trace {
       programCounterNew.position(programCounterNew.position() + 32);
     }
 
-    if (!filled.get(80)) {
-      pushpopFlag.position(pushpopFlag.position() + 1);
+    if (!filled.get(83)) {
+      ripemd160XorSox.position(ripemd160XorSox.position() + 1);
     }
 
-    if (!filled.get(81)) {
-      rdcx.position(rdcx.position() + 1);
-    }
-
-    if (!filled.get(69)) {
-      ripemd160XorKecFlag.position(ripemd160XorKecFlag.position() + 1);
-    }
-
-    if (!filled.get(113)) {
-      rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.position(
-          rlpaddrDepAddrHiXorIsStaticXorMmuStackValLoXorStackItemStamp2XorToAddressHi.position()
+    if (!filled.get(124)) {
+      rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.position(
+          rlpaddrDepAddrHiXorIsStaticXorMxpOffset2HiXorStackItemStamp2XorToAddressHi.position()
               + 32);
     }
 
-    if (!filled.get(114)) {
-      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo.position(
-          rlpaddrDepAddrLoXorReturnerContextNumberXorMxpGasMxpXorStackItemStamp3XorToAddressLo
-                  .position()
-              + 32);
+    if (!filled.get(125)) {
+      rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo
+          .position(
+              rlpaddrDepAddrLoXorReturnerContextNumberXorMxpOffset2LoXorStackItemStamp3XorToAddressLo
+                      .position()
+                  + 32);
     }
 
     if (!filled.get(65)) {
-      rlpaddrFlagXorEcpairingXorInvprex.position(rlpaddrFlagXorEcpairingXorInvprex.position() + 1);
+      rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex.position(
+          rlpaddrFlagXorCreateEmptyInitCodeWontRevertXorInvprex.position() + 1);
     }
 
-    if (!filled.get(115)) {
-      rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.position(
-          rlpaddrKecHiXorReturnerIsPrecompileXorMxpInstXorStackItemStamp4XorValue.position() + 32);
+    if (!filled.get(126)) {
+      rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.position(
+          rlpaddrKecHiXorReturnerIsPrecompileXorMxpSize1HiXorStackItemStamp4XorValue.position()
+              + 32);
     }
 
-    if (!filled.get(116)) {
-      rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.position(
-          rlpaddrKecLoXorReturnAtOffsetXorMxpOffset1HiXorStackItemValueHi1.position() + 32);
+    if (!filled.get(127)) {
+      rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.position(
+          rlpaddrKecLoXorReturnAtOffsetXorMxpSize1LoXorStackItemValueHi1.position() + 32);
     }
 
-    if (!filled.get(117)) {
-      rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.position(
-          rlpaddrRecipeXorReturnAtSizeXorMxpOffset1LoXorStackItemValueHi2.position() + 32);
+    if (!filled.get(128)) {
+      rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.position(
+          rlpaddrRecipeXorReturnAtSizeXorMxpSize2HiXorStackItemValueHi2.position() + 32);
     }
 
-    if (!filled.get(118)) {
-      rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.position(
-          rlpaddrSaltHiXorReturnDataOffsetXorMxpOffset2HiXorStackItemValueHi3.position() + 32);
+    if (!filled.get(129)) {
+      rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.position(
+          rlpaddrSaltHiXorReturnDataOffsetXorMxpSize2LoXorStackItemValueHi3.position() + 32);
     }
 
-    if (!filled.get(119)) {
-      rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.position(
-          rlpaddrSaltLoXorReturnDataSizeXorMxpOffset2LoXorStackItemValueHi4.position() + 32);
-    }
-
-    if (!filled.get(70)) {
-      scnFailure1XorLogFlag.position(scnFailure1XorLogFlag.position() + 1);
-    }
-
-    if (!filled.get(71)) {
-      scnFailure2XorMachineStateFlag.position(scnFailure2XorMachineStateFlag.position() + 1);
-    }
-
-    if (!filled.get(72)) {
-      scnFailure3XorMaxcsx.position(scnFailure3XorMaxcsx.position() + 1);
-    }
-
-    if (!filled.get(73)) {
-      scnFailure4XorModFlag.position(scnFailure4XorModFlag.position() + 1);
-    }
-
-    if (!filled.get(74)) {
-      scnSuccess1XorMulFlag.position(scnSuccess1XorMulFlag.position() + 1);
-    }
-
-    if (!filled.get(75)) {
-      scnSuccess2XorMxpx.position(scnSuccess2XorMxpx.position() + 1);
-    }
-
-    if (!filled.get(76)) {
-      scnSuccess3XorMxpFlag.position(scnSuccess3XorMxpFlag.position() + 1);
-    }
-
-    if (!filled.get(77)) {
-      scnSuccess4XorOobFlag.position(scnSuccess4XorOobFlag.position() + 1);
-    }
-
-    if (!filled.get(78)) {
-      selfdestructXorOogx.position(selfdestructXorOogx.position() + 1);
-    }
-
-    if (!filled.get(79)) {
-      sha2256XorOpcx.position(sha2256XorOpcx.position() + 1);
-    }
-
-    if (!filled.get(82)) {
-      shfFlag.position(shfFlag.position() + 1);
-    }
-
-    if (!filled.get(83)) {
-      sox.position(sox.position() + 1);
+    if (!filled.get(130)) {
+      rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.position(
+          rlpaddrSaltLoXorReturnDataSizeXorMxpWordsXorStackItemValueHi4.position() + 32);
     }
 
     if (!filled.get(84)) {
-      sstorex.position(sstorex.position() + 1);
+      selfdestructXorSstorex.position(selfdestructXorSstorex.position() + 1);
+    }
+
+    if (!filled.get(85)) {
+      sha2256XorStackramFlag.position(sha2256XorStackramFlag.position() + 1);
     }
 
     if (!filled.get(86)) {
@@ -6493,10 +6823,6 @@ public class Trace {
       stackItemPop4.position(stackItemPop4.position() + 1);
     }
 
-    if (!filled.get(85)) {
-      stackramFlag.position(stackramFlag.position() + 1);
-    }
-
     if (!filled.get(91)) {
       staticFlag.position(staticFlag.position() + 1);
     }
@@ -6509,31 +6835,35 @@ public class Trace {
       stoFlag.position(stoFlag.position() + 1);
     }
 
-    if (!filled.get(132)) {
+    if (!filled.get(139)) {
       stpGasHi.position(stpGasHi.position() + 32);
     }
 
-    if (!filled.get(133)) {
+    if (!filled.get(140)) {
       stpGasLo.position(stpGasLo.position() + 32);
     }
 
-    if (!filled.get(134)) {
-      stpGasOopkt.position(stpGasOopkt.position() + 32);
+    if (!filled.get(141)) {
+      stpGasPaidOutOfPocket.position(stpGasPaidOutOfPocket.position() + 32);
     }
 
-    if (!filled.get(135)) {
-      stpGasStpd.position(stpGasStpd.position() + 32);
+    if (!filled.get(142)) {
+      stpGasStipend.position(stpGasStipend.position() + 32);
     }
 
-    if (!filled.get(136)) {
+    if (!filled.get(143)) {
+      stpGasUpfrontGasCost.position(stpGasUpfrontGasCost.position() + 32);
+    }
+
+    if (!filled.get(144)) {
       stpInst.position(stpInst.position() + 32);
     }
 
-    if (!filled.get(137)) {
+    if (!filled.get(145)) {
       stpValHi.position(stpValHi.position() + 32);
     }
 
-    if (!filled.get(138)) {
+    if (!filled.get(146)) {
       stpValLo.position(stpValLo.position() + 32);
     }
 
@@ -6558,12 +6888,12 @@ public class Trace {
     }
 
     if (!filled.get(66)) {
-      trmFlagXorEcrecoverXorJumpx.position(trmFlagXorEcrecoverXorJumpx.position() + 1);
+      trmFlagXorCreateExceptionXorJumpx.position(trmFlagXorCreateExceptionXorJumpx.position() + 1);
     }
 
-    if (!filled.get(120)) {
-      trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.position(
-          trmRawAddrHiXorMxpSize1HiXorStackItemValueLo1.position() + 32);
+    if (!filled.get(131)) {
+      trmRawAddrHiXorOobData1XorStackItemValueLo1.position(
+          trmRawAddrHiXorOobData1XorStackItemValueLo1.position() + 32);
     }
 
     if (!filled.get(42)) {
@@ -6595,12 +6925,13 @@ public class Trace {
     }
 
     if (!filled.get(68)) {
-      warmNewXorModexpXorJumpFlag.position(warmNewXorModexpXorJumpFlag.position() + 1);
+      warmNewXorCreateFailureConditionWontRevertXorJumpFlag.position(
+          warmNewXorCreateFailureConditionWontRevertXorJumpFlag.position() + 1);
     }
 
     if (!filled.get(67)) {
-      warmXorIdentityXorJumpDestinationVettingRequired.position(
-          warmXorIdentityXorJumpDestinationVettingRequired.position() + 1);
+      warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired.position(
+          warmXorCreateFailureConditionWillRevertXorJumpDestinationVettingRequired.position() + 1);
     }
 
     if (!filled.get(97)) {

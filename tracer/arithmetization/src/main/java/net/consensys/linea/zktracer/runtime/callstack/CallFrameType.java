@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.runtime.callstack;
 import net.consensys.linea.zktracer.opcode.OpCode;
 
 public enum CallFrameType {
+  EMPTY,
   /** Executing deployment code. */
   INIT_CODE,
   /** Executing standard contract. */
@@ -29,7 +30,9 @@ public enum CallFrameType {
   /** Within a call code. */
   CALL_CODE,
   /** The bedrock context. */
-  BEDROCK;
+  BEDROCK,
+  /** A putative phantom frame below the BEDROCK holding the call data */
+  MANTLE;
 
   /**
    * Returns the kind of {@link CallFrameType} context that an opcode will create; throws if the

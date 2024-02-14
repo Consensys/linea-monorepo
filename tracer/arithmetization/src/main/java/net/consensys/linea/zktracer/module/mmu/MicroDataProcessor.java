@@ -21,6 +21,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.runtime.stack.StackOperation;
+import net.consensys.linea.zktracer.types.EWord;
 import org.apache.commons.lang3.function.TriFunction;
 
 class MicroDataProcessor {
@@ -47,14 +48,14 @@ class MicroDataProcessor {
 
     microData.precomputation(preComputation);
 
-    long returnLength = callStack.caller().returnDataTarget().length();
+    long returnLength = callStack.caller().requestedReturnDataTarget().length();
     microData.instructionContext(
         InstructionContext.builder()
             .self(callStack.current().contextNumber())
             .caller(callStack.caller().contextNumber())
-            .returnOffset(callStack.caller().returnTarget().absolute())
+            .returnOffset(EWord.of(callStack.caller().requestedReturnDataTarget().absolute()))
             .returnCapacity((int) returnLength)
-            .returner(callStack.current().returner())
+            .returner(callStack.current().currentReturner())
             .build());
 
     microData.opCode(opCode);

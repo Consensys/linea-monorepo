@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
@@ -27,16 +28,14 @@ import org.hyperledger.besu.evm.internal.Words;
 public record Call(
     MessageFrame frame,
     long stipend,
-    long inputDataOffset,
-    long inputDataLength,
-    long returnDataOffset,
-    long returnDataLength,
+    MemorySpan inputData,
+    MemorySpan returnData,
     Wei value,
     Account recipient,
     Address to)
     implements GasProjection {
   public static Call invalid() {
-    return new Call(null, 0, 0, 0, 0, 0, Wei.ZERO, null, null);
+    return new Call(null, 0, MemorySpan.empty(), MemorySpan.empty(), Wei.ZERO, null, null);
   }
 
   boolean isInvalid() {
@@ -50,8 +49,8 @@ public record Call(
     }
 
     return Math.max(
-        gc.memoryExpansionGasCost(frame, inputDataOffset, inputDataLength),
-        gc.memoryExpansionGasCost(frame, returnDataOffset, returnDataLength));
+        gc.memoryExpansionGasCost(frame, inputData.offset(), inputData.length()),
+        gc.memoryExpansionGasCost(frame, returnData.offset(), returnData.length()));
   }
 
   @Override
@@ -61,8 +60,8 @@ public record Call(
     }
 
     return Math.max(
-        inputDataLength == 0 ? 0 : Words.clampedAdd(inputDataOffset, inputDataLength),
-        returnDataLength == 0 ? 0 : Words.clampedAdd(returnDataOffset, returnDataLength));
+        inputData.isEmpty() ? 0 : Words.clampedAdd(inputData.offset(), inputData.length()),
+        returnData.isEmpty() ? 0 : Words.clampedAdd(returnData.offset(), returnData.length()));
   }
 
   @Override

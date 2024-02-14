@@ -14,11 +14,12 @@
  */
 package net.consensys.linea.continoustracing.exception;
 
-import org.hyperledger.besu.datatypes.Hash;
-
 public class TraceVerificationException extends Throwable {
-  public TraceVerificationException(final Hash blockHash, final String message) {
+  public TraceVerificationException(final long blockNumber, final String message) {
     super(
-        "Verification of trace of block " + blockHash + " has failed.\nError message: " + message);
+        "Verification of trace of block "
+            + blockNumber
+            + " has failed.\nError message: "
+            + message);
   }
 }

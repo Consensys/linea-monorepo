@@ -183,17 +183,12 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
     try {
       worldState.persist(blockHeader);
-      //    } catch (MerkleTrieException e) {
-      //      if (worldState instanceof BonsaiWorldState) {
-      //        ((BonsaiWorldStateUpdateAccumulator) worldState.updater()).reset();
-      //      }
-      //      throw e;
     } catch (Exception e) {
       log.error("failed persisting block", e);
       return new BlockProcessingResult(Optional.empty(), e);
     }
     zkTracer.traceEndBlock(blockHeader, blockBody);
-    zkTracer.traceEndConflation();
+    zkTracer.traceEndConflation(worldState);
 
     return new BlockProcessingResult(Optional.of(new BlockProcessingOutputs(worldState, receipts)));
   }

@@ -20,7 +20,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class StackOnlySection extends TraceSection {
   public StackOnlySection(Hub hub, TraceFragment... chunks) {
-    this.addChunksAndStack(hub, chunks);
+    this.addFragmentsAndStack(hub, chunks);
   }
 
   @Override

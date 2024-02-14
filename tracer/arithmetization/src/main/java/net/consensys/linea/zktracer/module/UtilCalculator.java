@@ -64,4 +64,8 @@ public class UtilCalculator {
     // Compute the sum of the two unsigned BigIntegers.
     return UInt256.fromBytes(arg1).add(UInt256.fromBytes(arg2));
   }
+
+  public static long allButOneSixtyFourth(final long value) {
+    return value - value / 64;
+  }
 }

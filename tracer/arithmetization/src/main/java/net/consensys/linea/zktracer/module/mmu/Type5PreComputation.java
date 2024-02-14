@@ -49,7 +49,7 @@ class Type5PreComputation implements MmuPreComputation {
     microData.pointers(Pointers.builder().stack1(stackOps.get(0).value().copy()).build());
 
     final EWord offset = EWord.of(microData.pointers().stack1().copy());
-    microData.callDataSize(callStack.caller().callDataRange().length().toInt());
+    microData.callDataSize((int) callStack.caller().returnDataSource().length());
 
     int callDataSize = microData.callDataSize();
     final EWord callDataSizeEWord = EWord.of(callDataSize);
@@ -91,7 +91,7 @@ class Type5PreComputation implements MmuPreComputation {
             ? ReadPad.builder().totalNumberLimbs(4).totalNumberPaddingMicroInstructions(0).build()
             : ReadPad.builder().totalNumberLimbs(1).totalNumberPaddingMicroInstructions(0).build());
 
-    microData.callDataOffset(callStack.caller().callDataRange().absolute().toInt());
+    microData.callDataOffset((int) callStack.caller().callDataSource().absolute());
 
     int fullOffset = offset.add(microData.callDataOffset()).toInt();
     microData.setAccsAtIndex(2, EWord.of(fullOffset / 16));

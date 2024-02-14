@@ -22,17 +22,16 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Bytecode;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.memory.MemorySpan;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackContext;
+import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.EWord;
-import net.consensys.linea.zktracer.types.MemoryRange;
+import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -40,7 +39,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Accessors(fluent = true)
 public class CallFrame {
-  public static final CallFrame EMPTY = new CallFrame(Address.ZERO);
+  public static final CallFrame EMPTY = new CallFrame();
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
   /** the context number of the frame, i.e. the hub stamp at its creation */
@@ -75,6 +74,8 @@ public class CallFrame {
 
   /** the {@link Bytecode} executing within this frame. */
   @Getter private Bytecode code = Bytecode.EMPTY;
+  /** the CFI of this frame bytecode if applicable */
+  @Getter private int codeFragmentIndex = -1;
 
   @Getter @Setter private int pc;
   @Getter @Setter private OpCode opCode = OpCode.STOP;
@@ -82,49 +83,61 @@ public class CallFrame {
   @Getter private MessageFrame frame;
 
   /** the ether amount given to this frame. */
-  @Getter private Wei value = Wei.fromHexString("0xbadf00d"); // Marker for debugging
+  @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
 
   /** the call data given to this frame. */
   @Getter private Bytes callData = Bytes.EMPTY;
-  /** the call data span in the parent memory. */
-  @Getter private final MemorySpan callDataPointer;
+  /** the call data position in the parent's RAM. */
+  @Getter private MemorySpan callDataSource;
+
   /** the data returned by the latest callee. */
-  @Getter @Setter private Bytes returnData = Bytes.EMPTY;
+  @Getter @Setter private Bytes latestReturnData = Bytes.EMPTY;
   /** returnData position within the latest callee memory space. */
-  @Getter @Setter private MemorySpan returnDataPointer = new MemorySpan(0, 0);
+  @Getter @Setter private MemorySpan latestReturnDataSource = new MemorySpan(0, 0);
+
+  /** the return data provided by this frame */
+  @Getter @Setter private Bytes returnData = Bytes.EMPTY;
+  /** where this frame store its return data in its own RAM */
+  @Getter @Setter private MemorySpan returnDataSource;
   /** where this frame is expected to write its returnData within its parent's memory space. */
-  @Getter private final MemorySpan returnDataTarget;
+  @Getter private MemorySpan requestedReturnDataTarget = MemorySpan.empty();
 
-  // where I should put my RETURNDATARange in my caller's RAM
-  @Getter private MemoryRange returnTarget;
-
-  // where my CALLDATA is in my caller's RAM
-  @Getter private MemoryRange callDataRange;
-
-  // position of the returner's RETURNDATARange in its RAM
-  @Getter private MemoryRange returnDataRange;
-
-  // last called context
-  @Getter private int returner;
+  /** the latest child context to have been called from this frame */
+  @Getter private int currentReturner = -1;
 
   @Getter @Setter private int selfRevertsAt = 0;
   @Getter @Setter private int getsRevertedAt = 0;
 
   /** this frame {@link Stack}. */
   @Getter private final Stack stack = new Stack();
-
   /** the latched context of this callframe stack. */
   @Getter @Setter private StackContext pending;
 
-  /** Create a root call frame. */
-  CallFrame(Address address) {
-    this.type = CallFrameType.BEDROCK;
+  /**
+   * Define the given {@link Bytes} as the 0-aligned call data for this frame
+   *
+   * @param callData the call data content
+   */
+  private void set0AlignedCallData(final Bytes callData) {
+    this.callData = callData;
+    this.callDataSource = new MemorySpan(0, callData.size());
+  }
+
+  /** Create a bedrock call frame. */
+  CallFrame(Bytes callData, int cn) {
+    this.type = CallFrameType.MANTLE;
+    this.contextNumber = cn;
+    this.address = Address.ZERO;
+    this.set0AlignedCallData(callData);
+  }
+
+  /** Create a bedrock call frame. */
+  CallFrame() {
+    this.type = CallFrameType.EMPTY;
     this.contextNumber = 0;
-    this.address = address;
-    this.callDataPointer = new MemorySpan(0, 0);
-    this.returnDataTarget = new MemorySpan(0, 0);
+    this.address = Address.ZERO;
   }
 
   /**
@@ -170,10 +183,11 @@ public class CallFrame {
     this.value = value;
     this.gasEndowment = gas;
     this.callData = callData;
-    this.callDataPointer = new MemorySpan(0, callData.size());
+    this.callDataSource = new MemorySpan(0, callData.size());
     this.depth = depth;
-    this.returnDataPointer = new MemorySpan(0, 0);
-    this.returnDataTarget = new MemorySpan(0, 0); // TODO: fix me Franklin
+    this.returnDataSource = MemorySpan.empty();
+    this.latestReturnDataSource = MemorySpan.empty();
+    this.requestedReturnDataTarget = MemorySpan.empty(); // TODO: fix me Franklin
   }
 
   /**
@@ -217,7 +231,7 @@ public class CallFrame {
     if (this.getsRevertedAt == 0) {
       this.getsRevertedAt = stamp;
       this.childFrames.stream()
-          .map(callStack::get)
+          .map(callStack::getById)
           .forEach(frame -> frame.revertChildren(callStack, stamp));
     }
   }

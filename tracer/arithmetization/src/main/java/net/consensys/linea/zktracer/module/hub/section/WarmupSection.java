@@ -29,6 +29,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
  */
 public class WarmupSection extends TraceSection {
   public WarmupSection(Hub hub, List<TraceFragment> fragments) {
-    this.addChunksWithoutStack(hub, fragments.toArray(new TraceFragment[0]));
+    this.addFragmentsWithoutStack(hub, fragments.toArray(new TraceFragment[0]));
   }
 }

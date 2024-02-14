@@ -77,7 +77,7 @@ public class GenerateConflatedTracesV0 {
           fromBlock,
           toBlock,
           worldStateBeforeTracing -> tracer.traceStartConflation(toBlock - fromBlock + 1),
-          worldStateAfterTracing -> tracer.traceEndConflation(),
+          tracer::traceEndConflation,
           tracer);
       log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
       sw.reset().start();
