@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -34,32 +35,33 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   private List<PluginTransactionSelector> selectors;
 
   public LineaTransactionSelector(
-      LineaTransactionSelectorConfiguration lineaConfiguration,
+      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final Map<String, Integer> limitsMap) {
-    this.selectors = createTransactionSelectors(lineaConfiguration, limitsMap);
+    this.selectors =
+        createTransactionSelectors(txSelectorConfiguration, l1L2BridgeConfiguration, limitsMap);
   }
 
   /**
    * Creates a list of selectors based on Linea configuration.
    *
-   * @param lineaConfiguration The configuration to use.
+   * @param txSelectorConfiguration The configuration to use.
    * @param limitsMap The limits map.
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
-      final LineaTransactionSelectorConfiguration lineaConfiguration,
+      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final Map<String, Integer> limitsMap) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
-            limitsMap,
-            lineaConfiguration.moduleLimitsFilePath(),
-            lineaConfiguration.overLinesLimitCacheSize());
+            limitsMap, txSelectorConfiguration, l1L2BridgeConfiguration);
 
     return List.of(
-        new MaxBlockCallDataTransactionSelector(lineaConfiguration.maxBlockCallDataSize()),
-        new MaxBlockGasTransactionSelector(lineaConfiguration.maxGasPerBlock()),
-        new ProfitableTransactionSelector(lineaConfiguration),
+        new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),
+        new MaxBlockGasTransactionSelector(txSelectorConfiguration.maxGasPerBlock()),
+        new ProfitableTransactionSelector(txSelectorConfiguration),
         traceLineLimitTransactionSelector);
   }
 
