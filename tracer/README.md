@@ -107,6 +107,18 @@ NOTE
 
 ______________________________________________________________________
 
+### Capturing a replay
+
+For debugging and inspection purposes, it is possible to capture a _replay_, _i.e._ all the minimal information required to replay a series of blocks as they played on the blockchain, which is done with `scripts/capture.pl`.
+
+A typical invocation would be:
+
+```
+scripts/capture.pl --start 1300923
+```
+
+which would capture a replay of block #1300923 and store it in `arithmetization/src/test/resources/replays`. More options are available, refer to `scripts/capture.pl -h`.
+
 ## IntelliJ IDEA Setup
 
 ### Enable Annotation Processing
