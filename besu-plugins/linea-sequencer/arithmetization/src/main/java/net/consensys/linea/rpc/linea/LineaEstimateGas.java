@@ -117,8 +117,23 @@ public class LineaEstimateGas {
             .getNextBlockBaseFee()
             .orElseThrow(() -> new IllegalStateException("Not on a baseFee market"));
 
+    final Wei priorityFeeLowerBound = minGasPrice.subtract(baseFee);
+    final Wei boundedEstimatedPriorityFee;
+    if (estimatedPriorityFee.lessThan(priorityFeeLowerBound)) {
+      boundedEstimatedPriorityFee = priorityFeeLowerBound;
+      log.atDebug()
+          .setMessage(
+              "Estimated priority fee {} is lower that the lower bound {}, returning the latter")
+          .addArgument(estimatedPriorityFee::toHumanReadableString)
+          .addArgument(boundedEstimatedPriorityFee::toHumanReadableString)
+          .log();
+    } else {
+      boundedEstimatedPriorityFee = estimatedPriorityFee;
+    }
+
     final var response =
-        new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
+        new Response(
+            create(estimatedGasUsed), create(baseFee), create(boundedEstimatedPriorityFee));
     log.debug("Response for call params {} is {}", callParameters, response);
 
     return response;
