@@ -29,6 +29,7 @@ import java.util.Optional;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -53,11 +54,17 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
 
-  @Getter private final Hub hub = new Hub();
+  @Getter private final Hub hub;
   private final Map<String, Integer> spillings = new HashMap<>();
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   public ZkTracer() {
+    this(LineaL1L2BridgeConfiguration.EMPTY);
+  }
+
+  public ZkTracer(final LineaL1L2BridgeConfiguration bridgeConfiguration) {
+    this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic());
+
     // Load opcodes configured in src/main/resources/opcodes.yml.
     OpCodes.load();
 

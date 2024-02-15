@@ -15,11 +15,9 @@
 
 package net.consensys.linea.rpc.tracegeneration;
 
-import java.util.Optional;
-
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
@@ -28,29 +26,38 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 /**
  * Registers RPC endpoints .This class provides an RPC endpoint named
  * 'generateConflatedTracesToFileV0' under the 'rollup' namespace. It uses {@link
- * RollupGenerateConflatedTracesToFileV0} to generate conflated file traces. This class provides an
- * RPC endpoint named 'generateConflatedTracesToFileV0' under the 'rollup' namespace.
+ * GenerateConflatedTracesV0} to generate conflated file traces. This class provides an RPC endpoint
+ * named 'generateConflatedTracesToFileV0' under the 'rollup' namespace.
  */
 @AutoService(BesuPlugin.class)
 @Slf4j
-public class TracesEndpointServicePlugin extends AbstractLineaRequiredPlugin {
-
+public class TracesEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
+  private BesuContext besuContext;
+  private RpcEndpointService rpcEndpointService;
   /**
    * Register the RPC service.
    *
    * @param context the BesuContext to be used.
    */
   @Override
-  public void doRegister(final BesuContext context) {
-    RollupGenerateConflatedTracesToFileV0 method =
-        new RollupGenerateConflatedTracesToFileV0(context);
+  public void register(final BesuContext context) {
+    super.register(context);
+    besuContext = context;
+    rpcEndpointService =
+        context
+            .getService(RpcEndpointService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain RpcEndpointService from the BesuContext."));
+  }
 
-    Optional<RpcEndpointService> service = context.getService(RpcEndpointService.class);
-    createAndRegister(
-        method,
-        service.orElseThrow(
-            () ->
-                new RuntimeException("Failed to obtain RpcEndpointService from the BesuContext.")));
+  @Override
+  public void beforeExternalServices() {
+    super.beforeExternalServices();
+    GenerateConflatedTracesV0 method = new GenerateConflatedTracesV0(besuContext);
+
+    createAndRegister(method, rpcEndpointService);
   }
 
   /**
@@ -60,8 +67,7 @@ public class TracesEndpointServicePlugin extends AbstractLineaRequiredPlugin {
    * @param rpcEndpointService the RpcEndpointService to be registered.
    */
   private void createAndRegister(
-      final RollupGenerateConflatedTracesToFileV0 method,
-      final RpcEndpointService rpcEndpointService) {
+      final GenerateConflatedTracesV0 method, final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
   }

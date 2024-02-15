@@ -17,6 +17,7 @@ package net.consensys.linea.sequencer.txselection;
 
 import java.util.Map;
 
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
@@ -24,18 +25,22 @@ import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelecto
 
 /** Represents a factory for creating transaction selectors. */
 public class LineaTransactionSelectorFactory implements PluginTransactionSelectorFactory {
-  final LineaTransactionSelectorConfiguration txSelectorConfiguration;
+  private final LineaTransactionSelectorConfiguration txSelectorConfiguration;
+  private final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
   private final Map<String, Integer> limitsMap;
 
   public LineaTransactionSelectorFactory(
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final Map<String, Integer> limitsMap) {
     this.txSelectorConfiguration = txSelectorConfiguration;
+    this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.limitsMap = limitsMap;
   }
 
   @Override
   public PluginTransactionSelector create() {
-    return new LineaTransactionSelector(txSelectorConfiguration, limitsMap);
+    return new LineaTransactionSelector(
+        txSelectorConfiguration, l1L2BridgeConfiguration, limitsMap);
   }
 }
