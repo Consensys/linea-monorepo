@@ -33,9 +33,9 @@ import org.hyperledger.besu.plugin.services.BesuEvents;
 
 @Slf4j
 public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAddedListener {
-  final ContinuousTracer continuousTracer;
-  final TraceFailureHandler traceFailureHandler;
-  final String zkEvmBin;
+  private final ContinuousTracer continuousTracer;
+  private final TraceFailureHandler traceFailureHandler;
+  private final String zkEvmBin;
 
   static final int BLOCK_PARALLELISM = 5;
   final ThreadPoolExecutor pool =

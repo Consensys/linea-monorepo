@@ -26,6 +26,7 @@ import com.google.auto.service.AutoService;
 import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlParseResult;
@@ -75,7 +76,11 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                   Collectors.toUnmodifiableMap(
                       Map.Entry::getKey, e -> Math.toIntExact((Long) e.getValue())));
 
-      createAndRegister(transactionSelectionService, transactionSelectorConfiguration, limitsMap);
+      createAndRegister(
+          transactionSelectionService,
+          transactionSelectorConfiguration,
+          l1L2BridgeConfiguration,
+          limitsMap);
     } catch (final Exception e) {
       final String errorMsg =
           "Problem reading the toml file containing the limits for the modules: "
@@ -88,8 +93,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   private void createAndRegister(
       final TransactionSelectionService transactionSelectionService,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final Map<String, Integer> limitsMap) {
     transactionSelectionService.registerTransactionSelectorFactory(
-        new LineaTransactionSelectorFactory(txSelectorConfiguration, limitsMap));
+        new LineaTransactionSelectorFactory(
+            txSelectorConfiguration, l1L2BridgeConfiguration, limitsMap));
   }
 }

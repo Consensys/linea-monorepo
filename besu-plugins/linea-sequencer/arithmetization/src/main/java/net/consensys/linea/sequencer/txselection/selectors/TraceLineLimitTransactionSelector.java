@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
+import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.Module;
 import org.hyperledger.besu.datatypes.Hash;
@@ -59,19 +61,25 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
 
   public TraceLineLimitTransactionSelector(
       final Map<String, Integer> moduleLimits,
-      final String limitFilePath,
-      final int overLimitCacheSize) {
+      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
+    if (l1L2BridgeConfiguration.isEmpty()) {
+      log.error("L1L2 bridge settings have not been defined.");
+      System.exit(1);
+    }
+
     this.moduleLimits = moduleLimits;
-    zkTracer = new ZkTracerWithLog();
+    this.limitFilePath = txSelectorConfiguration.moduleLimitsFilePath();
+    this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
+
+    zkTracer = new ZkTracerWithLog(l1L2BridgeConfiguration);
     for (Module m : zkTracer.getHub().getModulesToCount()) {
       if (!moduleLimits.containsKey(m.moduleKey())) {
         throw new IllegalStateException(
-            "Limit for module %s not defined in %s".formatted(m.moduleKey(), limitFilePath));
+            "Limit for module %s not defined in %s".formatted(m.moduleKey(), this.limitFilePath));
       }
     }
     zkTracer.traceStartConflation(1L);
-    this.limitFilePath = limitFilePath;
-    this.overLimitCacheSize = overLimitCacheSize;
   }
 
   /**
@@ -208,6 +216,10 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   }
 
   private class ZkTracerWithLog extends ZkTracer {
+    public ZkTracerWithLog(final LineaL1L2BridgeConfiguration bridgeConfiguration) {
+      super(bridgeConfiguration);
+    }
+
     @Override
     public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
       super.traceEndBlock(blockHeader, blockBody);

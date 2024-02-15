@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 /** This class is used to generate trace counters. */
 @Slf4j
-public class RollupGenerateCountersV0 {
+public class GenerateCountersV0 {
   private static final int CACHE_SIZE = 10_000;
   static final Cache<Long, Map<String, Integer>> cache =
       CacheBuilder.newBuilder().maximumSize(CACHE_SIZE).build();
@@ -42,7 +42,7 @@ public class RollupGenerateCountersV0 {
    *
    * @param besuContext the BesuContext to be used.
    */
-  public RollupGenerateCountersV0(final BesuContext besuContext) {
+  public GenerateCountersV0(final BesuContext besuContext) {
     this.besuContext = besuContext;
   }
 

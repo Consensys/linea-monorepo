@@ -35,12 +35,12 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
  * based on the provided request parameters and writes them to a file.
  */
 @Slf4j
-public class RollupGenerateConflatedTracesToFileV0 {
+public class GenerateConflatedTracesV0 {
   private final BesuContext besuContext;
   private Path tracesPath;
   private TraceService traceService;
 
-  public RollupGenerateConflatedTracesToFileV0(final BesuContext besuContext) {
+  public GenerateConflatedTracesV0(final BesuContext besuContext) {
     this.besuContext = besuContext;
   }
 

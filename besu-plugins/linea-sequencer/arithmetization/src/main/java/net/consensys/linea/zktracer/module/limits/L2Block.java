@@ -19,9 +19,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
@@ -33,9 +33,10 @@ import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class L2Block implements Module {
-  private final Address L2L1_ADDRESS;
-  private final LogTopic L2L1_TOPIC;
+  private final Address l2l1Address;
+  private final LogTopic l2l1Topic;
 
   private static final int ADDRESS_BYTES = 20;
   private static final int HASH_BYTES = 32;
@@ -48,15 +49,6 @@ public class L2Block implements Module {
   @Getter private final Deque<Integer> sizesRlpEncodedTxs = new ArrayDeque<>();
   /** The byte size of the L2->L1 logs messages of the conflation */
   @Getter private final Deque<List<Integer>> l2l1LogSizes = new ArrayDeque<>();
-
-  public L2Block() {
-    this.L2L1_TOPIC =
-        LogTopic.fromHexString(
-            Optional.ofNullable(System.getenv("L2L1_TOPIC")).orElse("0xDEADBEEF"));
-    this.L2L1_ADDRESS =
-        Address.fromHexString(
-            Optional.ofNullable(System.getenv("L2L1_CONTRACT_ADDRESS")).orElse("0x12345"));
-  }
 
   @Override
   public String moduleKey() {
@@ -144,7 +136,7 @@ public class L2Block implements Module {
       List<Log> logs,
       long gasUsed) {
     for (Log log : logs) {
-      if (log.getLogger().equals(L2L1_ADDRESS) && log.getTopics().contains(L2L1_TOPIC)) {
+      if (log.getLogger().equals(l2l1Address) && log.getTopics().contains(l2l1Topic)) {
         this.l2l1LogSizes.peek().add(log.getData().size());
       }
     }

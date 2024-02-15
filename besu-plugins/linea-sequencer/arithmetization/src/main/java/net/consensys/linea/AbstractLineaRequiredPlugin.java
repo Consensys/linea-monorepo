@@ -45,4 +45,11 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOpt
       System.exit(1);
     }
   }
+
+  /**
+   * Linea plugins need to implement this method. Called by {@link BesuPlugin} register method
+   *
+   * @param context
+   */
+  public abstract void doRegister(final BesuContext context);
 }
