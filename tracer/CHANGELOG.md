@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4-test19
+Test pre-release 19 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Avoid returning an estimated priority fee that is less than the min gas price [#598](https://github.com/Consensys/besu-sequencer-plugins/pull/598)
+
+## 0.1.4-test18
+Test pre-release 18 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* fix: check that spilling and limits file contain all counted modules [#592](https://github.com/Consensys/besu-sequencer-plugins/pull/592)
+
 ## 0.1.4-test18-RC3
 Test pre-release 18-RC3 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 *  Use compressed tx size also when selecting txs from block creation [#590](https://github.com/Consensys/besu-sequencer-plugins/pull/590)
