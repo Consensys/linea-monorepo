@@ -1,3 +1,4 @@
+
 buildscript {
   ext {
     besuIdentifier = "linea-besu-${besuVersion}"
