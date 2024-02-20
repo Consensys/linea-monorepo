@@ -40,6 +40,7 @@ solidity {
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
 
+  dependsOn(project(":native:compress").compileJava)
   dependsOn(project(":arithmetization").copyPluginJar)
 
   inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
@@ -55,6 +56,7 @@ tasks.register('acceptanceTests', Test) {
 
 dependencies {
   testImplementation project(":arithmetization")
+  testImplementation project(":native:compress")
   testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
   testImplementation "${besuArtifactGroup}:besu-datatypes:$besuVersion"
   testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion"
