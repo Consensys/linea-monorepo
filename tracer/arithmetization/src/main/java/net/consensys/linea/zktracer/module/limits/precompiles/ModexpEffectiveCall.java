@@ -28,9 +28,10 @@ import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpDataOperation;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.ModexpComponents;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.modexpdata.ModexpData;
-import net.consensys.linea.zktracer.module.modexpdata.ModexpDataOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -43,12 +44,12 @@ import org.hyperledger.besu.evm.internal.Words;
 public class ModexpEffectiveCall implements Module {
   private final Hub hub;
 
-  @Getter private final ModexpData data = new ModexpData();
+  @Getter private final Blake2fModexpData data = new Blake2fModexpData();
   private final Stack<Integer> counts = new Stack<>();
   private static final BigInteger PROVER_MAX_INPUT_BIT_SIZE = BigInteger.valueOf(4096 / 8);
   private static final int EVM_WORD_SIZE = 32;
 
-  private int lastModexpDataCallHubStamp = 0;
+  private int lastDataCallHubStamp = 0;
 
   @Override
   public String moduleKey() {
@@ -131,16 +132,14 @@ public class ModexpEffectiveCall implements Module {
                 modLength.intValueExact());
         final long gasPrice = gasPrice(baseLengthInt, expLengthInt, modLengthInt, expComponent);
 
-        // If enough gas, add 1 to the call of the precompile.
         if (hub.transients().op().gasAllowanceForCall() >= gasPrice) {
-          this.lastModexpDataCallHubStamp =
+          this.lastDataCallHubStamp =
               this.data.call(
-                  new ModexpDataOperation(
+                  new Blake2fModexpDataOperation(
                       hub.stamp(),
-                      lastModexpDataCallHubStamp,
-                      baseComponent,
-                      expComponent,
-                      modComponent));
+                      lastDataCallHubStamp,
+                      new ModexpComponents(baseComponent, expComponent, modComponent),
+                      null));
           this.counts.push(this.counts.pop() + 1);
         }
       }

@@ -19,23 +19,33 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Stack;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fComponents;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpDataOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.precompiles.Blake2fMetadata;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileMetadata;
+import net.consensys.linea.zktracer.module.hub.transients.Operation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.MemorySpan;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
 public final class Blake2fRounds implements Module {
-  private static final int BLAKE2F_VALID_DATASIZE = 213;
-
+  private static final int BLAKE2f_INPUT_SIZE = 213;
   private final Hub hub;
+
+  @Getter private final Blake2fModexpData data = new Blake2fModexpData();
+
+  private int lastDataCallHubStamp = 0;
+
   private final Stack<Integer> counts = new Stack<>();
 
   @Override
@@ -62,7 +72,7 @@ public final class Blake2fRounds implements Module {
         final Address target = Words.toAddress(frame.getStackItem(1));
         if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
           final long length = hub.transients().op().callDataSegment().length();
-          yield length != BLAKE2F_VALID_DATASIZE;
+          yield length != BLAKE2f_INPUT_SIZE;
         } else {
           yield false;
         }
@@ -85,12 +95,10 @@ public final class Blake2fRounds implements Module {
         if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
           final long offset = hub.transients().op().callDataSegment().offset();
           final int f =
-              frame
-                  .shadowReadMemory(offset, BLAKE2F_VALID_DATASIZE)
-                  .get(BLAKE2F_VALID_DATASIZE - 1);
+              frame.shadowReadMemory(offset, BLAKE2f_INPUT_SIZE).get(BLAKE2f_INPUT_SIZE - 1);
           final int r =
               frame
-                  .shadowReadMemory(offset, BLAKE2F_VALID_DATASIZE)
+                  .shadowReadMemory(offset, BLAKE2f_INPUT_SIZE)
                   .slice(0, 4)
                   .toInt(); // The number of round is equal to the gas to pay
           yield !((f == 0 || f == 1) && hub.transients().op().gasAllowanceForCall() >= r);
@@ -133,8 +141,8 @@ public final class Blake2fRounds implements Module {
         if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
           final long length = hub.transients().op().callDataSegment().length();
 
-          if (length == BLAKE2F_VALID_DATASIZE) {
-            final int f = hub.transients().op().callData().get(BLAKE2F_VALID_DATASIZE - 1);
+          if (length == BLAKE2f_INPUT_SIZE) {
+            final int f = hub.transients().op().callData().get(BLAKE2f_INPUT_SIZE - 1);
             if (f == 0 || f == 1) {
               final int r =
                   hub.transients()
@@ -156,29 +164,36 @@ public final class Blake2fRounds implements Module {
   public void tracePreOpcode(MessageFrame frame) {
     final OpCode opCode = hub.opCode();
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
-          final long length = hub.transients().op().callDataSegment().length();
+    if (opCode.isAnyOf(OpCode.CALL, OpCode.STATICCALL, OpCode.DELEGATECALL, OpCode.CALLCODE)) {
+      final Address target = Words.toAddress(frame.getStackItem(1));
 
-          if (length == BLAKE2F_VALID_DATASIZE) {
-            final int f = hub.transients().op().callData().get(BLAKE2F_VALID_DATASIZE - 1);
-            if (f == 0 || f == 1) {
-              final int r =
-                  hub.transients()
-                      .op()
-                      .callData()
-                      .slice(0, 4)
-                      .toInt(); // The number of round is equal to the gas to pay
-              if (hub.transients().op().gasAllowanceForCall() >= r) {
-                this.counts.push(this.counts.pop() + r);
-              }
+      if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
+        final Operation opInfo = hub.transients().op();
+        final long length = opInfo.callDataSegment().length();
+
+        if (length == BLAKE2f_INPUT_SIZE) {
+          final Bytes inputData = opInfo.callData();
+          final int f = inputData.get(BLAKE2f_INPUT_SIZE - 1);
+          if (f == 0 || f == 1) {
+            final Bytes r = inputData.slice(0, 4); // The number of round is equal to the gas to pay
+
+            final int rInt = r.toInt();
+
+            final Bytes data = inputData.slice(4, BLAKE2f_INPUT_SIZE - 4);
+
+            if (opInfo.gasAllowanceForCall() >= rInt) {
+              this.lastDataCallHubStamp =
+                  this.data.call(
+                      new Blake2fModexpDataOperation(
+                          hub.stamp(),
+                          lastDataCallHubStamp,
+                          null,
+                          new Blake2fComponents(inputData, data, r, Bytes.of(f))));
+              this.counts.push(this.counts.pop() + rInt);
             }
           }
         }
       }
-      default -> {}
     }
   }
 
@@ -189,11 +204,11 @@ public final class Blake2fRounds implements Module {
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    throw new IllegalStateException("should never be called");
+    throw new UnsupportedOperationException("should never be called");
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
-    throw new IllegalStateException("should never be called");
+    throw new UnsupportedOperationException("should never be called");
   }
 }

@@ -55,6 +55,7 @@ public class TxnData implements Module {
       Math.max(Math.max(N_ROWS_FRONTIER_TX, N_ROWS_ACCESS_LIST_TX), N_ROWS_EIP_1559_TX);
   private static final int LT = 16;
   private static final int ISZERO = 21;
+
   static final int COMMON_RLP_TXN_PHASE_NUMBER_0 =
       net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_RLP_PREFIX_VALUE;
   static final int COMMON_RLP_TXN_PHASE_NUMBER_1 =
