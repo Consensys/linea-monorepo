@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.modexpdata;
+package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -22,12 +22,12 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 
-public class ModexpData implements Module {
-  private final StackedSet<ModexpDataOperation> state = new StackedSet<>();
+public class Blake2fModexpData implements Module {
+  private StackedSet<Blake2fModexpDataOperation> state = new StackedSet<>();
 
   @Override
   public String moduleKey() {
-    return "MODEXP";
+    return "BLAKE2f_MODEXP_DATA";
   }
 
   @Override
@@ -50,7 +50,7 @@ public class ModexpData implements Module {
     return Trace.headers(this.lineCount());
   }
 
-  public int call(final ModexpDataOperation operation) {
+  public int call(final Blake2fModexpDataOperation operation) {
     this.state.add(operation);
 
     return operation.prevHubStamp();
@@ -60,7 +60,7 @@ public class ModexpData implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (ModexpDataOperation o : this.state) {
+    for (Blake2fModexpDataOperation o : this.state) {
       stamp++;
       o.trace(trace, stamp);
     }

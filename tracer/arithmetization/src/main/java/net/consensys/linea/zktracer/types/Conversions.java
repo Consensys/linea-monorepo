@@ -19,7 +19,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -56,8 +55,12 @@ public class Conversions {
   }
 
   public static UnsignedByte[] bytesToUnsignedBytes(final byte[] bytes) {
-    return (UnsignedByte[])
-        IntStream.range(0, bytes.length).mapToObj(i -> UnsignedByte.of(bytes[i])).toArray();
+    UnsignedByte[] uBytes = new UnsignedByte[bytes.length];
+    for (int i = 0; i < bytes.length; i++) {
+      uBytes[i] = UnsignedByte.of(bytes[i]);
+    }
+
+    return uBytes;
   }
 
   public static List<UnsignedByte> bytesToUnsignedBytesList(final byte[] bytes) {
