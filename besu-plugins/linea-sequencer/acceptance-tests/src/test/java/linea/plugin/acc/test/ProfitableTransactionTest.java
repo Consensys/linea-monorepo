@@ -17,6 +17,7 @@ package linea.plugin.acc.test;
 import java.math.BigInteger;
 import java.util.List;
 
+import org.bouncycastle.crypto.digests.KeccakDigest;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
@@ -55,16 +56,24 @@ public class ProfitableTransactionTest extends LineaPluginTestBase {
 
     final Web3j web3j = minerNode.nodeRequests().eth();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
+    final TransactionManager txManager = new RawTransactionManager(web3j, credentials, CHAIN_ID);
 
-    final String txData = "not profitable transaction".repeat(60);
+    final KeccakDigest keccakDigest = new KeccakDigest(256);
+    final StringBuilder txData = new StringBuilder();
+    txData.append("0x");
+    for (int i = 0; i < 10; i++) {
+      keccakDigest.update(new byte[] {(byte) i}, 0, 1);
+      final byte[] out = new byte[32];
+      keccakDigest.doFinal(out, 0);
+      txData.append(new BigInteger(out));
+    }
 
     final var txUnprofitable =
         txManager.sendTransaction(
             MIN_GAS_PRICE.getAsBigInteger(),
             BigInteger.valueOf(MAX_TX_GAS_LIMIT / 2),
             credentials.getAddress(),
-            txData,
+            txData.toString(),
             BigInteger.ZERO);
 
     final Account sender = accounts.getSecondaryBenefactor();
