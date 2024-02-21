@@ -29,8 +29,6 @@ public record LineaTransactionSelectorConfiguration(
     int gasPriceRatio,
     double minMargin,
     double estimateGasMinMargin,
-    int adjustTxSize,
-    int txCompressionRatio,
     int unprofitableCacheSize,
     int unprofitableRetryLimit) {}
 ;
