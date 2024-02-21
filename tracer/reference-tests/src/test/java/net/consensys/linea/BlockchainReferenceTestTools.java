@@ -121,7 +121,7 @@ public class BlockchainReferenceTestTools {
         final ProtocolSpec protocolSpec = schedule.getByBlockHeader(block.getHeader());
 
         final MainnetBlockImporter blockImporter =
-            getMainnetBlockImporter(protocolSpec, schedule, zkTracer);
+            getMainnetBlockImporter(context, protocolSpec, schedule, zkTracer);
 
         final HeaderValidationMode validationMode =
             "NoProof".equalsIgnoreCase(spec.getSealEngine())
@@ -143,7 +143,10 @@ public class BlockchainReferenceTestTools {
   }
 
   private static MainnetBlockImporter getMainnetBlockImporter(
-      final ProtocolSpec protocolSpec, final ProtocolSchedule schedule, final ZkTracer zkTracer) {
+      final ProtocolContext context,
+      final ProtocolSpec protocolSpec,
+      final ProtocolSchedule schedule,
+      final ZkTracer zkTracer) {
     CorsetBlockProcessor corsetBlockProcessor =
         new CorsetBlockProcessor(
             protocolSpec.getTransactionProcessor(),
@@ -159,7 +162,7 @@ public class BlockchainReferenceTestTools {
             protocolSpec.getBlockHeaderValidator(),
             protocolSpec.getBlockBodyValidator(),
             corsetBlockProcessor,
-            protocolSpec.getBadBlocksManager());
+            context.getBadBlockManager());
 
     return new MainnetBlockImporter(blockValidator);
   }
