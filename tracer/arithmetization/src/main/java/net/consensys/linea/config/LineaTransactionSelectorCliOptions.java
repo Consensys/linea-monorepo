@@ -127,24 +127,6 @@ public class LineaTransactionSelectorCliOptions {
 
   @Positive
   @CommandLine.Option(
-      names = {ADJUST_TX_SIZE},
-      hidden = true,
-      paramLabel = "<INTEGER>",
-      description =
-          "Adjust transaction size for profitability calculation (default: ${DEFAULT-VALUE})")
-  private int adjustTxSize = DEFAULT_ADJUST_TX_SIZE;
-
-  @Positive
-  @CommandLine.Option(
-      names = {TX_COMPRESSION_RATIO},
-      hidden = true,
-      paramLabel = "<INTEGER>",
-      description =
-          "The ratio between tx serialized size and its compressed size (default: ${DEFAULT-VALUE})")
-  private int txCompressionRatio = DEFAULT_TX_COMPRESSION_RATIO;
-
-  @Positive
-  @CommandLine.Option(
       names = {UNPROFITABLE_CACHE_SIZE},
       hidden = true,
       paramLabel = "<INTEGER>",
@@ -189,8 +171,6 @@ public class LineaTransactionSelectorCliOptions {
     options.verificationCapacity = config.verificationCapacity();
     options.gasPriceRatio = config.gasPriceRatio();
     options.minMargin = BigDecimal.valueOf(config.minMargin());
-    options.adjustTxSize = config.adjustTxSize();
-    options.txCompressionRatio = config.txCompressionRatio();
     options.unprofitableCacheSize = config.unprofitableCacheSize();
     options.unprofitableRetryLimit = config.unprofitableRetryLimit();
     return options;
@@ -212,8 +192,6 @@ public class LineaTransactionSelectorCliOptions {
         .gasPriceRatio(gasPriceRatio)
         .minMargin(minMargin.doubleValue())
         .estimateGasMinMargin((estimageGasMinMargin.doubleValue()))
-        .adjustTxSize(adjustTxSize)
-        .txCompressionRatio(txCompressionRatio)
         .unprofitableCacheSize(unprofitableCacheSize)
         .unprofitableRetryLimit(unprofitableRetryLimit)
         .build();
@@ -231,8 +209,6 @@ public class LineaTransactionSelectorCliOptions {
         .add(GAS_PRICE_RATIO, gasPriceRatio)
         .add(MIN_MARGIN, minMargin)
         .add(ESTIMATE_GAS_MIN_MARGIN, estimageGasMinMargin)
-        .add(ADJUST_TX_SIZE, adjustTxSize)
-        .add(TX_COMPRESSION_RATIO, txCompressionRatio)
         .add(UNPROFITABLE_CACHE_SIZE, unprofitableCacheSize)
         .add(UNPROFITABLE_RETRY_LIMIT, unprofitableRetryLimit)
         .toString();

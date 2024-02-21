@@ -17,6 +17,7 @@ package net.consensys.linea.bl;
 import java.math.BigDecimal;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.compress.LibCompress;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
@@ -50,7 +51,7 @@ public class TransactionProfitabilityCalculator {
         .setMessage(
             "Estimated profitable priorityFeePerGas: {}; estimateGasMinMargin={}, verificationCapacity={}, "
                 + "verificationGasCost={}, gasPriceRatio={}, gas={}, minGasPrice={}, "
-                + "l1GasPrice={}, txSize={}, compressedTxSize={}, adjustTxSize={}")
+                + "l1GasPrice={}, txSize={}, compressedTxSize={}")
         .addArgument(profitAtWei::toHumanReadableString)
         .addArgument(conf.estimateGasMinMargin())
         .addArgument(conf.verificationCapacity())
@@ -61,7 +62,6 @@ public class TransactionProfitabilityCalculator {
         .addArgument(() -> minGasPrice.multiply(conf.gasPriceRatio()).toHumanReadableString())
         .addArgument(transaction::getSize)
         .addArgument(compressedTxSize)
-        .addArgument(conf.adjustTxSize())
         .log();
 
     return profitAtWei;
@@ -93,8 +93,7 @@ public class TransactionProfitabilityCalculator {
           gas,
           minGasPrice,
           l1GasPrice,
-          compressedTxSize,
-          conf.adjustTxSize());
+          compressedTxSize);
       return false;
     } else {
       log(
@@ -106,17 +105,14 @@ public class TransactionProfitabilityCalculator {
           gas,
           minGasPrice,
           l1GasPrice,
-          compressedTxSize,
-          conf.adjustTxSize());
+          compressedTxSize);
       return true;
     }
   }
 
   private double getCompressedTxSize(final Transaction transaction) {
-    // this is just a temporary estimation, that will be replaced by gnarkCompression when available
-    // at that point conf.txCompressionRatio and conf.adjustTxSize options can be removed
-    final double adjustedTxSize = Math.max(0, transaction.getSize() + conf.adjustTxSize());
-    return adjustedTxSize / conf.txCompressionRatio();
+    final byte[] bytes = transaction.encoded().toArrayUnsafe();
+    return LibCompress.CompressedSize(bytes, bytes.length);
   }
 
   private void log(
@@ -128,12 +124,11 @@ public class TransactionProfitabilityCalculator {
       final long gasUsed,
       final double minGasPrice,
       final double l1GasPrice,
-      final double compressedTxSize,
-      final int adjustTxSize) {
+      final double compressedTxSize) {
     leb.setMessage(
             "Context {}. Transaction {} has a margin of {}, minMargin={}, verificationCapacity={}, "
                 + "verificationGasCost={}, gasPriceRatio={}, effectiveGasPrice={}, gasUsed={}, minGasPrice={}, "
-                + "l1GasPrice={}, txSize={}, compressedTxSize={}, adjustTxSize={}")
+                + "l1GasPrice={}, txSize={}, compressedTxSize={}")
         .addArgument(context)
         .addArgument(transaction::getHash)
         .addArgument(margin)
@@ -147,7 +142,6 @@ public class TransactionProfitabilityCalculator {
         .addArgument(l1GasPrice)
         .addArgument(transaction::getSize)
         .addArgument(compressedTxSize)
-        .addArgument(adjustTxSize)
         .log();
   }
 }
