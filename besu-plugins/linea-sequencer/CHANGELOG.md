@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4-test20
+Test pre-release 20 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Get L2L1 settings from CLI options [#591](https://github.com/Consensys/besu-sequencer-plugins/pull/591)
+* feat: add a replay capture script [#600](https://github.com/Consensys/besu-sequencer-plugins/pull/600)
+* move compress native into plugin repo [#604](https://github.com/Consensys/besu-sequencer-plugins/pull/604)
+* Add compression [#605](https://github.com/Consensys/besu-sequencer-plugins/pull/605)
+* Update for the new bad block manager [#607](https://github.com/Consensys/besu-sequencer-plugins/pull/607)
+
 ## 0.1.4-test19
 Test pre-release 19 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Avoid returning an estimated priority fee that is less than the min gas price [#598](https://github.com/Consensys/besu-sequencer-plugins/pull/598)
