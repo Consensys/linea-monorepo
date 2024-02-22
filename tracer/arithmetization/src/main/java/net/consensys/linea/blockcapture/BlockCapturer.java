@@ -111,6 +111,16 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
         }
       }
 
+        // SSTORE needs to know the previous storage value for correct gas computation
+      case SSTORE -> {
+        if (frame.stackSize() > 1) {
+          final Account account = frame.getWorldUpdater().get(frame.getRecipientAddress());
+          final Address address = account.getAddress();
+          final UInt256 key = UInt256.fromBytes(frame.getStackItem(0));
+          this.reaper.touchStorage(address, key);
+        }
+      }
+
         // These access contracts potentially existing before the conflation played out.
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         if (frame.stackSize() > 1) {
