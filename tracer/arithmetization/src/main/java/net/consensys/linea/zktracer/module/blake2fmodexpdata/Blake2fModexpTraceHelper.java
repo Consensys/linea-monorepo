@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -36,7 +36,7 @@ public class Blake2fModexpTraceHelper {
   private final Map<Integer, PhaseInfo> phaseInfoMap;
   private final Trace trace;
   private final UnsignedByte stampByte;
-  private final Consumer<Integer> traceLimbConsumer;
+  private final BiConsumer<Integer, Integer> traceLimbConsumer;
   private final TriFunction<PhaseInfo, Integer, Integer, Integer> currentRowIndexFunction;
   private UnsignedByte[] hubStampDiffBytes;
 
@@ -46,9 +46,9 @@ public class Blake2fModexpTraceHelper {
     for (int phaseIndex = startPhaseIndex; phaseIndex <= endPhaseIndex; phaseIndex++) {
       phaseFlags[phaseIndex - 1] = true;
 
-      PhaseInfo phaseInfo = phaseInfoMap.get(phaseIndex);
+      final PhaseInfo phaseInfo = phaseInfoMap.get(phaseIndex);
 
-      int indexMax = phaseInfo.indexMax();
+      final int indexMax = phaseInfo.indexMax();
       for (int index = 0; index <= indexMax; index++) {
         int rowIndex = currentRowIndexFunction.apply(phaseInfo, phaseIndex, index);
 
@@ -60,7 +60,7 @@ public class Blake2fModexpTraceHelper {
             .indexMax(UnsignedByte.of(indexMax))
             .stamp(stampByte);
 
-        traceLimbConsumer.accept(rowIndex);
+        traceLimbConsumer.accept(rowIndex, phaseIndex);
 
         trace
             .isModexpBase(phaseFlags[0])
