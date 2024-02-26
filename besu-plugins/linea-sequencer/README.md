@@ -29,6 +29,10 @@ an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
 brew install openjdk@17
 ```
 
+### Install the relevant CGo compiler for your platform
+
+### Install the Go toolchain
+
 ### Install Rust
 
 ```

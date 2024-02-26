@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class LibCompressTest {
-
     @Test
     public void testCompressZeroes() {
         byte[] zeroes = new byte[128];

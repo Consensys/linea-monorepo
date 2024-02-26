@@ -29,13 +29,13 @@ test {
     useJUnitPlatform()
 }
 
-tasks.register('callBuildSh', Exec) {
+tasks.register('buildJNI', Exec) {
     workingDir buildscript.sourceFile.parentFile
-    commandLine 'bash', '../build.sh'
+    commandLine 'sh', '-c', '../build.sh'
 }
 
 compileJava{
-    dependsOn callBuildSh
+    dependsOn buildJNI
 }
 
 dependencies {
@@ -50,25 +50,25 @@ dependencies {
 
 
 tasks.register('macArmLibCopy', Copy) {
-    from 'build/darwin-aarch64/lib/libcompress_jni.dylib'
+    from 'build/native/libcompress_jni.dylib'
     into 'build/resources/main/darwin-aarch64'
 }
 processResources.dependsOn macArmLibCopy
 
 tasks.register('macLibCopy', Copy) {
-    from 'build/darwin-x86-64/lib/libcompress_jni.dylib'
+    from 'build/native/libcompress_jni.dylib'
     into 'build/resources/main/darwin-x86-64'
 }
 processResources.dependsOn macLibCopy
 
 tasks.register('linuxLibCopy', Copy) {
-    from 'build/linux-gnu-x86_64/lib/libcompress_jni.so'
+    from 'build/native/libcompress_jni.so'
     into 'build/resources/main/linux-x86-64'
 }
 processResources.dependsOn linuxLibCopy
 
 tasks.register('linuxArm64LibCopy', Copy) {
-    from 'build/linux-gnu-aarch64/lib/libcompress_jni.so'
+    from 'build/native/libcompress_jni.so'
     into 'build/resources/main/linux-aarch64'
 }
 processResources.dependsOn linuxArm64LibCopy
@@ -87,7 +87,7 @@ jar {
     }
 }
 
-jar.dependsOn(callBuildSh)
+jar.dependsOn(buildJNI)
 
 sourceSets {
     main {
