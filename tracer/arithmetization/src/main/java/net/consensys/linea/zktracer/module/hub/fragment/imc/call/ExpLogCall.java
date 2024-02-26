@@ -23,7 +23,6 @@ import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
 public record ExpLogCall(EWord exponent) implements TraceSubFragment {
-
   @Override
   public Trace trace(Trace trace) {
     return trace

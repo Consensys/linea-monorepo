@@ -15,6 +15,7 @@ BIN_RT              = 262144
 EC_DATA             = 4096
 EUC                 = 16384 # can probably be lower
 EXT                 = 32768
+EXP                 = 50000
 HUB                 = 10000
 INSTRUCTION_DECODER = 512 # Ugly hack, TODO: @franklin
 MMIO                = 1048576

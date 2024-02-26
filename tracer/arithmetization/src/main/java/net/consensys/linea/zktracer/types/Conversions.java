@@ -68,6 +68,7 @@ public class Conversions {
     for (byte aByte : bytes) {
       r.add(UnsignedByte.of(aByte));
     }
+
     return r;
   }
 
@@ -77,6 +78,14 @@ public class Conversions {
 
   public static int booleanToInt(final boolean input) {
     return input ? 1 : 0;
+  }
+  // Also implemented in oob branch (remove it after merge)
+  public static boolean bigIntegerToBoolean(BigInteger n) {
+    if (!n.equals(BigInteger.ONE) && !n.equals(BigInteger.ZERO)) {
+      throw new IllegalArgumentException(
+          "argument should be equal to BigInteger.ONE or BigInteger.ZERO");
+    }
+    return BigInteger.valueOf(1).equals(n);
   }
 
   public static BigInteger longToUnsignedBigInteger(final long input) {
