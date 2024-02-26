@@ -106,6 +106,10 @@ public class Wcp implements Module {
     return arg1.isZero();
   }
 
+  public boolean callISZERO(Bytes arg1) {
+    return this.callISZERO(Bytes32.leftPad(arg1));
+  }
+
   public boolean callLEQ(Bytes32 arg1, Bytes32 arg2) {
     this.operations.add(new WcpOperation(LEQbv, arg1, arg2));
     return arg1.compareTo(arg2) <= 0;

@@ -187,8 +187,9 @@ public class Signals {
                 .orElse(false);
 
         this.romLex = ex.none() && !triggersAbortingCondition && targetAddressHasNonEmptyCode;
-
         this.ecData = ex.none() && EC_PRECOMPILES.contains(target);
+        this.exp =
+            ex.none() && this.platformController.aborts().none() && target.equals(Address.MODEXP);
       }
 
       case CREATE, CREATE2 -> {
@@ -234,7 +235,7 @@ public class Signals {
                 || (!isDeployment
                     && ex.none()
                     && sizeNonZero
-                    && hub.currentFrame().requestedReturnDataTarget().length() > 0);
+                    && !hub.currentFrame().requestedReturnDataTarget().isEmpty());
         this.romLex = this.hashInfo = isDeployment && ex.none() && sizeNonZero;
       }
 

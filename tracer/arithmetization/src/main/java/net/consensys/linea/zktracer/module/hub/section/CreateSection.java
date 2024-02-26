@@ -146,7 +146,7 @@ public class CreateSection extends TraceSection
         projection.memoryExpansion() + projection.linearPerWord() + GasConstants.G_TX_CREATE.cost();
 
     final ImcFragment commonImcFragment =
-        ImcFragment.empty()
+        ImcFragment.empty(hub)
             .callOob(
                 new Create(
                     hub.pch().aborts().any(),
@@ -174,13 +174,13 @@ public class CreateSection extends TraceSection
     if (this.exceptions.staticFault()) {
       this.addFragmentsWithoutStack(
           hub,
-          ImcFragment.empty(),
+          ImcFragment.empty(hub),
           ContextFragment.readContextData(hub.callStack()),
           ContextFragment.executionEmptyReturnData(hub.callStack()));
     } else if (this.exceptions.outOfMemoryExpansion()) {
       this.addFragmentsWithoutStack(
           hub,
-          ImcFragment.empty().callMxp(MxpCall.build(hub)),
+          ImcFragment.empty(hub).callMxp(MxpCall.build(hub)),
           ContextFragment.executionEmptyReturnData(hub.callStack()));
     } else if (this.exceptions.outOfGas()) {
       this.addFragmentsWithoutStack(

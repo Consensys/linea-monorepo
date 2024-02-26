@@ -4,6 +4,7 @@ ADD = 2
 BIN = 16
 EC_DATA = 12
 EUC = 1
+EXP = 5
 EXT = 8
 PUB_HASH = 0
 PUB_HASH_INFO = 0

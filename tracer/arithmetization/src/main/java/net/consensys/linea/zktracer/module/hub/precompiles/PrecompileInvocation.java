@@ -102,7 +102,8 @@ public record PrecompileInvocation(
         !hubFailure
             && switch (p) {
               case EC_RECOVER, IDENTITY, RIPEMD_160, SHA2_256 -> false;
-              case MODEXP -> false; // TODO: update when MODEXP is merged
+              case MODEXP -> ModexpEffectiveCall.gasCost(hub)
+                  > hub.transients().op().gasAllowanceForCall();
               case EC_ADD -> EcAddEffectiveCall.isRamFailure(hub);
               case EC_MUL -> EcMulEffectiveCall.isRamFailure(hub);
               case EC_PAIRING -> EcPairingCallEffectiveCall.isRamFailure(hub);

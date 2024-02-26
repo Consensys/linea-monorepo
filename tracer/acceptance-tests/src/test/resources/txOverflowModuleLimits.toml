@@ -1,4 +1,3 @@
-
 ##
 # This file specifies prover limit by each EVM module
 # WARN: The prover/arithmetization team has the owneship of this.
@@ -15,6 +14,7 @@ BIN                 = 262144
 BIN_RT              = 262144
 EC_DATA             = 4096
 EUC                 = 16384 # can probably be lower
+EXP                 = 50000
 EXT                 = 20
 HUB                 = 32
 INSTRUCTION_DECODER = 256 # Ugly hack, TODO: @franklin

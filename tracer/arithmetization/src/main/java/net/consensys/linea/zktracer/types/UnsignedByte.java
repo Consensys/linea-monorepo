@@ -140,4 +140,47 @@ public class UnsignedByte {
       throw new IllegalArgumentException("Unsigned byte value must be between 0 - 255. Is " + b);
     }
   }
+
+  /**
+   * Retrieves the value of the most significant bit (MSB) at a specified position of an instance of
+   * {@link UnsignedByte}.
+   *
+   * @param i The position of the MSB to retrieve, counting from the MSB as position 0.
+   * @return true if the most significant bit at the specified position is set (1), false otherwise.
+   * @throws IndexOutOfBoundsException if i < 0 or i >= 8.
+   */
+  public boolean get(int i) {
+    if (i < 0 || i >= 8) {
+      throw new IndexOutOfBoundsException("Index must be between 0 - 7. Is " + i);
+    }
+    String ub = Integer.toBinaryString(this.toInteger());
+    if (ub.length() < 8) {
+      ub = "0".repeat(8 - ub.length()) + ub;
+    }
+    return ub.charAt(i) == '1';
+  }
+
+  /**
+   * Retrieves a slice of bits starting from a specified index of an instance of {@link
+   * UnsignedByte}.
+   *
+   * @param i The index from which to start retrieving the slice.
+   * @param length The length of the slice to retrieve, representing the number of bits.
+   * @return An integer representing the slice of bits starting from the specified index.
+   * @throws IllegalArgumentException if length < 0.
+   * @throws IndexOutOfBoundsException if i < 0 or i >= 8 or i + length > 8.
+   */
+  public int slice(int i, int length) {
+    if (length < 0) {
+      throw new IllegalArgumentException("Length must be non-negative. Is " + length);
+    }
+    if (i < 0 || i >= 8 || i + length > 8) {
+      throw new IndexOutOfBoundsException("Index out of bounds. i=" + i + ", length=" + length);
+    }
+    String ub = Integer.toBinaryString(this.toInteger());
+    if (ub.length() < 8) {
+      ub = "0".repeat(8 - ub.length()) + ub;
+    }
+    return Integer.parseInt(ub.substring(i, i + length), 2);
+  }
 }

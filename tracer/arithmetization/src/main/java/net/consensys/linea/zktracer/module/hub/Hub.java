@@ -38,6 +38,7 @@ import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.ec_data.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
+import net.consensys.linea.zktracer.module.exp.Exp;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.defer.*;
 import net.consensys.linea.zktracer.module.hub.fragment.*;
@@ -178,6 +179,7 @@ public class Hub implements Module {
   private final Wcp wcp = new Wcp(this);
   private final RlpTxn rlpTxn;
   private final Module mxp;
+  @Getter private final Exp exp;
   private final Mmu mmu;
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxrcpt);
@@ -203,6 +205,7 @@ public class Hub implements Module {
     this.pch = new PlatformController(this);
     this.mmu = new Mmu(this.callStack);
     this.mxp = new Mxp(this);
+    this.exp = new Exp(this, this.wcp);
     this.romLex = new RomLex(this);
     this.rom = new Rom(this.romLex);
     this.rlpTxn = new RlpTxn(this.romLex);
@@ -214,6 +217,7 @@ public class Hub implements Module {
     this.modexp = new ModexpEffectiveCall(this);
     final EcPairingCallEffectiveCall ecPairingCall = new EcPairingCallEffectiveCall(this);
     final L2Block l2Block = new L2Block();
+
     this.precompileLimitModules =
         List.of(
             new Sha256Blocks(this),
@@ -246,6 +250,7 @@ public class Hub implements Module {
                     this.mod,
                     this.mul,
                     this.mxp,
+                    this.exp,
                     this.rlpAddr,
                     this.rlpTxn,
                     this.rlpTxrcpt,
@@ -280,6 +285,7 @@ public class Hub implements Module {
                 this.modexp.data(),
                 this.mul,
                 this.mxp,
+                this.exp,
                 this.rlpAddr,
                 this.rlpTxn,
                 this.rlpTxrcpt,
@@ -313,6 +319,7 @@ public class Hub implements Module {
                 this.mmu,
                 this.mul,
                 this.mxp,
+                this.exp,
                 this.rlpAddr,
                 this.rlpTxn,
                 this.rlpTxrcpt,
@@ -566,7 +573,9 @@ public class Hub implements Module {
       this.stp.tracePreOpcode(frame);
     }
     if (this.pch.signals().exp()) {
+      this.exp.tracePreOpcode(frame);
       this.modexp.tracePreOpcode(frame);
+      // if (this.pch.exceptions().none() && this.pch.aborts().none())
     }
     if (this.pch.signals().trm()) {
       this.trm.tracePreOpcode(frame);
@@ -1021,19 +1030,16 @@ public class Hub implements Module {
 
   void traceOperation(MessageFrame frame) {
     switch (this.opCodeData().instructionFamily()) {
-      case ADD,
-          MOD,
-          MUL,
-          SHF,
-          BIN,
-          WCP,
-          EXT,
-          BATCH,
-          MACHINE_STATE,
-          PUSH_POP,
-          DUP,
-          SWAP,
-          INVALID -> this.addTraceSection(new StackOnlySection(this));
+      case ADD, MOD, SHF, BIN, WCP, EXT, BATCH, MACHINE_STATE, PUSH_POP, DUP, SWAP, INVALID -> this
+          .addTraceSection(new StackOnlySection(this));
+      case MUL -> {
+        if (this.opCode() == OpCode.EXP) {
+          this.addTraceSection(
+              new ExpSection(this, ImcFragment.forOpcode(this, this.messageFrame())));
+        } else {
+          this.addTraceSection(new StackOnlySection(this));
+        }
+      }
       case HALT -> {
         final CallFrame parentFrame = this.callStack.parent();
 
@@ -1064,7 +1070,8 @@ public class Hub implements Module {
         this.addTraceSection(new StackOnlySection(this));
       }
       case KEC -> this.addTraceSection(
-          new KeccakSection(this, this.currentFrame(), ImcFragment.forOpcode(this, frame)));
+          new KeccakSection(
+              this, this.currentFrame(), ImcFragment.forOpcode(this, this.messageFrame())));
       case CONTEXT -> this.addTraceSection(
           new ContextLogSection(this, ContextFragment.readContextData(callStack)));
       case LOG -> {

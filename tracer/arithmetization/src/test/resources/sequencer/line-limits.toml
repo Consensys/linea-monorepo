@@ -6,6 +6,7 @@ ADD                 = 524286
 BIN                 = 262128
 BIN_RT              = 262144
 EC_DATA             = 4084
+EXP                 = 50000
 EXT                 = 32760
 HUB                 = 2097150
 INSTRUCTION_DECODER = 512 # Ugly hack, TODO: @franklin
