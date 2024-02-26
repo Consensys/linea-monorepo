@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.BinRt;
+package net.consensys.linea.zktracer.module.tables.bin;
 
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
@@ -38,7 +38,7 @@ public class Trace {
   private final MappedByteBuffer inst;
   private final MappedByteBuffer resultByte;
 
-  public static List<ColumnHeader> headers(int length) {
+  static List<ColumnHeader> headers(int length) {
     return List.of(
         new ColumnHeader("binRT.INPUT_BYTE_1", 1, length),
         new ColumnHeader("binRT.INPUT_BYTE_2", 1, length),

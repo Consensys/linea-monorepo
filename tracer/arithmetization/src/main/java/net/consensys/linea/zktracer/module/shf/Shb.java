@@ -28,8 +28,8 @@ public class Shb {
   @Getter private final UnsignedByte[][] shbLo;
 
   public static Shb create(final OpCode opCode, final Bytes32 arg2, final UnsignedByte lsb) {
-    final UnsignedByte[][] shbHi = new UnsignedByte[5][16];
-    final UnsignedByte[][] shbLo = new UnsignedByte[5][16];
+    final UnsignedByte[][] shbHi = new UnsignedByte[5][Trace.LLARGE];
+    final UnsignedByte[][] shbLo = new UnsignedByte[5][Trace.LLARGE];
 
     for (int i = 3; i < 8; i++) {
       final UnsignedByte shiftAmount = (lsb.shiftLeft(8 - i)).shiftRight(8 - i);

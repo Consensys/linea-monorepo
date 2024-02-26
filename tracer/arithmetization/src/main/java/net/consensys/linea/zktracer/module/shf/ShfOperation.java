@@ -31,7 +31,6 @@ import org.apache.tuweni.bytes.Bytes32;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 final class ShfOperation extends ModuleOperation {
-  private static final int LIMB_SIZE = 16;
 
   @EqualsAndHashCode.Include private final OpCode opCode;
   @EqualsAndHashCode.Include private final Bytes32 arg1;
@@ -71,7 +70,7 @@ final class ShfOperation extends ModuleOperation {
   }
 
   private static boolean allButLastByteZero(final Bytes16 bytes) {
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < Trace.LLARGEMO; i++) {
       if (bytes.get(i) != 0) {
         return false;
       }
@@ -129,7 +128,7 @@ final class ShfOperation extends ModuleOperation {
   }
 
   public int maxCt() {
-    return this.isOneLineInstruction ? 1 : LIMB_SIZE;
+    return this.isOneLineInstruction ? 1 : Trace.LLARGE;
   }
 
   public void trace(Trace trace, int stamp) {
@@ -170,20 +169,20 @@ final class ShfOperation extends ModuleOperation {
           .byte4(UnsignedByte.of(this.res.getResHi().get(i)))
           .byte5(UnsignedByte.of(this.res.getResLo().get(i)))
           .bits(this.bits.get(i))
-          .counter(Bytes.of(i))
-          .inst(Bytes.of(this.opCode.byteValue()))
+          .counter((short) i)
+          .inst(UnsignedByte.of(this.opCode.byteValue()))
           .known(this.isKnown)
           .neg(this.isNegative)
           .oneLineInstruction(this.isOneLineInstruction)
           .low3(Bytes.of(this.low3.toInteger()))
-          .microShiftParameter(Bytes.ofUnsignedInt(this.mshp.toInteger()))
+          .microShiftParameter((short) this.mshp.toInteger())
           .resHi(this.res.getResHi())
           .resLo(this.res.getResLo())
-          .leftAlignedSuffixHigh(Bytes.ofUnsignedShort(arg2HiByteChunks.la().toInteger()))
-          .rightAlignedPrefixHigh(Bytes.ofUnsignedInt(arg2HiByteChunks.ra().toInteger()))
-          .ones(Bytes.ofUnsignedInt(arg2HiByteChunks.ones().toInteger()))
-          .leftAlignedSuffixLow(Bytes.ofUnsignedInt(arg2LoByteChunks.la().toInteger()))
-          .rightAlignedPrefixLow(Bytes.ofUnsignedInt(arg2LoByteChunks.ra().toInteger()))
+          .leftAlignedSuffixHigh(arg2HiByteChunks.la())
+          .rightAlignedPrefixHigh(arg2HiByteChunks.ra())
+          .ones(arg2HiByteChunks.ones())
+          .leftAlignedSuffixLow(arg2LoByteChunks.la())
+          .rightAlignedPrefixLow(arg2LoByteChunks.ra())
           .shb3Hi(Bytes.ofUnsignedInt(this.shb.getShbHi()[0][i].toInteger()))
           .shb3Lo(Bytes.ofUnsignedInt(this.shb.getShbLo()[0][i].toInteger()))
           .shb4Hi(Bytes.ofUnsignedInt(this.shb.getShbHi()[4 - 3][i].toInteger()))
@@ -195,8 +194,8 @@ final class ShfOperation extends ModuleOperation {
           .shb7Hi(Bytes.ofUnsignedInt(this.shb.getShbHi()[7 - 3][i].toInteger()))
           .shb7Lo(Bytes.ofUnsignedInt(this.shb.getShbLo()[7 - 3][i].toInteger()))
           .shiftDirection(this.isShiftRight)
-          .isData(stamp != 0)
-          .shiftStamp(Bytes.ofUnsignedInt(stamp))
+          .iomf(true)
+          .shiftStamp((short) stamp)
           .validateRow();
     }
   }

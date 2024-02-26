@@ -19,7 +19,6 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.BinRt.Trace;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
