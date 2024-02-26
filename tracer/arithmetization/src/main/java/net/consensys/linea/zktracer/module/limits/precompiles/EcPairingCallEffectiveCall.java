@@ -154,7 +154,11 @@ public final class EcPairingCallEffectiveCall implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(EcPairingLimit::nPrecompileCall).sum();
+    int r = 0;
+    for (int i = 0; i < this.counts.size(); i++) {
+      r += this.counts.get(i).nPrecompileCall();
+    }
+    return r;
   }
 
   @Override

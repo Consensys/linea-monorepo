@@ -176,14 +176,13 @@ public final class CallStack {
       boolean isDeployment) {
     final int caller = this.depth == 0 ? -1 : this.current;
     final int newTop = this.frames.size();
-    Bytes callData;
+    this.depth += 1;
+
+    Bytes callData = Bytes.EMPTY;
     if (type != CallFrameType.INIT_CODE) {
       callData = input;
-    } else {
-      callData = Bytes.EMPTY;
     }
 
-    this.depth += 1;
     CallFrame newFrame =
         new CallFrame(
             accountDeploymentNumber,
@@ -288,6 +287,10 @@ public final class CallStack {
    * @throws IndexOutOfBoundsException if the index is out of range
    */
   public CallFrame getParentOf(int i) {
+    if (this.frames.isEmpty()) {
+      return CallFrame.EMPTY;
+    }
+
     return this.getById(this.frames.get(i).parentFrame());
   }
 

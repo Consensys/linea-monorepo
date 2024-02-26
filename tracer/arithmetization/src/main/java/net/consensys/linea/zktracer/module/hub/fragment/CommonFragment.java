@@ -15,12 +15,13 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.TransactionStack;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
@@ -29,22 +30,19 @@ import net.consensys.linea.zktracer.types.TxState;
 import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true, chain = false)
-@AllArgsConstructor
+@Builder
 public final class CommonFragment implements TraceFragment {
-  private final int txNumber;
+  private final Hub hub;
+  private final int txId;
   private final int batchNumber;
   private final TxState txState;
   private final int stamp;
-  @Setter private int txEndStamp;
-  @Getter @Setter private boolean txReverts;
   private final InstructionFamily instructionFamily;
   private final Exceptions exceptions;
   private final int callFrameId;
   @Getter private final int contextNumber;
   @Setter private int newContextNumber;
   private final int revertStamp;
-  private boolean getsReverted;
-  private boolean selfReverts;
   @Getter private final int pc;
   @Setter private int newPc;
   private final EWord codeAddress;
@@ -62,10 +60,49 @@ public final class CommonFragment implements TraceFragment {
   @Getter @Setter private int numberOfNonStackRows;
   @Getter @Setter private int nonStackRowsCounter;
 
+  public static CommonFragment fromHub(
+      final Hub hub, final CallFrame frame, boolean tliCounter, int nonStackRowsCounter) {
+    long refund = 0;
+    if (hub.pch().exceptions().noStackException()) {
+      refund = Hub.gp.of(frame.frame(), hub.opCode()).refund();
+    }
+
+    return CommonFragment.builder()
+        .hub(hub)
+        .txId(hub.transients().tx().id())
+        .batchNumber(hub.transients().conflation().number())
+        .txState(hub.transients().tx().state())
+        .stamp(hub.stamp())
+        .instructionFamily(hub.opCodeData().instructionFamily())
+        .exceptions(hub.pch().exceptions().snapshot())
+        .callFrameId(frame.id())
+        .contextNumber(frame.contextNumber())
+        .newContextNumber(frame.contextNumber())
+        .pc(frame.pc())
+        .codeAddress(frame.addressAsEWord())
+        .codeDeploymentNumber(frame.codeDeploymentNumber())
+        .codeDeploymentStatus(frame.underDeployment())
+        .callerContextNumber(hub.callStack().getParentOf(frame.id()).contextNumber())
+        .refundDelta(refund)
+        .twoLinesInstruction(hub.opCodeData().stackSettings().twoLinesInstruction())
+        .twoLinesInstructionCounter(tliCounter)
+        .nonStackRowsCounter(nonStackRowsCounter)
+        .build();
+  }
+
+  public boolean txReverts() {
+    return hub.txStack().getById(this.txId).status();
+  }
+
   @Override
   public Trace trace(Trace trace) {
+    CallFrame frame = this.hub.callStack().getById(this.callFrameId);
+    TransactionStack.MetaTransaction tx = hub.txStack().getById(this.txId);
+    final boolean selfReverts = frame.selfReverts();
+    final boolean getsReverted = frame.getsReverted();
+
     return trace
-        .absoluteTransactionNumber(Bytes.ofUnsignedInt(this.txNumber))
+        .absoluteTransactionNumber(Bytes.ofUnsignedInt(tx.absNumber()))
         .batchNumber(Bytes.ofUnsignedInt(this.batchNumber))
         .txSkip(this.txState == TxState.TX_SKIP)
         .txWarm(this.txState == TxState.TX_WARM)
@@ -73,8 +110,8 @@ public final class CommonFragment implements TraceFragment {
         .txExec(this.txState == TxState.TX_EXEC)
         .txFinl(this.txState == TxState.TX_FINAL)
         .hubStamp(Bytes.ofUnsignedInt(this.stamp))
-        .hubStampTransactionEnd(Bytes.ofUnsignedLong(txEndStamp))
-        .transactionReverts(txReverts)
+        .hubStampTransactionEnd(Bytes.ofUnsignedLong(tx.endStamp()))
+        .transactionReverts(tx.status())
         .contextMayChangeFlag(
             (instructionFamily == InstructionFamily.CALL
                     || instructionFamily == InstructionFamily.CREATE
@@ -108,15 +145,5 @@ public final class CommonFragment implements TraceFragment {
         .counterTli(twoLinesInstructionCounter)
         .numberOfNonStackRows(Bytes.ofUnsignedShort(numberOfNonStackRows))
         .counterNsr(Bytes.ofUnsignedShort(nonStackRowsCounter));
-  }
-
-  @Override
-  public void postTxRetcon(Hub hub) {
-    CallFrame frame = hub.callStack().getById(this.callFrameId);
-
-    this.txEndStamp = hub.stamp();
-    this.txReverts = hub.transients().tx().status();
-    this.selfReverts = frame.selfRevertsAt() > 0;
-    this.getsReverted = frame.getsRevertedAt() > 0;
   }
 }

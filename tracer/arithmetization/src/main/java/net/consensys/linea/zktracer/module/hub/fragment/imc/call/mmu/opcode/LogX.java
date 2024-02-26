@@ -27,10 +27,12 @@ import org.hyperledger.besu.evm.internal.Words;
  * triggered eventually sees its context reverted.
  */
 public class LogX extends MmuCall {
+  private final Hub hub;
   private final int logId;
 
   public LogX(final Hub hub) {
     super(MMU_INST_RAM_TO_EXO_WITH_PADDING);
+    this.hub = hub;
     this.logId = hub.transients().conflation().currentLogId();
 
     this.sourceId(hub.currentFrame().contextNumber())
@@ -41,7 +43,7 @@ public class LogX extends MmuCall {
   }
 
   @Override
-  public void postConflationRetcon(final Hub hub) {
-    if (hub.transients().conflation().logs().get(this.logId).reverted()) this.enabled = false;
+  public boolean enabled() {
+    return !this.hub.transients().conflation().logs().get(this.logId).reverted();
   }
 }

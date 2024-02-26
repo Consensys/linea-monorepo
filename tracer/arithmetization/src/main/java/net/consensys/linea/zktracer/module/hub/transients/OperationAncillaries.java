@@ -29,7 +29,7 @@ import org.hyperledger.besu.evm.internal.Words;
 
 /** This class provides facilities to access data that are opcode-lived. */
 @RequiredArgsConstructor
-public class Operation {
+public class OperationAncillaries {
   private final Hub hub;
 
   /**

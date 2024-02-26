@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-public final class BlockHash implements GasProjection {
+public final class BlockHash extends GasProjection {
   @Override
   public long staticGas() {
     return gc.getBlockHashOperationGasCost();

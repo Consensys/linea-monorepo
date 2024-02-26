@@ -22,7 +22,7 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public final class Sha3 implements GasProjection {
+public final class Sha3 extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long length = 0;

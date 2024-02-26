@@ -15,9 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * A TraceFragment represents a piece of a trace line; either a {@link CommonFragment} present in
@@ -25,20 +23,4 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public interface TraceFragment {
   Trace trace(Trace trace);
-
-  /**
-   * This hook is called by the {@link Hub} at the end of the transaction to retrofit information if
-   * required.
-   *
-   * @param hub a reference to the hub
-   */
-  default void postTxRetcon(Hub hub) {}
-
-  /**
-   * This hook is called by the {@link Hub} at the end of the conflation to retrofit information if
-   * required.
-   *
-   * @param hub a reference to the hub
-   */
-  default void postConflationRetcon(final Hub hub, final WorldView state) {}
 }

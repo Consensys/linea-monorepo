@@ -20,7 +20,8 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.hub.transients.Tx;
+import net.consensys.linea.zktracer.module.hub.TransactionStack;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -28,6 +29,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 
 public final class TransactionFragment implements TraceFragment {
+  @Setter private TraceSection parentSection;
   private final int batchNumber;
   private final Address minerAddress;
   private final Transaction tx;
@@ -35,9 +37,6 @@ public final class TransactionFragment implements TraceFragment {
   private final Wei gasPrice;
   private final Wei baseFee;
   private final boolean txSuccess;
-  @Setter private long gasRefundFinalCounter;
-  @Setter private long gasRefundAmount;
-  @Setter private long leftoverGas;
   private final long initialGas;
 
   private TransactionFragment(
@@ -48,8 +47,6 @@ public final class TransactionFragment implements TraceFragment {
       Wei gasPrice,
       Wei baseFee,
       boolean txSuccess,
-      long gasRefundFinalCounter,
-      long gasRefundAmount,
       long initialGas) {
     this.batchNumber = batchNumber;
     this.minerAddress = minerAddress;
@@ -58,8 +55,6 @@ public final class TransactionFragment implements TraceFragment {
     this.gasPrice = gasPrice;
     this.baseFee = baseFee;
     this.txSuccess = txSuccess;
-    this.gasRefundFinalCounter = gasRefundFinalCounter;
-    this.gasRefundAmount = gasRefundAmount;
     this.initialGas = initialGas;
   }
 
@@ -72,7 +67,7 @@ public final class TransactionFragment implements TraceFragment {
       Wei baseFee,
       long initialGas) {
     return new TransactionFragment(
-        batchNumber, minerAddress, tx, evmExecutes, gasPrice, baseFee, false, 0, 0, initialGas);
+        batchNumber, minerAddress, tx, evmExecutes, gasPrice, baseFee, false, initialGas);
   }
 
   @Override
@@ -80,6 +75,9 @@ public final class TransactionFragment implements TraceFragment {
     final EWord to = EWord.of(effectiveToAddress(tx));
     final EWord from = EWord.of(tx.getSender());
     final EWord miner = EWord.of(minerAddress);
+    long gasRefundAmount = this.parentSection.getParentTrace().refundedGas();
+    long leftoverGas = this.parentSection.getParentTrace().leftoverGas();
+    long gasRefundFinalCounter = this.parentSection.getParentTrace().gasRefundFinalCounter();
 
     return trace
         .peekAtTransaction(true)
@@ -91,7 +89,7 @@ public final class TransactionFragment implements TraceFragment {
         .pTransactionToAddressLo(to.lo())
         .pTransactionGasPrice(gasPrice)
         .pTransactionBasefee(baseFee)
-        .pTransactionInitGas(Bytes.ofUnsignedLong(Tx.computeInitGas(tx)))
+        .pTransactionInitGas(Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
         .pTransactionInitialBalance(Bytes.ofUnsignedLong(initialGas))
         .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
         .pTransactionCoinbaseAddressHi(miner.hi())

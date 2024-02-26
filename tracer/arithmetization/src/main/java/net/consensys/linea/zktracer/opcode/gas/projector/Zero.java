@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-public record Zero() implements GasProjection {
+public class Zero extends GasProjection {
   @Override
   public long staticGas() {
     return gc.getZeroTierGasCost();

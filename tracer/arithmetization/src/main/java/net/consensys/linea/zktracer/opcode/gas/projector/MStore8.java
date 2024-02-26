@@ -19,7 +19,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public final class MStore8 implements GasProjection {
+public final class MStore8 extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
 

@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public final class Exp implements GasProjection {
+public final class Exp extends GasProjection {
   private int exponentByteSize = 0;
 
   public Exp(MessageFrame frame) {

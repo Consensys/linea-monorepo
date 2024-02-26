@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.module.hub.transients.Operation;
+import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -159,8 +159,8 @@ public class GasProjector {
           yield new Call(
               frame,
               stipend,
-              Operation.callDataSegment(frame),
-              Operation.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame),
+              OperationAncillaries.returnDataRequestedSegment(frame),
               value,
               recipient,
               to);
@@ -177,8 +177,8 @@ public class GasProjector {
           yield new Call(
               frame,
               stipend,
-              Operation.callDataSegment(frame),
-              Operation.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame),
+              OperationAncillaries.returnDataRequestedSegment(frame),
               value,
               recipient,
               to);
@@ -194,8 +194,8 @@ public class GasProjector {
           yield new Call(
               frame,
               stipend,
-              Operation.callDataSegment(frame),
-              Operation.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame),
+              OperationAncillaries.returnDataRequestedSegment(frame),
               Wei.ZERO,
               recipient,
               to);
@@ -211,8 +211,8 @@ public class GasProjector {
           yield new Call(
               frame,
               stipend,
-              Operation.callDataSegment(frame),
-              Operation.returnDataRequestedSegment(frame),
+              OperationAncillaries.callDataSegment(frame),
+              OperationAncillaries.returnDataRequestedSegment(frame),
               Wei.ZERO,
               recipient,
               to);

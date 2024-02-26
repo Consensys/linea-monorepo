@@ -20,7 +20,7 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class Revert implements GasProjection {
+public final class Revert extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long size = 0;

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-public record JumpDest() implements GasProjection {
+public class JumpDest extends GasProjection {
   @Override
   public long staticGas() {
     return gc.getJumpDestOperationGasCost();

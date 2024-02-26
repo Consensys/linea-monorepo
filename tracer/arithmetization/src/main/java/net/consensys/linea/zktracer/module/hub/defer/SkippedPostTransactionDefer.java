@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.TxSkippedSection;
 import org.hyperledger.besu.datatypes.Address;
@@ -75,11 +74,13 @@ public record SkippedPostTransactionDefer(
             hub,
             // 3 lines -- account changes
             // From
-            new AccountFragment(oldFromAccount, newFromAccount, false, 0, false),
+            hub.factories().accountFragment().make(oldFromAccount, newFromAccount, false, 0, false),
             // To
-            new AccountFragment(oldToAccount, newToAccount, false, 0, false),
+            hub.factories().accountFragment().make(oldToAccount, newToAccount, false, 0, false),
             // Miner
-            new AccountFragment(oldMinerAccount, newMinerAccount, false, 0, false),
+            hub.factories()
+                .accountFragment()
+                .make(oldMinerAccount, newMinerAccount, false, 0, false),
 
             // 1 line -- transaction data
             TransactionFragment.prepare(

@@ -22,7 +22,7 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class SelfDestruct implements GasProjection {
+public final class SelfDestruct extends GasProjection {
   private final MessageFrame frame;
   private Address beneficiaryAddress = null;
 

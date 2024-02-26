@@ -29,7 +29,7 @@ import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpDataOp
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.precompiles.Blake2fMetadata;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileMetadata;
-import net.consensys.linea.zktracer.module.hub.transients.Operation;
+import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
@@ -168,7 +168,7 @@ public final class Blake2fRounds implements Module {
       final Address target = Words.toAddress(frame.getStackItem(1));
 
       if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
-        final Operation opInfo = hub.transients().op();
+        final OperationAncillaries opInfo = hub.transients().op();
         final long length = opInfo.callDataSegment().length();
 
         if (length == BLAKE2f_INPUT_SIZE) {
@@ -199,7 +199,11 @@ public final class Blake2fRounds implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(x -> x).sum();
+    int r = 0;
+    for (int i = 0; i < this.counts.size(); i++) {
+      r += this.counts.get(i);
+    }
+    return r;
   }
 
   @Override

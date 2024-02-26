@@ -19,7 +19,7 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public final class SLoad implements GasProjection {
+public final class SLoad extends GasProjection {
   private final MessageFrame frame;
   private UInt256 key = null;
 

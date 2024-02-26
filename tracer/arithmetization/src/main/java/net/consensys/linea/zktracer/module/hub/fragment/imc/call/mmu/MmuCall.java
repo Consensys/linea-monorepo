@@ -229,7 +229,7 @@ public class MmuCall implements TraceSubFragment {
   public static MmuCall callDataCopy(final Hub hub) {
     final MemorySpan callDataSegment = hub.currentFrame().callDataSource();
     return new MmuCall(MMU_INST_ANY_TO_RAM_WITH_PADDING)
-        .sourceId(hub.transients().tx().number())
+        .sourceId(hub.transients().tx().absNumber())
         .targetId(hub.currentFrame().contextNumber())
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
         .targetOffset(EWord.of(hub.messageFrame().getStackItem(0)))
@@ -318,9 +318,9 @@ public class MmuCall implements TraceSubFragment {
 
   public static MmuCall txInit(final Hub hub) {
     return new MmuCall(MMU_INST_EXO_TO_RAM_TRANSPLANTS)
-        .sourceId(hub.transients().tx().number())
+        .sourceId(hub.transients().tx().absNumber())
         .targetId(hub.stamp())
-        .size(hub.transients().tx().transaction().getData().map(Bytes::size).orElse(0))
+        .size(hub.transients().tx().besuTx().getData().map(Bytes::size).orElse(0))
         .phase(PHASE_TRANSACTION_CALL_DATA)
         .setRlpTxn();
   }

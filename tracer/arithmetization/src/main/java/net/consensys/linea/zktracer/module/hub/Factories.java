@@ -13,11 +13,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.gas.projector;
+package net.consensys.linea.zktracer.module.hub;
 
-public class Mid extends GasProjection {
-  @Override
-  public long staticGas() {
-    return gc.getMidTierGasCost();
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
+
+/** Contain factories for modules requiring access to longer-lived data. */
+@Accessors(fluent = true)
+public class Factories {
+  @Getter private final AccountFragment.AccountFragmentFactory accountFragment;
+
+  public Factories(final Hub hub) {
+    this.accountFragment = new AccountFragment.AccountFragmentFactory(hub.defers());
   }
 }
