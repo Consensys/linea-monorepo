@@ -21,7 +21,7 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class Create2 implements GasProjection {
+public final class Create2 extends GasProjection {
   private final MessageFrame frame;
   private long initCodeOffset = 0;
   private long initCodeLength = 0;

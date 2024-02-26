@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.container.stacked.list;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
@@ -34,7 +34,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public class StackedList<E extends ModuleOperation> implements List<E>, StackedContainer {
 
-  private final LinkedList<CountedList<E>> lists = new LinkedList<>();
+  private final List<CountedList<E>> lists = new ArrayList<>();
   /** The cached number of elements in this container */
   private int totalSize;
 
@@ -51,15 +51,15 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
 
   @Override
   public void enter() {
-    this.lists.addLast(new CountedList<>());
+    this.lists.add(new CountedList<>());
   }
 
   public void enter(int initialCapacity) {
-    this.lists.addLast(new CountedList<>(initialCapacity));
+    this.lists.add(new CountedList<>(initialCapacity));
   }
 
   public E getLast() {
-    return this.lists.getLast().getLast();
+    return this.lists.get(this.lists.size() - 1).getLast();
   }
 
   @Override
@@ -67,7 +67,7 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
     if (this.lists.isEmpty()) {
       throw new RuntimeException("asymmetric pop");
     }
-    this.totalSize -= this.lists.removeLast().size();
+    this.totalSize -= this.lists.remove(this.lists.size() - 1).size();
   }
 
   @Override
@@ -121,7 +121,7 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
   @Override
   public boolean add(E e) {
     this.totalSize++;
-    return this.lists.getLast().add(e);
+    return this.lists.get(this.lists.size() - 1).add(e);
   }
 
   @Override

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-public record High() implements GasProjection {
+public class High extends GasProjection {
   @Override
   public long staticGas() {
     return gc.getHighTierGasCost();

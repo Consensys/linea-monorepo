@@ -130,8 +130,8 @@ public class TxnData implements Module {
       Bytes output,
       List<Log> logs,
       long cumulativeGasUsed) {
-    final long refundCounter = hub.refundedGas();
     final long leftoverGas = hub.remainingGas();
+    final long refundCounter = hub.refundedGas();
     this.currentBlock().endTx(cumulativeGasUsed, leftoverGas, refundCounter, isSuccessful);
 
     // Call the wcp module:

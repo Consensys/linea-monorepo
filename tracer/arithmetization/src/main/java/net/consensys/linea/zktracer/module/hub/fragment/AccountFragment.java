@@ -19,11 +19,14 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
+import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -31,7 +34,29 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
-public final class AccountFragment implements TraceFragment {
+public final class AccountFragment implements TraceFragment, PostConflationDefer {
+  /**
+   * {@link AccountFragment} creation requires access to a {@link DeferRegistry} for post-conflation
+   * data gathering, which is provided by this factory.
+   */
+  @RequiredArgsConstructor
+  public static class AccountFragmentFactory {
+    private final DeferRegistry defers;
+
+    public AccountFragment make(AccountSnapshot oldState, AccountSnapshot newState) {
+      return new AccountFragment(this.defers, oldState, newState);
+    }
+
+    public AccountFragment make(
+        AccountSnapshot oldState,
+        AccountSnapshot newState,
+        boolean debit,
+        long cost,
+        boolean createAddress) {
+      return new AccountFragment(this.defers, oldState, newState, debit, cost, createAddress);
+    }
+  }
+
   @Getter private final Address who;
   private final AccountSnapshot oldState;
   private final AccountSnapshot newState;
@@ -41,11 +66,13 @@ public final class AccountFragment implements TraceFragment {
   @Setter private int deploymentNumberInfnty = 0; // retconned on conflation end
   @Setter private boolean existsInfinity = false; // retconned on conflation end
 
-  public AccountFragment(AccountSnapshot oldState, AccountSnapshot newState) {
-    this(oldState, newState, false, 0, false);
+  private AccountFragment(
+      final DeferRegistry defers, AccountSnapshot oldState, AccountSnapshot newState) {
+    this(defers, oldState, newState, false, 0, false);
   }
 
   public AccountFragment(
+      final DeferRegistry defers,
       AccountSnapshot oldState,
       AccountSnapshot newState,
       boolean debit,
@@ -59,6 +86,8 @@ public final class AccountFragment implements TraceFragment {
     this.debit = debit;
     this.cost = cost;
     this.createAddress = createAddress;
+
+    defers.postConflation(this);
   }
 
   @Override
@@ -107,7 +136,7 @@ public final class AccountFragment implements TraceFragment {
   }
 
   @Override
-  public void postConflationRetcon(final Hub hub, final WorldView world) {
+  public void runPostConflation(Hub hub, WorldView world) {
     this.deploymentNumberInfnty = hub.transients().conflation().deploymentInfo().number(this.who);
     this.existsInfinity = world.get(this.who) != null;
   }

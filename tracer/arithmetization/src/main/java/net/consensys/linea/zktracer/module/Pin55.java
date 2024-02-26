@@ -181,7 +181,7 @@ public class Pin55 {
     log.info("== End of block");
   }
 
-  public void traceStartTx(WorldView worldView, Transaction tx) {
+  public void tracePrepareTx(WorldView worldView, Transaction tx) {
     if (!this.l.doTx()) {
       return;
     }
@@ -268,7 +268,8 @@ public class Pin55 {
 
   public void tracePostOpcode(final MessageFrame frame, Operation.OperationResult operationResult) {
     if (operationResult.getHaltReason() != null) {
-      log.info("{}", operationResult.getHaltReason());
+      log.info(
+          "{} failed: {}", frame.getCurrentOperation().getName(), operationResult.getHaltReason());
     }
 
     if (!this.l.doStack()) {

@@ -22,7 +22,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class ExtCodeCopy implements GasProjection {
+public final class ExtCodeCopy extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long size = 0;

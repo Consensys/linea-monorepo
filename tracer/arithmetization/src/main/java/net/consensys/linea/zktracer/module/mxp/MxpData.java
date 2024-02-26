@@ -27,7 +27,7 @@ import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.transients.Operation;
+import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.BillingRate;
@@ -171,8 +171,8 @@ public class MxpData extends ModuleOperation {
         size1 = EWord.of(frame.getStackItem(2));
       }
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
-        final MemorySpan callDataSegment = Operation.callDataSegment(frame);
-        final MemorySpan returnDataSegment = Operation.returnDataRequestedSegment(frame);
+        final MemorySpan callDataSegment = OperationAncillaries.callDataSegment(frame);
+        final MemorySpan returnDataSegment = OperationAncillaries.returnDataRequestedSegment(frame);
 
         offset1 = EWord.of(callDataSegment.offset());
         size1 = EWord.of(callDataSegment.length());

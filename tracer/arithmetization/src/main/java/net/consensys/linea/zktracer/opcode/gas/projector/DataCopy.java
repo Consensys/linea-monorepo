@@ -24,7 +24,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Slf4j
-public final class DataCopy implements GasProjection {
+public final class DataCopy extends GasProjection {
   private final MessageFrame frame;
   private long offset = 0;
   private long len = 0;

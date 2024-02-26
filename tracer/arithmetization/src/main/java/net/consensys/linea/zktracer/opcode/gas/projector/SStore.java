@@ -20,7 +20,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public final class SStore implements GasProjection {
+public final class SStore extends GasProjection {
   private final MessageFrame frame;
   private UInt256 key = UInt256.ZERO;
   private UInt256 originalValue = UInt256.ZERO;

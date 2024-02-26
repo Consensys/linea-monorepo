@@ -46,7 +46,7 @@ public record ContextFragment(
         hub.callStack(),
         Either.right(hub.stamp() + 1),
         MemorySpan.fromStartEnd(
-            0, hub.transients().tx().transaction().getData().map(Bytes::size).orElse(0)),
+            0, hub.transients().tx().besuTx().getData().map(Bytes::size).orElse(0)),
         false);
   }
 

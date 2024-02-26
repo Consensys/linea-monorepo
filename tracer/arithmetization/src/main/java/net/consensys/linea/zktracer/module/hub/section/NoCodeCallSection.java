@@ -70,6 +70,10 @@ public class NoCodeCallSection extends TraceSection
         ScenarioFragment.forNoCodeCallSection(
             hub, precompileInvocation, this.callerCallFrame.id(), this.calledCallFrameId);
     this.addStack(hub);
+
+    hub.defers().postExec(this);
+    hub.defers().postTx(this);
+    hub.defers().reEntry(this);
   }
 
   @Override
@@ -103,6 +107,8 @@ public class NoCodeCallSection extends TraceSection
 
   @Override
   public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        hub.factories().accountFragment();
     this.scenarioFragment.runPostTx(hub, state, tx);
 
     this.addFragmentsWithoutStack(
@@ -111,17 +117,19 @@ public class NoCodeCallSection extends TraceSection
         this.scenarioFragment,
         this.imcFragment,
         ContextFragment.readContextData(hub.callStack()),
-        new AccountFragment(this.preCallCallerAccountSnapshot, this.postCallCallerAccountSnapshot),
-        new AccountFragment(this.preCallCalledAccountSnapshot, this.postCallCalledAccountSnapshot));
+        accountFragmentFactory.make(
+            this.preCallCallerAccountSnapshot, this.postCallCallerAccountSnapshot),
+        accountFragmentFactory.make(
+            this.preCallCalledAccountSnapshot, this.postCallCalledAccountSnapshot));
 
     if (precompileInvocation.isPresent()) {
       if (this.callSuccessful && callerCallFrame.hasReverted()) {
         this.addFragmentsWithoutStack(
             hub,
             callerCallFrame,
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.postCallCallerAccountSnapshot, this.preCallCallerAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.postCallCalledAccountSnapshot, this.preCallCalledAccountSnapshot));
       }
       this.addFragmentsWithoutStack(
@@ -138,9 +146,9 @@ public class NoCodeCallSection extends TraceSection
         this.addFragmentsWithoutStack(
             hub,
             callerCallFrame,
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.postCallCallerAccountSnapshot, this.preCallCallerAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.postCallCalledAccountSnapshot, this.preCallCalledAccountSnapshot));
       }
       this.addFragmentsWithoutStack(

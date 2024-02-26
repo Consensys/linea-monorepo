@@ -45,7 +45,6 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * IMCFragments embed data required for Inter-Module Communication, i.e. data that are required to
@@ -301,14 +300,5 @@ public class ImcFragment implements TraceFragment {
     }
 
     return trace;
-  }
-
-  @Override
-  public void postConflationRetcon(Hub hub, WorldView state) {
-    for (TraceSubFragment f : this.moduleCalls) {
-      if (f instanceof MmuCall mmuCall) {
-        mmuCall.postConflationRetcon(hub);
-      }
-    }
   }
 }

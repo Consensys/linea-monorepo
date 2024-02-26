@@ -63,6 +63,10 @@ public class SmartContractCallSection extends TraceSection
             hub, calledCallFrameId, this.callerCallFrame.id());
 
     this.addStack(hub);
+
+    hub.defers().postExec(this);
+    hub.defers().nextContext(this, hub.currentFrame().id());
+    hub.defers().postTx(this);
   }
 
   @Override
@@ -109,6 +113,8 @@ public class SmartContractCallSection extends TraceSection
 
   @Override
   public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        hub.factories().accountFragment();
     final CallFrame calledCallFrame = hub.callStack().getById(this.calledCallFrameId);
     this.scenarioFragment.runPostTx(hub, state, tx);
 
@@ -118,27 +124,29 @@ public class SmartContractCallSection extends TraceSection
         this.scenarioFragment,
         ContextFragment.readContextData(hub.callStack()),
         this.imcFragment,
-        new AccountFragment(this.preCallCallerAccountSnapshot, this.inCallCallerAccountSnapshot),
-        new AccountFragment(this.preCallCalledAccountSnapshot, this.inCallCalledAccountSnapshot));
+        accountFragmentFactory.make(
+            this.preCallCallerAccountSnapshot, this.inCallCallerAccountSnapshot),
+        accountFragmentFactory.make(
+            this.preCallCalledAccountSnapshot, this.inCallCalledAccountSnapshot));
 
     if (callerCallFrame.hasReverted()) {
       if (calledCallFrame.hasReverted()) {
         this.addFragmentsWithoutStack(
             hub,
             callerCallFrame,
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCallerAccountSnapshot, this.preCallCallerAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCalledAccountSnapshot, this.postCallCalledAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.postCallCalledAccountSnapshot, this.preCallCalledAccountSnapshot));
       } else {
         this.addFragmentsWithoutStack(
             hub,
             callerCallFrame,
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCallerAccountSnapshot, this.preCallCallerAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCalledAccountSnapshot, this.preCallCalledAccountSnapshot));
       }
     } else {
@@ -146,9 +154,9 @@ public class SmartContractCallSection extends TraceSection
         this.addFragmentsWithoutStack(
             hub,
             callerCallFrame,
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCallerAccountSnapshot, this.postCallCallerAccountSnapshot),
-            new AccountFragment(
+            accountFragmentFactory.make(
                 this.inCallCalledAccountSnapshot, this.postCallCalledAccountSnapshot));
       }
     }

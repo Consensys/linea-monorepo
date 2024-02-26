@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.types;
 
 import java.util.List;
 
-import net.consensys.linea.zktracer.module.hub.transients.Operation;
+import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -65,7 +65,7 @@ public class AddressUtils {
   public static Address getCreate2Address(final MessageFrame frame) {
     final Address sender = frame.getRecipientAddress();
     final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
-    final Bytes initCode = Operation.callData(frame);
+    final Bytes initCode = OperationAncillaries.callData(frame);
     final Bytes32 hash =
         Hash.keccak256(Bytes.concatenate(CREATE2_PREFIX, sender, salt, Hash.keccak256(initCode)));
     return Address.extract(hash);

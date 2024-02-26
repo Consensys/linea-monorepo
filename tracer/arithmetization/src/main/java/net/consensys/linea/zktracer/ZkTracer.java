@@ -91,7 +91,11 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
 
     // >>>> CHANGE ME >>>>
+    // >>>> CHANGE ME >>>>
+    // >>>> CHANGE ME >>>>
     final Pin55.PinLevel debugLevel = new Pin55.PinLevel();
+    // <<<< CHANGE ME <<<<
+    // <<<< CHANGE ME <<<<
     // <<<< CHANGE ME <<<<
     this.pin55 =
         debugLevel.none() ? Optional.empty() : Optional.of(new Pin55(debugLevel, this.hub));
@@ -184,8 +188,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   @Override
   public void tracePrepareTransaction(WorldView worldView, Transaction transaction) {
     hashOfLastTransactionTraced = transaction.getHash();
+    this.pin55.ifPresent(x -> x.tracePrepareTx(worldView, transaction));
     this.hub.traceStartTx(worldView, transaction);
-    this.pin55.ifPresent(x -> x.traceStartTx(worldView, transaction));
   }
 
   @Override
@@ -197,8 +201,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       List<Log> logs,
       long gasUsed,
       long timeNs) {
-    this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
     this.pin55.ifPresent(x -> x.traceEndTx(worldView, tx, status, output, logs, gasUsed));
+    this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
   }
 
   @Override

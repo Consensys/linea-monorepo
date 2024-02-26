@@ -30,6 +30,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * transaction execution process.
  */
 public class DeferRegistry {
+  /** A list of actions deferred until the end of the current conflation execution */
+  private final List<PostConflationDefer> conflationDefers = new ArrayList<>();
   /** A list of actions deferred until the end of the current transaction */
   private final List<PostTransactionDefer> txDefers = new ArrayList<>();
   /** A list of actions deferred until the end of the current opcode execution */
@@ -52,6 +54,11 @@ public class DeferRegistry {
   /** Schedule an action to be executed at the end of the current transaction. */
   public void postTx(PostTransactionDefer defer) {
     this.txDefers.add(defer);
+  }
+
+  /** Schedule an action to be executed at the end of the current transaction. */
+  public void postConflation(PostConflationDefer defer) {
+    this.conflationDefers.add(defer);
   }
 
   /** Schedule an action to be executed at the re-entry in the current context. */
@@ -86,6 +93,18 @@ public class DeferRegistry {
       defer.runPostTx(hub, world, tx);
     }
     this.txDefers.clear();
+  }
+
+  /**
+   * Trigger the execution of the actions deferred to the end of the conflation.
+   *
+   * @param hub the {@link Hub} context
+   */
+  public void runPostConflation(Hub hub, WorldView world) {
+    for (PostConflationDefer defer : this.conflationDefers) {
+      defer.runPostConflation(hub, world);
+    }
+    this.conflationDefers.clear();
   }
 
   /**

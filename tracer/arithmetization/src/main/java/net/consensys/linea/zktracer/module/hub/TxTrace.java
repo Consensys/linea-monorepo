@@ -19,18 +19,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * Stores all the trace sections associated to the same transaction, stored in chronological order
  * of creation.
  */
-public class TxTrace {
+@Accessors(fluent = true)
+public class TxTrace implements PostTransactionDefer {
   /** The {@link TraceSection} of which this transaction trace is made of */
   @Getter private final List<TraceSection> trace = new ArrayList<>();
   /** A cache for the line count of this transaction */
   private int cachedLineCount = 0;
+
+  private long refundedGas = -1;
+  @Getter private long leftoverGas = -1;
+  @Getter private long gasRefundFinalCounter = 0; // TODO:
 
   public int size() {
     return this.trace.size();
@@ -58,42 +66,26 @@ public class TxTrace {
    * @param section the section to append
    */
   public void add(TraceSection section) {
+    section.setParentTrace(this);
     this.trace.add(section);
   }
 
   public long refundedGas() {
-    long refundedGas = 0;
-    for (TraceSection section : this.trace) {
-      if (!section.hasReverted()) {
-        refundedGas += section.refundDelta();
+    if (this.refundedGas == -1) {
+      this.refundedGas = 0;
+      for (TraceSection section : this.trace) {
+        if (!section.hasReverted()) {
+          this.refundedGas += section.refundDelta();
+        }
       }
     }
-    return refundedGas;
+
+    return this.refundedGas;
   }
 
-  /**
-   * Run the action required at the end of the transaction to finish this trace.
-   *
-   * @param hub the execution context
-   */
-  public void postTxRetcon(Hub hub) {
-    long leftoverGas = hub.getRemainingGas();
-    long refundedGas = this.refundedGas();
-    for (TraceSection section : this.trace) {
-      section.postTxRetcon(hub, leftoverGas, refundedGas);
-      section.setFinalGasRefundCounter(refundedGas);
-    }
-  }
-
-  /**
-   * Run the action required at the end of the conflation to finish this trace.
-   *
-   * @param hub the execution context
-   */
-  public void postConflationRetcon(Hub hub, WorldView world) {
-    for (TraceSection section : this.trace) {
-      section.postConflationRetcon(hub, world);
-    }
+  @Override
+  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+    this.leftoverGas = hub.getRemainingGas();
   }
 
   /**

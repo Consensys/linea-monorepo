@@ -19,7 +19,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-public final class AccountAccess implements GasProjection {
+public final class AccountAccess extends GasProjection {
   private final MessageFrame frame;
   private Address target = null;
 
