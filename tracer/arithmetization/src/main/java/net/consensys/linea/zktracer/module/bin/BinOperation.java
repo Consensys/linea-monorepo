@@ -50,8 +50,6 @@ public class BinOperation extends ModuleOperation {
     this.ctMax = maxCt();
   }
 
-  private static final int LLARGE = 16;
-  private static final int LLARGEMO = 15;
   private final int ctMax;
   private List<Boolean> lastEightBits = List.of(false);
   private boolean bit4 = false;
@@ -67,8 +65,8 @@ public class BinOperation extends ModuleOperation {
 
   private int maxCt() {
     return switch (opCode) {
-      case NOT -> LLARGEMO;
-      case BYTE, SIGNEXTEND -> arg1.getHigh().isZero() ? LLARGEMO : 0;
+      case NOT -> Trace.LLARGEMO;
+      case BYTE, SIGNEXTEND -> arg1.getHigh().isZero() ? Trace.LLARGEMO : 0;
       case AND, OR, XOR -> Math.max(
           0,
           Math.max(
@@ -198,9 +196,8 @@ public class BinOperation extends ModuleOperation {
     this.compute();
 
     final int length = ctMax + 1;
-    final int offset = LLARGE - length;
+    final int offset = Trace.LLARGE - length;
 
-    final Bytes stampBytes = Bytes.minimalBytes(stamp);
     final Bytes arg1Hi = this.arg1.getHigh().slice(offset, length);
     final Bytes arg1Lo = this.arg1.getLow().slice(offset, length);
     final Bytes arg2Hi = this.arg2.getHigh().slice(offset, length);
@@ -212,7 +209,7 @@ public class BinOperation extends ModuleOperation {
         Stream.concat(this.getFirstEightBits().stream(), this.lastEightBits.stream()).toList();
     for (int ct = 0; ct <= this.ctMax; ct++) {
       trace
-          .stamp(stampBytes)
+          .stamp(stamp)
           .ctMax(UnsignedByte.of(ctMax))
           .counter(UnsignedByte.of(ct))
           .inst(UnsignedByte.of(this.opCode().byteValue()))

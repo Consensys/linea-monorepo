@@ -20,7 +20,7 @@
         dependsOn corsetExists
 
         module = moduleName
-        files = ["alu/${moduleName}/columns.lisp"]
+        files = ["alu/${moduleName}/columns.lisp", "constants/constants.lisp"]
     }
 }
 
@@ -59,7 +59,7 @@ tasks.register('instructionDecoder', TraceFilesTask) {
 
     moduleDir = "tables/instructionDecoder"
     module = "instructionDecoder"
-    files = ["lookup_tables/tables/instruction_decoder.lisp"]
+    files = ["reference_tables/tables/instruction_decoder.lisp"]
 }
 tasks.register('shfRT', TraceFilesTask) {
     group "Trace files generation"
@@ -67,7 +67,7 @@ tasks.register('shfRT', TraceFilesTask) {
 
     moduleDir = "tables/shf"
     module = "ShfRt"
-    files = ["lookup_tables/shfRT/columns.lisp"]
+    files = ["reference_tables/shfRT.lisp"]
 }
 tasks.register('binRT', TraceFilesTask) {
     group "Trace files generation"
@@ -75,7 +75,7 @@ tasks.register('binRT', TraceFilesTask) {
 
     moduleDir = "tables/bin"
     module = "BinRt"
-    files = ["lookup_tables/binRT/columns.lisp"]
+    files = ["reference_tables/binRT.lisp"]
 }
 
 //
@@ -91,7 +91,7 @@ tasks.register('binRT', TraceFilesTask) {
         module = moduleName
         moduleDir = moduleInfos[1]
 
-        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp", "library/rlp_constraints_pattern.lisp"]
+        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp", "library/rlp_constraints_pattern.lisp", "constants/constants.lisp"]
     }
 }
 
@@ -104,7 +104,7 @@ tasks.register('binRT', TraceFilesTask) {
         dependsOn corsetExists
 
         module = moduleName
-        files = ["${moduleName}/columns.lisp"]
+        files = ["${moduleName}/columns.lisp", "constants/constants.lisp"]
     }
 }
 
@@ -117,6 +117,6 @@ tasks.register('binRT', TraceFilesTask) {
         dependsOn corsetExists
 
         module = moduleName
-        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
+        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp", "constants/constants.lisp"]
     }
 }
