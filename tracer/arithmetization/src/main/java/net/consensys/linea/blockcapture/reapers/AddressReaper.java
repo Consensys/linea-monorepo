@@ -15,39 +15,20 @@
 
 package net.consensys.linea.blockcapture.reapers;
 
-import java.util.ArrayDeque;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.hyperledger.besu.datatypes.Address;
 
 public class AddressReaper {
-  private final ArrayDeque<Set<Address>> reaped = new ArrayDeque<>();
-
-  public AddressReaper() {
-    // “Bedrock” address set for block-level gathering.
-    this.reaped.addLast(new HashSet<>());
-  }
-
-  public void enterTransaction() {
-    this.reaped.addLast(new HashSet<>());
-  }
-
-  public void exitTransaction(boolean success) {
-    if (!success) {
-      this.reaped.removeLast();
-    }
-  }
+  private final Set<Address> reaped = new HashSet<>();
 
   public void touch(final Address... addresses) {
-    for (Address address : addresses) {
-      this.reaped.peekLast().add(address);
-    }
+    this.reaped.addAll(Arrays.asList(addresses));
   }
 
   public Set<Address> collapse() {
-    return this.reaped.stream().flatMap(Collection::stream).collect(Collectors.toSet());
+    return this.reaped;
   }
 }

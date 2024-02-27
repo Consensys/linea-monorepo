@@ -329,7 +329,7 @@ public class Hub implements Module {
                 this.trm,
                 this.txnData,
                 this.wcp,
-              this.l2Block),
+                this.l2Block),
             this.precompileLimitModules.stream())
         .toList();
   }

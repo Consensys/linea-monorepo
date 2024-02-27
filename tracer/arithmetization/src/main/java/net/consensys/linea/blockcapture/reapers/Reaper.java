@@ -53,17 +53,11 @@ public class Reaper {
   }
 
   public void enterTransaction(Transaction tx) {
-    this.storage.enterTransaction();
-    this.addresses.enterTransaction();
-
     this.touchAddress(tx.getSender());
     tx.getTo().ifPresent(this::touchAddress);
   }
 
-  public void exitTransaction(boolean success) {
-    this.storage.exitTransaction(success);
-    this.addresses.exitTransaction(success);
-  }
+  public void exitTransaction(boolean success) {}
 
   public void touchAddress(final Address address) {
     this.addresses.touch(address);

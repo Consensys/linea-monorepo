@@ -15,8 +15,6 @@
 
 package net.consensys.linea.blockcapture.reapers;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -30,34 +28,13 @@ import org.hyperledger.besu.datatypes.Address;
  * conflation, then collapse them into a single mapping of the initial values in these slots.
  */
 public class StorageReaper {
-  private final Deque<HashMap<Address, Set<UInt256>>> transientStates = new ArrayDeque<>();
-
-  public void enterTransaction() {
-    this.transientStates.addLast(new HashMap<>());
-  }
-
-  public void exitTransaction(boolean success) {
-    if (!success) {
-      this.transientStates.removeLast();
-    }
-  }
+  private final Map<Address, Set<UInt256>> initialStorages = new HashMap<>();
 
   public void touch(final Address address, final UInt256 key) {
-    this.transientStates.peekLast().computeIfAbsent(address, k -> new HashSet<>()).add(key);
+    this.initialStorages.computeIfAbsent(address, k -> new HashSet<>()).add(key);
   }
 
   public Map<Address, Set<UInt256>> collapse() {
-    final Map<Address, Set<UInt256>> r = new HashMap<>();
-
-    for (var txEntry : this.transientStates) {
-      for (Map.Entry<Address, Set<UInt256>> addressKeys : txEntry.entrySet()) {
-        final Address address = addressKeys.getKey();
-
-        // Use computeIfAbsent instead of put, as we only want to capture the **first** read.
-        r.computeIfAbsent(address, k -> new HashSet<>()).addAll(addressKeys.getValue());
-      }
-    }
-
-    return r;
+    return this.initialStorages;
   }
 }

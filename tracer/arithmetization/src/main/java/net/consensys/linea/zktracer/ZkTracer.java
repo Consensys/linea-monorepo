@@ -58,7 +58,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public static final FeeMarket feeMarket = FeeMarket.london(-1);
 
-  @Getter private final Hub hub = new Hub();
+  @Getter private final Hub hub;
   private final Optional<Pin55> pin55;
   private final Map<String, Integer> spillings = new HashMap<>();
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
