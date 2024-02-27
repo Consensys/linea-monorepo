@@ -15,30 +15,29 @@
  */
 package net.consensys.linea.compress;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import org.junit.jupiter.api.Test;
+
 public class LibCompressTest {
-    @Test
-    public void testCompressZeroes() {
-        byte[] zeroes = new byte[128];
-        int size = LibCompress.CompressedSize(zeroes, 128);
+  @Test
+  public void testCompressZeroes() {
+    byte[] zeroes = new byte[128];
+    int size = LibCompress.CompressedSize(zeroes, 128);
 
-        // should not error
-        assertThat(size).isGreaterThan(0);
+    // should not error
+    assertThat(size).isGreaterThan(0);
 
-        // should have compressed into 1 backref + header, must be less than 10
-        assertThat(size).isLessThan(10);
-    }
+    // should have compressed into 1 backref + header, must be less than 10
+    assertThat(size).isLessThan(10);
+  }
 
-    @Test
-    public void testCompressTooLargeInput() {
-        byte[] zeroes = new byte[512*1024];
-        int size = LibCompress.CompressedSize(zeroes, 512*1024);
+  @Test
+  public void testCompressTooLargeInput() {
+    byte[] zeroes = new byte[512 * 1024];
+    int size = LibCompress.CompressedSize(zeroes, 512 * 1024);
 
-        // should error --> too large payload.
-        assertThat(size).isLessThan(0);
-    }
-
+    // should error --> too large payload.
+    assertThat(size).isLessThan(0);
+  }
 }
