@@ -95,7 +95,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final Map<String, Integer> limitsMap) {
-    transactionSelectionService.registerTransactionSelectorFactory(
+    transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             txSelectorConfiguration, l1L2BridgeConfiguration, limitsMap));
   }
