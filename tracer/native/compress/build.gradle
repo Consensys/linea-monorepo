@@ -14,90 +14,91 @@
  */
 
 plugins {
-    id 'java-library'
-    id 'maven-publish'
-    id 'com.jfrog.artifactory' version '4.20.0'
+  id 'java-library'
+  id 'common-plugins'
 }
 
+apply from: rootProject.file("gradle/java.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
+apply from: rootProject.file('gradle/common-dependencies.gradle')
+apply from: rootProject.file("gradle/build-aliases.gradle")
+apply from: rootProject.file("gradle/lint.gradle")
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
 test {
-    useJUnitPlatform()
+  useJUnitPlatform()
 }
 
 tasks.register('buildJNI', Exec) {
-    workingDir buildscript.sourceFile.parentFile
-    commandLine 'sh', '-c', '../build.sh'
+  workingDir buildscript.sourceFile.parentFile
+  commandLine 'sh', '-c', '../build.sh'
 }
 
 compileJava{
-    dependsOn buildJNI
+  dependsOn buildJNI
 }
 
 dependencies {
-    implementation 'net.java.dev.jna:jna'
-    implementation 'io.tmio:tuweni-bytes'
+  implementation 'net.java.dev.jna:jna'
+  implementation 'io.tmio:tuweni-bytes'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.assertj:assertj-core'
-    testImplementation 'org.mockito:mockito-core'
+  testImplementation 'org.junit.jupiter:junit-jupiter-api'
+  testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+  testImplementation 'org.assertj:assertj-core'
+  testImplementation 'org.mockito:mockito-core'
 }
 
 
 tasks.register('macArmLibCopy', Copy) {
-    from 'build/native/libcompress_jni.dylib'
-    into 'build/resources/main/darwin-aarch64'
+  from 'build/native/libcompress_jni.dylib'
+  into 'build/resources/main/darwin-aarch64'
 }
 processResources.dependsOn macArmLibCopy
 
 tasks.register('macLibCopy', Copy) {
-    from 'build/native/libcompress_jni.dylib'
-    into 'build/resources/main/darwin-x86-64'
+  from 'build/native/libcompress_jni.dylib'
+  into 'build/resources/main/darwin-x86-64'
 }
 processResources.dependsOn macLibCopy
 
 tasks.register('linuxLibCopy', Copy) {
-    from 'build/native/libcompress_jni.so'
-    into 'build/resources/main/linux-x86-64'
+  from 'build/native/libcompress_jni.so'
+  into 'build/resources/main/linux-x86-64'
 }
 processResources.dependsOn linuxLibCopy
 
 tasks.register('linuxArm64LibCopy', Copy) {
-    from 'build/native/libcompress_jni.so'
-    into 'build/resources/main/linux-aarch64'
+  from 'build/native/libcompress_jni.so'
+  into 'build/resources/main/linux-aarch64'
 }
 processResources.dependsOn linuxArm64LibCopy
 
 jar {
-    archiveBaseName = 'linea-native-compress'
-    includeEmptyDirs = false
-    manifest {
-        attributes(
-                'Specification-Title': archiveBaseName,
-                'Specification-Version': project.version,
-                'Implementation-Title': archiveBaseName,
-                'Implementation-Version': project.version,
-                'Automatic-Module-Name': 'org.consensys.nativelib.compress'
-        )
-    }
+  archiveBaseName = 'linea-native-compress'
+  includeEmptyDirs = false
+  manifest {
+    attributes(
+      'Specification-Title': archiveBaseName,
+      'Specification-Version': project.version,
+      'Implementation-Title': archiveBaseName,
+      'Implementation-Version': project.version,
+      'Automatic-Module-Name': 'net.consensys.nativelib.compress'
+      )
+  }
 }
 
 jar.dependsOn(buildJNI)
 
 sourceSets {
-    main {
-        resources {
-            srcDirs '${buildDir}/darwin-aaarch64'
-            srcDirs '${buildDir}/darwin-x86-64'
-            srcDirs '${buildDir}/linux-gnu-x86_64'
-            srcDirs '${buildDir}/linux-gnu-aarch64'
-        }
+  main {
+    resources {
+      srcDirs '${buildDir}/darwin-aaarch64'
+      srcDirs '${buildDir}/darwin-x86-64'
+      srcDirs '${buildDir}/linux-gnu-x86_64'
+      srcDirs '${buildDir}/linux-gnu-aarch64'
     }
+  }
 }
-
-
