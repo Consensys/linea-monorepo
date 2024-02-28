@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_ANY_TO_RAM_
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
@@ -29,42 +30,41 @@ import org.hyperledger.besu.evm.internal.Words;
  */
 public class ExtCodeCopy extends MmuCall {
   private final Hub hub;
-  private int cfi = 0;
+  private final ContractMetadata contract;
 
   public ExtCodeCopy(final Hub hub) {
     super(MMU_INST_ANY_TO_RAM_WITH_PADDING);
     this.hub = hub;
-    this.cfi = 0;
-    final Address sourceAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
-    try {
-      this.cfi =
-          hub.romLex()
-              .getCfiByMetadata(
-                  sourceAddress,
-                  hub.transients().conflation().deploymentInfo().number(sourceAddress),
-                  hub.transients().conflation().deploymentInfo().isDeploying(sourceAddress));
-    } catch (Exception ignored) {
-      // Triggered if the external bytecode is empty, and thus absent from the ROMLex.
-      // CFI is already equal to 0 anyway, so do nothing.
-    }
+    Address sourceAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
+    this.contract =
+        ContractMetadata.make(
+            sourceAddress,
+            hub.transients().conflation().deploymentInfo().number(sourceAddress),
+            hub.transients().conflation().deploymentInfo().isDeploying(sourceAddress));
 
     this.targetId(hub.currentFrame().contextNumber())
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(2)))
         .targetOffset(EWord.of(hub.messageFrame().getStackItem(1)))
         .size(Words.clampedToLong(hub.messageFrame().getStackItem(3)))
-        .referenceSize(
-            hub.romLex()
-                .getChunkByMetadata(
-                    sourceAddress,
-                    hub.transients().conflation().deploymentInfo().number(sourceAddress),
-                    hub.transients().conflation().deploymentInfo().isDeploying(sourceAddress))
-                .map(c -> c.byteCode().size())
-                .orElse(0))
         .setRom();
   }
 
   @Override
   protected int sourceId() {
-    return this.hub.romLex().getSortedCfiByCfi(this.cfi);
+    try {
+      return this.hub.romLex().getCfiByMetadata(this.contract);
+    } catch (Exception ignored) {
+      // Triggered if the external bytecode is empty, and thus absent from the ROMLex.
+      return 0;
+    }
+  }
+
+  @Override
+  protected long referenceSize() {
+    return this.hub
+        .romLex()
+        .getChunkByMetadata(this.contract)
+        .map(chunk -> chunk.byteCode().size())
+        .orElse(0);
   }
 }

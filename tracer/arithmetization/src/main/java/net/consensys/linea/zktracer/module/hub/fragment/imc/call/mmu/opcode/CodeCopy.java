@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_ANY_TO_RAM_
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -28,12 +29,12 @@ import org.hyperledger.besu.evm.internal.Words;
  */
 public class CodeCopy extends MmuCall {
   private final Hub hub;
-  private final int cfi;
+  private final ContractMetadata contract;
 
   public CodeCopy(final Hub hub) {
     super(MMU_INST_ANY_TO_RAM_WITH_PADDING);
     this.hub = hub;
-    this.cfi = hub.currentFrame().codeFragmentIndex();
+    this.contract = hub.currentFrame().metadata();
 
     this.targetId(hub.currentFrame().contextNumber())
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
@@ -45,6 +46,6 @@ public class CodeCopy extends MmuCall {
 
   @Override
   protected int sourceId() {
-    return this.hub.romLex().getSortedCfiByCfi(this.cfi);
+    return this.hub.romLex().getCfiByMetadata(this.contract);
   }
 }

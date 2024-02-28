@@ -59,9 +59,9 @@ public class BlockSnapshot {
    * @param worldView a view on the state
    * @param tx the {@link Transaction}
    */
-  void captureTx(int codeIdBeforeLex, WorldView worldView, Transaction tx) {
+  void captureTx(WorldView worldView, Transaction tx) {
     final TransactionSnapshot snapshot =
-        TransactionSnapshot.fromTransaction(codeIdBeforeLex, tx, worldView, this.baseFee);
+        TransactionSnapshot.fromTransaction(tx, worldView, this.baseFee);
     this.txs.add(snapshot);
   }
 

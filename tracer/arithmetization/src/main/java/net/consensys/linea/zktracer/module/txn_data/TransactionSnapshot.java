@@ -65,8 +65,6 @@ public final class TransactionSnapshot extends ModuleOperation {
   private final boolean requiresEvmExecution;
   /** The transaction {@link TransactionType} */
   private final TransactionType type;
-  /** CodeFragmentIndex, given by the {@link net.consensys.linea.zktracer.module.romLex.RomLex} */
-  private final int codeIdBeforeLex;
   /** The sender balance when it sent the transaction */
   private final BigInteger initialSenderBalance;
   /** The payload of the transaction, calldata or initcode */
@@ -94,7 +92,6 @@ public final class TransactionSnapshot extends ModuleOperation {
       boolean isDeployment,
       boolean requiresEvmExecution,
       TransactionType type,
-      int codeFragmentIndex,
       BigInteger initialSenderBalance,
       Bytes payload,
       long gasLimit,
@@ -111,7 +108,6 @@ public final class TransactionSnapshot extends ModuleOperation {
     this.isDeployment = isDeployment;
     this.requiresEvmExecution = requiresEvmExecution;
     this.type = type;
-    this.codeIdBeforeLex = codeFragmentIndex;
     this.initialSenderBalance = initialSenderBalance;
     this.payload = payload;
     this.gasLimit = gasLimit;
@@ -122,7 +118,7 @@ public final class TransactionSnapshot extends ModuleOperation {
   }
 
   public static TransactionSnapshot fromTransaction(
-      int codeIdBeforeLex, Transaction tx, WorldView world, Optional<Wei> baseFee) {
+      Transaction tx, WorldView world, Optional<Wei> baseFee) {
 
     return new TransactionSnapshot(
         tx.getValue().getAsBigInteger(),
@@ -142,7 +138,6 @@ public final class TransactionSnapshot extends ModuleOperation {
         tx.getTo().isEmpty(),
         tx.getTo().map(world::get).map(AccountState::hasCode).orElse(!tx.getPayload().isEmpty()),
         tx.getType(),
-        codeIdBeforeLex,
         Optional.ofNullable(tx.getSender())
             .map(world::get)
             .map(x -> x.getBalance().getAsBigInteger())
