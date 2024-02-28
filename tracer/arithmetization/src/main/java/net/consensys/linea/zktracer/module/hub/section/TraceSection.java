@@ -21,6 +21,7 @@ import java.util.List;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -32,8 +33,12 @@ import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
 
+@Accessors(fluent = true)
 /** A TraceSection gather the trace lines linked to a single operation */
 public abstract class TraceSection {
+  @Getter private int stackHeight = 0;
+  @Getter private int stackHeightNew = 0;
+
   /**
    * A TraceLine stores the information required to generate a trace line.
    *
@@ -47,11 +52,11 @@ public abstract class TraceSection {
      * @param trace where to trace the line
      * @return the trace builder
      */
-    public Trace trace(Trace trace) {
+    public Trace trace(Trace trace, int stackInt, int stackHeight) {
       Preconditions.checkNotNull(common);
       Preconditions.checkNotNull(specific);
 
-      common.trace(trace);
+      common.trace(trace, stackInt, stackHeight);
       specific.trace(trace);
 
       return trace.fillAndValidateRow();
@@ -74,7 +79,7 @@ public abstract class TraceSection {
    * @return a {@link CommonFragment} representing the shared columns
    */
   private CommonFragment traceCommon(Hub hub, CallFrame frame) {
-    return CommonFragment.fromHub(hub, frame, this.stackRowsCounter == 1, this.nonStackRowsCounter);
+    return CommonFragment.fromHub(hub, frame, this.stackRowsCounter == 2, this.nonStackRowsCounter);
   }
 
   /** Default creator for an empty section. */
@@ -107,6 +112,8 @@ public abstract class TraceSection {
    */
   public final void addStack(Hub hub) {
     for (var stackFragment : this.makeStackFragments(hub, hub.currentFrame())) {
+      this.stackHeight = hub.currentFrame().stack().getHeight();
+      this.stackHeightNew = hub.currentFrame().stack().getHeightNew();
       this.addFragment(hub, hub.currentFrame(), stackFragment);
     }
   }

@@ -60,19 +60,19 @@ public record MxpCall(
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousMxpFlag(true)
-        .pMiscellaneousMxpMxpx(this.mxpException)
-        .pMiscellaneousMxpInst(Bytes.ofUnsignedInt(this.opCode))
-        .pMiscellaneousMxpDeploys(this.deploys)
-        .pMiscellaneousMxpWords(Bytes.ofUnsignedLong(this.memorySize))
-        .pMiscellaneousMxpGasMxp(Bytes.ofUnsignedLong(this.gasMxp))
-        .pMiscellaneousMxpOffset1Hi(this.offset1.hi())
-        .pMiscellaneousMxpOffset1Lo(this.offset1.lo())
-        .pMiscellaneousMxpOffset2Hi(this.offset2.hi())
-        .pMiscellaneousMxpOffset2Lo(this.offset2.lo())
-        .pMiscellaneousMxpSize1Hi(this.size1.hi())
-        .pMiscellaneousMxpSize1Lo(this.size1.lo())
-        .pMiscellaneousMxpSize2Hi(this.size2.hi())
-        .pMiscellaneousMxpSize2Lo(this.size2.lo());
+        .pMiscMxpFlag(true)
+        .pMiscMxpMxpx(this.mxpException)
+        .pMiscMxpInst(Bytes.ofUnsignedInt(this.opCode))
+        .pMiscMxpDeploys(this.deploys)
+        .pMiscMxpWords(Bytes.ofUnsignedLong(this.memorySize))
+        .pMiscMxpGasMxp(Bytes.ofUnsignedLong(this.gasMxp))
+        .pMiscMxpOffset1Hi(this.offset1.hi())
+        .pMiscMxpOffset1Lo(this.offset1.lo())
+        .pMiscMxpOffset2Hi(this.offset2.hi())
+        .pMiscMxpOffset2Lo(this.offset2.lo())
+        .pMiscMxpSize1Hi(this.size1.hi())
+        .pMiscMxpSize1Lo(this.size1.lo())
+        .pMiscMxpSize2Hi(this.size2.hi())
+        .pMiscMxpSize2Lo(this.size2.lo());
   }
 }

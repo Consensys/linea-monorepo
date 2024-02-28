@@ -37,15 +37,15 @@ public interface OobCall extends TraceSubFragment {
   @Override
   default Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousOobFlag(true)
-        .pMiscellaneousOobData1(this.data(OobDataChannel.of(0)))
-        .pMiscellaneousOobData2(this.data(OobDataChannel.of(1)))
-        .pMiscellaneousOobData3(this.data(OobDataChannel.of(2)))
-        .pMiscellaneousOobData4(this.data(OobDataChannel.of(3)))
-        .pMiscellaneousOobData5(this.data(OobDataChannel.of(4)))
-        .pMiscellaneousOobData6(this.data(OobDataChannel.of(5)))
-        .pMiscellaneousOobData7(this.data(OobDataChannel.of(6)))
-        .pMiscellaneousOobData8(this.data(OobDataChannel.of(7)))
-        .pMiscellaneousOobInst(this.oobInstruction());
+        .pMiscOobFlag(true)
+        .pMiscOobData1(this.data(OobDataChannel.of(0)))
+        .pMiscOobData2(this.data(OobDataChannel.of(1)))
+        .pMiscOobData3(this.data(OobDataChannel.of(2)))
+        .pMiscOobData4(this.data(OobDataChannel.of(3)))
+        .pMiscOobData5(this.data(OobDataChannel.of(4)))
+        .pMiscOobData6(this.data(OobDataChannel.of(5)))
+        .pMiscOobData7(this.data(OobDataChannel.of(6)))
+        .pMiscOobData8(this.data(OobDataChannel.of(7)))
+        .pMiscOobInst(this.oobInstruction());
   }
 }

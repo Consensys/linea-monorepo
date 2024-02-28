@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -29,6 +28,7 @@ import net.consensys.linea.zktracer.opcode.gas.BillingRate;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.opcode.stack.Pattern;
 import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 
 public final class InstructionDecoder implements Module {
   private static void traceFamily(OpCodeData op, Trace trace) {
@@ -80,9 +80,9 @@ public final class InstructionDecoder implements Module {
         .delta(UnsignedByte.of(op.stackSettings().delta()))
         .nbAdded(UnsignedByte.of(op.stackSettings().nbAdded()))
         .nbRemoved(UnsignedByte.of(op.stackSettings().nbRemoved()))
-        .staticGas(BigInteger.valueOf(op.stackSettings().staticGas().cost()))
-        .twoLinesInstruction(op.stackSettings().twoLinesInstruction())
-        .forbiddenInStatic(op.stackSettings().forbiddenInStatic())
+        .staticGas(Bytes.ofUnsignedInt(op.stackSettings().staticGas().cost()))
+        .twoLineInstruction(op.stackSettings().twoLinesInstruction())
+        .staticFlag(op.stackSettings().forbiddenInStatic())
         .addressTrimmingInstruction(op.stackSettings().addressTrimmingInstruction())
         .flag1(op.stackSettings().flag1())
         .flag2(op.stackSettings().flag2())
@@ -122,12 +122,12 @@ public final class InstructionDecoder implements Module {
   private static void traceBillingSettings(OpCodeData op, Trace trace) {
     trace
         .billingPerWord(
-            BigInteger.valueOf(
+            Bytes.ofUnsignedInt(
                 op.billing().billingRate() == BillingRate.BY_WORD
                     ? op.billing().perUnit().cost()
                     : 0))
         .billingPerByte(
-            BigInteger.valueOf(
+            Bytes.ofUnsignedInt(
                 op.billing().billingRate() == BillingRate.BY_BYTE
                     ? op.billing().perUnit().cost()
                     : 0))
@@ -135,7 +135,8 @@ public final class InstructionDecoder implements Module {
         .mxpType2(op.billing().type() == MxpType.TYPE_2)
         .mxpType3(op.billing().type() == MxpType.TYPE_3)
         .mxpType4(op.billing().type() == MxpType.TYPE_4)
-        .mxpType5(op.billing().type() == MxpType.TYPE_5);
+        .mxpType5(op.billing().type() == MxpType.TYPE_5)
+        .mxpFlag(op.isMxp());
   }
 
   @Override
@@ -171,7 +172,7 @@ public final class InstructionDecoder implements Module {
       traceRamSettings(op, trace);
       traceBillingSettings(op, trace);
       trace
-          .opcode(BigInteger.valueOf(i))
+          .opcode(Bytes.ofUnsignedInt(i))
           .isPush(op.pushFlag())
           .isJumpdest(op.jumpFlag())
           .validateRow();

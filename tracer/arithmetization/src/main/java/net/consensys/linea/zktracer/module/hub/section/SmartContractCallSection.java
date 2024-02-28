@@ -25,6 +25,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.ScenarioFragment;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.Account;
@@ -34,6 +35,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class SmartContractCallSection extends TraceSection
     implements PostTransactionDefer, PostExecDefer, NextContextDefer {
+  private final Bytes rawCalledAddress;
   private final CallFrame callerCallFrame;
   private final int calledCallFrameId;
   private final AccountSnapshot preCallCallerAccountSnapshot;
@@ -52,7 +54,9 @@ public class SmartContractCallSection extends TraceSection
       Hub hub,
       AccountSnapshot preCallCallerAccountSnapshot,
       AccountSnapshot preCallCalledAccountSnapshot,
+      Bytes rawCalledAddress,
       ImcFragment imcFragment) {
+    this.rawCalledAddress = rawCalledAddress;
     this.callerCallFrame = hub.currentFrame();
     this.calledCallFrameId = hub.callStack().futureId();
     this.preCallCallerAccountSnapshot = preCallCallerAccountSnapshot;
@@ -112,11 +116,11 @@ public class SmartContractCallSection extends TraceSection
   }
 
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
     final CallFrame calledCallFrame = hub.callStack().getById(this.calledCallFrameId);
-    this.scenarioFragment.runPostTx(hub, state, tx);
+    this.scenarioFragment.runPostTx(hub, state, tx, isSuccessful);
 
     this.addFragmentsWithoutStack(
         hub,
@@ -126,8 +130,10 @@ public class SmartContractCallSection extends TraceSection
         this.imcFragment,
         accountFragmentFactory.make(
             this.preCallCallerAccountSnapshot, this.inCallCallerAccountSnapshot),
-        accountFragmentFactory.make(
-            this.preCallCalledAccountSnapshot, this.inCallCalledAccountSnapshot));
+        accountFragmentFactory.makeWithTrm(
+            this.preCallCalledAccountSnapshot,
+            this.inCallCalledAccountSnapshot,
+            this.rawCalledAddress));
 
     if (callerCallFrame.hasReverted()) {
       if (calledCallFrame.hasReverted()) {

@@ -145,7 +145,7 @@ public class CreateSection extends TraceSection
   }
 
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
     final boolean creatorReverted = hub.callStack().getById(this.creatorContextId).hasReverted();
@@ -177,7 +177,7 @@ public class CreateSection extends TraceSection
                     allButOneSixtyFourth(this.initialGas - upfrontCost),
                     0));
 
-    this.scenarioFragment.runPostTx(hub, state, tx);
+    this.scenarioFragment.runPostTx(hub, state, tx, isSuccessful);
     this.addFragmentsWithoutStack(hub, scenarioFragment);
     if (this.exceptions.staticFault()) {
       this.addFragmentsWithoutStack(

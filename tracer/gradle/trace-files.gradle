@@ -59,7 +59,7 @@ tasks.register('instructionDecoder', TraceFilesTask) {
 
     moduleDir = "tables/instructionDecoder"
     module = "instructionDecoder"
-    files = ["reference_tables/tables/instruction_decoder.lisp"]
+    files = ["reference_tables/instruction_decoder.lisp"]
 }
 tasks.register('shfRT', TraceFilesTask) {
     group "Trace files generation"

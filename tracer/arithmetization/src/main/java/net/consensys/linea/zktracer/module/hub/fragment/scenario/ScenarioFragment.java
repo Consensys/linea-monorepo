@@ -223,7 +223,7 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
   }
 
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     this.fillPostCallInformation(hub);
   }
 
@@ -301,23 +301,23 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
             type.isCreate() && targetHasCode && !creationFailed() && callerReverts)
         .pScenarioCreateNonemptyInitCodeSuccessWontRevert(
             type.isCreate() && targetHasCode && !creationFailed() && !callerReverts)
-        .pScenarioEcrecover(
+        .pScenarioPrcEcrecover(
             precompileCall.map(x -> x.precompile().equals(Precompile.EC_RECOVER)).orElse(false))
-        .pScenarioSha2256(
+        .pScenarioPrcSha2256(
             precompileCall.map(x -> x.precompile().equals(Precompile.SHA2_256)).orElse(false))
-        .pScenarioRipemd160(
+        .pScenarioPrcRipemd160(
             precompileCall.map(x -> x.precompile().equals(Precompile.RIPEMD_160)).orElse(false))
-        .pScenarioIdentity(
+        .pScenarioPrcIdentity(
             precompileCall.map(x -> x.precompile().equals(Precompile.IDENTITY)).orElse(false))
-        .pScenarioModexp(
+        .pScenarioPrcModexp(
             precompileCall.map(x -> x.precompile().equals(Precompile.MODEXP)).orElse(false))
-        .pScenarioEcadd(
+        .pScenarioPrcEcadd(
             precompileCall.map(x -> x.precompile().equals(Precompile.EC_ADD)).orElse(false))
-        .pScenarioEcmul(
+        .pScenarioPrcEcmul(
             precompileCall.map(x -> x.precompile().equals(Precompile.EC_MUL)).orElse(false))
-        .pScenarioEcpairing(
+        .pScenarioPrcEcpairing(
             precompileCall.map(x -> x.precompile().equals(Precompile.EC_PAIRING)).orElse(false))
-        .pScenarioBlake2F(
+        .pScenarioPrcBlake2F(
             precompileCall.map(x -> x.precompile().equals(Precompile.BLAKE2F)).orElse(false))
         .pScenarioPrcSuccessWillRevert(
             type.isPrecompile() && successfulPrecompileCall() && callerReverts)
@@ -338,9 +338,10 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
         .pScenarioPrcCds(type.isPrecompile() ? callDataSegment.length() : 0)
         .pScenarioPrcRao(type.isPrecompile() ? requestedReturnDataSegment.offset() : 0)
         .pScenarioPrcRac(type.isPrecompile() ? requestedReturnDataSegment.length() : 0)
-        .pScenarioCodedeposit(type.isDeposit())
-        .pScenarioCodedepositInvalidCodePrefix(type.isDeposit() && raisedInvalidCodePrefix)
-        .pScenarioCodedepositValidCodePrefix(false) // TODO: @Olivier
-        .pScenarioSelfdestruct(false); // TODO: @Olivier
+    //        .pScenarioCodedeposit(type.isDeposit())
+    //        .pScenarioCodedepositInvalidCodePrefix(type.isDeposit() && raisedInvalidCodePrefix)
+    //        .pScenarioCodedepositValidCodePrefix(false) // TODO: @Olivier
+    //        .pScenarioSelfdestruct(false); // TODO: @Olivier
+    ;
   }
 }

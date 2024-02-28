@@ -26,9 +26,9 @@ public record ExpLogCall(EWord exponent) implements TraceSubFragment {
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousExpFlag(true)
-        .pMiscellaneousExpData1(exponent.hi())
-        .pMiscellaneousExpData2(exponent.lo())
-        .pMiscellaneousExpData5(Bytes.ofUnsignedShort(G_EXP_BYTE.cost() * exponent.byteLength()));
+        .pMiscExpFlag(true)
+        .pMiscExpData1(exponent.hi())
+        .pMiscExpData2(exponent.lo())
+        .pMiscExpData5(Bytes.ofUnsignedShort(G_EXP_BYTE.cost() * exponent.byteLength()));
   }
 }

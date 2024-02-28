@@ -64,7 +64,7 @@ public record OpCodeData(
    *
    * @return <code>true</code> if this opcode is a <code>PUSHx</code>
    */
-  boolean isPush() {
+  public boolean isPush() {
     return (0x60 <= this.value) && (this.value < 0x80);
   }
 
@@ -87,6 +87,6 @@ public record OpCodeData(
   }
 
   public boolean isMxp() {
-    return this.billing.type() != MxpType.NONE;
+    return this.billing().type() != MxpType.NONE;
   }
 }

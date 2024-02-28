@@ -31,6 +31,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.scenario.ScenarioFragmen
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileInvocation;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileLinesGenerator;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.Account;
@@ -40,6 +41,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class NoCodeCallSection extends TraceSection
     implements PostTransactionDefer, PostExecDefer, ReEnterContextDefer {
+  private final Bytes rawCalledAddress;
   private final Optional<PrecompileInvocation> precompileInvocation;
   private final CallFrame callerCallFrame;
   private final int calledCallFrameId;
@@ -59,7 +61,9 @@ public class NoCodeCallSection extends TraceSection
       Optional<PrecompileInvocation> targetPrecompile,
       AccountSnapshot preCallCallerAccountSnapshot,
       AccountSnapshot preCallCalledAccountSnapshot,
+      Bytes rawCalledAddress,
       ImcFragment imcFragment) {
+    this.rawCalledAddress = rawCalledAddress;
     this.precompileInvocation = targetPrecompile;
     this.preCallCallerAccountSnapshot = preCallCallerAccountSnapshot;
     this.preCallCalledAccountSnapshot = preCallCalledAccountSnapshot;
@@ -106,10 +110,10 @@ public class NoCodeCallSection extends TraceSection
   }
 
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
-    this.scenarioFragment.runPostTx(hub, state, tx);
+    this.scenarioFragment.runPostTx(hub, state, tx, isSuccessful);
 
     this.addFragmentsWithoutStack(
         hub,
@@ -119,8 +123,10 @@ public class NoCodeCallSection extends TraceSection
         ContextFragment.readContextData(hub.callStack()),
         accountFragmentFactory.make(
             this.preCallCallerAccountSnapshot, this.postCallCallerAccountSnapshot),
-        accountFragmentFactory.make(
-            this.preCallCalledAccountSnapshot, this.postCallCalledAccountSnapshot));
+        accountFragmentFactory.makeWithTrm(
+            this.preCallCalledAccountSnapshot,
+            this.postCallCalledAccountSnapshot,
+            this.rawCalledAddress));
 
     if (precompileInvocation.isPresent()) {
       if (this.callSuccessful && callerCallFrame.hasReverted()) {

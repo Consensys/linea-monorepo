@@ -19,16 +19,19 @@ import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.Setter;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.TransactionStack;
+import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public final class TransactionFragment implements TraceFragment {
+public final class TransactionFragment implements TraceFragment, PostTransactionDefer {
   @Setter private TraceSection parentSection;
   private final int batchNumber;
   private final Address minerAddress;
@@ -36,7 +39,7 @@ public final class TransactionFragment implements TraceFragment {
   private final boolean evmExecutes;
   private final Wei gasPrice;
   private final Wei baseFee;
-  private final boolean txSuccess;
+  private boolean txSuccess;
   private final long initialGas;
 
   private TransactionFragment(
@@ -75,9 +78,9 @@ public final class TransactionFragment implements TraceFragment {
     final EWord to = EWord.of(effectiveToAddress(tx));
     final EWord from = EWord.of(tx.getSender());
     final EWord miner = EWord.of(minerAddress);
-    long gasRefundAmount = this.parentSection.getParentTrace().refundedGas();
-    long leftoverGas = this.parentSection.getParentTrace().leftoverGas();
-    long gasRefundFinalCounter = this.parentSection.getParentTrace().gasRefundFinalCounter();
+    long gasRefundAmount = this.parentSection.parentTrace().refundedGas();
+    long leftoverGas = this.parentSection.parentTrace().leftoverGas();
+    long gasRefundFinalCounter = this.parentSection.parentTrace().gasRefundFinalCounter();
 
     return trace
         .peekAtTransaction(true)
@@ -89,16 +92,21 @@ public final class TransactionFragment implements TraceFragment {
         .pTransactionToAddressLo(to.lo())
         .pTransactionGasPrice(gasPrice)
         .pTransactionBasefee(baseFee)
-        .pTransactionInitGas(Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
+        .pTransactionInitialGas(Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
         .pTransactionInitialBalance(Bytes.ofUnsignedLong(initialGas))
         .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
         .pTransactionCoinbaseAddressHi(miner.hi())
         .pTransactionCoinbaseAddressLo(miner.lo())
         .pTransactionCallDataSize(Bytes.ofUnsignedInt(tx.getData().map(Bytes::size).orElse(0)))
-        .pTransactionTxnRequiresEvmExecution(evmExecutes)
+        .pTransactionRequiresEvmExecution(evmExecutes)
         .pTransactionLeftoverGas(Bytes.ofUnsignedLong(leftoverGas))
-        .pTransactionGasRefundCounterFinal(Bytes.ofUnsignedLong(gasRefundFinalCounter))
-        .pTransactionGasRefundAmount(Bytes.ofUnsignedLong(gasRefundAmount))
+        .pTransactionRefundCounterInfinity(Bytes.ofUnsignedLong(gasRefundFinalCounter))
+        .pTransactionRefundAmount(Bytes.ofUnsignedLong(gasRefundAmount))
         .pTransactionStatusCode(txSuccess);
+  }
+
+  @Override
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
+    this.txSuccess = isSuccessful;
   }
 }

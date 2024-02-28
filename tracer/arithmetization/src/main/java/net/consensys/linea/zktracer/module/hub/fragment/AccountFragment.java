@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
+import java.util.Optional;
+
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +46,12 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
     private final DeferRegistry defers;
 
     public AccountFragment make(AccountSnapshot oldState, AccountSnapshot newState) {
-      return new AccountFragment(this.defers, oldState, newState);
+      return new AccountFragment(this.defers, oldState, newState, Optional.empty());
+    }
+
+    public AccountFragment makeWithTrm(
+        AccountSnapshot oldState, AccountSnapshot newState, Bytes toTrim) {
+      return new AccountFragment(this.defers, oldState, newState, Optional.of(toTrim));
     }
 
     public AccountFragment make(
@@ -53,7 +60,19 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
         boolean debit,
         long cost,
         boolean createAddress) {
-      return new AccountFragment(this.defers, oldState, newState, debit, cost, createAddress);
+      return new AccountFragment(
+          this.defers, oldState, newState, debit, cost, createAddress, Optional.empty());
+    }
+
+    public AccountFragment makeWithTrm(
+        AccountSnapshot oldState,
+        AccountSnapshot newState,
+        boolean debit,
+        long cost,
+        boolean createAddress,
+        final Bytes addressToTrim) {
+      return new AccountFragment(
+          this.defers, oldState, newState, debit, cost, createAddress, Optional.of(addressToTrim));
     }
   }
 
@@ -65,10 +84,14 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
   private final boolean createAddress;
   @Setter private int deploymentNumberInfnty = 0; // retconned on conflation end
   @Setter private boolean existsInfinity = false; // retconned on conflation end
+  private final Optional<Bytes> addressToTrim;
 
   private AccountFragment(
-      final DeferRegistry defers, AccountSnapshot oldState, AccountSnapshot newState) {
-    this(defers, oldState, newState, false, 0, false);
+      final DeferRegistry defers,
+      AccountSnapshot oldState,
+      AccountSnapshot newState,
+      Optional<Bytes> addressToTrim) {
+    this(defers, oldState, newState, false, 0, false, addressToTrim);
   }
 
   public AccountFragment(
@@ -77,7 +100,8 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
       AccountSnapshot newState,
       boolean debit,
       long cost,
-      boolean createAddress) {
+      boolean createAddress,
+      Optional<Bytes> addressToTrim) {
     Preconditions.checkArgument(oldState.address().equals(newState.address()));
 
     this.who = oldState.address();
@@ -86,6 +110,7 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
     this.debit = debit;
     this.cost = cost;
     this.createAddress = createAddress;
+    this.addressToTrim = addressToTrim;
 
     defers.postConflation(this);
   }
@@ -98,8 +123,10 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
 
     return trace
         .peekAtAccount(true)
-        .pAccountAddrHi(eWho.hi())
-        .pAccountAddrLo(eWho.lo())
+        .pAccountTrmFlag(this.addressToTrim.isPresent())
+        .pAccountTrmRawAddrHi(this.addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
+        .pAccountAddressHi(eWho.hi())
+        .pAccountAddressLo(eWho.lo())
         .pAccountIsPrecompile(isPrecompile(who))
         .pAccountNonce(Bytes.ofUnsignedLong(oldState.nonce()))
         .pAccountNonceNew(Bytes.ofUnsignedLong(newState.nonce()))
@@ -123,16 +150,12 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
                 || !newState.balance().isZero())
         .pAccountWarm(oldState.warm())
         .pAccountWarmNew(newState.warm())
-        .pAccountDepNum(Bytes.ofUnsignedInt(oldState.deploymentNumber()))
-        .pAccountDepNumNew(Bytes.ofUnsignedInt(newState.deploymentNumber()))
-        .pAccountDepStatus(oldState.deploymentStatus())
-        .pAccountDepStatusNew(newState.deploymentStatus())
-        //      .pAccountDebit(debit)
-        //      .pAccountCost(cost)
-        //      .pAccountCreateAddress(createAddress)
+        .pAccountDeploymentNumber(Bytes.ofUnsignedInt(oldState.deploymentNumber()))
+        .pAccountDeploymentNumberNew(Bytes.ofUnsignedInt(newState.deploymentNumber()))
         .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfnty))
-    //        .pAccountExistsInfty(existsInfinity)
-    ;
+        .pAccountDeploymentStatus(oldState.deploymentStatus())
+        .pAccountDeploymentStatusNew(newState.deploymentStatus())
+        .pAccountDeploymentStatusInfty(existsInfinity);
   }
 
   @Override
