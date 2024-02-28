@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4-test21
+Test pre-release 21 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* fix: capture SSTORE-touched storage slots for correct gas computations [#606](https://github.com/Consensys/besu-sequencer-plugins/pull/606)
+* build: make the build script portable, explicit dependency on Go & GCC, test libcompress build [#621](https://github.com/Consensys/besu-sequencer-plugins/pull/621)
+* Update after the refactor of transaction selection service [#626](https://github.com/Consensys/besu-sequencer-plugins/pull/626)
+* Use the right classloader to load the native library [#628](https://github.com/Consensys/besu-sequencer-plugins/pull/628)
+
 ## 0.1.4-test20
 Test pre-release 20 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Get L2L1 settings from CLI options [#591](https://github.com/Consensys/besu-sequencer-plugins/pull/591)
