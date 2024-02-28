@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.runtime.stack;
 
 import lombok.Getter;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
@@ -323,20 +324,28 @@ public class Stack {
     return this.status == Status.OVERFLOW;
   }
 
-  public void processInstruction(MessageFrame frame, CallFrame callFrame, int stackStamp) {
+  public void processInstruction(final Hub hub, MessageFrame frame, int stackStamp) {
+    final CallFrame callFrame = hub.currentFrame();
     this.stamp = stackStamp;
     this.height = this.heightNew;
-    this.currentOpcodeData = callFrame.opCodeData();
+    this.currentOpcodeData = hub.opCodeData();
     callFrame.pending(new StackContext(this.currentOpcodeData.mnemonic()));
+
+    final int alpha = this.currentOpcodeData.stackSettings().alpha();
+    final int delta = this.currentOpcodeData.stackSettings().delta();
 
     this.heightNew += this.currentOpcodeData.stackSettings().nbAdded();
     this.heightNew -= this.currentOpcodeData.stackSettings().nbRemoved();
 
-    if (frame.stackSize()
-        < this.currentOpcodeData.stackSettings().delta()) { // Testing for underflow
+    if (frame.stackSize() < delta) { // Testing for underflow
       this.status = Status.UNDERFLOW;
     } else if (this.heightNew > MAX_STACK_SIZE) { // Testing for overflow
       this.status = Status.OVERFLOW;
+    }
+
+    hub.wcp().callLT(this.height, this.currentOpcodeData.stackSettings().delta());
+    if (!this.isUnderflow()) {
+      hub.wcp().callGT(this.height - delta + alpha, 1024);
     }
 
     if (this.status.isFailure()) {

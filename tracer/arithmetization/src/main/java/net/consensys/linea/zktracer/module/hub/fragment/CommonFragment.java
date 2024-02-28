@@ -96,13 +96,31 @@ public final class CommonFragment implements TraceFragment {
 
   @Override
   public Trace trace(Trace trace) {
-    CallFrame frame = this.hub.callStack().getById(this.callFrameId);
-    TransactionStack.MetaTransaction tx = hub.txStack().getById(this.txId);
+    throw new UnsupportedOperationException("should never be called");
+  }
+
+  public Trace trace(Trace trace, int stackHeight, int stackHeightNew) {
+    final CallFrame frame = this.hub.callStack().getById(this.callFrameId);
+    final TransactionStack.MetaTransaction tx = hub.txStack().getById(this.txId);
+    // TODO: after ROMLex merge
+    final int codeFragmentIndex = 0;
+    //        frame.type() == CallFrameType.MANTLE
+    //            ? 0
+    //            : this.hub
+    //                .romLex()
+    //                .getCfiByMetadata(
+    //                    ContractMetadata.make(
+    //                        frame.codeAddress(),
+    //                        frame.codeDeploymentNumber(),
+    //                        frame.underDeployment()));
     final boolean selfReverts = frame.selfReverts();
     final boolean getsReverted = frame.getsReverted();
 
     return trace
+        .codeFragmentIndex(Bytes.ofUnsignedInt(codeFragmentIndex))
         .absoluteTransactionNumber(Bytes.ofUnsignedInt(tx.absNumber()))
+        .height(Bytes.ofUnsignedShort(stackHeight))
+        .heightNew(Bytes.ofUnsignedShort(stackHeightNew))
         .batchNumber(Bytes.ofUnsignedInt(this.batchNumber))
         .txSkip(this.txState == TxState.TX_SKIP)
         .txWarm(this.txState == TxState.TX_WARM)
@@ -112,35 +130,33 @@ public final class CommonFragment implements TraceFragment {
         .hubStamp(Bytes.ofUnsignedInt(this.stamp))
         .hubStampTransactionEnd(Bytes.ofUnsignedLong(tx.endStamp()))
         .transactionReverts(tx.status())
-        .contextMayChangeFlag(
-            (instructionFamily == InstructionFamily.CALL
-                    || instructionFamily == InstructionFamily.CREATE
-                    || instructionFamily == InstructionFamily.HALT
-                    || instructionFamily == InstructionFamily.INVALID)
-                || exceptions.any())
-        .exceptionAhoyFlag(exceptions.any())
+        .contextMayChange(
+            this.txState == TxState.TX_EXEC
+                && ((instructionFamily == InstructionFamily.CALL
+                        || instructionFamily == InstructionFamily.CREATE
+                        || instructionFamily == InstructionFamily.HALT
+                        || instructionFamily == InstructionFamily.INVALID)
+                    || exceptions.any()))
+        .exceptionAhoy(exceptions.any())
 
         // Context data
         .contextNumber(Bytes.ofUnsignedInt(contextNumber))
         .contextNumberNew(Bytes.ofUnsignedInt(newContextNumber))
         .contextRevertStamp(Bytes.ofUnsignedInt(revertStamp))
-        .contextWillRevertFlag(getsReverted || selfReverts)
-        .contextGetsRevertedFlag(getsReverted)
-        .contextSelfRevertsFlag(selfReverts)
+        .contextWillRevert(getsReverted || selfReverts)
+        .contextGetsReverted(getsReverted)
+        .contextSelfReverts(selfReverts)
         .programCounter(Bytes.ofUnsignedInt(pc))
         .programCounterNew(Bytes.ofUnsignedInt(newPc))
 
         // Bytecode metadata
-        .codeAddressHi(codeAddress.hi())
-        .codeAddressLo(codeAddress.lo())
-        .codeDeploymentNumber(Bytes.ofUnsignedInt(codeDeploymentNumber))
-        .codeDeploymentStatus(codeDeploymentStatus)
         .callerContextNumber(Bytes.ofUnsignedInt(callerContextNumber))
         .gasExpected(Bytes.ofUnsignedLong(gasExpected))
         .gasActual(Bytes.ofUnsignedLong(gasActual))
         .gasCost(Bytes.ofUnsignedLong(gasCost))
         .gasNext(Bytes.ofUnsignedLong(gasNext))
-        .gasRefund(Bytes.ofUnsignedLong(gasRefund))
+        .refgas(Bytes.ofUnsignedLong(gasRefund))
+        .refgasNew(Bytes.EMPTY)
         .twoLineInstruction(twoLinesInstruction)
         .counterTli(twoLinesInstructionCounter)
         .numberOfNonStackRows(Bytes.ofUnsignedShort(numberOfNonStackRows))

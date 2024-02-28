@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.types.UnsignedByte;
-import org.apache.tuweni.units.bigints.UInt256;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -69,9 +68,9 @@ public class Trace {
   private final MappedByteBuffer flag2;
   private final MappedByteBuffer flag3;
   private final MappedByteBuffer flag4;
-  private final MappedByteBuffer forbiddenInStatic;
   private final MappedByteBuffer isJumpdest;
   private final MappedByteBuffer isPush;
+  private final MappedByteBuffer mxpFlag;
   private final MappedByteBuffer mxpType1;
   private final MappedByteBuffer mxpType2;
   private final MappedByteBuffer mxpType3;
@@ -117,8 +116,9 @@ public class Trace {
   private final MappedByteBuffer ramTargetRom;
   private final MappedByteBuffer ramTargetStack;
   private final MappedByteBuffer ramTargetTxnData;
+  private final MappedByteBuffer staticFlag;
   private final MappedByteBuffer staticGas;
-  private final MappedByteBuffer twoLinesInstruction;
+  private final MappedByteBuffer twoLineInstruction;
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
@@ -152,13 +152,13 @@ public class Trace {
         new ColumnHeader("instruction-decoder.FAMILY_SWAP", 1, length),
         new ColumnHeader("instruction-decoder.FAMILY_TRANSACTION", 1, length),
         new ColumnHeader("instruction-decoder.FAMILY_WCP", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG1", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG2", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG3", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG4", 1, length),
-        new ColumnHeader("instruction-decoder.FORBIDDEN_IN_STATIC", 1, length),
+        new ColumnHeader("instruction-decoder.FLAG_1", 1, length),
+        new ColumnHeader("instruction-decoder.FLAG_2", 1, length),
+        new ColumnHeader("instruction-decoder.FLAG_3", 1, length),
+        new ColumnHeader("instruction-decoder.FLAG_4", 1, length),
         new ColumnHeader("instruction-decoder.IS_JUMPDEST", 1, length),
         new ColumnHeader("instruction-decoder.IS_PUSH", 1, length),
+        new ColumnHeader("instruction-decoder.MXP_FLAG", 1, length),
         new ColumnHeader("instruction-decoder.MXP_TYPE_1", 1, length),
         new ColumnHeader("instruction-decoder.MXP_TYPE_2", 1, length),
         new ColumnHeader("instruction-decoder.MXP_TYPE_3", 1, length),
@@ -204,8 +204,9 @@ public class Trace {
         new ColumnHeader("instruction-decoder.RAM_TARGET_ROM", 1, length),
         new ColumnHeader("instruction-decoder.RAM_TARGET_STACK", 1, length),
         new ColumnHeader("instruction-decoder.RAM_TARGET_TXN_DATA", 1, length),
+        new ColumnHeader("instruction-decoder.STATIC_FLAG", 1, length),
         new ColumnHeader("instruction-decoder.STATIC_GAS", 32, length),
-        new ColumnHeader("instruction-decoder.TWO_LINES_INSTRUCTION", 1, length));
+        new ColumnHeader("instruction-decoder.TWO_LINE_INSTRUCTION", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -243,9 +244,9 @@ public class Trace {
     this.flag2 = buffers.get(31);
     this.flag3 = buffers.get(32);
     this.flag4 = buffers.get(33);
-    this.forbiddenInStatic = buffers.get(34);
-    this.isJumpdest = buffers.get(35);
-    this.isPush = buffers.get(36);
+    this.isJumpdest = buffers.get(34);
+    this.isPush = buffers.get(35);
+    this.mxpFlag = buffers.get(36);
     this.mxpType1 = buffers.get(37);
     this.mxpType2 = buffers.get(38);
     this.mxpType3 = buffers.get(39);
@@ -291,8 +292,9 @@ public class Trace {
     this.ramTargetRom = buffers.get(79);
     this.ramTargetStack = buffers.get(80);
     this.ramTargetTxnData = buffers.get(81);
-    this.staticGas = buffers.get(82);
-    this.twoLinesInstruction = buffers.get(83);
+    this.staticFlag = buffers.get(82);
+    this.staticGas = buffers.get(83);
+    this.twoLineInstruction = buffers.get(84);
   }
 
   public int size() {
@@ -328,26 +330,34 @@ public class Trace {
     return this;
   }
 
-  public Trace billingPerByte(final BigInteger b) {
+  public Trace billingPerByte(final Bytes b) {
     if (filled.get(2)) {
       throw new IllegalStateException("instruction-decoder.BILLING_PER_BYTE already set");
     } else {
       filled.set(2);
     }
 
-    billingPerByte.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      billingPerByte.put((byte) 0);
+    }
+    billingPerByte.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace billingPerWord(final BigInteger b) {
+  public Trace billingPerWord(final Bytes b) {
     if (filled.get(3)) {
       throw new IllegalStateException("instruction-decoder.BILLING_PER_WORD already set");
     } else {
       filled.set(3);
     }
 
-    billingPerWord.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      billingPerWord.put((byte) 0);
+    }
+    billingPerWord.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -666,7 +676,7 @@ public class Trace {
 
   public Trace flag1(final Boolean b) {
     if (filled.get(30)) {
-      throw new IllegalStateException("instruction-decoder.FLAG1 already set");
+      throw new IllegalStateException("instruction-decoder.FLAG_1 already set");
     } else {
       filled.set(30);
     }
@@ -678,7 +688,7 @@ public class Trace {
 
   public Trace flag2(final Boolean b) {
     if (filled.get(31)) {
-      throw new IllegalStateException("instruction-decoder.FLAG2 already set");
+      throw new IllegalStateException("instruction-decoder.FLAG_2 already set");
     } else {
       filled.set(31);
     }
@@ -690,7 +700,7 @@ public class Trace {
 
   public Trace flag3(final Boolean b) {
     if (filled.get(32)) {
-      throw new IllegalStateException("instruction-decoder.FLAG3 already set");
+      throw new IllegalStateException("instruction-decoder.FLAG_3 already set");
     } else {
       filled.set(32);
     }
@@ -702,7 +712,7 @@ public class Trace {
 
   public Trace flag4(final Boolean b) {
     if (filled.get(33)) {
-      throw new IllegalStateException("instruction-decoder.FLAG4 already set");
+      throw new IllegalStateException("instruction-decoder.FLAG_4 already set");
     } else {
       filled.set(33);
     }
@@ -712,23 +722,11 @@ public class Trace {
     return this;
   }
 
-  public Trace forbiddenInStatic(final Boolean b) {
-    if (filled.get(34)) {
-      throw new IllegalStateException("instruction-decoder.FORBIDDEN_IN_STATIC already set");
-    } else {
-      filled.set(34);
-    }
-
-    forbiddenInStatic.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
   public Trace isJumpdest(final Boolean b) {
-    if (filled.get(35)) {
+    if (filled.get(34)) {
       throw new IllegalStateException("instruction-decoder.IS_JUMPDEST already set");
     } else {
-      filled.set(35);
+      filled.set(34);
     }
 
     isJumpdest.put((byte) (b ? 1 : 0));
@@ -737,13 +735,25 @@ public class Trace {
   }
 
   public Trace isPush(final Boolean b) {
-    if (filled.get(36)) {
+    if (filled.get(35)) {
       throw new IllegalStateException("instruction-decoder.IS_PUSH already set");
+    } else {
+      filled.set(35);
+    }
+
+    isPush.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace mxpFlag(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("instruction-decoder.MXP_FLAG already set");
     } else {
       filled.set(36);
     }
 
-    isPush.put((byte) (b ? 1 : 0));
+    mxpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -832,14 +842,18 @@ public class Trace {
     return this;
   }
 
-  public Trace opcode(final BigInteger b) {
+  public Trace opcode(final Bytes b) {
     if (filled.get(44)) {
       throw new IllegalStateException("instruction-decoder.OPCODE already set");
     } else {
       filled.set(44);
     }
 
-    opcode.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      opcode.put((byte) 0);
+    }
+    opcode.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -1288,26 +1302,42 @@ public class Trace {
     return this;
   }
 
-  public Trace staticGas(final BigInteger b) {
+  public Trace staticFlag(final Boolean b) {
     if (filled.get(82)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_GAS already set");
+      throw new IllegalStateException("instruction-decoder.STATIC_FLAG already set");
     } else {
       filled.set(82);
     }
 
-    staticGas.put(UInt256.valueOf(b).toBytes().toArray());
+    staticFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace twoLinesInstruction(final Boolean b) {
+  public Trace staticGas(final Bytes b) {
     if (filled.get(83)) {
-      throw new IllegalStateException("instruction-decoder.TWO_LINES_INSTRUCTION already set");
+      throw new IllegalStateException("instruction-decoder.STATIC_GAS already set");
     } else {
       filled.set(83);
     }
 
-    twoLinesInstruction.put((byte) (b ? 1 : 0));
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      staticGas.put((byte) 0);
+    }
+    staticGas.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace twoLineInstruction(final Boolean b) {
+    if (filled.get(84)) {
+      throw new IllegalStateException("instruction-decoder.TWO_LINE_INSTRUCTION already set");
+    } else {
+      filled.set(84);
+    }
+
+    twoLineInstruction.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1436,32 +1466,31 @@ public class Trace {
     }
 
     if (!filled.get(30)) {
-      throw new IllegalStateException("instruction-decoder.FLAG1 has not been filled");
+      throw new IllegalStateException("instruction-decoder.FLAG_1 has not been filled");
     }
 
     if (!filled.get(31)) {
-      throw new IllegalStateException("instruction-decoder.FLAG2 has not been filled");
+      throw new IllegalStateException("instruction-decoder.FLAG_2 has not been filled");
     }
 
     if (!filled.get(32)) {
-      throw new IllegalStateException("instruction-decoder.FLAG3 has not been filled");
+      throw new IllegalStateException("instruction-decoder.FLAG_3 has not been filled");
     }
 
     if (!filled.get(33)) {
-      throw new IllegalStateException("instruction-decoder.FLAG4 has not been filled");
+      throw new IllegalStateException("instruction-decoder.FLAG_4 has not been filled");
     }
 
     if (!filled.get(34)) {
-      throw new IllegalStateException(
-          "instruction-decoder.FORBIDDEN_IN_STATIC has not been filled");
-    }
-
-    if (!filled.get(35)) {
       throw new IllegalStateException("instruction-decoder.IS_JUMPDEST has not been filled");
     }
 
-    if (!filled.get(36)) {
+    if (!filled.get(35)) {
       throw new IllegalStateException("instruction-decoder.IS_PUSH has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("instruction-decoder.MXP_FLAG has not been filled");
     }
 
     if (!filled.get(37)) {
@@ -1657,12 +1686,16 @@ public class Trace {
     }
 
     if (!filled.get(82)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_GAS has not been filled");
+      throw new IllegalStateException("instruction-decoder.STATIC_FLAG has not been filled");
     }
 
     if (!filled.get(83)) {
+      throw new IllegalStateException("instruction-decoder.STATIC_GAS has not been filled");
+    }
+
+    if (!filled.get(84)) {
       throw new IllegalStateException(
-          "instruction-decoder.TWO_LINES_INSTRUCTION has not been filled");
+          "instruction-decoder.TWO_LINE_INSTRUCTION has not been filled");
     }
 
     filled.clear();
@@ -1809,15 +1842,15 @@ public class Trace {
     }
 
     if (!filled.get(34)) {
-      forbiddenInStatic.position(forbiddenInStatic.position() + 1);
-    }
-
-    if (!filled.get(35)) {
       isJumpdest.position(isJumpdest.position() + 1);
     }
 
-    if (!filled.get(36)) {
+    if (!filled.get(35)) {
       isPush.position(isPush.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      mxpFlag.position(mxpFlag.position() + 1);
     }
 
     if (!filled.get(37)) {
@@ -2001,11 +2034,15 @@ public class Trace {
     }
 
     if (!filled.get(82)) {
-      staticGas.position(staticGas.position() + 32);
+      staticFlag.position(staticFlag.position() + 1);
     }
 
     if (!filled.get(83)) {
-      twoLinesInstruction.position(twoLinesInstruction.position() + 1);
+      staticGas.position(staticGas.position() + 32);
+    }
+
+    if (!filled.get(84)) {
+      twoLineInstruction.position(twoLineInstruction.position() + 1);
     }
 
     filled.clear();
@@ -2014,10 +2051,9 @@ public class Trace {
     return this;
   }
 
-  public Trace build() {
+  public void build() {
     if (!filled.isEmpty()) {
       throw new IllegalStateException("Cannot build trace with a non-validated row.");
     }
-    return null;
   }
 }

@@ -128,9 +128,9 @@ public final class StpChunk extends ModuleOperation {
 
     for (int ct = 0; ct <= ctMax; ct++) {
       trace
-          .stamp(Bytes.ofUnsignedInt(stamp))
-          .ct(Bytes.of(ct))
-          .ctMax(Bytes.of(ctMax))
+          .stamp(stamp)
+          .ct(UnsignedByte.of(ct))
+          .ctMax(UnsignedByte.of(ctMax))
           .instruction(UnsignedByte.of(this.opCode().byteValue()))
           .isCreate(this.opCode() == OpCode.CREATE)
           .isCreate2(this.opCode() == OpCode.CREATE2)
@@ -148,7 +148,7 @@ public final class StpChunk extends ModuleOperation {
           .gasActual(Bytes.ofUnsignedLong(this.gasActual()))
           .gasMxp(Bytes.ofUnsignedLong(this.gasMxp()))
           .gasUpfront(Bytes.ofUnsignedLong(this.gasPrelim()))
-          .gasOopkt(Bytes.ofUnsignedLong(gasOopkt))
+          .gasOutOfPocket(Bytes.ofUnsignedLong(gasOopkt))
           .gasStipend(Bytes.EMPTY)
           .arg1Hi(Bytes.EMPTY);
 
@@ -199,9 +199,9 @@ public final class StpChunk extends ModuleOperation {
 
     for (int ct = 0; ct <= ctMax; ct++) {
       trace
-          .stamp(Bytes.ofUnsignedInt(stamp))
-          .ct(Bytes.of(ct))
-          .ctMax(Bytes.of(ctMax))
+          .stamp(stamp)
+          .ct(UnsignedByte.of(ct))
+          .ctMax(UnsignedByte.of(ctMax))
           .instruction(UnsignedByte.of(this.opCode().byteValue()))
           .isCreate(false)
           .isCreate2(false)
@@ -219,7 +219,7 @@ public final class StpChunk extends ModuleOperation {
           .gasActual(Bytes.ofUnsignedLong(this.gasActual()))
           .gasMxp(Bytes.ofUnsignedLong(this.gasMxp()))
           .gasUpfront(Bytes.ofUnsignedLong(this.gasPrelim()))
-          .gasOopkt(gasOopkt)
+          .gasOutOfPocket(gasOopkt)
           .gasStipend(Bytes.ofUnsignedLong(gasStipend));
 
       switch (ct) {

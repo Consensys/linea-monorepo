@@ -41,7 +41,7 @@ public record SkippedPostTransactionDefer(
     Wei baseFee)
     implements PostTransactionDefer {
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     Address fromAddress = this.oldFromAccount.address();
     Address toAddress = this.oldToAccount.address();
     Address minerAddress = this.oldMinerAccount.address();

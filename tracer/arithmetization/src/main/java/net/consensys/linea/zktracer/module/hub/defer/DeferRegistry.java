@@ -88,9 +88,9 @@ public class DeferRegistry {
    * @param world a {@link WorldView} on the state
    * @param tx the current {@link Transaction}
    */
-  public void runPostTx(Hub hub, WorldView world, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView world, Transaction tx, boolean isSuccessful) {
     for (PostTransactionDefer defer : this.txDefers) {
-      defer.runPostTx(hub, world, tx);
+      defer.runPostTx(hub, world, tx, isSuccessful);
     }
     this.txDefers.clear();
   }

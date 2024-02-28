@@ -96,7 +96,7 @@ public record ContextFragment(
         .peekAtContext(true)
         .pContextContextNumber(Bytes.ofUnsignedInt(callFrame.contextNumber()))
         .pContextCallStackDepth(Bytes.ofUnsignedInt(callFrame.depth()))
-        .pContextIsStatic(callFrame.type().isStatic() ? Bytes.of(1) : Bytes.EMPTY)
+        .pContextIsStatic(callFrame.type().isStatic())
         .pContextAccountAddressHi(eAddress.hi())
         .pContextAccountAddressLo(eAddress.lo())
         .pContextByteCodeAddressHi(eCodeAddress.hi())
@@ -112,7 +112,8 @@ public record ContextFragment(
         .pContextCallDataSize(Bytes.ofUnsignedLong(callFrame.callDataSource().length()))
         .pContextReturnAtOffset(
             Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().offset()))
-        .pContextReturnAtSize(Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().length()))
+        .pContextReturnAtCapacity(
+            Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().length()))
         .pContextUpdate(updateCallerReturndata)
         .pContextReturnerContextNumber(
             Bytes.ofUnsignedInt(

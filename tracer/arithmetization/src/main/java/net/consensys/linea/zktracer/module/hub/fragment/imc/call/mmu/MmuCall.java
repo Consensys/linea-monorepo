@@ -695,21 +695,21 @@ public class MmuCall implements TraceSubFragment {
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousMmuFlag(this.enabled())
-        .pMiscellaneousMmuInst(this.instruction())
-        .pMiscellaneousMmuTgtId(this.sourceId())
-        .pMiscellaneousMmuSrcId(this.targetId())
-        .pMiscellaneousMmuAuxId(this.auxId())
-        .pMiscellaneousMmuSrcOffsetHi(this.sourceOffset().hi())
-        .pMiscellaneousMmuSrcOffsetLo(this.sourceOffset().lo())
-        .pMiscellaneousMmuTgtOffsetLo(this.targetOffset().lo())
-        .pMiscellaneousMmuSize(this.size())
-        .pMiscellaneousMmuRefOffset(this.referenceOffset())
-        .pMiscellaneousMmuRefSize(this.referenceSize())
-        .pMiscellaneousMmuSuccessBit(this.successBit())
-        .pMiscellaneousMmuLimb1(this.limb1())
-        .pMiscellaneousMmuLimb2(this.limb2())
-        .pMiscellaneousMmuExoSum(this.exoSum)
-        .pMiscellaneousMmuPhase(this.phase());
+        .pMiscMmuFlag(this.enabled())
+        .pMiscMmuInst(this.instruction())
+        .pMiscMmuTgtId(this.sourceId())
+        .pMiscMmuSrcId(this.targetId())
+        .pMiscMmuAuxId(this.auxId())
+        .pMiscMmuSrcOffsetHi(this.sourceOffset().hi())
+        .pMiscMmuSrcOffsetLo(this.sourceOffset().lo())
+        .pMiscMmuTgtOffsetLo(this.targetOffset().lo())
+        .pMiscMmuSize(this.size())
+        .pMiscMmuRefOffset(this.referenceOffset())
+        .pMiscMmuRefSize(this.referenceSize())
+        .pMiscMmuSuccessBit(this.successBit())
+        .pMiscMmuLimb1(this.limb1())
+        .pMiscMmuLimb2(this.limb2())
+        .pMiscMmuExoSum(this.exoSum)
+        .pMiscMmuPhase(this.phase());
   }
 }

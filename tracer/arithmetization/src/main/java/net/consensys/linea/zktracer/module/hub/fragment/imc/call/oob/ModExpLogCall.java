@@ -27,12 +27,12 @@ public record ModExpLogCall(EWord rawLeadingWord, int cdsCutoff, int ebsCutoff)
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousExpFlag(true)
-        .pMiscellaneousExpData1(rawLeadingWord.hi())
-        .pMiscellaneousExpData2(rawLeadingWord.lo())
-        .pMiscellaneousExpData3(Bytes.ofUnsignedShort(cdsCutoff))
-        .pMiscellaneousExpData4(Bytes.ofUnsignedShort(ebsCutoff))
-        .pMiscellaneousExpData5(
+        .pMiscExpFlag(true)
+        .pMiscExpData1(rawLeadingWord.hi())
+        .pMiscExpData2(rawLeadingWord.lo())
+        .pMiscExpData3(Bytes.ofUnsignedShort(cdsCutoff))
+        .pMiscExpData4(Bytes.ofUnsignedShort(ebsCutoff))
+        .pMiscExpData5(
             Bytes.ofUnsignedShort(
                 ModExpLogChunk.LeadLogTrimLead.fromArgs(rawLeadingWord, cdsCutoff, ebsCutoff)
                     .leadLog()));

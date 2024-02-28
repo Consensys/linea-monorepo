@@ -31,5 +31,5 @@ public interface PostTransactionDefer {
    * @param state a view onto the current blockchain state
    * @param tx the {@link Transaction} that just executed
    */
-  void runPostTx(Hub hub, WorldView state, Transaction tx);
+  void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful);
 }

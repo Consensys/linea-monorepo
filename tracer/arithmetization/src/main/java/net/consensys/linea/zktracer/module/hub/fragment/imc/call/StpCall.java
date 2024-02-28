@@ -34,17 +34,17 @@ public record StpCall(
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .pMiscellaneousStpFlag(true)
-        .pMiscellaneousStpInst(Bytes.of(opCode))
-        .pMiscellaneousStpGasHi(gas.hi())
-        .pMiscellaneousStpGasLo(gas.lo())
-        .pMiscellaneousStpValHi(value.hi())
-        .pMiscellaneousStpValLo(value.lo())
-        .pMiscellaneousStpExists(exists)
-        .pMiscellaneousStpWarmth(warm)
-        .pMiscellaneousStpOogx(outOfGasException)
-        .pMiscellaneousStpGasUpfrontGasCost(Bytes.ofUnsignedLong(upfront))
-        .pMiscellaneousStpGasPaidOutOfPocket(Bytes.ofUnsignedLong(outOfPocket))
-        .pMiscellaneousStpGasStipend(Bytes.ofUnsignedLong(stipend));
+        .pMiscStpFlag(true)
+        .pMiscStpInst(Bytes.of(opCode))
+        .pMiscStpGasHi(gas.hi())
+        .pMiscStpGasLo(gas.lo())
+        .pMiscStpValHi(value.hi())
+        .pMiscStpValLo(value.lo())
+        .pMiscStpExists(exists)
+        .pMiscStpWarmth(warm)
+        .pMiscStpOogx(outOfGasException)
+        .pMiscStpGasUpfrontGasCost(Bytes.ofUnsignedLong(upfront))
+        .pMiscStpGasPaidOutOfPocket(Bytes.ofUnsignedLong(outOfPocket))
+        .pMiscStpGasStipend(Bytes.ofUnsignedLong(stipend));
   }
 }

@@ -66,7 +66,7 @@ public class TxTrace implements PostTransactionDefer {
    * @param section the section to append
    */
   public void add(TraceSection section) {
-    section.setParentTrace(this);
+    section.parentTrace(this);
     this.trace.add(section);
   }
 
@@ -84,7 +84,7 @@ public class TxTrace implements PostTransactionDefer {
   }
 
   @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx) {
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     this.leftoverGas = hub.getRemainingGas();
   }
 
@@ -95,8 +95,8 @@ public class TxTrace implements PostTransactionDefer {
    */
   public void commit(Trace hubTrace) {
     for (TraceSection opSection : this.trace) {
-      for (TraceSection.TraceLine line : opSection.getLines()) {
-        line.trace(hubTrace);
+      for (TraceSection.TraceLine line : opSection.lines()) {
+        line.trace(hubTrace, opSection.stackHeight(), opSection.stackHeightNew());
       }
     }
   }
@@ -107,7 +107,7 @@ public class TxTrace implements PostTransactionDefer {
   public int lineCount() {
     if (this.cachedLineCount == 0) {
       for (TraceSection s : trace) {
-        this.cachedLineCount += s.getLines().size();
+        this.cachedLineCount += s.lines().size();
       }
     }
     return this.cachedLineCount;

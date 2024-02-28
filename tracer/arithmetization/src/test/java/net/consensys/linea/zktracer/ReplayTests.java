@@ -72,4 +72,9 @@ public class ReplayTests {
   void traceTxStartNotTheSameAsTxPrepare() {
     replay("start-vs-prepare-tx.json.gz");
   }
+
+  @Test
+  void fatMxp() {
+    replay("2492975-2492977.json.gz");
+  }
 }
