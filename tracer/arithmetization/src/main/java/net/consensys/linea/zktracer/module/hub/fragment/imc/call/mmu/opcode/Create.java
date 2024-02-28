@@ -19,6 +19,8 @@ import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RAM_TO_EXO_
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
+import net.consensys.linea.zktracer.module.romLex.RomLexDefer;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -26,14 +28,14 @@ import org.hyperledger.besu.evm.internal.Words;
  * A specialization of {@link MmuCall} that addresses the fact that the MMU requires access to the
  * sorted Code Fragment Index of the created contract, which is only available post-conflation.
  */
-public class Create extends MmuCall {
+public class Create extends MmuCall implements RomLexDefer {
   private final Hub hub;
-  private final int cfi;
+  private ContractMetadata contract;
 
   public Create(final Hub hub) {
     super(MMU_INST_RAM_TO_EXO_WITH_PADDING);
     this.hub = hub;
-    this.cfi = hub.romLex().nextCfiBeforeReordering();
+    this.hub.romLex().createDefers().register(this);
 
     this.sourceId(hub.currentFrame().contextNumber())
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
@@ -44,6 +46,11 @@ public class Create extends MmuCall {
 
   @Override
   protected int targetId() {
-    return this.hub.romLex().getSortedCfiByCfi(this.cfi);
+    return this.hub.romLex().getCfiByMetadata(this.contract);
+  }
+
+  @Override
+  public void updateContractMetadata(ContractMetadata metadata) {
+    this.contract = metadata;
   }
 }

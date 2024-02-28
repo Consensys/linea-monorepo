@@ -40,6 +40,7 @@ import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlp_txn.Trace;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -108,8 +109,8 @@ public class RlpTxn implements Module {
   @Override
   public void traceStartTx(WorldView worldView, Transaction tx) {
     // Contract Creation
-    if (tx.getTo().isEmpty() && !tx.getInit().orElseThrow().isEmpty()) {
-      this.chunkList.add(new RlpTxnChunk(tx, true, romLex.codeIdentifierBeforeLexOrder));
+    if (tx.getTo().isEmpty() && !tx.getInit().get().isEmpty()) {
+      this.chunkList.add(new RlpTxnChunk(tx, true));
     }
 
     // Call to a non-empty smart contract
@@ -124,8 +125,7 @@ public class RlpTxn implements Module {
     }
   }
 
-  public void traceChunk(RlpTxnChunk chunk, int absTxNum, int codeFragmentIndex, Trace trace) {
-
+  public void traceChunk(RlpTxnChunk chunk, int absTxNum, Trace trace) {
     // Create the local row storage and specify transaction constant columns
     RlpTxnColumnsValue traceValue = new RlpTxnColumnsValue();
     traceValue.resetDataHiLo();
@@ -133,7 +133,12 @@ public class RlpTxn implements Module {
     traceValue.addrLo = bigIntegerToBytes(BigInteger.ZERO);
     traceValue.absTxNum = absTxNum;
     traceValue.requiresEvmExecution = chunk.requireEvmExecution();
-    traceValue.codeFragmentIndex = codeFragmentIndex;
+    traceValue.codeFragmentIndex =
+        chunk.tx().getTo().isEmpty() && chunk.requireEvmExecution()
+            ? this.romLex.getCfiByMetadata(
+                ContractMetadata.underDeployment(
+                    Address.contractAddress(chunk.tx().getSender(), chunk.tx().getNonce()), 1))
+            : 0;
     traceValue.txType = getTxTypeAsInt(chunk.tx().getType());
 
     // Initialise RLP_LT and RLP_LX byte size + verify that we construct the right RLP
@@ -1208,8 +1213,7 @@ public class RlpTxn implements Module {
     int absTxNum = 0;
     for (RlpTxnChunk chunk : this.chunkList) {
       absTxNum += 1;
-      final int codeFragmentIndex = chunk.id().map(romLex::getSortedCfiByCfi).orElse(0);
-      traceChunk(chunk, absTxNum, codeFragmentIndex, trace);
+      traceChunk(chunk, absTxNum, trace);
     }
   }
 }

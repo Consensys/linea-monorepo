@@ -15,6 +15,13 @@
 
 package net.consensys.linea.zktracer.module.romLex;
 
+import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_INVALID;
+import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_JUMPDEST;
+import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_PUSH1;
+import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_PUSH32;
+import static net.consensys.linea.zktracer.module.romLex.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.romLex.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.module.romLex.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.EqualsAndHashCode;
@@ -25,33 +32,23 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.rom.Trace;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class RomChunk extends ModuleOperation {
-  private static final int LLARGE = 16;
-  private static final Bytes BYTES_LLARGE = Bytes.of(LLARGE);
-  private static final int LLARGE_MO = 15;
-  private static final Bytes BYTES_LLARGE_MO = Bytes.of(LLARGE_MO);
-  private static final int EVM_WORD_MO = 31;
-  private static final Bytes BYTES_EVW_WORD_MO = Bytes.of(EVM_WORD_MO);
-  private static final int PUSH_1 = 0x60;
-  private static final int PUSH_32 = 0x7f;
-  private static final UnsignedByte INVALID = UnsignedByte.of(0xFE);
-  private static final int JUMPDEST = 0x5b;
+  private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
+  private static final UnsignedByte BYTES_LLARGEMO = UnsignedByte.of(LLARGEMO);
+  private static final UnsignedByte BYTES_EVW_WORDMO = UnsignedByte.of(WORD_SIZE_MO);
 
-  @EqualsAndHashCode.Include private final int id;
-  private final Address address;
-  private final int deploymentNumber;
-  private final boolean deploymentStatus;
+  @EqualsAndHashCode.Include private final ContractMetadata metadata;
   private final boolean readFromTheState;
   private final boolean commitToTheState;
   private final Bytes byteCode;
 
   public void trace(Trace trace, int cfi, int cfiInfty) {
+    // WARN this is the tracing used by the ROM, not by the ROMLEX
     final int chunkRowSize = this.lineCount();
     final int codeSize = this.byteCode().size();
     final int nLimbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
@@ -72,43 +69,44 @@ public final class RomChunk extends ModuleOperation {
 
       // Fill Generic columns
       trace
-          .codeFragmentIndex(Bytes.ofUnsignedInt(cfi))
-          .codeFragmentIndexInfty(Bytes.ofUnsignedInt(cfiInfty))
-          .programmeCounter(Bytes.ofUnsignedInt(i))
-          .limb(dataPadded.slice(sliceNumber * LLARGE, LLARGE))
-          .codeSize(Bytes.ofUnsignedInt(codeSize))
+          .codeFragmentIndex(cfi)
+          .codeFragmentIndexInfty(cfiInfty)
+          .programCounter(i)
+          .limb(dataPadded.slice(sliceNumber * Trace.LLARGE, Trace.LLARGE))
+          .codeSize(codeSize)
           .paddedBytecodeByte(UnsignedByte.of(dataPadded.get(i)))
           .acc(dataPadded.slice(sliceNumber * LLARGE, (i % LLARGE) + 1))
           .codesizeReached(codeSizeReached)
-          .index(Bytes.ofUnsignedInt(sliceNumber));
+          .index(sliceNumber);
 
       // Fill CT, CTmax nBYTES, nBYTES_ACC
       if (sliceNumber < nLimbSlice) {
-        trace.counter(Bytes.of(i % LLARGE)).counterMax(BYTES_LLARGE_MO);
+        trace.counter(UnsignedByte.of(i % LLARGE)).counterMax(BYTES_LLARGEMO);
         if (sliceNumber < nLimbSlice - 1) {
-          trace.nBytes(BYTES_LLARGE).nBytesAcc(Bytes.of((i % LLARGE) + 1));
+          trace.nBytes(BYTES_LLARGE).nBytesAcc(UnsignedByte.of((i % LLARGE) + 1));
         }
         if (sliceNumber == nLimbSlice - 1) {
           trace
-              .nBytes(Bytes.of(nBytesLastRow))
-              .nBytesAcc(Bytes.of(Math.min(nBytesLastRow, (i % LLARGE) + 1)));
+              .nBytes(UnsignedByte.of(nBytesLastRow))
+              .nBytesAcc(UnsignedByte.of(Math.min(nBytesLastRow, (i % LLARGE) + 1)));
         }
       } else if (sliceNumber == nLimbSlice || sliceNumber == nLimbSlice + 1) {
         trace
-            .counter(Bytes.of(i - nLimbSlice * LLARGE))
-            .counterMax(BYTES_EVW_WORD_MO)
-            .nBytes(Bytes.EMPTY)
-            .nBytesAcc(Bytes.EMPTY);
+            .counter(UnsignedByte.of(i - nLimbSlice * LLARGE))
+            .counterMax(BYTES_EVW_WORDMO)
+            .nBytes(UnsignedByte.ZERO)
+            .nBytesAcc(UnsignedByte.ZERO);
       }
 
       // Deal when not in a PUSH instruction
       if (pushParameter == 0) {
         UnsignedByte opCode = UnsignedByte.of(dataPadded.get(i));
-        final boolean isPush = PUSH_1 <= opCode.toInteger() && opCode.toInteger() <= PUSH_32;
+        final boolean isPush =
+            EVM_INST_PUSH1 <= opCode.toInteger() && opCode.toInteger() <= EVM_INST_PUSH32;
 
         // The OpCode is a PUSH instruction
         if (isPush) {
-          pushParameter = opCode.toInteger() - PUSH_1 + 1;
+          pushParameter = opCode.toInteger() - EVM_INST_PUSH1 + 1;
           if (pushParameter > LLARGE) {
             pushValueHigh = dataPadded.slice(i + 1, pushParameter - LLARGE);
             pushValueLow = dataPadded.slice(i + 1 + pushParameter - LLARGE, LLARGE);
@@ -121,13 +119,13 @@ public final class RomChunk extends ModuleOperation {
             .isPush(isPush)
             .isPushData(false)
             .opcode(opCode)
-            .pushParameter(Bytes.ofUnsignedShort(pushParameter))
-            .counterPush(Bytes.EMPTY)
+            .pushParameter(UnsignedByte.of(pushParameter))
+            .counterPush(UnsignedByte.ZERO)
             .pushValueAcc(Bytes.EMPTY)
-            .pushValueHigh(pushValueHigh)
-            .pushValueLow(pushValueLow)
+            .pushValueHi(pushValueHigh)
+            .pushValueLo(pushValueLow)
             .pushFunnelBit(false)
-            .validJumpDestination(opCode.toInteger() == JUMPDEST);
+            .isJumpdest(opCode.toInteger() == EVM_INST_JUMPDEST);
       }
       // Deal when in a PUSH instruction
       else {
@@ -135,13 +133,13 @@ public final class RomChunk extends ModuleOperation {
         trace
             .isPush(false)
             .isPushData(true)
-            .opcode(INVALID)
-            .pushParameter(Bytes.ofUnsignedShort(pushParameter))
-            .pushValueHigh(pushValueHigh)
-            .pushValueLow(pushValueLow)
-            .counterPush(Bytes.of(ctPush))
+            .opcode(UnsignedByte.of(EVM_INST_INVALID))
+            .pushParameter(UnsignedByte.of(pushParameter))
+            .pushValueHi(pushValueHigh)
+            .pushValueLo(pushValueLow)
+            .counterPush(UnsignedByte.of(ctPush))
             .pushFunnelBit(pushParameter > LLARGE && ctPush > pushParameter - LLARGE)
-            .validJumpDestination(false);
+            .isJumpdest(false);
 
         if (pushParameter <= LLARGE) {
           trace.pushValueAcc(pushValueLow.slice(0, ctPush));
@@ -168,6 +166,7 @@ public final class RomChunk extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
+    // WARN this is the line count used by the ROM, not by the ROMLEX
     final int nPaddingRow = 32;
     final int codeSize = this.byteCode.size();
     final int nbSlice = (codeSize + (LLARGE - 1)) / LLARGE;

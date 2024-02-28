@@ -22,13 +22,13 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Stream;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
 import net.consensys.linea.zktracer.module.romLex.RomLex;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
@@ -39,7 +39,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
-import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -111,15 +110,7 @@ public class TxnData implements Module {
 
   @Override
   public void traceStartTx(WorldView worldView, Transaction tx) {
-    int codeIdBeforeLex = 0;
-    if ((tx.getTo().isEmpty() && tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()
-        || tx.getTo().isPresent()
-            && Optional.ofNullable(worldView.get(tx.getTo().orElseThrow()))
-                .map(AccountState::hasCode)
-                .orElse(false))) {
-      codeIdBeforeLex = this.romLex.codeIdentifierBeforeLexOrder;
-    }
-    this.currentBlock().captureTx(codeIdBeforeLex, worldView, tx);
+    this.currentBlock().captureTx(worldView, tx);
   }
 
   @Override
@@ -456,7 +447,9 @@ public class TxnData implements Module {
     final EWord to = EWord.of(tx.to());
     final EWord coinbase = EWord.of(block.getCoinbaseAddress());
     final int codeFragmentIndex =
-        tx.codeIdBeforeLex() == 0 ? 0 : this.romLex.getSortedCfiByCfi(tx.codeIdBeforeLex());
+        tx.isDeployment() && tx.requiresEvmExecution()
+            ? this.romLex.getCfiByMetadata(ContractMetadata.underDeployment(tx.to(), 1))
+            : 0;
     final List<BigInteger> outgoingHis = setOutgoingHisAndLos(tx).get(0);
     final List<BigInteger> outgoingLos = setOutgoingHisAndLos(tx).get(1);
     final List<Bytes16> wcpArgOneLo = setWcpArgumentOne(tx);

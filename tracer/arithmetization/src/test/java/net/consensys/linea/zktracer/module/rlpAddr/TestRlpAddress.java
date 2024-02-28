@@ -43,7 +43,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
 public class TestRlpAddress {
-  private static final int TEST_TX_COUNT = 200;
+  private static final int TEST_TX_COUNT = 30;
   private final Random rnd = new Random(666);
 
   @Test

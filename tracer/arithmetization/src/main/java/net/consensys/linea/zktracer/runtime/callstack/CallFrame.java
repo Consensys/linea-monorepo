@@ -24,6 +24,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
+import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
@@ -226,6 +227,15 @@ public class CallFrame {
     }
 
     return Optional.of(this.childFrames.get(this.childFrames.size() - 1));
+  }
+
+  /**
+   * Returns a {@link ContractMetadata} instance representing the executed contract.
+   *
+   * @return the executed contract metadata
+   */
+  public ContractMetadata metadata() {
+    return ContractMetadata.make(this.codeAddress, this.codeDeploymentNumber, this.underDeployment);
   }
 
   private void revertChildren(CallStack callStack, int stamp) {
