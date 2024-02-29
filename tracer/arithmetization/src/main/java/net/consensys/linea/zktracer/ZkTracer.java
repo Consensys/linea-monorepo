@@ -16,18 +16,23 @@
 package net.consensys.linea.zktracer;
 
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
+import java.io.StringWriter;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.zktracer.module.Module;
@@ -62,6 +67,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   private final Optional<Pin55> pin55;
   private final Map<String, Integer> spillings = new HashMap<>();
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
+  /** Accumulate all the exceptions that happened at tracing time. */
+  @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
 
   public ZkTracer() {
     this(LineaL1L2BridgeConfiguration.EMPTY);
@@ -122,6 +129,8 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   }
 
   public void writeToFile(final Path filename) {
+    maybeThrowTracingExceptions();
+
     final List<Module> modules = this.hub.getModulesToTrace();
     final List<ColumnHeader> traceMap =
         modules.stream().flatMap(m -> m.columnsHeaders().stream()).toList();
@@ -157,39 +166,67 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   @Override
   public void traceStartConflation(final long numBlocksInConflation) {
-    hub.traceStartConflation(numBlocksInConflation);
-    this.pin55.ifPresent(x -> x.traceStartConflation(numBlocksInConflation));
+    try {
+      hub.traceStartConflation(numBlocksInConflation);
+      this.pin55.ifPresent(x -> x.traceStartConflation(numBlocksInConflation));
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void traceEndConflation(final WorldView state) {
-    this.hub.traceEndConflation(state);
-    this.pin55.ifPresent(Pin55::traceEndConflation);
+    try {
+      this.hub.traceEndConflation(state);
+      this.pin55.ifPresent(Pin55::traceEndConflation);
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
+
+    if (!this.tracingExceptions.isEmpty()) {
+      throw new TracingExceptions(this.tracingExceptions);
+    }
   }
 
   @Override
   public void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {
-    this.hub.traceStartBlock(processableBlockHeader);
-    this.pin55.ifPresent(Pin55::traceEndConflation);
+    try {
+      this.hub.traceStartBlock(processableBlockHeader);
+      this.pin55.ifPresent(Pin55::traceEndConflation);
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    this.hub.traceStartBlock(blockHeader);
-    this.pin55.ifPresent(x -> x.traceStartBlock(blockHeader, blockBody));
+    try {
+      this.hub.traceStartBlock(blockHeader);
+      this.pin55.ifPresent(x -> x.traceStartBlock(blockHeader, blockBody));
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    this.hub.traceEndBlock(blockHeader, blockBody);
-    this.pin55.ifPresent(Pin55::traceEndBlock);
+    try {
+      this.hub.traceEndBlock(blockHeader, blockBody);
+      this.pin55.ifPresent(Pin55::traceEndBlock);
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void tracePrepareTransaction(WorldView worldView, Transaction transaction) {
-    hashOfLastTransactionTraced = transaction.getHash();
-    this.pin55.ifPresent(x -> x.tracePrepareTx(worldView, transaction));
-    this.hub.traceStartTx(worldView, transaction);
+    try {
+      hashOfLastTransactionTraced = transaction.getHash();
+      this.pin55.ifPresent(x -> x.tracePrepareTx(worldView, transaction));
+      this.hub.traceStartTx(worldView, transaction);
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
@@ -201,23 +238,35 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       List<Log> logs,
       long gasUsed,
       long timeNs) {
-    this.pin55.ifPresent(x -> x.traceEndTx(worldView, tx, status, output, logs, gasUsed));
-    this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
+    try {
+      this.pin55.ifPresent(x -> x.traceEndTx(worldView, tx, status, output, logs, gasUsed));
+      this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void tracePreExecution(final MessageFrame frame) {
     if (frame.getCode().getSize() > 0) {
-      this.hub.tracePreOpcode(frame);
-      this.pin55.ifPresent(x -> x.tracePreOpcode(frame));
+      try {
+        this.hub.tracePreOpcode(frame);
+        this.pin55.ifPresent(x -> x.tracePreOpcode(frame));
+      } catch (final Exception e) {
+        this.tracingExceptions.add(e);
+      }
     }
   }
 
   @Override
   public void tracePostExecution(MessageFrame frame, Operation.OperationResult operationResult) {
     if (frame.getCode().getSize() > 0) {
-      this.hub.tracePostExecution(frame, operationResult);
-      this.pin55.ifPresent(x -> x.tracePostOpcode(frame, operationResult));
+      try {
+        this.hub.tracePostExecution(frame, operationResult);
+        this.pin55.ifPresent(x -> x.tracePostOpcode(frame, operationResult));
+      } catch (final Exception e) {
+        this.tracingExceptions.add(e);
+      }
     }
   }
 
@@ -226,21 +275,33 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     // We only want to trigger on creation of new contexts, not on re-entry in
     // existing contexts
     if (frame.getState() == MessageFrame.State.NOT_STARTED) {
-      this.hub.traceContextEnter(frame);
-      this.pin55.ifPresent(x -> x.traceContextEnter(frame));
+      try {
+        this.hub.traceContextEnter(frame);
+        this.pin55.ifPresent(x -> x.traceContextEnter(frame));
+      } catch (final Exception e) {
+        this.tracingExceptions.add(e);
+      }
     }
   }
 
   @Override
   public void traceContextReEnter(MessageFrame frame) {
-    this.hub.traceContextReEnter(frame);
-    this.pin55.ifPresent(x -> x.traceContextReEnter(frame));
+    try {
+      this.hub.traceContextReEnter(frame);
+      this.pin55.ifPresent(x -> x.traceContextReEnter(frame));
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   @Override
   public void traceContextExit(MessageFrame frame) {
-    this.hub.traceContextExit(frame);
-    this.pin55.ifPresent(x -> x.traceContextExit(frame));
+    try {
+      this.hub.traceContextExit(frame);
+      this.pin55.ifPresent(x -> x.traceContextExit(frame));
+    } catch (final Exception e) {
+      this.tracingExceptions.add(e);
+    }
   }
 
   /** When called, erase all tracing related to the last included transaction. */
@@ -250,7 +311,14 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
   }
 
+  private void maybeThrowTracingExceptions() {
+    if (!this.tracingExceptions.isEmpty()) {
+      throw new TracingExceptions(this.tracingExceptions);
+    }
+  }
+
   public Map<String, Integer> getModulesLineCount() {
+    maybeThrowTracingExceptions();
     final HashMap<String, Integer> modulesLineCount = new HashMap<>();
     hub.getModulesToCount()
         .forEach(
@@ -267,5 +335,69 @@ public class ZkTracer implements ConflationAwareOperationTracer {
                                             + " not found in spillings.toml"))));
     modulesLineCount.put("BLOCK_TX", hub.cumulatedTxCount());
     return modulesLineCount;
+  }
+
+  /** Gather all and any exception that happened during tracing under a common umbrella. */
+  @Getter
+  @RequiredArgsConstructor
+  private static class TracingExceptions extends RuntimeException {
+    private final List<Exception> tracingExceptions;
+
+    @Override
+    public String getMessage() {
+      final StringBuilder msg = new StringBuilder("Exceptions triggered while tracing:\n");
+      for (final Exception e : tracingExceptions) {
+        msg.append("  - ").append(e.getMessage()).append("\n");
+      }
+      return msg.toString();
+    }
+
+    @Override
+    public void printStackTrace(PrintStream s) {
+      for (final Exception e : this.tracingExceptions) {
+        e.printStackTrace(s);
+      }
+    }
+
+    @Override
+    public String toString() {
+      StringWriter stringWriter = new StringWriter();
+      PrintWriter s = new PrintWriter(stringWriter);
+      for (final Exception e : this.tracingExceptions) {
+        s.append("\n");
+        e.printStackTrace(s);
+      }
+      return stringWriter.toString();
+    }
+  }
+
+  /** An {@link ArrayList} with an upper bound on the number of element it can store. */
+  @RequiredArgsConstructor
+  private static class FiniteList<T> extends ArrayList<T> {
+    /** The maximal number of elements in this list. */
+    private final int maxLength;
+
+    @Override
+    public void add(int index, T element) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends T> c) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean addAll(int index, Collection<? extends T> c) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean add(T t) {
+      if (this.size() < this.maxLength) {
+        return super.add(t);
+      }
+      return false;
+    }
   }
 }

@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.transients;
 import static net.consensys.linea.zktracer.module.UtilCalculator.allButOneSixtyFourth;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
@@ -28,6 +29,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 /** This class provides facilities to access data that are opcode-lived. */
+@Slf4j
 @RequiredArgsConstructor
 public class OperationAncillaries {
   private final Hub hub;
@@ -188,6 +190,18 @@ public class OperationAncillaries {
    */
   public Bytes returnData() {
     final MemorySpan returnDataSegment = returnDataSegment();
+
+    // Accesses to huge offset with 0-length are valid
+    if (returnDataSegment.isEmpty()) {
+      return Bytes.EMPTY;
+    }
+
+    // Besu is limited to i32 for memory offset/length
+    if (returnDataSegment.besuOverflow()) {
+      log.warn("Overflowing memory access: {}", returnDataSegment);
+      return Bytes.EMPTY;
+    }
+
     return hub.messageFrame()
         .shadowReadMemory(returnDataSegment.offset(), returnDataSegment.length());
   }
