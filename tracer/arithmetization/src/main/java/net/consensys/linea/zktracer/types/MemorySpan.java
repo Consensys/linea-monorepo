@@ -61,4 +61,13 @@ public record MemorySpan(long offset, long length) {
   public long absolute() {
     return this.offset;
   }
+
+  public boolean besuOverflow() {
+    return this.offset >= Integer.MAX_VALUE || this.length >= Integer.MAX_VALUE;
+  }
+
+  @Override
+  public String toString() {
+    return "[%d ..+ %d]".formatted(offset, length);
+  }
 }
