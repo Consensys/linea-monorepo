@@ -34,6 +34,21 @@ import org.hyperledger.besu.evm.internal.Words;
 public class OperationAncillaries {
   private final Hub hub;
 
+  private static Bytes maybeShadowReadMemory(final MemorySpan span, final MessageFrame frame) {
+    // Accesses to huge offset with 0-length are valid
+    if (span.isEmpty()) {
+      return Bytes.EMPTY;
+    }
+
+    // Besu is limited to i32 for memory offset/length
+    if (span.besuOverflow()) {
+      log.warn("Overflowing memory access: {}", span);
+      return Bytes.EMPTY;
+    }
+
+    return frame.shadowReadMemory(span.offset(), span.length());
+  }
+
   /**
    * Compute the gas allowance for the child context if in a CALL, throws otherwise.
    *
@@ -106,7 +121,7 @@ public class OperationAncillaries {
    */
   public Bytes callData() {
     final MemorySpan callDataSegment = callDataSegment();
-    return hub.messageFrame().shadowReadMemory(callDataSegment.offset(), callDataSegment.length());
+    return maybeShadowReadMemory(callDataSegment, hub.messageFrame());
   }
 
   /**
@@ -117,7 +132,7 @@ public class OperationAncillaries {
    */
   public static Bytes callData(final MessageFrame frame) {
     final MemorySpan callDataSegment = callDataSegment(frame);
-    return frame.shadowReadMemory(callDataSegment.offset(), callDataSegment.length());
+    return maybeShadowReadMemory(callDataSegment, frame);
   }
 
   /**
@@ -202,8 +217,7 @@ public class OperationAncillaries {
       return Bytes.EMPTY;
     }
 
-    return hub.messageFrame()
-        .shadowReadMemory(returnDataSegment.offset(), returnDataSegment.length());
+    return maybeShadowReadMemory(returnDataSegment, hub.messageFrame());
   }
 
   /**
@@ -215,6 +229,24 @@ public class OperationAncillaries {
    */
   public static Bytes returnData(final MessageFrame frame) {
     final MemorySpan returnDataSegment = returnDataSegment(frame);
-    return frame.shadowReadMemory(returnDataSegment.offset(), returnDataSegment.length());
+    return maybeShadowReadMemory(returnDataSegment, frame);
+  }
+
+  public static MemorySpan logDataSegment(final MessageFrame frame) {
+    long offset = Words.clampedToLong(frame.getStackItem(0));
+    long length = Words.clampedToLong(frame.getStackItem(1));
+    return MemorySpan.fromStartLength(offset, length);
+  }
+
+  public MemorySpan logDataSegment() {
+    return logDataSegment(this.hub.messageFrame());
+  }
+
+  public static Bytes logData(final MessageFrame frame) {
+    return maybeShadowReadMemory(logDataSegment(frame), frame);
+  }
+
+  public Bytes logData() {
+    return logData(this.hub.messageFrame());
   }
 }

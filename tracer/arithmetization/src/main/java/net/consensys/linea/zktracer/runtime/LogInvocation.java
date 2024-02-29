@@ -22,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
 public class LogInvocation {
@@ -33,9 +32,7 @@ public class LogInvocation {
 
   public static int forOpcode(final Hub hub) {
     final List<Bytes> topics = new ArrayList<>(4);
-    final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(0));
-    final long size = Words.clampedToLong(hub.messageFrame().getStackItem(1));
-    final Bytes payload = hub.messageFrame().shadowReadMemory(offset, size);
+    final Bytes payload = hub.transients().op().logData();
     switch (hub.opCode()) {
       case LOG0 -> {}
       case LOG1 -> topics.add(hub.messageFrame().getStackItem(2));
