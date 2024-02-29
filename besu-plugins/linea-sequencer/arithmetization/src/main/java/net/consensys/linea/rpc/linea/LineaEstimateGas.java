@@ -23,6 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
+import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.apache.tuweni.bytes.Bytes;
@@ -65,6 +66,7 @@ public class LineaEstimateGas {
   private final BesuConfiguration besuConfiguration;
   private final TransactionSimulationService transactionSimulationService;
   private final BlockchainService blockchainService;
+  private LineaRpcConfiguration rpcConfiguration;
   private LineaTransactionValidatorConfiguration txValidatorConf;
   private LineaTransactionSelectorConfiguration txSelectorConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
@@ -79,8 +81,10 @@ public class LineaEstimateGas {
   }
 
   public void init(
+      LineaRpcConfiguration rpcConfiguration,
       final LineaTransactionValidatorConfiguration transactionValidatorConfiguration,
       final LineaTransactionSelectorConfiguration transactionSelectorConfiguration) {
+    this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.txSelectorConf = transactionSelectorConfiguration;
     this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(txSelectorConf);
@@ -108,7 +112,7 @@ public class LineaEstimateGas {
         .log();
     final var estimatedGasUsed = estimateGasUsed(callParameters, transaction, minGasPrice);
 
-    final Wei estimatedPriorityFee =
+    final Wei profitablePriorityFee =
         txProfitabilityCalculator.profitablePriorityFeePerGas(
             transaction, minGasPrice, estimatedGasUsed);
 
@@ -117,26 +121,35 @@ public class LineaEstimateGas {
             .getNextBlockBaseFee()
             .orElseThrow(() -> new IllegalStateException("Not on a baseFee market"));
 
-    final Wei priorityFeeLowerBound = minGasPrice.subtract(baseFee);
-    final Wei boundedEstimatedPriorityFee;
-    if (estimatedPriorityFee.lessThan(priorityFeeLowerBound)) {
-      boundedEstimatedPriorityFee = priorityFeeLowerBound;
-      log.atDebug()
-          .setMessage(
-              "Estimated priority fee {} is lower that the lower bound {}, returning the latter")
-          .addArgument(estimatedPriorityFee::toHumanReadableString)
-          .addArgument(boundedEstimatedPriorityFee::toHumanReadableString)
-          .log();
-    } else {
-      boundedEstimatedPriorityFee = estimatedPriorityFee;
-    }
+    final Wei estimatedPriorityFee =
+        getEstimatedPriorityFee(baseFee, profitablePriorityFee, minGasPrice);
 
     final var response =
-        new Response(
-            create(estimatedGasUsed), create(baseFee), create(boundedEstimatedPriorityFee));
+        new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
     log.debug("Response for call params {} is {}", callParameters, response);
 
     return response;
+  }
+
+  private Wei getEstimatedPriorityFee(
+      final Wei baseFee, final Wei profitablePriorityFee, final Wei minGasPrice) {
+    final Wei priorityFeeLowerBound = minGasPrice.subtract(baseFee);
+
+    if (rpcConfiguration.estimateGasCompatibilityModeEnabled()) {
+      return priorityFeeLowerBound;
+    }
+
+    if (profitablePriorityFee.greaterOrEqualThan(priorityFeeLowerBound)) {
+      return profitablePriorityFee;
+    }
+
+    log.atDebug()
+        .setMessage(
+            "Estimated priority fee {} is lower that the lower bound {}, returning the latter")
+        .addArgument(profitablePriorityFee::toHumanReadableString)
+        .addArgument(priorityFeeLowerBound::toHumanReadableString)
+        .log();
+    return priorityFeeLowerBound;
   }
 
   private Long estimateGasUsed(
@@ -226,7 +239,9 @@ public class LineaEstimateGas {
                               high = mid;
                               log.trace(
                                   "Binary gas estimation search low={},med={},high={}, successful, call params {}",
-                                  lowGasEstimation,
+                                  low,
+                                  mid,
+                                  high,
                                   callParameters);
                             }
                           }
