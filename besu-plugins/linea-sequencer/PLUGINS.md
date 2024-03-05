@@ -1,4 +1,35 @@
-# Linea plugins 
+# Linea plugins
+
+## Shared components
+### Profitability calculator
+The profitability calculator is a shared component, that is used to check if a tx is profitable.
+It is applied, with different configuration to:
+1. `linea_estimateGas` endpoint
+2. Tx validation for the txpool
+3. Tx selection during block creation
+
+#### CLI Options
+
+| Option Name              | Default Value | Command Line Argument                     |
+|--------------------------|---------------|-------------------------------------------|
+| L1_VERIFICATION_GAS_COST | 1_200_000     | `--plugin-linea-verification-gas-cost`    |
+| L1_VERIFICATION_CAPACITY | 90_000        | `--plugin-linea-verification-capacity`    |
+| L1_L2_GAS_PRICE_RATIO    | 15            | `--plugin-linea-gas-price-ratio`          |
+| L2_GAS_PRICE_ADJUSTMENT  | 0 wei         | `--plugin-linea-gas-price-adjustment`     |
+| MIN_MARGIN               | 1.0           | `--plugin-linea-min-margin`               |
+| ESTIMATE_GAS_MIN_MARGIN  | 1.0           | `--plugin-linea-estimate-gas-min-margin`  |
+| TX_POOL_MIN_MARGIN       | 0.5           | `--plugin-linea-tx-pool-min-margin`       |
+| UNPROFITABLE_CACHE_SIZE  | 100_000       | `--plugin-linea-unprofitable-cache-size`  |
+| UNPROFITABLE_RETRY_LIMIT | 10            | `--plugin-linea-unprofitable-retry-limit` |
+
+### L1 L2 Bridge
+
+#### CLI Options
+
+| Option Name                  | Default Value | Command Line Argument                       |
+|------------------------------|---------------|---------------------------------------------|
+| L1L2_BRIDGE_CONTRACT_ADDRESS |               | `--plugin-linea-l1l2-bridge-contract`       |
+| L1L2_BRIDGE_LOG_TOPIC        |               | `--plugin-linea-l1l2-bridge-topic`          |
 
 ## Sequencer
 ### Transaction Selection - LineaTransactionSelectorPlugin
@@ -11,19 +42,12 @@ of a transaction.
 
 #### CLI Options
 
-| Option Name              | Default Value | Command Line Argument                  |
-|--------------------------|---------|----------------------------------------|
-| MAX_BLOCK_CALLDATA_SIZE  | 70000   | `--plugin-linea-max-block-calldata-size` |
-| MODULE_LIMIT_FILE_PATH   | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path` |
-| OVER_LINE_COUNT_LIMIT_CACHE_SIZE | 10_000 | `--plugin-linea-over-line-count-limit-cache-size` |
-| MAX_GAS_PER_BLOCK        | 30_000_000L | `--plugin-linea-max-block-gas`         |
-| L1_VERIFICATION_GAS_COST | 1_200_000 | `--plugin-linea-verification-gas-cost` |
-| L1_VERIFICATION_CAPACITY | 90_000  | `--plugin-linea-verification-capacity` |
-| L1_L2_GAS_PRICE_RATIO    | 15      | `--plugin-linea-gas-price-ratio`       |
-| MIN_MARGIN               | 1.0     | `--plugin-linea-min-margin`  |
-| ADJUST_TX_SIZE           | -45     | `--plugin-linea-adjust-tx-size`        |
-| UNPROFITABLE_CACHE_SIZE  | 100_000 | `--plugin-linea-unprofitable-cache-size`  |
-| UNPROFITABLE_RETRY_LIMIT | 10      | `--plugin-linea-unprofitable-retry-limit` |
+| Option Name                      | Default Value        | Command Line Argument                             |
+|----------------------------------|----------------------|---------------------------------------------------|
+| MAX_BLOCK_CALLDATA_SIZE          | 70000                | `--plugin-linea-max-block-calldata-size`          |
+| MODULE_LIMIT_FILE_PATH           | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path`           |
+| OVER_LINE_COUNT_LIMIT_CACHE_SIZE | 10_000               | `--plugin-linea-over-line-count-limit-cache-size` |
+| MAX_GAS_PER_BLOCK                | 30_000_000L          | `--plugin-linea-max-block-gas`                    |
 
 
 ### Transaction validation - LineaTransactionValidatorPlugin
@@ -35,13 +59,22 @@ that are not allowed to add transactions to the pool.
 
 #### CLI Options
 
-| Option Name | Default Value | Command Line Argument |
-| --- | --- | --- |
-| DENY_LIST_PATH | lineaDenyList.txt | `--plugin-linea-deny-list-path` |
-| MAX_TX_GAS_LIMIT_OPTION | 30_000_000 | `--plugin-linea-max-tx-gas-limit` |
-| MAX_TX_CALLDATA_SIZE | 60_000 | `--plugin-linea-max-tx-calldata-size` |
+| Option Name             | Default Value     | Command Line Argument                 |
+|-------------------------|-------------------|---------------------------------------|
+| DENY_LIST_PATH          | lineaDenyList.txt | `--plugin-linea-deny-list-path`       |
+| MAX_TX_GAS_LIMIT_OPTION | 30_000_000        | `--plugin-linea-max-tx-gas-limit`     |
+| MAX_TX_CALLDATA_SIZE    | 60_000            | `--plugin-linea-max-tx-calldata-size` |
 
 ## RPC
+
+### Linea Estimate Gas
+#### `linea_estimateGas`
+
+This endpoint simulates a transaction and returns the estimated gas used ( as the standard `eth_estimateGas`) plus the estimated gas price to be used when submitting the tx. 
+
+#### Parameters
+
+same as `eth_estimateGas`
 
 ### Counters - CountersEndpointServicePlugin
 #### `rollup_getTracesCountersByBlockNumberV0` 

@@ -23,8 +23,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
@@ -68,7 +68,7 @@ public class LineaEstimateGas {
   private final BlockchainService blockchainService;
   private LineaRpcConfiguration rpcConfiguration;
   private LineaTransactionValidatorConfiguration txValidatorConf;
-  private LineaTransactionSelectorConfiguration txSelectorConf;
+  private LineaProfitabilityConfiguration profitabilityConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
 
   public LineaEstimateGas(
@@ -83,11 +83,11 @@ public class LineaEstimateGas {
   public void init(
       LineaRpcConfiguration rpcConfiguration,
       final LineaTransactionValidatorConfiguration transactionValidatorConfiguration,
-      final LineaTransactionSelectorConfiguration transactionSelectorConfiguration) {
+      final LineaProfitabilityConfiguration profitabilityConf) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
-    this.txSelectorConf = transactionSelectorConfiguration;
-    this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(txSelectorConf);
+    this.profitabilityConf = profitabilityConf;
+    this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
   }
 
   public String getNamespace() {
@@ -114,7 +114,7 @@ public class LineaEstimateGas {
 
     final Wei profitablePriorityFee =
         txProfitabilityCalculator.profitablePriorityFeePerGas(
-            transaction, minGasPrice, estimatedGasUsed);
+            transaction, profitabilityConf.estimateGasMinMargin(), minGasPrice, estimatedGasUsed);
 
     final Wei baseFee =
         blockchainService

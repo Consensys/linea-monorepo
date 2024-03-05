@@ -87,6 +87,6 @@ public class LineaEndpointServicePlugin extends AbstractLineaRequiredPlugin {
   public void beforeExternalServices() {
     super.beforeExternalServices();
     lineaEstimateGasMethod.init(
-        rpcConfiguration, transactionValidatorConfiguration, transactionSelectorConfiguration);
+        rpcConfiguration, transactionValidatorConfiguration, profitabilityConfiguration);
   }
 }

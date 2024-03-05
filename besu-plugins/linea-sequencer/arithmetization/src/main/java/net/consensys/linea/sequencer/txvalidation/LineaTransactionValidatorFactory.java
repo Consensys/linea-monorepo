@@ -25,18 +25,17 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionValidat
 /** Represents a factory for creating transaction validators. */
 public class LineaTransactionValidatorFactory implements PluginTransactionValidatorFactory {
 
-  private final LineaTransactionValidatorConfiguration transactionValidatorConfiguration;
+  private final LineaTransactionValidatorConfiguration txValidatorConf;
   private final Set<Address> denied;
 
   public LineaTransactionValidatorFactory(
-      final LineaTransactionValidatorConfiguration transactionValidatorConfiguration,
-      final Set<Address> denied) {
-    this.transactionValidatorConfiguration = transactionValidatorConfiguration;
+      final LineaTransactionValidatorConfiguration txValidatorConf, final Set<Address> denied) {
+    this.txValidatorConf = txValidatorConf;
     this.denied = denied;
   }
 
   @Override
   public PluginTransactionValidator create() {
-    return new LineaTransactionValidator(transactionValidatorConfiguration, denied);
+    return new LineaTransactionValidator(txValidatorConf, denied);
   }
 }

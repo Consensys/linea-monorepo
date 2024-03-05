@@ -19,6 +19,7 @@ import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -37,21 +38,28 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   public LineaTransactionSelector(
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
+      final LineaProfitabilityConfiguration profitabilityConfiguration,
       final Map<String, Integer> limitsMap) {
     this.selectors =
-        createTransactionSelectors(txSelectorConfiguration, l1L2BridgeConfiguration, limitsMap);
+        createTransactionSelectors(
+            txSelectorConfiguration,
+            l1L2BridgeConfiguration,
+            profitabilityConfiguration,
+            limitsMap);
   }
 
   /**
    * Creates a list of selectors based on Linea configuration.
    *
    * @param txSelectorConfiguration The configuration to use.
+   * @param profitabilityConfiguration
    * @param limitsMap The limits map.
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
+      final LineaProfitabilityConfiguration profitabilityConfiguration,
       final Map<String, Integer> limitsMap) {
 
     traceLineLimitTransactionSelector =
@@ -61,7 +69,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     return List.of(
         new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),
         new MaxBlockGasTransactionSelector(txSelectorConfiguration.maxGasPerBlock()),
-        new ProfitableTransactionSelector(txSelectorConfiguration),
+        new ProfitableTransactionSelector(txSelectorConfiguration, profitabilityConfiguration),
         traceLineLimitTransactionSelector);
   }
 
