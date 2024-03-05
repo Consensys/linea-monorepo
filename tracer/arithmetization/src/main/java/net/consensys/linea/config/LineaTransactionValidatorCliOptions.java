@@ -80,6 +80,7 @@ public class LineaTransactionValidatorCliOptions {
     final LineaTransactionValidatorCliOptions options = create();
     options.denyListPath = config.denyListPath();
     options.maxTxGasLimit = config.maxTxGasLimit();
+    options.maxTxCallDataSize = config.maxTxCalldataSize();
 
     return options;
   }
@@ -99,6 +100,7 @@ public class LineaTransactionValidatorCliOptions {
     return MoreObjects.toStringHelper(this)
         .add(DENY_LIST_PATH, denyListPath)
         .add(MAX_TX_GAS_LIMIT_OPTION, maxTxGasLimit)
+        .add(MAX_TX_CALLDATA_SIZE, maxTxCallDataSize)
         .toString();
   }
 }

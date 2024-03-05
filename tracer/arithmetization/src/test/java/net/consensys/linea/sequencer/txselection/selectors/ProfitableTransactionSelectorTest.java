@@ -23,6 +23,8 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import net.consensys.linea.config.LineaProfitabilityCliOptions;
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.apache.tuweni.bytes.Bytes;
@@ -43,15 +45,17 @@ public class ProfitableTransactionSelectorTest {
   private static final int VERIFICATION_CAPACITY = 90_000;
   private static final int GAS_PRICE_RATIO = 15;
   private static final double MIN_MARGIN = 1.0;
-  private static final int ADJUST_TX_SIZE = -45;
   private static final int UNPROFITABLE_CACHE_SIZE = 2;
   private static final int UNPROFITABLE_RETRY_LIMIT = 1;
-  private final LineaTransactionSelectorConfiguration conf =
+  private final LineaTransactionSelectorConfiguration txSelectorConf =
       LineaTransactionSelectorCliOptions.create().toDomainObject().toBuilder()
-          .gasPriceRatio(GAS_PRICE_RATIO)
-          .minMargin(MIN_MARGIN)
           .unprofitableCacheSize(UNPROFITABLE_CACHE_SIZE)
           .unprofitableRetryLimit(UNPROFITABLE_RETRY_LIMIT)
+          .build();
+  private final LineaProfitabilityConfiguration profitabilityConf =
+      LineaProfitabilityCliOptions.create().toDomainObject().toBuilder()
+          .gasPriceRatio(GAS_PRICE_RATIO)
+          .minMargin(MIN_MARGIN)
           .verificationCapacity(VERIFICATION_CAPACITY)
           .verificationGasCost(VERIFICATION_GAS_COST)
           .build();
@@ -64,7 +68,7 @@ public class ProfitableTransactionSelectorTest {
   }
 
   private TestableProfitableTransactionSelector newSelectorForNewBlock() {
-    return new TestableProfitableTransactionSelector(conf);
+    return new TestableProfitableTransactionSelector(txSelectorConf, profitabilityConf);
   }
 
   @Test
@@ -447,8 +451,10 @@ public class ProfitableTransactionSelectorTest {
 
   private static class TestableProfitableTransactionSelector extends ProfitableTransactionSelector {
 
-    TestableProfitableTransactionSelector(final LineaTransactionSelectorConfiguration conf) {
-      super(conf);
+    TestableProfitableTransactionSelector(
+        final LineaTransactionSelectorConfiguration txSelectorConf,
+        final LineaProfitabilityConfiguration profitabilityConf) {
+      super(txSelectorConf, profitabilityConf);
     }
 
     boolean isUnprofitableTxCached(final Hash txHash) {

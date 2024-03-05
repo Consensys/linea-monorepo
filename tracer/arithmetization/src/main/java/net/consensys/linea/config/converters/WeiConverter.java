@@ -12,17 +12,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+package net.consensys.linea.config.converters;
 
-package net.consensys.linea.config;
+import java.math.BigInteger;
 
-import lombok.Builder;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Wei;
+import picocli.CommandLine;
 
-/** The Linea transaction selectors configuration. */
-@Builder(toBuilder = true)
-public record LineaTransactionSelectorConfiguration(
-    int maxBlockCallDataSize,
-    String moduleLimitsFilePath,
-    int overLinesLimitCacheSize,
-    long maxGasPerBlock,
-    int unprofitableCacheSize,
-    int unprofitableRetryLimit) {}
+public class WeiConverter implements CommandLine.ITypeConverter<Bytes> {
+  @Override
+  public Bytes convert(final String s) throws Exception {
+    return Wei.of(new BigInteger(s));
+  }
+}

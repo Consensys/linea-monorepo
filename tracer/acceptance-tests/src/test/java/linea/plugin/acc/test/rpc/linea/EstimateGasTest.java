@@ -24,7 +24,8 @@ import java.util.List;
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
-import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
+import net.consensys.linea.config.LineaProfitabilityCliOptions;
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.rpc.linea.LineaEstimateGas;
 import org.apache.tuweni.bytes.Bytes;
@@ -48,6 +49,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
   protected static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
   protected static final int MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
   protected LineaTransactionSelectorConfiguration txSelectorConf;
+  protected LineaProfitabilityConfiguration profitabilityConf;
 
   @Override
   public List<String> getTestCliOptions() {
@@ -71,8 +73,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
   @BeforeEach
   public void createDefaultConfigurations() {
-    txSelectorConf =
-        LineaTransactionSelectorCliOptions.create().toDomainObject().toBuilder()
+    profitabilityConf =
+        LineaProfitabilityCliOptions.create().toDomainObject().toBuilder()
             .verificationCapacity(VERIFICATION_CAPACITY)
             .verificationGasCost(VERIFICATION_GAS_COST)
             .gasPriceRatio(GAS_PRICE_RATIO)
@@ -146,10 +148,11 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final var minGasPrice = minerNode.getMiningParameters().getMinTransactionGasPrice();
 
-    final var profitabilityCalculator = new TransactionProfitabilityCalculator(txSelectorConf);
+    final var profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
 
     final var profitablePriorityFee =
-        profitabilityCalculator.profitablePriorityFeePerGas(tx, minGasPrice, estimatedGasLimit);
+        profitabilityCalculator.profitablePriorityFeePerGas(
+            tx, profitabilityConf.txPoolMinMargin(), minGasPrice, estimatedGasLimit);
 
     assertThat(profitablePriorityFee.greaterThan(minGasPrice)).isTrue();
 
@@ -157,12 +160,9 @@ public class EstimateGasTest extends LineaPluginTestBase {
             profitabilityCalculator.isProfitable(
                 "Test",
                 tx,
-                minerNode
-                    .getMiningParameters()
-                    .getMinTransactionGasPrice()
-                    .getAsBigInteger()
-                    .doubleValue(),
-                estimatedMaxGasPrice.getAsBigInteger().doubleValue(),
+                profitabilityConf.txPoolMinMargin(),
+                minerNode.getMiningParameters().getMinTransactionGasPrice(),
+                estimatedMaxGasPrice,
                 estimatedGasLimit))
         .isTrue();
   }
