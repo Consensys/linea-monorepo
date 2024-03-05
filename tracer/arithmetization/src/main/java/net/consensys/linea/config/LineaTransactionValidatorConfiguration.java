@@ -18,7 +18,7 @@ package net.consensys.linea.config;
 import lombok.Builder;
 
 /**
- * The Linea configuration.
+ * The Linea transaction pool validation configuration.
  *
  * @param denyListPath the path to the file containing the addresses that are denied.
  * @param maxTxGasLimit the maximum gas limit allowed for transactions
