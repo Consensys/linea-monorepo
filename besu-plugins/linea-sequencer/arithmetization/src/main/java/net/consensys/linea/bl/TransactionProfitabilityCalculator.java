@@ -28,12 +28,14 @@ public class TransactionProfitabilityCalculator {
 
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final double preComputedValue;
+  private final double priceAdjustment;
 
   public TransactionProfitabilityCalculator(
       final LineaProfitabilityConfiguration profitabilityConf) {
     this.profitabilityConf = profitabilityConf;
     this.preComputedValue =
         profitabilityConf.gasPriceRatio() * profitabilityConf.verificationGasCost();
+    this.priceAdjustment = profitabilityConf.gasPriceAdjustment().getAsBigInteger().doubleValue();
   }
 
   public Wei profitablePriorityFeePerGas(
@@ -44,15 +46,14 @@ public class TransactionProfitabilityCalculator {
     final double compressedTxSize = getCompressedTxSize(transaction);
 
     final var profitAt =
-        preComputedValue
-            * minMargin
-            * compressedTxSize
-            * minGasPrice.getAsBigInteger().doubleValue()
-            / (gas * profitabilityConf.verificationCapacity());
+        (preComputedValue
+                    * compressedTxSize
+                    * minGasPrice.getAsBigInteger().doubleValue()
+                    / (gas * profitabilityConf.verificationCapacity())
+                + priceAdjustment)
+            * minMargin;
 
-    final var adjustedProfit =
-        Wei.ofNumber(BigDecimal.valueOf(profitAt).toBigInteger())
-            .add(profitabilityConf.gasPriceAdjustment());
+    final var adjustedProfit = Wei.ofNumber(BigDecimal.valueOf(profitAt).toBigInteger());
 
     log.atDebug()
         .setMessage(
