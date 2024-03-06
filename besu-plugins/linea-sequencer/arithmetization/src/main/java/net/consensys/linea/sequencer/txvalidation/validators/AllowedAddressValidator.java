@@ -12,30 +12,21 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-package net.consensys.linea.sequencer.txvalidation;
+package net.consensys.linea.sequencer.txvalidation.validators;
 
 import java.util.Optional;
 import java.util.Set;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
-/**
- * Represents an implementation of a plugin transaction validator, which validates a transaction
- * before it can be added to the transaction pool.
- */
 @Slf4j
 @RequiredArgsConstructor
-public class LineaTransactionValidator implements PluginTransactionPoolValidator {
-  private final LineaTransactionValidatorConfiguration config;
-  private final Set<Address> denied;
-
-  private static final Set<Address> precompiles =
+public class AllowedAddressValidator implements PluginTransactionPoolValidator {
+  private static final Set<Address> PRECOMPILES =
       Set.of(
           Address.fromHexString("0x0000000000000000000000000000000000000001"),
           Address.fromHexString("0x0000000000000000000000000000000000000002"),
@@ -48,22 +39,16 @@ public class LineaTransactionValidator implements PluginTransactionPoolValidator
           Address.fromHexString("0x0000000000000000000000000000000000000009"),
           Address.fromHexString("0x000000000000000000000000000000000000000a"));
 
+  private final Set<Address> denied;
+
   @Override
   public Optional<String> validateTransaction(
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
-    Optional<String> senderError = validateSender(transaction);
-    if (senderError.isPresent()) return senderError;
-
-    Optional<String> recipientError = validateRecipient(transaction);
-    if (recipientError.isPresent()) return recipientError;
-
-    Optional<String> gasLimitError = validateGasLimit(transaction);
-    if (gasLimitError.isPresent()) return gasLimitError;
-
-    Optional<String> calldataError = validateCalldata(transaction);
-    if (calldataError.isPresent()) return calldataError;
-
-    return Optional.empty(); // returning empty indicates that the transaction is valid
+    final var maybeValidSender = validateSender(transaction);
+    if (maybeValidSender.isEmpty()) {
+      return validateRecipient(transaction);
+    }
+    return maybeValidSender;
   }
 
   private Optional<String> validateRecipient(final Transaction transaction) {
@@ -76,7 +61,7 @@ public class LineaTransactionValidator implements PluginTransactionPoolValidator
                 to);
         log.debug(errMsg);
         return Optional.of(errMsg);
-      } else if (precompiles.contains(to)) {
+      } else if (PRECOMPILES.contains(to)) {
         final String errMsg =
             "destination address is a precompile address and cannot receive transactions";
         log.debug(errMsg);
@@ -92,27 +77,6 @@ public class LineaTransactionValidator implements PluginTransactionPoolValidator
           String.format(
               "sender %s is blocked as appearing on the SDN or other legally prohibited list",
               transaction.getSender());
-      log.debug(errMsg);
-      return Optional.of(errMsg);
-    }
-    return Optional.empty();
-  }
-
-  private Optional<String> validateGasLimit(final Transaction transaction) {
-    if (transaction.getGasLimit() > config.maxTxGasLimit()) {
-      final String errMsg =
-          "Gas limit of transaction is greater than the allowed max of " + config.maxTxGasLimit();
-      log.debug(errMsg);
-      return Optional.of(errMsg);
-    }
-    return Optional.empty();
-  }
-
-  private Optional<String> validateCalldata(final Transaction transaction) {
-    if (transaction.getPayload().size() > config.maxTxCalldataSize()) {
-      final String errMsg =
-          "Calldata of transaction is greater than the allowed max of "
-              + config.maxTxCalldataSize();
       log.debug(errMsg);
       return Optional.of(errMsg);
     }
