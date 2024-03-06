@@ -21,6 +21,8 @@ It is applied, with different configuration to:
 | TX_POOL_MIN_MARGIN       | 0.5           | `--plugin-linea-tx-pool-min-margin`       |
 | UNPROFITABLE_CACHE_SIZE  | 100_000       | `--plugin-linea-unprofitable-cache-size`  |
 | UNPROFITABLE_RETRY_LIMIT | 10            | `--plugin-linea-unprofitable-retry-limit` |
+| TX_POOL_ENABLE_CHECK_API     | true          | `--plugin-linea-tx-pool-profitability-check-api-enabled`  |
+| TX_POOL_ENABLE_CHECK_P2P     | false         | `--plugin-linea-tx-pool-profitability-check-p2p-enabled`  |
 
 ### L1 L2 Bridge
 

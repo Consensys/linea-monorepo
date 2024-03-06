@@ -15,27 +15,59 @@
 
 package net.consensys.linea.sequencer.txvalidation;
 
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 
+import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.sequencer.txvalidation.validators.AllowedAddressValidator;
+import net.consensys.linea.sequencer.txvalidation.validators.CalldataValidator;
+import net.consensys.linea.sequencer.txvalidation.validators.GasLimitValidator;
+import net.consensys.linea.sequencer.txvalidation.validators.ProfitabilityValidator;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
 /** Represents a factory for creating transaction validators. */
 public class LineaTransactionValidatorFactory implements PluginTransactionPoolValidatorFactory {
 
+  private final BesuConfiguration besuConfiguration;
+  private final BlockchainService blockchainService;
   private final LineaTransactionValidatorConfiguration txValidatorConf;
+  private final LineaProfitabilityConfiguration profitabilityConf;
   private final Set<Address> denied;
 
   public LineaTransactionValidatorFactory(
-      final LineaTransactionValidatorConfiguration txValidatorConf, final Set<Address> denied) {
+      final BesuConfiguration besuConfiguration,
+      final BlockchainService blockchainService,
+      final LineaTransactionValidatorConfiguration txValidatorConf,
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final Set<Address> denied) {
+    this.besuConfiguration = besuConfiguration;
+    this.blockchainService = blockchainService;
     this.txValidatorConf = txValidatorConf;
+    this.profitabilityConf = profitabilityConf;
     this.denied = denied;
   }
 
   @Override
   public PluginTransactionPoolValidator createTransactionValidator() {
-    return new LineaTransactionValidator(txValidatorConf, denied);
+    final var validators =
+        new PluginTransactionPoolValidator[] {
+          new AllowedAddressValidator(denied),
+          new GasLimitValidator(txValidatorConf),
+          new CalldataValidator(txValidatorConf),
+          new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf)
+        };
+
+    return (transaction, isLocal, hasPriority) ->
+        Arrays.stream(validators)
+            .map(v -> v.validateTransaction(transaction, isLocal, hasPriority))
+            .filter(Optional::isPresent)
+            .findFirst()
+            .map(Optional::get);
   }
 }

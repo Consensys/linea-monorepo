@@ -27,4 +27,6 @@ public record LineaProfitabilityConfiguration(
     Wei gasPriceAdjustment,
     double minMargin,
     double estimateGasMinMargin,
-    double txPoolMinMargin) {}
+    double txPoolMinMargin,
+    boolean txPoolCheckApiEnabled,
+    boolean txPoolCheckP2pEnabled) {}

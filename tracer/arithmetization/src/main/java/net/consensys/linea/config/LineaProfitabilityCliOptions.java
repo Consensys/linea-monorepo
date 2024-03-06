@@ -158,6 +158,8 @@ public class LineaProfitabilityCliOptions {
     options.minMargin = BigDecimal.valueOf(config.minMargin());
     options.estimageGasMinMargin = BigDecimal.valueOf(config.estimateGasMinMargin());
     options.txPoolMinMargin = BigDecimal.valueOf(config.txPoolMinMargin());
+    options.txPoolCheckApiEnabled = config.txPoolCheckApiEnabled();
+    options.txPoolCheckP2pEnabled = config.txPoolCheckP2pEnabled();
     return options;
   }
 
@@ -175,6 +177,8 @@ public class LineaProfitabilityCliOptions {
         .minMargin(minMargin.doubleValue())
         .estimateGasMinMargin(estimageGasMinMargin.doubleValue())
         .txPoolMinMargin(txPoolMinMargin.doubleValue())
+        .txPoolCheckApiEnabled(txPoolCheckApiEnabled)
+        .txPoolCheckP2pEnabled(txPoolCheckP2pEnabled)
         .build();
   }
 
@@ -188,6 +192,8 @@ public class LineaProfitabilityCliOptions {
         .add(MIN_MARGIN, minMargin)
         .add(ESTIMATE_GAS_MIN_MARGIN, estimageGasMinMargin)
         .add(TX_POOL_MIN_MARGIN, txPoolMinMargin)
+        .add(TX_POOL_ENABLE_CHECK_API, txPoolCheckApiEnabled)
+        .add(TX_POOL_ENABLE_CHECK_P2P, txPoolCheckP2pEnabled)
         .toString();
   }
 }
