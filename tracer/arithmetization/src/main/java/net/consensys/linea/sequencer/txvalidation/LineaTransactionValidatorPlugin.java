@@ -29,6 +29,8 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.services.BesuConfiguration;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 
 /**
@@ -41,6 +43,8 @@ import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
+  private BesuConfiguration besuConfiguration;
+  private BlockchainService blockchainService;
   private TransactionPoolValidatorService transactionValidatorService;
 
   @Override
@@ -50,6 +54,22 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
 
   @Override
   public void doRegister(final BesuContext context) {
+    besuConfiguration =
+        context
+            .getService(BesuConfiguration.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain BesuConfiguration from the BesuContext."));
+
+    blockchainService =
+        context
+            .getService(BlockchainService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain BlockchainService from the BesuContext."));
+
     transactionValidatorService =
         context
             .getService(TransactionPoolValidatorService.class)
@@ -68,7 +88,12 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
           lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
 
       transactionValidatorService.registerPluginTransactionValidatorFactory(
-          new LineaTransactionValidatorFactory(transactionValidatorConfiguration, denied));
+          new LineaTransactionValidatorFactory(
+              besuConfiguration,
+              blockchainService,
+              transactionValidatorConfiguration,
+              profitabilityConfiguration,
+              denied));
 
     } catch (Exception e) {
       throw new RuntimeException(e);
