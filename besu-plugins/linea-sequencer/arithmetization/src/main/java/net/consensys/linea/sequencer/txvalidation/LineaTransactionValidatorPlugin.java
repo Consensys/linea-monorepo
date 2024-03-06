@@ -29,7 +29,7 @@ import net.consensys.linea.AbstractLineaRequiredPlugin;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
+import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
 
 /**
  * This class extends the default transaction validation rules for adding transactions to the
@@ -41,7 +41,7 @@ import org.hyperledger.besu.plugin.services.PluginTransactionValidatorService;
 @AutoService(BesuPlugin.class)
 public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
-  private PluginTransactionValidatorService transactionValidatorService;
+  private TransactionPoolValidatorService transactionValidatorService;
 
   @Override
   public Optional<String> getName() {
@@ -52,7 +52,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
   public void doRegister(final BesuContext context) {
     transactionValidatorService =
         context
-            .getService(PluginTransactionValidatorService.class)
+            .getService(TransactionPoolValidatorService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
@@ -67,7 +67,7 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
       final Set<Address> denied =
           lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
 
-      transactionValidatorService.registerTransactionValidatorFactory(
+      transactionValidatorService.registerPluginTransactionValidatorFactory(
           new LineaTransactionValidatorFactory(transactionValidatorConfiguration, denied));
 
     } catch (Exception e) {

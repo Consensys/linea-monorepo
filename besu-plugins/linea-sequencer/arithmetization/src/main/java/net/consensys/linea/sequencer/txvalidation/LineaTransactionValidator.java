@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionValidator;
+import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 /**
  * Represents an implementation of a plugin transaction validator, which validates a transaction
@@ -31,7 +31,7 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionValidat
  */
 @Slf4j
 @RequiredArgsConstructor
-public class LineaTransactionValidator implements PluginTransactionValidator {
+public class LineaTransactionValidator implements PluginTransactionPoolValidator {
   private final LineaTransactionValidatorConfiguration config;
   private final Set<Address> denied;
 
@@ -49,7 +49,8 @@ public class LineaTransactionValidator implements PluginTransactionValidator {
           Address.fromHexString("0x000000000000000000000000000000000000000a"));
 
   @Override
-  public Optional<String> validateTransaction(final Transaction transaction) {
+  public Optional<String> validateTransaction(
+      final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
     Optional<String> senderError = validateSender(transaction);
     if (senderError.isPresent()) return senderError;
 
