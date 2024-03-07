@@ -30,6 +30,223 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
+  public static final int BLAKE_PHASE_DATA = 0x5;
+  public static final int BLAKE_PHASE_PARAMS = 0x6;
+  public static final int BLAKE_PHASE_RESULT = 0x7;
+  public static final int EVM_INST_ADD = 0x1;
+  public static final int EVM_INST_ADDMOD = 0x8;
+  public static final int EVM_INST_ADDRESS = 0x30;
+  public static final int EVM_INST_AND = 0x16;
+  public static final int EVM_INST_BALANCE = 0x31;
+  public static final int EVM_INST_BASEFEE = 0x48;
+  public static final int EVM_INST_BLOCKHASH = 0x40;
+  public static final int EVM_INST_BYTE = 0x1a;
+  public static final int EVM_INST_CALL = 0xf1;
+  public static final int EVM_INST_CALLCODE = 0xf2;
+  public static final int EVM_INST_CALLDATACOPY = 0x37;
+  public static final int EVM_INST_CALLDATALOAD = 0x35;
+  public static final int EVM_INST_CALLDATASIZE = 0x36;
+  public static final int EVM_INST_CALLER = 0x33;
+  public static final int EVM_INST_CALLVALUE = 0x34;
+  public static final int EVM_INST_CHAINID = 0x46;
+  public static final int EVM_INST_CODECOPY = 0x39;
+  public static final int EVM_INST_CODESIZE = 0x38;
+  public static final int EVM_INST_COINBASE = 0x41;
+  public static final int EVM_INST_CREATE = 0xf0;
+  public static final int EVM_INST_CREATE2 = 0xf5;
+  public static final int EVM_INST_DELEGATECALL = 0xf4;
+  public static final int EVM_INST_DIFFICULTY = 0x44;
+  public static final int EVM_INST_DIV = 0x4;
+  public static final int EVM_INST_DUP1 = 0x80;
+  public static final int EVM_INST_DUP10 = 0x89;
+  public static final int EVM_INST_DUP11 = 0x8a;
+  public static final int EVM_INST_DUP12 = 0x8b;
+  public static final int EVM_INST_DUP13 = 0x8c;
+  public static final int EVM_INST_DUP14 = 0x8d;
+  public static final int EVM_INST_DUP15 = 0x8e;
+  public static final int EVM_INST_DUP16 = 0x8f;
+  public static final int EVM_INST_DUP2 = 0x81;
+  public static final int EVM_INST_DUP3 = 0x82;
+  public static final int EVM_INST_DUP4 = 0x83;
+  public static final int EVM_INST_DUP5 = 0x84;
+  public static final int EVM_INST_DUP6 = 0x85;
+  public static final int EVM_INST_DUP7 = 0x86;
+  public static final int EVM_INST_DUP8 = 0x87;
+  public static final int EVM_INST_DUP9 = 0x88;
+  public static final int EVM_INST_EQ = 0x14;
+  public static final int EVM_INST_EXP = 0xa;
+  public static final int EVM_INST_EXTCODECOPY = 0x3c;
+  public static final int EVM_INST_EXTCODEHASH = 0x3f;
+  public static final int EVM_INST_EXTCODESIZE = 0x3b;
+  public static final int EVM_INST_GAS = 0x5a;
+  public static final int EVM_INST_GASLIMIT = 0x45;
+  public static final int EVM_INST_GASPRICE = 0x3a;
+  public static final int EVM_INST_GT = 0x11;
+  public static final int EVM_INST_INVALID = 0xfe;
+  public static final int EVM_INST_ISZERO = 0x15;
+  public static final int EVM_INST_JUMP = 0x56;
+  public static final int EVM_INST_JUMPDEST = 0x5b;
+  public static final int EVM_INST_JUMPI = 0x57;
+  public static final int EVM_INST_LOG0 = 0xa0;
+  public static final int EVM_INST_LOG1 = 0xa1;
+  public static final int EVM_INST_LOG2 = 0xa2;
+  public static final int EVM_INST_LOG3 = 0xa3;
+  public static final int EVM_INST_LOG4 = 0xa4;
+  public static final int EVM_INST_LT = 0x10;
+  public static final int EVM_INST_MLOAD = 0x51;
+  public static final int EVM_INST_MOD = 0x6;
+  public static final int EVM_INST_MSIZE = 0x59;
+  public static final int EVM_INST_MSTORE = 0x52;
+  public static final int EVM_INST_MSTORE8 = 0x53;
+  public static final int EVM_INST_MUL = 0x2;
+  public static final int EVM_INST_MULMOD = 0x9;
+  public static final int EVM_INST_NOT = 0x19;
+  public static final int EVM_INST_NUMBER = 0x43;
+  public static final int EVM_INST_OR = 0x17;
+  public static final int EVM_INST_ORIGIN = 0x32;
+  public static final int EVM_INST_PC = 0x58;
+  public static final int EVM_INST_POP = 0x50;
+  public static final int EVM_INST_PUSH1 = 0x60;
+  public static final int EVM_INST_PUSH10 = 0x69;
+  public static final int EVM_INST_PUSH11 = 0x6a;
+  public static final int EVM_INST_PUSH12 = 0x6b;
+  public static final int EVM_INST_PUSH13 = 0x6c;
+  public static final int EVM_INST_PUSH14 = 0x6d;
+  public static final int EVM_INST_PUSH15 = 0x6e;
+  public static final int EVM_INST_PUSH16 = 0x6f;
+  public static final int EVM_INST_PUSH17 = 0x70;
+  public static final int EVM_INST_PUSH18 = 0x71;
+  public static final int EVM_INST_PUSH19 = 0x72;
+  public static final int EVM_INST_PUSH2 = 0x61;
+  public static final int EVM_INST_PUSH20 = 0x73;
+  public static final int EVM_INST_PUSH21 = 0x74;
+  public static final int EVM_INST_PUSH22 = 0x75;
+  public static final int EVM_INST_PUSH23 = 0x76;
+  public static final int EVM_INST_PUSH24 = 0x77;
+  public static final int EVM_INST_PUSH25 = 0x78;
+  public static final int EVM_INST_PUSH26 = 0x79;
+  public static final int EVM_INST_PUSH27 = 0x7a;
+  public static final int EVM_INST_PUSH28 = 0x7b;
+  public static final int EVM_INST_PUSH29 = 0x7c;
+  public static final int EVM_INST_PUSH3 = 0x62;
+  public static final int EVM_INST_PUSH30 = 0x7d;
+  public static final int EVM_INST_PUSH31 = 0x7e;
+  public static final int EVM_INST_PUSH32 = 0x7f;
+  public static final int EVM_INST_PUSH4 = 0x63;
+  public static final int EVM_INST_PUSH5 = 0x64;
+  public static final int EVM_INST_PUSH6 = 0x65;
+  public static final int EVM_INST_PUSH7 = 0x66;
+  public static final int EVM_INST_PUSH8 = 0x67;
+  public static final int EVM_INST_PUSH9 = 0x68;
+  public static final int EVM_INST_RETURN = 0xf3;
+  public static final int EVM_INST_RETURNDATACOPY = 0x3e;
+  public static final int EVM_INST_RETURNDATASIZE = 0x3d;
+  public static final int EVM_INST_REVERT = 0xfd;
+  public static final int EVM_INST_SAR = 0x1d;
+  public static final int EVM_INST_SDIV = 0x5;
+  public static final int EVM_INST_SELFBALANCE = 0x47;
+  public static final int EVM_INST_SELFDESTRUCT = 0xff;
+  public static final int EVM_INST_SGT = 0x13;
+  public static final int EVM_INST_SHA3 = 0x20;
+  public static final int EVM_INST_SHL = 0x1b;
+  public static final int EVM_INST_SHR = 0x1c;
+  public static final int EVM_INST_SIGNEXTEND = 0xb;
+  public static final int EVM_INST_SLOAD = 0x54;
+  public static final int EVM_INST_SLT = 0x12;
+  public static final int EVM_INST_SMOD = 0x7;
+  public static final int EVM_INST_SSTORE = 0x55;
+  public static final int EVM_INST_STATICCALL = 0xfa;
+  public static final int EVM_INST_STOP = 0x0;
+  public static final int EVM_INST_SUB = 0x3;
+  public static final int EVM_INST_SWAP1 = 0x90;
+  public static final int EVM_INST_SWAP10 = 0x99;
+  public static final int EVM_INST_SWAP11 = 0x9a;
+  public static final int EVM_INST_SWAP12 = 0x9b;
+  public static final int EVM_INST_SWAP13 = 0x9c;
+  public static final int EVM_INST_SWAP14 = 0x9d;
+  public static final int EVM_INST_SWAP15 = 0x9e;
+  public static final int EVM_INST_SWAP16 = 0x9f;
+  public static final int EVM_INST_SWAP2 = 0x91;
+  public static final int EVM_INST_SWAP3 = 0x92;
+  public static final int EVM_INST_SWAP4 = 0x93;
+  public static final int EVM_INST_SWAP5 = 0x94;
+  public static final int EVM_INST_SWAP6 = 0x95;
+  public static final int EVM_INST_SWAP7 = 0x96;
+  public static final int EVM_INST_SWAP8 = 0x97;
+  public static final int EVM_INST_SWAP9 = 0x98;
+  public static final int EVM_INST_TIMESTAMP = 0x42;
+  public static final int EVM_INST_XOR = 0x18;
+  public static final int INVALID_CODE_PREFIX_VALUE = 0xef;
+  public static final int LLARGE = 0x10;
+  public static final int LLARGEMO = 0xf;
+  public static final int LLARGEPO = 0x11;
+  public static final int MMEDIUM = 0x8;
+  public static final int MMEDIUMMO = 0x7;
+  public static final int MMIO_INST_LIMB_TO_RAM_ONE_TARGET = 0xfe12;
+  public static final int MMIO_INST_LIMB_TO_RAM_TRANSPLANT = 0xfe11;
+  public static final int MMIO_INST_LIMB_TO_RAM_TWO_TARGET = 0xfe13;
+  public static final int MMIO_INST_LIMB_VANISHES = 0xfe01;
+  public static final int MMIO_INST_RAM_EXCISION = 0xfe41;
+  public static final int MMIO_INST_RAM_TO_LIMB_ONE_SOURCE = 0xfe22;
+  public static final int MMIO_INST_RAM_TO_LIMB_TRANSPLANT = 0xfe21;
+  public static final int MMIO_INST_RAM_TO_LIMB_TWO_SOURCE = 0xfe23;
+  public static final int MMIO_INST_RAM_TO_RAM_PARTIAL = 0xfe32;
+  public static final int MMIO_INST_RAM_TO_RAM_TRANSPLANT = 0xfe31;
+  public static final int MMIO_INST_RAM_TO_RAM_TWO_SOURCE = 0xfe34;
+  public static final int MMIO_INST_RAM_TO_RAM_TWO_TARGET = 0xfe33;
+  public static final int MMIO_INST_RAM_VANISHES = 0xfe42;
+  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING = 0xfe50;
+  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING_PURE_PADDING = 0xfe52;
+  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING_SOME_DATA = 0xfe51;
+  public static final int MMU_INST_BLAKE = 0xfe80;
+  public static final int MMU_INST_EXO_TO_RAM_TRANSPLANTS = 0xfe30;
+  public static final int MMU_INST_INVALID_CODE_PREFIX = 0xfe00;
+  public static final int MMU_INST_MLOAD = 0xfe01;
+  public static final int MMU_INST_MODEXP_DATA = 0xfe70;
+  public static final int MMU_INST_MODEXP_ZERO = 0xfe60;
+  public static final int MMU_INST_MSTORE = 0xfe02;
+  public static final int MMU_INST_MSTORE8 = 0x53;
+  public static final int MMU_INST_RAM_TO_EXO_WITH_PADDING = 0xfe20;
+  public static final int MMU_INST_RAM_TO_RAM_SANS_PADDING = 0xfe40;
+  public static final int MMU_INST_RIGHT_PADDED_WORD_EXTRACTION = 0xfe10;
+  public static final int MODEXP_PHASE_BASE = 0x1;
+  public static final int MODEXP_PHASE_EXPONENT = 0x2;
+  public static final int MODEXP_PHASE_MODULUS = 0x3;
+  public static final int MODEXP_PHASE_RESULT = 0x4;
+  public static final int RLP_ADDR_RECIPE_1 = 0x1;
+  public static final int RLP_ADDR_RECIPE_2 = 0x2;
+  public static final int RLP_PREFIX_INT_LONG = 0xb7;
+  public static final int RLP_PREFIX_INT_SHORT = 0x80;
+  public static final int RLP_PREFIX_LIST_LONG = 0xf7;
+  public static final int RLP_PREFIX_LIST_SHORT = 0xc0;
+  public static final int RLP_RCPT_SUBPHASE_ID_ADDR = 0x35;
+  public static final int RLP_RCPT_SUBPHASE_ID_CUMUL_GAS = 0x3;
+  public static final int RLP_RCPT_SUBPHASE_ID_DATA_LIMB = 0x4d;
+  public static final int RLP_RCPT_SUBPHASE_ID_DATA_SIZE = 0x53;
+  public static final int RLP_RCPT_SUBPHASE_ID_NO_LOG_ENTRY = 0xb;
+  public static final int RLP_RCPT_SUBPHASE_ID_STATUS_CODE = 0x2;
+  public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
+  public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
+  public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
+  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
+  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
+  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
+  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
+  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int WCP_INST_GEQ = 0xe;
+  public static final int WCP_INST_LEQ = 0xf;
+  public static final int WORD_SIZE = 0x20;
+  public static final int WORD_SIZE_MO = 0x1f;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -65,6 +282,7 @@ public class Trace {
   private final MappedByteBuffer maxOffset;
   private final MappedByteBuffer maxOffset1;
   private final MappedByteBuffer maxOffset2;
+  private final MappedByteBuffer mtntop;
   private final MappedByteBuffer mxpType1;
   private final MappedByteBuffer mxpType2;
   private final MappedByteBuffer mxpType3;
@@ -101,24 +319,25 @@ public class Trace {
         new ColumnHeader("mxp.BYTE_4", 1, length),
         new ColumnHeader("mxp.BYTE_A", 1, length),
         new ColumnHeader("mxp.BYTE_Q", 1, length),
-        new ColumnHeader("mxp.BYTE_QQ", 32, length),
-        new ColumnHeader("mxp.BYTE_R", 32, length),
+        new ColumnHeader("mxp.BYTE_QQ", 1, length),
+        new ColumnHeader("mxp.BYTE_R", 1, length),
         new ColumnHeader("mxp.BYTE_W", 1, length),
         new ColumnHeader("mxp.C_MEM", 32, length),
         new ColumnHeader("mxp.C_MEM_NEW", 32, length),
         new ColumnHeader("mxp.CN", 32, length),
         new ColumnHeader("mxp.COMP", 1, length),
-        new ColumnHeader("mxp.CT", 32, length),
+        new ColumnHeader("mxp.CT", 2, length),
         new ColumnHeader("mxp.DEPLOYS", 1, length),
         new ColumnHeader("mxp.EXPANDS", 1, length),
         new ColumnHeader("mxp.GAS_MXP", 32, length),
         new ColumnHeader("mxp.GBYTE", 32, length),
         new ColumnHeader("mxp.GWORD", 32, length),
-        new ColumnHeader("mxp.INST", 32, length),
+        new ColumnHeader("mxp.INST", 1, length),
         new ColumnHeader("mxp.LIN_COST", 32, length),
         new ColumnHeader("mxp.MAX_OFFSET", 32, length),
         new ColumnHeader("mxp.MAX_OFFSET_1", 32, length),
         new ColumnHeader("mxp.MAX_OFFSET_2", 32, length),
+        new ColumnHeader("mxp.MTNTOP", 1, length),
         new ColumnHeader("mxp.MXP_TYPE_1", 1, length),
         new ColumnHeader("mxp.MXP_TYPE_2", 1, length),
         new ColumnHeader("mxp.MXP_TYPE_3", 1, length),
@@ -136,7 +355,7 @@ public class Trace {
         new ColumnHeader("mxp.SIZE_1_LO", 32, length),
         new ColumnHeader("mxp.SIZE_2_HI", 32, length),
         new ColumnHeader("mxp.SIZE_2_LO", 32, length),
-        new ColumnHeader("mxp.STAMP", 32, length),
+        new ColumnHeader("mxp.STAMP", 8, length),
         new ColumnHeader("mxp.WORDS", 32, length),
         new ColumnHeader("mxp.WORDS_NEW", 32, length));
   }
@@ -173,26 +392,27 @@ public class Trace {
     this.maxOffset = buffers.get(28);
     this.maxOffset1 = buffers.get(29);
     this.maxOffset2 = buffers.get(30);
-    this.mxpType1 = buffers.get(31);
-    this.mxpType2 = buffers.get(32);
-    this.mxpType3 = buffers.get(33);
-    this.mxpType4 = buffers.get(34);
-    this.mxpType5 = buffers.get(35);
-    this.mxpx = buffers.get(36);
-    this.noop = buffers.get(37);
-    this.offset1Hi = buffers.get(38);
-    this.offset1Lo = buffers.get(39);
-    this.offset2Hi = buffers.get(40);
-    this.offset2Lo = buffers.get(41);
-    this.quadCost = buffers.get(42);
-    this.roob = buffers.get(43);
-    this.size1Hi = buffers.get(44);
-    this.size1Lo = buffers.get(45);
-    this.size2Hi = buffers.get(46);
-    this.size2Lo = buffers.get(47);
-    this.stamp = buffers.get(48);
-    this.words = buffers.get(49);
-    this.wordsNew = buffers.get(50);
+    this.mtntop = buffers.get(31);
+    this.mxpType1 = buffers.get(32);
+    this.mxpType2 = buffers.get(33);
+    this.mxpType3 = buffers.get(34);
+    this.mxpType4 = buffers.get(35);
+    this.mxpType5 = buffers.get(36);
+    this.mxpx = buffers.get(37);
+    this.noop = buffers.get(38);
+    this.offset1Hi = buffers.get(39);
+    this.offset1Lo = buffers.get(40);
+    this.offset2Hi = buffers.get(41);
+    this.offset2Lo = buffers.get(42);
+    this.quadCost = buffers.get(43);
+    this.roob = buffers.get(44);
+    this.size1Hi = buffers.get(45);
+    this.size1Lo = buffers.get(46);
+    this.size2Hi = buffers.get(47);
+    this.size2Lo = buffers.get(48);
+    this.stamp = buffers.get(49);
+    this.words = buffers.get(50);
+    this.wordsNew = buffers.get(51);
   }
 
   public int size() {
@@ -387,34 +607,26 @@ public class Trace {
     return this;
   }
 
-  public Trace byteQq(final Bytes b) {
+  public Trace byteQq(final UnsignedByte b) {
     if (filled.get(13)) {
       throw new IllegalStateException("mxp.BYTE_QQ already set");
     } else {
       filled.set(13);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      byteQq.put((byte) 0);
-    }
-    byteQq.put(b.toArrayUnsafe());
+    byteQq.put(b.toByte());
 
     return this;
   }
 
-  public Trace byteR(final Bytes b) {
+  public Trace byteR(final UnsignedByte b) {
     if (filled.get(14)) {
       throw new IllegalStateException("mxp.BYTE_R already set");
     } else {
       filled.set(14);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      byteR.put((byte) 0);
-    }
-    byteR.put(b.toArrayUnsafe());
+    byteR.put(b.toByte());
 
     return this;
   }
@@ -491,18 +703,14 @@ public class Trace {
     return this;
   }
 
-  public Trace ct(final Bytes b) {
+  public Trace ct(final short b) {
     if (filled.get(18)) {
       throw new IllegalStateException("mxp.CT already set");
     } else {
       filled.set(18);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      ct.put((byte) 0);
-    }
-    ct.put(b.toArrayUnsafe());
+    ct.putShort(b);
 
     return this;
   }
@@ -579,18 +787,14 @@ public class Trace {
     return this;
   }
 
-  public Trace inst(final Bytes b) {
+  public Trace inst(final UnsignedByte b) {
     if (filled.get(26)) {
       throw new IllegalStateException("mxp.INST already set");
     } else {
       filled.set(26);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      inst.put((byte) 0);
-    }
-    inst.put(b.toArrayUnsafe());
+    inst.put(b.toByte());
 
     return this;
   }
@@ -659,11 +863,23 @@ public class Trace {
     return this;
   }
 
+  public Trace mtntop(final Boolean b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("mxp.MTNTOP already set");
+    } else {
+      filled.set(31);
+    }
+
+    mtntop.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
   public Trace mxpType1(final Boolean b) {
-    if (filled.get(32)) {
+    if (filled.get(33)) {
       throw new IllegalStateException("mxp.MXP_TYPE_1 already set");
     } else {
-      filled.set(32);
+      filled.set(33);
     }
 
     mxpType1.put((byte) (b ? 1 : 0));
@@ -672,10 +888,10 @@ public class Trace {
   }
 
   public Trace mxpType2(final Boolean b) {
-    if (filled.get(33)) {
+    if (filled.get(34)) {
       throw new IllegalStateException("mxp.MXP_TYPE_2 already set");
     } else {
-      filled.set(33);
+      filled.set(34);
     }
 
     mxpType2.put((byte) (b ? 1 : 0));
@@ -684,10 +900,10 @@ public class Trace {
   }
 
   public Trace mxpType3(final Boolean b) {
-    if (filled.get(34)) {
+    if (filled.get(35)) {
       throw new IllegalStateException("mxp.MXP_TYPE_3 already set");
     } else {
-      filled.set(34);
+      filled.set(35);
     }
 
     mxpType3.put((byte) (b ? 1 : 0));
@@ -696,10 +912,10 @@ public class Trace {
   }
 
   public Trace mxpType4(final Boolean b) {
-    if (filled.get(35)) {
+    if (filled.get(36)) {
       throw new IllegalStateException("mxp.MXP_TYPE_4 already set");
     } else {
-      filled.set(35);
+      filled.set(36);
     }
 
     mxpType4.put((byte) (b ? 1 : 0));
@@ -708,10 +924,10 @@ public class Trace {
   }
 
   public Trace mxpType5(final Boolean b) {
-    if (filled.get(36)) {
+    if (filled.get(37)) {
       throw new IllegalStateException("mxp.MXP_TYPE_5 already set");
     } else {
-      filled.set(36);
+      filled.set(37);
     }
 
     mxpType5.put((byte) (b ? 1 : 0));
@@ -720,10 +936,10 @@ public class Trace {
   }
 
   public Trace mxpx(final Boolean b) {
-    if (filled.get(31)) {
+    if (filled.get(32)) {
       throw new IllegalStateException("mxp.MXPX already set");
     } else {
-      filled.set(31);
+      filled.set(32);
     }
 
     mxpx.put((byte) (b ? 1 : 0));
@@ -732,10 +948,10 @@ public class Trace {
   }
 
   public Trace noop(final Boolean b) {
-    if (filled.get(37)) {
+    if (filled.get(38)) {
       throw new IllegalStateException("mxp.NOOP already set");
     } else {
-      filled.set(37);
+      filled.set(38);
     }
 
     noop.put((byte) (b ? 1 : 0));
@@ -744,10 +960,10 @@ public class Trace {
   }
 
   public Trace offset1Hi(final Bytes b) {
-    if (filled.get(38)) {
+    if (filled.get(39)) {
       throw new IllegalStateException("mxp.OFFSET_1_HI already set");
     } else {
-      filled.set(38);
+      filled.set(39);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -760,10 +976,10 @@ public class Trace {
   }
 
   public Trace offset1Lo(final Bytes b) {
-    if (filled.get(39)) {
+    if (filled.get(40)) {
       throw new IllegalStateException("mxp.OFFSET_1_LO already set");
     } else {
-      filled.set(39);
+      filled.set(40);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -776,10 +992,10 @@ public class Trace {
   }
 
   public Trace offset2Hi(final Bytes b) {
-    if (filled.get(40)) {
+    if (filled.get(41)) {
       throw new IllegalStateException("mxp.OFFSET_2_HI already set");
     } else {
-      filled.set(40);
+      filled.set(41);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -792,10 +1008,10 @@ public class Trace {
   }
 
   public Trace offset2Lo(final Bytes b) {
-    if (filled.get(41)) {
+    if (filled.get(42)) {
       throw new IllegalStateException("mxp.OFFSET_2_LO already set");
     } else {
-      filled.set(41);
+      filled.set(42);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -808,10 +1024,10 @@ public class Trace {
   }
 
   public Trace quadCost(final Bytes b) {
-    if (filled.get(42)) {
+    if (filled.get(43)) {
       throw new IllegalStateException("mxp.QUAD_COST already set");
     } else {
-      filled.set(42);
+      filled.set(43);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -824,10 +1040,10 @@ public class Trace {
   }
 
   public Trace roob(final Boolean b) {
-    if (filled.get(43)) {
+    if (filled.get(44)) {
       throw new IllegalStateException("mxp.ROOB already set");
     } else {
-      filled.set(43);
+      filled.set(44);
     }
 
     roob.put((byte) (b ? 1 : 0));
@@ -836,10 +1052,10 @@ public class Trace {
   }
 
   public Trace size1Hi(final Bytes b) {
-    if (filled.get(44)) {
+    if (filled.get(45)) {
       throw new IllegalStateException("mxp.SIZE_1_HI already set");
     } else {
-      filled.set(44);
+      filled.set(45);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -852,10 +1068,10 @@ public class Trace {
   }
 
   public Trace size1Lo(final Bytes b) {
-    if (filled.get(45)) {
+    if (filled.get(46)) {
       throw new IllegalStateException("mxp.SIZE_1_LO already set");
     } else {
-      filled.set(45);
+      filled.set(46);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -868,10 +1084,10 @@ public class Trace {
   }
 
   public Trace size2Hi(final Bytes b) {
-    if (filled.get(46)) {
+    if (filled.get(47)) {
       throw new IllegalStateException("mxp.SIZE_2_HI already set");
     } else {
-      filled.set(46);
+      filled.set(47);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -884,10 +1100,10 @@ public class Trace {
   }
 
   public Trace size2Lo(final Bytes b) {
-    if (filled.get(47)) {
+    if (filled.get(48)) {
       throw new IllegalStateException("mxp.SIZE_2_LO already set");
     } else {
-      filled.set(47);
+      filled.set(48);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -899,27 +1115,23 @@ public class Trace {
     return this;
   }
 
-  public Trace stamp(final Bytes b) {
-    if (filled.get(48)) {
+  public Trace stamp(final long b) {
+    if (filled.get(49)) {
       throw new IllegalStateException("mxp.STAMP already set");
     } else {
-      filled.set(48);
+      filled.set(49);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      stamp.put((byte) 0);
-    }
-    stamp.put(b.toArrayUnsafe());
+    stamp.putLong(b);
 
     return this;
   }
 
   public Trace words(final Bytes b) {
-    if (filled.get(49)) {
+    if (filled.get(50)) {
       throw new IllegalStateException("mxp.WORDS already set");
     } else {
-      filled.set(49);
+      filled.set(50);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -932,10 +1144,10 @@ public class Trace {
   }
 
   public Trace wordsNew(final Bytes b) {
-    if (filled.get(50)) {
+    if (filled.get(51)) {
       throw new IllegalStateException("mxp.WORDS_NEW already set");
     } else {
-      filled.set(50);
+      filled.set(51);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -1072,83 +1284,87 @@ public class Trace {
       throw new IllegalStateException("mxp.MAX_OFFSET_2 has not been filled");
     }
 
-    if (!filled.get(32)) {
-      throw new IllegalStateException("mxp.MXP_TYPE_1 has not been filled");
+    if (!filled.get(31)) {
+      throw new IllegalStateException("mxp.MTNTOP has not been filled");
     }
 
     if (!filled.get(33)) {
-      throw new IllegalStateException("mxp.MXP_TYPE_2 has not been filled");
+      throw new IllegalStateException("mxp.MXP_TYPE_1 has not been filled");
     }
 
     if (!filled.get(34)) {
-      throw new IllegalStateException("mxp.MXP_TYPE_3 has not been filled");
+      throw new IllegalStateException("mxp.MXP_TYPE_2 has not been filled");
     }
 
     if (!filled.get(35)) {
-      throw new IllegalStateException("mxp.MXP_TYPE_4 has not been filled");
+      throw new IllegalStateException("mxp.MXP_TYPE_3 has not been filled");
     }
 
     if (!filled.get(36)) {
-      throw new IllegalStateException("mxp.MXP_TYPE_5 has not been filled");
-    }
-
-    if (!filled.get(31)) {
-      throw new IllegalStateException("mxp.MXPX has not been filled");
+      throw new IllegalStateException("mxp.MXP_TYPE_4 has not been filled");
     }
 
     if (!filled.get(37)) {
-      throw new IllegalStateException("mxp.NOOP has not been filled");
+      throw new IllegalStateException("mxp.MXP_TYPE_5 has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException("mxp.MXPX has not been filled");
     }
 
     if (!filled.get(38)) {
-      throw new IllegalStateException("mxp.OFFSET_1_HI has not been filled");
+      throw new IllegalStateException("mxp.NOOP has not been filled");
     }
 
     if (!filled.get(39)) {
-      throw new IllegalStateException("mxp.OFFSET_1_LO has not been filled");
+      throw new IllegalStateException("mxp.OFFSET_1_HI has not been filled");
     }
 
     if (!filled.get(40)) {
-      throw new IllegalStateException("mxp.OFFSET_2_HI has not been filled");
+      throw new IllegalStateException("mxp.OFFSET_1_LO has not been filled");
     }
 
     if (!filled.get(41)) {
-      throw new IllegalStateException("mxp.OFFSET_2_LO has not been filled");
+      throw new IllegalStateException("mxp.OFFSET_2_HI has not been filled");
     }
 
     if (!filled.get(42)) {
-      throw new IllegalStateException("mxp.QUAD_COST has not been filled");
+      throw new IllegalStateException("mxp.OFFSET_2_LO has not been filled");
     }
 
     if (!filled.get(43)) {
-      throw new IllegalStateException("mxp.ROOB has not been filled");
+      throw new IllegalStateException("mxp.QUAD_COST has not been filled");
     }
 
     if (!filled.get(44)) {
-      throw new IllegalStateException("mxp.SIZE_1_HI has not been filled");
+      throw new IllegalStateException("mxp.ROOB has not been filled");
     }
 
     if (!filled.get(45)) {
-      throw new IllegalStateException("mxp.SIZE_1_LO has not been filled");
+      throw new IllegalStateException("mxp.SIZE_1_HI has not been filled");
     }
 
     if (!filled.get(46)) {
-      throw new IllegalStateException("mxp.SIZE_2_HI has not been filled");
+      throw new IllegalStateException("mxp.SIZE_1_LO has not been filled");
     }
 
     if (!filled.get(47)) {
-      throw new IllegalStateException("mxp.SIZE_2_LO has not been filled");
+      throw new IllegalStateException("mxp.SIZE_2_HI has not been filled");
     }
 
     if (!filled.get(48)) {
-      throw new IllegalStateException("mxp.STAMP has not been filled");
+      throw new IllegalStateException("mxp.SIZE_2_LO has not been filled");
     }
 
     if (!filled.get(49)) {
-      throw new IllegalStateException("mxp.WORDS has not been filled");
+      throw new IllegalStateException("mxp.STAMP has not been filled");
     }
 
     if (!filled.get(50)) {
+      throw new IllegalStateException("mxp.WORDS has not been filled");
+    }
+
+    if (!filled.get(51)) {
       throw new IllegalStateException("mxp.WORDS_NEW has not been filled");
     }
 
@@ -1212,11 +1428,11 @@ public class Trace {
     }
 
     if (!filled.get(13)) {
-      byteQq.position(byteQq.position() + 32);
+      byteQq.position(byteQq.position() + 1);
     }
 
     if (!filled.get(14)) {
-      byteR.position(byteR.position() + 32);
+      byteR.position(byteR.position() + 1);
     }
 
     if (!filled.get(15)) {
@@ -1240,7 +1456,7 @@ public class Trace {
     }
 
     if (!filled.get(18)) {
-      ct.position(ct.position() + 32);
+      ct.position(ct.position() + 2);
     }
 
     if (!filled.get(21)) {
@@ -1264,7 +1480,7 @@ public class Trace {
     }
 
     if (!filled.get(26)) {
-      inst.position(inst.position() + 32);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(27)) {
@@ -1283,83 +1499,87 @@ public class Trace {
       maxOffset2.position(maxOffset2.position() + 32);
     }
 
-    if (!filled.get(32)) {
-      mxpType1.position(mxpType1.position() + 1);
+    if (!filled.get(31)) {
+      mtntop.position(mtntop.position() + 1);
     }
 
     if (!filled.get(33)) {
-      mxpType2.position(mxpType2.position() + 1);
+      mxpType1.position(mxpType1.position() + 1);
     }
 
     if (!filled.get(34)) {
-      mxpType3.position(mxpType3.position() + 1);
+      mxpType2.position(mxpType2.position() + 1);
     }
 
     if (!filled.get(35)) {
-      mxpType4.position(mxpType4.position() + 1);
+      mxpType3.position(mxpType3.position() + 1);
     }
 
     if (!filled.get(36)) {
-      mxpType5.position(mxpType5.position() + 1);
-    }
-
-    if (!filled.get(31)) {
-      mxpx.position(mxpx.position() + 1);
+      mxpType4.position(mxpType4.position() + 1);
     }
 
     if (!filled.get(37)) {
-      noop.position(noop.position() + 1);
+      mxpType5.position(mxpType5.position() + 1);
+    }
+
+    if (!filled.get(32)) {
+      mxpx.position(mxpx.position() + 1);
     }
 
     if (!filled.get(38)) {
-      offset1Hi.position(offset1Hi.position() + 32);
+      noop.position(noop.position() + 1);
     }
 
     if (!filled.get(39)) {
-      offset1Lo.position(offset1Lo.position() + 32);
+      offset1Hi.position(offset1Hi.position() + 32);
     }
 
     if (!filled.get(40)) {
-      offset2Hi.position(offset2Hi.position() + 32);
+      offset1Lo.position(offset1Lo.position() + 32);
     }
 
     if (!filled.get(41)) {
-      offset2Lo.position(offset2Lo.position() + 32);
+      offset2Hi.position(offset2Hi.position() + 32);
     }
 
     if (!filled.get(42)) {
-      quadCost.position(quadCost.position() + 32);
+      offset2Lo.position(offset2Lo.position() + 32);
     }
 
     if (!filled.get(43)) {
-      roob.position(roob.position() + 1);
+      quadCost.position(quadCost.position() + 32);
     }
 
     if (!filled.get(44)) {
-      size1Hi.position(size1Hi.position() + 32);
+      roob.position(roob.position() + 1);
     }
 
     if (!filled.get(45)) {
-      size1Lo.position(size1Lo.position() + 32);
+      size1Hi.position(size1Hi.position() + 32);
     }
 
     if (!filled.get(46)) {
-      size2Hi.position(size2Hi.position() + 32);
+      size1Lo.position(size1Lo.position() + 32);
     }
 
     if (!filled.get(47)) {
-      size2Lo.position(size2Lo.position() + 32);
+      size2Hi.position(size2Hi.position() + 32);
     }
 
     if (!filled.get(48)) {
-      stamp.position(stamp.position() + 32);
+      size2Lo.position(size2Lo.position() + 32);
     }
 
     if (!filled.get(49)) {
-      words.position(words.position() + 32);
+      stamp.position(stamp.position() + 8);
     }
 
     if (!filled.get(50)) {
+      words.position(words.position() + 32);
+    }
+
+    if (!filled.get(51)) {
       wordsNew.position(wordsNew.position() + 32);
     }
 
