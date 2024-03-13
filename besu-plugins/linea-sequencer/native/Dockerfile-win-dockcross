@@ -1,0 +1,18 @@
+FROM dockcross/windows-shared-x64
+
+ARG GO_VERSION=1.22.1
+ARG GO_ARCHIVE_CHECKSUM=aab8e15785c997ae20f9c88422ee35d962c4562212bb0f879d052a35c8307c7f
+
+ENV DEFAULT_DOCKCROSS_IMAGE native-windows-cross-compile
+
+RUN wget https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz
+RUN echo "$GO_ARCHIVE_CHECKSUM go$GO_VERSION.linux-amd64.tar.gz" | sha256sum --check --status
+RUN tar -C /usr/local -xzf go$GO_VERSION.linux-amd64.tar.gz
+
+ENV PATH="$PATH:/usr/local/go/bin"
+
+# pre-fetch go modules
+COPY compress/compress-jni/go.mod .
+COPY compress/compress-jni/go.sum .
+RUN go mod download
+RUN rm go.mod go.sum

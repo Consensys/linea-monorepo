@@ -33,8 +33,13 @@ test {
 }
 
 tasks.register('buildJNI', Exec) {
-  workingDir buildscript.sourceFile.parentFile
-  commandLine 'sh', '-c', '../build.sh'
+  if(org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+    workingDir buildscript.sourceFile.parentFile.parentFile
+    commandLine 'wsl', './wsl.sh'
+  } else {
+    workingDir buildscript.sourceFile.parentFile
+    commandLine 'sh', '-c', '../build.sh'
+  }
 }
 
 compileJava{
@@ -75,6 +80,12 @@ tasks.register('linuxArm64LibCopy', Copy) {
   into 'build/resources/main/linux-aarch64'
 }
 processResources.dependsOn linuxArm64LibCopy
+
+tasks.register('windowsLibCopy', Copy) {
+  from 'build/native/compress_jni.dll'
+  into 'build/resources/main/win32-x86-64'
+}
+processResources.dependsOn windowsLibCopy
 
 jar {
   archiveBaseName = 'linea-native-compress'
