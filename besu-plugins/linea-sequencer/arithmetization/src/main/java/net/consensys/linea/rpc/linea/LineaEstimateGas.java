@@ -17,7 +17,9 @@ package net.consensys.linea.rpc.linea;
 
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
@@ -112,17 +114,13 @@ public class LineaEstimateGas {
         .log();
     final var estimatedGasUsed = estimateGasUsed(callParameters, transaction, minGasPrice);
 
-    final Wei profitablePriorityFee =
-        txProfitabilityCalculator.profitablePriorityFeePerGas(
-            transaction, profitabilityConf.estimateGasMinMargin(), minGasPrice, estimatedGasUsed);
-
     final Wei baseFee =
         blockchainService
             .getNextBlockBaseFee()
             .orElseThrow(() -> new IllegalStateException("Not on a baseFee market"));
 
     final Wei estimatedPriorityFee =
-        getEstimatedPriorityFee(baseFee, profitablePriorityFee, minGasPrice);
+        getEstimatedPriorityFee(transaction, baseFee, minGasPrice, estimatedGasUsed);
 
     final var response =
         new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
@@ -132,12 +130,24 @@ public class LineaEstimateGas {
   }
 
   private Wei getEstimatedPriorityFee(
-      final Wei baseFee, final Wei profitablePriorityFee, final Wei minGasPrice) {
+      final Transaction transaction,
+      final Wei baseFee,
+      final Wei minGasPrice,
+      final long estimatedGasUsed) {
     final Wei priorityFeeLowerBound = minGasPrice.subtract(baseFee);
 
     if (rpcConfiguration.estimateGasCompatibilityModeEnabled()) {
-      return priorityFeeLowerBound;
+      return Wei.of(
+          rpcConfiguration
+              .estimateGasCompatibilityMultiplier()
+              .multiply(new BigDecimal(priorityFeeLowerBound.getAsBigInteger()))
+              .setScale(0, RoundingMode.CEILING)
+              .toBigInteger());
     }
+
+    final Wei profitablePriorityFee =
+        txProfitabilityCalculator.profitablePriorityFeePerGas(
+            transaction, profitabilityConf.estimateGasMinMargin(), minGasPrice, estimatedGasUsed);
 
     if (profitablePriorityFee.greaterOrEqualThan(priorityFeeLowerBound)) {
       return profitablePriorityFee;

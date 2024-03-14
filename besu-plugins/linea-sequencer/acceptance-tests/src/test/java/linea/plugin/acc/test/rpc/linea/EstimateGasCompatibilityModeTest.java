@@ -16,30 +16,52 @@ package linea.plugin.acc.test.rpc.linea;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 
 public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
+  private static final BigDecimal PRICE_MULTIPLIER = BigDecimal.valueOf(1.2);
 
   @Override
   public List<String> getTestCliOptions() {
     return getTestCommandLineOptionsBuilder()
         .set("--plugin-linea-estimate-gas-compatibility-mode-enabled=", "true")
+        .set(
+            "--plugin-linea-estimate-gas-compatibility-mode-multiplier=",
+            PRICE_MULTIPLIER.toPlainString())
         .build();
   }
 
   @Override
   protected void assertIsProfitable(
       final Transaction tx,
+      final Wei baseFee,
       final Wei estimatedPriorityFee,
       final Wei estimatedMaxGasPrice,
       final long estimatedGasLimit) {
     final var minGasPrice = minerNode.getMiningParameters().getMinTransactionGasPrice();
+    final var minPriorityFee = minGasPrice.subtract(baseFee);
+    final var compatibilityMinPriorityFee =
+        Wei.of(
+            PRICE_MULTIPLIER
+                .multiply(new BigDecimal(minPriorityFee.getAsBigInteger()))
+                .setScale(0, RoundingMode.CEILING)
+                .toBigInteger());
 
     // since we are in compatibility mode, we want to check that returned profitable priority fee is
-    // the min mineable gas price
-    assertThat(estimatedMaxGasPrice).isEqualTo(minGasPrice);
+    // the min priority fee per gas * multiplier + base fee
+    final var expectedMaxGasPrice = baseFee.add(compatibilityMinPriorityFee);
+    assertThat(estimatedMaxGasPrice).isEqualTo(expectedMaxGasPrice);
+  }
+
+  @Override
+  protected void assertMinGasPriceLowerBound(final Wei baseFee, final Wei estimatedMaxGasPrice) {
+    // since we are in compatibility mode, we want to check that returned profitable priority fee is
+    // the min priority fee per gas * multiplier + base fee
+    assertIsProfitable(null, baseFee, null, estimatedMaxGasPrice, 0);
   }
 }

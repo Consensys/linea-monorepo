@@ -15,8 +15,11 @@
 
 package net.consensys.linea.config;
 
+import java.math.BigDecimal;
+
 import lombok.Builder;
 
 /** The Linea RPC configuration. */
 @Builder(toBuilder = true)
-public record LineaRpcConfiguration(boolean estimateGasCompatibilityModeEnabled) {}
+public record LineaRpcConfiguration(
+    boolean estimateGasCompatibilityModeEnabled, BigDecimal estimateGasCompatibilityMultiplier) {}

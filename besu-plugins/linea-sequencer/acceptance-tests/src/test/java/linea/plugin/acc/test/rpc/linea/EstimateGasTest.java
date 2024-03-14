@@ -26,7 +26,6 @@ import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.rpc.linea.LineaEstimateGas;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt64;
@@ -48,7 +47,6 @@ public class EstimateGasTest extends LineaPluginTestBase {
   protected static final double ESTIMATE_GAS_MIN_MARGIN = 1.0;
   protected static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
   protected static final int MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
-  protected LineaTransactionSelectorConfiguration txSelectorConf;
   protected LineaProfitabilityConfiguration profitabilityConf;
 
   @Override
@@ -137,11 +135,12 @@ public class EstimateGasTest extends LineaPluginTestBase {
             .signature(LineaEstimateGas.FAKE_SIGNATURE_FOR_SIZE_CALCULATION)
             .build();
 
-    assertIsProfitable(tx, estimatedPriorityFee, estimatedMaxGasPrice, estimatedGasLimit);
+    assertIsProfitable(tx, baseFee, estimatedPriorityFee, estimatedMaxGasPrice, estimatedGasLimit);
   }
 
   protected void assertIsProfitable(
       final org.hyperledger.besu.ethereum.core.Transaction tx,
+      final Wei baseFee,
       final Wei estimatedPriorityFee,
       final Wei estimatedMaxGasPrice,
       final long estimatedGasLimit) {
@@ -180,8 +179,12 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var baseFee = Wei.fromHexString(respLinea.baseFeePerGas());
     final var estimatedPriorityFee = Wei.fromHexString(respLinea.priorityFeePerGas());
     final var estimatedMaxGasPrice = baseFee.add(estimatedPriorityFee);
-    final var minGasPrice = minerNode.getMiningParameters().getMinTransactionGasPrice();
 
+    assertMinGasPriceLowerBound(baseFee, estimatedMaxGasPrice);
+  }
+
+  protected void assertMinGasPriceLowerBound(final Wei baseFee, final Wei estimatedMaxGasPrice) {
+    final var minGasPrice = minerNode.getMiningParameters().getMinTransactionGasPrice();
     assertThat(estimatedMaxGasPrice).isEqualTo(minGasPrice);
   }
 
