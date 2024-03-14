@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4-test23
+Test pre-release 23 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* linea_estimateGas compatibility mode multiplier https://github.com/Consensys/besu-sequencer-plugins/pull/646
+
 ## 0.1.4-test22
 Test pre-release 22 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * linea_estimateGas compatibility switch https://github.com/Consensys/besu-sequencer-plugins/pull/634
