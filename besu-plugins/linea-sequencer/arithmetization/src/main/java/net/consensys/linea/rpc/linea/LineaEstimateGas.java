@@ -20,6 +20,7 @@ import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantit
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
@@ -37,18 +38,22 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcParameters;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonCallParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.evm.tracing.EstimateGasOperationTracer;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
+import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
 
 @Slf4j
 public class LineaEstimateGas {
   @VisibleForTesting public static final SECPSignature FAKE_SIGNATURE_FOR_SIZE_CALCULATION;
 
   private static final double SUB_CALL_REMAINING_GAS_RATIO = 65D / 64D;
+  private static final AtomicInteger LOG_SEQUENCE = new AtomicInteger();
 
   static {
     final X9ECParameters params = SECNamedCurves.getByName("secp256k1");
@@ -101,14 +106,21 @@ public class LineaEstimateGas {
   }
 
   public LineaEstimateGas.Response execute(final PluginRpcRequest request) {
+    if (log.isDebugEnabled()) {
+      // no matter if it overflows, since it is only used to correlate logs for this request,
+      // so we only print callParameters once at the beginning, and we can reference them using the
+      // sequence.
+      LOG_SEQUENCE.incrementAndGet();
+    }
     final var callParameters = parseRequest(request.getParams());
     final var minGasPrice = besuConfiguration.getMinGasPrice();
 
     final var transaction =
         createTransactionForSimulation(
             callParameters, txValidatorConf.maxTxGasLimit(), minGasPrice);
-    log.atTrace()
-        .setMessage("Parsed call parameters: {}; Transaction: {}")
+    log.atDebug()
+        .setMessage("[{}] Parsed call parameters: {}; Transaction: {}")
+        .addArgument(LOG_SEQUENCE::get)
         .addArgument(callParameters)
         .addArgument(transaction::toTraceLog)
         .log();
@@ -117,14 +129,22 @@ public class LineaEstimateGas {
     final Wei baseFee =
         blockchainService
             .getNextBlockBaseFee()
-            .orElseThrow(() -> new IllegalStateException("Not on a baseFee market"));
+            .orElseThrow(
+                () ->
+                    new PluginRpcEndpointException(
+                        RpcErrorType.INVALID_REQUEST, "Not on a baseFee market"));
 
     final Wei estimatedPriorityFee =
         getEstimatedPriorityFee(transaction, baseFee, minGasPrice, estimatedGasUsed);
 
     final var response =
         new Response(create(estimatedGasUsed), create(baseFee), create(estimatedPriorityFee));
-    log.debug("Response for call params {} is {}", callParameters, response);
+    log.atDebug()
+        .setMessage("[{}] Response for call params {} is {}")
+        .addArgument(LOG_SEQUENCE::get)
+        .addArgument(callParameters)
+        .addArgument(response)
+        .log();
 
     return response;
   }
@@ -155,7 +175,8 @@ public class LineaEstimateGas {
 
     log.atDebug()
         .setMessage(
-            "Estimated priority fee {} is lower that the lower bound {}, returning the latter")
+            "[{}] Estimated priority fee {} is lower that the lower bound {}, returning the latter")
+        .addArgument(LOG_SEQUENCE::get)
         .addArgument(profitablePriorityFee::toHumanReadableString)
         .addArgument(priorityFeeLowerBound::toHumanReadableString)
         .log();
@@ -174,19 +195,35 @@ public class LineaEstimateGas {
     return maybeSimulationResults
         .map(
             r -> {
-
-              // if the transaction is invalid or doesn't have enough gas with the max it never
-              // will!
-              if (r.isInvalid() || !r.isSuccessful()) {
+              // if the transaction is invalid or doesn't have enough gas with the max it never will
+              if (r.isInvalid()) {
                 log.atDebug()
-                    .setMessage("Invalid or unsuccessful transaction {}, reason {}")
+                    .setMessage("[{}] Invalid transaction {}, reason {}")
+                    .addArgument(LOG_SEQUENCE::get)
                     .addArgument(transaction::toTraceLog)
                     .addArgument(r.result())
                     .log();
+                throw new PluginRpcEndpointException(
+                    new TransactionSimulationError(r.result().getInvalidReason().orElse("")));
+              }
+              if (!r.isSuccessful()) {
+                log.atDebug()
+                    .setMessage("[{}] Failed transaction {}, reason {}")
+                    .addArgument(LOG_SEQUENCE::get)
+                    .addArgument(transaction::toTraceLog)
+                    .addArgument(r.result())
+                    .log();
+                r.getRevertReason()
+                    .ifPresent(
+                        rr -> {
+                          throw new PluginRpcEndpointException(
+                              RpcErrorType.REVERT_ERROR, rr.toHexString());
+                        });
                 final var invalidReason = r.result().getInvalidReason();
-                throw new RuntimeException(
-                    "Invalid or unsuccessful transaction"
-                        + invalidReason.map(ir -> ", reason: " + ir).orElse(""));
+                throw new PluginRpcEndpointException(
+                    new TransactionSimulationError(
+                        "Failed transaction"
+                            + invalidReason.map(ir -> ", reason: " + ir).orElse("")));
               }
 
               final var lowGasEstimation = r.result().getEstimateGasUsedByTransaction();
@@ -200,26 +237,29 @@ public class LineaEstimateGas {
               return lowResult
                   .map(
                       lr -> {
-                        // if with the low estimation gas is successful the return this
-                        // estimation
+                        // if with the low estimation gas is successful then return this estimation
                         if (lr.isSuccessful()) {
-                          log.trace(
-                              "Low gas estimation {} successful, call params {}",
-                              lowGasEstimation,
-                              callParameters);
+                          log.atTrace()
+                              .setMessage("[{}] Low gas estimation {} successful")
+                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(lowGasEstimation)
+                              .log();
                           return lowGasEstimation;
                         } else {
-                          log.trace(
-                              "Low gas estimation {} unsuccessful, result{}, call params {}",
-                              lowGasEstimation,
-                              lr.result(),
-                              callParameters);
+                          log.atTrace()
+                              .setMessage("[{}] Low gas estimation {} unsuccessful, result{}")
+                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(lowGasEstimation)
+                              .addArgument(lr::result)
+                              .log();
 
                           // else do a binary search to find the right estimation
+                          int iterations = 0;
                           var high = highGasEstimation(lr.getGasEstimate(), tracer);
                           var mid = high;
                           var low = lowGasEstimation;
                           while (low + 1 < high) {
+                            ++iterations;
                             mid = (high + low) / 2;
 
                             final var binarySearchResult =
@@ -232,35 +272,53 @@ public class LineaEstimateGas {
 
                             if (binarySearchResult.isEmpty()
                                 || !binarySearchResult.get().isSuccessful()) {
-                              low = mid;
                               log.atTrace()
                                   .setMessage(
-                                      "Binary gas estimation search low={},med={},high={}, unsuccessful result {}, call params {}")
-                                  .addArgument(lowGasEstimation)
+                                      "[{}]-[{}] Binary gas estimation search low={},mid={},high={}, unsuccessful result {}")
+                                  .addArgument(LOG_SEQUENCE::get)
+                                  .addArgument(iterations)
+                                  .addArgument(low)
+                                  .addArgument(mid)
+                                  .addArgument(high)
                                   .addArgument(
                                       () ->
                                           binarySearchResult
                                               .map(result -> result.result().toString())
                                               .orElse("empty"))
-                                  .addArgument(callParameters)
                                   .log();
-
+                              low = mid;
                             } else {
+                              log.atTrace()
+                                  .setMessage(
+                                      "[{}]-[{}} Binary gas estimation search low={},mid={},high={}, successful")
+                                  .addArgument(LOG_SEQUENCE::get)
+                                  .addArgument(iterations)
+                                  .addArgument(low)
+                                  .addArgument(mid)
+                                  .addArgument(high)
+                                  .log();
                               high = mid;
-                              log.trace(
-                                  "Binary gas estimation search low={},med={},high={}, successful, call params {}",
-                                  low,
-                                  mid,
-                                  high,
-                                  callParameters);
                             }
                           }
+                          log.atDebug()
+                              .setMessage(
+                                  "[{}] Binary gas estimation search={} after {} iterations")
+                              .addArgument(LOG_SEQUENCE::get)
+                              .addArgument(high)
+                              .addArgument(iterations)
+                              .log();
                           return high;
                         }
                       })
-                  .orElseThrow();
+                  .orElseThrow(
+                      () ->
+                          new PluginRpcEndpointException(
+                              RpcErrorType.PLUGIN_INTERNAL_ERROR, "Empty result from simulation"));
             })
-        .orElseThrow();
+        .orElseThrow(
+            () ->
+                new PluginRpcEndpointException(
+                    RpcErrorType.PLUGIN_INTERNAL_ERROR, "Empty result from simulation"));
   }
 
   private JsonCallParameter parseRequest(final Object[] params) {
@@ -272,14 +330,16 @@ public class LineaEstimateGas {
   private void validateParameters(final JsonCallParameter callParameters) {
     if (callParameters.getGasPrice() != null
         && (callParameters.getMaxFeePerGas().isPresent()
-            || callParameters.getMaxPriorityFeePerGas().isPresent())) {
+            || callParameters.getMaxPriorityFeePerGas().isPresent()
+            || callParameters.getMaxFeePerBlobGas().isPresent())) {
       throw new InvalidJsonRpcParameters(
-          "gasPrice cannot be used with maxFeePerGas or maxPriorityFeePerGas");
+          "gasPrice cannot be used with maxFeePerGas or maxPriorityFeePerGas or maxFeePerBlobGas");
     }
 
     if (callParameters.getGasLimit() > 0
         && callParameters.getGasLimit() > txValidatorConf.maxTxGasLimit()) {
-      throw new InvalidJsonRpcParameters("gasLimit above maximum");
+      throw new InvalidJsonRpcParameters(
+          "gasLimit above maximum of: " + txValidatorConf.maxTxGasLimit());
     }
   }
 
@@ -327,4 +387,16 @@ public class LineaEstimateGas {
       @JsonProperty String gasLimit,
       @JsonProperty String baseFeePerGas,
       @JsonProperty String priorityFeePerGas) {}
+
+  private record TransactionSimulationError(String errorReason) implements RpcMethodError {
+    @Override
+    public int getCode() {
+      return -32000;
+    }
+
+    @Override
+    public String getMessage() {
+      return errorReason;
+    }
+  }
 }

@@ -18,11 +18,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
+import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -32,12 +37,16 @@ import org.apache.tuweni.units.bigints.UInt64;
 import org.bouncycastle.crypto.digests.KeccakDigest;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.Request;
+import org.web3j.protocol.core.Response;
+import org.web3j.protocol.http.HttpService;
 
 public class EstimateGasTest extends LineaPluginTestBase {
   protected static final int VERIFICATION_GAS_COST = 1_200_000;
@@ -87,7 +96,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final Account sender = accounts.getSecondaryBenefactor();
 
     final CallParams callParams =
-        new CallParams(sender.getAddress(), sender.getAddress(), null, Bytes.EMPTY.toHexString());
+        new CallParams(
+            sender.getAddress(), sender.getAddress(), null, Bytes.EMPTY.toHexString(), "0");
 
     final var reqEth = new RawEstimateGasRequest(callParams);
     final var reqLinea = new LineaEstimateGasRequest(callParams);
@@ -113,7 +123,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var payload = Bytes.wrap(txData.toString().getBytes(StandardCharsets.UTF_8));
 
     final CallParams callParams =
-        new CallParams(sender.getAddress(), sender.getAddress(), null, payload.toHexString());
+        new CallParams(sender.getAddress(), sender.getAddress(), null, payload.toHexString(), "0");
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
@@ -168,10 +178,9 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
   @Test
   public void lineaEstimateGasPriorityFeeMinGasPriceLowerBound() {
-
     final Account sender = accounts.getSecondaryBenefactor();
 
-    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "");
+    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0");
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
@@ -181,6 +190,63 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var estimatedMaxGasPrice = baseFee.add(estimatedPriorityFee);
 
     assertMinGasPriceLowerBound(baseFee, estimatedMaxGasPrice);
+  }
+
+  @Test
+  public void invalidParametersLineaEstimateGasRequestReturnErrorResponse() {
+    final Account sender = accounts.getSecondaryBenefactor();
+    final CallParams callParams =
+        new CallParams(sender.getAddress(), null, "", "", String.valueOf(Integer.MAX_VALUE));
+    final var reqLinea = new BadLineaEstimateGasRequest(callParams);
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    assertThat(respLinea.getCode()).isEqualTo(RpcErrorType.INVALID_PARAMS.getCode());
+    assertThat(respLinea.getMessage()).isEqualTo(RpcErrorType.INVALID_PARAMS.getMessage());
+  }
+
+  @Test
+  public void revertedTransactionReturnErrorResponse() throws Exception {
+    final SimpleStorage simpleStorage = deploySimpleStorage();
+    final Account sender = accounts.getSecondaryBenefactor();
+    final var reqLinea =
+        new BadLineaEstimateGasRequest(
+            new CallParams(sender.getAddress(), simpleStorage.getContractAddress(), "", "", "0"));
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    assertThat(respLinea.getCode()).isEqualTo(-32000);
+    assertThat(respLinea.getMessage()).isEqualTo("Execution reverted");
+    assertThat(respLinea.getData()).isEqualTo("\"0x\"");
+  }
+
+  @Test
+  public void failedTransactionReturnErrorResponse() {
+    final Account sender = accounts.getSecondaryBenefactor();
+    final var reqLinea =
+        new BadLineaEstimateGasRequest(
+            new CallParams(
+                sender.getAddress(), null, "", Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY, "0"));
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    assertThat(respLinea.getCode()).isEqualTo(-32000);
+    assertThat(respLinea.getMessage()).isEqualTo("Failed transaction, reason: INVALID_OPERATION");
+  }
+
+  @Test
+  public void parseErrorLineaEstimateGasRequestReturnErrorResponse()
+      throws IOException, InterruptedException {
+    final var httpService = (HttpService) minerNode.nodeRequests().getWeb3jService();
+    final var httpClient = HttpClient.newHttpClient();
+    final var badJsonRequest =
+        HttpRequest.newBuilder(URI.create(httpService.getUrl()))
+            .headers("Content-Type", "application/json")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    """
+            {"jsonrpc":"2.0","method":"linea_estimateGas","params":[malformed json],"id":53}
+            """))
+            .build();
+    final var errorResponse = httpClient.send(badJsonRequest, HttpResponse.BodyHandlers.ofString());
+    assertThat(errorResponse.body())
+        .isEqualTo(
+            """
+        {"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"Parse error"}}""");
   }
 
   protected void assertMinGasPriceLowerBound(final Wei baseFee, final Wei estimatedMaxGasPrice) {
@@ -215,6 +281,34 @@ public class EstimateGasTest extends LineaPluginTestBase {
     record Response(String gasLimit, String baseFeePerGas, String priorityFeePerGas) {}
   }
 
+  static class BadLineaEstimateGasRequest
+      implements Transaction<org.web3j.protocol.core.Response.Error> {
+    private final CallParams badCallParams;
+
+    public BadLineaEstimateGasRequest(final CallParams badCallParams) {
+      this.badCallParams = badCallParams;
+    }
+
+    @Override
+    public org.web3j.protocol.core.Response.Error execute(final NodeRequests nodeRequests) {
+      try {
+        return new Request<>(
+                "linea_estimateGas",
+                List.of(badCallParams),
+                nodeRequests.getWeb3jService(),
+                BadLineaEstimateGasResponse.class)
+            .send()
+            .getError();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    static class BadLineaEstimateGasResponse extends org.web3j.protocol.core.Response<Response> {}
+
+    record Response(String gasLimit, String baseFeePerGas, String priorityFeePerGas) {}
+  }
+
   static class RawEstimateGasRequest implements Transaction<String> {
     private final CallParams callParams;
 
@@ -240,5 +334,5 @@ public class EstimateGasTest extends LineaPluginTestBase {
     static class RawEstimateGasResponse extends org.web3j.protocol.core.Response<String> {}
   }
 
-  record CallParams(String from, String to, String value, String data) {}
+  record CallParams(String from, String to, String value, String data, String gasLimit) {}
 }

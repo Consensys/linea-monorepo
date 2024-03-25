@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.TraceService;
@@ -85,7 +86,7 @@ public class GenerateConflatedTracesV0 {
       log.info("[TRACING] trace for {}-{} serialized to {} in {}", path, toBlock, fromBlock, sw);
       return new TraceFile(params.runtimeVersion(), path);
     } catch (Exception ex) {
-      throw new PluginRpcEndpointException(ex.getMessage());
+      throw new PluginRpcEndpointException(RpcErrorType.PLUGIN_INTERNAL_ERROR, ex.getMessage());
     }
   }
 

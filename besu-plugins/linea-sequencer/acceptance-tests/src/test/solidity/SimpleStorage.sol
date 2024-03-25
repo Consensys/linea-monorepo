@@ -20,6 +20,7 @@ contract SimpleStorage {
     uint sum;
 
     function set(string memory value) public {
+        require(bytes(value).length != 0);
         data = value;
     }
 
