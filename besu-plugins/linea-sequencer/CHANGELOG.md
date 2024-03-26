@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4-test24
+Test pre-release 24 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Improve linea_estimateGas error response [#650](https://github.com/Consensys/besu-sequencer-plugins/pull/650)
+* On Windows also build Linux native lib so it can run on WSL [#651](https://github.com/Consensys/besu-sequencer-plugins/pull/651)
+
 ## 0.1.4-test23
 Test pre-release 23 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * linea_estimateGas compatibility mode multiplier https://github.com/Consensys/besu-sequencer-plugins/pull/646
