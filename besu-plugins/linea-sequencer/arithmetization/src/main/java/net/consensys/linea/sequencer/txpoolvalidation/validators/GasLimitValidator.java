@@ -12,28 +12,28 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.sequencer.txvalidation.validators;
+package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 @Slf4j
 @RequiredArgsConstructor
 public class GasLimitValidator implements PluginTransactionPoolValidator {
-  final LineaTransactionValidatorConfiguration txValidatorConf;
+  final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
 
   @Override
   public Optional<String> validateTransaction(
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
-    if (transaction.getGasLimit() > txValidatorConf.maxTxGasLimit()) {
+    if (transaction.getGasLimit() > txPoolValidatorConf.maxTxGasLimit()) {
       final String errMsg =
           "Gas limit of transaction is greater than the allowed max of "
-              + txValidatorConf.maxTxGasLimit();
+              + txPoolValidatorConf.maxTxGasLimit();
       log.debug(errMsg);
       return Optional.of(errMsg);
     }

@@ -12,28 +12,28 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.sequencer.txvalidation.validators;
+package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
 @Slf4j
 @RequiredArgsConstructor
 public class CalldataValidator implements PluginTransactionPoolValidator {
-  final LineaTransactionValidatorConfiguration txValidatorConf;
+  final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
 
   @Override
   public Optional<String> validateTransaction(
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
-    if (transaction.getPayload().size() > txValidatorConf.maxTxCalldataSize()) {
+    if (transaction.getPayload().size() > txPoolValidatorConf.maxTxCalldataSize()) {
       final String errMsg =
           "Calldata of transaction is greater than the allowed max of "
-              + txValidatorConf.maxTxCalldataSize();
+              + txPoolValidatorConf.maxTxCalldataSize();
       log.debug(errMsg);
       return Optional.of(errMsg);
     }

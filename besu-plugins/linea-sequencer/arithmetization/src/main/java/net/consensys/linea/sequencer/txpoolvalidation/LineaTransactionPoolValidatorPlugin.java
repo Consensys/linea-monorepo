@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txvalidation;
+package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -41,11 +41,11 @@ import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
  */
 @Slf4j
 @AutoService(BesuPlugin.class)
-public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin {
+public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
   private BesuConfiguration besuConfiguration;
   private BlockchainService blockchainService;
-  private TransactionPoolValidatorService transactionValidatorService;
+  private TransactionPoolValidatorService transactionPoolValidatorService;
 
   @Override
   public Optional<String> getName() {
@@ -70,28 +70,29 @@ public class LineaTransactionValidatorPlugin extends AbstractLineaRequiredPlugin
                     new RuntimeException(
                         "Failed to obtain BlockchainService from the BesuContext."));
 
-    transactionValidatorService =
+    transactionPoolValidatorService =
         context
             .getService(TransactionPoolValidatorService.class)
             .orElseThrow(
                 () ->
                     new RuntimeException(
-                        "Failed to obtain TransactionValidationService from the BesuContext."));
+                        "Failed to obtain TransactionPoolValidationService from the BesuContext."));
   }
 
   @Override
   public void beforeExternalServices() {
     super.beforeExternalServices();
     try (Stream<String> lines =
-        Files.lines(Path.of(new File(transactionValidatorConfiguration.denyListPath()).toURI()))) {
+        Files.lines(
+            Path.of(new File(transactionPoolValidatorConfiguration.denyListPath()).toURI()))) {
       final Set<Address> denied =
           lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
 
-      transactionValidatorService.registerPluginTransactionValidatorFactory(
-          new LineaTransactionValidatorFactory(
+      transactionPoolValidatorService.registerPluginTransactionValidatorFactory(
+          new LineaTransactionPoolValidatorFactory(
               besuConfiguration,
               blockchainService,
-              transactionValidatorConfiguration,
+              transactionPoolValidatorConfiguration,
               profitabilityConfiguration,
               denied));
 

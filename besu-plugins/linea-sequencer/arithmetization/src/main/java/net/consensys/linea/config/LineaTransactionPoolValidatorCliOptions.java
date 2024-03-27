@@ -19,7 +19,7 @@ import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
 
 /** The Linea CLI options. */
-public class LineaTransactionValidatorCliOptions {
+public class LineaTransactionPoolValidatorCliOptions {
 
   public static final String DENY_LIST_PATH = "--plugin-linea-deny-list-path";
   public static final String DEFAULT_DENY_LIST_PATH = "lineaDenyList.txt";
@@ -58,15 +58,15 @@ public class LineaTransactionValidatorCliOptions {
               + ")")
   private int maxTxCallDataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
 
-  private LineaTransactionValidatorCliOptions() {}
+  private LineaTransactionPoolValidatorCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  public static LineaTransactionValidatorCliOptions create() {
-    return new LineaTransactionValidatorCliOptions();
+  public static LineaTransactionPoolValidatorCliOptions create() {
+    return new LineaTransactionPoolValidatorCliOptions();
   }
 
   /**
@@ -75,9 +75,9 @@ public class LineaTransactionValidatorCliOptions {
    * @param config the config
    * @return the cli options
    */
-  public static LineaTransactionValidatorCliOptions fromConfig(
-      final LineaTransactionValidatorConfiguration config) {
-    final LineaTransactionValidatorCliOptions options = create();
+  public static LineaTransactionPoolValidatorCliOptions fromConfig(
+      final LineaTransactionPoolValidatorConfiguration config) {
+    final LineaTransactionPoolValidatorCliOptions options = create();
     options.denyListPath = config.denyListPath();
     options.maxTxGasLimit = config.maxTxGasLimit();
     options.maxTxCallDataSize = config.maxTxCalldataSize();
@@ -90,8 +90,8 @@ public class LineaTransactionValidatorCliOptions {
    *
    * @return the Linea factory configuration
    */
-  public LineaTransactionValidatorConfiguration toDomainObject() {
-    return new LineaTransactionValidatorConfiguration(
+  public LineaTransactionPoolValidatorConfiguration toDomainObject() {
+    return new LineaTransactionPoolValidatorConfiguration(
         denyListPath, maxTxGasLimit, maxTxCallDataSize);
   }
 

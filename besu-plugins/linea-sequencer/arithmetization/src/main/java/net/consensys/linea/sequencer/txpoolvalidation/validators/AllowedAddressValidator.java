@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.sequencer.txvalidation.validators;
+package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
 import java.util.Set;

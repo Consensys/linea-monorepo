@@ -13,13 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txvalidation.validators;
+package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
+import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Assertions;
@@ -28,37 +28,37 @@ import org.junit.jupiter.api.Test;
 
 @Slf4j
 @RequiredArgsConstructor
-public class CalldataValidatorTest {
-  public static final int MAX_TX_CALLDATA_SIZE = 10_000;
-  private CalldataValidator calldataValidator;
+public class GasLimitValidatorTest {
+  public static final int MAX_TX_GAS_LIMIT = 9_000_000;
+  private GasLimitValidator gasLimitValidator;
 
   @BeforeEach
   public void initialize() {
-    calldataValidator =
-        new CalldataValidator(
-            LineaTransactionValidatorCliOptions.create().toDomainObject().toBuilder()
-                .maxTxCalldataSize(MAX_TX_CALLDATA_SIZE)
+    gasLimitValidator =
+        new GasLimitValidator(
+            LineaTransactionPoolValidatorCliOptions.create().toDomainObject().toBuilder()
+                .maxTxGasLimit(MAX_TX_GAS_LIMIT)
                 .build());
   }
 
   @Test
-  public void validatedWithValidCalldata() {
+  public void validatedWithValidGasLimit() {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.gasPrice(Wei.ZERO).payload(Bytes.random(MAX_TX_CALLDATA_SIZE)).build();
+        builder.gasLimit(MAX_TX_GAS_LIMIT).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
-        calldataValidator.validateTransaction(transaction, false, false), Optional.empty());
+        gasLimitValidator.validateTransaction(transaction, false, false), Optional.empty());
   }
 
   @Test
-  public void rejectedWithTooBigCalldata() {
+  public void rejectedWithMaxGasLimitPlusOne() {
     final org.hyperledger.besu.ethereum.core.Transaction.Builder builder =
         org.hyperledger.besu.ethereum.core.Transaction.builder();
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
-        builder.gasPrice(Wei.ZERO).payload(Bytes.random(MAX_TX_CALLDATA_SIZE + 1)).build();
+        builder.gasLimit(MAX_TX_GAS_LIMIT + 1).gasPrice(Wei.ZERO).payload(Bytes.EMPTY).build();
     Assertions.assertEquals(
-        calldataValidator.validateTransaction(transaction, false, false).orElseThrow(),
-        "Calldata of transaction is greater than the allowed max of " + MAX_TX_CALLDATA_SIZE);
+        gasLimitValidator.validateTransaction(transaction, false, false).orElseThrow(),
+        "Gas limit of transaction is greater than the allowed max of " + MAX_TX_GAS_LIMIT);
   }
 }

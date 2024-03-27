@@ -13,18 +13,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.sequencer.txvalidation;
+package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
-import net.consensys.linea.sequencer.txvalidation.validators.AllowedAddressValidator;
-import net.consensys.linea.sequencer.txvalidation.validators.CalldataValidator;
-import net.consensys.linea.sequencer.txvalidation.validators.GasLimitValidator;
-import net.consensys.linea.sequencer.txvalidation.validators.ProfitabilityValidator;
+import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.ProfitabilityValidator;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -32,23 +32,23 @@ import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolVal
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
 /** Represents a factory for creating transaction validators. */
-public class LineaTransactionValidatorFactory implements PluginTransactionPoolValidatorFactory {
+public class LineaTransactionPoolValidatorFactory implements PluginTransactionPoolValidatorFactory {
 
   private final BesuConfiguration besuConfiguration;
   private final BlockchainService blockchainService;
-  private final LineaTransactionValidatorConfiguration txValidatorConf;
+  private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final Set<Address> denied;
 
-  public LineaTransactionValidatorFactory(
+  public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
-      final LineaTransactionValidatorConfiguration txValidatorConf,
+      final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final LineaProfitabilityConfiguration profitabilityConf,
       final Set<Address> denied) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
-    this.txValidatorConf = txValidatorConf;
+    this.txPoolValidatorConf = txPoolValidatorConf;
     this.profitabilityConf = profitabilityConf;
     this.denied = denied;
   }
@@ -58,8 +58,8 @@ public class LineaTransactionValidatorFactory implements PluginTransactionPoolVa
     final var validators =
         new PluginTransactionPoolValidator[] {
           new AllowedAddressValidator(denied),
-          new GasLimitValidator(txValidatorConf),
-          new CalldataValidator(txValidatorConf),
+          new GasLimitValidator(txPoolValidatorConf),
+          new CalldataValidator(txPoolValidatorConf),
           new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf)
         };
 

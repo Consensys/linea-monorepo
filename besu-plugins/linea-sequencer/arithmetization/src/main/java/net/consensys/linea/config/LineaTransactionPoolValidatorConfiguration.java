@@ -25,5 +25,5 @@ import lombok.Builder;
  * @param maxTxCalldataSize the maximum size of calldata allowed for transactions
  */
 @Builder(toBuilder = true)
-public record LineaTransactionValidatorConfiguration(
+public record LineaTransactionPoolValidatorConfiguration(
     String denyListPath, int maxTxGasLimit, int maxTxCalldataSize) {}

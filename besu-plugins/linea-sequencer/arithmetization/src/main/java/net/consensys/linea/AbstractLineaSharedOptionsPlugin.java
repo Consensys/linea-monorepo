@@ -23,10 +23,10 @@ import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcCliOptions;
 import net.consensys.linea.config.LineaRpcConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
+import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
-import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
@@ -37,12 +37,12 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   private static boolean cliOptionsRegistered = false;
   private static boolean configured = false;
   private static LineaTransactionSelectorCliOptions transactionSelectorCliOptions;
-  private static LineaTransactionValidatorCliOptions transactionValidatorCliOptions;
+  private static LineaTransactionPoolValidatorCliOptions transactionPoolValidatorCliOptions;
   private static LineaL1L2BridgeCliOptions l1L2BridgeCliOptions;
   private static LineaRpcCliOptions rpcCliOptions;
   private static LineaProfitabilityCliOptions profitabilityCliOptions;
   protected static LineaTransactionSelectorConfiguration transactionSelectorConfiguration;
-  protected static LineaTransactionValidatorConfiguration transactionValidatorConfiguration;
+  protected static LineaTransactionPoolValidatorConfiguration transactionPoolValidatorConfiguration;
   protected static LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
   protected static LineaRpcConfiguration rpcConfiguration;
   protected static LineaProfitabilityConfiguration profitabilityConfiguration;
@@ -63,13 +63,13 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
                       new IllegalStateException(
                           "Failed to obtain PicoCLI options from the BesuContext"));
       transactionSelectorCliOptions = LineaTransactionSelectorCliOptions.create();
-      transactionValidatorCliOptions = LineaTransactionValidatorCliOptions.create();
+      transactionPoolValidatorCliOptions = LineaTransactionPoolValidatorCliOptions.create();
       l1L2BridgeCliOptions = LineaL1L2BridgeCliOptions.create();
       rpcCliOptions = LineaRpcCliOptions.create();
       profitabilityCliOptions = LineaProfitabilityCliOptions.create();
 
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, transactionSelectorCliOptions);
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, transactionValidatorCliOptions);
+      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, transactionPoolValidatorCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, l1L2BridgeCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, rpcCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, profitabilityCliOptions);
@@ -81,7 +81,7 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   public void beforeExternalServices() {
     if (!configured) {
       transactionSelectorConfiguration = transactionSelectorCliOptions.toDomainObject();
-      transactionValidatorConfiguration = transactionValidatorCliOptions.toDomainObject();
+      transactionPoolValidatorConfiguration = transactionPoolValidatorCliOptions.toDomainObject();
       l1L2BridgeConfiguration = l1L2BridgeCliOptions.toDomainObject();
       rpcConfiguration = rpcCliOptions.toDomainObject();
       profitabilityConfiguration = profitabilityCliOptions.toDomainObject();
@@ -94,9 +94,9 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
         transactionSelectorCliOptions);
 
     log.debug(
-        "Configured plugin {} with transaction validator configuration: {}",
+        "Configured plugin {} with transaction pool validator configuration: {}",
         getName(),
-        transactionValidatorCliOptions);
+        transactionPoolValidatorCliOptions);
 
     log.debug(
         "Configured plugin {} with L1 L2 bridge configuration: {}",

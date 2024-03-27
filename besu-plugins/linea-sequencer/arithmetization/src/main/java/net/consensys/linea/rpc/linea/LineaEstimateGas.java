@@ -28,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcConfiguration;
-import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
@@ -74,7 +74,7 @@ public class LineaEstimateGas {
   private final TransactionSimulationService transactionSimulationService;
   private final BlockchainService blockchainService;
   private LineaRpcConfiguration rpcConfiguration;
-  private LineaTransactionValidatorConfiguration txValidatorConf;
+  private LineaTransactionPoolValidatorConfiguration txValidatorConf;
   private LineaProfitabilityConfiguration profitabilityConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
 
@@ -89,7 +89,7 @@ public class LineaEstimateGas {
 
   public void init(
       LineaRpcConfiguration rpcConfiguration,
-      final LineaTransactionValidatorConfiguration transactionValidatorConfiguration,
+      final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
       final LineaProfitabilityConfiguration profitabilityConf) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
