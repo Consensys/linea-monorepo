@@ -15,23 +15,13 @@
 
 package net.consensys.linea.sequencer.txselection;
 
-import java.io.File;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
+
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.google.auto.service.AutoService;
-import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
-import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
-import org.apache.tuweni.toml.Toml;
-import org.apache.tuweni.toml.TomlParseResult;
-import org.apache.tuweni.toml.TomlTable;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
@@ -66,43 +56,12 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   @Override
   public void beforeExternalServices() {
     super.beforeExternalServices();
-    try {
-      URL url = new File(transactionSelectorConfiguration.moduleLimitsFilePath()).toURI().toURL();
-      final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
-      TomlParseResult result = Toml.parse(tomlString);
-      final TomlTable table = result.getTable("traces-limits");
-      final Map<String, Integer> limitsMap =
-          table.toMap().entrySet().stream()
-              .collect(
-                  Collectors.toUnmodifiableMap(
-                      Map.Entry::getKey, e -> Math.toIntExact((Long) e.getValue())));
-
-      createAndRegister(
-          transactionSelectionService,
-          transactionSelectorConfiguration,
-          l1L2BridgeConfiguration,
-          profitabilityConfiguration,
-          limitsMap);
-    } catch (final Exception e) {
-      final String errorMsg =
-          "Problem reading the toml file containing the limits for the modules: "
-              + transactionSelectorConfiguration.moduleLimitsFilePath();
-      log.error(errorMsg);
-      throw new RuntimeException(errorMsg, e);
-    }
-  }
-
-  private void createAndRegister(
-      final TransactionSelectionService transactionSelectionService,
-      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
-      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
-      final LineaProfitabilityConfiguration profitabilityConfiguration,
-      final Map<String, Integer> limitsMap) {
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
-            txSelectorConfiguration,
+            transactionSelectorConfiguration,
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
-            limitsMap));
+            tracerConfiguration,
+            createLimitModules(tracerConfiguration)));
   }
 }

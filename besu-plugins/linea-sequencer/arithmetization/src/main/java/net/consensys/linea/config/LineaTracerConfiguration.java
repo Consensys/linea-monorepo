@@ -17,11 +17,6 @@ package net.consensys.linea.config;
 
 import lombok.Builder;
 
-/** The Linea transaction selectors configuration. */
+/** The Linea tracer configuration. */
 @Builder(toBuilder = true)
-public record LineaTransactionSelectorConfiguration(
-    int maxBlockCallDataSize,
-    int overLinesLimitCacheSize,
-    long maxGasPerBlock,
-    int unprofitableCacheSize,
-    int unprofitableRetryLimit) {}
+public record LineaTracerConfiguration(String moduleLimitsFilePath) {}

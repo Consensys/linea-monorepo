@@ -15,20 +15,28 @@
 
 package net.consensys.linea.rpc.linea;
 
+import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
+import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.sequencer.TracerAggregator;
+import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
+import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
@@ -77,6 +85,9 @@ public class LineaEstimateGas {
   private LineaTransactionPoolValidatorConfiguration txValidatorConf;
   private LineaProfitabilityConfiguration profitabilityConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
+  private LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
+
+  private ModuleLineCountValidator moduleLineCountValidator;
 
   public LineaEstimateGas(
       final BesuConfiguration besuConfiguration,
@@ -90,11 +101,20 @@ public class LineaEstimateGas {
   public void init(
       LineaRpcConfiguration rpcConfiguration,
       final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
-      final LineaProfitabilityConfiguration profitabilityConf) {
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final Map<String, Integer> limitsMap,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;
     this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
+    this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
+    this.moduleLineCountValidator = new ModuleLineCountValidator(limitsMap);
+
+    if (l1L2BridgeConfiguration.isEmpty()) {
+      log.error("L1L2 bridge settings have not been defined.");
+      System.exit(1);
+    }
   }
 
   public String getNamespace() {
@@ -187,10 +207,22 @@ public class LineaEstimateGas {
       final JsonCallParameter callParameters,
       final Transaction transaction,
       final Wei minGasPrice) {
-    final var tracer = new EstimateGasOperationTracer();
+
+    final var estimateGasOperationTracer = new EstimateGasOperationTracer();
+    final var zkTracer = createZkTracer();
+    TracerAggregator tracerAggregator =
+        TracerAggregator.create(estimateGasOperationTracer, zkTracer);
+
     final var chainHeadHash = blockchainService.getChainHeadHash();
     final var maybeSimulationResults =
-        transactionSimulationService.simulate(transaction, chainHeadHash, tracer, true);
+        transactionSimulationService.simulate(transaction, chainHeadHash, tracerAggregator, true);
+
+    ModuleLimitsValidationResult moduleLimit =
+        moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
+
+    if (moduleLimit.getResult() != ModuleLineCountValidator.ModuleLineCountResult.VALID) {
+      handleModuleOverLimit(moduleLimit);
+    }
 
     return maybeSimulationResults
         .map(
@@ -231,7 +263,7 @@ public class LineaEstimateGas {
                   transactionSimulationService.simulate(
                       createTransactionForSimulation(callParameters, lowGasEstimation, minGasPrice),
                       chainHeadHash,
-                      tracer,
+                      tracerAggregator,
                       true);
 
               return lowResult
@@ -255,7 +287,8 @@ public class LineaEstimateGas {
 
                           // else do a binary search to find the right estimation
                           int iterations = 0;
-                          var high = highGasEstimation(lr.getGasEstimate(), tracer);
+                          var high =
+                              highGasEstimation(lr.getGasEstimate(), estimateGasOperationTracer);
                           var mid = high;
                           var low = lowGasEstimation;
                           while (low + 1 < high) {
@@ -267,7 +300,7 @@ public class LineaEstimateGas {
                                     createTransactionForSimulation(
                                         callParameters, mid, minGasPrice),
                                     chainHeadHash,
-                                    tracer,
+                                    tracerAggregator,
                                     true);
 
                             if (binarySearchResult.isEmpty()
@@ -353,6 +386,7 @@ public class LineaEstimateGas {
    */
   private long highGasEstimation(
       final long gasEstimation, final EstimateGasOperationTracer operationTracer) {
+
     // no more than 63/64s of the remaining gas can be passed to the sub calls
     final double subCallMultiplier =
         Math.pow(SUB_CALL_REMAINING_GAS_RATIO, operationTracer.getMaxDepth());
@@ -381,6 +415,34 @@ public class LineaEstimateGas {
     callParameters.getAccessList().ifPresent(txBuilder::accessList);
 
     return txBuilder.build();
+  }
+
+  private ZkTracer createZkTracer() {
+    var zkTracer = new ZkTracer(l1L2BridgeConfiguration);
+    zkTracer.traceStartConflation(1L);
+    zkTracer.traceStartBlock(blockchainService.getChainHeadHeader());
+    return zkTracer;
+  }
+
+  private void handleModuleOverLimit(ModuleLimitsValidationResult moduleLimitResult) {
+    // Throw specific exceptions based on the type of limit exceeded
+    if (moduleLimitResult.getResult() == MODULE_NOT_DEFINED) {
+      String moduleNotDefinedMsg =
+          String.format(
+              "Module %s does not exist in the limits file.", moduleLimitResult.getModuleName());
+      log.error(moduleNotDefinedMsg);
+      throw new PluginRpcEndpointException(new TransactionSimulationError(moduleNotDefinedMsg));
+    }
+    if (moduleLimitResult.getResult() == TX_MODULE_LINE_COUNT_OVERFLOW) {
+      String txOverflowMsg =
+          String.format(
+              "Transaction line count for module %s=%s is above the limit %s",
+              moduleLimitResult.getModuleName(),
+              moduleLimitResult.getModuleLineCount(),
+              moduleLimitResult.getModuleLineLimit());
+      log.warn(txOverflowMsg);
+      throw new PluginRpcEndpointException(new TransactionSimulationError(txOverflowMsg));
+    }
   }
 
   public record Response(

@@ -20,6 +20,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
+import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -33,18 +34,20 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 public class LineaTransactionSelector implements PluginTransactionSelector {
 
   private TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
-  private List<PluginTransactionSelector> selectors;
+  private final List<PluginTransactionSelector> selectors;
 
   public LineaTransactionSelector(
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
+      final LineaTracerConfiguration tracerConfiguration,
       final Map<String, Integer> limitsMap) {
     this.selectors =
         createTransactionSelectors(
             txSelectorConfiguration,
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
+            tracerConfiguration,
             limitsMap);
   }
 
@@ -60,11 +63,12 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
+      final LineaTracerConfiguration tracerConfiguration,
       final Map<String, Integer> limitsMap) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
-            limitsMap, txSelectorConfiguration, l1L2BridgeConfiguration);
+            limitsMap, txSelectorConfiguration, l1L2BridgeConfiguration, tracerConfiguration);
 
     return List.of(
         new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),

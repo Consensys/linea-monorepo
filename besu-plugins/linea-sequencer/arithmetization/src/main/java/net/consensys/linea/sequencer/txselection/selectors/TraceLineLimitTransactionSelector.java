@@ -27,7 +27,10 @@ import java.util.stream.Collectors;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
+import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
+import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.Module;
 import org.hyperledger.besu.datatypes.Hash;
@@ -56,20 +59,21 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   private final String limitFilePath;
   private final Map<String, Integer> moduleLimits;
   private final int overLimitCacheSize;
-  private Map<String, Integer> consolidatedCumulatedLineCount = Map.of();
+  private final ModuleLineCountValidator moduleLineCountAccumulator;
   private Map<String, Integer> currCumulatedLineCount;
 
   public TraceLineLimitTransactionSelector(
       final Map<String, Integer> moduleLimits,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
-      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
+      final LineaTracerConfiguration tracerConfiguration) {
     if (l1L2BridgeConfiguration.isEmpty()) {
       log.error("L1L2 bridge settings have not been defined.");
       System.exit(1);
     }
 
     this.moduleLimits = moduleLimits;
-    this.limitFilePath = txSelectorConfiguration.moduleLimitsFilePath();
+    this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();
     this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
 
     zkTracer = new ZkTracerWithLog(l1L2BridgeConfiguration);
@@ -80,6 +84,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
       }
     }
     zkTracer.traceStartConflation(1L);
+    moduleLineCountAccumulator = new ModuleLineCountValidator(moduleLimits);
   }
 
   /**
@@ -114,7 +119,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   public void onTransactionSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
       final TransactionProcessingResult processingResult) {
-    consolidatedCumulatedLineCount = currCumulatedLineCount;
+    moduleLineCountAccumulator.updateAccumulatedLineCounts(currCumulatedLineCount);
   }
 
   /**
@@ -133,49 +138,41 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
 
     // check that we are not exceeding line number for any module
     currCumulatedLineCount = zkTracer.getModulesLineCount();
-
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
-
     log.atTrace()
         .setMessage("Tx {} line count per module: {}")
         .addArgument(transaction::getHash)
         .addArgument(this::logTxLineCount)
         .log();
 
-    for (final var module : currCumulatedLineCount.keySet()) {
-      final Integer moduleLineCountLimit = moduleLimits.get(module);
-      if (moduleLineCountLimit == null) {
-        final String errorMsg =
-            "Module " + module + " does not exist in the limits file: " + limitFilePath;
-        log.error(errorMsg);
-        throw new RuntimeException(errorMsg);
-      }
+    ModuleLimitsValidationResult result =
+        moduleLineCountAccumulator.validate(currCumulatedLineCount);
 
-      final int cumulatedModuleLineCount = currCumulatedLineCount.get(module);
-      final int txModuleLineCount =
-          cumulatedModuleLineCount - consolidatedCumulatedLineCount.getOrDefault(module, 0);
-
-      if (txModuleLineCount > moduleLineCountLimit) {
+    switch (result.getResult()) {
+      case MODULE_NOT_DEFINED:
+        log.error("Module {} does not exist in the limits file.", result.getModuleName());
+        throw new RuntimeException(
+            "Module " + result.getModuleName() + " does not exist in the limits file.");
+      case TX_MODULE_LINE_COUNT_OVERFLOW:
         log.warn(
             "Tx {} line count for module {}={} is above the limit {}, removing from the txpool",
             transaction.getHash(),
-            module,
-            txModuleLineCount,
-            moduleLineCountLimit);
+            result.getModuleName(),
+            result.getModuleLineCount(),
+            result.getModuleLineCount());
         rememberOverLineCountLimitTransaction(transaction);
         return TX_MODULE_LINE_COUNT_OVERFLOW;
-      }
-
-      if (cumulatedModuleLineCount > moduleLineCountLimit) {
+      case BLOCK_MODULE_LINE_COUNT_FULL:
         log.atTrace()
             .setMessage(
                 "Cumulated line count for module {}={} is above the limit {}, stopping selection")
-            .addArgument(module)
-            .addArgument(cumulatedModuleLineCount)
-            .addArgument(moduleLineCountLimit)
+            .addArgument(result.getModuleName())
+            .addArgument(result.getCumulativeModuleLineCount())
+            .addArgument(result.getCumulativeModuleLineLimit())
             .log();
         return BLOCK_MODULE_LINE_COUNT_FULL;
-      }
+      default:
+        break;
     }
     return SELECTED;
   }
@@ -207,7 +204,10 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
                 // tx line count / cumulated line count / line count limit
                 e.getKey()
                     + "="
-                    + (e.getValue() - consolidatedCumulatedLineCount.getOrDefault(e.getKey(), 0))
+                    + (e.getValue()
+                        - moduleLineCountAccumulator
+                            .getAccumulatedLineCountsPerModule()
+                            .getOrDefault(e.getKey(), 0))
                     + "/"
                     + e.getValue()
                     + "/"
@@ -230,7 +230,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
           .addKeyValue(
               "traceCounts",
               () ->
-                  consolidatedCumulatedLineCount.entrySet().stream()
+                  moduleLineCountAccumulator.getAccumulatedLineCountsPerModule().entrySet().stream()
                       .sorted(Map.Entry.comparingByKey())
                       .map(e -> '"' + e.getKey() + "\":" + e.getValue())
                       .collect(Collectors.joining(",")))
