@@ -16,9 +16,9 @@
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import java.math.BigInteger;
-import java.nio.file.Path;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -30,18 +30,18 @@ import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.plugin.data.BlockContext;
-import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
-import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @Slf4j
 @RequiredArgsConstructor
+@ExtendWith(MockitoExtension.class)
 public class ProfitabilityValidatorTest {
   public static final Address SENDER =
       Address.fromHexString("0x0000000000000000000000000000000000001000");
@@ -71,6 +71,9 @@ public class ProfitabilityValidatorTest {
   private ProfitabilityValidator profitabilityValidatorOnlyP2p;
   private ProfitabilityValidator profitabilityValidatorNever;
 
+  @Mock BesuConfiguration besuConfiguration;
+  @Mock BlockchainService blockchainService;
+
   @BeforeEach
   public void initialize() {
     final var profitabilityConfBuilder =
@@ -79,8 +82,8 @@ public class ProfitabilityValidatorTest {
 
     profitabilityValidatorAlways =
         new ProfitabilityValidator(
-            new TestBesuConfiguration(),
-            new TestBlockchainService(),
+            besuConfiguration,
+            blockchainService,
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(true)
                 .txPoolCheckApiEnabled(true)
@@ -88,8 +91,8 @@ public class ProfitabilityValidatorTest {
 
     profitabilityValidatorNever =
         new ProfitabilityValidator(
-            new TestBesuConfiguration(),
-            new TestBlockchainService(),
+            besuConfiguration,
+            blockchainService,
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(false)
                 .txPoolCheckApiEnabled(false)
@@ -97,8 +100,8 @@ public class ProfitabilityValidatorTest {
 
     profitabilityValidatorOnlyApi =
         new ProfitabilityValidator(
-            new TestBesuConfiguration(),
-            new TestBlockchainService(),
+            besuConfiguration,
+            blockchainService,
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(false)
                 .txPoolCheckApiEnabled(true)
@@ -106,8 +109,8 @@ public class ProfitabilityValidatorTest {
 
     profitabilityValidatorOnlyP2p =
         new ProfitabilityValidator(
-            new TestBesuConfiguration(),
-            new TestBlockchainService(),
+            besuConfiguration,
+            blockchainService,
             profitabilityConfBuilder
                 .txPoolCheckP2pEnabled(true)
                 .txPoolCheckApiEnabled(false)
@@ -132,6 +135,8 @@ public class ProfitabilityValidatorTest {
 
   @Test
   public void rejectRemoteWhenBelowMinProfitability() {
+    when(besuConfiguration.getMinGasPrice()).thenReturn(Wei.of(100_000_000));
+    when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
             .sender(SENDER)
@@ -196,6 +201,8 @@ public class ProfitabilityValidatorTest {
 
   @Test
   public void rejectRemoteWhenBelowMinProfitabilityIfCheckEnableForP2p() {
+    when(besuConfiguration.getMinGasPrice()).thenReturn(Wei.of(100_000_000));
+    when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
             .sender(SENDER)
@@ -229,6 +236,8 @@ public class ProfitabilityValidatorTest {
 
   @Test
   public void rejectLocalWhenBelowMinProfitabilityIfCheckEnableForApi() {
+    when(besuConfiguration.getMinGasPrice()).thenReturn(Wei.of(100_000_000));
+    when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
             .sender(SENDER)
@@ -242,50 +251,5 @@ public class ProfitabilityValidatorTest {
     assertThat(profitabilityValidatorOnlyApi.validateTransaction(transaction, true, false))
         .isPresent()
         .contains("Gas price too low");
-  }
-
-  private static class TestBesuConfiguration implements BesuConfiguration {
-    @Override
-    public Path getStoragePath() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Path getDataPath() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public DataStorageFormat getDatabaseFormat() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Wei getMinGasPrice() {
-      return Wei.of(100_000_000);
-    }
-  }
-
-  private static class TestBlockchainService implements BlockchainService {
-
-    @Override
-    public Optional<BlockContext> getBlockByNumber(final long l) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Hash getChainHeadHash() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public BlockHeader getChainHeadHeader() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Optional<Wei> getNextBlockBaseFee() {
-      return Optional.of(Wei.of(7));
-    }
   }
 }

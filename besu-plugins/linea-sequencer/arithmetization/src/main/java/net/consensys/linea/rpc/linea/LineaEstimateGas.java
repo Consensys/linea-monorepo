@@ -49,6 +49,7 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcPara
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.evm.tracing.EstimateGasOperationTracer;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
@@ -209,11 +210,12 @@ public class LineaEstimateGas {
       final Wei minGasPrice) {
 
     final var estimateGasOperationTracer = new EstimateGasOperationTracer();
-    final var zkTracer = createZkTracer();
+    final var chainHeadHeader = blockchainService.getChainHeadHeader();
+    final var zkTracer = createZkTracer(chainHeadHeader);
     TracerAggregator tracerAggregator =
         TracerAggregator.create(estimateGasOperationTracer, zkTracer);
 
-    final var chainHeadHash = blockchainService.getChainHeadHash();
+    final var chainHeadHash = chainHeadHeader.getBlockHash();
     final var maybeSimulationResults =
         transactionSimulationService.simulate(transaction, chainHeadHash, tracerAggregator, true);
 
@@ -417,10 +419,10 @@ public class LineaEstimateGas {
     return txBuilder.build();
   }
 
-  private ZkTracer createZkTracer() {
+  private ZkTracer createZkTracer(final BlockHeader chainHeadHeader) {
     var zkTracer = new ZkTracer(l1L2BridgeConfiguration);
     zkTracer.traceStartConflation(1L);
-    zkTracer.traceStartBlock(blockchainService.getChainHeadHeader());
+    zkTracer.traceStartBlock(chainHeadHeader);
     return zkTracer;
   }
 
@@ -443,6 +445,11 @@ public class LineaEstimateGas {
       log.warn(txOverflowMsg);
       throw new PluginRpcEndpointException(new TransactionSimulationError(txOverflowMsg));
     }
+
+    final String internalErrorMsg =
+        String.format("Do not know what to do with result %s", moduleLimitResult.getResult());
+    log.error(internalErrorMsg);
+    throw new PluginRpcEndpointException(RpcErrorType.PLUGIN_INTERNAL_ERROR, internalErrorMsg);
   }
 
   public record Response(

@@ -26,4 +26,8 @@ import lombok.Builder;
  */
 @Builder(toBuilder = true)
 public record LineaTransactionPoolValidatorConfiguration(
-    String denyListPath, int maxTxGasLimit, int maxTxCalldataSize) {}
+    String denyListPath,
+    int maxTxGasLimit,
+    int maxTxCalldataSize,
+    boolean txPoolSimulationCheckApiEnabled,
+    boolean txPoolSimulationCheckP2pEnabled) {}

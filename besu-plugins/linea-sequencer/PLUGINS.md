@@ -44,12 +44,14 @@ of a transaction.
 
 #### CLI Options
 
-| Option Name                      | Default Value        | Command Line Argument                             |
-|----------------------------------|----------------------|---------------------------------------------------|
-| MAX_BLOCK_CALLDATA_SIZE          | 70000                | `--plugin-linea-max-block-calldata-size`          |
-| MODULE_LIMIT_FILE_PATH           | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path`           |
-| OVER_LINE_COUNT_LIMIT_CACHE_SIZE | 10_000               | `--plugin-linea-over-line-count-limit-cache-size` |
-| MAX_GAS_PER_BLOCK                | 30_000_000L          | `--plugin-linea-max-block-gas`                    |
+| Option Name                         | Default Value        | Command Line Argument                                 |
+|-------------------------------------|----------------------|-------------------------------------------------------|
+| MAX_BLOCK_CALLDATA_SIZE             | 70000                | `--plugin-linea-max-block-calldata-size`              |
+| MODULE_LIMIT_FILE_PATH              | moduleLimitFile.toml | `--plugin-linea-module-limit-file-path`               |
+| OVER_LINE_COUNT_LIMIT_CACHE_SIZE    | 10_000               | `--plugin-linea-over-line-count-limit-cache-size`     |
+| MAX_GAS_PER_BLOCK                   | 30_000_000L          | `--plugin-linea-max-block-gas`                        |
+| TX_POOL_ENABLE_SIMULATION_CHECK_API | true                 | `--plugin-linea-tx-pool-simulation-check-api-enabled` |
+| TX_POOL_ENABLE_SIMULATION_CHECK_P2P | false                | `--plugin-linea-tx-pool-simulation-check-p2p-enabled` |
 
 
 ### Transaction validation - LineaTransactionValidatorPlugin

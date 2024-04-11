@@ -16,18 +16,22 @@
 package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.ProfitabilityValidator;
+import net.consensys.linea.sequencer.txpoolvalidation.validators.SimulationValidator;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
@@ -36,21 +40,30 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
 
   private final BesuConfiguration besuConfiguration;
   private final BlockchainService blockchainService;
+  private final TransactionSimulationService transactionSimulationService;
   private final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final Set<Address> denied;
+  private final Map<String, Integer> moduleLineLimitsMap;
+  private final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
+      final TransactionSimulationService transactionSimulationService,
       final LineaTransactionPoolValidatorConfiguration txPoolValidatorConf,
       final LineaProfitabilityConfiguration profitabilityConf,
-      final Set<Address> denied) {
+      final Set<Address> deniedAddresses,
+      final Map<String, Integer> moduleLineLimitsMap,
+      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
+    this.transactionSimulationService = transactionSimulationService;
     this.txPoolValidatorConf = txPoolValidatorConf;
     this.profitabilityConf = profitabilityConf;
-    this.denied = denied;
+    this.denied = deniedAddresses;
+    this.moduleLineLimitsMap = moduleLineLimitsMap;
+    this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
   }
 
   @Override
@@ -60,7 +73,13 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
           new AllowedAddressValidator(denied),
           new GasLimitValidator(txPoolValidatorConf),
           new CalldataValidator(txPoolValidatorConf),
-          new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf)
+          new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
+          new SimulationValidator(
+              blockchainService,
+              transactionSimulationService,
+              txPoolValidatorConf,
+              moduleLineLimitsMap,
+              l1L2BridgeConfiguration)
         };
 
     return (transaction, isLocal, hasPriority) ->

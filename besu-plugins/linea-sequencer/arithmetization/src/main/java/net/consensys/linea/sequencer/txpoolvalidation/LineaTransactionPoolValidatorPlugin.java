@@ -15,6 +15,8 @@
 
 package net.consensys.linea.sequencer.txpoolvalidation;
 
+import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +34,7 @@ import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionPoolValidatorService;
+import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 
 /**
  * This class extends the default transaction validation rules for adding transactions to the
@@ -46,6 +49,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   private BesuConfiguration besuConfiguration;
   private BlockchainService blockchainService;
   private TransactionPoolValidatorService transactionPoolValidatorService;
+  private TransactionSimulationService transactionSimulationService;
 
   @Override
   public Optional<String> getName() {
@@ -77,6 +81,14 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionPoolValidationService from the BesuContext."));
+
+    transactionSimulationService =
+        context
+            .getService(TransactionSimulationService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain TransactionSimulatorService from the BesuContext."));
   }
 
   @Override
@@ -85,16 +97,19 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
     try (Stream<String> lines =
         Files.lines(
             Path.of(new File(transactionPoolValidatorConfiguration.denyListPath()).toURI()))) {
-      final Set<Address> denied =
+      final Set<Address> deniedAddresses =
           lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
 
       transactionPoolValidatorService.registerPluginTransactionValidatorFactory(
           new LineaTransactionPoolValidatorFactory(
               besuConfiguration,
               blockchainService,
+              transactionSimulationService,
               transactionPoolValidatorConfiguration,
               profitabilityConfiguration,
-              denied));
+              deniedAddresses,
+              createLimitModules(tracerConfiguration),
+              l1L2BridgeConfiguration));
 
     } catch (Exception e) {
       throw new RuntimeException(e);

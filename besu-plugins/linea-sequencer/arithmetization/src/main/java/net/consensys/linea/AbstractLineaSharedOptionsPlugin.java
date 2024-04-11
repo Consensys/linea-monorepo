@@ -23,8 +23,8 @@ import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcCliOptions;
 import net.consensys.linea.config.LineaRpcConfiguration;
+import net.consensys.linea.config.LineaTracerCliOptions;
 import net.consensys.linea.config.LineaTracerConfiguration;
-import net.consensys.linea.config.LineaTracerConfigurationCLiOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
@@ -44,7 +44,7 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   private static LineaRpcCliOptions rpcCliOptions;
   private static LineaProfitabilityCliOptions profitabilityCliOptions;
   protected static LineaTransactionSelectorConfiguration transactionSelectorConfiguration;
-  protected static LineaTracerConfigurationCLiOptions tracerConfigurationCliOptions;
+  protected static LineaTracerCliOptions tracerCliOptions;
   protected static LineaTransactionPoolValidatorConfiguration transactionPoolValidatorConfiguration;
   protected static LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
   protected static LineaRpcConfiguration rpcConfiguration;
@@ -71,14 +71,14 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
       l1L2BridgeCliOptions = LineaL1L2BridgeCliOptions.create();
       rpcCliOptions = LineaRpcCliOptions.create();
       profitabilityCliOptions = LineaProfitabilityCliOptions.create();
-      tracerConfigurationCliOptions = LineaTracerConfigurationCLiOptions.create();
+      tracerCliOptions = LineaTracerCliOptions.create();
 
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, transactionSelectorCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, transactionPoolValidatorCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, l1L2BridgeCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, rpcCliOptions);
       cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, profitabilityCliOptions);
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, tracerConfigurationCliOptions);
+      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, tracerCliOptions);
       cliOptionsRegistered = true;
     }
   }
@@ -91,7 +91,7 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
       l1L2BridgeConfiguration = l1L2BridgeCliOptions.toDomainObject();
       rpcConfiguration = rpcCliOptions.toDomainObject();
       profitabilityConfiguration = profitabilityCliOptions.toDomainObject();
-      tracerConfiguration = tracerConfigurationCliOptions.toDomainObject();
+      tracerConfiguration = tracerCliOptions.toDomainObject();
       configured = true;
     }
 

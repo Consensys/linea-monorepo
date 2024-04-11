@@ -17,7 +17,7 @@ package net.consensys.linea.config;
 import com.google.common.base.MoreObjects;
 import picocli.CommandLine;
 
-public class LineaTracerConfigurationCLiOptions {
+public class LineaTracerCliOptions {
 
   public static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
   public static final String DEFAULT_MODULE_LIMIT_FILE_PATH = "moduleLimitFile.toml";
@@ -30,15 +30,15 @@ public class LineaTracerConfigurationCLiOptions {
           "Path to the toml file containing the module limits (default: ${DEFAULT-VALUE})")
   private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
 
-  private LineaTracerConfigurationCLiOptions() {}
+  private LineaTracerCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  public static LineaTracerConfigurationCLiOptions create() {
-    return new LineaTracerConfigurationCLiOptions();
+  public static LineaTracerCliOptions create() {
+    return new LineaTracerCliOptions();
   }
 
   /**
@@ -47,9 +47,8 @@ public class LineaTracerConfigurationCLiOptions {
    * @param config the config
    * @return the Linea cli options
    */
-  public static LineaTracerConfigurationCLiOptions fromConfig(
-      final LineaTracerConfiguration config) {
-    final LineaTracerConfigurationCLiOptions options = create();
+  public static LineaTracerCliOptions fromConfig(final LineaTracerConfiguration config) {
+    final LineaTracerCliOptions options = create();
     options.moduleLimitFilePath = config.moduleLimitsFilePath();
     return options;
   }

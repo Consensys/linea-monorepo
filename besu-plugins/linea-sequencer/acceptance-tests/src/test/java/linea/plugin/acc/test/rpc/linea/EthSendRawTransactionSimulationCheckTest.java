@@ -12,12 +12,16 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package linea.plugin.acc.test;
+package linea.plugin.acc.test.rpc.linea;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import linea.plugin.acc.test.LineaPluginTestBase;
+import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
@@ -31,7 +35,7 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.utils.Numeric;
 
-public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
+public class EthSendRawTransactionSimulationCheckTest extends LineaPluginTestBase {
 
   private static final BigInteger GAS_LIMIT = DefaultGasProvider.GAS_LIMIT;
   private static final BigInteger VALUE = BigInteger.ZERO;
@@ -43,19 +47,18 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
         .set(
             "--plugin-linea-module-limit-file-path=",
             getResourcePath("/txOverflowModuleLimits.toml"))
-        .set("--plugin-linea-tx-pool-simulation-check-api-enabled=", "false")
+        .set("--plugin-linea-tx-pool-simulation-check-api-enabled=", "true")
         .build();
   }
 
   @Test
-  public void transactionOverModuleLineCountRemoved() throws Exception {
+  public void transactionOverModuleLineCountNotAccepted() throws Exception {
     final SimpleStorage simpleStorage = deploySimpleStorage();
     final Web3j web3j = minerNode.nodeRequests().eth();
     final String contractAddress = simpleStorage.getContractAddress();
     final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
 
-    // this tx will not be selected since it goes above the line count limit
-    // but selection should go on and select the next one
+    // this tx will not be accepted since it goes above the line count limit
     final RawTransaction txModuleLineCountTooBig =
         RawTransaction.createTransaction(
             CHAIN_ID,
@@ -69,10 +72,17 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
     final byte[] signedTxContractInteraction =
         TransactionEncoder.signMessage(
             txModuleLineCountTooBig, Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY));
+
     final EthSendTransaction signedTxContractInteractionResp =
         web3j.ethSendRawTransaction(Numeric.toHexString(signedTxContractInteraction)).send();
 
-    // these are under the line count limit and should be selected
+    assertThat(signedTxContractInteractionResp.hasError()).isTrue();
+    assertThat(signedTxContractInteractionResp.getError().getMessage())
+        .isEqualTo("Transaction line count for module ADD=2018 is above the limit 70");
+
+    assertThat(getTxPoolContent()).isEmpty();
+
+    // these are under the line count limit and should be accepted and selected
     final Account fewLinesSender = accounts.getSecondaryBenefactor();
     final Account recipient = accounts.createAccount("recipient");
     final List<Hash> expectedConfirmedTxs = new ArrayList<>(4);
@@ -81,13 +91,13 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
         minerNode.execute(
             accountTransactions.createIncrementalTransfers(fewLinesSender, recipient, 4)));
 
+    final var txPoolContentByHash = getTxPoolContent().stream().map(e -> e.get("hash")).toList();
+    assertThat(txPoolContentByHash)
+        .containsExactlyInAnyOrderElementsOf(
+            expectedConfirmedTxs.stream().map(Hash::toHexString).toList());
+
     expectedConfirmedTxs.stream()
         .map(Hash::toHexString)
         .forEach(hash -> minerNode.verify(eth.expectSuccessfulTransactionReceipt(hash)));
-
-    // assert that tx over line count limit is not confirmed and is removed from the pool
-    minerNode.verify(
-        eth.expectNoTransactionReceipt(signedTxContractInteractionResp.getTransactionHash()));
-    assertTransactionNotInThePool(signedTxContractInteractionResp.getTransactionHash());
   }
 }
