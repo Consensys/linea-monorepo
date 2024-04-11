@@ -22,9 +22,6 @@
  * in the user manual at https://docs.gradle.org/5.2.1/userguide/multi_project_builds.html
  */
 
-rootProject.name = 'besu-sequencer-plugins'
+rootProject.name = 'linea-arithmetization'
 include 'arithmetization'
-include 'acceptance-tests'
 include 'reference-tests'
-include 'native'
-include 'native:compress'

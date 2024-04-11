@@ -47,7 +47,6 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
-  implementation project(":native:compress")
 
   implementation 'info.picocli:picocli'
 
