@@ -1,25 +1,7 @@
-# Besu Plugins relating to tracer and sequencer functionality
+# Linea Arithmetization (zkEVM)
 
 A Linea tracing implementation for [Hyperledger Besu](https://github.com/hyperledger/besu) based on
 an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
-
-## Quickstart - Running Besu with Linea Plugins
-
-- compile linea-plugins `gradlew installDist`
-- copy jar file to besu runtime plugins/ directory (where you will run besu from, not where you're building besu)
-- add `ROLLUP` to besu config to enable the plugin RPC methods
-  - rpc-http-api=\["ADMIN","ETH","NET","WEB3","ROLLUP"\]
-- start besu (command line or from IDE) and you should see plugins registered at startup
-- call the RPC endpoint eg
-
-```shell
-  curl --location --request POST 'http://localhost:8545' --data-raw '{
-    "jsonrpc": "2.0",
-    "method": "rollup_generateConflatedTracesToFileV0",
-    "params": [0, 0, "6.16.0"],
-    "id": 1
-  }'
-```
 
 ## Development Setup
 
@@ -28,8 +10,6 @@ an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
 ```
 brew install openjdk@17
 ```
-
-### Install the relevant CGo compiler for your platform
 
 ### Install the Go toolchain
 
@@ -45,7 +25,7 @@ echo "net.git-fetch-with-cli=true" >> .cargo/config.toml
 ### Install Corset
 
 ```shell
-cargo install --git ssh://git@github.com/Consensys/corset
+cargo install --git ssh://git@github.com/ConsenSys/corset --locked --force
 ```
 
 ### Update Constraints [Submodule](https://github.com/Consensys/zkevm-constraints/)
