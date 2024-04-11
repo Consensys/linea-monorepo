@@ -22,7 +22,7 @@ publishing {
   repositories {
     maven {
       name = "cloudsmith"
-      url = "https://api-g.cloudsmith.io/maven/consensys/linea-besu-plugin/"
+      url = "https://api-g.cloudsmith.io/maven/consensys/linea-arithmetization/"
       credentials {
         username = cloudsmithUser
         password = cloudsmithKey
@@ -31,7 +31,7 @@ publishing {
   }
   publications {
     mavenJava(MavenPublication) {
-      groupId "net.consensys.linea.besu.plugin"
+      groupId "net.consensys.linea.zktracer"
       version "${project.version}"
       from components.java
       artifact sourcesJar
@@ -43,8 +43,8 @@ publishing {
       suppressPomMetadataWarningsFor('testFixturesApiElements')
       suppressPomMetadataWarningsFor('testFixturesRuntimeElements')
       pom {
-        name = "Besu plugins - ${project.name}"
-        url = 'https://github.com/ConsenSys/linea-besu-plugin'
+        name = "Linea Arithmetization - ${project.name}"
+        url = 'https://github.com/ConsenSys/linea-arithmetization'
         licenses {
           license {
             name = 'The Apache License, Version 2.0'
@@ -52,9 +52,9 @@ publishing {
           }
         }
         scm {
-          connection = 'scm:git:git://github.com/ConsenSys/linea-besu-plugin.git'
-          developerConnection = 'https://github.com/ConsenSys/linea-besu-plugin.git'
-          url = 'https://github.com/ConsenSys/linea-besu-plugin'
+          connection = 'scm:git:git://github.com/ConsenSys/linea-arithmetization.git'
+          developerConnection = 'https://github.com/ConsenSys/linea-arithmetization.git'
+          url = 'https://github.com/ConsenSys/linea-arithmetization'
         }
       }
     }

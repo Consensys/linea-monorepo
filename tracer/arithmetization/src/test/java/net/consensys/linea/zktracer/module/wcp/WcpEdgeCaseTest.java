@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class wcpEdgeCaseTest {
+public class WcpEdgeCaseTest {
   @Test
   void testZeroAndHugeArgs() {
     BytecodeRunner.of(
