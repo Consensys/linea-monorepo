@@ -22,7 +22,7 @@ publishing {
   repositories {
     maven {
       name = "cloudsmith"
-      url = "https://api-g.cloudsmith.io/maven/consensys/linea-arithmetization/"
+      url = "https://api.cloudsmith.io/maven/consensys/linea-arithmetization/"
       credentials {
         username = cloudsmithUser
         password = cloudsmithKey
