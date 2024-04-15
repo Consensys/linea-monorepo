@@ -113,7 +113,7 @@ public final class RlpTxnChunk extends ModuleOperation {
 
     // Phase AccessList
     if (txType == 1 || txType == 2) {
-      if (this.tx.getAccessList().orElseThrow().isEmpty()) {
+      if (this.tx.getAccessList().isEmpty() || this.tx.getAccessList().get().isEmpty()) {
         rowSize += 1;
       } else {
         // Rlp prefix of the AccessList list
