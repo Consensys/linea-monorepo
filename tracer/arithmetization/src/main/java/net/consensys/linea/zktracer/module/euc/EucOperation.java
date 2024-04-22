@@ -15,20 +15,22 @@
 
 package net.consensys.linea.zktracer.module.euc;
 
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
-import java.math.BigInteger;
-
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
+@Accessors(fluent = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class EucOperation extends ModuleOperation {
-  private final Bytes dividend;
-  private final Bytes divisor;
-  private final Bytes remainder;
-  private final Bytes quotient;
+  @Getter @EqualsAndHashCode.Include private final Bytes dividend;
+  @Getter @EqualsAndHashCode.Include private final Bytes divisor;
+  @Getter private final Bytes remainder;
+  @Getter private final Bytes quotient;
   private final int ctMax;
 
   public EucOperation(
@@ -36,38 +38,41 @@ public class EucOperation extends ModuleOperation {
     if (divisor.isZero()) {
       throw new IllegalArgumentException("EUC module doesn't accept 0 for divisor");
     }
-    final Bytes dividendTrim = dividend.trimLeadingZeros();
     final Bytes divisorTrim = divisor.trimLeadingZeros();
-    this.ctMax = Math.max(dividendTrim.size(), divisorTrim.size()) - 1;
+    final Bytes quotientTrim = quotient.trimLeadingZeros();
+    this.ctMax = Math.max(quotientTrim.size(), divisorTrim.size()) - 1;
     if (ctMax >= 8) {
-      throw new IllegalStateException("Max ByteSize of input is 8 for EUC, received" + ctMax + 1);
+      throw new IllegalArgumentException(
+          String.format("Max ByteSize of input is 8 for EUC, received %s", ctMax + 1));
     }
-    this.dividend = dividendTrim;
+    this.dividend = dividend;
     this.divisor = divisorTrim;
-    this.quotient = quotient;
+    this.quotient = quotientTrim;
     this.remainder = remainder;
   }
 
+  public Bytes ceiling() {
+    return !remainder.isZero() && !dividend.isZero()
+        ? Bytes.minimalBytes(quotient.toInt() + 1)
+        : quotient;
+  }
+
   void trace(Trace trace) {
-    final Bytes dividend = leftPadTo(this.dividend, this.ctMax + 1);
     final Bytes divisor = leftPadTo(this.divisor, this.ctMax + 1);
     final Bytes quotient = leftPadTo(this.quotient, this.ctMax + 1);
     final Bytes remainder = leftPadTo(this.remainder, this.ctMax + 1);
-    final Bytes ceil =
-        remainder.isZero()
-            ? divisor
-            : bigIntegerToBytes(divisor.toUnsignedBigInteger().add(BigInteger.ONE));
+    final Bytes ceil = this.ceiling();
 
     for (int ct = 0; ct <= ctMax; ct++) {
       trace
           .iomf(true)
-          .ct(UnsignedByte.of(ct))
-          .ctMax(UnsignedByte.of(ctMax))
+          .ct((short) ct)
+          .ctMax((short) ctMax)
           .done(ct == ctMax)
           .dividend(dividend)
-          .divisor(divisor)
-          .quotient(quotient)
-          .remainder(remainder)
+          .divisor(divisor.slice(0, ct + 1))
+          .quotient(quotient.slice(0, ct + 1))
+          .remainder(remainder.slice(0, ct + 1))
           .ceil(ceil)
           .divisorByte(UnsignedByte.of(divisor.get(ct)))
           .quotientByte(UnsignedByte.of(quotient.get(ct)))

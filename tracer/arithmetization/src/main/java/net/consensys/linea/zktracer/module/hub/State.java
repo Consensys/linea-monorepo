@@ -131,7 +131,7 @@ public class State implements StackedContainer {
         return new Stamps(this.hub, this.mmu, this.mxp, this.hashInfo);
       }
 
-      void stampHub() {
+      void stampHubIncrements() {
         this.hub++;
       }
 

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode;
 
+import net.consensys.linea.zktracer.types.UnsignedByte;
+
 /** Represents the entire set of opcodes that are required by the arithmetization process. */
 public enum OpCode {
   STOP,
@@ -199,6 +201,15 @@ public enum OpCode {
     return (byte) this.getData().value();
   }
 
+  /**
+   * Returns the {@link OpCode}'s long value as an {@link UnsignedByte} type.
+   *
+   * @return the {@link OpCode}'s value as an {@link UnsignedByte}
+   */
+  public UnsignedByte unsignedByteValue() {
+    return UnsignedByte.of(byteValue());
+  }
+
   /** Returns whether the {@link OpCode} entails a contract creation. */
   public boolean isCreate() {
     return this == OpCode.CREATE || this == OpCode.CREATE2;
@@ -210,6 +221,14 @@ public enum OpCode {
         || this == OpCode.CALLCODE
         || this == OpCode.DELEGATECALL
         || this == OpCode.STATICCALL;
+  }
+
+  public boolean callHasSixArgument() {
+    return this == OpCode.DELEGATECALL || this == OpCode.STATICCALL;
+  }
+
+  public boolean callHasSevenArgument() {
+    return this == OpCode.CALL || this == OpCode.CALLCODE;
   }
 
   /**

@@ -83,7 +83,7 @@ public final class StackLine {
   public void setResult(int i, Bytes value) {
     for (var item : this.items) {
       if (item.i() == i - 1) {
-        item.it().setValue(value);
+        item.it().value(value);
         return;
       }
     }

@@ -202,7 +202,7 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
    * @param hub the execution context
    */
   private void fillPreCallInformation(final Hub hub) {
-    this.callDataSegment = hub.callStack().getById(calleeId).callDataSource();
+    this.callDataSegment = hub.callStack().getById(calleeId).callDataInfo().memorySpan();
     this.requestedReturnDataSegment = hub.callStack().getById(calleeId).requestedReturnDataTarget();
   }
 

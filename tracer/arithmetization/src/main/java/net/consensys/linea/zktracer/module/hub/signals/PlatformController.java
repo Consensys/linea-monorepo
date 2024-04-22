@@ -61,7 +61,7 @@ public class PlatformController {
   public void setup(MessageFrame frame) {
     this.reset();
 
-    this.exceptions.prepare(frame, Hub.gp);
+    this.exceptions.prepare(frame, Hub.GAS_PROJECTOR);
     if (this.exceptions.none()) {
       this.aborts.prepare(hub);
       if (aborts.none()) {

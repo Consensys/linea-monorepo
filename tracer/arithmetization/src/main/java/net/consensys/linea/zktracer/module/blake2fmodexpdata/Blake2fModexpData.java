@@ -15,12 +15,20 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_BLAKE_DATA;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_BASE;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_RESULT;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import org.apache.tuweni.bytes.Bytes;
 
 public class Blake2fModexpData implements Module {
   private StackedSet<Blake2fModexpDataOperation> state = new StackedSet<>();
@@ -64,5 +72,27 @@ public class Blake2fModexpData implements Module {
       stamp++;
       o.trace(trace, stamp);
     }
+  }
+
+  public Bytes getInputDataByIdAndPhase(final int id, final int phase) {
+    final Blake2fModexpDataOperation op = getOperationById(id);
+    return switch (phase) {
+      case PHASE_MODEXP_BASE -> op.modexpComponents.get().base();
+      case PHASE_MODEXP_EXPONENT -> op.modexpComponents.get().exp();
+      case PHASE_MODEXP_MODULUS -> op.modexpComponents.get().mod();
+      case PHASE_MODEXP_RESULT -> Bytes.EMPTY; // TODO
+      case PHASE_BLAKE_DATA -> op.blake2fComponents.get().data();
+      case PHASE_BLAKE_RESULT -> Bytes.EMPTY; // TODO
+      default -> throw new IllegalStateException("Unexpected value: " + phase);
+    };
+  }
+
+  private Blake2fModexpDataOperation getOperationById(final int id) {
+    for (Blake2fModexpDataOperation operation : this.state) {
+      if (id == operation.hubStampPlusOne) {
+        return operation;
+      }
+    }
+    throw new RuntimeException("BlakeModexpOperation not found");
   }
 }

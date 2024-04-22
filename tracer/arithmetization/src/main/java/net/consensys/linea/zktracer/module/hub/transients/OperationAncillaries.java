@@ -65,7 +65,7 @@ public class OperationAncillaries {
           value = EWord.of(hub.messageFrame().getStackItem(2));
         }
         final long stipend = value.isZero() ? 0 : GasConstants.G_CALL_STIPEND.cost();
-        final long upfrontCost = Hub.gp.of(hub.messageFrame(), opCode).total();
+        final long upfrontCost = Hub.GAS_PROJECTOR.of(hub.messageFrame(), opCode).total();
         return stipend
             + Math.max(
                 Words.unsignedMin(

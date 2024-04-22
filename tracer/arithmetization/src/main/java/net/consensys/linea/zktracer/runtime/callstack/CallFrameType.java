@@ -32,7 +32,9 @@ public enum CallFrameType {
   /** The bedrock context. */
   BEDROCK,
   /** A putative phantom frame below the BEDROCK holding the call data */
-  MANTLE;
+  MANTLE,
+  /** A non-Besu CallFrame where we store the result of a precompile */
+  PRECOMPILE_RETURN_DATA;
 
   /**
    * Returns the kind of {@link CallFrameType} context that an opcode will create; throws if the

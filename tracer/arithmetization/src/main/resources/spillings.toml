@@ -15,6 +15,7 @@ MOD = 8
 MUL = 9
 MXP = 4
 MMU = 10
+MMIO = 16 # TODO
 RLP_ADDR = 7
 TX_RLP = 7
 RLP_TXRCPT = 7

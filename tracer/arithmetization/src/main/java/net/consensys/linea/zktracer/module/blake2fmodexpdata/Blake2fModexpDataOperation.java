@@ -64,18 +64,18 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
           Trace.PHASE_BLAKE_RESULT,
               new PhaseInfo(Trace.PHASE_BLAKE_RESULT, Trace.INDEX_MAX_BLAKE_RESULT));
 
-  @EqualsAndHashCode.Include private final int hubStamp;
+  @EqualsAndHashCode.Include public final int hubStampPlusOne;
   @Getter private int prevHubStamp;
 
-  @EqualsAndHashCode.Include private final Optional<ModexpComponents> modexpComponents;
-  @EqualsAndHashCode.Include private final Optional<Blake2fComponents> blake2fComponents;
+  @EqualsAndHashCode.Include public final Optional<ModexpComponents> modexpComponents;
+  @EqualsAndHashCode.Include public final Optional<Blake2fComponents> blake2fComponents;
 
   public Blake2fModexpDataOperation(
       int hubStamp,
       int prevHubStamp,
       ModexpComponents modexpComponents,
       Blake2fComponents blake2fComponents) {
-    this.hubStamp = hubStamp;
+    this.hubStampPlusOne = hubStamp + 1;
     this.prevHubStamp = prevHubStamp;
     this.modexpComponents = Optional.ofNullable(modexpComponents);
     this.blake2fComponents = Optional.ofNullable(blake2fComponents);
@@ -90,7 +90,7 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
 
   void trace(Trace trace, int stamp) {
     final UnsignedByte stampByte = UnsignedByte.of(stamp);
-    final Bytes currentHubStamp = Bytes.ofUnsignedInt(this.hubStamp + 1);
+    final Bytes currentHubStamp = Bytes.ofUnsignedInt(this.hubStampPlusOne);
 
     final UnsignedByte[] hubStampDiffBytes = getHubStampDiffBytes(currentHubStamp);
 

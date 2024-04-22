@@ -122,6 +122,7 @@ public class StackedSet<E extends ModuleOperation> implements StackedContainer, 
   @Override
   public boolean add(E e) {
     final boolean isNew = this.sets.peekLast().add(e);
+
     if (isNew) {
       occurrences.put(e, occurrences.getOrDefault(e, 0) + 1);
     }

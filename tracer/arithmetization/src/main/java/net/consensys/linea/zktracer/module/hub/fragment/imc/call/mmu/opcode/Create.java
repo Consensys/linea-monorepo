@@ -45,7 +45,7 @@ public class Create extends MmuCall implements RomLexDefer {
   }
 
   @Override
-  protected int targetId() {
+  public int targetId() {
     return this.hub.romLex().getCfiByMetadata(this.contract);
   }
 

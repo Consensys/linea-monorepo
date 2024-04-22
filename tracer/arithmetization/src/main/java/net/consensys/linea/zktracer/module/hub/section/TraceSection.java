@@ -243,7 +243,7 @@ public abstract class TraceSection {
 
   private List<TraceFragment> makeStackFragments(final Hub hub, CallFrame f) {
     List<TraceFragment> r = new ArrayList<>(2);
-    if (f.pending().getLines().isEmpty()) {
+    if (f.pending().lines().isEmpty()) {
       for (int i = 0; i < (f.opCodeData().stackSettings().twoLinesInstruction() ? 2 : 1); i++) {
         r.add(
             StackFragment.prepare(
@@ -252,11 +252,11 @@ public abstract class TraceSection {
                 new StackLine().asStackOperations(),
                 hub.pch().exceptions().snapshot(),
                 hub.pch().aborts().snapshot(),
-                Hub.gp.of(f.frame(), f.opCode()),
+                Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.underDeployment()));
       }
     } else {
-      for (StackLine line : f.pending().getLines()) {
+      for (StackLine line : f.pending().lines()) {
         r.add(
             StackFragment.prepare(
                 hub,
@@ -264,7 +264,7 @@ public abstract class TraceSection {
                 line.asStackOperations(),
                 hub.pch().exceptions().snapshot(),
                 hub.pch().aborts().snapshot(),
-                Hub.gp.of(f.frame(), f.opCode()),
+                Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.underDeployment()));
       }
     }

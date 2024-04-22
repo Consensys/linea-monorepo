@@ -44,7 +44,7 @@ import org.hyperledger.besu.evm.internal.Words;
 public class ModexpEffectiveCall implements Module {
   private final Hub hub;
 
-  @Getter private final Blake2fModexpData data = new Blake2fModexpData();
+  @Getter private final Blake2fModexpData blake2fModexpData;
   private final Stack<Integer> counts = new Stack<>();
   private static final BigInteger PROVER_MAX_INPUT_BIT_SIZE = BigInteger.valueOf(4096 / 8);
   private static final int EVM_WORD_SIZE = 32;
@@ -59,13 +59,11 @@ public class ModexpEffectiveCall implements Module {
   @Override
   public void enterTransaction() {
     counts.push(0);
-    this.data.enterTransaction();
   }
 
   @Override
   public void popTransaction() {
     counts.pop();
-    this.data.popTransaction();
   }
 
   @Override
@@ -134,7 +132,7 @@ public class ModexpEffectiveCall implements Module {
 
         if (hub.transients().op().gasAllowanceForCall() >= gasPrice) {
           this.lastDataCallHubStamp =
-              this.data.call(
+              this.blake2fModexpData.call(
                   new Blake2fModexpDataOperation(
                       hub.stamp(),
                       lastDataCallHubStamp,

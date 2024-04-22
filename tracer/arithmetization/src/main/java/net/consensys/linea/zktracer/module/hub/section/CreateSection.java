@@ -149,7 +149,7 @@ public class CreateSection extends TraceSection
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
     final boolean creatorReverted = hub.callStack().getById(this.creatorContextId).hasReverted();
-    final GasProjection projection = Hub.gp.of(hub.messageFrame(), hub.opCode());
+    final GasProjection projection = Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode());
     final long upfrontCost =
         projection.memoryExpansion() + projection.linearPerWord() + GasConstants.G_TX_CREATE.cost();
 
@@ -247,7 +247,7 @@ public class CreateSection extends TraceSection
                 accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
                 accountFragmentFactory.make(midCreatorSnapshot, oldCreatorSnapshot),
                 accountFragmentFactory.make(midCreatedSnapshot, oldCreatedSnapshot),
-                ContextFragment.intializeExecutionContext(hub));
+                ContextFragment.initializeExecutionContext(hub));
 
           } else {
             this.addFragmentsWithoutStack(
@@ -255,7 +255,7 @@ public class CreateSection extends TraceSection
                 commonImcFragment,
                 accountFragmentFactory.make(oldCreatorSnapshot, midCreatorSnapshot),
                 accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
-                ContextFragment.intializeExecutionContext(hub));
+                ContextFragment.initializeExecutionContext(hub));
           }
         } else {
           if (creatorReverted) {
@@ -268,7 +268,7 @@ public class CreateSection extends TraceSection
                 accountFragmentFactory.make(midCreatedSnapshot, newCreatedSnapshot),
                 accountFragmentFactory.make(newCreatorSnapshot, oldCreatorSnapshot),
                 accountFragmentFactory.make(newCreatedSnapshot, oldCreatedSnapshot),
-                ContextFragment.intializeExecutionContext(hub));
+                ContextFragment.initializeExecutionContext(hub));
           } else {
             this.addFragmentsWithoutStack(
                 hub,
@@ -277,7 +277,7 @@ public class CreateSection extends TraceSection
                 accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
                 accountFragmentFactory.make(midCreatorSnapshot, newCreatorSnapshot),
                 accountFragmentFactory.make(midCreatedSnapshot, newCreatedSnapshot),
-                ContextFragment.intializeExecutionContext(hub));
+                ContextFragment.initializeExecutionContext(hub));
           }
         }
       }

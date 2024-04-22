@@ -31,7 +31,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Trm implements Module {
-  private int stamp = 0;
   static final int MAX_CT = 16;
   static final int LLARGE = 16;
   static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;

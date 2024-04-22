@@ -41,7 +41,7 @@ public record ContextFragment(
         false);
   }
 
-  public static ContextFragment intializeExecutionContext(final Hub hub) {
+  public static ContextFragment initializeExecutionContext(final Hub hub) {
     return new ContextFragment(
         hub.callStack(),
         Either.right(hub.stamp() + 1),
@@ -108,8 +108,9 @@ public record ContextFragment(
         .pContextCallerAddressHi(parentAddress.hi())
         .pContextCallerAddressLo(parentAddress.lo())
         .pContextCallValue(callFrame.value())
-        .pContextCallDataOffset(Bytes.ofUnsignedLong(callFrame.callDataSource().offset()))
-        .pContextCallDataSize(Bytes.ofUnsignedLong(callFrame.callDataSource().length()))
+        .pContextCallDataOffset(
+            Bytes.ofUnsignedLong(callFrame.callDataInfo().memorySpan().offset()))
+        .pContextCallDataSize(Bytes.ofUnsignedLong(callFrame.callDataInfo().memorySpan().length()))
         .pContextReturnAtOffset(
             Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().offset()))
         .pContextReturnAtCapacity(

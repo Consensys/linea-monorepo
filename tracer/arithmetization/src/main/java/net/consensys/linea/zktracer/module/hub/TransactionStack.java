@@ -67,7 +67,7 @@ public class TransactionStack implements StackedContainer {
     this.currentAbsNumber -= 1;
   }
 
-  public void enterTransaction(final Transaction tx) {
+  public void enterTransaction(final Transaction tx, final boolean requiresEvmExecution) {
     this.enter();
     if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
       throw new RuntimeException("Call to precompile forbidden");
@@ -81,6 +81,7 @@ public class TransactionStack implements StackedContainer {
             .absNumber(currentAbsNumber)
             .status(null)
             .initialGas(tx.getGasLimit())
+            .requiresEvmExecution(requiresEvmExecution)
             .build();
     this.txs.add(newTx);
   }
@@ -110,6 +111,7 @@ public class TransactionStack implements StackedContainer {
     @Getter private long initialGas;
     @Getter private final StorageInitialValues storage = new StorageInitialValues();
     @Getter @Setter @Builder.Default int endStamp = -1;
+    @Getter @Setter boolean requiresEvmExecution;
 
     /**
      * Returns the transaction result, or throws an exception if it is being accessed outside of its

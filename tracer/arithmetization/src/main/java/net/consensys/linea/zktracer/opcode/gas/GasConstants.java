@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.opcode.gas;
 
 import lombok.RequiredArgsConstructor;
 
+// TODO we shouldn't use this, but takes value from constans/constants.lisp
+
 /** All the classes of gas prices per instruction used in the EVM. */
 @RequiredArgsConstructor
 public enum GasConstants {

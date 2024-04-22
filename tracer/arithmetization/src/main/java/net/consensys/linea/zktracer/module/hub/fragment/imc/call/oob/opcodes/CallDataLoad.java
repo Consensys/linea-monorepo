@@ -28,7 +28,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public record CallDataLoad(EWord readOffset, EWord callDataSize) implements OobCall {
   public static CallDataLoad build(Hub hub, MessageFrame frame) {
     return new CallDataLoad(
-        EWord.of(frame.getStackItem(0)), EWord.of(hub.currentFrame().callData().size()));
+        EWord.of(frame.getStackItem(0)), EWord.of(hub.currentFrame().callDataInfo().data().size()));
   }
 
   @Override

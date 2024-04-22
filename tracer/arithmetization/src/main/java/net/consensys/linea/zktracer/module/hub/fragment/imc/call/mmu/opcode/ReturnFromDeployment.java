@@ -20,15 +20,15 @@ import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RAM_TO_EXO_
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
-import net.consensys.linea.zktracer.module.romLex.RomLexDefer;
 import net.consensys.linea.zktracer.types.EWord;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
 
 /**
  * A specialization of {@link MmuCall} that addresses the fact that the MMU requires access to the
  * sorted Code Fragment Index of the deployed bytecode, which is only available post-conflation.
  */
-public class ReturnFromDeployment extends MmuCall implements RomLexDefer {
+public class ReturnFromDeployment extends MmuCall {
   private final Hub hub;
   private ContractMetadata contract;
 
@@ -36,23 +36,25 @@ public class ReturnFromDeployment extends MmuCall implements RomLexDefer {
     super(MMU_INST_RAM_TO_EXO_WITH_PADDING);
 
     this.hub = hub;
-    this.hub.romLex().returnDefers().register(this);
+
+    // TODO: get the metaDaa directly from the hub
+    final Address contractAddress = hub.currentFrame().frame().getContractAddress();
+    final int depNumber = hub.transients().conflation().deploymentInfo().number(contractAddress);
+    final ContractMetadata contractMetadata =
+        ContractMetadata.underDeployment(contractAddress, depNumber);
+    this.contract = contractMetadata;
+
     this.sourceId(hub.currentFrame().contextNumber())
         .auxId(hub.state().stamps().hashInfo())
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(0)))
         .size(Words.clampedToLong(hub.messageFrame().getStackItem(1)))
         .referenceSize(Words.clampedToLong(hub.messageFrame().getStackItem(1)))
-        .setHash()
+        .setKec()
         .setRom();
   }
 
   @Override
-  protected int targetId() {
+  public int targetId() {
     return this.hub.romLex().getCfiByMetadata(this.contract);
-  }
-
-  @Override
-  public void updateContractMetadata(ContractMetadata metadata) {
-    this.contract = metadata;
   }
 }
