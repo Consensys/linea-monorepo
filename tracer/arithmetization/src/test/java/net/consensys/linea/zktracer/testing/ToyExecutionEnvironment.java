@@ -61,7 +61,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 @Slf4j
 public class ToyExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
-  private static final CorsetValidator corsetValidator = new CorsetValidator();
+  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
 
   private static final Address DEFAULT_SENDER_ADDRESS = Address.fromHexString("0xe8f1b89");
   private static final Wei DEFAULT_VALUE = Wei.ZERO;
@@ -95,7 +95,7 @@ public class ToyExecutionEnvironment {
       final Path traceFile = Files.createTempFile(null, ".lt");
       this.tracer.writeToFile(traceFile);
       log.info("trace written to `{}`", traceFile);
-      assertThat(corsetValidator.validate(traceFile).isValid()).isTrue();
+      assertThat(CORSET_VALIDATOR.validate(traceFile).isValid()).isTrue();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

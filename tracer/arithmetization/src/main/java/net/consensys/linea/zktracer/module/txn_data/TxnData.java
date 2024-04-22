@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.module.txn_data;
 
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.txn_data.Trace.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.module.txn_data.Trace.EVM_INST_LT;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
@@ -47,36 +49,9 @@ import org.jetbrains.annotations.NotNull;
 
 @RequiredArgsConstructor
 public class TxnData implements Module {
-  private static final int N_ROWS_FRONTIER_TX = 7;
-  private static final int N_ROWS_ACCESS_LIST_TX = 8;
-  private static final int N_ROWS_EIP_1559_TX = 8;
-  private static final int N_ROWS_TX_MAX =
-      Math.max(Math.max(N_ROWS_FRONTIER_TX, N_ROWS_ACCESS_LIST_TX), N_ROWS_EIP_1559_TX);
-  private static final int LT = 16;
-  private static final int ISZERO = 21;
 
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_0 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_RLP_PREFIX_VALUE;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_1 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_TO_VALUE;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_2 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_NONCE_VALUE;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_3 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_VALUE_VALUE;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_4 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_DATA_VALUE;
-  static final int COMMON_RLP_TXN_PHASE_NUMBER_5 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_LIMIT_VALUE;
-  static final int TYPE_0_RLP_TXN_PHASE_NUMBER_6 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_PRICE_VALUE;
-  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_6 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_GAS_PRICE_VALUE;
-  static final int TYPE_1_RLP_TXN_PHASE_NUMBER_7 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_ACCESS_LIST_VALUE;
-  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_6 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_MAX_FEE_PER_GAS_VALUE;
-  static final int TYPE_2_RLP_TXN_PHASE_NUMBER_7 =
-      net.consensys.linea.zktracer.module.rlp_txn.Trace.PHASE_ACCESS_LIST_VALUE;
+  private static final int N_ROWS_TX_MAX =
+      Math.max(Math.max(Trace.NB_ROWS_TYPE_0, Trace.NB_ROWS_TYPE_1), Trace.NB_ROWS_TYPE_2);
 
   private final Hub hub;
   private final RomLex romLex;
@@ -155,9 +130,9 @@ public class TxnData implements Module {
     for (BlockSnapshot block : this.blocks) {
       for (TransactionSnapshot tx : block.getTxs()) {
         switch (tx.type()) {
-          case FRONTIER -> traceSize += N_ROWS_FRONTIER_TX;
-          case ACCESS_LIST -> traceSize += N_ROWS_ACCESS_LIST_TX;
-          case EIP1559 -> traceSize += N_ROWS_EIP_1559_TX;
+          case FRONTIER -> traceSize += Trace.NB_ROWS_TYPE_0;
+          case ACCESS_LIST -> traceSize += Trace.NB_ROWS_TYPE_1;
+          case EIP1559 -> traceSize += Trace.NB_ROWS_TYPE_2;
           default -> throw new RuntimeException("Transaction type not supported:" + tx.type());
         }
       }
@@ -237,11 +212,11 @@ public class TxnData implements Module {
   private List<Integer> setWcpInst(TransactionSnapshot tx) {
     List<Integer> common =
         List.of(
-            LT, // ct = 0
-            LT, // ct = 1
-            LT, // ct = 2
-            LT, // ct = 3
-            ISZERO // ct = 4
+            EVM_INST_LT, // ct = 0
+            EVM_INST_LT, // ct = 1
+            EVM_INST_LT, // ct = 2
+            EVM_INST_LT, // ct = 3
+            EVM_INST_ISZERO // ct = 4
             );
     List<Integer> suffix =
         switch (tx.type()) {
@@ -251,9 +226,9 @@ public class TxnData implements Module {
               0 // ct = 7
               );
           case EIP1559 -> List.of(
-              LT, // ct = 5
-              LT, // ct = 6
-              LT // ct = 7
+              EVM_INST_LT, // ct = 5
+              EVM_INST_LT, // ct = 6
+              EVM_INST_LT // ct = 7
               );
           default -> throw new RuntimeException("transaction type not supported");
         };
@@ -356,12 +331,12 @@ public class TxnData implements Module {
   private List<Integer> setPhaseRlpTxnNumbers(TransactionSnapshot tx) {
     List<Integer> common =
         List.of(
-            COMMON_RLP_TXN_PHASE_NUMBER_0, // ct = 0
-            COMMON_RLP_TXN_PHASE_NUMBER_1, // ct = 1
-            COMMON_RLP_TXN_PHASE_NUMBER_2, // ct = 2
-            COMMON_RLP_TXN_PHASE_NUMBER_3, // ct = 3
-            COMMON_RLP_TXN_PHASE_NUMBER_4, // ct = 4
-            COMMON_RLP_TXN_PHASE_NUMBER_5 // ct = 5
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_0, // ct = 0
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_1, // ct = 1
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_2, // ct = 2
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_3, // ct = 3
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_4, // ct = 4
+            Trace.COMMON_RLP_TXN_PHASE_NUMBER_5 // ct = 5
             );
 
     List<Integer> phaseDependentSuffix = computePhaseDependentSuffix(tx);
@@ -375,17 +350,17 @@ public class TxnData implements Module {
     switch (tx.type()) {
       case FRONTIER -> phaseDependentSuffix =
           List.of(
-              TYPE_0_RLP_TXN_PHASE_NUMBER_6 // ct = 6
+              Trace.TYPE_0_RLP_TXN_PHASE_NUMBER_6 // ct = 6
               );
       case ACCESS_LIST -> phaseDependentSuffix =
           List.of(
-              TYPE_1_RLP_TXN_PHASE_NUMBER_6, // ct = 6
-              TYPE_1_RLP_TXN_PHASE_NUMBER_7 // ct = 7
+              Trace.TYPE_1_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+              Trace.TYPE_1_RLP_TXN_PHASE_NUMBER_7 // ct = 7
               );
       case EIP1559 -> phaseDependentSuffix =
           List.of(
-              TYPE_2_RLP_TXN_PHASE_NUMBER_6, // ct = 6
-              TYPE_2_RLP_TXN_PHASE_NUMBER_7 // ct = 7
+              Trace.TYPE_2_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+              Trace.TYPE_2_RLP_TXN_PHASE_NUMBER_7 // ct = 7
               );
       default -> throw new IllegalStateException("transaction type not supported:" + tx.type());
     }
@@ -394,9 +369,9 @@ public class TxnData implements Module {
 
   private List<Integer> setPhaseRlpTxnRcpt() {
     return List.of(
-        Trace.RLPRECEIPT_SUBPHASE_ID_TYPE, // ct =0
-        Trace.RLPRECEIPT_SUBPHASE_ID_STATUS_CODE, // ct = 1
-        Trace.RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS, // ct = 2
+        Trace.RLP_RCPT_SUBPHASE_ID_TYPE, // ct =0
+        Trace.RLP_RCPT_SUBPHASE_ID_STATUS_CODE, // ct = 1
+        Trace.RLP_RCPT_SUBPHASE_ID_CUMUL_GAS, // ct = 2
         0, // ct = 3
         0, // ct = 4
         0, // ct = 5
@@ -460,21 +435,21 @@ public class TxnData implements Module {
     final List<Integer> phaseRlpTxnRcpt = setPhaseRlpTxnRcpt();
     final List<Long> outgoingRlpTxnRcpt = setOutgoingRlpTxnRcpt(tx);
     final boolean copyTxCd = tx.requiresEvmExecution() && tx.callDataSize() != 0;
-    for (int ct = 0; ct < tx.maxCounter(); ct++) {
+    for (int ct = 0; ct <= tx.maxCounter(); ct++) {
       trace
-          .absTxNumMax(Bytes.ofUnsignedInt(absTxNumMax))
-          .absTxNum(Bytes.ofUnsignedInt(absTxNum))
-          .btcNumMax(Bytes.ofUnsignedInt(btcNumMax))
-          .btcNum(Bytes.ofUnsignedInt(btcNum))
-          .relTxNumMax(Bytes.ofUnsignedInt(relTxNumMax))
-          .relTxNum(Bytes.ofUnsignedInt(relTxNum))
+          .absTxNumMax(absTxNumMax)
+          .absTxNum(absTxNum)
+          .btcNumMax(btcNumMax)
+          .btcNum(btcNum)
+          .relTxNumMax(relTxNumMax)
+          .relTxNum(relTxNum)
           .ct(UnsignedByte.of(ct))
-          .fromHi(from.hi())
+          .fromHi(from.hi().slice(12, 4).toLong())
           .fromLo(from.lo())
           .nonce(Bytes.ofUnsignedLong(tx.nonce()))
           .initialBalance(bigIntegerToBytes(tx.initialSenderBalance()))
           .value(bigIntegerToBytes(tx.value()))
-          .toHi(to.hi())
+          .toHi(to.hi().slice(12, 4).toLong())
           .toLo(to.lo())
           .isDep(tx.isDeployment())
           .gasLimit(Bytes.ofUnsignedLong(tx.gasLimit()))
@@ -483,8 +458,8 @@ public class TxnData implements Module {
           .basefee(block.getBaseFee().orElseThrow())
           .coinbaseHi(coinbase.hi())
           .coinbaseLo(coinbase.lo())
-          .callDataSize(Bytes.ofUnsignedShort(tx.callDataSize()))
-          .initCodeSize(tx.isDeployment() ? Bytes.ofUnsignedInt(tx.payload().size()) : Bytes.EMPTY)
+          .callDataSize(tx.callDataSize())
+          .initCodeSize(tx.isDeployment() ? tx.payload().size() : 0)
           .type0(tx.type() == TransactionType.FRONTIER)
           .type1(tx.type() == TransactionType.ACCESS_LIST)
           .type2(tx.type() == TransactionType.EIP1559)
@@ -495,7 +470,7 @@ public class TxnData implements Module {
           .refundAmount(Bytes.ofUnsignedLong(tx.effectiveGasRefund()))
           .cumulativeConsumedGas(Bytes.ofUnsignedLong(tx.cumulativeGasConsumption()))
           .statusCode(tx.status())
-          .codeFragmentIndex(Bytes.ofUnsignedInt(codeFragmentIndex))
+          .codeFragmentIndex(codeFragmentIndex)
           .phaseRlpTxn(UnsignedByte.of(phaseNumbers.get(ct)))
           .outgoingHi(bigIntegerToBytes(outgoingHis.get(ct)))
           .outgoingLo(bigIntegerToBytes(outgoingLos.get(ct)))

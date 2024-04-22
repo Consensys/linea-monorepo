@@ -50,7 +50,7 @@ public class ExtCodeCopy extends MmuCall {
   }
 
   @Override
-  protected int sourceId() {
+  public int sourceId() {
     try {
       return this.hub.romLex().getCfiByMetadata(this.contract);
     } catch (Exception ignored) {
@@ -60,7 +60,7 @@ public class ExtCodeCopy extends MmuCall {
   }
 
   @Override
-  protected long referenceSize() {
+  public long referenceSize() {
     return this.hub
         .romLex()
         .getChunkByMetadata(this.contract)

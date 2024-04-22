@@ -46,6 +46,35 @@ public final class CallStack {
   /** a "pointer" to the current {@link CallFrame} in <code>frames</code>. */
   private int current;
 
+  public void newPrecompileResult(
+      final int hubStamp,
+      final Bytes precompileResult,
+      final int returnDataOffset,
+      final Address precompileAddress) {
+
+    final CallFrame newFrame =
+        new CallFrame(
+            -1,
+            -1,
+            false,
+            this.frames.size(),
+            hubStamp,
+            precompileAddress,
+            precompileAddress,
+            Bytecode.EMPTY,
+            CallFrameType.PRECOMPILE_RETURN_DATA,
+            this.current,
+            Wei.ZERO,
+            0,
+            precompileResult,
+            returnDataOffset,
+            precompileResult.size(),
+            -1,
+            this.depth);
+
+    this.frames.add(newFrame);
+  }
+
   public void newBedrock(
       int hubStamp,
       //      Address from,
@@ -58,7 +87,7 @@ public final class CallStack {
       int accountDeploymentNumber,
       int codeDeploymentNumber,
       boolean codeDeploymentStatus) {
-    this.depth = 0;
+    this.depth = -1;
     this.enter(
         hubStamp,
         to,
@@ -68,6 +97,9 @@ public final class CallStack {
         value,
         gas,
         callData,
+        0,
+        callData.size(),
+        hubStamp,
         accountDeploymentNumber,
         codeDeploymentNumber,
         codeDeploymentStatus);
@@ -101,17 +133,20 @@ public final class CallStack {
       int accountDeploymentNumber,
       int codeDeploymentNumber,
       boolean codeDeploymentStatus) {
-    this.depth = 0;
+    this.depth = -1;
     this.frames.add(new CallFrame(callData, hubStamp));
     this.enter(
         hubStamp,
         to,
         to,
         toCode == null ? Bytecode.EMPTY : toCode,
-        type,
+        CallFrameType.BEDROCK,
         value,
         gas,
         callData,
+        0,
+        callData.size(),
+        hubStamp,
         accountDeploymentNumber,
         codeDeploymentNumber,
         codeDeploymentStatus);
@@ -171,10 +206,13 @@ public final class CallStack {
       Wei value,
       long gas,
       Bytes input,
+      long callDataOffset,
+      long callDataSize,
+      long callDataContextNumber,
       int accountDeploymentNumber,
       int codeDeploymentNumber,
       boolean isDeployment) {
-    final int caller = this.depth == 0 ? -1 : this.current;
+    final int caller = this.depth == -1 ? -1 : this.current;
     final int newTop = this.frames.size();
     this.depth += 1;
 
@@ -198,6 +236,9 @@ public final class CallStack {
             value,
             gas,
             callData,
+            callDataOffset,
+            callDataSize,
+            callDataContextNumber,
             this.depth);
 
     this.frames.add(newFrame);
@@ -269,14 +310,14 @@ public final class CallStack {
    * @return the call frame with the specifies
    * @throws IndexOutOfBoundsException if the index is out of range
    */
-  public CallFrame getByContextNumber(int i) {
+  public CallFrame getByContextNumber(final long i) {
     for (CallFrame f : this.frames) {
       if (f.contextNumber() == i) {
         return f;
       }
     }
 
-    throw new IllegalArgumentException("call frame not found");
+    throw new IllegalArgumentException(String.format("call frame CN %s not found", i));
   }
 
   /**

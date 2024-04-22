@@ -42,7 +42,7 @@ public final class Blake2fRounds implements Module {
   private static final int BLAKE2f_INPUT_SIZE = 213;
   private final Hub hub;
 
-  @Getter private final Blake2fModexpData data = new Blake2fModexpData();
+  @Getter private final Blake2fModexpData blake2fModexpData;
 
   private int lastDataCallHubStamp = 0;
 
@@ -183,7 +183,7 @@ public final class Blake2fRounds implements Module {
 
             if (opInfo.gasAllowanceForCall() >= rInt) {
               this.lastDataCallHubStamp =
-                  this.data.call(
+                  this.blake2fModexpData.call(
                       new Blake2fModexpDataOperation(
                           hub.stamp(),
                           lastDataCallHubStamp,

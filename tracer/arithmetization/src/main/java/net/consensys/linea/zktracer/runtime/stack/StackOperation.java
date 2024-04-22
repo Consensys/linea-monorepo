@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.runtime.stack;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
@@ -25,22 +28,23 @@ import org.apache.tuweni.bytes.Bytes;
  * StackLine}, made of {@link IndexedStackOperation}, which are then stored, with the associated
  * metadata, in a {@link StackContext}.
  */
+@Accessors(fluent = true)
 public final class StackOperation {
   private static final Bytes MARKER = Bytes.fromHexString("0xDEADBEEF");
   /**
    * The relative height of the element with regard to the stack height just before executing the
    * linked EVM instruction.
    */
-  private final int height;
+  @Getter private final int height;
   /** The value having been popped from/pushed on the stack. */
-  private Bytes value;
+  @Getter @Setter private Bytes value;
   /** whether this action is a push or a pop. */
-  private final Action action;
+  @Getter private final Action action;
   /**
    * The stamp of this operation relative to the stack stamp before executing the linked EVM
    * instruction.
    */
-  private final int stackStamp;
+  @Getter private final int stackStamp;
 
   StackOperation() {
     this.height = 0;
@@ -67,25 +71,5 @@ public final class StackOperation {
 
   public static StackOperation pushImmediate(int height, Bytes val, int stackStamp) {
     return new StackOperation(height, val.copy(), Action.PUSH, stackStamp);
-  }
-
-  public void setValue(Bytes x) {
-    this.value = x;
-  }
-
-  public int height() {
-    return height;
-  }
-
-  public Bytes value() {
-    return value;
-  }
-
-  public Action action() {
-    return action;
-  }
-
-  public int stackStamp() {
-    return stackStamp;
   }
 }

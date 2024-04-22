@@ -19,7 +19,6 @@ import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public final class Sha3 extends GasProjection {
@@ -30,9 +29,8 @@ public final class Sha3 extends GasProjection {
   public Sha3(MessageFrame frame) {
     this.frame = frame;
     if (frame.stackSize() >= 2) {
-      Bytes biLength = frame.getStackItem(1);
       this.offset = clampedToLong(frame.getStackItem(0));
-      this.length = clampedToLong(biLength);
+      this.length = clampedToLong(frame.getStackItem(1));
     }
   }
 

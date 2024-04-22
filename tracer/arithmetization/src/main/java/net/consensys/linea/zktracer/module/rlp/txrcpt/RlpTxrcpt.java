@@ -704,6 +704,19 @@ public class RlpTxrcpt implements Module {
     }
   }
 
+  public Bytes getLogDataByAbsLogNumber(final int absLogNumber) {
+    int counter = 0;
+    for (RlpTxrcptChunk chunk : this.chunkList) {
+      for (Log log : chunk.logs()) {
+        counter += 1;
+        if (counter == absLogNumber) {
+          return log.getData();
+        }
+      }
+    }
+    throw new IllegalArgumentException("Absolute Log Number not found: " + absLogNumber);
+  }
+
   /**
    * Calculates the size of the RLP of a transaction receipt WITHOUT its RLP prefix.
    *

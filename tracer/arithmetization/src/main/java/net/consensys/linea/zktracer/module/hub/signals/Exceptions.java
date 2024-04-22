@@ -19,6 +19,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
@@ -32,7 +33,6 @@ import org.hyperledger.besu.evm.internal.Words;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public final class Exceptions {
-  private static final byte EIP_3541_MARKER = (byte) 0xEF;
   public static final int MAX_CODE_SIZE = 24576;
 
   private final Hub hub;
@@ -272,7 +272,7 @@ public final class Exceptions {
     }
 
     final Bytes deployedCode = frame.getOutputData();
-    return !deployedCode.isEmpty() && (deployedCode.get(0) == EIP_3541_MARKER);
+    return !deployedCode.isEmpty() && (deployedCode.get(0) == (byte) Trace.EIP_3541_MARKER);
   }
 
   private static boolean isCodeSizeOverflow(MessageFrame frame) {

@@ -33,7 +33,7 @@ tasks.register("hub", TraceFilesTask) {
 
     module = 'hub'
     files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction', 'scenario', 'miscellaneous']
-            .collect {"hub_v2/columns/${it}.lisp"} + 'hub_v2/constants.lisp'
+            .collect {"hub_v2/columns/${it}.lisp"} + 'constants/constants.lisp'
 }
 
 // Special case: PUB modules
@@ -95,10 +95,11 @@ tasks.register('binRT', TraceFilesTask) {
     }
 }
 
+
 //
-// Put here modules following the conventional MODULE/columns.lisp naming scheme
+// Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'ec_data', 'euc', 'mxp', 'shf', 'wcp', 'rom', 'romLex', 'trm', 'stp', 'txn_data', 'logInfo', 'logData'].each {moduleName ->
+['bin', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rom', 'romLex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
@@ -111,12 +112,12 @@ tasks.register('binRT', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2f_modexp_data', 'oob', 'exp'].each {moduleName ->
+['mmu', 'blake2f_modexp_data', 'oob', 'exp', 'txn_data'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
 
         module = moduleName
-        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp", "constants/constants.lisp"]
+        files = [ "constants/constants.lisp", "${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
     }
 }

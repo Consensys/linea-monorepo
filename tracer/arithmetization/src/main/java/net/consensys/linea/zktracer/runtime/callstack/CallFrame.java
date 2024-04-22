@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -41,6 +42,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Accessors(fluent = true)
 public class CallFrame {
   public static final CallFrame EMPTY = new CallFrame();
+
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
   /** the context number of the frame, i.e. the hub stamp at its creation */
@@ -89,9 +91,7 @@ public class CallFrame {
   @Getter private long gasEndowment;
 
   /** the call data given to this frame. */
-  @Getter private Bytes callData = Bytes.EMPTY;
-  /** the call data position in the parent's RAM. */
-  @Getter private MemorySpan callDataSource;
+  @Getter CallDataInfo callDataInfo;
 
   /** the data returned by the latest callee. */
   @Getter @Setter private Bytes latestReturnData = Bytes.EMPTY;
@@ -116,25 +116,31 @@ public class CallFrame {
   /** the latched context of this callframe stack. */
   @Getter @Setter private StackContext pending;
 
-  /**
-   * Define the given {@link Bytes} as the 0-aligned call data for this frame
-   *
-   * @param callData the call data content
-   */
-  private void set0AlignedCallData(final Bytes callData) {
-    this.callData = callData;
-    this.callDataSource = new MemorySpan(0, callData.size());
-  }
-
-  /** Create a bedrock call frame. */
-  CallFrame(Bytes callData, int cn) {
+  /** Create a MANTLE call frame. */
+  CallFrame(final Bytes callData, final int contextNumber) {
     this.type = CallFrameType.MANTLE;
-    this.contextNumber = cn;
+    this.contextNumber = contextNumber;
     this.address = Address.ZERO;
-    this.set0AlignedCallData(callData);
+    this.callDataInfo = new CallDataInfo(callData, 0, callData.size(), contextNumber);
   }
 
-  /** Create a bedrock call frame. */
+  /** Create a PRECOMPILE_RETURN_DATA callFrame */
+  CallFrame(
+      final int contextNumber,
+      final Bytes precompileResult,
+      final int returnDataOffset,
+      final Address precompileAddress) {
+    Preconditions.checkArgument(
+        returnDataOffset == 0 || precompileAddress == Address.MODEXP,
+        "ReturnDataOffset is 0 for all precompile except Modexp");
+    this.type = CallFrameType.PRECOMPILE_RETURN_DATA;
+    this.contextNumber = contextNumber;
+    this.returnData = precompileResult;
+    this.returnDataSource = new MemorySpan(returnDataOffset, precompileResult.size());
+    this.address = precompileAddress;
+  }
+
+  /** Create an empty call frame. */
   CallFrame() {
     this.type = CallFrameType.EMPTY;
     this.contextNumber = 0;
@@ -171,6 +177,9 @@ public class CallFrame {
       Wei value,
       long gas,
       Bytes callData,
+      long callDataOffset,
+      long callDataSize,
+      long callDataContextNumber,
       int depth) {
     this.accountDeploymentNumber = accountDeploymentNumber;
     this.codeDeploymentNumber = codeDeploymentNumber;
@@ -184,12 +193,16 @@ public class CallFrame {
     this.parentFrame = caller;
     this.value = value;
     this.gasEndowment = gas;
-    this.callData = callData;
-    this.callDataSource = new MemorySpan(0, callData.size());
+    this.callDataInfo =
+        new CallDataInfo(callData, callDataOffset, callDataSize, callDataContextNumber);
     this.depth = depth;
     this.returnDataSource = MemorySpan.empty();
     this.latestReturnDataSource = MemorySpan.empty();
     this.requestedReturnDataTarget = MemorySpan.empty(); // TODO: fix me Franklin
+  }
+
+  public boolean isRoot() {
+    return this.depth == 0;
   }
 
   /**

@@ -13,8 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txn;
+package net.consensys.linea.zktracer.module.rlp.txn;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
@@ -30,41 +31,318 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  public static final int CREATE2_SHIFT = 255;
-  public static final int G_TXDATA_NONZERO = 16;
-  public static final int G_TXDATA_ZERO = 4;
-  public static final int INT_LONG = 183;
-  public static final int INT_SHORT = 128;
-  public static final int LIST_LONG = 247;
-  public static final int LIST_SHORT = 192;
-  public static final int LLARGE = 16;
-  public static final int LLARGEMO = 15;
-  public static final int PHASE_ACCESS_LIST_VALUE = 11;
-  public static final int PHASE_BETA_VALUE = 12;
-  public static final int PHASE_CHAIN_ID_VALUE = 2;
-  public static final int PHASE_DATA_VALUE = 10;
-  public static final int PHASE_GAS_LIMIT_VALUE = 7;
-  public static final int PHASE_GAS_PRICE_VALUE = 4;
-  public static final int PHASE_MAX_FEE_PER_GAS_VALUE = 6;
-  public static final int PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 5;
-  public static final int PHASE_NONCE_VALUE = 3;
-  public static final int PHASE_RLP_PREFIX_VALUE = 1;
-  public static final int PHASE_R_VALUE = 14;
-  public static final int PHASE_S_VALUE = 15;
-  public static final int PHASE_TO_VALUE = 8;
-  public static final int PHASE_VALUE_VALUE = 9;
-  public static final int PHASE_Y_VALUE = 13;
-  public static final int RLPADDR_CONST_RECIPE_1 = 1;
-  public static final int RLPADDR_CONST_RECIPE_2 = 2;
-  public static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
-  public static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
-  public static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
-  public static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
-  public static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
-  public static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
-  public static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
-  public static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
-  public static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
+  public static final int EIP_3541_MARKER = 0xef;
+  public static final BigInteger EMPTY_KECCAK_HI =
+      new BigInteger("16434357337474432580558001204043214908");
+  public static final BigInteger EMPTY_KECCAK_LO =
+      new BigInteger("19024806816994025362060938983270537799");
+  public static final int EMPTY_RIPEMD_HI = 0x9c1185a;
+  public static final BigInteger EMPTY_RIPEMD_LO =
+      new BigInteger("16442052386882578548602430796343695571");
+  public static final BigInteger EMPTY_SHA2_HI =
+      new BigInteger("18915786244935348617899154533661473682");
+  public static final BigInteger EMPTY_SHA2_LO =
+      new BigInteger("3296542996298665609207448061432114053");
+  public static final int EVM_INST_ADD = 0x1;
+  public static final int EVM_INST_ADDMOD = 0x8;
+  public static final int EVM_INST_ADDRESS = 0x30;
+  public static final int EVM_INST_AND = 0x16;
+  public static final int EVM_INST_BALANCE = 0x31;
+  public static final int EVM_INST_BASEFEE = 0x48;
+  public static final int EVM_INST_BLOCKHASH = 0x40;
+  public static final int EVM_INST_BYTE = 0x1a;
+  public static final int EVM_INST_CALL = 0xf1;
+  public static final int EVM_INST_CALLCODE = 0xf2;
+  public static final int EVM_INST_CALLDATACOPY = 0x37;
+  public static final int EVM_INST_CALLDATALOAD = 0x35;
+  public static final int EVM_INST_CALLDATASIZE = 0x36;
+  public static final int EVM_INST_CALLER = 0x33;
+  public static final int EVM_INST_CALLVALUE = 0x34;
+  public static final int EVM_INST_CHAINID = 0x46;
+  public static final int EVM_INST_CODECOPY = 0x39;
+  public static final int EVM_INST_CODESIZE = 0x38;
+  public static final int EVM_INST_COINBASE = 0x41;
+  public static final int EVM_INST_CREATE = 0xf0;
+  public static final int EVM_INST_CREATE2 = 0xf5;
+  public static final int EVM_INST_DELEGATECALL = 0xf4;
+  public static final int EVM_INST_DIFFICULTY = 0x44;
+  public static final int EVM_INST_DIV = 0x4;
+  public static final int EVM_INST_DUP1 = 0x80;
+  public static final int EVM_INST_DUP10 = 0x89;
+  public static final int EVM_INST_DUP11 = 0x8a;
+  public static final int EVM_INST_DUP12 = 0x8b;
+  public static final int EVM_INST_DUP13 = 0x8c;
+  public static final int EVM_INST_DUP14 = 0x8d;
+  public static final int EVM_INST_DUP15 = 0x8e;
+  public static final int EVM_INST_DUP16 = 0x8f;
+  public static final int EVM_INST_DUP2 = 0x81;
+  public static final int EVM_INST_DUP3 = 0x82;
+  public static final int EVM_INST_DUP4 = 0x83;
+  public static final int EVM_INST_DUP5 = 0x84;
+  public static final int EVM_INST_DUP6 = 0x85;
+  public static final int EVM_INST_DUP7 = 0x86;
+  public static final int EVM_INST_DUP8 = 0x87;
+  public static final int EVM_INST_DUP9 = 0x88;
+  public static final int EVM_INST_EQ = 0x14;
+  public static final int EVM_INST_EXP = 0xa;
+  public static final int EVM_INST_EXTCODECOPY = 0x3c;
+  public static final int EVM_INST_EXTCODEHASH = 0x3f;
+  public static final int EVM_INST_EXTCODESIZE = 0x3b;
+  public static final int EVM_INST_GAS = 0x5a;
+  public static final int EVM_INST_GASLIMIT = 0x45;
+  public static final int EVM_INST_GASPRICE = 0x3a;
+  public static final int EVM_INST_GT = 0x11;
+  public static final int EVM_INST_INVALID = 0xfe;
+  public static final int EVM_INST_ISZERO = 0x15;
+  public static final int EVM_INST_JUMP = 0x56;
+  public static final int EVM_INST_JUMPDEST = 0x5b;
+  public static final int EVM_INST_JUMPI = 0x57;
+  public static final int EVM_INST_LOG0 = 0xa0;
+  public static final int EVM_INST_LOG1 = 0xa1;
+  public static final int EVM_INST_LOG2 = 0xa2;
+  public static final int EVM_INST_LOG3 = 0xa3;
+  public static final int EVM_INST_LOG4 = 0xa4;
+  public static final int EVM_INST_LT = 0x10;
+  public static final int EVM_INST_MLOAD = 0x51;
+  public static final int EVM_INST_MOD = 0x6;
+  public static final int EVM_INST_MSIZE = 0x59;
+  public static final int EVM_INST_MSTORE = 0x52;
+  public static final int EVM_INST_MSTORE8 = 0x53;
+  public static final int EVM_INST_MUL = 0x2;
+  public static final int EVM_INST_MULMOD = 0x9;
+  public static final int EVM_INST_NOT = 0x19;
+  public static final int EVM_INST_NUMBER = 0x43;
+  public static final int EVM_INST_OR = 0x17;
+  public static final int EVM_INST_ORIGIN = 0x32;
+  public static final int EVM_INST_PC = 0x58;
+  public static final int EVM_INST_POP = 0x50;
+  public static final int EVM_INST_PUSH1 = 0x60;
+  public static final int EVM_INST_PUSH10 = 0x69;
+  public static final int EVM_INST_PUSH11 = 0x6a;
+  public static final int EVM_INST_PUSH12 = 0x6b;
+  public static final int EVM_INST_PUSH13 = 0x6c;
+  public static final int EVM_INST_PUSH14 = 0x6d;
+  public static final int EVM_INST_PUSH15 = 0x6e;
+  public static final int EVM_INST_PUSH16 = 0x6f;
+  public static final int EVM_INST_PUSH17 = 0x70;
+  public static final int EVM_INST_PUSH18 = 0x71;
+  public static final int EVM_INST_PUSH19 = 0x72;
+  public static final int EVM_INST_PUSH2 = 0x61;
+  public static final int EVM_INST_PUSH20 = 0x73;
+  public static final int EVM_INST_PUSH21 = 0x74;
+  public static final int EVM_INST_PUSH22 = 0x75;
+  public static final int EVM_INST_PUSH23 = 0x76;
+  public static final int EVM_INST_PUSH24 = 0x77;
+  public static final int EVM_INST_PUSH25 = 0x78;
+  public static final int EVM_INST_PUSH26 = 0x79;
+  public static final int EVM_INST_PUSH27 = 0x7a;
+  public static final int EVM_INST_PUSH28 = 0x7b;
+  public static final int EVM_INST_PUSH29 = 0x7c;
+  public static final int EVM_INST_PUSH3 = 0x62;
+  public static final int EVM_INST_PUSH30 = 0x7d;
+  public static final int EVM_INST_PUSH31 = 0x7e;
+  public static final int EVM_INST_PUSH32 = 0x7f;
+  public static final int EVM_INST_PUSH4 = 0x63;
+  public static final int EVM_INST_PUSH5 = 0x64;
+  public static final int EVM_INST_PUSH6 = 0x65;
+  public static final int EVM_INST_PUSH7 = 0x66;
+  public static final int EVM_INST_PUSH8 = 0x67;
+  public static final int EVM_INST_PUSH9 = 0x68;
+  public static final int EVM_INST_RETURN = 0xf3;
+  public static final int EVM_INST_RETURNDATACOPY = 0x3e;
+  public static final int EVM_INST_RETURNDATASIZE = 0x3d;
+  public static final int EVM_INST_REVERT = 0xfd;
+  public static final int EVM_INST_SAR = 0x1d;
+  public static final int EVM_INST_SDIV = 0x5;
+  public static final int EVM_INST_SELFBALANCE = 0x47;
+  public static final int EVM_INST_SELFDESTRUCT = 0xff;
+  public static final int EVM_INST_SGT = 0x13;
+  public static final int EVM_INST_SHA3 = 0x20;
+  public static final int EVM_INST_SHL = 0x1b;
+  public static final int EVM_INST_SHR = 0x1c;
+  public static final int EVM_INST_SIGNEXTEND = 0xb;
+  public static final int EVM_INST_SLOAD = 0x54;
+  public static final int EVM_INST_SLT = 0x12;
+  public static final int EVM_INST_SMOD = 0x7;
+  public static final int EVM_INST_SSTORE = 0x55;
+  public static final int EVM_INST_STATICCALL = 0xfa;
+  public static final int EVM_INST_STOP = 0x0;
+  public static final int EVM_INST_SUB = 0x3;
+  public static final int EVM_INST_SWAP1 = 0x90;
+  public static final int EVM_INST_SWAP10 = 0x99;
+  public static final int EVM_INST_SWAP11 = 0x9a;
+  public static final int EVM_INST_SWAP12 = 0x9b;
+  public static final int EVM_INST_SWAP13 = 0x9c;
+  public static final int EVM_INST_SWAP14 = 0x9d;
+  public static final int EVM_INST_SWAP15 = 0x9e;
+  public static final int EVM_INST_SWAP16 = 0x9f;
+  public static final int EVM_INST_SWAP2 = 0x91;
+  public static final int EVM_INST_SWAP3 = 0x92;
+  public static final int EVM_INST_SWAP4 = 0x93;
+  public static final int EVM_INST_SWAP5 = 0x94;
+  public static final int EVM_INST_SWAP6 = 0x95;
+  public static final int EVM_INST_SWAP7 = 0x96;
+  public static final int EVM_INST_SWAP8 = 0x97;
+  public static final int EVM_INST_SWAP9 = 0x98;
+  public static final int EVM_INST_TIMESTAMP = 0x42;
+  public static final int EVM_INST_XOR = 0x18;
+  public static final int EXO_SUM_INDEX_BLAKEMODEXP = 0x6;
+  public static final int EXO_SUM_INDEX_ECDATA = 0x4;
+  public static final int EXO_SUM_INDEX_KEC = 0x1;
+  public static final int EXO_SUM_INDEX_LOG = 0x2;
+  public static final int EXO_SUM_INDEX_RIPSHA = 0x5;
+  public static final int EXO_SUM_INDEX_ROM = 0x0;
+  public static final int EXO_SUM_INDEX_TXCD = 0x3;
+  public static final int EXO_SUM_WEIGHT_BLAKEMODEXP = 0x40;
+  public static final int EXO_SUM_WEIGHT_ECDATA = 0x10;
+  public static final int EXO_SUM_WEIGHT_KEC = 0x2;
+  public static final int EXO_SUM_WEIGHT_LOG = 0x4;
+  public static final int EXO_SUM_WEIGHT_RIPSHA = 0x20;
+  public static final int EXO_SUM_WEIGHT_ROM = 0x1;
+  public static final int EXO_SUM_WEIGHT_TXCD = 0x8;
+  public static final int EXP_INST_EXPLOG = 0xee0a;
+  public static final int EXP_INST_MODEXPLOG = 0xee05;
+  public static final int GAS_CONST_G_ACCESS_LIST_ADRESS = 0x960;
+  public static final int GAS_CONST_G_ACCESS_LIST_STORAGE = 0x76c;
+  public static final int GAS_CONST_G_BASE = 0x2;
+  public static final int GAS_CONST_G_BLOCKHASH = 0x14;
+  public static final int GAS_CONST_G_CALL_STIPEND = 0x8fc;
+  public static final int GAS_CONST_G_CALL_VALUE = 0x2328;
+  public static final int GAS_CONST_G_CODE_DEPOSIT = 0xc8;
+  public static final int GAS_CONST_G_COLD_ACCOUNT_ACCESS = 0xa28;
+  public static final int GAS_CONST_G_COLD_SLOAD = 0x834;
+  public static final int GAS_CONST_G_COPY = 0x3;
+  public static final int GAS_CONST_G_CREATE = 0x7d00;
+  public static final int GAS_CONST_G_EXP = 0xa;
+  public static final int GAS_CONST_G_EXP_BYTE = 0x32;
+  public static final int GAS_CONST_G_HIGH = 0xa;
+  public static final int GAS_CONST_G_JUMPDEST = 0x1;
+  public static final int GAS_CONST_G_KECCAK_256 = 0x1e;
+  public static final int GAS_CONST_G_KECCAK_256_WORD = 0x6;
+  public static final int GAS_CONST_G_LOG = 0x177;
+  public static final int GAS_CONST_G_LOG_DATA = 0x8;
+  public static final int GAS_CONST_G_LOG_TOPIC = 0x177;
+  public static final int GAS_CONST_G_LOW = 0x5;
+  public static final int GAS_CONST_G_MEMORY = 0x3;
+  public static final int GAS_CONST_G_MID = 0x8;
+  public static final int GAS_CONST_G_NEW_ACCOUNT = 0x61a8;
+  public static final int GAS_CONST_G_SELFDESTRUCT = 0x1388;
+  public static final int GAS_CONST_G_SRESET = 0xb54;
+  public static final int GAS_CONST_G_SSET = 0x4e20;
+  public static final int GAS_CONST_G_TRANSACTION = 0x5208;
+  public static final int GAS_CONST_G_TX_CREATE = 0x7d00;
+  public static final int GAS_CONST_G_TX_DATA_NONZERO = 0x10;
+  public static final int GAS_CONST_G_TX_DATA_ZERO = 0x4;
+  public static final int GAS_CONST_G_VERY_LOW = 0x3;
+  public static final int GAS_CONST_G_WARM_ACCESS = 0x64;
+  public static final int GAS_CONST_G_ZERO = 0x0;
+  public static final int LLARGE = 0x10;
+  public static final int LLARGEMO = 0xf;
+  public static final int LLARGEPO = 0x11;
+  public static final int MISC_EXP_WEIGHT = 0x1;
+  public static final int MISC_MMU_WEIGHT = 0x2;
+  public static final int MISC_MXP_WEIGHT = 0x4;
+  public static final int MISC_OOB_WEIGHT = 0x8;
+  public static final int MISC_STP_WEIGHT = 0x10;
+  public static final int MMEDIUM = 0x8;
+  public static final int MMEDIUMMO = 0x7;
+  public static final int MMIO_INST_LIMB_TO_RAM_ONE_TARGET = 0xfe12;
+  public static final int MMIO_INST_LIMB_TO_RAM_TRANSPLANT = 0xfe11;
+  public static final int MMIO_INST_LIMB_TO_RAM_TWO_TARGET = 0xfe13;
+  public static final int MMIO_INST_LIMB_VANISHES = 0xfe01;
+  public static final int MMIO_INST_RAM_EXCISION = 0xfe41;
+  public static final int MMIO_INST_RAM_TO_LIMB_ONE_SOURCE = 0xfe22;
+  public static final int MMIO_INST_RAM_TO_LIMB_TRANSPLANT = 0xfe21;
+  public static final int MMIO_INST_RAM_TO_LIMB_TWO_SOURCE = 0xfe23;
+  public static final int MMIO_INST_RAM_TO_RAM_PARTIAL = 0xfe32;
+  public static final int MMIO_INST_RAM_TO_RAM_TRANSPLANT = 0xfe31;
+  public static final int MMIO_INST_RAM_TO_RAM_TWO_SOURCE = 0xfe34;
+  public static final int MMIO_INST_RAM_TO_RAM_TWO_TARGET = 0xfe33;
+  public static final int MMIO_INST_RAM_VANISHES = 0xfe42;
+  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING = 0xfe50;
+  public static final int MMU_INST_BLAKE = 0xfe80;
+  public static final int MMU_INST_EXO_TO_RAM_TRANSPLANTS = 0xfe30;
+  public static final int MMU_INST_INVALID_CODE_PREFIX = 0xfe00;
+  public static final int MMU_INST_MLOAD = 0xfe01;
+  public static final int MMU_INST_MODEXP_DATA = 0xfe70;
+  public static final int MMU_INST_MODEXP_ZERO = 0xfe60;
+  public static final int MMU_INST_MSTORE = 0xfe02;
+  public static final int MMU_INST_MSTORE8 = 0x53;
+  public static final int MMU_INST_RAM_TO_EXO_WITH_PADDING = 0xfe20;
+  public static final int MMU_INST_RAM_TO_RAM_SANS_PADDING = 0xfe40;
+  public static final int MMU_INST_RIGHT_PADDED_WORD_EXTRACTION = 0xfe10;
+  public static final int OOB_INST_blake_cds = 0xfa09;
+  public static final int OOB_INST_blake_params = 0xfb09;
+  public static final int OOB_INST_call = 0xca;
+  public static final int OOB_INST_cdl = 0x35;
+  public static final int OOB_INST_create = 0xce;
+  public static final int OOB_INST_deployment = 0xf3;
+  public static final int OOB_INST_ecadd = 0xff06;
+  public static final int OOB_INST_ecmul = 0xff07;
+  public static final int OOB_INST_ecpairing = 0xff08;
+  public static final int OOB_INST_ecrecover = 0xff01;
+  public static final int OOB_INST_identity = 0xff04;
+  public static final int OOB_INST_jump = 0x56;
+  public static final int OOB_INST_jumpi = 0x57;
+  public static final int OOB_INST_modexp_cds = 0xfa05;
+  public static final int OOB_INST_modexp_extract = 0xfe05;
+  public static final int OOB_INST_modexp_lead = 0xfc05;
+  public static final int OOB_INST_modexp_pricing = 0xfd05;
+  public static final int OOB_INST_modexp_xbs = 0xfb05;
+  public static final int OOB_INST_rdc = 0x3e;
+  public static final int OOB_INST_ripemd = 0xff03;
+  public static final int OOB_INST_sha2 = 0xff02;
+  public static final int OOB_INST_sstore = 0x55;
+  public static final int OOB_INST_xcall = 0xcc;
+  public static final int PHASE_BLAKE_DATA = 0x5;
+  public static final int PHASE_BLAKE_PARAMS = 0x6;
+  public static final int PHASE_BLAKE_RESULT = 0x7;
+  public static final int PHASE_KECCAK_DATA = 0x5;
+  public static final int PHASE_KECCAK_RESULT = 0x6;
+  public static final int PHASE_MODEXP_BASE = 0x1;
+  public static final int PHASE_MODEXP_EXPONENT = 0x2;
+  public static final int PHASE_MODEXP_MODULUS = 0x3;
+  public static final int PHASE_MODEXP_RESULT = 0x4;
+  public static final int PHASE_RIPEMD_DATA = 0x3;
+  public static final int PHASE_RIPEMD_RESULT = 0x4;
+  public static final int PHASE_SHA2_DATA = 0x1;
+  public static final int PHASE_SHA2_RESULT = 0x2;
+  public static final int REFUND_CONST_R_SCLEAR = 0x3a98;
+  public static final int REFUND_CONST_R_SELFDESTRUCT = 0x5dc0;
+  public static final int RLP_ADDR_RECIPE_1 = 0x1;
+  public static final int RLP_ADDR_RECIPE_2 = 0x2;
+  public static final int RLP_PREFIX_INT_LONG = 0xb7;
+  public static final int RLP_PREFIX_INT_SHORT = 0x80;
+  public static final int RLP_PREFIX_LIST_LONG = 0xf7;
+  public static final int RLP_PREFIX_LIST_SHORT = 0xc0;
+  public static final int RLP_RCPT_SUBPHASE_ID_ADDR = 0x35;
+  public static final int RLP_RCPT_SUBPHASE_ID_CUMUL_GAS = 0x3;
+  public static final int RLP_RCPT_SUBPHASE_ID_DATA_LIMB = 0x4d;
+  public static final int RLP_RCPT_SUBPHASE_ID_DATA_SIZE = 0x53;
+  public static final int RLP_RCPT_SUBPHASE_ID_NO_LOG_ENTRY = 0xb;
+  public static final int RLP_RCPT_SUBPHASE_ID_STATUS_CODE = 0x2;
+  public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
+  public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
+  public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
+  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
+  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
+  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
+  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
+  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int WCP_INST_GEQ = 0xe;
+  public static final int WCP_INST_LEQ = 0xf;
+  public static final int WORD_SIZE = 0x20;
+  public static final int WORD_SIZE_MO = 0x1f;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -83,9 +361,9 @@ public class Trace {
   private final MappedByteBuffer byte2;
   private final MappedByteBuffer codeFragmentIndex;
   private final MappedByteBuffer counter;
+  private final MappedByteBuffer dataGasCost;
   private final MappedByteBuffer dataHi;
   private final MappedByteBuffer dataLo;
-  private final MappedByteBuffer datagascost;
   private final MappedByteBuffer depth1;
   private final MappedByteBuffer depth2;
   private final MappedByteBuffer done;
@@ -129,31 +407,31 @@ public class Trace {
   private final MappedByteBuffer rlpLxBytesize;
   private final MappedByteBuffer type;
 
-  public static List<ColumnHeader> headers(int length) {
+  static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("rlpTxn.ABS_TX_NUM", 32, length),
-        new ColumnHeader("rlpTxn.ABS_TX_NUM_INFINY", 32, length),
+        new ColumnHeader("rlpTxn.ABS_TX_NUM", 8, length),
+        new ColumnHeader("rlpTxn.ABS_TX_NUM_INFINY", 4, length),
         new ColumnHeader("rlpTxn.ACC_1", 32, length),
         new ColumnHeader("rlpTxn.ACC_2", 32, length),
-        new ColumnHeader("rlpTxn.ACC_BYTESIZE", 32, length),
-        new ColumnHeader("rlpTxn.ACCESS_TUPLE_BYTESIZE", 32, length),
-        new ColumnHeader("rlpTxn.ADDR_HI", 32, length),
+        new ColumnHeader("rlpTxn.ACC_BYTESIZE", 2, length),
+        new ColumnHeader("rlpTxn.ACCESS_TUPLE_BYTESIZE", 4, length),
+        new ColumnHeader("rlpTxn.ADDR_HI", 8, length),
         new ColumnHeader("rlpTxn.ADDR_LO", 32, length),
         new ColumnHeader("rlpTxn.BIT", 1, length),
         new ColumnHeader("rlpTxn.BIT_ACC", 1, length),
         new ColumnHeader("rlpTxn.BYTE_1", 1, length),
         new ColumnHeader("rlpTxn.BYTE_2", 1, length),
-        new ColumnHeader("rlpTxn.CODE_FRAGMENT_INDEX", 32, length),
-        new ColumnHeader("rlpTxn.COUNTER", 32, length),
+        new ColumnHeader("rlpTxn.CODE_FRAGMENT_INDEX", 8, length),
+        new ColumnHeader("rlpTxn.COUNTER", 2, length),
+        new ColumnHeader("rlpTxn.DATA_GAS_COST", 8, length),
         new ColumnHeader("rlpTxn.DATA_HI", 32, length),
         new ColumnHeader("rlpTxn.DATA_LO", 32, length),
-        new ColumnHeader("rlpTxn.DATAGASCOST", 32, length),
         new ColumnHeader("rlpTxn.DEPTH_1", 1, length),
         new ColumnHeader("rlpTxn.DEPTH_2", 1, length),
         new ColumnHeader("rlpTxn.DONE", 1, length),
-        new ColumnHeader("rlpTxn.INDEX_DATA", 32, length),
-        new ColumnHeader("rlpTxn.INDEX_LT", 32, length),
-        new ColumnHeader("rlpTxn.INDEX_LX", 32, length),
+        new ColumnHeader("rlpTxn.INDEX_DATA", 8, length),
+        new ColumnHeader("rlpTxn.INDEX_LT", 8, length),
+        new ColumnHeader("rlpTxn.INDEX_LX", 8, length),
         new ColumnHeader("rlpTxn.INPUT_1", 32, length),
         new ColumnHeader("rlpTxn.INPUT_2", 32, length),
         new ColumnHeader("rlpTxn.IS_PREFIX", 1, length),
@@ -162,11 +440,11 @@ public class Trace {
         new ColumnHeader("rlpTxn.LIMB_CONSTRUCTED", 1, length),
         new ColumnHeader("rlpTxn.LT", 1, length),
         new ColumnHeader("rlpTxn.LX", 1, length),
-        new ColumnHeader("rlpTxn.nADDR", 32, length),
-        new ColumnHeader("rlpTxn.nBYTES", 32, length),
-        new ColumnHeader("rlpTxn.nKEYS", 32, length),
-        new ColumnHeader("rlpTxn.nKEYS_PER_ADDR", 32, length),
-        new ColumnHeader("rlpTxn.nSTEP", 32, length),
+        new ColumnHeader("rlpTxn.nADDR", 4, length),
+        new ColumnHeader("rlpTxn.nBYTES", 2, length),
+        new ColumnHeader("rlpTxn.nKEYS", 4, length),
+        new ColumnHeader("rlpTxn.nKEYS_PER_ADDR", 4, length),
+        new ColumnHeader("rlpTxn.nSTEP", 2, length),
         new ColumnHeader("rlpTxn.PHASE_1", 1, length),
         new ColumnHeader("rlpTxn.PHASE_10", 1, length),
         new ColumnHeader("rlpTxn.PHASE_11", 1, length),
@@ -183,13 +461,13 @@ public class Trace {
         new ColumnHeader("rlpTxn.PHASE_8", 1, length),
         new ColumnHeader("rlpTxn.PHASE_9", 1, length),
         new ColumnHeader("rlpTxn.PHASE_END", 1, length),
-        new ColumnHeader("rlpTxn.PHASE_ID", 32, length),
-        new ColumnHeader("rlpTxn.PHASE_SIZE", 32, length),
+        new ColumnHeader("rlpTxn.PHASE_ID", 2, length),
+        new ColumnHeader("rlpTxn.PHASE_SIZE", 8, length),
         new ColumnHeader("rlpTxn.POWER", 32, length),
         new ColumnHeader("rlpTxn.REQUIRES_EVM_EXECUTION", 1, length),
-        new ColumnHeader("rlpTxn.RLP_LT_BYTESIZE", 32, length),
-        new ColumnHeader("rlpTxn.RLP_LX_BYTESIZE", 32, length),
-        new ColumnHeader("rlpTxn.TYPE", 32, length));
+        new ColumnHeader("rlpTxn.RLP_LT_BYTESIZE", 4, length),
+        new ColumnHeader("rlpTxn.RLP_LX_BYTESIZE", 4, length),
+        new ColumnHeader("rlpTxn.TYPE", 2, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -207,9 +485,9 @@ public class Trace {
     this.byte2 = buffers.get(11);
     this.codeFragmentIndex = buffers.get(12);
     this.counter = buffers.get(13);
-    this.dataHi = buffers.get(14);
-    this.dataLo = buffers.get(15);
-    this.datagascost = buffers.get(16);
+    this.dataGasCost = buffers.get(14);
+    this.dataHi = buffers.get(15);
+    this.dataLo = buffers.get(16);
     this.depth1 = buffers.get(17);
     this.depth2 = buffers.get(18);
     this.done = buffers.get(19);
@@ -262,34 +540,26 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace absTxNum(final Bytes b) {
+  public Trace absTxNum(final long b) {
     if (filled.get(0)) {
       throw new IllegalStateException("rlpTxn.ABS_TX_NUM already set");
     } else {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      absTxNum.put((byte) 0);
-    }
-    absTxNum.put(b.toArrayUnsafe());
+    absTxNum.putLong(b);
 
     return this;
   }
 
-  public Trace absTxNumInfiny(final Bytes b) {
+  public Trace absTxNumInfiny(final int b) {
     if (filled.get(1)) {
       throw new IllegalStateException("rlpTxn.ABS_TX_NUM_INFINY already set");
     } else {
       filled.set(1);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      absTxNumInfiny.put((byte) 0);
-    }
-    absTxNumInfiny.put(b.toArrayUnsafe());
+    absTxNumInfiny.putInt(b);
 
     return this;
   }
@@ -326,50 +596,38 @@ public class Trace {
     return this;
   }
 
-  public Trace accBytesize(final Bytes b) {
+  public Trace accBytesize(final short b) {
     if (filled.get(5)) {
       throw new IllegalStateException("rlpTxn.ACC_BYTESIZE already set");
     } else {
       filled.set(5);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      accBytesize.put((byte) 0);
-    }
-    accBytesize.put(b.toArrayUnsafe());
+    accBytesize.putShort(b);
 
     return this;
   }
 
-  public Trace accessTupleBytesize(final Bytes b) {
+  public Trace accessTupleBytesize(final int b) {
     if (filled.get(2)) {
       throw new IllegalStateException("rlpTxn.ACCESS_TUPLE_BYTESIZE already set");
     } else {
       filled.set(2);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      accessTupleBytesize.put((byte) 0);
-    }
-    accessTupleBytesize.put(b.toArrayUnsafe());
+    accessTupleBytesize.putInt(b);
 
     return this;
   }
 
-  public Trace addrHi(final Bytes b) {
+  public Trace addrHi(final long b) {
     if (filled.get(6)) {
       throw new IllegalStateException("rlpTxn.ADDR_HI already set");
     } else {
       filled.set(6);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      addrHi.put((byte) 0);
-    }
-    addrHi.put(b.toArrayUnsafe());
+    addrHi.putLong(b);
 
     return this;
   }
@@ -438,34 +696,38 @@ public class Trace {
     return this;
   }
 
-  public Trace codeFragmentIndex(final Bytes b) {
+  public Trace codeFragmentIndex(final long b) {
     if (filled.get(12)) {
       throw new IllegalStateException("rlpTxn.CODE_FRAGMENT_INDEX already set");
     } else {
       filled.set(12);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      codeFragmentIndex.put((byte) 0);
-    }
-    codeFragmentIndex.put(b.toArrayUnsafe());
+    codeFragmentIndex.putLong(b);
 
     return this;
   }
 
-  public Trace counter(final Bytes b) {
+  public Trace counter(final short b) {
     if (filled.get(13)) {
       throw new IllegalStateException("rlpTxn.COUNTER already set");
     } else {
       filled.set(13);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      counter.put((byte) 0);
+    counter.putShort(b);
+
+    return this;
+  }
+
+  public Trace dataGasCost(final long b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("rlpTxn.DATA_GAS_COST already set");
+    } else {
+      filled.set(14);
     }
-    counter.put(b.toArrayUnsafe());
+
+    dataGasCost.putLong(b);
 
     return this;
   }
@@ -498,22 +760,6 @@ public class Trace {
       dataLo.put((byte) 0);
     }
     dataLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace datagascost(final Bytes b) {
-    if (filled.get(14)) {
-      throw new IllegalStateException("rlpTxn.DATAGASCOST already set");
-    } else {
-      filled.set(14);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      datagascost.put((byte) 0);
-    }
-    datagascost.put(b.toArrayUnsafe());
 
     return this;
   }
@@ -554,50 +800,38 @@ public class Trace {
     return this;
   }
 
-  public Trace indexData(final Bytes b) {
+  public Trace indexData(final long b) {
     if (filled.get(20)) {
       throw new IllegalStateException("rlpTxn.INDEX_DATA already set");
     } else {
       filled.set(20);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      indexData.put((byte) 0);
-    }
-    indexData.put(b.toArrayUnsafe());
+    indexData.putLong(b);
 
     return this;
   }
 
-  public Trace indexLt(final Bytes b) {
+  public Trace indexLt(final long b) {
     if (filled.get(21)) {
       throw new IllegalStateException("rlpTxn.INDEX_LT already set");
     } else {
       filled.set(21);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      indexLt.put((byte) 0);
-    }
-    indexLt.put(b.toArrayUnsafe());
+    indexLt.putLong(b);
 
     return this;
   }
 
-  public Trace indexLx(final Bytes b) {
+  public Trace indexLx(final long b) {
     if (filled.get(22)) {
       throw new IllegalStateException("rlpTxn.INDEX_LX already set");
     } else {
       filled.set(22);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      indexLx.put((byte) 0);
-    }
-    indexLx.put(b.toArrayUnsafe());
+    indexLx.putLong(b);
 
     return this;
   }
@@ -710,82 +944,62 @@ public class Trace {
     return this;
   }
 
-  public Trace nAddr(final Bytes b) {
+  public Trace nAddr(final int b) {
     if (filled.get(54)) {
       throw new IllegalStateException("rlpTxn.nADDR already set");
     } else {
       filled.set(54);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nAddr.put((byte) 0);
-    }
-    nAddr.put(b.toArrayUnsafe());
+    nAddr.putInt(b);
 
     return this;
   }
 
-  public Trace nBytes(final Bytes b) {
+  public Trace nBytes(final short b) {
     if (filled.get(55)) {
       throw new IllegalStateException("rlpTxn.nBYTES already set");
     } else {
       filled.set(55);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nBytes.put((byte) 0);
-    }
-    nBytes.put(b.toArrayUnsafe());
+    nBytes.putShort(b);
 
     return this;
   }
 
-  public Trace nKeys(final Bytes b) {
+  public Trace nKeys(final int b) {
     if (filled.get(56)) {
       throw new IllegalStateException("rlpTxn.nKEYS already set");
     } else {
       filled.set(56);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nKeys.put((byte) 0);
-    }
-    nKeys.put(b.toArrayUnsafe());
+    nKeys.putInt(b);
 
     return this;
   }
 
-  public Trace nKeysPerAddr(final Bytes b) {
+  public Trace nKeysPerAddr(final int b) {
     if (filled.get(57)) {
       throw new IllegalStateException("rlpTxn.nKEYS_PER_ADDR already set");
     } else {
       filled.set(57);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nKeysPerAddr.put((byte) 0);
-    }
-    nKeysPerAddr.put(b.toArrayUnsafe());
+    nKeysPerAddr.putInt(b);
 
     return this;
   }
 
-  public Trace nStep(final Bytes b) {
+  public Trace nStep(final short b) {
     if (filled.get(58)) {
       throw new IllegalStateException("rlpTxn.nSTEP already set");
     } else {
       filled.set(58);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      nStep.put((byte) 0);
-    }
-    nStep.put(b.toArrayUnsafe());
+    nStep.putShort(b);
 
     return this;
   }
@@ -982,34 +1196,26 @@ public class Trace {
     return this;
   }
 
-  public Trace phaseId(final Bytes b) {
+  public Trace phaseId(final short b) {
     if (filled.get(47)) {
       throw new IllegalStateException("rlpTxn.PHASE_ID already set");
     } else {
       filled.set(47);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      phaseId.put((byte) 0);
-    }
-    phaseId.put(b.toArrayUnsafe());
+    phaseId.putShort(b);
 
     return this;
   }
 
-  public Trace phaseSize(final Bytes b) {
+  public Trace phaseSize(final long b) {
     if (filled.get(48)) {
       throw new IllegalStateException("rlpTxn.PHASE_SIZE already set");
     } else {
       filled.set(48);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      phaseSize.put((byte) 0);
-    }
-    phaseSize.put(b.toArrayUnsafe());
+    phaseSize.putLong(b);
 
     return this;
   }
@@ -1042,50 +1248,38 @@ public class Trace {
     return this;
   }
 
-  public Trace rlpLtBytesize(final Bytes b) {
+  public Trace rlpLtBytesize(final int b) {
     if (filled.get(51)) {
       throw new IllegalStateException("rlpTxn.RLP_LT_BYTESIZE already set");
     } else {
       filled.set(51);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpLtBytesize.put((byte) 0);
-    }
-    rlpLtBytesize.put(b.toArrayUnsafe());
+    rlpLtBytesize.putInt(b);
 
     return this;
   }
 
-  public Trace rlpLxBytesize(final Bytes b) {
+  public Trace rlpLxBytesize(final int b) {
     if (filled.get(52)) {
       throw new IllegalStateException("rlpTxn.RLP_LX_BYTESIZE already set");
     } else {
       filled.set(52);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      rlpLxBytesize.put((byte) 0);
-    }
-    rlpLxBytesize.put(b.toArrayUnsafe());
+    rlpLxBytesize.putInt(b);
 
     return this;
   }
 
-  public Trace type(final Bytes b) {
+  public Trace type(final short b) {
     if (filled.get(53)) {
       throw new IllegalStateException("rlpTxn.TYPE already set");
     } else {
       filled.set(53);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      type.put((byte) 0);
-    }
-    type.put(b.toArrayUnsafe());
+    type.putShort(b);
 
     return this;
   }
@@ -1147,16 +1341,16 @@ public class Trace {
       throw new IllegalStateException("rlpTxn.COUNTER has not been filled");
     }
 
+    if (!filled.get(14)) {
+      throw new IllegalStateException("rlpTxn.DATA_GAS_COST has not been filled");
+    }
+
     if (!filled.get(15)) {
       throw new IllegalStateException("rlpTxn.DATA_HI has not been filled");
     }
 
     if (!filled.get(16)) {
       throw new IllegalStateException("rlpTxn.DATA_LO has not been filled");
-    }
-
-    if (!filled.get(14)) {
-      throw new IllegalStateException("rlpTxn.DATAGASCOST has not been filled");
     }
 
     if (!filled.get(17)) {
@@ -1335,11 +1529,11 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      absTxNum.position(absTxNum.position() + 32);
+      absTxNum.position(absTxNum.position() + 8);
     }
 
     if (!filled.get(1)) {
-      absTxNumInfiny.position(absTxNumInfiny.position() + 32);
+      absTxNumInfiny.position(absTxNumInfiny.position() + 4);
     }
 
     if (!filled.get(3)) {
@@ -1351,15 +1545,15 @@ public class Trace {
     }
 
     if (!filled.get(5)) {
-      accBytesize.position(accBytesize.position() + 32);
+      accBytesize.position(accBytesize.position() + 2);
     }
 
     if (!filled.get(2)) {
-      accessTupleBytesize.position(accessTupleBytesize.position() + 32);
+      accessTupleBytesize.position(accessTupleBytesize.position() + 4);
     }
 
     if (!filled.get(6)) {
-      addrHi.position(addrHi.position() + 32);
+      addrHi.position(addrHi.position() + 8);
     }
 
     if (!filled.get(7)) {
@@ -1383,11 +1577,15 @@ public class Trace {
     }
 
     if (!filled.get(12)) {
-      codeFragmentIndex.position(codeFragmentIndex.position() + 32);
+      codeFragmentIndex.position(codeFragmentIndex.position() + 8);
     }
 
     if (!filled.get(13)) {
-      counter.position(counter.position() + 32);
+      counter.position(counter.position() + 2);
+    }
+
+    if (!filled.get(14)) {
+      dataGasCost.position(dataGasCost.position() + 8);
     }
 
     if (!filled.get(15)) {
@@ -1396,10 +1594,6 @@ public class Trace {
 
     if (!filled.get(16)) {
       dataLo.position(dataLo.position() + 32);
-    }
-
-    if (!filled.get(14)) {
-      datagascost.position(datagascost.position() + 32);
     }
 
     if (!filled.get(17)) {
@@ -1415,15 +1609,15 @@ public class Trace {
     }
 
     if (!filled.get(20)) {
-      indexData.position(indexData.position() + 32);
+      indexData.position(indexData.position() + 8);
     }
 
     if (!filled.get(21)) {
-      indexLt.position(indexLt.position() + 32);
+      indexLt.position(indexLt.position() + 8);
     }
 
     if (!filled.get(22)) {
-      indexLx.position(indexLx.position() + 32);
+      indexLx.position(indexLx.position() + 8);
     }
 
     if (!filled.get(23)) {
@@ -1459,23 +1653,23 @@ public class Trace {
     }
 
     if (!filled.get(54)) {
-      nAddr.position(nAddr.position() + 32);
+      nAddr.position(nAddr.position() + 4);
     }
 
     if (!filled.get(55)) {
-      nBytes.position(nBytes.position() + 32);
+      nBytes.position(nBytes.position() + 2);
     }
 
     if (!filled.get(56)) {
-      nKeys.position(nKeys.position() + 32);
+      nKeys.position(nKeys.position() + 4);
     }
 
     if (!filled.get(57)) {
-      nKeysPerAddr.position(nKeysPerAddr.position() + 32);
+      nKeysPerAddr.position(nKeysPerAddr.position() + 4);
     }
 
     if (!filled.get(58)) {
-      nStep.position(nStep.position() + 32);
+      nStep.position(nStep.position() + 2);
     }
 
     if (!filled.get(31)) {
@@ -1543,11 +1737,11 @@ public class Trace {
     }
 
     if (!filled.get(47)) {
-      phaseId.position(phaseId.position() + 32);
+      phaseId.position(phaseId.position() + 2);
     }
 
     if (!filled.get(48)) {
-      phaseSize.position(phaseSize.position() + 32);
+      phaseSize.position(phaseSize.position() + 8);
     }
 
     if (!filled.get(49)) {
@@ -1559,15 +1753,15 @@ public class Trace {
     }
 
     if (!filled.get(51)) {
-      rlpLtBytesize.position(rlpLtBytesize.position() + 32);
+      rlpLtBytesize.position(rlpLtBytesize.position() + 4);
     }
 
     if (!filled.get(52)) {
-      rlpLxBytesize.position(rlpLxBytesize.position() + 32);
+      rlpLxBytesize.position(rlpLxBytesize.position() + 4);
     }
 
     if (!filled.get(53)) {
-      type.position(type.position() + 32);
+      type.position(type.position() + 2);
     }
 
     filled.clear();
