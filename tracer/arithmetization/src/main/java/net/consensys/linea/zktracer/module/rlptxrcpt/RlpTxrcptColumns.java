@@ -13,13 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txrcpt;
+package net.consensys.linea.zktracer.module.rlptxrcpt;
 
 import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.module.rlp_txrcpt.Trace;
 import org.apache.tuweni.bytes.Bytes;
 
 class RlpTxrcptColumns {
@@ -99,6 +98,6 @@ class RlpTxrcptColumns {
         + Trace.SUBPHASE_ID_WEIGHT_IS_OT * booleanToInt(this.isTopic)
         + Trace.SUBPHASE_ID_WEIGHT_IS_OD * booleanToInt(this.isData)
         + Trace.SUBPHASE_ID_WEIGHT_DEPTH * booleanToInt(this.depth1)
-        + Trace.SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
+        + Trace.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
   }
 }

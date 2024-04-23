@@ -13,21 +13,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txn;
+package net.consensys.linea.zktracer.module.rlptxn;
 
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.GAS_CONST_G_TX_DATA_NONZERO;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.GAS_CONST_G_TX_DATA_ZERO;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_PREFIX_INT_LONG;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_PREFIX_INT_SHORT;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_PREFIX_LIST_LONG;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_PREFIX_LIST_SHORT;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_TXN_PHASE_CHAIN_ID_VALUE;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_TXN_PHASE_GAS_PRICE_VALUE;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE;
-import static net.consensys.linea.zktracer.module.rlp.txn.Trace.RLP_TXN_PHASE_NONCE_VALUE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.GAS_CONST_G_TX_DATA_NONZERO;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.GAS_CONST_G_TX_DATA_ZERO;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_PREFIX_INT_LONG;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_PREFIX_LIST_SHORT;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_TXN_PHASE_CHAIN_ID_VALUE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_TXN_PHASE_GAS_PRICE_VALUE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE;
+import static net.consensys.linea.zktracer.module.rlptxn.Trace.RLP_TXN_PHASE_NONCE_VALUE;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.innerRlpSize;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
@@ -1115,6 +1115,7 @@ public class RlpTxn implements Module {
         .limbConstructed(traceValue.limbConstructed)
         .lt(traceValue.lt)
         .lx(traceValue.lx)
+        .toHashByProver(traceValue.limbConstructed && traceValue.lx)
         .nBytes((short) traceValue.nBytes)
         .nAddr(traceValue.nbAddr)
         .nKeys(traceValue.nbSto)

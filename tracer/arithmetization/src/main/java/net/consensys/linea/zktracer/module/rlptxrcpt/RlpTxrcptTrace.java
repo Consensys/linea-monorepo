@@ -13,11 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txrcpt;
+package net.consensys.linea.zktracer.module.rlptxrcpt;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.consensys.linea.zktracer.module.ModuleTrace;
-import net.consensys.linea.zktracer.module.rlp_txrcpt.Trace;
 
 /**
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten

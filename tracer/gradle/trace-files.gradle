@@ -79,27 +79,9 @@ tasks.register('binRT', TraceFilesTask) {
 }
 
 //
-// Modules requiring the library and with a custom target path
-//
-[['rlp_txrcpt', 'rlp/txrcpt'], ['rlp_txn', 'rlp/txn'], ['rlpAddr', 'rlp/addr']].each { moduleInfos ->
-    tasks.register(moduleInfos[0], TraceFilesTask) {
-        group "Trace files generation"
-        dependsOn corsetExists
-
-        var moduleName = moduleInfos[0]
-
-        module = moduleName
-        moduleDir = moduleInfos[1]
-
-        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp", "library/rlp_constraints_pattern.lisp", "constants/constants.lisp"]
-    }
-}
-
-
-//
 // Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rom', 'romLex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
+['bin', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rlptxn', 'rom', 'romLex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
@@ -112,7 +94,7 @@ tasks.register('binRT', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2f_modexp_data', 'oob', 'exp', 'txn_data'].each {moduleName ->
+['mmu', 'blake2f_modexp_data', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'txn_data'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

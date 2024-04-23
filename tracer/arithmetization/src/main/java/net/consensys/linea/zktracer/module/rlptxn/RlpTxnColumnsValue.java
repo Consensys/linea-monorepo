@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txn;
+package net.consensys.linea.zktracer.module.rlptxn;
 
 import java.math.BigInteger;
 

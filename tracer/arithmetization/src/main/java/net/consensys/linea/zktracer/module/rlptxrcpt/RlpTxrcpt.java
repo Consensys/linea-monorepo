@@ -13,8 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txrcpt;
+package net.consensys.linea.zktracer.module.rlptxrcpt;
 
+import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_INT_LONG;
+import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -31,7 +35,6 @@ import lombok.Getter;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlp_txrcpt.Trace;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -44,12 +47,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxrcpt implements Module {
   private static final int LLARGE = Trace.LLARGE;
-  private static final Bytes BYTES_RLP_INT_SHORT = Bytes.minimalBytes(Trace.INT_SHORT);
-  private static final int INT_RLP_INT_SHORT = Trace.INT_SHORT;
-  private static final int INT_RLP_INT_LONG = Trace.INT_LONG;
-  private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(Trace.LIST_SHORT);
-  private static final int INT_RLP_LIST_SHORT = Trace.LIST_SHORT;
-  private static final int INT_RLP_LIST_LONG = Trace.LIST_LONG;
+  private static final Bytes BYTES_RLP_INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
+  private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
 
   private int absLogNum = 0;
   @Getter public StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
@@ -171,7 +170,7 @@ public class RlpTxrcpt implements Module {
     traceValue.limbConstructed = true;
     traceValue.limb =
         Bytes.concatenate(
-            bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_LONG + 2)),
+            bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_LONG + 2)),
             bigIntegerToBytes(BigInteger.valueOf(256)));
     traceValue.nBytes = 3;
     traceRow(traceValue, trace);
@@ -295,7 +294,7 @@ public class RlpTxrcpt implements Module {
         traceValue.limbConstructed = true;
 
         traceValue.counter = 0;
-        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_SHORT + 20));
+        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_SHORT + 20));
         traceValue.nBytes = 1;
         traceRow(traceValue, trace);
 
@@ -327,7 +326,7 @@ public class RlpTxrcpt implements Module {
         } else {
           traceValue.limb =
               Bytes.concatenate(
-                  bigIntegerToBytes(BigInteger.valueOf(INT_RLP_LIST_LONG + 1)),
+                  bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_LIST_LONG + 1)),
                   bigIntegerToBytes(BigInteger.valueOf(traceValue.localSize)));
           traceValue.nBytes = 2;
         }
@@ -345,7 +344,7 @@ public class RlpTxrcpt implements Module {
             traceValue.limbConstructed = true;
 
             traceValue.counter = 0;
-            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_SHORT + 32));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_SHORT + 32));
             traceValue.nBytes = 1;
             traceValue.localSize -= traceValue.nBytes;
             traceRow(traceValue, trace);
@@ -522,9 +521,11 @@ public class RlpTxrcpt implements Module {
           traceValue.limbConstructed = true;
           traceValue.nBytes = 1;
           if (isList) {
-            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_LIST_LONG + lengthSize));
+            traceValue.limb =
+                bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_LIST_LONG + lengthSize));
           } else {
-            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_LONG + lengthSize));
+            traceValue.limb =
+                bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_LONG + lengthSize));
           }
         }
 
@@ -540,9 +541,9 @@ public class RlpTxrcpt implements Module {
         if (ct == 7) {
           traceValue.limbConstructed = true;
           if (isList) {
-            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_LIST_SHORT + length));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_LIST_SHORT + length));
           } else {
-            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_SHORT + length));
+            traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_SHORT + length));
           }
           traceValue.nBytes = 1;
           traceValue.phaseEnd = endPhase;
@@ -607,7 +608,7 @@ public class RlpTxrcpt implements Module {
 
       if (input >= 128 && ct == 6) {
         traceValue.limbConstructed = true;
-        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(INT_RLP_INT_SHORT + inputSize));
+        traceValue.limb = bigIntegerToBytes(BigInteger.valueOf(RLP_PREFIX_INT_SHORT + inputSize));
         traceValue.nBytes = 1;
       }
 
@@ -647,26 +648,26 @@ public class RlpTxrcpt implements Module {
     }
 
     trace
-        .absLogNum(Bytes.ofUnsignedLong(this.absLogNum))
-        .absLogNumMax(Bytes.ofUnsignedLong(traceValue.absLogNumMax))
-        .absTxNum(Bytes.ofUnsignedLong(traceValue.absTxNum))
-        .absTxNumMax(Bytes.ofUnsignedLong(this.chunkList.size()))
+        .absLogNum(this.absLogNum)
+        .absLogNumMax(traceValue.absLogNumMax)
+        .absTxNum(traceValue.absTxNum)
+        .absTxNumMax(this.chunkList.size())
         .acc1(traceValue.acc1)
         .acc2(traceValue.acc2)
         .acc3(traceValue.acc3)
         .acc4(traceValue.acc4)
-        .accSize(Bytes.ofUnsignedLong(traceValue.accSize))
+        .accSize((short) traceValue.accSize)
         .bit(traceValue.bit)
         .bitAcc(UnsignedByte.of(traceValue.bitAcc))
         .byte1(UnsignedByte.of(traceValue.byte1))
         .byte2(UnsignedByte.of(traceValue.byte2))
         .byte3(UnsignedByte.of(traceValue.byte3))
         .byte4(UnsignedByte.of(traceValue.byte4))
-        .counter(Bytes.ofUnsignedInt(traceValue.counter))
+        .counter(traceValue.counter)
         .depth1(traceValue.depth1)
         .done(traceValue.counter == traceValue.nStep - 1)
-        .index(Bytes.ofUnsignedInt(traceValue.index))
-        .indexLocal(Bytes.ofUnsignedInt(traceValue.indexLocal))
+        .index(traceValue.index)
+        .indexLocal(traceValue.indexLocal)
         .input1(traceValue.input1)
         .input2(traceValue.input2)
         .input3(traceValue.input3)
@@ -677,11 +678,11 @@ public class RlpTxrcpt implements Module {
         .lcCorrection(traceValue.lcCorrection)
         .limb(rightPadTo(traceValue.limb, LLARGE))
         .limbConstructed(traceValue.limbConstructed)
-        .localSize(Bytes.ofUnsignedInt(traceValue.localSize))
-        .logEntrySize(Bytes.ofUnsignedInt(traceValue.logEntrySize))
-        .nBytes(Bytes.ofUnsignedLong(traceValue.nBytes))
-        .nStep(Bytes.ofUnsignedInt(traceValue.nStep))
-        .phaseId(Bytes.ofUnsignedShort(traceValue.getPhaseId()));
+        .localSize(traceValue.localSize)
+        .logEntrySize(traceValue.logEntrySize)
+        .nBytes((short) traceValue.nBytes)
+        .nStep(traceValue.nStep)
+        .phaseId(traceValue.getPhaseId());
 
     List<Function<Boolean, Trace>> phaseColumns =
         List.of(trace::phase1, trace::phase2, trace::phase3, trace::phase4, trace::phase5);
@@ -692,9 +693,9 @@ public class RlpTxrcpt implements Module {
 
     trace
         .phaseEnd(traceValue.phaseEnd)
-        .phaseSize(Bytes.ofUnsignedInt(traceValue.phaseSize))
+        .phaseSize(traceValue.phaseSize)
         .power(bigIntegerToBytes(traceValue.power))
-        .txrcptSize(Bytes.ofUnsignedInt(traceValue.txrcptSize));
+        .txrcptSize(traceValue.txrcptSize);
 
     trace.validateRow();
 
