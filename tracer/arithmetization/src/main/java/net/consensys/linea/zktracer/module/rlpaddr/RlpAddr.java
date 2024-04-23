@@ -13,8 +13,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.addr;
+package net.consensys.linea.zktracer.module.rlpaddr;
 
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_ADDR_RECIPE_2;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
@@ -48,11 +52,9 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 public class RlpAddr implements Module {
-  private static final Bytes CREATE2_SHIFT = bigIntegerToBytes(BigInteger.valueOf(0xff));
-  private static final Bytes INT_SHORT = bigIntegerToBytes(BigInteger.valueOf(0x80));
-  private static final int LIST_SHORT = 0xc0;
-  private static final int LLARGE = 16;
-  private static final Bytes BYTES_LLARGE = Bytes.of(LLARGE);
+  private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(Trace.CREATE2_SHIFT);
+  private static final Bytes INT_SHORT = Bytes.ofUnsignedShort(RLP_PREFIX_INT_SHORT);
+  private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
 
   private final Hub hub;
   private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
@@ -119,27 +121,27 @@ public class RlpAddr implements Module {
   private void traceCreate2(int stamp, RlpAddrChunk chunk, Trace trace) {
     for (int ct = 0; ct < 6; ct++) {
       trace
-          .stamp(Bytes.ofUnsignedShort(stamp))
-          .recipe(Bytes.of(2))
+          .stamp(stamp)
+          .recipe(UnsignedByte.of(RLP_ADDR_RECIPE_2))
           .recipe1(false)
           .recipe2(true)
           .depAddrHi(chunk.depAddress().slice(0, 4))
           .depAddrLo(chunk.depAddress().slice(4, LLARGE))
-          .addrHi(chunk.address().slice(0, 4))
+          .addrHi(chunk.address().slice(0, 4).toLong())
           .addrLo(chunk.address().slice(4, LLARGE))
           .saltHi(chunk.salt().orElseThrow().slice(0, LLARGE))
           .saltLo(chunk.salt().orElseThrow().slice(LLARGE, LLARGE))
           .kecHi(chunk.keccak().orElseThrow().slice(0, LLARGE))
           .kecLo(chunk.keccak().orElseThrow().slice(LLARGE, LLARGE))
           .lc(true)
-          .index(Bytes.of(ct))
-          .counter(Bytes.of(ct));
+          .index(UnsignedByte.of(ct))
+          .counter(UnsignedByte.of(ct));
 
       switch (ct) {
         case 0 -> {
           trace.limb(
               rightPadTo(Bytes.concatenate(CREATE2_SHIFT, chunk.address().slice(0, 4)), LLARGE));
-          trace.nBytes(Bytes.of(5));
+          trace.nBytes(UnsignedByte.of(5));
         }
         case 1 -> trace.limb(chunk.address().slice(4, LLARGE)).nBytes(BYTES_LLARGE);
         case 2 -> trace.limb(chunk.salt().orElseThrow().slice(0, LLARGE)).nBytes(BYTES_LLARGE);
@@ -155,7 +157,7 @@ public class RlpAddr implements Module {
           .nonce(Bytes.EMPTY)
           .byte1(UnsignedByte.ZERO)
           .acc(Bytes.EMPTY)
-          .accBytesize(Bytes.EMPTY)
+          .accBytesize(UnsignedByte.ZERO)
           .power(Bytes.EMPTY)
           .bit1(false)
           .bitAcc(UnsignedByte.ZERO)
@@ -209,19 +211,19 @@ public class RlpAddr implements Module {
 
     for (int ct = 0; ct < 8; ct++) {
       trace
-          .stamp(Bytes.ofUnsignedShort(stamp))
-          .recipe(Bytes.of(1))
+          .stamp(stamp)
+          .recipe(UnsignedByte.of(Trace.RLP_ADDR_RECIPE_1))
           .recipe1(true)
           .recipe2(false)
-          .addrHi(chunk.address().slice(0, 4))
+          .addrHi(chunk.address().slice(0, 4).toLong())
           .addrLo(chunk.address().slice(4, LLARGE))
           .depAddrHi(chunk.depAddress().slice(0, 4))
           .depAddrLo(chunk.depAddress().slice(4, LLARGE))
           .nonce(bigIntegerToBytes(nonce))
-          .counter(Bytes.of(ct))
+          .counter(UnsignedByte.of(ct))
           .byte1(UnsignedByte.of(nonceShifted.get(ct)))
           .acc(nonceShifted.slice(0, ct + 1))
-          .accBytesize(Bytes.of(byteCounting.accByteSizeList().get(ct)))
+          .accBytesize(UnsignedByte.of(byteCounting.accByteSizeList().get(ct)))
           .power(
               bigIntegerToBytes(byteCounting.powerList().get(ct).divide(BigInteger.valueOf(256))))
           .bit1(bitDecomposition.bitDecList().get(ct))
@@ -229,18 +231,22 @@ public class RlpAddr implements Module {
           .tinyNonZeroNonce(tinyNonZeroNonce);
 
       switch (ct) {
-        case 0, 1, 2, 3 -> trace.lc(false).limb(Bytes.EMPTY).nBytes(Bytes.EMPTY).index(Bytes.EMPTY);
+        case 0, 1, 2, 3 -> trace
+            .lc(false)
+            .limb(Bytes.EMPTY)
+            .nBytes(UnsignedByte.ZERO)
+            .index(UnsignedByte.ZERO);
         case 4 -> trace
             .lc(true)
             .limb(
                 rightPadTo(
                     bigIntegerToBytes(
-                        BigInteger.valueOf(LIST_SHORT)
+                        BigInteger.valueOf(RLP_PREFIX_LIST_SHORT)
                             .add(BigInteger.valueOf(21))
                             .add(BigInteger.valueOf(size_rlp_nonce))),
                     LLARGE))
-            .nBytes(Bytes.of(1))
-            .index(Bytes.EMPTY);
+            .nBytes(UnsignedByte.of(1))
+            .index(UnsignedByte.ZERO);
         case 5 -> trace
             .lc(true)
             .limb(
@@ -248,18 +254,18 @@ public class RlpAddr implements Module {
                     Bytes.concatenate(
                         bigIntegerToBytes(BigInteger.valueOf(148)), chunk.address().slice(0, 4)),
                     LLARGE))
-            .nBytes(Bytes.of(5))
-            .index(Bytes.of(1));
+            .nBytes(UnsignedByte.of(5))
+            .index(UnsignedByte.of(1));
         case 6 -> trace
             .lc(true)
             .limb(chunk.address().slice(4, LLARGE))
-            .nBytes(Bytes.of(16))
-            .index(Bytes.of(2));
+            .nBytes(UnsignedByte.of(LLARGE))
+            .index(UnsignedByte.of(2));
         case 7 -> trace
             .lc(true)
             .limb(rightPadTo(rlpNonce, LLARGE))
-            .nBytes(Bytes.of(size_rlp_nonce))
-            .index(Bytes.of(3));
+            .nBytes(UnsignedByte.of(size_rlp_nonce))
+            .index(UnsignedByte.of(3));
       }
 
       // Column not used fo recipe 1:

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp.txrcpt;
+package net.consensys.linea.zktracer.module.rlptxrcpt;
 
 import java.util.List;
 
