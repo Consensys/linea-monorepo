@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.rlpaddr;
 
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE2;
+
 import java.math.BigInteger;
 import java.util.Optional;
 
@@ -30,24 +33,25 @@ import org.hyperledger.besu.datatypes.Address;
 @Getter
 @Accessors(fluent = true)
 public final class RlpAddrChunk extends ModuleOperation {
-  private final Address depAddress;
+  private final Bytes32 rawHash;
   private final OpCode opCode;
   private final Optional<BigInteger> nonce;
   private final Address address;
   private final Optional<Bytes32> salt;
   private final Optional<Bytes32> keccak;
 
-  public RlpAddrChunk(Address depAddress, OpCode opCode, BigInteger nonce, Address address) {
-    this(depAddress, opCode, Optional.of(nonce), address, Optional.empty(), Optional.empty());
+  // CREATE operation
+  public RlpAddrChunk(Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
+    this(rawDepAddress, opCode, Optional.of(nonce), address, Optional.empty(), Optional.empty());
   }
 
-  public RlpAddrChunk(
-      Address depAddress, OpCode opCode, Address address, Bytes32 salt, Bytes32 kec) {
-    this(depAddress, opCode, Optional.empty(), address, Optional.of(salt), Optional.of(kec));
+  // CREATE2 operation
+  public RlpAddrChunk(Bytes32 rawHash, OpCode opCode, Address address, Bytes32 salt, Bytes32 kec) {
+    this(rawHash, opCode, Optional.empty(), address, Optional.of(salt), Optional.of(kec));
   }
 
   @Override
   protected int computeLineCount() {
-    return this.opCode.equals(OpCode.CREATE) ? 8 : 6;
+    return this.opCode.equals(OpCode.CREATE) ? MAX_CT_CREATE + 1 : MAX_CT_CREATE2 + 1;
   }
 }

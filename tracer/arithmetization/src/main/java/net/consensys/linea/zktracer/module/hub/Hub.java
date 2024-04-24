@@ -195,12 +195,13 @@ public class Hub implements Module {
   private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxrcpt);
   private final LogData logData = new LogData(rlpTxrcpt);
-  private final RlpAddr rlpAddr = new RlpAddr(this);
+  private final Trm trm = new Trm();
+  private final RlpAddr rlpAddr = new RlpAddr(this, trm);
   private final Rom rom;
 
   @Getter private final RomLex romLex;
   private final TxnData txnData;
-  private final Trm trm = new Trm();
+
   private final ModexpEffectiveCall modexpEffectiveCall;
   private final Stp stp = new Stp(this, wcp, mod);
   private final L2Block l2Block;
@@ -320,6 +321,7 @@ public class Hub implements Module {
                 this.romLex,
                 this.shf,
                 this.stp,
+                this.trm,
                 this.txnData,
                 this.wcp))
         .toList();

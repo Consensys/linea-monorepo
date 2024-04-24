@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
+import static net.consensys.linea.zktracer.module.trm.Trace.LLARGE;
+
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -24,15 +26,16 @@ import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.AccessListEntry;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Trm implements Module {
-  static final int MAX_CT = 16;
-  static final int LLARGE = 16;
+  static final int MAX_CT = LLARGE;
   static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
 
   private final StackedSet<TrmOperation> trimmings = new StackedSet<>();
@@ -63,6 +66,11 @@ public class Trm implements Module {
         this.trimmings.add(new TrmOperation(EWord.of(frame.getStackItem(1))));
       }
     }
+  }
+
+  public Address callTrimming(Bytes32 rawHash) {
+    this.trimmings.add(new TrmOperation(EWord.of(rawHash)));
+    return Address.extract(rawHash);
   }
 
   @Override
