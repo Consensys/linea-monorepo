@@ -16,12 +16,14 @@
 package net.consensys.linea.zktracer.module.rlpaddr;
 
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE;
+import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE2;
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_ADDR_RECIPE_2;
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_INT_SHORT;
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
-import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
-import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
+import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
+import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToUnsignedBigInteger;
 import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
@@ -40,6 +42,7 @@ import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -57,6 +60,7 @@ public class RlpAddr implements Module {
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
 
   private final Hub hub;
+  private final Trm trm;
   private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
 
   @Override
@@ -79,13 +83,11 @@ public class RlpAddr implements Module {
     if (tx.getTo().isEmpty()) {
       final Address senderAddress = tx.getSender();
       final long nonce = tx.getNonce();
+      final Bytes32 rawTo = getCreateRawAddress(senderAddress, nonce);
       RlpAddrChunk chunk =
-          new RlpAddrChunk(
-              Address.contractAddress(senderAddress, nonce),
-              OpCode.CREATE,
-              longToUnsignedBigInteger(nonce),
-              senderAddress);
+          new RlpAddrChunk(rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
       this.chunkList.add(chunk);
+      this.trm.callTrimming(rawTo);
     }
   }
 
@@ -95,38 +97,50 @@ public class RlpAddr implements Module {
     switch (opcode) {
       case CREATE -> {
         final Address currentAddress = frame.getRecipientAddress();
+        final Bytes32 rawCreateAddress = getCreateRawAddress(frame);
         RlpAddrChunk chunk =
             new RlpAddrChunk(
-                getCreateAddress(frame),
+                rawCreateAddress,
                 OpCode.CREATE,
                 longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
                 currentAddress);
         this.chunkList.add(chunk);
+        this.trm.callTrimming(rawCreateAddress);
       }
       case CREATE2 -> {
+        final Address sender = frame.getRecipientAddress();
+
+        final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
+
         final long offset = clampedToLong(frame.getStackItem(1));
         final long length = clampedToLong(frame.getStackItem(2));
         final Bytes initCode = frame.shadowReadMemory(offset, length);
-        final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
         final Bytes32 hash = keccak256(initCode);
 
+        final Bytes32 rawCreate2Address = getCreate2RawAddress(sender, salt, hash);
+
         RlpAddrChunk chunk =
-            new RlpAddrChunk(
-                getCreate2Address(frame), OpCode.CREATE2, frame.getRecipientAddress(), salt, hash);
+            new RlpAddrChunk(rawCreate2Address, OpCode.CREATE2, sender, salt, hash);
         this.chunkList.add(chunk);
+        this.trm.callTrimming(rawCreate2Address);
       }
     }
   }
 
   private void traceCreate2(int stamp, RlpAddrChunk chunk, Trace trace) {
-    for (int ct = 0; ct < 6; ct++) {
+    final Bytes rawAddressHi = chunk.rawHash().slice(0, LLARGE);
+    final long depAddressHi = rawAddressHi.slice(12, 4).toLong();
+    final Bytes depAddressLo = chunk.rawHash().slice(LLARGE, LLARGE);
+
+    for (int ct = 0; ct <= MAX_CT_CREATE2; ct++) {
       trace
           .stamp(stamp)
           .recipe(UnsignedByte.of(RLP_ADDR_RECIPE_2))
           .recipe1(false)
           .recipe2(true)
-          .depAddrHi(chunk.depAddress().slice(0, 4))
-          .depAddrLo(chunk.depAddress().slice(4, LLARGE))
+          .rawAddrHi(rawAddressHi)
+          .depAddrHi(depAddressHi)
+          .depAddrLo(depAddressLo)
           .addrHi(chunk.address().slice(0, 4).toLong())
           .addrLo(chunk.address().slice(4, LLARGE))
           .saltHi(chunk.salt().orElseThrow().slice(0, LLARGE))
@@ -168,10 +182,10 @@ public class RlpAddr implements Module {
   }
 
   private void traceCreate(int stamp, RlpAddrChunk chunk, Trace trace) {
-    final int RECIPE1_CT_MAX = 8;
+    final int recipe1NbRows = MAX_CT_CREATE + 1;
     final BigInteger nonce = chunk.nonce().orElseThrow();
 
-    Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), RECIPE1_CT_MAX);
+    Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), recipe1NbRows);
     Boolean tinyNonZeroNonce = true;
     if (nonce.compareTo(BigInteger.ZERO) == 0 || nonce.compareTo(BigInteger.valueOf(128)) >= 0) {
       tinyNonZeroNonce = false;
@@ -181,11 +195,11 @@ public class RlpAddr implements Module {
     if (nonce.equals(BigInteger.ZERO)) {
       nonceByteSize = 0;
     }
-    ByteCountAndPowerOutput byteCounting = byteCounting(nonceByteSize, RECIPE1_CT_MAX);
+    ByteCountAndPowerOutput byteCounting = byteCounting(nonceByteSize, recipe1NbRows);
 
     // Compute the bit decomposition of the last input's byte
-    final byte lastByte = nonceShifted.get(RECIPE1_CT_MAX - 1);
-    BitDecOutput bitDecomposition = bitDecomposition(0xff & lastByte, RECIPE1_CT_MAX);
+    final byte lastByte = nonceShifted.get(recipe1NbRows - 1);
+    BitDecOutput bitDecomposition = bitDecomposition(0xff & lastByte, recipe1NbRows);
 
     int size_rlp_nonce = nonceByteSize;
     if (!tinyNonZeroNonce) {
@@ -204,12 +218,17 @@ public class RlpAddr implements Module {
             Bytes.concatenate(
                 bigIntegerToBytes(
                     BigInteger.valueOf(
-                        128 + byteCounting.accByteSizeList().get(RECIPE1_CT_MAX - 1))),
+                        128 + byteCounting.accByteSizeList().get(recipe1NbRows - 1))),
                 bigIntegerToBytes(nonce));
       }
     }
 
-    for (int ct = 0; ct < 8; ct++) {
+    final Bytes rawAddressHi = chunk.rawHash().slice(0, LLARGE);
+    final long depAddressHi = rawAddressHi.slice(12, 4).toLong();
+    final Bytes depAddressLo = chunk.rawHash().slice(LLARGE, LLARGE);
+    final Bytes nonceBytes = bigIntegerToBytes(nonce);
+
+    for (int ct = 0; ct < recipe1NbRows; ct++) {
       trace
           .stamp(stamp)
           .recipe(UnsignedByte.of(Trace.RLP_ADDR_RECIPE_1))
@@ -217,9 +236,10 @@ public class RlpAddr implements Module {
           .recipe2(false)
           .addrHi(chunk.address().slice(0, 4).toLong())
           .addrLo(chunk.address().slice(4, LLARGE))
-          .depAddrHi(chunk.depAddress().slice(0, 4))
-          .depAddrLo(chunk.depAddress().slice(4, LLARGE))
-          .nonce(bigIntegerToBytes(nonce))
+          .rawAddrHi(rawAddressHi)
+          .depAddrHi(depAddressHi)
+          .depAddrLo(depAddressLo)
+          .nonce(nonceBytes)
           .counter(UnsignedByte.of(ct))
           .byte1(UnsignedByte.of(nonceShifted.get(ct)))
           .acc(nonceShifted.slice(0, ct + 1))

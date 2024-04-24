@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.module.trm.Trm.LLARGE;
+import static net.consensys.linea.zktracer.module.trm.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.trm.Trm.MAX_CT;
 import static net.consensys.linea.zktracer.module.trm.Trm.PIVOT_BIT_FLIPS_TO_TRUE;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
@@ -35,29 +35,31 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class TrmOperation extends ModuleOperation {
-  @EqualsAndHashCode.Include private final EWord value;
+  @EqualsAndHashCode.Include private final EWord rawAddress;
 
-  void trace(Trace trace, int stamp) {
-    Bytes trmHi = leftPadTo(this.value.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
-    Boolean isPrec = isPrecompile(Address.extract(this.value));
+  void trace(Trace trace, final int stamp) {
+    final Bytes trmHiBytes =
+        leftPadTo(this.rawAddress.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
+    final long trmHi = trmHiBytes.slice(PIVOT_BIT_FLIPS_TO_TRUE, 4).toLong();
+    final Boolean isPrec = isPrecompile(Address.extract(this.rawAddress));
     final int accLastByte =
-        isPrec ? 9 - (0xff & this.value.get(31)) : (0xff & this.value.get(31)) - 10;
+        isPrec ? 9 - (0xff & this.rawAddress.get(31)) : (0xff & this.rawAddress.get(31)) - 10;
     List<Boolean> ones = bitDecomposition(accLastByte, MAX_CT).bitDecList();
 
     for (int ct = 0; ct < MAX_CT; ct++) {
       trace
-          .ct(Bytes.of(ct))
-          .stamp(Bytes.ofUnsignedInt(stamp))
-          .isPrec(isPrec)
+          .ct(UnsignedByte.of(ct))
+          .stamp(stamp)
+          .isPrecompile(isPrec)
           .pbit(ct >= PIVOT_BIT_FLIPS_TO_TRUE)
-          .addrHi(this.value.hi())
-          .addrLo(this.value.lo())
-          .trmAddrHi(trmHi)
-          .accHi(this.value.hi().slice(0, ct + 1))
-          .accLo(this.value.lo().slice(0, ct + 1))
-          .accT(trmHi.slice(0, ct + 1))
-          .byteHi(UnsignedByte.of(this.value.hi().get(ct)))
-          .byteLo(UnsignedByte.of(this.value.lo().get(ct)))
+          .rawAddressHi(this.rawAddress.hi())
+          .rawAddressLo(this.rawAddress.lo())
+          .trmAddressHi(trmHi)
+          .accHi(this.rawAddress.hi().slice(0, ct + 1))
+          .accLo(this.rawAddress.lo().slice(0, ct + 1))
+          .accT(trmHiBytes.slice(0, ct + 1))
+          .byteHi(UnsignedByte.of(this.rawAddress.hi().get(ct)))
+          .byteLo(UnsignedByte.of(this.rawAddress.lo().get(ct)))
           .one(ones.get(ct))
           .validateRow();
     }

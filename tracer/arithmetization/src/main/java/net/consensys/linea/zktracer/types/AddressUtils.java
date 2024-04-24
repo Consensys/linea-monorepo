@@ -24,6 +24,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.Hash;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class AddressUtils {
@@ -57,18 +58,37 @@ public class AddressUtils {
   }
 
   public static Address getCreateAddress(final MessageFrame frame) {
-    final Address currentAddress = frame.getRecipientAddress();
-    return Address.contractAddress(
-        currentAddress, frame.getWorldUpdater().get(currentAddress).getNonce());
+    return Address.extract(getCreateRawAddress(frame));
+  }
+
+  public static Bytes32 getCreateRawAddress(final MessageFrame frame) {
+    final Address address = frame.getRecipientAddress();
+    final long nonce = frame.getWorldUpdater().get(address).getNonce();
+    return getCreateRawAddress(address, nonce);
+  }
+
+  public static Bytes32 getCreateRawAddress(final Address senderAddress, final long nonce) {
+    return org.hyperledger.besu.crypto.Hash.keccak256(
+        RLP.encode(
+            (out) -> {
+              out.startList();
+              out.writeBytes(senderAddress);
+              out.writeLongScalar(nonce);
+              out.endList();
+            }));
+  }
+
+  public static Bytes32 getCreate2RawAddress(
+      final Address sender, final Bytes32 salt, final Bytes32 hash) {
+    return Hash.keccak256(Bytes.concatenate(CREATE2_PREFIX, sender, salt, hash));
   }
 
   public static Address getCreate2Address(final MessageFrame frame) {
     final Address sender = frame.getRecipientAddress();
     final Bytes32 salt = Bytes32.leftPad(frame.getStackItem(3));
     final Bytes initCode = OperationAncillaries.callData(frame);
-    final Bytes32 hash =
-        Hash.keccak256(Bytes.concatenate(CREATE2_PREFIX, sender, salt, Hash.keccak256(initCode)));
-    return Address.extract(hash);
+    final Bytes32 hash = Hash.keccak256(initCode);
+    return Address.extract(getCreate2RawAddress(sender, salt, hash));
   }
 
   public static Address getDeploymentAddress(final MessageFrame frame) {

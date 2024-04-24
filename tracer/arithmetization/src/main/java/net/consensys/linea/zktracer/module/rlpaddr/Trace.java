@@ -32,6 +32,14 @@ import org.apache.tuweni.bytes.Bytes;
  */
 public class Trace {
   public static final int CREATE2_SHIFT = 0xff;
+  public static final int EC_DATA_PHASE_ECADD_DATA = 0x3;
+  public static final int EC_DATA_PHASE_ECADD_RESULT = 0x4;
+  public static final int EC_DATA_PHASE_ECMUL_DATA = 0x5;
+  public static final int EC_DATA_PHASE_ECMUL_RESULT = 0x6;
+  public static final int EC_DATA_PHASE_ECRECOVER_DATA = 0x1;
+  public static final int EC_DATA_PHASE_ECRECOVER_RESULT = 0x2;
+  public static final int EC_DATA_PHASE_PAIRING_DATA = 0x7;
+  public static final int EC_DATA_PHASE_PAIRING_RESULT = 0x8;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
       new BigInteger("16434357337474432580558001204043214908");
@@ -240,6 +248,8 @@ public class Trace {
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
   public static final int LLARGEPO = 0x11;
+  public static final int MAX_CT_CREATE = 0x7;
+  public static final int MAX_CT_CREATE2 = 0x5;
   public static final int MISC_EXP_WEIGHT = 0x1;
   public static final int MISC_MMU_WEIGHT = 0x2;
   public static final int MISC_MXP_WEIGHT = 0x4;
@@ -366,6 +376,7 @@ public class Trace {
   private final MappedByteBuffer nBytes;
   private final MappedByteBuffer nonce;
   private final MappedByteBuffer power;
+  private final MappedByteBuffer rawAddrHi;
   private final MappedByteBuffer recipe;
   private final MappedByteBuffer recipe1;
   private final MappedByteBuffer recipe2;
@@ -384,7 +395,7 @@ public class Trace {
         new ColumnHeader("rlpaddr.BIT_ACC", 1, length),
         new ColumnHeader("rlpaddr.BYTE1", 1, length),
         new ColumnHeader("rlpaddr.COUNTER", 1, length),
-        new ColumnHeader("rlpaddr.DEP_ADDR_HI", 32, length),
+        new ColumnHeader("rlpaddr.DEP_ADDR_HI", 8, length),
         new ColumnHeader("rlpaddr.DEP_ADDR_LO", 32, length),
         new ColumnHeader("rlpaddr.INDEX", 1, length),
         new ColumnHeader("rlpaddr.KEC_HI", 32, length),
@@ -394,6 +405,7 @@ public class Trace {
         new ColumnHeader("rlpaddr.nBYTES", 1, length),
         new ColumnHeader("rlpaddr.NONCE", 32, length),
         new ColumnHeader("rlpaddr.POWER", 32, length),
+        new ColumnHeader("rlpaddr.RAW_ADDR_HI", 32, length),
         new ColumnHeader("rlpaddr.RECIPE", 1, length),
         new ColumnHeader("rlpaddr.RECIPE_1", 1, length),
         new ColumnHeader("rlpaddr.RECIPE_2", 1, length),
@@ -422,13 +434,14 @@ public class Trace {
     this.nBytes = buffers.get(15);
     this.nonce = buffers.get(16);
     this.power = buffers.get(17);
-    this.recipe = buffers.get(18);
-    this.recipe1 = buffers.get(19);
-    this.recipe2 = buffers.get(20);
-    this.saltHi = buffers.get(21);
-    this.saltLo = buffers.get(22);
-    this.stamp = buffers.get(23);
-    this.tinyNonZeroNonce = buffers.get(24);
+    this.rawAddrHi = buffers.get(18);
+    this.recipe = buffers.get(19);
+    this.recipe1 = buffers.get(20);
+    this.recipe2 = buffers.get(21);
+    this.saltHi = buffers.get(22);
+    this.saltLo = buffers.get(23);
+    this.stamp = buffers.get(24);
+    this.tinyNonZeroNonce = buffers.get(25);
   }
 
   public int size() {
@@ -543,18 +556,14 @@ public class Trace {
     return this;
   }
 
-  public Trace depAddrHi(final Bytes b) {
+  public Trace depAddrHi(final long b) {
     if (filled.get(8)) {
       throw new IllegalStateException("rlpaddr.DEP_ADDR_HI already set");
     } else {
       filled.set(8);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      depAddrHi.put((byte) 0);
-    }
-    depAddrHi.put(b.toArrayUnsafe());
+    depAddrHi.putLong(b);
 
     return this;
   }
@@ -648,10 +657,10 @@ public class Trace {
   }
 
   public Trace nBytes(final UnsignedByte b) {
-    if (filled.get(24)) {
+    if (filled.get(25)) {
       throw new IllegalStateException("rlpaddr.nBYTES already set");
     } else {
-      filled.set(24);
+      filled.set(25);
     }
 
     nBytes.put(b.toByte());
@@ -691,11 +700,27 @@ public class Trace {
     return this;
   }
 
-  public Trace recipe(final UnsignedByte b) {
+  public Trace rawAddrHi(final Bytes b) {
     if (filled.get(17)) {
-      throw new IllegalStateException("rlpaddr.RECIPE already set");
+      throw new IllegalStateException("rlpaddr.RAW_ADDR_HI already set");
     } else {
       filled.set(17);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      rawAddrHi.put((byte) 0);
+    }
+    rawAddrHi.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace recipe(final UnsignedByte b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("rlpaddr.RECIPE already set");
+    } else {
+      filled.set(18);
     }
 
     recipe.put(b.toByte());
@@ -704,10 +729,10 @@ public class Trace {
   }
 
   public Trace recipe1(final Boolean b) {
-    if (filled.get(18)) {
+    if (filled.get(19)) {
       throw new IllegalStateException("rlpaddr.RECIPE_1 already set");
     } else {
-      filled.set(18);
+      filled.set(19);
     }
 
     recipe1.put((byte) (b ? 1 : 0));
@@ -716,10 +741,10 @@ public class Trace {
   }
 
   public Trace recipe2(final Boolean b) {
-    if (filled.get(19)) {
+    if (filled.get(20)) {
       throw new IllegalStateException("rlpaddr.RECIPE_2 already set");
     } else {
-      filled.set(19);
+      filled.set(20);
     }
 
     recipe2.put((byte) (b ? 1 : 0));
@@ -728,10 +753,10 @@ public class Trace {
   }
 
   public Trace saltHi(final Bytes b) {
-    if (filled.get(20)) {
+    if (filled.get(21)) {
       throw new IllegalStateException("rlpaddr.SALT_HI already set");
     } else {
-      filled.set(20);
+      filled.set(21);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -744,10 +769,10 @@ public class Trace {
   }
 
   public Trace saltLo(final Bytes b) {
-    if (filled.get(21)) {
+    if (filled.get(22)) {
       throw new IllegalStateException("rlpaddr.SALT_LO already set");
     } else {
-      filled.set(21);
+      filled.set(22);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -760,10 +785,10 @@ public class Trace {
   }
 
   public Trace stamp(final int b) {
-    if (filled.get(22)) {
+    if (filled.get(23)) {
       throw new IllegalStateException("rlpaddr.STAMP already set");
     } else {
-      filled.set(22);
+      filled.set(23);
     }
 
     stamp.putInt(b);
@@ -772,10 +797,10 @@ public class Trace {
   }
 
   public Trace tinyNonZeroNonce(final Boolean b) {
-    if (filled.get(23)) {
+    if (filled.get(24)) {
       throw new IllegalStateException("rlpaddr.TINY_NON_ZERO_NONCE already set");
     } else {
-      filled.set(23);
+      filled.set(24);
     }
 
     tinyNonZeroNonce.put((byte) (b ? 1 : 0));
@@ -844,7 +869,7 @@ public class Trace {
       throw new IllegalStateException("rlpaddr.LIMB has not been filled");
     }
 
-    if (!filled.get(24)) {
+    if (!filled.get(25)) {
       throw new IllegalStateException("rlpaddr.nBYTES has not been filled");
     }
 
@@ -857,30 +882,34 @@ public class Trace {
     }
 
     if (!filled.get(17)) {
-      throw new IllegalStateException("rlpaddr.RECIPE has not been filled");
+      throw new IllegalStateException("rlpaddr.RAW_ADDR_HI has not been filled");
     }
 
     if (!filled.get(18)) {
-      throw new IllegalStateException("rlpaddr.RECIPE_1 has not been filled");
+      throw new IllegalStateException("rlpaddr.RECIPE has not been filled");
     }
 
     if (!filled.get(19)) {
-      throw new IllegalStateException("rlpaddr.RECIPE_2 has not been filled");
+      throw new IllegalStateException("rlpaddr.RECIPE_1 has not been filled");
     }
 
     if (!filled.get(20)) {
-      throw new IllegalStateException("rlpaddr.SALT_HI has not been filled");
+      throw new IllegalStateException("rlpaddr.RECIPE_2 has not been filled");
     }
 
     if (!filled.get(21)) {
-      throw new IllegalStateException("rlpaddr.SALT_LO has not been filled");
+      throw new IllegalStateException("rlpaddr.SALT_HI has not been filled");
     }
 
     if (!filled.get(22)) {
-      throw new IllegalStateException("rlpaddr.STAMP has not been filled");
+      throw new IllegalStateException("rlpaddr.SALT_LO has not been filled");
     }
 
     if (!filled.get(23)) {
+      throw new IllegalStateException("rlpaddr.STAMP has not been filled");
+    }
+
+    if (!filled.get(24)) {
       throw new IllegalStateException("rlpaddr.TINY_NON_ZERO_NONCE has not been filled");
     }
 
@@ -924,7 +953,7 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      depAddrHi.position(depAddrHi.position() + 32);
+      depAddrHi.position(depAddrHi.position() + 8);
     }
 
     if (!filled.get(9)) {
@@ -951,7 +980,7 @@ public class Trace {
       limb.position(limb.position() + 32);
     }
 
-    if (!filled.get(24)) {
+    if (!filled.get(25)) {
       nBytes.position(nBytes.position() + 1);
     }
 
@@ -964,30 +993,34 @@ public class Trace {
     }
 
     if (!filled.get(17)) {
-      recipe.position(recipe.position() + 1);
+      rawAddrHi.position(rawAddrHi.position() + 32);
     }
 
     if (!filled.get(18)) {
-      recipe1.position(recipe1.position() + 1);
+      recipe.position(recipe.position() + 1);
     }
 
     if (!filled.get(19)) {
-      recipe2.position(recipe2.position() + 1);
+      recipe1.position(recipe1.position() + 1);
     }
 
     if (!filled.get(20)) {
-      saltHi.position(saltHi.position() + 32);
+      recipe2.position(recipe2.position() + 1);
     }
 
     if (!filled.get(21)) {
-      saltLo.position(saltLo.position() + 32);
+      saltHi.position(saltHi.position() + 32);
     }
 
     if (!filled.get(22)) {
-      stamp.position(stamp.position() + 4);
+      saltLo.position(saltLo.position() + 32);
     }
 
     if (!filled.get(23)) {
+      stamp.position(stamp.position() + 4);
+    }
+
+    if (!filled.get(24)) {
       tinyNonZeroNonce.position(tinyNonZeroNonce.position() + 1);
     }
 
