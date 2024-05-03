@@ -14,12 +14,15 @@ OSTYPE=$(uname -o)
 
 # delete old build dir, if exists
 rm -rf "$SCRIPTDIR/compress/build/native" || true
-mkdir -p "$SCRIPTDIR/compress/build/native"
+
+ARCH_DIR=""
 
 if [ x"$OSTYPE" = x"msys" ]; then
   LIBRARY_EXTENSION=dll
 elif [ x"$OSTYPE" = x"GNU/Linux" ]; then
   LIBRARY_EXTENSION=so
+  ARCHITECTURE="$(uname --machine)"
+  ARCH_DIR="linux-$ARCHITECTURE"
 elif [ x"$OSTYPE" = x"Darwin" ]; then
   LIBRARY_EXTENSION=dylib
 else
@@ -27,7 +30,10 @@ else
   exit 1
 fi
 
+DEST_DIR="$SCRIPTDIR/compress/build/native/$ARCH_DIR"
+mkdir -p "$DEST_DIR"
+
 cd "$SCRIPTDIR/compress/compress-jni"
 echo "Building Go module libcompress_jni.$LIBRARY_EXTENSION for $OSTYPE"
 CGO_ENABLED=1 go build -buildmode=c-shared -o libcompress_jni.$LIBRARY_EXTENSION compress-jni.go
-mv libcompress_jni.* "$SCRIPTDIR/compress/build/native"
+mv libcompress_jni.* "$DEST_DIR"

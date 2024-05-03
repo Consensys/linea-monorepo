@@ -33,12 +33,15 @@ test {
 }
 
 tasks.register('buildJNI', Exec) {
-  if(org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+  if(project.hasProperty("releaseNativeLibs")) {
     workingDir buildscript.sourceFile.parentFile.parentFile
-    commandLine 'wsl', './wsl.sh'
+    commandLine 'sh', '-c', './release.sh'
+  } else if(org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+    workingDir buildscript.sourceFile.parentFile.parentFile
+    commandLine 'wsl', './release.sh'
   } else {
-    workingDir buildscript.sourceFile.parentFile
-    commandLine 'sh', '-c', '../build.sh'
+    workingDir buildscript.sourceFile.parentFile.parentFile
+    commandLine 'sh', '-c', './build.sh'
   }
 }
 
@@ -70,13 +73,13 @@ tasks.register('macLibCopy', Copy) {
 processResources.dependsOn macLibCopy
 
 tasks.register('linuxLibCopy', Copy) {
-  from 'build/native/libcompress_jni.so'
+  from 'build/native/linux-x86_64/libcompress_jni.so'
   into 'build/resources/main/linux-x86-64'
 }
 processResources.dependsOn linuxLibCopy
 
 tasks.register('linuxArm64LibCopy', Copy) {
-  from 'build/native/libcompress_jni.so'
+  from 'build/native/linux-aarch64/libcompress_jni.so'
   into 'build/resources/main/linux-aarch64'
 }
 processResources.dependsOn linuxArm64LibCopy
@@ -102,14 +105,3 @@ jar {
 }
 
 jar.dependsOn(buildJNI)
-
-sourceSets {
-  main {
-    resources {
-      srcDirs '${buildDir}/darwin-aaarch64'
-      srcDirs '${buildDir}/darwin-x86-64'
-      srcDirs '${buildDir}/linux-gnu-x86_64'
-      srcDirs '${buildDir}/linux-gnu-aarch64'
-    }
-  }
-}

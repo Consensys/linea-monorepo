@@ -38,6 +38,10 @@ Linux/MacOs
 Windows
 * Requirement [Docker Desktop WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/)
 
+On release native libs are build for all the supported platforms,
+if you want to test this process locally run `./gradlew -PreleaseNativeLibs jar`,
+jar is generated in `arithmetization/build/libs`.
+
 ### Install Rust
 
 ```

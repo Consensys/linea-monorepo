@@ -27,7 +27,7 @@ jobs:
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
 
       - name: Build without tests
-        run: ./gradlew build -PreleaseVersion=${{ steps.get_version.outputs.VERSION }} -x test -x spotlessCheck
+        run: ./gradlew build -PreleaseNativeLibs -PreleaseVersion=${{ steps.get_version.outputs.VERSION }} -x test -x spotlessCheck
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
