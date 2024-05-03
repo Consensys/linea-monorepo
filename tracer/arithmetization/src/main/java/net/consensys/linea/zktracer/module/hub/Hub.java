@@ -79,7 +79,7 @@ import net.consensys.linea.zktracer.module.tables.bin.BinRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.InstructionDecoder;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRt;
 import net.consensys.linea.zktracer.module.trm.Trm;
-import net.consensys.linea.zktracer.module.txn_data.TxnData;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.*;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
@@ -108,6 +108,8 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.BlockBody;
+import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Slf4j
@@ -192,9 +194,9 @@ public class Hub implements Module {
 
   @Getter private final Exp exp;
   @Getter private final Mmu mmu;
-  private final RlpTxrcpt rlpTxrcpt = new RlpTxrcpt();
-  private final LogInfo logInfo = new LogInfo(rlpTxrcpt);
-  private final LogData logData = new LogData(rlpTxrcpt);
+  private final RlpTxrcpt rlpTxrcpt;
+  private final LogInfo logInfo;
+  private final LogData logData;
   private final Trm trm = new Trm();
   private final RlpAddr rlpAddr = new RlpAddr(this, trm);
   private final Rom rom;
@@ -222,9 +224,12 @@ public class Hub implements Module {
     this.romLex = new RomLex(this);
     this.rom = new Rom(this.romLex);
     this.rlpTxn = new RlpTxn(this.romLex);
-    this.txnData = new TxnData(this, this.romLex, this.wcp);
-    this.ecData = new EcData(this, this.wcp, this.ext);
     this.euc = new Euc(this.wcp);
+    this.txnData = new TxnData(this, this.romLex, this.wcp, this.euc);
+    this.rlpTxrcpt = new RlpTxrcpt(txnData);
+    this.logData = new LogData(rlpTxrcpt);
+    this.logInfo = new LogInfo(rlpTxrcpt);
+    this.ecData = new EcData(this, this.wcp, this.ext);
     this.mmu =
         new Mmu(
             this.euc,
@@ -279,13 +284,13 @@ public class Hub implements Module {
                     this.exp,
                     this.rlpAddr,
                     this.rlpTxn,
-                    this.rlpTxrcpt,
                     this.rom,
                     this.romLex,
                     this.shf,
                     this.stp,
                     this.trm,
                     this.txnData,
+                    this.rlpTxrcpt, // WARN: must be called AFTER txnData
                     this.wcp),
                 this.precompileLimitModules.stream())
             .toList();
@@ -564,10 +569,6 @@ public class Hub implements Module {
     return this.callStack.current().frame();
   }
 
-  public long getRemainingGas() {
-    return 0; // TODO:
-  }
-
   private void handleStack(MessageFrame frame) {
     this.currentFrame().stack().processInstruction(this, frame, TAU * this.state.stamps().hub());
   }
@@ -782,6 +783,11 @@ public class Hub implements Module {
     for (Module m : this.modules) {
       m.traceEndTx(world, tx, isSuccessful, output, logs, gasUsed);
     }
+  }
+
+  @Override
+  public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+    this.txnData.traceEndBlock(blockHeader, blockBody);
   }
 
   private void unlatchStack(MessageFrame frame) {

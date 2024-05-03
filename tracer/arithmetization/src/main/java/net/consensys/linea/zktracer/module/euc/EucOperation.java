@@ -53,7 +53,7 @@ public class EucOperation extends ModuleOperation {
 
   public Bytes ceiling() {
     return !remainder.isZero() && !dividend.isZero()
-        ? Bytes.minimalBytes(quotient.toInt() + 1)
+        ? Bytes.minimalBytes(quotient.toLong() + 1)
         : quotient;
   }
 

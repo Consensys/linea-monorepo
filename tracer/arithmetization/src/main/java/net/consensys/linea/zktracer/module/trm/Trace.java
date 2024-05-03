@@ -332,21 +332,21 @@ public class Trace {
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
   public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
-  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
-  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
-  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
-  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
-  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
-  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
-  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
-  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
-  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
-  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
-  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
-  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
-  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
-  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
-  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST = 0xb;
+  public static final int RLP_TXN_PHASE_BETA = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID = 0x2;
+  public static final int RLP_TXN_PHASE_DATA = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE = 0x3;
+  public static final int RLP_TXN_PHASE_R = 0xe;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX = 0x1;
+  public static final int RLP_TXN_PHASE_S = 0xf;
+  public static final int RLP_TXN_PHASE_TO = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y = 0xd;
   public static final int WCP_INST_GEQ = 0xe;
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
@@ -373,7 +373,7 @@ public class Trace {
     return List.of(
         new ColumnHeader("trm.ACC_HI", 32, length),
         new ColumnHeader("trm.ACC_LO", 32, length),
-        new ColumnHeader("trm.ACC_T", 32, length),
+        new ColumnHeader("trm.ACC_T", 8, length),
         new ColumnHeader("trm.BYTE_HI", 1, length),
         new ColumnHeader("trm.BYTE_LO", 1, length),
         new ColumnHeader("trm.CT", 1, length),
@@ -442,18 +442,14 @@ public class Trace {
     return this;
   }
 
-  public Trace accT(final Bytes b) {
+  public Trace accT(final long b) {
     if (filled.get(2)) {
       throw new IllegalStateException("trm.ACC_T already set");
     } else {
       filled.set(2);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      accT.put((byte) 0);
-    }
-    accT.put(b.toArrayUnsafe());
+    accT.putLong(b);
 
     return this;
   }
@@ -655,7 +651,7 @@ public class Trace {
     }
 
     if (!filled.get(2)) {
-      accT.position(accT.position() + 32);
+      accT.position(accT.position() + 8);
     }
 
     if (!filled.get(3)) {

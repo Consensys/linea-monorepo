@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.txn_data;
+package net.consensys.linea.zktracer.module.txndata;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
@@ -37,6 +37,15 @@ public class Trace {
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_3 = 0x9;
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_4 = 0xa;
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_5 = 0x7;
+  public static final int EC_DATA_PHASE_ECADD_DATA = 0x3;
+  public static final int EC_DATA_PHASE_ECADD_RESULT = 0x4;
+  public static final int EC_DATA_PHASE_ECMUL_DATA = 0x5;
+  public static final int EC_DATA_PHASE_ECMUL_RESULT = 0x6;
+  public static final int EC_DATA_PHASE_ECRECOVER_DATA = 0x1;
+  public static final int EC_DATA_PHASE_ECRECOVER_RESULT = 0x2;
+  public static final int EC_DATA_PHASE_PAIRING_DATA = 0x7;
+  public static final int EC_DATA_PHASE_PAIRING_RESULT = 0x8;
+  public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
       new BigInteger("16434357337474432580558001204043214908");
   public static final BigInteger EMPTY_KECCAK_LO =
@@ -241,7 +250,7 @@ public class Trace {
   public static final int GAS_CONST_G_VERY_LOW = 0x3;
   public static final int GAS_CONST_G_WARM_ACCESS = 0x64;
   public static final int GAS_CONST_G_ZERO = 0x0;
-  public static final int INVALID_CODE_PREFIX_VALUE = 0xef;
+  public static final int LINEA_BLOCK_GAS_LIMIT = 0x1c9c380;
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
   public static final int LLARGEPO = 0x11;
@@ -333,21 +342,21 @@ public class Trace {
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
   public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
-  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
-  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
-  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
-  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
-  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
-  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
-  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
-  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
-  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
-  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
-  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
-  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
-  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
-  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
-  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST = 0xb;
+  public static final int RLP_TXN_PHASE_BETA = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID = 0x2;
+  public static final int RLP_TXN_PHASE_DATA = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE = 0x3;
+  public static final int RLP_TXN_PHASE_R = 0xe;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX = 0x1;
+  public static final int RLP_TXN_PHASE_S = 0xf;
+  public static final int RLP_TXN_PHASE_TO = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y = 0xd;
   public static final int TYPE_0_RLP_TXN_PHASE_NUMBER_6 = 0x4;
   public static final int TYPE_1_RLP_TXN_PHASE_NUMBER_6 = 0x4;
   public static final int TYPE_1_RLP_TXN_PHASE_NUMBER_7 = 0xb;
@@ -363,36 +372,44 @@ public class Trace {
 
   private final MappedByteBuffer absTxNum;
   private final MappedByteBuffer absTxNumMax;
+  private final MappedByteBuffer argOneLo;
+  private final MappedByteBuffer argTwoLo;
   private final MappedByteBuffer basefee;
+  private final MappedByteBuffer blockGasLimit;
   private final MappedByteBuffer btcNum;
   private final MappedByteBuffer btcNumMax;
   private final MappedByteBuffer callDataSize;
   private final MappedByteBuffer codeFragmentIndex;
   private final MappedByteBuffer coinbaseHi;
   private final MappedByteBuffer coinbaseLo;
-  private final MappedByteBuffer copyTxcdAtInitialisation;
+  private final MappedByteBuffer copyTxcd;
   private final MappedByteBuffer ct;
-  private final MappedByteBuffer cumulativeConsumedGas;
+  private final MappedByteBuffer eucFlag;
   private final MappedByteBuffer fromHi;
   private final MappedByteBuffer fromLo;
+  private final MappedByteBuffer gasCumulative;
+  private final MappedByteBuffer gasInitiallyAvailable;
+  private final MappedByteBuffer gasLeftover;
   private final MappedByteBuffer gasLimit;
   private final MappedByteBuffer gasPrice;
   private final MappedByteBuffer initCodeSize;
   private final MappedByteBuffer initialBalance;
-  private final MappedByteBuffer initialGas;
+  private final MappedByteBuffer inst;
   private final MappedByteBuffer isDep;
-  private final MappedByteBuffer leftoverGas;
+  private final MappedByteBuffer isLastTxOfBlock;
   private final MappedByteBuffer nonce;
   private final MappedByteBuffer outgoingHi;
   private final MappedByteBuffer outgoingLo;
   private final MappedByteBuffer outgoingRlpTxnrcpt;
   private final MappedByteBuffer phaseRlpTxn;
   private final MappedByteBuffer phaseRlpTxnrcpt;
-  private final MappedByteBuffer refundAmount;
+  private final MappedByteBuffer priorityFeePerGas;
   private final MappedByteBuffer refundCounter;
+  private final MappedByteBuffer refundEffective;
   private final MappedByteBuffer relTxNum;
   private final MappedByteBuffer relTxNumMax;
   private final MappedByteBuffer requiresEvmExecution;
+  private final MappedByteBuffer res;
   private final MappedByteBuffer statusCode;
   private final MappedByteBuffer toHi;
   private final MappedByteBuffer toLo;
@@ -400,45 +417,50 @@ public class Trace {
   private final MappedByteBuffer type1;
   private final MappedByteBuffer type2;
   private final MappedByteBuffer value;
-  private final MappedByteBuffer wcpArgOneLo;
-  private final MappedByteBuffer wcpArgTwoLo;
-  private final MappedByteBuffer wcpInst;
-  private final MappedByteBuffer wcpRes;
+  private final MappedByteBuffer wcpFlag;
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
         new ColumnHeader("txnData.ABS_TX_NUM", 4, length),
         new ColumnHeader("txnData.ABS_TX_NUM_MAX", 4, length),
+        new ColumnHeader("txnData.ARG_ONE_LO", 32, length),
+        new ColumnHeader("txnData.ARG_TWO_LO", 32, length),
         new ColumnHeader("txnData.BASEFEE", 32, length),
+        new ColumnHeader("txnData.BLOCK_GAS_LIMIT", 32, length),
         new ColumnHeader("txnData.BTC_NUM", 4, length),
         new ColumnHeader("txnData.BTC_NUM_MAX", 4, length),
         new ColumnHeader("txnData.CALL_DATA_SIZE", 8, length),
-        new ColumnHeader("txnData.CODE_FRAGMENT_INDEX", 4, length),
-        new ColumnHeader("txnData.COINBASE_HI", 32, length),
+        new ColumnHeader("txnData.CODE_FRAGMENT_INDEX", 8, length),
+        new ColumnHeader("txnData.COINBASE_HI", 8, length),
         new ColumnHeader("txnData.COINBASE_LO", 32, length),
-        new ColumnHeader("txnData.COPY_TXCD_AT_INITIALISATION", 1, length),
+        new ColumnHeader("txnData.COPY_TXCD", 1, length),
         new ColumnHeader("txnData.CT", 1, length),
-        new ColumnHeader("txnData.CUMULATIVE_CONSUMED_GAS", 32, length),
+        new ColumnHeader("txnData.EUC_FLAG", 1, length),
         new ColumnHeader("txnData.FROM_HI", 8, length),
         new ColumnHeader("txnData.FROM_LO", 32, length),
+        new ColumnHeader("txnData.GAS_CUMULATIVE", 32, length),
+        new ColumnHeader("txnData.GAS_INITIALLY_AVAILABLE", 32, length),
+        new ColumnHeader("txnData.GAS_LEFTOVER", 32, length),
         new ColumnHeader("txnData.GAS_LIMIT", 32, length),
         new ColumnHeader("txnData.GAS_PRICE", 32, length),
         new ColumnHeader("txnData.INIT_CODE_SIZE", 8, length),
         new ColumnHeader("txnData.INITIAL_BALANCE", 32, length),
-        new ColumnHeader("txnData.INITIAL_GAS", 32, length),
+        new ColumnHeader("txnData.INST", 1, length),
         new ColumnHeader("txnData.IS_DEP", 1, length),
-        new ColumnHeader("txnData.LEFTOVER_GAS", 32, length),
+        new ColumnHeader("txnData.IS_LAST_TX_OF_BLOCK", 1, length),
         new ColumnHeader("txnData.NONCE", 32, length),
         new ColumnHeader("txnData.OUTGOING_HI", 32, length),
         new ColumnHeader("txnData.OUTGOING_LO", 32, length),
         new ColumnHeader("txnData.OUTGOING_RLP_TXNRCPT", 32, length),
         new ColumnHeader("txnData.PHASE_RLP_TXN", 1, length),
         new ColumnHeader("txnData.PHASE_RLP_TXNRCPT", 1, length),
-        new ColumnHeader("txnData.REFUND_AMOUNT", 32, length),
+        new ColumnHeader("txnData.PRIORITY_FEE_PER_GAS", 32, length),
         new ColumnHeader("txnData.REFUND_COUNTER", 32, length),
+        new ColumnHeader("txnData.REFUND_EFFECTIVE", 32, length),
         new ColumnHeader("txnData.REL_TX_NUM", 4, length),
         new ColumnHeader("txnData.REL_TX_NUM_MAX", 4, length),
         new ColumnHeader("txnData.REQUIRES_EVM_EXECUTION", 1, length),
+        new ColumnHeader("txnData.RES", 32, length),
         new ColumnHeader("txnData.STATUS_CODE", 1, length),
         new ColumnHeader("txnData.TO_HI", 8, length),
         new ColumnHeader("txnData.TO_LO", 32, length),
@@ -446,56 +468,58 @@ public class Trace {
         new ColumnHeader("txnData.TYPE1", 1, length),
         new ColumnHeader("txnData.TYPE2", 1, length),
         new ColumnHeader("txnData.VALUE", 32, length),
-        new ColumnHeader("txnData.WCP_ARG_ONE_LO", 32, length),
-        new ColumnHeader("txnData.WCP_ARG_TWO_LO", 32, length),
-        new ColumnHeader("txnData.WCP_INST", 1, length),
-        new ColumnHeader("txnData.WCP_RES", 1, length));
+        new ColumnHeader("txnData.WCP_FLAG", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
     this.absTxNum = buffers.get(0);
     this.absTxNumMax = buffers.get(1);
-    this.basefee = buffers.get(2);
-    this.btcNum = buffers.get(3);
-    this.btcNumMax = buffers.get(4);
-    this.callDataSize = buffers.get(5);
-    this.codeFragmentIndex = buffers.get(6);
-    this.coinbaseHi = buffers.get(7);
-    this.coinbaseLo = buffers.get(8);
-    this.copyTxcdAtInitialisation = buffers.get(9);
-    this.ct = buffers.get(10);
-    this.cumulativeConsumedGas = buffers.get(11);
-    this.fromHi = buffers.get(12);
-    this.fromLo = buffers.get(13);
-    this.gasLimit = buffers.get(14);
-    this.gasPrice = buffers.get(15);
-    this.initCodeSize = buffers.get(16);
-    this.initialBalance = buffers.get(17);
-    this.initialGas = buffers.get(18);
-    this.isDep = buffers.get(19);
-    this.leftoverGas = buffers.get(20);
-    this.nonce = buffers.get(21);
-    this.outgoingHi = buffers.get(22);
-    this.outgoingLo = buffers.get(23);
-    this.outgoingRlpTxnrcpt = buffers.get(24);
-    this.phaseRlpTxn = buffers.get(25);
-    this.phaseRlpTxnrcpt = buffers.get(26);
-    this.refundAmount = buffers.get(27);
-    this.refundCounter = buffers.get(28);
-    this.relTxNum = buffers.get(29);
-    this.relTxNumMax = buffers.get(30);
-    this.requiresEvmExecution = buffers.get(31);
-    this.statusCode = buffers.get(32);
-    this.toHi = buffers.get(33);
-    this.toLo = buffers.get(34);
-    this.type0 = buffers.get(35);
-    this.type1 = buffers.get(36);
-    this.type2 = buffers.get(37);
-    this.value = buffers.get(38);
-    this.wcpArgOneLo = buffers.get(39);
-    this.wcpArgTwoLo = buffers.get(40);
-    this.wcpInst = buffers.get(41);
-    this.wcpRes = buffers.get(42);
+    this.argOneLo = buffers.get(2);
+    this.argTwoLo = buffers.get(3);
+    this.basefee = buffers.get(4);
+    this.blockGasLimit = buffers.get(5);
+    this.btcNum = buffers.get(6);
+    this.btcNumMax = buffers.get(7);
+    this.callDataSize = buffers.get(8);
+    this.codeFragmentIndex = buffers.get(9);
+    this.coinbaseHi = buffers.get(10);
+    this.coinbaseLo = buffers.get(11);
+    this.copyTxcd = buffers.get(12);
+    this.ct = buffers.get(13);
+    this.eucFlag = buffers.get(14);
+    this.fromHi = buffers.get(15);
+    this.fromLo = buffers.get(16);
+    this.gasCumulative = buffers.get(17);
+    this.gasInitiallyAvailable = buffers.get(18);
+    this.gasLeftover = buffers.get(19);
+    this.gasLimit = buffers.get(20);
+    this.gasPrice = buffers.get(21);
+    this.initCodeSize = buffers.get(22);
+    this.initialBalance = buffers.get(23);
+    this.inst = buffers.get(24);
+    this.isDep = buffers.get(25);
+    this.isLastTxOfBlock = buffers.get(26);
+    this.nonce = buffers.get(27);
+    this.outgoingHi = buffers.get(28);
+    this.outgoingLo = buffers.get(29);
+    this.outgoingRlpTxnrcpt = buffers.get(30);
+    this.phaseRlpTxn = buffers.get(31);
+    this.phaseRlpTxnrcpt = buffers.get(32);
+    this.priorityFeePerGas = buffers.get(33);
+    this.refundCounter = buffers.get(34);
+    this.refundEffective = buffers.get(35);
+    this.relTxNum = buffers.get(36);
+    this.relTxNumMax = buffers.get(37);
+    this.requiresEvmExecution = buffers.get(38);
+    this.res = buffers.get(39);
+    this.statusCode = buffers.get(40);
+    this.toHi = buffers.get(41);
+    this.toLo = buffers.get(42);
+    this.type0 = buffers.get(43);
+    this.type1 = buffers.get(44);
+    this.type2 = buffers.get(45);
+    this.value = buffers.get(46);
+    this.wcpFlag = buffers.get(47);
   }
 
   public int size() {
@@ -530,11 +554,43 @@ public class Trace {
     return this;
   }
 
-  public Trace basefee(final Bytes b) {
+  public Trace argOneLo(final Bytes b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("txnData.BASEFEE already set");
+      throw new IllegalStateException("txnData.ARG_ONE_LO already set");
     } else {
       filled.set(2);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argOneLo.put((byte) 0);
+    }
+    argOneLo.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace argTwoLo(final Bytes b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("txnData.ARG_TWO_LO already set");
+    } else {
+      filled.set(3);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      argTwoLo.put((byte) 0);
+    }
+    argTwoLo.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace basefee(final Bytes b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("txnData.BASEFEE already set");
+    } else {
+      filled.set(4);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -546,11 +602,27 @@ public class Trace {
     return this;
   }
 
+  public Trace blockGasLimit(final Bytes b) {
+    if (filled.get(5)) {
+      throw new IllegalStateException("txnData.BLOCK_GAS_LIMIT already set");
+    } else {
+      filled.set(5);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      blockGasLimit.put((byte) 0);
+    }
+    blockGasLimit.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
   public Trace btcNum(final int b) {
-    if (filled.get(3)) {
+    if (filled.get(6)) {
       throw new IllegalStateException("txnData.BTC_NUM already set");
     } else {
-      filled.set(3);
+      filled.set(6);
     }
 
     btcNum.putInt(b);
@@ -559,10 +631,10 @@ public class Trace {
   }
 
   public Trace btcNumMax(final int b) {
-    if (filled.get(4)) {
+    if (filled.get(7)) {
       throw new IllegalStateException("txnData.BTC_NUM_MAX already set");
     } else {
-      filled.set(4);
+      filled.set(7);
     }
 
     btcNumMax.putInt(b);
@@ -571,10 +643,10 @@ public class Trace {
   }
 
   public Trace callDataSize(final long b) {
-    if (filled.get(5)) {
+    if (filled.get(8)) {
       throw new IllegalStateException("txnData.CALL_DATA_SIZE already set");
     } else {
-      filled.set(5);
+      filled.set(8);
     }
 
     callDataSize.putLong(b);
@@ -582,39 +654,35 @@ public class Trace {
     return this;
   }
 
-  public Trace codeFragmentIndex(final int b) {
-    if (filled.get(6)) {
+  public Trace codeFragmentIndex(final long b) {
+    if (filled.get(9)) {
       throw new IllegalStateException("txnData.CODE_FRAGMENT_INDEX already set");
     } else {
-      filled.set(6);
+      filled.set(9);
     }
 
-    codeFragmentIndex.putInt(b);
+    codeFragmentIndex.putLong(b);
 
     return this;
   }
 
-  public Trace coinbaseHi(final Bytes b) {
-    if (filled.get(7)) {
+  public Trace coinbaseHi(final long b) {
+    if (filled.get(10)) {
       throw new IllegalStateException("txnData.COINBASE_HI already set");
     } else {
-      filled.set(7);
+      filled.set(10);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      coinbaseHi.put((byte) 0);
-    }
-    coinbaseHi.put(b.toArrayUnsafe());
+    coinbaseHi.putLong(b);
 
     return this;
   }
 
   public Trace coinbaseLo(final Bytes b) {
-    if (filled.get(8)) {
+    if (filled.get(11)) {
       throw new IllegalStateException("txnData.COINBASE_LO already set");
     } else {
-      filled.set(8);
+      filled.set(11);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -626,23 +694,23 @@ public class Trace {
     return this;
   }
 
-  public Trace copyTxcdAtInitialisation(final Boolean b) {
-    if (filled.get(9)) {
-      throw new IllegalStateException("txnData.COPY_TXCD_AT_INITIALISATION already set");
+  public Trace copyTxcd(final Boolean b) {
+    if (filled.get(12)) {
+      throw new IllegalStateException("txnData.COPY_TXCD already set");
     } else {
-      filled.set(9);
+      filled.set(12);
     }
 
-    copyTxcdAtInitialisation.put((byte) (b ? 1 : 0));
+    copyTxcd.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace ct(final UnsignedByte b) {
-    if (filled.get(10)) {
+    if (filled.get(13)) {
       throw new IllegalStateException("txnData.CT already set");
     } else {
-      filled.set(10);
+      filled.set(13);
     }
 
     ct.put(b.toByte());
@@ -650,27 +718,23 @@ public class Trace {
     return this;
   }
 
-  public Trace cumulativeConsumedGas(final Bytes b) {
-    if (filled.get(11)) {
-      throw new IllegalStateException("txnData.CUMULATIVE_CONSUMED_GAS already set");
+  public Trace eucFlag(final Boolean b) {
+    if (filled.get(14)) {
+      throw new IllegalStateException("txnData.EUC_FLAG already set");
     } else {
-      filled.set(11);
+      filled.set(14);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      cumulativeConsumedGas.put((byte) 0);
-    }
-    cumulativeConsumedGas.put(b.toArrayUnsafe());
+    eucFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace fromHi(final long b) {
-    if (filled.get(12)) {
+    if (filled.get(15)) {
       throw new IllegalStateException("txnData.FROM_HI already set");
     } else {
-      filled.set(12);
+      filled.set(15);
     }
 
     fromHi.putLong(b);
@@ -679,10 +743,10 @@ public class Trace {
   }
 
   public Trace fromLo(final Bytes b) {
-    if (filled.get(13)) {
+    if (filled.get(16)) {
       throw new IllegalStateException("txnData.FROM_LO already set");
     } else {
-      filled.set(13);
+      filled.set(16);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -694,11 +758,59 @@ public class Trace {
     return this;
   }
 
+  public Trace gasCumulative(final Bytes b) {
+    if (filled.get(17)) {
+      throw new IllegalStateException("txnData.GAS_CUMULATIVE already set");
+    } else {
+      filled.set(17);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasCumulative.put((byte) 0);
+    }
+    gasCumulative.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace gasInitiallyAvailable(final Bytes b) {
+    if (filled.get(18)) {
+      throw new IllegalStateException("txnData.GAS_INITIALLY_AVAILABLE already set");
+    } else {
+      filled.set(18);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasInitiallyAvailable.put((byte) 0);
+    }
+    gasInitiallyAvailable.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
+  public Trace gasLeftover(final Bytes b) {
+    if (filled.get(19)) {
+      throw new IllegalStateException("txnData.GAS_LEFTOVER already set");
+    } else {
+      filled.set(19);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      gasLeftover.put((byte) 0);
+    }
+    gasLeftover.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
   public Trace gasLimit(final Bytes b) {
-    if (filled.get(14)) {
+    if (filled.get(20)) {
       throw new IllegalStateException("txnData.GAS_LIMIT already set");
     } else {
-      filled.set(14);
+      filled.set(20);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -711,10 +823,10 @@ public class Trace {
   }
 
   public Trace gasPrice(final Bytes b) {
-    if (filled.get(15)) {
+    if (filled.get(21)) {
       throw new IllegalStateException("txnData.GAS_PRICE already set");
     } else {
-      filled.set(15);
+      filled.set(21);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -727,10 +839,10 @@ public class Trace {
   }
 
   public Trace initCodeSize(final long b) {
-    if (filled.get(18)) {
+    if (filled.get(23)) {
       throw new IllegalStateException("txnData.INIT_CODE_SIZE already set");
     } else {
-      filled.set(18);
+      filled.set(23);
     }
 
     initCodeSize.putLong(b);
@@ -739,10 +851,10 @@ public class Trace {
   }
 
   public Trace initialBalance(final Bytes b) {
-    if (filled.get(16)) {
+    if (filled.get(22)) {
       throw new IllegalStateException("txnData.INITIAL_BALANCE already set");
     } else {
-      filled.set(16);
+      filled.set(22);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -754,27 +866,23 @@ public class Trace {
     return this;
   }
 
-  public Trace initialGas(final Bytes b) {
-    if (filled.get(17)) {
-      throw new IllegalStateException("txnData.INITIAL_GAS already set");
+  public Trace inst(final UnsignedByte b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("txnData.INST already set");
     } else {
-      filled.set(17);
+      filled.set(24);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      initialGas.put((byte) 0);
-    }
-    initialGas.put(b.toArrayUnsafe());
+    inst.put(b.toByte());
 
     return this;
   }
 
   public Trace isDep(final Boolean b) {
-    if (filled.get(19)) {
+    if (filled.get(25)) {
       throw new IllegalStateException("txnData.IS_DEP already set");
     } else {
-      filled.set(19);
+      filled.set(25);
     }
 
     isDep.put((byte) (b ? 1 : 0));
@@ -782,27 +890,23 @@ public class Trace {
     return this;
   }
 
-  public Trace leftoverGas(final Bytes b) {
-    if (filled.get(20)) {
-      throw new IllegalStateException("txnData.LEFTOVER_GAS already set");
+  public Trace isLastTxOfBlock(final Boolean b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("txnData.IS_LAST_TX_OF_BLOCK already set");
     } else {
-      filled.set(20);
+      filled.set(26);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      leftoverGas.put((byte) 0);
-    }
-    leftoverGas.put(b.toArrayUnsafe());
+    isLastTxOfBlock.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace nonce(final Bytes b) {
-    if (filled.get(21)) {
+    if (filled.get(27)) {
       throw new IllegalStateException("txnData.NONCE already set");
     } else {
-      filled.set(21);
+      filled.set(27);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -815,10 +919,10 @@ public class Trace {
   }
 
   public Trace outgoingHi(final Bytes b) {
-    if (filled.get(22)) {
+    if (filled.get(28)) {
       throw new IllegalStateException("txnData.OUTGOING_HI already set");
     } else {
-      filled.set(22);
+      filled.set(28);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -831,10 +935,10 @@ public class Trace {
   }
 
   public Trace outgoingLo(final Bytes b) {
-    if (filled.get(23)) {
+    if (filled.get(29)) {
       throw new IllegalStateException("txnData.OUTGOING_LO already set");
     } else {
-      filled.set(23);
+      filled.set(29);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -847,10 +951,10 @@ public class Trace {
   }
 
   public Trace outgoingRlpTxnrcpt(final Bytes b) {
-    if (filled.get(24)) {
+    if (filled.get(30)) {
       throw new IllegalStateException("txnData.OUTGOING_RLP_TXNRCPT already set");
     } else {
-      filled.set(24);
+      filled.set(30);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -863,10 +967,10 @@ public class Trace {
   }
 
   public Trace phaseRlpTxn(final UnsignedByte b) {
-    if (filled.get(25)) {
+    if (filled.get(31)) {
       throw new IllegalStateException("txnData.PHASE_RLP_TXN already set");
     } else {
-      filled.set(25);
+      filled.set(31);
     }
 
     phaseRlpTxn.put(b.toByte());
@@ -875,10 +979,10 @@ public class Trace {
   }
 
   public Trace phaseRlpTxnrcpt(final UnsignedByte b) {
-    if (filled.get(26)) {
+    if (filled.get(32)) {
       throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT already set");
     } else {
-      filled.set(26);
+      filled.set(32);
     }
 
     phaseRlpTxnrcpt.put(b.toByte());
@@ -886,27 +990,27 @@ public class Trace {
     return this;
   }
 
-  public Trace refundAmount(final Bytes b) {
-    if (filled.get(27)) {
-      throw new IllegalStateException("txnData.REFUND_AMOUNT already set");
+  public Trace priorityFeePerGas(final Bytes b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("txnData.PRIORITY_FEE_PER_GAS already set");
     } else {
-      filled.set(27);
+      filled.set(33);
     }
 
     final byte[] bs = b.toArrayUnsafe();
     for (int i = bs.length; i < 32; i++) {
-      refundAmount.put((byte) 0);
+      priorityFeePerGas.put((byte) 0);
     }
-    refundAmount.put(b.toArrayUnsafe());
+    priorityFeePerGas.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace refundCounter(final Bytes b) {
-    if (filled.get(28)) {
+    if (filled.get(34)) {
       throw new IllegalStateException("txnData.REFUND_COUNTER already set");
     } else {
-      filled.set(28);
+      filled.set(34);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -918,11 +1022,27 @@ public class Trace {
     return this;
   }
 
+  public Trace refundEffective(final Bytes b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("txnData.REFUND_EFFECTIVE already set");
+    } else {
+      filled.set(35);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      refundEffective.put((byte) 0);
+    }
+    refundEffective.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
   public Trace relTxNum(final int b) {
-    if (filled.get(29)) {
+    if (filled.get(36)) {
       throw new IllegalStateException("txnData.REL_TX_NUM already set");
     } else {
-      filled.set(29);
+      filled.set(36);
     }
 
     relTxNum.putInt(b);
@@ -931,10 +1051,10 @@ public class Trace {
   }
 
   public Trace relTxNumMax(final int b) {
-    if (filled.get(30)) {
+    if (filled.get(37)) {
       throw new IllegalStateException("txnData.REL_TX_NUM_MAX already set");
     } else {
-      filled.set(30);
+      filled.set(37);
     }
 
     relTxNumMax.putInt(b);
@@ -943,10 +1063,10 @@ public class Trace {
   }
 
   public Trace requiresEvmExecution(final Boolean b) {
-    if (filled.get(31)) {
+    if (filled.get(38)) {
       throw new IllegalStateException("txnData.REQUIRES_EVM_EXECUTION already set");
     } else {
-      filled.set(31);
+      filled.set(38);
     }
 
     requiresEvmExecution.put((byte) (b ? 1 : 0));
@@ -954,11 +1074,27 @@ public class Trace {
     return this;
   }
 
+  public Trace res(final Bytes b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("txnData.RES already set");
+    } else {
+      filled.set(39);
+    }
+
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      res.put((byte) 0);
+    }
+    res.put(b.toArrayUnsafe());
+
+    return this;
+  }
+
   public Trace statusCode(final Boolean b) {
-    if (filled.get(32)) {
+    if (filled.get(40)) {
       throw new IllegalStateException("txnData.STATUS_CODE already set");
     } else {
-      filled.set(32);
+      filled.set(40);
     }
 
     statusCode.put((byte) (b ? 1 : 0));
@@ -967,10 +1103,10 @@ public class Trace {
   }
 
   public Trace toHi(final long b) {
-    if (filled.get(33)) {
+    if (filled.get(41)) {
       throw new IllegalStateException("txnData.TO_HI already set");
     } else {
-      filled.set(33);
+      filled.set(41);
     }
 
     toHi.putLong(b);
@@ -979,10 +1115,10 @@ public class Trace {
   }
 
   public Trace toLo(final Bytes b) {
-    if (filled.get(34)) {
+    if (filled.get(42)) {
       throw new IllegalStateException("txnData.TO_LO already set");
     } else {
-      filled.set(34);
+      filled.set(42);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -995,10 +1131,10 @@ public class Trace {
   }
 
   public Trace type0(final Boolean b) {
-    if (filled.get(35)) {
+    if (filled.get(43)) {
       throw new IllegalStateException("txnData.TYPE0 already set");
     } else {
-      filled.set(35);
+      filled.set(43);
     }
 
     type0.put((byte) (b ? 1 : 0));
@@ -1007,10 +1143,10 @@ public class Trace {
   }
 
   public Trace type1(final Boolean b) {
-    if (filled.get(36)) {
+    if (filled.get(44)) {
       throw new IllegalStateException("txnData.TYPE1 already set");
     } else {
-      filled.set(36);
+      filled.set(44);
     }
 
     type1.put((byte) (b ? 1 : 0));
@@ -1019,10 +1155,10 @@ public class Trace {
   }
 
   public Trace type2(final Boolean b) {
-    if (filled.get(37)) {
+    if (filled.get(45)) {
       throw new IllegalStateException("txnData.TYPE2 already set");
     } else {
-      filled.set(37);
+      filled.set(45);
     }
 
     type2.put((byte) (b ? 1 : 0));
@@ -1031,10 +1167,10 @@ public class Trace {
   }
 
   public Trace value(final Bytes b) {
-    if (filled.get(38)) {
+    if (filled.get(46)) {
       throw new IllegalStateException("txnData.VALUE already set");
     } else {
-      filled.set(38);
+      filled.set(46);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -1046,58 +1182,14 @@ public class Trace {
     return this;
   }
 
-  public Trace wcpArgOneLo(final Bytes b) {
-    if (filled.get(39)) {
-      throw new IllegalStateException("txnData.WCP_ARG_ONE_LO already set");
+  public Trace wcpFlag(final Boolean b) {
+    if (filled.get(47)) {
+      throw new IllegalStateException("txnData.WCP_FLAG already set");
     } else {
-      filled.set(39);
+      filled.set(47);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      wcpArgOneLo.put((byte) 0);
-    }
-    wcpArgOneLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace wcpArgTwoLo(final Bytes b) {
-    if (filled.get(40)) {
-      throw new IllegalStateException("txnData.WCP_ARG_TWO_LO already set");
-    } else {
-      filled.set(40);
-    }
-
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      wcpArgTwoLo.put((byte) 0);
-    }
-    wcpArgTwoLo.put(b.toArrayUnsafe());
-
-    return this;
-  }
-
-  public Trace wcpInst(final UnsignedByte b) {
-    if (filled.get(41)) {
-      throw new IllegalStateException("txnData.WCP_INST already set");
-    } else {
-      filled.set(41);
-    }
-
-    wcpInst.put(b.toByte());
-
-    return this;
-  }
-
-  public Trace wcpRes(final Boolean b) {
-    if (filled.get(42)) {
-      throw new IllegalStateException("txnData.WCP_RES already set");
-    } else {
-      filled.set(42);
-    }
-
-    wcpRes.put((byte) (b ? 1 : 0));
+    wcpFlag.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1112,167 +1204,187 @@ public class Trace {
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("txnData.BASEFEE has not been filled");
+      throw new IllegalStateException("txnData.ARG_ONE_LO has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("txnData.BTC_NUM has not been filled");
+      throw new IllegalStateException("txnData.ARG_TWO_LO has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("txnData.BTC_NUM_MAX has not been filled");
+      throw new IllegalStateException("txnData.BASEFEE has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("txnData.CALL_DATA_SIZE has not been filled");
+      throw new IllegalStateException("txnData.BLOCK_GAS_LIMIT has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("txnData.CODE_FRAGMENT_INDEX has not been filled");
+      throw new IllegalStateException("txnData.BTC_NUM has not been filled");
     }
 
     if (!filled.get(7)) {
-      throw new IllegalStateException("txnData.COINBASE_HI has not been filled");
+      throw new IllegalStateException("txnData.BTC_NUM_MAX has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("txnData.COINBASE_LO has not been filled");
+      throw new IllegalStateException("txnData.CALL_DATA_SIZE has not been filled");
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException("txnData.COPY_TXCD_AT_INITIALISATION has not been filled");
+      throw new IllegalStateException("txnData.CODE_FRAGMENT_INDEX has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException("txnData.CT has not been filled");
+      throw new IllegalStateException("txnData.COINBASE_HI has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("txnData.CUMULATIVE_CONSUMED_GAS has not been filled");
+      throw new IllegalStateException("txnData.COINBASE_LO has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("txnData.FROM_HI has not been filled");
+      throw new IllegalStateException("txnData.COPY_TXCD has not been filled");
     }
 
     if (!filled.get(13)) {
-      throw new IllegalStateException("txnData.FROM_LO has not been filled");
+      throw new IllegalStateException("txnData.CT has not been filled");
     }
 
     if (!filled.get(14)) {
-      throw new IllegalStateException("txnData.GAS_LIMIT has not been filled");
+      throw new IllegalStateException("txnData.EUC_FLAG has not been filled");
     }
 
     if (!filled.get(15)) {
-      throw new IllegalStateException("txnData.GAS_PRICE has not been filled");
-    }
-
-    if (!filled.get(18)) {
-      throw new IllegalStateException("txnData.INIT_CODE_SIZE has not been filled");
+      throw new IllegalStateException("txnData.FROM_HI has not been filled");
     }
 
     if (!filled.get(16)) {
-      throw new IllegalStateException("txnData.INITIAL_BALANCE has not been filled");
+      throw new IllegalStateException("txnData.FROM_LO has not been filled");
     }
 
     if (!filled.get(17)) {
-      throw new IllegalStateException("txnData.INITIAL_GAS has not been filled");
+      throw new IllegalStateException("txnData.GAS_CUMULATIVE has not been filled");
+    }
+
+    if (!filled.get(18)) {
+      throw new IllegalStateException("txnData.GAS_INITIALLY_AVAILABLE has not been filled");
     }
 
     if (!filled.get(19)) {
-      throw new IllegalStateException("txnData.IS_DEP has not been filled");
+      throw new IllegalStateException("txnData.GAS_LEFTOVER has not been filled");
     }
 
     if (!filled.get(20)) {
-      throw new IllegalStateException("txnData.LEFTOVER_GAS has not been filled");
+      throw new IllegalStateException("txnData.GAS_LIMIT has not been filled");
     }
 
     if (!filled.get(21)) {
-      throw new IllegalStateException("txnData.NONCE has not been filled");
-    }
-
-    if (!filled.get(22)) {
-      throw new IllegalStateException("txnData.OUTGOING_HI has not been filled");
+      throw new IllegalStateException("txnData.GAS_PRICE has not been filled");
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("txnData.OUTGOING_LO has not been filled");
+      throw new IllegalStateException("txnData.INIT_CODE_SIZE has not been filled");
+    }
+
+    if (!filled.get(22)) {
+      throw new IllegalStateException("txnData.INITIAL_BALANCE has not been filled");
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("txnData.OUTGOING_RLP_TXNRCPT has not been filled");
+      throw new IllegalStateException("txnData.INST has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("txnData.PHASE_RLP_TXN has not been filled");
+      throw new IllegalStateException("txnData.IS_DEP has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT has not been filled");
+      throw new IllegalStateException("txnData.IS_LAST_TX_OF_BLOCK has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("txnData.REFUND_AMOUNT has not been filled");
+      throw new IllegalStateException("txnData.NONCE has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("txnData.REFUND_COUNTER has not been filled");
+      throw new IllegalStateException("txnData.OUTGOING_HI has not been filled");
     }
 
     if (!filled.get(29)) {
-      throw new IllegalStateException("txnData.REL_TX_NUM has not been filled");
+      throw new IllegalStateException("txnData.OUTGOING_LO has not been filled");
     }
 
     if (!filled.get(30)) {
-      throw new IllegalStateException("txnData.REL_TX_NUM_MAX has not been filled");
+      throw new IllegalStateException("txnData.OUTGOING_RLP_TXNRCPT has not been filled");
     }
 
     if (!filled.get(31)) {
-      throw new IllegalStateException("txnData.REQUIRES_EVM_EXECUTION has not been filled");
+      throw new IllegalStateException("txnData.PHASE_RLP_TXN has not been filled");
     }
 
     if (!filled.get(32)) {
-      throw new IllegalStateException("txnData.STATUS_CODE has not been filled");
+      throw new IllegalStateException("txnData.PHASE_RLP_TXNRCPT has not been filled");
     }
 
     if (!filled.get(33)) {
-      throw new IllegalStateException("txnData.TO_HI has not been filled");
+      throw new IllegalStateException("txnData.PRIORITY_FEE_PER_GAS has not been filled");
     }
 
     if (!filled.get(34)) {
-      throw new IllegalStateException("txnData.TO_LO has not been filled");
+      throw new IllegalStateException("txnData.REFUND_COUNTER has not been filled");
     }
 
     if (!filled.get(35)) {
-      throw new IllegalStateException("txnData.TYPE0 has not been filled");
+      throw new IllegalStateException("txnData.REFUND_EFFECTIVE has not been filled");
     }
 
     if (!filled.get(36)) {
-      throw new IllegalStateException("txnData.TYPE1 has not been filled");
+      throw new IllegalStateException("txnData.REL_TX_NUM has not been filled");
     }
 
     if (!filled.get(37)) {
-      throw new IllegalStateException("txnData.TYPE2 has not been filled");
+      throw new IllegalStateException("txnData.REL_TX_NUM_MAX has not been filled");
     }
 
     if (!filled.get(38)) {
-      throw new IllegalStateException("txnData.VALUE has not been filled");
+      throw new IllegalStateException("txnData.REQUIRES_EVM_EXECUTION has not been filled");
     }
 
     if (!filled.get(39)) {
-      throw new IllegalStateException("txnData.WCP_ARG_ONE_LO has not been filled");
+      throw new IllegalStateException("txnData.RES has not been filled");
     }
 
     if (!filled.get(40)) {
-      throw new IllegalStateException("txnData.WCP_ARG_TWO_LO has not been filled");
+      throw new IllegalStateException("txnData.STATUS_CODE has not been filled");
     }
 
     if (!filled.get(41)) {
-      throw new IllegalStateException("txnData.WCP_INST has not been filled");
+      throw new IllegalStateException("txnData.TO_HI has not been filled");
     }
 
     if (!filled.get(42)) {
-      throw new IllegalStateException("txnData.WCP_RES has not been filled");
+      throw new IllegalStateException("txnData.TO_LO has not been filled");
+    }
+
+    if (!filled.get(43)) {
+      throw new IllegalStateException("txnData.TYPE0 has not been filled");
+    }
+
+    if (!filled.get(44)) {
+      throw new IllegalStateException("txnData.TYPE1 has not been filled");
+    }
+
+    if (!filled.get(45)) {
+      throw new IllegalStateException("txnData.TYPE2 has not been filled");
+    }
+
+    if (!filled.get(46)) {
+      throw new IllegalStateException("txnData.VALUE has not been filled");
+    }
+
+    if (!filled.get(47)) {
+      throw new IllegalStateException("txnData.WCP_FLAG has not been filled");
     }
 
     filled.clear();
@@ -1291,167 +1403,187 @@ public class Trace {
     }
 
     if (!filled.get(2)) {
-      basefee.position(basefee.position() + 32);
+      argOneLo.position(argOneLo.position() + 32);
     }
 
     if (!filled.get(3)) {
-      btcNum.position(btcNum.position() + 4);
+      argTwoLo.position(argTwoLo.position() + 32);
     }
 
     if (!filled.get(4)) {
-      btcNumMax.position(btcNumMax.position() + 4);
+      basefee.position(basefee.position() + 32);
     }
 
     if (!filled.get(5)) {
-      callDataSize.position(callDataSize.position() + 8);
+      blockGasLimit.position(blockGasLimit.position() + 32);
     }
 
     if (!filled.get(6)) {
-      codeFragmentIndex.position(codeFragmentIndex.position() + 4);
+      btcNum.position(btcNum.position() + 4);
     }
 
     if (!filled.get(7)) {
-      coinbaseHi.position(coinbaseHi.position() + 32);
+      btcNumMax.position(btcNumMax.position() + 4);
     }
 
     if (!filled.get(8)) {
-      coinbaseLo.position(coinbaseLo.position() + 32);
+      callDataSize.position(callDataSize.position() + 8);
     }
 
     if (!filled.get(9)) {
-      copyTxcdAtInitialisation.position(copyTxcdAtInitialisation.position() + 1);
+      codeFragmentIndex.position(codeFragmentIndex.position() + 8);
     }
 
     if (!filled.get(10)) {
-      ct.position(ct.position() + 1);
+      coinbaseHi.position(coinbaseHi.position() + 8);
     }
 
     if (!filled.get(11)) {
-      cumulativeConsumedGas.position(cumulativeConsumedGas.position() + 32);
+      coinbaseLo.position(coinbaseLo.position() + 32);
     }
 
     if (!filled.get(12)) {
-      fromHi.position(fromHi.position() + 8);
+      copyTxcd.position(copyTxcd.position() + 1);
     }
 
     if (!filled.get(13)) {
-      fromLo.position(fromLo.position() + 32);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(14)) {
-      gasLimit.position(gasLimit.position() + 32);
+      eucFlag.position(eucFlag.position() + 1);
     }
 
     if (!filled.get(15)) {
-      gasPrice.position(gasPrice.position() + 32);
-    }
-
-    if (!filled.get(18)) {
-      initCodeSize.position(initCodeSize.position() + 8);
+      fromHi.position(fromHi.position() + 8);
     }
 
     if (!filled.get(16)) {
-      initialBalance.position(initialBalance.position() + 32);
+      fromLo.position(fromLo.position() + 32);
     }
 
     if (!filled.get(17)) {
-      initialGas.position(initialGas.position() + 32);
+      gasCumulative.position(gasCumulative.position() + 32);
+    }
+
+    if (!filled.get(18)) {
+      gasInitiallyAvailable.position(gasInitiallyAvailable.position() + 32);
     }
 
     if (!filled.get(19)) {
-      isDep.position(isDep.position() + 1);
+      gasLeftover.position(gasLeftover.position() + 32);
     }
 
     if (!filled.get(20)) {
-      leftoverGas.position(leftoverGas.position() + 32);
+      gasLimit.position(gasLimit.position() + 32);
     }
 
     if (!filled.get(21)) {
-      nonce.position(nonce.position() + 32);
-    }
-
-    if (!filled.get(22)) {
-      outgoingHi.position(outgoingHi.position() + 32);
+      gasPrice.position(gasPrice.position() + 32);
     }
 
     if (!filled.get(23)) {
-      outgoingLo.position(outgoingLo.position() + 32);
+      initCodeSize.position(initCodeSize.position() + 8);
+    }
+
+    if (!filled.get(22)) {
+      initialBalance.position(initialBalance.position() + 32);
     }
 
     if (!filled.get(24)) {
-      outgoingRlpTxnrcpt.position(outgoingRlpTxnrcpt.position() + 32);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(25)) {
-      phaseRlpTxn.position(phaseRlpTxn.position() + 1);
+      isDep.position(isDep.position() + 1);
     }
 
     if (!filled.get(26)) {
-      phaseRlpTxnrcpt.position(phaseRlpTxnrcpt.position() + 1);
+      isLastTxOfBlock.position(isLastTxOfBlock.position() + 1);
     }
 
     if (!filled.get(27)) {
-      refundAmount.position(refundAmount.position() + 32);
+      nonce.position(nonce.position() + 32);
     }
 
     if (!filled.get(28)) {
-      refundCounter.position(refundCounter.position() + 32);
+      outgoingHi.position(outgoingHi.position() + 32);
     }
 
     if (!filled.get(29)) {
-      relTxNum.position(relTxNum.position() + 4);
+      outgoingLo.position(outgoingLo.position() + 32);
     }
 
     if (!filled.get(30)) {
-      relTxNumMax.position(relTxNumMax.position() + 4);
+      outgoingRlpTxnrcpt.position(outgoingRlpTxnrcpt.position() + 32);
     }
 
     if (!filled.get(31)) {
-      requiresEvmExecution.position(requiresEvmExecution.position() + 1);
+      phaseRlpTxn.position(phaseRlpTxn.position() + 1);
     }
 
     if (!filled.get(32)) {
-      statusCode.position(statusCode.position() + 1);
+      phaseRlpTxnrcpt.position(phaseRlpTxnrcpt.position() + 1);
     }
 
     if (!filled.get(33)) {
-      toHi.position(toHi.position() + 8);
+      priorityFeePerGas.position(priorityFeePerGas.position() + 32);
     }
 
     if (!filled.get(34)) {
-      toLo.position(toLo.position() + 32);
+      refundCounter.position(refundCounter.position() + 32);
     }
 
     if (!filled.get(35)) {
-      type0.position(type0.position() + 1);
+      refundEffective.position(refundEffective.position() + 32);
     }
 
     if (!filled.get(36)) {
-      type1.position(type1.position() + 1);
+      relTxNum.position(relTxNum.position() + 4);
     }
 
     if (!filled.get(37)) {
-      type2.position(type2.position() + 1);
+      relTxNumMax.position(relTxNumMax.position() + 4);
     }
 
     if (!filled.get(38)) {
-      value.position(value.position() + 32);
+      requiresEvmExecution.position(requiresEvmExecution.position() + 1);
     }
 
     if (!filled.get(39)) {
-      wcpArgOneLo.position(wcpArgOneLo.position() + 32);
+      res.position(res.position() + 32);
     }
 
     if (!filled.get(40)) {
-      wcpArgTwoLo.position(wcpArgTwoLo.position() + 32);
+      statusCode.position(statusCode.position() + 1);
     }
 
     if (!filled.get(41)) {
-      wcpInst.position(wcpInst.position() + 1);
+      toHi.position(toHi.position() + 8);
     }
 
     if (!filled.get(42)) {
-      wcpRes.position(wcpRes.position() + 1);
+      toLo.position(toLo.position() + 32);
+    }
+
+    if (!filled.get(43)) {
+      type0.position(type0.position() + 1);
+    }
+
+    if (!filled.get(44)) {
+      type1.position(type1.position() + 1);
+    }
+
+    if (!filled.get(45)) {
+      type2.position(type2.position() + 1);
+    }
+
+    if (!filled.get(46)) {
+      value.position(value.position() + 32);
+    }
+
+    if (!filled.get(47)) {
+      wcpFlag.position(wcpFlag.position() + 1);
     }
 
     filled.clear();

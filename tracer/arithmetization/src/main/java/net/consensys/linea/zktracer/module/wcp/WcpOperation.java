@@ -16,6 +16,16 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_EQ;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_GT;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_LT;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_SGT;
+import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_SLT;
+import static net.consensys.linea.zktracer.module.wcp.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.wcp.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.module.wcp.Trace.WCP_INST_GEQ;
+import static net.consensys.linea.zktracer.module.wcp.Trace.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.reallyToSignedBigInteger;
 
@@ -36,17 +46,14 @@ import org.apache.tuweni.bytes.Bytes32;
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class WcpOperation extends ModuleOperation {
-  private static final int LLARGEMO = 15;
-  private static final int LLARGE = 16;
-  public static final byte LEQbv = 0x0E;
-  public static final byte GEQbv = 0x0F;
-  private static final byte LTbv = 0x10;
-  private static final byte GTbv = 0x11;
-  private static final byte SLTbv = 0x12;
-  private static final byte SGTbv = 0x13;
-  private static final byte EQbv = 0x14;
-
-  private static final byte ISZERObv = 0x15;
+  public static final byte LEQbv = (byte) WCP_INST_LEQ;
+  public static final byte GEQbv = (byte) WCP_INST_GEQ;
+  static final byte LTbv = (byte) EVM_INST_LT;
+  static final byte GTbv = (byte) EVM_INST_GT;
+  private static final byte SLTbv = (byte) EVM_INST_SLT;
+  private static final byte SGTbv = (byte) EVM_INST_SGT;
+  static final byte EQbv = (byte) EVM_INST_EQ;
+  static final byte ISZERObv = (byte) EVM_INST_ISZERO;
 
   @EqualsAndHashCode.Include private final byte wcpInst;
   @EqualsAndHashCode.Include private final Bytes32 arg1;
@@ -69,9 +76,9 @@ public class WcpOperation extends ModuleOperation {
   private Boolean bit4;
   private Boolean resLo;
 
-  final List<Boolean> bits = new ArrayList<>(16);
+  final List<Boolean> bits = new ArrayList<>(LLARGE);
 
-  public WcpOperation(byte wcpInst, Bytes32 arg1, Bytes32 arg2) {
+  public WcpOperation(final byte wcpInst, final Bytes32 arg1, final Bytes32 arg2) {
     this.wcpInst = wcpInst;
     this.arg1 = arg1;
     this.arg2 = arg2;
@@ -156,7 +163,7 @@ public class WcpOperation extends ModuleOperation {
 
     for (int ct = 0; ct <= this.maxCt(); ct++) {
       trace
-          .wordComparisonStamp(Bytes.ofUnsignedInt(stamp))
+          .wordComparisonStamp(stamp)
           .oneLineInstruction(oli)
           .variableLengthInstruction(vli)
           .counter(UnsignedByte.of(ct))
