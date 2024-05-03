@@ -36,6 +36,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
+import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -46,12 +47,17 @@ import org.hyperledger.besu.evm.log.LogsBloomFilter;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxrcpt implements Module {
+  private final TxnData txnData;
   private static final int LLARGE = Trace.LLARGE;
   private static final Bytes BYTES_RLP_INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
 
   private int absLogNum = 0;
   @Getter public StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
+
+  public RlpTxrcpt(TxnData txnData) {
+    this.txnData = txnData;
+  }
 
   @Override
   public String moduleKey() {
@@ -76,7 +82,12 @@ public class RlpTxrcpt implements Module {
       Bytes output,
       List<Log> logList,
       long gasUsed) {
-    RlpTxrcptChunk chunk = new RlpTxrcptChunk(tx.getType(), isSuccessful, gasUsed, logList);
+    RlpTxrcptChunk chunk =
+        new RlpTxrcptChunk(
+            tx.getType(),
+            isSuccessful,
+            this.txnData.cumulatedGasUsed.lastElement().longValue(),
+            logList);
     this.chunkList.add(chunk);
   }
 

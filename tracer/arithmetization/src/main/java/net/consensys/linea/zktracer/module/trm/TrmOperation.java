@@ -57,7 +57,7 @@ public class TrmOperation extends ModuleOperation {
           .trmAddressHi(trmHi)
           .accHi(this.rawAddress.hi().slice(0, ct + 1))
           .accLo(this.rawAddress.lo().slice(0, ct + 1))
-          .accT(trmHiBytes.slice(0, ct + 1))
+          .accT(trmHiBytes.slice(0, ct + 1).trimLeadingZeros().toLong())
           .byteHi(UnsignedByte.of(this.rawAddress.hi().get(ct)))
           .byteLo(UnsignedByte.of(this.rawAddress.lo().get(ct)))
           .one(ones.get(ct))

@@ -73,7 +73,7 @@ public final class BytecodeRunner {
             .sender(senderAccount)
             .to(receiverAccount)
             .keyPair(keyPair)
-            .gasLimit(50_000_000_000L)
+            .gasLimit(25000000L)
             .build();
 
     final ToyWorld toyWorld =

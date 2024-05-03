@@ -31,6 +31,14 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
+  public static final int EC_DATA_PHASE_ECADD_DATA = 0x3;
+  public static final int EC_DATA_PHASE_ECADD_RESULT = 0x4;
+  public static final int EC_DATA_PHASE_ECMUL_DATA = 0x5;
+  public static final int EC_DATA_PHASE_ECMUL_RESULT = 0x6;
+  public static final int EC_DATA_PHASE_ECRECOVER_DATA = 0x1;
+  public static final int EC_DATA_PHASE_ECRECOVER_RESULT = 0x2;
+  public static final int EC_DATA_PHASE_PAIRING_DATA = 0x7;
+  public static final int EC_DATA_PHASE_PAIRING_RESULT = 0x8;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
       new BigInteger("16434357337474432580558001204043214908");
@@ -324,21 +332,21 @@ public class Trace {
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
   public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
-  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
-  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
-  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
-  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
-  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
-  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
-  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
-  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
-  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
-  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
-  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
-  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
-  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
-  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
-  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST = 0xb;
+  public static final int RLP_TXN_PHASE_BETA = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID = 0x2;
+  public static final int RLP_TXN_PHASE_DATA = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE = 0x3;
+  public static final int RLP_TXN_PHASE_R = 0xe;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX = 0x1;
+  public static final int RLP_TXN_PHASE_S = 0xf;
+  public static final int RLP_TXN_PHASE_TO = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y = 0xd;
   public static final int WCP_INST_GEQ = 0xe;
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
@@ -372,6 +380,21 @@ public class Trace {
   private final MappedByteBuffer indexLx;
   private final MappedByteBuffer input1;
   private final MappedByteBuffer input2;
+  private final MappedByteBuffer isPhaseAccessList;
+  private final MappedByteBuffer isPhaseBeta;
+  private final MappedByteBuffer isPhaseChainId;
+  private final MappedByteBuffer isPhaseData;
+  private final MappedByteBuffer isPhaseGasLimit;
+  private final MappedByteBuffer isPhaseGasPrice;
+  private final MappedByteBuffer isPhaseMaxFeePerGas;
+  private final MappedByteBuffer isPhaseMaxPriorityFeePerGas;
+  private final MappedByteBuffer isPhaseNonce;
+  private final MappedByteBuffer isPhaseR;
+  private final MappedByteBuffer isPhaseRlpPrefix;
+  private final MappedByteBuffer isPhaseS;
+  private final MappedByteBuffer isPhaseTo;
+  private final MappedByteBuffer isPhaseValue;
+  private final MappedByteBuffer isPhaseY;
   private final MappedByteBuffer isPrefix;
   private final MappedByteBuffer lcCorrection;
   private final MappedByteBuffer limb;
@@ -383,23 +406,8 @@ public class Trace {
   private final MappedByteBuffer nKeys;
   private final MappedByteBuffer nKeysPerAddr;
   private final MappedByteBuffer nStep;
-  private final MappedByteBuffer phase1;
-  private final MappedByteBuffer phase10;
-  private final MappedByteBuffer phase11;
-  private final MappedByteBuffer phase12;
-  private final MappedByteBuffer phase13;
-  private final MappedByteBuffer phase14;
-  private final MappedByteBuffer phase15;
-  private final MappedByteBuffer phase2;
-  private final MappedByteBuffer phase3;
-  private final MappedByteBuffer phase4;
-  private final MappedByteBuffer phase5;
-  private final MappedByteBuffer phase6;
-  private final MappedByteBuffer phase7;
-  private final MappedByteBuffer phase8;
-  private final MappedByteBuffer phase9;
+  private final MappedByteBuffer phase;
   private final MappedByteBuffer phaseEnd;
-  private final MappedByteBuffer phaseId;
   private final MappedByteBuffer phaseSize;
   private final MappedByteBuffer power;
   private final MappedByteBuffer requiresEvmExecution;
@@ -435,6 +443,21 @@ public class Trace {
         new ColumnHeader("rlptxn.INDEX_LX", 8, length),
         new ColumnHeader("rlptxn.INPUT_1", 32, length),
         new ColumnHeader("rlptxn.INPUT_2", 32, length),
+        new ColumnHeader("rlptxn.IS_PHASE_ACCESS_LIST", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_BETA", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_CHAIN_ID", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_DATA", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_GAS_LIMIT", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_GAS_PRICE", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_MAX_FEE_PER_GAS", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_MAX_PRIORITY_FEE_PER_GAS", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_NONCE", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_R", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_RLP_PREFIX", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_S", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_TO", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_VALUE", 1, length),
+        new ColumnHeader("rlptxn.IS_PHASE_Y", 1, length),
         new ColumnHeader("rlptxn.IS_PREFIX", 1, length),
         new ColumnHeader("rlptxn.LC_CORRECTION", 1, length),
         new ColumnHeader("rlptxn.LIMB", 32, length),
@@ -446,23 +469,8 @@ public class Trace {
         new ColumnHeader("rlptxn.nKEYS", 4, length),
         new ColumnHeader("rlptxn.nKEYS_PER_ADDR", 4, length),
         new ColumnHeader("rlptxn.nSTEP", 2, length),
-        new ColumnHeader("rlptxn.PHASE_1", 1, length),
-        new ColumnHeader("rlptxn.PHASE_10", 1, length),
-        new ColumnHeader("rlptxn.PHASE_11", 1, length),
-        new ColumnHeader("rlptxn.PHASE_12", 1, length),
-        new ColumnHeader("rlptxn.PHASE_13", 1, length),
-        new ColumnHeader("rlptxn.PHASE_14", 1, length),
-        new ColumnHeader("rlptxn.PHASE_15", 1, length),
-        new ColumnHeader("rlptxn.PHASE_2", 1, length),
-        new ColumnHeader("rlptxn.PHASE_3", 1, length),
-        new ColumnHeader("rlptxn.PHASE_4", 1, length),
-        new ColumnHeader("rlptxn.PHASE_5", 1, length),
-        new ColumnHeader("rlptxn.PHASE_6", 1, length),
-        new ColumnHeader("rlptxn.PHASE_7", 1, length),
-        new ColumnHeader("rlptxn.PHASE_8", 1, length),
-        new ColumnHeader("rlptxn.PHASE_9", 1, length),
+        new ColumnHeader("rlptxn.PHASE", 2, length),
         new ColumnHeader("rlptxn.PHASE_END", 1, length),
-        new ColumnHeader("rlptxn.PHASE_ID", 2, length),
         new ColumnHeader("rlptxn.PHASE_SIZE", 8, length),
         new ColumnHeader("rlptxn.POWER", 32, length),
         new ColumnHeader("rlptxn.REQUIRES_EVM_EXECUTION", 1, length),
@@ -498,34 +506,34 @@ public class Trace {
     this.indexLx = buffers.get(22);
     this.input1 = buffers.get(23);
     this.input2 = buffers.get(24);
-    this.isPrefix = buffers.get(25);
-    this.lcCorrection = buffers.get(26);
-    this.limb = buffers.get(27);
-    this.limbConstructed = buffers.get(28);
-    this.lt = buffers.get(29);
-    this.lx = buffers.get(30);
-    this.nAddr = buffers.get(31);
-    this.nBytes = buffers.get(32);
-    this.nKeys = buffers.get(33);
-    this.nKeysPerAddr = buffers.get(34);
-    this.nStep = buffers.get(35);
-    this.phase1 = buffers.get(36);
-    this.phase10 = buffers.get(37);
-    this.phase11 = buffers.get(38);
-    this.phase12 = buffers.get(39);
-    this.phase13 = buffers.get(40);
-    this.phase14 = buffers.get(41);
-    this.phase15 = buffers.get(42);
-    this.phase2 = buffers.get(43);
-    this.phase3 = buffers.get(44);
-    this.phase4 = buffers.get(45);
-    this.phase5 = buffers.get(46);
-    this.phase6 = buffers.get(47);
-    this.phase7 = buffers.get(48);
-    this.phase8 = buffers.get(49);
-    this.phase9 = buffers.get(50);
-    this.phaseEnd = buffers.get(51);
-    this.phaseId = buffers.get(52);
+    this.isPhaseAccessList = buffers.get(25);
+    this.isPhaseBeta = buffers.get(26);
+    this.isPhaseChainId = buffers.get(27);
+    this.isPhaseData = buffers.get(28);
+    this.isPhaseGasLimit = buffers.get(29);
+    this.isPhaseGasPrice = buffers.get(30);
+    this.isPhaseMaxFeePerGas = buffers.get(31);
+    this.isPhaseMaxPriorityFeePerGas = buffers.get(32);
+    this.isPhaseNonce = buffers.get(33);
+    this.isPhaseR = buffers.get(34);
+    this.isPhaseRlpPrefix = buffers.get(35);
+    this.isPhaseS = buffers.get(36);
+    this.isPhaseTo = buffers.get(37);
+    this.isPhaseValue = buffers.get(38);
+    this.isPhaseY = buffers.get(39);
+    this.isPrefix = buffers.get(40);
+    this.lcCorrection = buffers.get(41);
+    this.limb = buffers.get(42);
+    this.limbConstructed = buffers.get(43);
+    this.lt = buffers.get(44);
+    this.lx = buffers.get(45);
+    this.nAddr = buffers.get(46);
+    this.nBytes = buffers.get(47);
+    this.nKeys = buffers.get(48);
+    this.nKeysPerAddr = buffers.get(49);
+    this.nStep = buffers.get(50);
+    this.phase = buffers.get(51);
+    this.phaseEnd = buffers.get(52);
     this.phaseSize = buffers.get(53);
     this.power = buffers.get(54);
     this.requiresEvmExecution = buffers.get(55);
@@ -871,11 +879,191 @@ public class Trace {
     return this;
   }
 
-  public Trace isPrefix(final Boolean b) {
+  public Trace isPhaseAccessList(final Boolean b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("rlptxn.IS_PREFIX already set");
+      throw new IllegalStateException("rlptxn.IS_PHASE_ACCESS_LIST already set");
     } else {
       filled.set(25);
+    }
+
+    isPhaseAccessList.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseBeta(final Boolean b) {
+    if (filled.get(26)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_BETA already set");
+    } else {
+      filled.set(26);
+    }
+
+    isPhaseBeta.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseChainId(final Boolean b) {
+    if (filled.get(27)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_CHAIN_ID already set");
+    } else {
+      filled.set(27);
+    }
+
+    isPhaseChainId.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseData(final Boolean b) {
+    if (filled.get(28)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_DATA already set");
+    } else {
+      filled.set(28);
+    }
+
+    isPhaseData.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseGasLimit(final Boolean b) {
+    if (filled.get(29)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_GAS_LIMIT already set");
+    } else {
+      filled.set(29);
+    }
+
+    isPhaseGasLimit.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseGasPrice(final Boolean b) {
+    if (filled.get(30)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_GAS_PRICE already set");
+    } else {
+      filled.set(30);
+    }
+
+    isPhaseGasPrice.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseMaxFeePerGas(final Boolean b) {
+    if (filled.get(31)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_MAX_FEE_PER_GAS already set");
+    } else {
+      filled.set(31);
+    }
+
+    isPhaseMaxFeePerGas.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseMaxPriorityFeePerGas(final Boolean b) {
+    if (filled.get(32)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_MAX_PRIORITY_FEE_PER_GAS already set");
+    } else {
+      filled.set(32);
+    }
+
+    isPhaseMaxPriorityFeePerGas.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseNonce(final Boolean b) {
+    if (filled.get(33)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_NONCE already set");
+    } else {
+      filled.set(33);
+    }
+
+    isPhaseNonce.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseR(final Boolean b) {
+    if (filled.get(34)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_R already set");
+    } else {
+      filled.set(34);
+    }
+
+    isPhaseR.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseRlpPrefix(final Boolean b) {
+    if (filled.get(35)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_RLP_PREFIX already set");
+    } else {
+      filled.set(35);
+    }
+
+    isPhaseRlpPrefix.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseS(final Boolean b) {
+    if (filled.get(36)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_S already set");
+    } else {
+      filled.set(36);
+    }
+
+    isPhaseS.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseTo(final Boolean b) {
+    if (filled.get(37)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_TO already set");
+    } else {
+      filled.set(37);
+    }
+
+    isPhaseTo.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseValue(final Boolean b) {
+    if (filled.get(38)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_VALUE already set");
+    } else {
+      filled.set(38);
+    }
+
+    isPhaseValue.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPhaseY(final Boolean b) {
+    if (filled.get(39)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_Y already set");
+    } else {
+      filled.set(39);
+    }
+
+    isPhaseY.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace isPrefix(final Boolean b) {
+    if (filled.get(40)) {
+      throw new IllegalStateException("rlptxn.IS_PREFIX already set");
+    } else {
+      filled.set(40);
     }
 
     isPrefix.put((byte) (b ? 1 : 0));
@@ -884,10 +1072,10 @@ public class Trace {
   }
 
   public Trace lcCorrection(final Boolean b) {
-    if (filled.get(26)) {
+    if (filled.get(41)) {
       throw new IllegalStateException("rlptxn.LC_CORRECTION already set");
     } else {
-      filled.set(26);
+      filled.set(41);
     }
 
     lcCorrection.put((byte) (b ? 1 : 0));
@@ -896,10 +1084,10 @@ public class Trace {
   }
 
   public Trace limb(final Bytes b) {
-    if (filled.get(27)) {
+    if (filled.get(42)) {
       throw new IllegalStateException("rlptxn.LIMB already set");
     } else {
-      filled.set(27);
+      filled.set(42);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -912,10 +1100,10 @@ public class Trace {
   }
 
   public Trace limbConstructed(final Boolean b) {
-    if (filled.get(28)) {
+    if (filled.get(43)) {
       throw new IllegalStateException("rlptxn.LIMB_CONSTRUCTED already set");
     } else {
-      filled.set(28);
+      filled.set(43);
     }
 
     limbConstructed.put((byte) (b ? 1 : 0));
@@ -924,10 +1112,10 @@ public class Trace {
   }
 
   public Trace lt(final Boolean b) {
-    if (filled.get(29)) {
+    if (filled.get(44)) {
       throw new IllegalStateException("rlptxn.LT already set");
     } else {
-      filled.set(29);
+      filled.set(44);
     }
 
     lt.put((byte) (b ? 1 : 0));
@@ -936,10 +1124,10 @@ public class Trace {
   }
 
   public Trace lx(final Boolean b) {
-    if (filled.get(30)) {
+    if (filled.get(45)) {
       throw new IllegalStateException("rlptxn.LX already set");
     } else {
-      filled.set(30);
+      filled.set(45);
     }
 
     lx.put((byte) (b ? 1 : 0));
@@ -1007,206 +1195,26 @@ public class Trace {
     return this;
   }
 
-  public Trace phase1(final Boolean b) {
-    if (filled.get(31)) {
-      throw new IllegalStateException("rlptxn.PHASE_1 already set");
+  public Trace phase(final short b) {
+    if (filled.get(46)) {
+      throw new IllegalStateException("rlptxn.PHASE already set");
     } else {
-      filled.set(31);
+      filled.set(46);
     }
 
-    phase1.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase10(final Boolean b) {
-    if (filled.get(32)) {
-      throw new IllegalStateException("rlptxn.PHASE_10 already set");
-    } else {
-      filled.set(32);
-    }
-
-    phase10.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase11(final Boolean b) {
-    if (filled.get(33)) {
-      throw new IllegalStateException("rlptxn.PHASE_11 already set");
-    } else {
-      filled.set(33);
-    }
-
-    phase11.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase12(final Boolean b) {
-    if (filled.get(34)) {
-      throw new IllegalStateException("rlptxn.PHASE_12 already set");
-    } else {
-      filled.set(34);
-    }
-
-    phase12.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase13(final Boolean b) {
-    if (filled.get(35)) {
-      throw new IllegalStateException("rlptxn.PHASE_13 already set");
-    } else {
-      filled.set(35);
-    }
-
-    phase13.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase14(final Boolean b) {
-    if (filled.get(36)) {
-      throw new IllegalStateException("rlptxn.PHASE_14 already set");
-    } else {
-      filled.set(36);
-    }
-
-    phase14.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase15(final Boolean b) {
-    if (filled.get(37)) {
-      throw new IllegalStateException("rlptxn.PHASE_15 already set");
-    } else {
-      filled.set(37);
-    }
-
-    phase15.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase2(final Boolean b) {
-    if (filled.get(38)) {
-      throw new IllegalStateException("rlptxn.PHASE_2 already set");
-    } else {
-      filled.set(38);
-    }
-
-    phase2.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase3(final Boolean b) {
-    if (filled.get(39)) {
-      throw new IllegalStateException("rlptxn.PHASE_3 already set");
-    } else {
-      filled.set(39);
-    }
-
-    phase3.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase4(final Boolean b) {
-    if (filled.get(40)) {
-      throw new IllegalStateException("rlptxn.PHASE_4 already set");
-    } else {
-      filled.set(40);
-    }
-
-    phase4.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase5(final Boolean b) {
-    if (filled.get(41)) {
-      throw new IllegalStateException("rlptxn.PHASE_5 already set");
-    } else {
-      filled.set(41);
-    }
-
-    phase5.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase6(final Boolean b) {
-    if (filled.get(42)) {
-      throw new IllegalStateException("rlptxn.PHASE_6 already set");
-    } else {
-      filled.set(42);
-    }
-
-    phase6.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase7(final Boolean b) {
-    if (filled.get(43)) {
-      throw new IllegalStateException("rlptxn.PHASE_7 already set");
-    } else {
-      filled.set(43);
-    }
-
-    phase7.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase8(final Boolean b) {
-    if (filled.get(44)) {
-      throw new IllegalStateException("rlptxn.PHASE_8 already set");
-    } else {
-      filled.set(44);
-    }
-
-    phase8.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phase9(final Boolean b) {
-    if (filled.get(45)) {
-      throw new IllegalStateException("rlptxn.PHASE_9 already set");
-    } else {
-      filled.set(45);
-    }
-
-    phase9.put((byte) (b ? 1 : 0));
+    phase.putShort(b);
 
     return this;
   }
 
   public Trace phaseEnd(final Boolean b) {
-    if (filled.get(46)) {
-      throw new IllegalStateException("rlptxn.PHASE_END already set");
-    } else {
-      filled.set(46);
-    }
-
-    phaseEnd.put((byte) (b ? 1 : 0));
-
-    return this;
-  }
-
-  public Trace phaseId(final short b) {
     if (filled.get(47)) {
-      throw new IllegalStateException("rlptxn.PHASE_ID already set");
+      throw new IllegalStateException("rlptxn.PHASE_END already set");
     } else {
       filled.set(47);
     }
 
-    phaseId.putShort(b);
+    phaseEnd.put((byte) (b ? 1 : 0));
 
     return this;
   }
@@ -1401,26 +1409,87 @@ public class Trace {
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("rlptxn.IS_PREFIX has not been filled");
+      throw new IllegalStateException("rlptxn.IS_PHASE_ACCESS_LIST has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("rlptxn.LC_CORRECTION has not been filled");
+      throw new IllegalStateException("rlptxn.IS_PHASE_BETA has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("rlptxn.LIMB has not been filled");
+      throw new IllegalStateException("rlptxn.IS_PHASE_CHAIN_ID has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("rlptxn.LIMB_CONSTRUCTED has not been filled");
+      throw new IllegalStateException("rlptxn.IS_PHASE_DATA has not been filled");
     }
 
     if (!filled.get(29)) {
-      throw new IllegalStateException("rlptxn.LT has not been filled");
+      throw new IllegalStateException("rlptxn.IS_PHASE_GAS_LIMIT has not been filled");
     }
 
     if (!filled.get(30)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_GAS_PRICE has not been filled");
+    }
+
+    if (!filled.get(31)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_MAX_FEE_PER_GAS has not been filled");
+    }
+
+    if (!filled.get(32)) {
+      throw new IllegalStateException(
+          "rlptxn.IS_PHASE_MAX_PRIORITY_FEE_PER_GAS has not been filled");
+    }
+
+    if (!filled.get(33)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_NONCE has not been filled");
+    }
+
+    if (!filled.get(34)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_R has not been filled");
+    }
+
+    if (!filled.get(35)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_RLP_PREFIX has not been filled");
+    }
+
+    if (!filled.get(36)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_S has not been filled");
+    }
+
+    if (!filled.get(37)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_TO has not been filled");
+    }
+
+    if (!filled.get(38)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_VALUE has not been filled");
+    }
+
+    if (!filled.get(39)) {
+      throw new IllegalStateException("rlptxn.IS_PHASE_Y has not been filled");
+    }
+
+    if (!filled.get(40)) {
+      throw new IllegalStateException("rlptxn.IS_PREFIX has not been filled");
+    }
+
+    if (!filled.get(41)) {
+      throw new IllegalStateException("rlptxn.LC_CORRECTION has not been filled");
+    }
+
+    if (!filled.get(42)) {
+      throw new IllegalStateException("rlptxn.LIMB has not been filled");
+    }
+
+    if (!filled.get(43)) {
+      throw new IllegalStateException("rlptxn.LIMB_CONSTRUCTED has not been filled");
+    }
+
+    if (!filled.get(44)) {
+      throw new IllegalStateException("rlptxn.LT has not been filled");
+    }
+
+    if (!filled.get(45)) {
       throw new IllegalStateException("rlptxn.LX has not been filled");
     }
 
@@ -1444,72 +1513,12 @@ public class Trace {
       throw new IllegalStateException("rlptxn.nSTEP has not been filled");
     }
 
-    if (!filled.get(31)) {
-      throw new IllegalStateException("rlptxn.PHASE_1 has not been filled");
-    }
-
-    if (!filled.get(32)) {
-      throw new IllegalStateException("rlptxn.PHASE_10 has not been filled");
-    }
-
-    if (!filled.get(33)) {
-      throw new IllegalStateException("rlptxn.PHASE_11 has not been filled");
-    }
-
-    if (!filled.get(34)) {
-      throw new IllegalStateException("rlptxn.PHASE_12 has not been filled");
-    }
-
-    if (!filled.get(35)) {
-      throw new IllegalStateException("rlptxn.PHASE_13 has not been filled");
-    }
-
-    if (!filled.get(36)) {
-      throw new IllegalStateException("rlptxn.PHASE_14 has not been filled");
-    }
-
-    if (!filled.get(37)) {
-      throw new IllegalStateException("rlptxn.PHASE_15 has not been filled");
-    }
-
-    if (!filled.get(38)) {
-      throw new IllegalStateException("rlptxn.PHASE_2 has not been filled");
-    }
-
-    if (!filled.get(39)) {
-      throw new IllegalStateException("rlptxn.PHASE_3 has not been filled");
-    }
-
-    if (!filled.get(40)) {
-      throw new IllegalStateException("rlptxn.PHASE_4 has not been filled");
-    }
-
-    if (!filled.get(41)) {
-      throw new IllegalStateException("rlptxn.PHASE_5 has not been filled");
-    }
-
-    if (!filled.get(42)) {
-      throw new IllegalStateException("rlptxn.PHASE_6 has not been filled");
-    }
-
-    if (!filled.get(43)) {
-      throw new IllegalStateException("rlptxn.PHASE_7 has not been filled");
-    }
-
-    if (!filled.get(44)) {
-      throw new IllegalStateException("rlptxn.PHASE_8 has not been filled");
-    }
-
-    if (!filled.get(45)) {
-      throw new IllegalStateException("rlptxn.PHASE_9 has not been filled");
-    }
-
     if (!filled.get(46)) {
-      throw new IllegalStateException("rlptxn.PHASE_END has not been filled");
+      throw new IllegalStateException("rlptxn.PHASE has not been filled");
     }
 
     if (!filled.get(47)) {
-      throw new IllegalStateException("rlptxn.PHASE_ID has not been filled");
+      throw new IllegalStateException("rlptxn.PHASE_END has not been filled");
     }
 
     if (!filled.get(48)) {
@@ -1648,26 +1657,86 @@ public class Trace {
     }
 
     if (!filled.get(25)) {
-      isPrefix.position(isPrefix.position() + 1);
+      isPhaseAccessList.position(isPhaseAccessList.position() + 1);
     }
 
     if (!filled.get(26)) {
-      lcCorrection.position(lcCorrection.position() + 1);
+      isPhaseBeta.position(isPhaseBeta.position() + 1);
     }
 
     if (!filled.get(27)) {
-      limb.position(limb.position() + 32);
+      isPhaseChainId.position(isPhaseChainId.position() + 1);
     }
 
     if (!filled.get(28)) {
-      limbConstructed.position(limbConstructed.position() + 1);
+      isPhaseData.position(isPhaseData.position() + 1);
     }
 
     if (!filled.get(29)) {
-      lt.position(lt.position() + 1);
+      isPhaseGasLimit.position(isPhaseGasLimit.position() + 1);
     }
 
     if (!filled.get(30)) {
+      isPhaseGasPrice.position(isPhaseGasPrice.position() + 1);
+    }
+
+    if (!filled.get(31)) {
+      isPhaseMaxFeePerGas.position(isPhaseMaxFeePerGas.position() + 1);
+    }
+
+    if (!filled.get(32)) {
+      isPhaseMaxPriorityFeePerGas.position(isPhaseMaxPriorityFeePerGas.position() + 1);
+    }
+
+    if (!filled.get(33)) {
+      isPhaseNonce.position(isPhaseNonce.position() + 1);
+    }
+
+    if (!filled.get(34)) {
+      isPhaseR.position(isPhaseR.position() + 1);
+    }
+
+    if (!filled.get(35)) {
+      isPhaseRlpPrefix.position(isPhaseRlpPrefix.position() + 1);
+    }
+
+    if (!filled.get(36)) {
+      isPhaseS.position(isPhaseS.position() + 1);
+    }
+
+    if (!filled.get(37)) {
+      isPhaseTo.position(isPhaseTo.position() + 1);
+    }
+
+    if (!filled.get(38)) {
+      isPhaseValue.position(isPhaseValue.position() + 1);
+    }
+
+    if (!filled.get(39)) {
+      isPhaseY.position(isPhaseY.position() + 1);
+    }
+
+    if (!filled.get(40)) {
+      isPrefix.position(isPrefix.position() + 1);
+    }
+
+    if (!filled.get(41)) {
+      lcCorrection.position(lcCorrection.position() + 1);
+    }
+
+    if (!filled.get(42)) {
+      limb.position(limb.position() + 32);
+    }
+
+    if (!filled.get(43)) {
+      limbConstructed.position(limbConstructed.position() + 1);
+    }
+
+    if (!filled.get(44)) {
+      lt.position(lt.position() + 1);
+    }
+
+    if (!filled.get(45)) {
       lx.position(lx.position() + 1);
     }
 
@@ -1691,72 +1760,12 @@ public class Trace {
       nStep.position(nStep.position() + 2);
     }
 
-    if (!filled.get(31)) {
-      phase1.position(phase1.position() + 1);
-    }
-
-    if (!filled.get(32)) {
-      phase10.position(phase10.position() + 1);
-    }
-
-    if (!filled.get(33)) {
-      phase11.position(phase11.position() + 1);
-    }
-
-    if (!filled.get(34)) {
-      phase12.position(phase12.position() + 1);
-    }
-
-    if (!filled.get(35)) {
-      phase13.position(phase13.position() + 1);
-    }
-
-    if (!filled.get(36)) {
-      phase14.position(phase14.position() + 1);
-    }
-
-    if (!filled.get(37)) {
-      phase15.position(phase15.position() + 1);
-    }
-
-    if (!filled.get(38)) {
-      phase2.position(phase2.position() + 1);
-    }
-
-    if (!filled.get(39)) {
-      phase3.position(phase3.position() + 1);
-    }
-
-    if (!filled.get(40)) {
-      phase4.position(phase4.position() + 1);
-    }
-
-    if (!filled.get(41)) {
-      phase5.position(phase5.position() + 1);
-    }
-
-    if (!filled.get(42)) {
-      phase6.position(phase6.position() + 1);
-    }
-
-    if (!filled.get(43)) {
-      phase7.position(phase7.position() + 1);
-    }
-
-    if (!filled.get(44)) {
-      phase8.position(phase8.position() + 1);
-    }
-
-    if (!filled.get(45)) {
-      phase9.position(phase9.position() + 1);
-    }
-
     if (!filled.get(46)) {
-      phaseEnd.position(phaseEnd.position() + 1);
+      phase.position(phase.position() + 2);
     }
 
     if (!filled.get(47)) {
-      phaseId.position(phaseId.position() + 2);
+      phaseEnd.position(phaseEnd.position() + 1);
     }
 
     if (!filled.get(48)) {

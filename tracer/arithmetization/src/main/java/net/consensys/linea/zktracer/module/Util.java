@@ -157,7 +157,7 @@ public class Util {
    * @param txType
    * @return transaction type
    */
-  public static int getTxTypeAsInt(TransactionType txType) {
+  public static short getTxTypeAsInt(TransactionType txType) {
     return switch (txType) {
       case FRONTIER -> 0;
       case ACCESS_LIST -> 1;

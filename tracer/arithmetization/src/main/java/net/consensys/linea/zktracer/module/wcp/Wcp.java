@@ -15,8 +15,12 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.EQbv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.GEQbv;
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.GTbv;
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.ISZERObv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.LEQbv;
+import static net.consensys.linea.zktracer.module.wcp.WcpOperation.LTbv;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -83,57 +87,65 @@ public class Wcp implements Module {
     return this.operations.lineCount();
   }
 
-  public boolean callLT(Bytes32 arg1, Bytes32 arg2) {
-    this.operations.add(new WcpOperation(OpCode.LT.byteValue(), arg1, arg2));
+  public boolean callLT(final Bytes32 arg1, final Bytes32 arg2) {
+    this.operations.add(new WcpOperation(LTbv, arg1, arg2));
     return arg1.compareTo(arg2) < 0;
   }
 
-  public boolean callLT(Bytes arg1, Bytes arg2) {
+  public boolean callLT(final Bytes arg1, final Bytes arg2) {
     return this.callLT(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
   }
 
-  public boolean callLT(int arg1, int arg2) {
+  public boolean callLT(final int arg1, final int arg2) {
     return this.callLT(Bytes.ofUnsignedLong(arg1), Bytes.ofUnsignedLong(arg2));
   }
 
-  public boolean callGT(Bytes32 arg1, Bytes32 arg2) {
-    this.operations.add(new WcpOperation(OpCode.GT.byteValue(), arg1, arg2));
+  public boolean callGT(final Bytes32 arg1, final Bytes32 arg2) {
+    this.operations.add(new WcpOperation(GTbv, arg1, arg2));
     return arg1.compareTo(arg2) > 0;
   }
 
-  public boolean callGT(Bytes arg1, Bytes arg2) {
+  public boolean callGT(final Bytes arg1, final Bytes arg2) {
     return this.callGT(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
   }
 
-  public boolean callGT(int arg1, int arg2) {
+  public boolean callGT(final int arg1, final int arg2) {
     return this.callGT(Bytes.ofUnsignedLong(arg1), Bytes.ofUnsignedLong(arg2));
   }
 
-  public boolean callEQ(Bytes32 arg1, Bytes32 arg2) {
-    this.operations.add(new WcpOperation(OpCode.EQ.byteValue(), arg1, arg2));
+  public boolean callEQ(final Bytes32 arg1, final Bytes32 arg2) {
+    this.operations.add(new WcpOperation(EQbv, arg1, arg2));
     return arg1.compareTo(arg2) == 0;
   }
 
-  public boolean callEQ(Bytes arg1, Bytes arg2) {
+  public boolean callEQ(final Bytes arg1, final Bytes arg2) {
     return this.callEQ(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
   }
 
-  public boolean callISZERO(Bytes32 arg1) {
-    this.operations.add(new WcpOperation(OpCode.ISZERO.byteValue(), arg1, Bytes32.ZERO));
+  public boolean callISZERO(final Bytes32 arg1) {
+    this.operations.add(new WcpOperation(ISZERObv, arg1, Bytes32.ZERO));
     return arg1.isZero();
   }
 
-  public boolean callISZERO(Bytes arg1) {
+  public boolean callISZERO(final Bytes arg1) {
     return this.callISZERO(Bytes32.leftPad(arg1));
   }
 
-  public boolean callLEQ(Bytes32 arg1, Bytes32 arg2) {
+  public boolean callLEQ(final Bytes32 arg1, final Bytes32 arg2) {
     this.operations.add(new WcpOperation(LEQbv, arg1, arg2));
     return arg1.compareTo(arg2) <= 0;
   }
 
-  public boolean callGEQ(Bytes32 arg1, Bytes32 arg2) {
+  public boolean callLEQ(final Bytes arg1, final Bytes arg2) {
+    return this.callLEQ(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
+  }
+
+  public boolean callGEQ(final Bytes32 arg1, final Bytes32 arg2) {
     this.operations.add(new WcpOperation(GEQbv, arg1, arg2));
     return arg1.compareTo(arg2) >= 0;
+  }
+
+  public boolean callGEQ(final Bytes arg1, final Bytes arg2) {
+    return this.callGEQ(Bytes32.leftPad(arg1), Bytes32.leftPad(arg2));
   }
 }

@@ -71,7 +71,7 @@ public class TestRlpAddress {
                   .sender(senderAccount)
                   .keyPair(keyPair)
                   .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+                  .gasLimit(rnd.nextLong(21000, 0xffffL))
                   .payload(initCode)
                   .build());
         }
@@ -84,7 +84,7 @@ public class TestRlpAddress {
                   .keyPair(keyPair)
                   .to(receiverAccount)
                   .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+                  .gasLimit(rnd.nextLong(21000, 0xffffL))
                   .build());
         }
         case 2 -> { // Create2 OpCode
@@ -96,7 +96,7 @@ public class TestRlpAddress {
                   .keyPair(keyPair)
                   .to(receiverAccount)
                   .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+                  .gasLimit(rnd.nextLong(21000, 0xffffL))
                   .build());
         }
       }
