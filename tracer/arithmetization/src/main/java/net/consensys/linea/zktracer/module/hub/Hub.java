@@ -289,9 +289,9 @@ public class Hub implements Module {
                     this.shf,
                     this.stp,
                     this.trm,
+                    this.wcp, /* WARN: must be called BEFORE txnData */
                     this.txnData,
-                    this.rlpTxrcpt, // WARN: must be called AFTER txnData
-                    this.wcp),
+                    this.rlpTxrcpt /* WARN: must be called AFTER txnData */),
                 this.precompileLimitModules.stream())
             .toList();
   }

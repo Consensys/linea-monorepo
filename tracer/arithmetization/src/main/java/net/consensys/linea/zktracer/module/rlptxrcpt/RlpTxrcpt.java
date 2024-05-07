@@ -86,7 +86,7 @@ public class RlpTxrcpt implements Module {
         new RlpTxrcptChunk(
             tx.getType(),
             isSuccessful,
-            this.txnData.cumulatedGasUsed.lastElement().longValue(),
+            this.txnData.cumulatedGasUsed.getFirst().longValue(),
             logList);
     this.chunkList.add(chunk);
   }
