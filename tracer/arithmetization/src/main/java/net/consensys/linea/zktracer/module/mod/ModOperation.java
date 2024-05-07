@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.mod;
 
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
+import static net.consensys.linea.zktracer.module.mod.Trace.MMEDIUM;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -35,7 +36,6 @@ import org.apache.tuweni.units.bigints.UInt64;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ModOperation extends ModuleOperation {
-  private static final int MMEDIUM = 8;
 
   @EqualsAndHashCode.Include private final OpCode opCode;
   @EqualsAndHashCode.Include private final Bytes32 rawArg1;
@@ -56,6 +56,13 @@ public class ModOperation extends ModuleOperation {
   private Boolean[] msb1 = new Boolean[8];
   private Boolean[] msb2 = new Boolean[8];
 
+  private boolean isSigned;
+
+  private boolean isSmod;
+  private boolean isMod;
+  private boolean isSdiv;
+  private boolean isDiv;
+
   public ModOperation(OpCodeData opCodeData, Bytes32 arg1, Bytes32 arg2) {
     this(opCodeData.mnemonic(), arg1, arg2);
   }
@@ -74,6 +81,12 @@ public class ModOperation extends ModuleOperation {
 
     Arrays.fill(msb1, false);
     Arrays.fill(msb2, false);
+
+    isSigned = isSigned();
+    isSdiv = opCode == OpCode.SDIV;
+    isDiv = opCode == OpCode.DIV;
+    isSmod = opCode == OpCode.SMOD;
+    isMod = opCode == OpCode.MOD;
 
     if (!this.oli) {
       this.result = getRes(opCode, this.rawArg1, this.rawArg2);
@@ -114,7 +127,7 @@ public class ModOperation extends ModuleOperation {
   }
 
   private UInt256 absoluteValueIfSignedInst(Bytes32 arg) {
-    if (isSigned()) {
+    if (isSigned) {
       return UInt256.valueOf(arg.toBigInteger().abs());
     }
     return UInt256.fromBytes(arg);
@@ -224,25 +237,29 @@ public class ModOperation extends ModuleOperation {
   public void trace(Trace trace, int stamp) {
     this.compute();
 
-    for (int i = 0; i < this.maxCounter(); i++) {
-      final int accLength = i + 1;
+    for (short ct = 0; ct < this.maxCounter(); ct++) {
+      final int accLength = ct + 1;
       trace
-          .stamp(Bytes.ofUnsignedLong(stamp))
+          .stamp(stamp)
           .oli(this.oli)
-          .ct(Bytes.of(i))
-          .inst(Bytes.of(this.opCode.byteValue()))
-          .decSigned(this.isSigned())
-          .decOutput(this.isDiv())
+          .mli(!this.oli)
+          .ct(ct)
+          .inst(this.opCode.unsignedByteValue())
+          .isSdiv(isSdiv)
+          .isDiv(isDiv)
+          .isSmod(isSmod)
+          .isMod(isMod)
+          .signed(isSigned)
           .arg1Hi(this.arg1.getHigh())
           .arg1Lo(this.arg1.getLow())
           .arg2Hi(this.arg2.getHigh())
           .arg2Lo(this.arg2.getLow())
           .resHi(this.result.getHigh())
           .resLo(this.result.getLow())
-          .acc12(this.arg1.getBytes32().slice(8, i + 1))
-          .acc13(this.arg1.getBytes32().slice(0, i + 1))
-          .acc22(this.arg2.getBytes32().slice(8, i + 1))
-          .acc23(this.arg2.getBytes32().slice(0, i + 1))
+          .acc12(this.arg1.getBytes32().slice(8, ct + 1))
+          .acc13(this.arg1.getBytes32().slice(0, ct + 1))
+          .acc22(this.arg2.getBytes32().slice(8, ct + 1))
+          .acc23(this.arg2.getBytes32().slice(0, ct + 1))
           .accB0(this.bBytes.get(0).slice(0, accLength))
           .accB1(this.bBytes.get(1).slice(0, accLength))
           .accB2(this.bBytes.get(2).slice(0, accLength))
@@ -259,36 +276,36 @@ public class ModOperation extends ModuleOperation {
           .accDelta1(this.dBytes.get(1).slice(0, accLength))
           .accDelta2(this.dBytes.get(2).slice(0, accLength))
           .accDelta3(this.dBytes.get(3).slice(0, accLength))
-          .byte22(UnsignedByte.of(this.arg2.getByte(i + 8)))
-          .byte23(UnsignedByte.of(this.arg2.getByte(i)))
-          .byte12(UnsignedByte.of(this.arg1.getByte(i + 8)))
-          .byte13(UnsignedByte.of(this.arg1.getByte(i)))
-          .byteB0(UnsignedByte.of(this.bBytes.get(0).get(i)))
-          .byteB1(UnsignedByte.of(this.bBytes.get(1).get(i)))
-          .byteB2(UnsignedByte.of(this.bBytes.get(2).get(i)))
-          .byteB3(UnsignedByte.of(this.bBytes.get(3).get(i)))
-          .byteR0(UnsignedByte.of(this.rBytes.get(0).get(i)))
-          .byteR1(UnsignedByte.of(this.rBytes.get(1).get(i)))
-          .byteR2(UnsignedByte.of(this.rBytes.get(2).get(i)))
-          .byteR3(UnsignedByte.of(this.rBytes.get(3).get(i)))
-          .byteQ0(UnsignedByte.of(this.qBytes.get(0).get(i)))
-          .byteQ1(UnsignedByte.of(this.qBytes.get(1).get(i)))
-          .byteQ2(UnsignedByte.of(this.qBytes.get(2).get(i)))
-          .byteQ3(UnsignedByte.of(this.qBytes.get(3).get(i)))
-          .byteDelta0(UnsignedByte.of(this.dBytes.get(0).get(i)))
-          .byteDelta1(UnsignedByte.of(this.dBytes.get(1).get(i)))
-          .byteDelta2(UnsignedByte.of(this.dBytes.get(2).get(i)))
-          .byteDelta3(UnsignedByte.of(this.dBytes.get(3).get(i)))
-          .byteH0(UnsignedByte.of(this.hBytes.get(0).get(i)))
-          .byteH1(UnsignedByte.of(this.hBytes.get(1).get(i)))
-          .byteH2(UnsignedByte.of(this.hBytes.get(2).get(i)))
-          .accH0(Bytes.wrap(this.hBytes.get(0)).slice(0, i + 1))
-          .accH1(Bytes.wrap(this.hBytes.get(1)).slice(0, i + 1))
-          .accH2(Bytes.wrap(this.hBytes.get(2)).slice(0, i + 1))
-          .cmp1(this.cmp1[i])
-          .cmp2(this.cmp2[i])
-          .msb1(this.msb1[i])
-          .msb2(this.msb2[i])
+          .byte22(UnsignedByte.of(this.arg2.getByte(ct + 8)))
+          .byte23(UnsignedByte.of(this.arg2.getByte(ct)))
+          .byte12(UnsignedByte.of(this.arg1.getByte(ct + 8)))
+          .byte13(UnsignedByte.of(this.arg1.getByte(ct)))
+          .byteB0(UnsignedByte.of(this.bBytes.get(0).get(ct)))
+          .byteB1(UnsignedByte.of(this.bBytes.get(1).get(ct)))
+          .byteB2(UnsignedByte.of(this.bBytes.get(2).get(ct)))
+          .byteB3(UnsignedByte.of(this.bBytes.get(3).get(ct)))
+          .byteR0(UnsignedByte.of(this.rBytes.get(0).get(ct)))
+          .byteR1(UnsignedByte.of(this.rBytes.get(1).get(ct)))
+          .byteR2(UnsignedByte.of(this.rBytes.get(2).get(ct)))
+          .byteR3(UnsignedByte.of(this.rBytes.get(3).get(ct)))
+          .byteQ0(UnsignedByte.of(this.qBytes.get(0).get(ct)))
+          .byteQ1(UnsignedByte.of(this.qBytes.get(1).get(ct)))
+          .byteQ2(UnsignedByte.of(this.qBytes.get(2).get(ct)))
+          .byteQ3(UnsignedByte.of(this.qBytes.get(3).get(ct)))
+          .byteDelta0(UnsignedByte.of(this.dBytes.get(0).get(ct)))
+          .byteDelta1(UnsignedByte.of(this.dBytes.get(1).get(ct)))
+          .byteDelta2(UnsignedByte.of(this.dBytes.get(2).get(ct)))
+          .byteDelta3(UnsignedByte.of(this.dBytes.get(3).get(ct)))
+          .byteH0(UnsignedByte.of(this.hBytes.get(0).get(ct)))
+          .byteH1(UnsignedByte.of(this.hBytes.get(1).get(ct)))
+          .byteH2(UnsignedByte.of(this.hBytes.get(2).get(ct)))
+          .accH0(Bytes.wrap(this.hBytes.get(0)).slice(0, ct + 1))
+          .accH1(Bytes.wrap(this.hBytes.get(1)).slice(0, ct + 1))
+          .accH2(Bytes.wrap(this.hBytes.get(2)).slice(0, ct + 1))
+          .cmp1(this.cmp1[ct])
+          .cmp2(this.cmp2[ct])
+          .msb1(this.msb1[ct])
+          .msb2(this.msb2[ct])
           .validateRow();
     }
   }
