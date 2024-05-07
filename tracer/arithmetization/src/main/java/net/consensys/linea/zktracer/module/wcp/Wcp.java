@@ -23,9 +23,10 @@ import static net.consensys.linea.zktracer.module.wcp.WcpOperation.LEQbv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.LTbv;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
@@ -34,12 +35,20 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
-@RequiredArgsConstructor
 public class Wcp implements Module {
   private final StackedSet<WcpOperation> operations = new StackedSet<>();
+  /** count the number of rows that could be added after the sequencer counts the number of line */
+  public final Deque<Integer> additionalRows = new ArrayDeque<>();
 
   private final Hub hub;
+  private boolean batchUnderConstruction;
+
+  public Wcp(Hub hub) {
+    this.hub = hub;
+    this.batchUnderConstruction = true;
+  }
 
   @Override
   public String moduleKey() {
@@ -49,11 +58,18 @@ public class Wcp implements Module {
   @Override
   public void enterTransaction() {
     this.operations.enter();
+    this.additionalRows.push(this.additionalRows.getFirst());
   }
 
   @Override
   public void popTransaction() {
     this.operations.pop();
+    this.additionalRows.pop();
+  }
+
+  @Override
+  public void traceStartConflation(final long blockCount) {
+    this.additionalRows.push(0);
   }
 
   @Override
@@ -83,8 +99,15 @@ public class Wcp implements Module {
   }
 
   @Override
+  public void traceEndConflation(final WorldView state) {
+    this.batchUnderConstruction = false;
+  }
+
+  @Override
   public int lineCount() {
-    return this.operations.lineCount();
+    return batchUnderConstruction
+        ? this.operations.lineCount() + this.additionalRows.getFirst()
+        : this.operations.lineCount();
   }
 
   public boolean callLT(final Bytes32 arg1, final Bytes32 arg2) {

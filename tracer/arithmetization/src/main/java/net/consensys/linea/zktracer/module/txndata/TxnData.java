@@ -21,9 +21,10 @@ import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_2;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
-import java.util.Stack;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
@@ -62,7 +63,7 @@ public class TxnData implements Module {
 
   private final List<BlockSnapshot> blocks = new ArrayList<>();
   /** accumulate the gas used since the beginning of the current block */
-  public final Stack<Integer> cumulatedGasUsed = new Stack<>();
+  public final Deque<Integer> cumulatedGasUsed = new ArrayDeque<>();
 
   @Override
   public void enterTransaction() {
@@ -73,6 +74,12 @@ public class TxnData implements Module {
   public void popTransaction() {
     this.currentBlock().getTxs().pop();
     this.cumulatedGasUsed.pop();
+  }
+
+  @Override
+  public void traceStartConflation(final long blockCount) {
+    this.wcp.additionalRows.push(
+        this.wcp.additionalRows.pop() + 4); /* 4 = byte length of LINEA_BLOCK_GAS_LIMIT */
   }
 
   private BlockSnapshot currentBlock() {
@@ -105,8 +112,8 @@ public class TxnData implements Module {
     final TransactionSnapshot currentTx = this.currentBlock().currentTx();
 
     final int gasUsedMinusRefunded = (int) (currentTx.gasLimit() - currentTx.effectiveGasRefund());
-    this.cumulatedGasUsed.push((this.cumulatedGasUsed.lastElement() + gasUsedMinusRefunded));
-    this.currentBlock().currentTx().cumulativeGasConsumption(this.cumulatedGasUsed.lastElement());
+    this.cumulatedGasUsed.push((this.cumulatedGasUsed.getFirst() + gasUsedMinusRefunded));
+    this.currentBlock().currentTx().cumulativeGasConsumption(this.cumulatedGasUsed.getFirst());
   }
 
   @Override
@@ -116,7 +123,10 @@ public class TxnData implements Module {
 
   @Override
   public int lineCount() {
-    int traceSize = 0;
+    // The last tx of each block has one more rows
+    int traceSize = this.blocks.size();
+
+    // Count the number of rows of each tx, only depending on the type of the transaction
     for (BlockSnapshot block : this.blocks) {
       for (TransactionSnapshot tx : block.getTxs()) {
         switch (tx.type()) {
@@ -125,10 +135,6 @@ public class TxnData implements Module {
           case EIP1559 -> traceSize += NB_ROWS_TYPE_2;
           default -> throw new RuntimeException("Transaction type not supported:" + tx.type());
         }
-      }
-      // The last tx of each block has one more rows
-      if (!block.getTxs().isEmpty()) {
-        traceSize += 1;
       }
     }
     return traceSize;
