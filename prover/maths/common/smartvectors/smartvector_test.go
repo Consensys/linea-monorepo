@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWriteInSlice(t *testing.T) {
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -44,10 +44,10 @@ func TestWriteInSlice(t *testing.T) {
 }
 
 func TestShiftingTest(t *testing.T) {
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -78,11 +78,11 @@ func TestShiftingTest(t *testing.T) {
 
 func TestSubvectorFuzzy(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(

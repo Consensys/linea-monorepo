@@ -5,17 +5,17 @@ import (
 	"math"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
 	"github.com/consensys/gnark/frontend"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -79,6 +79,11 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 	return res
 }
 
+// Name implements the [ifaces.Query] interface
+func (cs GlobalConstraint) Name() ifaces.QueryID {
+	return cs.ID
+}
+
 /*
 Test a polynomial identity relation
 */
@@ -139,7 +144,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
-		case *ifaces.Accessor:
+		case ifaces.Accessor:
 			evalInputs[k] = sv.NewConstant(meta.GetVal(run), cs.DomainSize)
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
@@ -159,25 +164,27 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 
 	for i := start; i < stop; i++ {
 
-		// if i < 7 {
-		// 	input := make([]field.Element, len(evalInputs))
-		// 	for k := range input {
-		// 		input[k] = evalInputs[k].Get(i)
-		// 	}
-		// 	fmt.Printf("(%v) inputs for position %v, %v\n", cs.ID, i, vector.Prettify(input))
-		// }
-
 		resx := res.Get(i)
 		// The proper test
 		if !resx.IsZero() {
-			debugMap := make(map[string]string)
+			s := ""
 
-			for k, metadataInterface := range metadatas {
-				inpx := evalInputs[k].Get(i)
-				debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
+			for j := utils.Max(start, i-15); j < utils.Min(stop, i+15); j++ {
+				debugMap := make(map[string]string)
+				for k, metadataInterface := range metadatas {
+					inpx := evalInputs[k].Get(j)
+					debugMap[string(metadataInterface.String())] = fmt.Sprintf("%v", inpx.String())
+				}
+				if j == i {
+					s += "\n"
+				}
+				s += fmt.Sprintf("%v: %v\n", j, debugMap)
+				if j == i {
+					s += "\n"
+				}
 			}
 
-			return fmt.Errorf("the global constraint check failed at row %v \n\tinput details : %v \n\tres: %v\n\t", i, debugMap, resx.String())
+			return fmt.Errorf("the global constraint check failed at row %v \n\tinput details : %v \n\tres: %v\n\t", i, s, resx.String())
 		}
 	}
 
@@ -188,40 +195,48 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-/*
-Scan the metadatas, performs validation and return the domainSize of the constraint.
-Panic if there is a problem
-*/
+// validatedDomainSize scans the expression of the global constraints and more
+// specifically its inputs and looks for the followings:
+//   - the expression must use at least one [ifaces.Column] as input variable
+//   - all the ifaces.Column input variables must have the same Size
+//
+// If all these checks passes the function returns the size of the [ifaces.Column]
+// inputs that it found.
 func (cs *GlobalConstraint) validatedDomainSize() int {
 
-	boarded := cs.Board()
-	metadatas := boarded.ListVariableMetadata()
-
-	/*
-		Flag assessing is any `Commitment` metadata was found. If None was found,
-		we emit a panic as it is likely a non-usecase.
-	*/
-	foundAny := false
-	domainSize := 0
+	var (
+		boarded   = cs.Board()
+		metadatas = boarded.ListVariableMetadata()
+		// foundAny flags wether the expression has any [ifaces.Column] as input
+		// variables. If there are None, this is invalid and the function will
+		// panic.
+		foundAny   = false
+		domainSize = 0
+		// firstColumnFound stores the name of the first column found in the
+		// expression. This will be used to print more detailled error message
+		// by showing the first column found and the first one that does not
+		// have the same size in the expression.
+		firstColumnFound ifaces.ColID
+	)
 
 	// From the min/max offset
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
 			// All domains should be the same length
 			if !foundAny {
-				// Mark that we found at least one commitment
 				foundAny = true
-				/*
-					We take the first commitment as a reference size, that
-					all the other must have
-				*/
 				domainSize = handle.Size()
+				firstColumnFound = handle.GetColID()
 			}
 
 			// validation of the metadata
 			if handle.Size() != domainSize {
-				utils.Panic("found a commitment %v with domain size %v, but also found domainSize %v", handle.GetColID(), handle.Size(), domainSize)
+				utils.Panic(
+					"found a column `%v` with domain size %v, but also found `%v` with domainSize %v",
+					handle.GetColID(), handle.Size(), firstColumnFound, domainSize,
+				)
 			}
+
 			if handle.Size() == 0 {
 				utils.Panic("size 0 is forbidden (%v)", handle.GetColID())
 			}
@@ -326,7 +341,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
-		case *ifaces.Accessor:
+		case ifaces.Accessor:
 			evalInputs[k] = gnarkutil.RepeatedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
@@ -348,13 +363,6 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			inputs[j] = evalInputs[j][i]
 		}
 		res := boarded.GnarkEval(api, inputs)
-
-		// if i < 7 {
-		// 	toPrint := []frontend.Variable{cs.ID, "pos=", i, "values="}
-		// 	toPrint = append(toPrint, inputs...)
-		// 	toPrint = append(toPrint, "res", res)
-		// 	api.Println(toPrint...)
-		// }
 		api.AssertIsEqual(res, 0)
 	}
 

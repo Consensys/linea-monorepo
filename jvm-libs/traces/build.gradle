@@ -1,11 +1,11 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
-    id 'java-library'
+    id 'net.consensys.zkevm.kotlin-common-conventions'
     id 'java-test-fixtures'
 }
 
 dependencies {
   implementation "org.apache.tuweni:tuweni-units:${versions.tuweni}"
+  implementation project(':jvm-libs:kotlin-extensions')
   testImplementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
   testImplementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
 }

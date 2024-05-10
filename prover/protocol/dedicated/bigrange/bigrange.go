@@ -4,24 +4,46 @@ import (
 	"math/big"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizardutils"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
 )
 
+// BigRange enforces that an input sympolic expression evaluates to values that
+// can be expressed in `numLimbs` limbs of `bitPerLimbs` bits. This is equivalent
+// to enforcing that the values taken by `expr` are within the range
+// [0; 2 ** (numLimbs * bitPerLimbs)]. The string `name` is used to be appended
+// to all the generated queries and columns names to provide some context and
+// to distinguish between different calls to `BigRange`. `BigRange` should never
+// be called twice with the same `name` or it will result in an error stemming
+// from the fact that it would try to create two columns with the same name,
+// which is forbidden.
+//
+// Example:
+//
+// ```
+//
+//	// Enforce that all the values of `col` are within range [0, 2**64]
+//	bigrange.BigRange(comp, ifaces.ColAsVariable(col), 4, 16, "my_context")
+//
+// ```
 func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bitPerLimbs int, name string) {
 
-	limbs := make([]ifaces.Column, numLimbs)
-	round := wizardutils.LastRoundToEval(comp, expr)
-	size := wizardutils.ExprIsOnSameLengthHandles(comp, expr)
+	var (
+		limbs        = make([]ifaces.Column, numLimbs)
+		round        = wizardutils.LastRoundToEval(expr)
+		boarded      = expr.Board()
+		size         = wizardutils.ExprIsOnSameLengthHandles(&boarded)
+		totalNumBits = numLimbs * bitPerLimbs
+	)
 
 	for i := range limbs {
 		// Declare the limbs for the number
@@ -39,7 +61,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 		)
 	}
 
-	// Build the linear combination with power ofs 2^bitPerLimbs.
+	// Build the linear combination with powers of 2^bitPerLimbs.
 	// The limbs are in "little-endian" order. Namely, the first
 	// limb encodes the least significant bits first.
 	pow2 := symbolic.NewConstant(1 << bitPerLimbs)
@@ -52,10 +74,10 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 	// Declare the global constraint
 	comp.InsertGlobal(round, ifaces.QueryIDf("GLOBAL_BIGRANGE_%v", name), acc.Sub(expr))
 
+	// The below prover steps assign the limb values
 	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 
 		// Evaluate the expression we wish to range proof
-		boarded := expr.Board()
 		metadatas := boarded.ListVariableMetadata()
 
 		/*
@@ -95,7 +117,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 				evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
 			case variables.PeriodicSample:
 				evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
-			case *ifaces.Accessor:
+			case ifaces.Accessor:
 				evalInputs[k] = sv.NewConstant(meta.GetVal(run), size)
 			default:
 				utils.Panic("Not a variable type %v in sub-wizard %v", reflect.TypeOf(metadataInterface), name)
@@ -114,6 +136,13 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 			x := resWitness.Get(j)
 			var tmp big.Int
 			x.BigInt(&tmp)
+
+			if tmp.BitLen() > totalNumBits {
+				utils.Panic(
+					"BigRange: cannot prove that the bitLen is smaller than %v : the provided witness has %v bits on position %v (%v)",
+					totalNumBits, tmp.BitLen(), j, x.String(),
+				)
+			}
 
 			for i := 0; i < numLimbs; i++ {
 				l := uint64(0)

@@ -3,14 +3,30 @@ package smartvectors
 import (
 	"sort"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
+// circularInterval represents an interval over a discretized circle. The
+// discretized circle is assumed to be equipped with an origin point; thus
+// allowing to set a unique coordinate for each point.
+//
+//   - The intervals are "cardinal": meaning that the largest possible interval
+//     is the full-circuit
+//   - The empty interval is considered as invalid and should never be constructed
 type circularInterval struct {
-	circleSize, istart, intervalLen int
+	// circleSize is the size of the circle
+	circleSize int
+	// istart is the starting point of the interval (included in the interval).
+	//
+	// istart must always be within the bound of the circle (can't be negative
+	// or be larger or equal to `circleSize`.
+	istart int
+	// intervalLen is length of the interval. Meaning the number of points in
+	// the interval
+	intervalLen int
 }
 
-// Returns an interval spanning on the full length
+// ivalWithFullLen returns an interval representing the full-circle.
 func ivalWithFullLen(n int) circularInterval {
 	return circularInterval{
 		istart:      0,
@@ -19,7 +35,8 @@ func ivalWithFullLen(n int) circularInterval {
 	}
 }
 
-// Constructor of the start/len
+// ivalWithStartLen constructs an interval by passing the start, the len and n
+// being the size of the circle.
 func ivalWithStartLen(start, len, n int) circularInterval {
 	// empty length is forbidden
 	if len == 0 {
@@ -40,7 +57,8 @@ func ivalWithStartLen(start, len, n int) circularInterval {
 	}
 }
 
-// Constructor using start and stop
+// ivalWithStartStop constructs a [circularInterval] by using its starting and
+// stopping points.
 func ivalWithStartStop(start, stop, n int) circularInterval {
 	// empty interval is forbidden
 	if start == stop {
@@ -61,27 +79,27 @@ func ivalWithStartStop(start, stop, n int) circularInterval {
 	}
 }
 
-// Start of the interval
+// Start returns the starting point (included) of the interval
 func (c circularInterval) start() int {
 	return c.istart
 }
 
-// Stop of the interval
+// Stop returns the stopping point (excluded) of the interval of the interval
 func (c circularInterval) stop() int {
 	return utils.PositiveMod(c.istart+c.intervalLen, c.circleSize)
 }
 
-// Returns true iff the interval rolls over
+// doesWrapAround returns true iff the interval rolls over
 func (c circularInterval) doesWrapAround() bool {
 	return c.stop() < c.start()
 }
 
-// Returns true of the interval is the full circle
+// isFullCircle returns true of the interval is the full circle
 func (c circularInterval) isFullCircle() bool {
 	return c.intervalLen == c.circleSize
 }
 
-// Returns true iff p is included in the interval
+// Returns true iff `p` is included in the receiver interval
 func (c circularInterval) doesInclude(p int) bool {
 
 	// forbidden : the point does not belong on the circle
@@ -94,7 +112,7 @@ func (c circularInterval) doesInclude(p int) bool {
 		return true
 	}
 
-	// if roll-over
+	// if the interval wraps around the origin point
 	if c.doesWrapAround() {
 		return p < c.stop() || p >= c.start()
 	}
@@ -103,7 +121,7 @@ func (c circularInterval) doesInclude(p int) bool {
 	return p >= c.start() && p < c.stop()
 }
 
-// Returns true if c fully contains other
+// doesFullyContain returns true if `c` fully contains `other`
 func (c circularInterval) doesFullyContain(other circularInterval) bool {
 
 	// edge case : c is the complete circle
@@ -143,7 +161,7 @@ func (c circularInterval) doesFullyContain(other circularInterval) bool {
 }
 
 /*
-Returns true if the left of `c` touches the right of `other`
+tryOverlapWith returns true if the left of `c` touches the right of `other`
 
 			        c.start-------------c.stop
 							other.start---------other.stop

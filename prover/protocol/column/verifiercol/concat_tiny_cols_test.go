@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,12 +68,6 @@ func TestConcatTinyColRange(t *testing.T) {
 					// naturalization compiler over our column
 					if tc.Shift > 0 {
 						ctc = column.Shift(ctc, tc.Shift)
-					}
-
-					// We apply a shift to force the application of the
-					// naturalization compiler over our column
-					if tc.Repeat > 0 {
-						ctc = column.Repeat(ctc, tc.Repeat)
 					}
 
 					b.Range(QUERY, ctc, tc.NumCols)
@@ -158,12 +152,6 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 					// naturalization compiler over our column
 					if tc.Shift > 0 {
 						ctc = column.Shift(ctc, tc.Shift)
-					}
-
-					// We apply a shift to force the application of the
-					// naturalization compiler over our column
-					if tc.Repeat > 0 {
-						ctc = column.Repeat(ctc, tc.Repeat)
 					}
 
 					b.Range(QUERY, ctc, tc.NumCols)

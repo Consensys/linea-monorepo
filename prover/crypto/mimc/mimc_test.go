@@ -3,8 +3,8 @@ package mimc_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,14 +22,13 @@ func TestMiMCBloc(t *testing.T) {
 		x.SetRandom()
 		xBytes := x.Bytes()
 
-		new := mimc.BlockCompression(old, x)
+		newState := mimc.BlockCompression(old, x)
 
 		hasher.Write(xBytes[:])
 		newBytes := hasher.Sum(nil)
 		var newFromHasher field.Element
 		newFromHasher.SetBytes(newBytes)
 
-		require.Equal(t, newFromHasher.String(), new.String())
+		require.Equal(t, newFromHasher.String(), newState.String())
 	}
-
 }

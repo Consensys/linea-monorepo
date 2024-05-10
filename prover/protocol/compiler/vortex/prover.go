@@ -1,14 +1,15 @@
 package vortex
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/vortex2"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 // Prover steps of Vortex that is run in place of committing to polynomials
@@ -25,31 +26,20 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 	return func(pr *wizard.ProverRuntime) {
 		pols := ctx.getPols(pr, round)
 
-		if !ctx.UseMerkleProof {
-			// Call Vortex in vanilla mode
-			commitment, committedMatrix := ctx.VortexParams.Commit(pols)
-			pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
-			pr.AssignColumn(ctx.CommitmentName(round), smartvectors.NewRegular(commitment))
-			return
+		// Call Vortex in Merkle mode
+		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols)
+		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
+		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
+
+		// Only to be read by the self-recursion compiler.
+		if ctx.IsSelfrecursed {
+			pr.State.InsertNew(string(ctx.CommitmentName(round)), sisDigest)
 		}
 
-		if ctx.UseMerkleProof {
-			// Call Vortex in Merkle mode
-			committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols)
-			pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
-			pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
-
-			// Only to be read by the self-recursion compiler.
-			if ctx.IsSelfrecursed {
-				pr.State.InsertNew(string(ctx.CommitmentName(round)), sisDigest)
-			}
-
-			// And assign the 1-sized column to contain the root
-			var root field.Element
-			root.SetBytes(tree.Root[:])
-			pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(root, 1))
-			return
-		}
+		// And assign the 1-sized column to contain the root
+		var root field.Element
+		root.SetBytes(tree.Root[:])
+		pr.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round)), smartvectors.NewConstant(root, 1))
 	}
 }
 
@@ -57,6 +47,13 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 
 	committedSV := []smartvectors.SmartVector{}
+	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
+			committedSV = append(committedSV, col.GetColAssignment(pr))
+		}
+
+	}
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -65,7 +62,6 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 		if ctx.isDry(round) {
 			continue
 		}
-
 		pols := ctx.getPols(pr, round)
 		committedSV = append(committedSV, pols...)
 	}
@@ -74,17 +70,23 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	randomCoinLC := pr.GetRandomCoinField(ctx.LinCombRandCoinName())
 
 	// and compute and assign the random linear combination of the rows
-	proof := ctx.VortexParams.OpenWithLC(committedSV, randomCoinLC)
+	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)
 	pr.AssignColumn(ctx.LinCombName(), proof.LinearCombination)
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
 func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
-	committedMatrices := []vortex2.CommittedMatrix{}
+	committedMatrices := []vortex.EncodedMatrix{}
 
 	// left at this default value in case ctx.UseMerkleTree == false
 	trees := []*smt.Tree{}
+
+	// Append the precomputed committedMatrices and trees when IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
+		trees = append(trees, ctx.Items.Precomputeds.tree)
+	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there is no need to
@@ -94,21 +96,25 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		}
 
 		// Fetch it from the state
-		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex2.CommittedMatrix)
+		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
 		pr.State.Del(ctx.VortexProverStateName(round))
+		// Fetch it from the state
 		committedMatrices = append(committedMatrices, committedMatrix)
 
-		if ctx.UseMerkleProof {
-			// Also fetches the trees from the prover state
-			tree := pr.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
-			trees = append(trees, tree)
-		}
+		// Also fetches the trees from the prover state
+		tree := pr.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
+		trees = append(trees, tree)
 	}
 
 	entryList := pr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
-	proof := vortex2.Proof{}
-	proof.WithEntryList(committedMatrices, entryList)
+	proof := vortex.OpeningProof{}
+
+	// Merkle mode only:
+	// Amend the Vortex proof with the Merkle proofs and registers
+	// the Merkle proofs in the prover runtime
+	proof.Complete(entryList, committedMatrices, trees)
+
 	selectedCols := proof.Columns
 
 	// The columns are split by commitment round. So we need to
@@ -128,14 +134,8 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		pr.AssignColumn(ctx.SelectedColName(j), assignable)
 	}
 
-	if ctx.UseMerkleProof {
-		// Merkle mode only:
-		// Amend the Vortex proof with the Merkle proofs and registers
-		// the Merkle proofs in the
-		proof.WithMerkleProof(trees, entryList)
-		packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
-		pr.AssignColumn(ctx.MerkleProofName(), packedMProofs)
-	}
+	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
+	pr.AssignColumn(ctx.MerkleProofName(), packedMProofs)
 }
 
 // returns true if the round is dry (i.e, there is nothing to commit to)
@@ -171,10 +171,19 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) smartvectors.SmartVector 
 		)
 	}
 
-	if len(proofs) != ctx.NumCommittedRounds() {
+	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
+	// otherwise len(proofs) = ctx.NumCommittedRounds
+	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsCommitToPrecomputed() {
 		utils.Panic(
 			"inconsitent proofs length %v, %v",
 			len(proofs), ctx.NumCommittedRounds(),
+		)
+	}
+
+	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsCommitToPrecomputed() {
+		utils.Panic(
+			"inconsitent proofs length %v, %v",
+			len(proofs), ctx.NumCommittedRounds()+1,
 		)
 	}
 
@@ -206,6 +215,9 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
+	if ctx.IsCommitToPrecomputed() {
+		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
+	}
 	numEntries := len(entryList)
 
 	proofs = make([][]smt.Proof, numComs)
@@ -216,14 +228,14 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 			// initialize the proof that we are parsing
 			proof := smt.Proof{
 				Path:     entryList[j],
-				Siblings: make([]hashtypes.Digest, depth),
+				Siblings: make([]types.Bytes32, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
 				v := sv.Get(curr)
-				proof.Siblings[depth-k-1] = hashtypes.Digest(v.Bytes())
+				proof.Siblings[depth-k-1] = types.Bytes32(v.Bytes())
 				curr++
 			}
 

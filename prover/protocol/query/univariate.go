@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 )
 
 // Multiple polynomials, one point
@@ -50,6 +50,11 @@ func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval 
 	}
 
 	return UnivariateEval{QueryID: id, Pols: pols}
+}
+
+// Name implements the [ifaces.Query] interface
+func (r UnivariateEval) Name() ifaces.QueryID {
+	return r.QueryID
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters

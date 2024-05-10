@@ -1,21 +1,20 @@
 package vortex
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/vortex2"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) {
-
 	// Evaluate explicitly the public columns
 	ctx.gnarkExplicitPublicEvaluation(api, vr)
 
@@ -26,44 +25,31 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 		return
 	}
 
-	// In Merkle-Mode `commitments` is left as empty
-	commitments := [][]frontend.Variable{}
-
-	if !ctx.UseMerkleProof {
-		// Collect all the commitments : rounds by rounds
-		for round := 0; round <= ctx.MaxCommittedRound; round++ {
-			// There are not included in the commitments so there is no
-			// commitement to look for.
-			if ctx.isDry(round) {
-				continue
-			}
-
-			commitment := vr.GetColumn(ctx.CommitmentName(round))
-			commitments = append(commitments, commitment)
-		}
-	}
-
 	// In non-Merkle mode, this is left as empty
 	roots := []frontend.Variable{}
 
-	if ctx.UseMerkleProof {
-		// Collect all the commitments : rounds by rounds
-		for round := 0; round <= ctx.MaxCommittedRound; round++ {
-			// There are not included in the commitments so there is no
-			// commitement to look for.
-			if ctx.isDry(round) {
-				continue
-			}
+	// Append the precomputed roots when IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+		roots = append(roots, precompRootSv[0])
+	}
 
-			rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector                                // root as a field element
-			roots = append(roots, rootSv[0])
+	// Collect all the commitments : rounds by rounds
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there is no
+		// commitement to look for.
+		if ctx.isDry(round) {
+			continue
 		}
+
+		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
+		roots = append(roots, rootSv[0])
 	}
 
 	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof := vortex2.GProof{}
+	proof := vortex.GProof{}
 	proof.Rate = uint64(ctx.BlowUpFactor)
 	proof.RsDomain = fft.NewDomain(uint64(ctx.NumEncodedCols()))
 	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
@@ -75,61 +61,35 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
 
-	ys := ctx.gnarkGetYs(api, vr)
-
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
 		h := vr.HasherFactory.NewHasher()
 		return &h, nil
 	}
 
-	if !ctx.UseMerkleProof {
+	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	proof.MerkleProofs = ctx.unpackMerkleProofsGnark(packedMProofs, entryList)
 
-		// Setup the vortex parameters for a non-merkle tree verification
-		params := vortex2.GParams{}
-		if ctx.ReplaceSisByMimc {
-			params.NoSisHasher = factoryHasherFunc
-		} else {
-			params.Key = ctx.VortexParams.Key
-		}
-
-		vortex2.GnarkVerify(
-			api,
-			params,
-			commitments,
-			proof.GProofWoMerkle,
-			x,
-			ys,
-			randomCoin,
-			entryList,
-		)
-
+	// pass the parameters for a merkle-mode sis verification
+	params := vortex.GParams{}
+	params.HasherFunc = factoryHasherFunc
+	if ctx.ReplaceSisByMimc {
+		params.NoSisHasher = factoryHasherFunc
+	} else {
+		params.Key = ctx.VortexParams.Key
 	}
 
-	if ctx.UseMerkleProof {
-		packedMProofs := vr.GetColumn(ctx.MerkleProofName())
-		proof.MerkleProofs = ctx.unpackMerkleProofsGnark(packedMProofs, entryList)
+	vortex.GnarkVerifyOpeningWithMerkleProof(
+		api,
+		params,
+		roots,
+		proof,
+		x,
+		ctx.gnarkGetYs(api, vr),
+		randomCoin,
+		entryList,
+	)
 
-		// pass the parameters for a merkle-mode sis verification
-		params := vortex2.GParams{}
-		params.HasherFunc = factoryHasherFunc
-		if ctx.ReplaceSisByMimc {
-			params.NoSisHasher = factoryHasherFunc
-		} else {
-			params.Key = ctx.VortexParams.Key
-		}
-
-		vortex2.GnarkVerifyOpeningWithMerkleProof(
-			api,
-			params,
-			roots,
-			proof,
-			x,
-			ctx.gnarkGetYs(api, vr),
-			randomCoin,
-			entryList,
-		)
-	}
 }
 
 // returns the Ys as a vector
@@ -153,6 +113,26 @@ func (ctx *Ctx) gnarkGetYs(api frontend.API, vr *wizard.WizardVerifierCircuit) (
 
 	ys = [][]frontend.Variable{}
 
+	// add ys for precomputed when IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
+		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
+			names[i] = poly.GetColID()
+		}
+		ysPrecomputed := make([]frontend.Variable, len(names))
+		for i, name := range names {
+			y, yFound := ysMap[name]
+			if !yFound {
+				utils.Panic("was not found: %v", name)
+			}
+			if y == nil {
+				utils.Panic("found Y but it was nil: %v", name)
+			}
+			ysPrecomputed[i] = y
+		}
+		ys = append(ys, ysPrecomputed)
+	}
+
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// again, skip the dry rounds
@@ -163,6 +143,15 @@ func (ctx *Ctx) gnarkGetYs(api frontend.API, vr *wizard.WizardVerifierCircuit) (
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
+			y, yFound := ysMap[name]
+			if !yFound {
+				utils.Panic("was not found: %v", name)
+			}
+
+			if y == nil {
+				utils.Panic("found Y but it was nil: %v", name)
+			}
+
 			ysRounds[i] = ysMap[name]
 		}
 
@@ -186,6 +175,19 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr *wizard.WizardV
 	// Split the columns per commitment for the verification
 	openedSubColumns := [][][]frontend.Variable{}
 	roundStartAt := 0
+
+	// Process precomputed
+	if ctx.IsCommitToPrecomputed() {
+		openedPrecompCols := make([][]frontend.Variable, ctx.NbColsToOpen())
+		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
+		for j := 0; j < ctx.NbColsToOpen(); j++ {
+			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
+		}
+		// update the start counter to ensure we do not pass twice the same row
+		roundStartAt += numPrecomputeds
+		openedSubColumns = append(openedSubColumns, openedPrecompCols)
+
+	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// again, skip the dry rounds
@@ -243,6 +245,10 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []fron
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
+	if ctx.IsCommitToPrecomputed() {
+		numComs += 1
+	}
+
 	numEntries := len(entryList)
 
 	proofs = make([][]smt.GnarkProof, numComs)

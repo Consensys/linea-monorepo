@@ -3,17 +3,18 @@ package merkle
 import (
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 )
 
 // ComputeMod defines by the modules whose responsibility is
@@ -33,6 +34,8 @@ type ComputeMod struct {
 	Name string
 	// Round of the module
 	Round int
+	// withOptProofReuseCheck is true if we want to check reuse of Merkle proofs
+	withOptProofReuseCheck bool
 
 	// Columns of the modules
 	Cols struct {
@@ -68,17 +71,34 @@ type ComputeMod struct {
 		Interm ifaces.Column
 		// NodeHash contains the hash of the parent node.
 		NodeHash ifaces.Column
+		// UseNextMerkleProof has a special structure when we want to reuse the next Merkle proof
+		// and check if two contiguous Merkle proofs are from the same Merkle tree. It is alternatively 1 or 0
+		// in a particular segment strating from 1.
+		UseNextMerkleProof ifaces.Column
+		// The depth expanded version of UseNextMerkleProof is used in the query
+		UseNextMerkleProofExpanded ifaces.Column
+		// Denote the active part of the accumultor
+		IsActiveAccumulator ifaces.Column
+		// The depth expanded version of IsActiveAccumulator is used in the query
+		IsActiveExpanded ifaces.Column
+		// SegmentCounter is constant in a particular proof segment and
+		// increases by 1 in the next segment. It is an optonal column when reuse of Merkle proof
+		// is verified by the accumulator module
+		SegmentCounter ifaces.Column
 	}
-	// Queries of the module
+	// Expressions required to write the queries of the module
 	SugarVar struct {
 		// NotNewProof = 1 - NewProof
 		NotNewProof *symbolic.Expression
 		// IsActive = 1 - IsInactive
 		IsActive *symbolic.Expression
-		// Root
+		// Variables needed for normal Merkle proof verification
 		Root, RootNext, Curr, PosBit, PosAcc, PosAccPrev *symbolic.Expression
 		Proof, Left, Right, NodeHashNext, EndOfProof     *symbolic.Expression
 		NewProof, IsInactive, NodeHash, NotEndOfProof    *symbolic.Expression
+		// Variables needed to verify if two contiguous Merkle proofs are from the same Merkle
+		// tree e.g. there is reuse of Merkle proofs, used when withOptProofReuseCheck flag is set
+		UseNextMerkleProofExpanded, UseNextMerkleProofExpandedNext, PosBitIPlusDepth, ProofIPlusDepth *symbolic.Expression
 	}
 }
 
@@ -89,6 +109,16 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 	// Sanity-check that proof has been assigned
 	if cm.Cols.Proof == nil {
 		panic("proof must be assigned")
+	}
+
+	// Optional sanity-check that UseNextMerkleProof column has been assigned
+	if cm.withOptProofReuseCheck && cm.Cols.UseNextMerkleProof == nil {
+		panic("UseNextMerkleProof column must be assigned")
+	}
+
+	// Optional sanity-check that IsActiveAccumulator column has been assigned
+	if cm.withOptProofReuseCheck && cm.Cols.IsActiveAccumulator == nil {
+		panic("IsActiveAccumulator column must be assigned")
 	}
 
 	// Sanity-check the value of NumRows
@@ -119,6 +149,11 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 	cm.Cols.Interm = comp.InsertCommit(cm.Round, cm.colname("INTERM_STATE"), cm.NumRows)
 	cm.Cols.Right = comp.InsertCommit(cm.Round, cm.colname("RIGHT"), cm.NumRows)
 	cm.Cols.NodeHash = comp.InsertCommit(cm.Round, cm.colname("NODE_HASH"), cm.NumRows)
+	if cm.withOptProofReuseCheck {
+		cm.Cols.UseNextMerkleProofExpanded = comp.InsertCommit(cm.Round, cm.colname("USE_NEXT_MERKLE_PROOF_EXPANDED"), cm.NumRows)
+		cm.Cols.IsActiveExpanded = comp.InsertCommit(cm.Round, cm.colname("IS_ACTIVE_ACCUMULATOR_EXPANDED"), cm.NumRows)
+		cm.Cols.SegmentCounter = comp.InsertCommit(cm.Round, cm.colname("SEGMENT_COUNTER"), cm.NumRows)
+	}
 
 	// Initializes all the sugar, we will use for the
 	// module constraining
@@ -137,6 +172,9 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 	// optional constraints
 	if !cm.isFullyActive() {
 		cm.proofCancelWhenInactive()
+	}
+	if cm.withOptProofReuseCheck {
+		cm.checkReuseMerkleProofs()
 	}
 
 }
@@ -211,10 +249,7 @@ func (cm *ComputeMod) defineIsProofEnd() {
 
 // Defines the precomputed column ZERO (always zero)
 func (cm *ComputeMod) defineZero() {
-	cm.Cols.Zero = cm.comp.InsertPrecomputed(
-		cm.colname("ZERO"),
-		smartvectors.NewConstant(field.Zero(), cm.NumRows),
-	)
+	cm.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), cm.NumRows)
 }
 
 // Defines all the variables that we will need for the constraints
@@ -248,12 +283,25 @@ func (cm *ComputeMod) createSugarVar() {
 	sug.IsActive = symbolic.NewConstant(1).Sub(sug.IsInactive)
 	sug.NotNewProof = symbolic.NewConstant(1).Sub(sug.NewProof)
 	sug.NotEndOfProof = symbolic.NewConstant(1).Sub(sug.EndOfProof)
+
+	// optional variables for the reuse of Merkle proofs
+	if cm.withOptProofReuseCheck {
+		sug.PosBitIPlusDepth = ifaces.ColumnAsVariable(column.Shift(cols.PosBit, cm.Depth))
+		sug.ProofIPlusDepth = ifaces.ColumnAsVariable(column.Shift(cols.Proof, cm.Depth))
+		sug.UseNextMerkleProofExpanded = ifaces.ColumnAsVariable(cols.UseNextMerkleProofExpanded)
+		sug.UseNextMerkleProofExpandedNext = ifaces.ColumnAsVariable(column.Shift(cols.UseNextMerkleProofExpanded, 1))
+		sug.UseNextMerkleProofExpanded = ifaces.ColumnAsVariable(cols.UseNextMerkleProofExpanded)
+		// new definition of IsActive and IsInactive
+		sug.IsActive = ifaces.ColumnAsVariable(cols.IsActiveExpanded)
+		sug.IsInactive = symbolic.NewConstant(1).Sub(sug.IsActive)
+	}
 }
 
 // Define the query responsible for ensuring that the roots
 // are consistent between themselves and with current. It does not
 // require a bound cancellation because the inactive flag prevents
 // boundary effects.
+// (IsActive[i]*Root[i+1]-Root[i])*NotNewProof[i] = 0
 func (cm *ComputeMod) rootConsistency() {
 	sug := cm.SugarVar
 	expr := sug.IsActive.
@@ -264,14 +312,16 @@ func (cm *ComputeMod) rootConsistency() {
 }
 
 // Ensures that the roots column equals the last nodehash of a segment
+// (Root[i] - NodeHash[i])*EndOfProof[i]*IsActive[i] = 0
 func (cm *ComputeMod) rootIsLastNodeHash() {
 	sug := cm.SugarVar
-	expr := sug.Root.Sub(sug.NodeHash).Mul(sug.EndOfProof)
+	expr := sug.Root.Sub(sug.NodeHash).Mul(sug.EndOfProof).Mul(sug.IsActive)
 	cm.comp.InsertGlobal(cm.Round, cm.qname("ROOT_IS_LAST_NODEHASH"), expr, true)
 }
 
 // Define the query responsible for ensuring that posbits are boolean
 // zero when the inactive flag is set.
+// (IsActive[i]*PosBit[i]^2)-PosBit[i] = 0
 func (cm *ComputeMod) posbitBoolean() {
 	sug := cm.SugarVar
 	expr := sug.PosBit.
@@ -285,6 +335,7 @@ func (cm *ComputeMod) posbitBoolean() {
 // and consistent with posbit. It does not need bound cancellation (and
 // it should not be because we want the inactive flag to work on the last
 // column.
+// (2*NotEndOfProof[i]*PosAcc[i-1]+PosBit[i])*IsActive[i]-PosAcc[i] = 0
 func (cm *ComputeMod) posAccConstraint() {
 	sug := cm.SugarVar
 	expr := symbolic.NewConstant(2).
@@ -298,6 +349,7 @@ func (cm *ComputeMod) posAccConstraint() {
 
 // Defines the global constraint responsible for ensuring that left was
 // correctly constructed.
+// Left[i] - (PosBit[i]*Proof[i]) - (1 - PosBit[i])*Curr[i] = 0
 func (cm *ComputeMod) selectLeft() {
 	sug := cm.SugarVar
 	expr := sug.Left.
@@ -315,6 +367,7 @@ func (cm *ComputeMod) selectLeft() {
 
 // Defines the global constraint responsible for ensuring that right was
 // correctly constructed.
+// Right[i] - (PosBit[i]*Curr[i]) - (1 - PosBit[i])*Proof[i] = 0
 func (cm *ComputeMod) selectRight() {
 	sug := cm.SugarVar
 	expr := sug.Right.
@@ -332,6 +385,7 @@ func (cm *ComputeMod) selectRight() {
 }
 
 // The proof should cancel on inactive
+// Proof[i]*IsInactive[i] = 0
 func (cm *ComputeMod) proofCancelWhenInactive() {
 	sug := cm.SugarVar
 	expr := sug.Proof.Mul(sug.IsInactive)
@@ -341,6 +395,7 @@ func (cm *ComputeMod) proofCancelWhenInactive() {
 // Defines the global constraint responsible for ensuring that NodeHash
 // is correctly reported into Curr during the computation. No bound cancel
 // to ensure that curr is zero at the last row.
+// (IsActive[i]*NodeHash[i+1] - Curr[i])*NotNewProof[i] = 0
 func (cm *ComputeMod) currIsNextNodeHash() {
 	sug := cm.SugarVar
 	expr := sug.IsActive.
@@ -356,6 +411,56 @@ func (cm *ComputeMod) checkMiMCCompressions() {
 	cols := cm.Cols
 	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_LEFT"), cols.Left, cols.Zero, cols.Interm)
 	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_RIGHT"), cols.Right, cols.Interm, cols.NodeHash)
+}
+
+// Optional constraints checking reuse of Merkle proofs e.g., all the position
+// bits and proofs are the same for the contiguous Merkle proofs
+func (cm *ComputeMod) checkReuseMerkleProofs() {
+	cols := cm.Cols
+	// UseNextMerkleProofExpanded[i] * IsActiveExpanded[i] * (Proof[i] * (SegmentCounter[i] + 1) - Proof[i+depth] * SegmentCounter[i+depth]) = 0, two consecutive proofs are equal when UseNextMerkleProofExpanded is 1, it is in the active area. It also verify that SegmentCounter is consistent with the Proof column
+	expr1 := symbolic.Mul(cols.UseNextMerkleProofExpanded,
+		cols.IsActiveExpanded,
+		symbolic.Sub(symbolic.Mul(cols.Proof, symbolic.Add(cols.SegmentCounter, 1)),
+			symbolic.Mul(ifaces.ColumnAsVariable(column.Shift(cols.Proof, cm.Depth)),
+				ifaces.ColumnAsVariable(column.Shift(cols.SegmentCounter, cm.Depth)))))
+	cm.comp.InsertGlobal(cm.Round, cm.qname("CONSECUTIVE_PROOFS_EQUAL"), expr1)
+
+	// UseNextMerkleProofExpanded[i] * IsActiveExpanded[i] * (PosBit[i] * (SegmentCounter[i] + 1) - PosBit[i+depth] * SegmentCounter[i+depth]) = 0, two consecutive PosBits are equal when UseNextMerkleProofExpanded is 1 and it is in the active area. It also verify that SegmentCounter is consistent with the PosBit column
+	expr2 := symbolic.Mul(cols.UseNextMerkleProofExpanded,
+		cols.IsActiveExpanded,
+		symbolic.Sub(symbolic.Mul(cols.PosBit, symbolic.Add(cols.SegmentCounter, 1)),
+			symbolic.Mul(ifaces.ColumnAsVariable(column.Shift(cols.PosBit, cm.Depth)),
+				ifaces.ColumnAsVariable(column.Shift(cols.SegmentCounter, cm.Depth)))))
+	cm.comp.InsertGlobal(cm.Round, cm.qname("CONSECUTIVE_POSBIT_EQUAL"), expr2)
+
+	// UseNextMerkleProofExpanded is segment wise constant i.e.,
+	// IsActiveExpanded[i] * (UseNextMerkleProofExpanded[i+1] - UseNextMerkleProofExpanded[i]) * (1 - Proof[i])
+	expr3 := symbolic.Mul(cols.IsActiveExpanded,
+		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.UseNextMerkleProofExpanded, 1)), cols.UseNextMerkleProofExpanded),
+		symbolic.Sub(1, cols.NewProof))
+	cm.comp.InsertGlobal(cm.Round, cm.qname("USE_NEXT_MERKLE_PROOF_EXPANDED_CONSISTENCY"), expr3)
+
+	// SegmentCounter is segment wise constant i.e.,
+	// IsActiveExpanded[i] * (SegmentCounter[i+1] - SegmentCounter[i]) * (1 - Proof[i]),
+	// It does not require a bound cancellation because the inactive flag prevents
+	// boundary effects.
+	expr4 := symbolic.Mul(cols.IsActiveExpanded,
+		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.SegmentCounter, 1)), cols.SegmentCounter),
+		symbolic.Sub(1, cols.NewProof))
+	cm.comp.InsertGlobal(cm.Round, cm.qname("SEGMENT_COUNTER_CONSISTENCY_1"), expr4)
+
+	// SegmentCounter is incremented by 1 in the next segment in the active area
+	// (this is false when SegmentCounter[i+depth] = 0) i.e.,
+	// IsActiveExpanded[i+depth] * (SegmentCounter[i+depth] - SegmentCounter[i] - 1)
+	expr5 := symbolic.Mul(ifaces.ColumnAsVariable(column.Shift(cols.IsActiveExpanded, cm.Depth)),
+		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.SegmentCounter, cm.Depth)),
+			cols.SegmentCounter, 1))
+	cm.comp.InsertGlobal(cm.Round, cm.qname("SEGMENT_COUNTER_CONSISTENCY_2"), expr5)
+
+	// Booleanity check on IsActive
+	expr6 := symbolic.Sub(symbolic.Square(cols.IsActiveExpanded),
+		cols.IsActiveExpanded)
+	cm.comp.InsertGlobal(cm.Round, cm.qname("ISACTIVE_EXPANDED_BOOLEANITY"), expr6)
 }
 
 func (cm *ComputeMod) colname(name string, args ...any) ifaces.ColID {
@@ -397,6 +502,26 @@ func (cm *ComputeMod) assign(
 		right    = make([]field.Element, numActiveRows)
 		interm   = make([]field.Element, numActiveRows)
 		nodehash = make([]field.Element, numActiveRows)
+		// optional columns coming from the Accumulator module
+		useNextMerkleProof = func() smartvectors.SmartVector {
+			if cm.withOptProofReuseCheck {
+				return cm.Cols.UseNextMerkleProof.GetColAssignment(run)
+			} else {
+				return smartvectors.AllocateRegular(cm.NumProofs)
+			}
+		}()
+		isActiveAccumulator = func() smartvectors.SmartVector {
+			if cm.withOptProofReuseCheck {
+				return cm.Cols.IsActiveAccumulator.GetColAssignment(run)
+			} else {
+				return smartvectors.AllocateRegular(cm.NumProofs)
+			}
+		}()
+		useNextMerkleProofExpanded = make([]field.Element, numActiveRows)
+		isActiveExpanded           = make([]field.Element, numActiveRows)
+		// The counter slice is used to populate the segmentCounter column
+		counter        = make([]field.Element, 0, cm.NumProofs)
+		segmentCounter = make([]field.Element, numActiveRows)
 	)
 
 	bitAt := func(x field.Element, i int) uint64 {
@@ -404,8 +529,28 @@ func (cm *ComputeMod) assign(
 		return (xint >> i) & 1
 	}
 
+	// For the Accumulator module, cm.NumProofs is the maximum number of merkle proofs
+	// the module can verify rather than the actual number of proofs that is assigned.
+	// Hence we compute the actual number of proofs below to know the assignment range.
+	numProofs := cm.NumProofs
+	if cm.withOptProofReuseCheck {
+		proofCounter := 0
+		isActiveAccumulatorReg := smartvectors.IntoRegVec(isActiveAccumulator)
+		for _, elem := range isActiveAccumulatorReg {
+			if elem == field.One() {
+				counter = append(counter, field.NewElement(uint64(proofCounter)))
+				proofCounter += 1
+			}
+			// If we encounter a zero, that denotes inactive area. We don't need to continue
+			if elem == field.Zero() {
+				break
+			}
+		}
+		numProofs = proofCounter
+	}
+
 	// Assigns everything in parallel proof per proof
-	parallel.Execute(cm.NumProofs, func(start, stop int) {
+	parallel.Execute(numProofs, func(start, stop int) {
 		for proofNo := start; proofNo < stop; proofNo++ {
 
 			// placeholder for the root of the current proof
@@ -455,10 +600,28 @@ func (cm *ComputeMod) assign(
 				}
 				roots[row] = root
 			}
+			// Assign useNextMerkleProofExpanded, isActiveAccumulatorExpanded, and segmentCounter
+			if cm.withOptProofReuseCheck {
+				for i := 0; i < cm.Depth; i++ {
+					row := proofNo*cm.Depth + i
+					useNextMerkleProofExpanded[row] = useNextMerkleProof.Get(proofNo)
+					isActiveExpanded[row] = isActiveAccumulator.Get(proofNo)
+					segmentCounter[row] = counter[proofNo]
+				}
+			}
 		}
 	})
 
 	intermPadding := mimc.BlockCompression(field.Zero(), field.Zero())
+	// Assign zero blocks in the inactive area when the actual number of proofs and maximum number of proofs
+	// are different
+	if cm.withOptProofReuseCheck {
+		for i := numProofs * cm.Depth; i < numActiveRows; i++ {
+			interm[i] = intermPadding
+			nodehash[i] = mimc.BlockCompression(intermPadding, field.Zero())
+		}
+	}
+
 	nodeHashPadding := mimc.BlockCompression(intermPadding, field.Zero())
 
 	// and assign the freshly computed columns
@@ -471,6 +634,11 @@ func (cm *ComputeMod) assign(
 	run.AssignColumn(cols.Right.GetColID(), pad(right))
 	run.AssignColumn(cols.Interm.GetColID(), pad(interm, intermPadding))
 	run.AssignColumn(cols.NodeHash.GetColID(), pad(nodehash, nodeHashPadding))
+	if cm.withOptProofReuseCheck {
+		run.AssignColumn(cols.UseNextMerkleProofExpanded.GetColID(), pad(useNextMerkleProofExpanded))
+		run.AssignColumn(cols.IsActiveExpanded.GetColID(), pad(isActiveExpanded))
+		run.AssignColumn(cols.SegmentCounter.GetColID(), pad(segmentCounter))
+	}
 }
 
 func (cm *ComputeMod) isFullyActive() bool {

@@ -1,13 +1,12 @@
 package poly
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-/*
-Mirrors EvaluateLagrangesAnyDomain in a gnark circuit
-*/
+// EvaluateLagrangeAnyDomainGnark mirrors [EvaluateLagrangesAnyDomain] but in
+// a gnark circuit. The same usage precautions applies for it.
 func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []frontend.Variable, x frontend.Variable) []frontend.Variable {
 
 	lagrange := make([]frontend.Variable, len(domain))
@@ -34,7 +33,8 @@ func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []frontend.Variable
 
 }
 
-// Evaluate a univariate polynomial in a gnark circuit
+// EvaluateUnivariateGnark evaluate a univariate polynomial in a gnark circuit.
+// It mirrors [EvalUnivariate].
 func EvaluateUnivariateGnark(api frontend.API, pol []frontend.Variable, x frontend.Variable) frontend.Variable {
 	res := frontend.Variable(0)
 	for i := len(pol) - 1; i >= 0; i-- {
@@ -42,19 +42,4 @@ func EvaluateUnivariateGnark(api frontend.API, pol []frontend.Variable, x fronte
 		res = api.Add(res, pol[i])
 	}
 	return res
-}
-
-// Evaluate a bivariate polynomial in a gnark circuit
-func GnarkEvalCoeffBivariate(api frontend.API, v []frontend.Variable, x frontend.Variable, numCoeffX int, y frontend.Variable) frontend.Variable {
-
-	if len(v)%numCoeffX != 0 {
-		panic("size of v and nb coeff x are inconsistent")
-	}
-
-	foldOnX := make([]frontend.Variable, len(v)/numCoeffX)
-	for i := 0; i < len(v); i += numCoeffX {
-		foldOnX[i/numCoeffX] = EvaluateUnivariateGnark(api, v[i:i+numCoeffX], x)
-	}
-
-	return EvaluateUnivariateGnark(api, foldOnX, y)
 }

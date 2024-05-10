@@ -4,33 +4,39 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
 
-// Trace the accumulator : update
+// UpdateTrace contains all the necessary informations to carry an audit of an
+// update of the value of a registered key in the tree.
 type UpdateTrace[K, V io.WriterTo] struct {
-	Location           string
-	Key                K
-	OldValue, NewValue V
+	Type     int    `json:"type"`
+	Location string `json:"location"`
+	Key      K      `json:"key"`
+	OldValue V      `json:"oldValue"`
+	NewValue V      `json:"newValue"`
 	// We call it new next free node, but the value is not updated
 	// during the update.
-	NewNextFreeNode        int
-	OldSubRoot, NewSubRoot Digest
-	OldOpening             LeafOpening
-	Proof                  smt.Proof
+	NewNextFreeNode int         `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32     `json:"oldSubRoot"`
+	NewSubRoot      Bytes32     `json:"newSubRoot"`
+	OldOpening      LeafOpening `json:"priorUpdatedLeaf"`
+	Proof           smt.Proof   `json:"proof"`
 }
 
-// Perform a read on the accumulator. Panics if the
-// the associated value is zero. Returns a trace object
-// containing the
+// UpdateAndProve performs a read on the accumulator. Panics if the associated
+// key is missing. Returns an [UpdateTrace] object in case of success.
 func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 
 	// Find the position of the leaf containing our value
-	i, found := p.findKey(key)
+	i, found := p.FindKey(key)
 	if !found {
-		utils.Panic("called read-non-zero, but the key was not present")
+		utils.Panic("called update, but the key was not present")
 	}
 
 	tuple := p.Data.MustGet(i)
@@ -60,12 +66,12 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 		OldSubRoot:      oldRoot,
 		NewSubRoot:      p.SubTreeRoot(),
 		NewNextFreeNode: int(p.NextFreeNode),
-		Proof:           p.Tree.Prove(int(i)),
+		Proof:           p.Tree.MustProve(int(i)),
 	}
 }
 
-// Verify a read on the accumulator. Panics if the associated
-// value is non-zero.
+// UpdateVerify verifies an [UpdateTrace] against the verifier state. Returns
+// an error if the verification fails.
 func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 	// If the location does not match the we return an error
@@ -114,8 +120,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace verification
-// into a slice of smt.ProvedClaim.
+// DeferMerkleChecks implements the [DeferableCheck] interface.
 func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,

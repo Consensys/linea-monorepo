@@ -1,23 +1,23 @@
 package verifiercol
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Represents a constant column
 type ConstCol struct {
-	f    field.Element
+	F    field.Element
 	size int
 }
 
 // NewConstCol creates a new ConstCol column
 func NewConstantCol(f field.Element, size int) ifaces.Column {
-	return ConstCol{f: f, size: size}
+	return ConstCol{F: f, size: size}
 }
 
 // Returns the round of definition of the column (always zero)
@@ -29,7 +29,7 @@ func (cc ConstCol) Round() int {
 
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
-	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.f.String(), cc.size)
+	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.size)
 }
 
 // Always return true
@@ -42,14 +42,14 @@ func (cc ConstCol) Size() int {
 
 // Returns a constant smart-vector
 func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
-	return smartvectors.NewConstant(cc.f, cc.size)
+	return smartvectors.NewConstant(cc.F, cc.size)
 }
 
 // Returns the column as a list of gnark constants
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
 	res := make([]frontend.Variable, cc.size)
 	for i := range res {
-		res[i] = cc.f
+		res[i] = cc.F
 	}
 	return res
 }
@@ -84,5 +84,5 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.f, to-from)
+	return NewConstantCol(cc.F, to-from)
 }

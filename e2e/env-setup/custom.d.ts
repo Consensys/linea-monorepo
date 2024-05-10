@@ -1,7 +1,7 @@
 /* eslint-disable no-var */
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { TestEnvironment } from "./test-env";
-import { DummyContract, L2MessageService, L2TestContract, ZkEvmV2 } from "src/typechain";
+import { DummyContract, L2MessageService, L2TestContract, LineaRollup } from "src/typechain";
 
 declare global {
   var testingEnv: TestEnvironment;
@@ -11,12 +11,20 @@ declare global {
   var dummyContract: DummyContract;
   var l1DummyContract: DummyContract;
   var l2TestContract: L2TestContract;
-  var zkEvmV2: ZkEvmV2;
-  var useLocalSetup: Boolean;
-  var chainId: number
+  var lineaRollup: LineaRollup;
+  var useLocalSetup: boolean;
+  var chainId: number;
   var CHAIN_ID: number;
-  var ACCOUNT_0_PRIVATE_KEY: string;
-  var DEPLOYER_ACCOUNT_PRIVATE_KEY: string;
+  var L2_MESSAGE_SERVICE_ADDRESS: string;
+  var LINEA_ROLLUP_CONTRACT_ADDRESS: string;
+  var L1_ACCOUNT_0_PRIVATE_KEY: string;
+  var L2_ACCOUNT_0_PRIVATE_KEY: string;
+  var L1_DEPLOYER_ACCOUNT_PRIVATE_KEY: string;
+  var L2_DEPLOYER_ACCOUNT_PRIVATE_KEY: string;
   var TRANSACTION_CALLDATA_LIMIT: number;
   var OPERATOR_0_PRIVATE_KEY: string;
+  var SHOMEI_ENDPOINT: URL | null;
+  var SHOMEI_FRONTEND_ENDPOINT: URL | null;
+  var OPERATOR_1_ADDRESS: string;
+  var SECURITY_COUNCIL_PRIVATE_KEY: string;
 }

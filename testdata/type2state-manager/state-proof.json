@@ -1,6 +1,7 @@
 {
   "zkStateManagerVersion" : "0.0.1-dev-3e607237",
   "zkParentStateRootHash" : "0x2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14",
+  "zkEndStateRootHash" : "0xff7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859fff",
   "zkStateMerkleProof" : [ [ {
     "newNextFreeNode" : 3,
     "oldSubRoot" : "0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",

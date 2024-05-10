@@ -1,0 +1,58 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'net.consensys.zkevm.linea-contracts-helper'
+}
+
+dependencies {
+  implementation(project(":coordinator:core"))
+  implementation(project(":coordinator:clients:smart-contract-client"))
+  implementation(project(":jvm-libs:web3j-extensions"))
+  implementation("org.web3j:core:${versions.web3j}") {
+    exclude group: 'org.slf4j', module: 'slf4j-nop'
+  }
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${versions.jackson}"
+  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${versions.jackson}"
+  implementation "org.awaitility:awaitility:4.2.0"
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+tasks.register('integrationTest', Test) {
+  test ->
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackComposeUp")
+    dependsOn(compileContracts)
+    testLogging {
+      events TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STARTED,
+        TestLogEvent.PASSED
+      exceptionFormat TestExceptionFormat.FULL
+      showCauses true
+      showExceptions true
+      showStackTraces true
+      // set showStandardStreams if you need to see test logs
+      showStandardStreams true
+    }
+}

@@ -2,19 +2,16 @@ package functionals
 
 import (
 	"fmt"
-	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 const (
@@ -27,10 +24,10 @@ const (
 
 // See the explainer here : https://hackmd.io/S78bJUa0Tk-T256iduE22g#Evaluate-in-Lagrange-form
 // The variable names are the same as the one in the hackmd
-func Interpolation(comp *wizard.CompiledIOP, name string, a *ifaces.Accessor, p ifaces.Column) *ifaces.Accessor {
+func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p ifaces.Column) ifaces.Accessor {
 
 	length := p.Size()
-	maxRound := utils.Max(a.Round, p.Round())
+	maxRound := utils.Max(a.Round(), p.Round())
 
 	i := comp.InsertCommit(
 		maxRound,
@@ -95,7 +92,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a *ifaces.Accessor, p 
 		Local opening at the end
 	*/
 
-	comp.InsertLocalOpening(
+	localOpenEnd := comp.InsertLocalOpening(
 		maxRound,
 		ifaces.QueryIDf("%v_%v", name, INTERPOLATION_OPEN_END),
 		column.Shift(i, -1),
@@ -149,38 +146,21 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a *ifaces.Accessor, p 
 		assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, INTERPOLATION_OPEN_END), witi[n-1])
 	})
 
-	// Returns an accessor to the result of the interpolation
-	return ifaces.NewAccessor(
-		fmt.Sprintf("INTERPOLATION_RES_%v", name),
-		func(run ifaces.Runtime) field.Element {
-			// Get the last point from the inner local opening and the random coin a
-			end := run.GetParams(ifaces.QueryIDf("%v_%v", name, INTERPOLATION_OPEN_END)).(query.LocalOpeningParams).Y
-			a := a.GetVal(run)
-			// We return `(a^n - 1) end / n`
-			one := field.One()
-			nInv := field.NewElement(uint64(p.Size()))
-			nInv.Inverse(&nInv)
-			a.Exp(a, big.NewInt(int64(p.Size())))
-			a.Sub(&a, &one)
-			end.Mul(&end, &nInv)
-			end.Mul(&end, &a)
-			return end
-		},
-		func(api frontend.API, c ifaces.GnarkRuntime) frontend.Variable {
-			// Get the last point from the inner local opening and the random coin a
-			end := c.GetParams(ifaces.QueryIDf("%v_%v", name, INTERPOLATION_OPEN_END)).(query.GnarkLocalOpeningParams).Y
-			a := a.GetFrontendVariable(api, c)
-			// We return `(a^n - 1) end / n`
-			one := field.One()
-			nInv := field.NewElement(uint64(p.Size()))
-			nInv.Inverse(&nInv)
-			a = gnarkutil.Exp(api, a, p.Size())
-			a = api.Sub(a, one)
-			end = api.Mul(end, nInv)
-			end = api.Mul(end, a)
-			return end
-		},
-		maxRound,
-	)
+	// Since the symbolic package does not support inversion, we have to compute
+	// n**(-1) outside of the expression that we use to instantiate the returned
+	// accessor.
+	nInv := field.NewElement(uint64(p.Size()))
+	nInv.Inverse(&nInv)
 
+	return accessors.NewFromExpression(
+		symbolic.Mul(
+			symbolic.Sub(
+				symbolic.Pow(a, p.Size()),
+				1,
+			),
+			accessors.NewLocalOpeningAccessor(localOpenEnd, maxRound),
+			nInv,
+		),
+		fmt.Sprintf("INTERPOLATION_RES_%v", name),
+	)
 }

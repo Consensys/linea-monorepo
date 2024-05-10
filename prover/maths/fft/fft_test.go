@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 
 	"github.com/leanovate/gopter"

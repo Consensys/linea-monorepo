@@ -3,13 +3,13 @@ package functionals_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +18,7 @@ func TestEvalCoeff(t *testing.T) {
 	var (
 		x            coin.Info
 		p            ifaces.Column
-		acc          *ifaces.Accessor
+		acc          ifaces.Accessor
 		savedRuntime *wizard.ProverRuntime
 	)
 

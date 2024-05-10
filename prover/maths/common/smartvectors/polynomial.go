@@ -1,11 +1,15 @@
 package smartvectors
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/sirupsen/logrus"
+	"math/big"
+
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 )
 
 // Add two vectors representing polynomials in coefficient form.
@@ -44,7 +48,7 @@ func PolySub(a, b SmartVector) SmartVector {
 /*
 Ruffini division
   - p polynomial in coefficient form
-  - q field.Element, caracterizing the divisor X- q
+  - q field.Element, caracterizing the divisor X - q
   - quo quotient polynomial in coefficient form, result will be passed
     here. quo is truncated of its first entry in the process
   - expected to be at least as large as `p`
@@ -55,18 +59,14 @@ Supports &p == quo
 */
 func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.Element) {
 
-	// If p has length 0, then the general case algorithm does not work. In theory,
-	// this should not happen.
+	// The case where "p" is zero is assumed to be impossible as every type of
+	// smart-vector strongly forbid dealing with zero length smart-vectors.
 	if p.Len() == 0 {
-		logrus.Debugf("Edge-case : we computed QuoRem on a length 0 vector")
-		quo = NewConstant(field.Zero(), 1)
-		rem = field.Zero()
-		return quo, rem
+		panic("Zero-length smart-vectors are forbidden")
 	}
 
 	// If p has length 1, then the general case algorithm does not work
 	if p.Len() == 1 {
-		logrus.Debugf("Edge-case : we computed QuoRem on a length 1 vector")
 		quo = NewConstant(field.Zero(), 1)
 		rem = p.Get(0)
 		return quo, rem
@@ -102,6 +102,121 @@ func Interpolate(v SmartVector, x field.Element, oncoset ...bool) field.Element 
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
 	return fastpoly.Interpolate(res, x, oncoset...)
+}
+
+// Batch-evaluate polynomials in Lagrange basis
+func BatchInterpolate(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
+	polys := make([][]field.Element, len(vs))
+	results := make([]field.Element, len(vs))
+	computed := make([]bool, len(vs))
+
+	// smartvector to []fr.element
+	parallel.Execute(len(vs), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			switch con := vs[i].(type) {
+			case *Constant:
+				// constant vectors
+				results[i] = con.val
+				computed[i] = true
+				continue
+			}
+			// non-constant vectors
+			polys[i] = vs[i].IntoRegVecSaveAlloc()
+
+		}
+	})
+
+	return BatchInterpolateSV(results, computed, polys, x, oncoset...)
+}
+
+// Optimized batch interpolate for smart vectors.
+// This reduces the number of computation by pre-processing
+// constant vectors in advance in BatchInterpolate()
+func BatchInterpolateSV(results []field.Element, computed []bool, polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
+
+	poly := polys[0]
+
+	if !utils.IsPowerOfTwo(len(poly)) {
+		utils.Panic("only support powers of two but poly has length %v", len(poly))
+	}
+
+	n := len(poly)
+
+	domain := fft.NewDomain(n)
+	denominator := make([]field.Element, n)
+
+	one := field.One()
+
+	if len(oncoset) > 0 && oncoset[0] {
+		x.Mul(&x, &domain.FrMultiplicativeGenInv)
+	}
+
+	/*
+		First, we compute the denominator,
+
+		D_x = \frac{X}{x} - g for x \in H
+			where H is the subgroup of the roots of unity (not the coset)
+			and g a field element such that gH is the coset
+	*/
+	denominator[0] = x
+	for i := 1; i < n; i++ {
+		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
+	}
+
+	for i := 0; i < n; i++ {
+		denominator[i].Sub(&denominator[i], &one)
+
+		if denominator[i].IsZero() {
+			// edge-case : x is a root of unity of the domain. In this case, we can just return
+			// the associated value for poly
+
+			for k := range polys {
+				if computed[k] {
+					continue
+				}
+				results[k] = polys[k][i]
+			}
+
+			return results
+		}
+	}
+
+	/*
+		Then, we compute the sum between the inverse of the denominator
+		and the poly
+
+		\sum_{x \in H}\frac{P(gx)}{D_x}
+	*/
+	denominator = field.BatchInvert(denominator)
+
+	// Precompute the value of x^n once outside the loop
+	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
+
+	// Precompute the value of domain.CardinalityInv outside the loop
+	cardinalityInv := &domain.CardinalityInv
+
+	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
+	factor := new(field.Element).Sub(xN, &one)
+	factor.Mul(factor, cardinalityInv)
+
+	parallel.Execute(len(polys), func(start, stop int) {
+		for k := start; k < stop; k++ {
+
+			if computed[k] {
+				continue
+			}
+			// Compute the scalar product.
+			res := vector.ScalarProd(polys[k], denominator)
+
+			// Multiply res with factor.
+			res.Mul(&res, factor)
+
+			// Store the result.
+			results[k] = res
+		}
+	})
+
+	return results
 }
 
 // Evaluate a polynomial in coefficient basis

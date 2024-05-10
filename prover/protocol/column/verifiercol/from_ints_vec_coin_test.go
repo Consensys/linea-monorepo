@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/vortex"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,17 +24,17 @@ func TestFromIntVec(t *testing.T) {
 
 	testcases := []struct {
 		CoinSize, Split int
-		Shift, Repeat   int
+		Shift           int
 	}{
-		{CoinSize: 16, Split: 8, Shift: 1, Repeat: 0},
-		{CoinSize: 16, Split: 8, Shift: 0, Repeat: 2},
-		{CoinSize: 16, Split: 8, Shift: 1, Repeat: 2},
-		{CoinSize: 16, Split: 16, Shift: 1, Repeat: 0},
-		{CoinSize: 16, Split: 16, Shift: 0, Repeat: 2},
-		{CoinSize: 16, Split: 16, Shift: 1, Repeat: 2},
-		{CoinSize: 16, Split: 32, Shift: 1, Repeat: 0},
-		{CoinSize: 16, Split: 32, Shift: 0, Repeat: 2},
-		{CoinSize: 16, Split: 32, Shift: 1, Repeat: 2},
+		{CoinSize: 16, Split: 8, Shift: 1},
+		{CoinSize: 16, Split: 8, Shift: 0},
+		{CoinSize: 16, Split: 8, Shift: 1},
+		{CoinSize: 16, Split: 16, Shift: 1},
+		{CoinSize: 16, Split: 16, Shift: 0},
+		{CoinSize: 16, Split: 16, Shift: 1},
+		{CoinSize: 16, Split: 32, Shift: 1},
+		{CoinSize: 16, Split: 32, Shift: 0},
+		{CoinSize: 16, Split: 32, Shift: 1},
 	}
 
 	// A test vector that is only here for technical reasons. If it is not
@@ -70,11 +70,6 @@ func TestFromIntVec(t *testing.T) {
 						coinCol = column.Shift(coinCol, tc.Shift)
 					}
 
-					// We apply a shift to force the application of the
-					// naturalization compiler over our column
-					if tc.Repeat > 0 {
-						coinCol = column.Repeat(coinCol, tc.Repeat)
-					}
 					build.Range(QUERY, coinCol, 4)
 				}
 
@@ -156,11 +151,6 @@ func TestFromIntVecWithPadding(t *testing.T) {
 						coinCol = column.Shift(coinCol, tc.Shift)
 					}
 
-					// We apply a shift to force the application of the
-					// naturalization compiler over our column
-					if tc.Repeat > 0 {
-						coinCol = column.Repeat(coinCol, tc.Repeat)
-					}
 					build.Range(QUERY, coinCol, 4)
 				}
 

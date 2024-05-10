@@ -1,11 +1,11 @@
 package fastpoly
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 )
 
 // Evaluate a polynomial in lagrange basis on a gnark circuit
@@ -31,13 +31,24 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 	// This will allow the gnark solver to process the expensive
 	// inverses in parallel.
 	terms := make([]frontend.Variable, n)
-	// Term carrying the current value of xOmegaN
-	xOmegaN := x
+
+	// omegaMinI carries the domain's inverse root of unity generator raised to
+	// the power I in the following loop. It is initialized with omega**0 = 1.
+	omegaI := frontend.Variable(1)
 
 	for i := 0; i < n; i++ {
+
 		if i > 0 {
-			xOmegaN = api.Mul(xOmegaN, domain.GeneratorInv)
+			omegaI = api.Mul(omegaI, domain.GeneratorInv)
 		}
+
+		// If the current term is the constant zero, we continue without generating
+		// constraints.
+		if c, isC := api.Compiler().ConstantValue(poly[i]); isC && c.IsInt64() && c.Int64() == 0 {
+			continue
+		}
+
+		xOmegaN := api.Mul(x, omegaI)
 		terms[i] = api.Sub(xOmegaN, 1)
 		// No point doing a batch inverse in a circuit
 		terms[i] = api.Inverse(terms[i])

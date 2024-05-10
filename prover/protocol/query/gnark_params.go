@@ -1,9 +1,9 @@
 package query
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 )
 
 // A gnark circuit version of the LocalOpeningResult

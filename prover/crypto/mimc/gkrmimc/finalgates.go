@@ -1,19 +1,24 @@
 package gkrmimc
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-// FinalRoundGate represents the last round in the circuit
-// It performs all the actions required to complete the
-// compression function of MiMC.
+// FinalRoundGate represents the last round in a gnark circuit
+//
+// It performs all the actions required to complete the compression function of
+// MiMC; including (1) the last application of the S-box x^17 as in the
+// intermediate rounds and then adds twice the initial state and once the block
+// to the result before returning.
 type FinalRoundGate struct {
 	Ark frontend.Variable
 }
 
-// NewFinalRoundGateGnark creates a new MiMCCipherGate with the given parameters
+// NewFinalRoundGateGnark creates a new FinalRoundGate using the provided
+// round constant which should correspond to the final rounds's constant of
+// MiMC.
 func NewFinalRoundGateGnark(ark field.Element) FinalRoundGate {
 	return FinalRoundGate{
 		Ark: ark,
@@ -33,9 +38,11 @@ func (m FinalRoundGate) Evaluate(api frontend.API, input ...frontend.Variable) f
 
 	// Compute the S-box function
 	sum := api.Add(currentState, initialState, m.Ark)
-	sumPow4 := api.Mul(sum, sum)        // sum^2
-	sumPow4 = api.Mul(sumPow4, sumPow4) // sum^4
-	sum = api.Mul(sumPow4, sum)
+	sumPow16 := api.Mul(sum, sum)          // sum^2
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^4
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^8
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^16
+	sum = api.Mul(sumPow16, sum)
 
 	// And add back the last values, following the Miyaguchi-Preneel
 	// construction.
@@ -43,12 +50,15 @@ func (m FinalRoundGate) Evaluate(api frontend.API, input ...frontend.Variable) f
 }
 
 func (m FinalRoundGate) Degree() int {
-	return 5
+	return 17
 }
 
-// FinalRoundGateCrypto represents the last round in the circuit
-// It performs all the actions required to complete the
-// compression function of MiMC.
+// FinalRoundGateCrypto represents the last round in the GKR circuit for MiMC.
+//
+// It performs all the actions required to complete the compression function of
+// MiMC; including (1) the last application of the S-box x^17 as in the
+// intermediate rounds and then adds twice the initial state and once the block
+// to the result before returning.
 type FinalRoundGateCrypto struct {
 	Ark field.Element
 }
@@ -72,11 +82,13 @@ func (m FinalRoundGateCrypto) Evaluate(input ...field.Element) field.Element {
 	curr := input[2]
 
 	// Compute the S-box function
-	var sum, sumPow4 field.Element
+	var sum, sumPow16 field.Element
 	sum.Add(&initialState, &curr).Add(&sum, &m.Ark)
-	sumPow4.Mul(&sum, &sum)
-	sumPow4.Mul(&sumPow4, &sumPow4)
-	sum.Mul(&sumPow4, &sum)
+	sumPow16.Mul(&sum, &sum)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sum.Mul(&sumPow16, &sum)
 
 	// And add back the last values, following the Miyaguchi-Preneel
 	// construction.
@@ -87,5 +99,5 @@ func (m FinalRoundGateCrypto) Evaluate(input ...field.Element) field.Element {
 }
 
 func (m FinalRoundGateCrypto) Degree() int {
-	return 5
+	return 17
 }

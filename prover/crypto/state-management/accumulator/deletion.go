@@ -4,33 +4,50 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
-// Trace the accumulator : deletion
+// DeletetionTrace gathers all the data necessary to audit the deletion of a
+// key in the map.
 type DeletionTrace[K, V io.WriterTo] struct {
-	Location string
+	// Identifier for the tree this trace relates to
+	Type     int    `json:"type"`
+	Location string `json:"location"`
+
 	// For consistency, we call it new next free node but
 	// the value is not updated during a deletion
-	NewNextFreeNode        int
-	OldSubRoot, NewSubRoot Digest
+	NewNextFreeNode int     `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32 `json:"oldSubRoot"`
+	NewSubRoot      Bytes32 `json:"newSubRoot"`
+
 	// `New` correspond to the inserted leaf
-	ProofMinus, ProofDeleted, ProofPlus smt.Proof
-	Key                                 K
+	ProofMinus   smt.Proof `json:"leftProof"`
+	ProofDeleted smt.Proof `json:"deletedProof"`
+	ProofPlus    smt.Proof `json:"rightProof"`
+	Key          K         `json:"key"`
+
 	// Value of the leaf opening before being modified
-	OldOpenMinus, DeletedOpen, OldOpenPlus LeafOpening
+	OldOpenMinus LeafOpening `json:"priorLeftLeaf"`
+	DeletedOpen  LeafOpening `json:"priorDeletedLeaf"`
+	OldOpenPlus  LeafOpening `json:"priorRightLeaf"`
+
 	// The deleted value
-	DeletedValue V
+	DeletedValue V `json:"deletedValue"`
 }
 
-// Delete an entry in the accumulator and returns a trace
+// DeleteAndProve deletes an entry in the accumulator and returns a
+// DeletionTrace, the function will panic on failure: if the key could not
+// be found or if the Tree is corrupted.
 func (p *ProverState[K, V]) DeleteAndProve(key K) (trace DeletionTrace[K, V]) {
 
 	// Sanity-check : assert that the key is missing in the proof
-	i, found := p.findKey(key)
+	i, found := p.FindKey(key)
 	if !found {
-		utils.Panic("called read-zero, but the key was present")
+		utils.Panic("called delete, but the key was not present")
 	}
 
 	// No need to look for the sandwich, we can find it in the leafopening
@@ -46,6 +63,7 @@ func (p *ProverState[K, V]) DeleteAndProve(key K) (trace DeletionTrace[K, V]) {
 		OldOpenMinus:    tupleMinus.LeafOpening,
 		OldOpenPlus:     tuplePlus.LeafOpening,
 		DeletedOpen:     tuple.LeafOpening,
+		DeletedValue:    tuple.Value,
 		NewNextFreeNode: int(p.NextFreeNode),
 	}
 
@@ -64,6 +82,8 @@ func (p *ProverState[K, V]) DeleteAndProve(key K) (trace DeletionTrace[K, V]) {
 	return trace
 }
 
+// VerifyDeletion audits the validity of a [DeletionTrace] w.r.t. to the
+// VerifierState.
 func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 	// If the location does not match the we return an error
@@ -74,6 +94,12 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	// Check that verifier's root is the same as the one in the traces
 	if v.SubTreeRoot != trace.OldSubRoot {
 		return fmt.Errorf("inconsistent root %v != %v", v.SubTreeRoot, trace.OldSubRoot)
+	}
+
+	// Check that the deleted value is consistent with the leaf opening
+	hVal := hash(v.Config, trace.DeletedValue)
+	if hVal != trace.DeletedOpen.HVal {
+		return fmt.Errorf("the deleted value does not match the hVal of the opening")
 	}
 
 	iMinus := int64(trace.ProofMinus.Path)
@@ -136,8 +162,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace verification
-// into a slice of smt.ProvedClaim.
+// DeferMerkleChecks implements [DeferableCheck]
 func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,

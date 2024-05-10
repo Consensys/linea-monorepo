@@ -21,10 +21,33 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
  * It's expected that each JsonRpcClient represents a different upstream Endpoint e.g
  * prover1.linea.io:8080 and prover2.linea.io:8081
  */
-class LoadBalancingJsonRpcClient(
+class LoadBalancingJsonRpcClient
+private constructor(
   rpcClients: List<JsonRpcClient>,
   private val maxInflightRequestsPerClient: UInt
 ) : JsonRpcClient {
+
+  companion object {
+    private val loadBalancingJsonRpcClients: ConcurrentLinkedQueue<LoadBalancingJsonRpcClient> = ConcurrentLinkedQueue()
+
+    fun create(
+      rpcClients: List<JsonRpcClient>,
+      requestLimitPerEndpoint: UInt
+    ): LoadBalancingJsonRpcClient {
+      val loadBalancingJsonRpcClient = LoadBalancingJsonRpcClient(
+        rpcClients,
+        requestLimitPerEndpoint
+      )
+      loadBalancingJsonRpcClients.add(loadBalancingJsonRpcClient)
+      return loadBalancingJsonRpcClient
+    }
+
+    fun stop() {
+      loadBalancingJsonRpcClients.forEach {
+        it.close()
+      }
+    }
+  }
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   private data class RpcClientContext(val rpcClient: JsonRpcClient, var inflightRequests: UInt)
@@ -106,5 +129,9 @@ class LoadBalancingJsonRpcClient(
         serveNextWaitingInTheQueue()
       }
     }
+  }
+
+  fun close() {
+    waitingQueue.clear()
   }
 }

@@ -3,14 +3,14 @@ package vortex
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/vortex2"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
 func (ctx *Ctx) Verify(vr *wizard.VerifierRuntime) error {
@@ -22,47 +22,33 @@ func (ctx *Ctx) Verify(vr *wizard.VerifierRuntime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
-	// not need to
+	// not need to do anything
 	if ctx.IsSelfrecursed {
 		return nil
 	}
 
-	// In Merkle-Mode `commitments` is left as empty
-	commitments := []vortex2.Commitment{}
+	roots := []types.Bytes32{}
 
-	if !ctx.UseMerkleProof {
-		// Collect all the commitments : rounds by rounds
-		for round := 0; round <= ctx.MaxCommittedRound; round++ {
-			// There are not included in the commitments so there is no
-			// commitement to look for.
-			if ctx.isDry(round) {
-				continue
-			}
-
-			commitment := vr.GetColumn(ctx.CommitmentName(round))
-			commitments = append(commitments, smartvectors.IntoRegVec(commitment))
+	// Append the precomputed roots when IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+		precompRootF := precompRootSv.Get(0)                                        // root as a field element
+		roots = append(roots, types.Bytes32(precompRootF.Bytes()))
+	}
+	// Collect all the commitments : rounds by rounds
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there is no
+		// commitement to look for.
+		if ctx.isDry(round) {
+			continue
 		}
+
+		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
+		rootF := rootSv.Get(0)                                          // root as a field element
+		roots = append(roots, types.Bytes32(rootF.Bytes()))
 	}
 
-	// In non-Merkle mode, this is left as empty
-	roots := []hashtypes.Digest{}
-
-	if ctx.UseMerkleProof {
-		// Collect all the commitments : rounds by rounds
-		for round := 0; round <= ctx.MaxCommittedRound; round++ {
-			// There are not included in the commitments so there is no
-			// commitement to look for.
-			if ctx.isDry(round) {
-				continue
-			}
-
-			rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
-			rootF := rootSv.Get(0)                            // root as a field element
-			roots = append(roots, hashtypes.Digest(rootF.Bytes()))
-		}
-	}
-
-	proof := &vortex2.Proof{}
+	proof := &vortex.OpeningProof{}
 	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
@@ -75,17 +61,18 @@ func (ctx *Ctx) Verify(vr *wizard.VerifierRuntime) error {
 	proof.Columns = ctx.RecoverSelectedColumns(vr, entryList)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
 
-	if !ctx.UseMerkleProof {
-		return ctx.VortexParams.VerifyOpening(commitments, proof, x, ctx.getYs(vr), randomCoin, entryList)
-	}
+	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
-	if ctx.UseMerkleProof {
-		packedMProofs := vr.GetColumn(ctx.MerkleProofName())
-		proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
-		return ctx.VortexParams.VerifyMerkle(roots, proof, x, ctx.getYs(vr), randomCoin, entryList)
-	}
-
-	panic("unreachable")
+	return vortex.VerifyOpening(&vortex.VerifierInputs{
+		Params:       *ctx.VortexParams,
+		MerkleRoots:  roots,
+		X:            x,
+		Ys:           ctx.getYs(vr),
+		OpeningProof: *proof,
+		RandomCoin:   randomCoin,
+		EntryList:    entryList,
+	})
 }
 
 // returns the number of committed rows for the given round. This takes
@@ -115,20 +102,32 @@ func (ctx *Ctx) getYs(vr *wizard.VerifierRuntime) (ys [][]field.Element) {
 
 	ys = [][]field.Element{}
 
+	// add ys for precomputed when IsCommitToPrecomputed is true
+	if ctx.IsCommitToPrecomputed() {
+		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
+		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
+			names[i] = poly.GetColID()
+		}
+		ysPrecomputed := make([]field.Element, len(names))
+		for i, name := range names {
+			ysPrecomputed[i] = ysMap[name]
+		}
+		ys = append(ys, ysPrecomputed)
+	}
+
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// again, skip the dry rounds
 		if ctx.isDry(round) {
 			continue
 		}
-
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]field.Element, len(names))
 		for i, name := range names {
 			ysRounds[i] = ysMap[name]
 		}
-
 		ys = append(ys, ysRounds)
+
 	}
 
 	return ys
@@ -150,6 +149,19 @@ func (ctx *Ctx) RecoverSelectedColumns(vr *wizard.VerifierRuntime, entryList []i
 	openedSubColumns := [][][]field.Element{}
 	roundStartAt := 0
 
+	// Process precomputed
+	if ctx.IsCommitToPrecomputed() {
+		openedPrecompCols := make([][]field.Element, len(entryList))
+		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
+		for j := range entryList {
+			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
+		}
+		// update the start counter to ensure we do not pass twice the same row
+		roundStartAt += numPrecomputeds
+		openedSubColumns = append(openedSubColumns, openedPrecompCols)
+
+	}
+
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// again, skip the dry rounds
 		if ctx.isDry(round) {
@@ -168,6 +180,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr *wizard.VerifierRuntime, entryList []i
 	}
 
 	// sanity-check : make sure we have not forgotten any column
+	// We need to treat the precomputed separately if they are committed
 	if roundStartAt != ctx.CommittedRowsCount {
 		utils.Panic("we have a mistmatch in the row count : %v != %v", roundStartAt, ctx.CommittedRowsCount)
 	}
@@ -204,10 +217,9 @@ func (ctx *Ctx) explicitPublicEvaluation(vr *wizard.VerifierRuntime) error {
 	return nil
 }
 
-// A shadow row is a row filled with zeroes that we **may** add
-// at the end of the rounds commitment. Its purpose is to ensure
-// the number of "SIS limbs" in a row divides the degree of the
-// ring-SIS instance.
+// A shadow row is a row filled with zeroes that we **may** add at the end of
+// the rounds commitment. Its purpose is to ensure the number of "SIS limbs" in
+// a row divides the degree of the ring-SIS instance.
 func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces.Column {
 
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)

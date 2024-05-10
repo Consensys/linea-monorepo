@@ -3,9 +3,9 @@ package symbolic
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,6 +87,88 @@ func TestReplayExpression(t *testing.T) {
 		// The oldEval and eval should be consistent
 		require.Equal(t, eval.Pretty(), oldEval.Pretty())
 		require.Equal(t, eval.SubVector(0, 4).Pretty(), replayedEval.Pretty())
+	}
+
+}
+
+func TestLCConstruction(t *testing.T) {
+
+	x := NewDummyVar("x")
+	y := NewDummyVar("y")
+
+	{
+		/*
+			Test t a simple case of addition
+		*/
+		expr1 := x.Add(y)
+
+		require.Equal(t, 2, len(expr1.Children))
+		require.Equal(t, expr1.Children[0], x)
+		require.Equal(t, expr1.Children[1], y)
+		require.Equal(t, 2, len(expr1.Operator.(LinComb).Coeffs))
+		require.Equal(t, expr1.Operator.(LinComb).Coeffs[0], 1)
+		require.Equal(t, expr1.Operator.(LinComb).Coeffs[1], 1)
+	}
+
+	{
+		/*
+			Adding y then substracting x should give back (y)
+		*/
+		expr1 := x.Add(y).Sub(x)
+		require.Equal(t, expr1, y)
+	}
+
+	{
+		/*
+			Same thing when using Neg
+		*/
+		expr := x.Neg().Add(x).Add(y)
+		require.Equal(t, expr, y)
+	}
+
+}
+
+func TestProductConstruction(t *testing.T) {
+
+	x := NewDummyVar("x")
+	y := NewDummyVar("y")
+
+	{
+		/*
+			Test t a simple case of addition
+		*/
+		expr1 := x.Mul(y)
+
+		require.Equal(t, 2, len(expr1.Children))
+		require.Equal(t, expr1.Children[0], x)
+		require.Equal(t, expr1.Children[1], y)
+		require.Equal(t, 2, len(expr1.Operator.(Product).Exponents))
+		require.Equal(t, expr1.Operator.(Product).Exponents[0], 1)
+		require.Equal(t, expr1.Operator.(Product).Exponents[1], 1)
+	}
+
+	{
+		/*
+			Adding y then substracting x should give back (y)
+		*/
+		expr1 := x.Mul(y).Mul(x)
+		require.Equal(t, 2, len(expr1.Children))
+		require.Equal(t, expr1.Children[0], x)
+		require.Equal(t, expr1.Children[1], y)
+		require.Equal(t, 2, len(expr1.Operator.(Product).Exponents))
+		require.Equal(t, expr1.Operator.(Product).Exponents[0], 2)
+		require.Equal(t, expr1.Operator.(Product).Exponents[1], 1)
+	}
+
+	{
+		/*
+			When we square
+		*/
+		expr := x.Mul(x)
+		require.Equal(t, 1, len(expr.Children))
+		require.Equal(t, expr.Children[0], x)
+		require.Equal(t, 1, len(expr.Operator.(Product).Exponents))
+		require.Equal(t, expr.Operator.(Product).Exponents[0], 2)
 	}
 
 }

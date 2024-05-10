@@ -3,15 +3,16 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
 // It's normal vector in a nutshell
 type Regular []field.Element
 
 // Instanstiate a new regular from a slice. Returns a pointer so that the result
-// the result can be reused without referencing as a SmartVector.
+// can be reused without referencing as a SmartVector.
 func NewRegular(v []field.Element) *Regular {
 	assertStrictPositiveLen(len(v))
 	res := Regular(v)
@@ -69,14 +70,27 @@ func (r *Regular) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
 }
 
-func processRegularOnly(op operator, svecs []SmartVector, coeffs []int) (*Regular, int) {
-	resvec := make([]field.Element, svecs[0].Len())
+func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*mempool.Pool) (result *Regular, numMatches int) {
+
+	length := svecs[0].Len()
+
+	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
+
+	var resvec []field.Element
+	if hasPool {
+		resvec = *pool.Alloc()
+	} else {
+		resvec = make([]field.Element, length)
+	}
+
 	isFirst := true
-	numMatches := 0
+	numMatches = 0
 
 	for i := range svecs {
 
 		svec := svecs[i]
+		// In case the current vec is Rotated, we reduce it to a regular form
+		// NB : this could use the pool.
 		if rot, ok := svec.(*Rotated); ok {
 			svec = rotatedAsRegular(rot)
 		}
@@ -84,16 +98,22 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int) (*Regula
 		if reg, ok := svec.(*Regular); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
+			// Importantly, we do not need to assume that regRes is originally
+			// zero.
 			if isFirst {
 				isFirst = false
-				op.VecIntoTerm(resvec, *reg, coeffs[i])
+				op.vecIntoTerm(resvec, *reg, coeffs[i])
 				continue
 			}
-			op.VecIntoVec(resvec, *reg, coeffs[i])
+			op.vecIntoVec(resvec, *reg, coeffs[i])
 		}
 	}
 
 	if numMatches == 0 {
+		if hasPool {
+			// we did not need it, so we can give it back directly
+			pool.Free(&resvec)
+		}
 		return nil, 0
 	}
 
@@ -105,6 +125,8 @@ func (r *Regular) DeepCopy() SmartVector {
 	return NewRegular(vector.DeepCopy(*r))
 }
 
-func (*Regular) AddRef() {}
-func (*Regular) DecRef() {}
-func (*Regular) Drop()   {}
+// Converts a smart-vector into a normal vec. The implementation minimizes
+// then number of copies.
+func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
+	return (*r)[:]
+}

@@ -1,15 +1,17 @@
+//go:build !fuzzlight
+
 package gkrmimc
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +21,7 @@ type SimpleHashingCircuit struct {
 	Digest frontend.Variable
 }
 
-type SimpleHashingCircuitWithApi SimpleHashingCircuit
+type SimpleHashingCircuitWithAPI SimpleHashingCircuit
 
 // just hash the input using the factory's hasher and return the result
 func (c SimpleHashingCircuit) Define(api frontend.API) error {
@@ -33,22 +35,10 @@ func (c SimpleHashingCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// just hash the input using the factory's hasher and return the result
-func (c *SimpleHashingCircuitWithApi) Define(api frontend.API) error {
-	factory := NewHasherFactory(api)
-	hasher := factory.NewHasher()
-
-	hasher.Write(c.Input[:]...)
-	d := hasher.Sum()
-
-	api.AssertIsEqual(d, c.Digest)
-	return nil
-}
-
 func TestFactory(t *testing.T) {
 
 	scs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
+		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
 		&SimpleHashingCircuit{Input: make([]frontend.Variable, 4)},
 	)
@@ -59,7 +49,7 @@ func TestFactory(t *testing.T) {
 		Digest: mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
 	}
 
-	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness, SolverOpts(scs)...)
@@ -69,7 +59,7 @@ func TestFactory(t *testing.T) {
 func TestFactoryWithPadding(t *testing.T) {
 
 	scs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
+		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
 		&SimpleHashingCircuit{Input: make([]frontend.Variable, 3)},
 	)
@@ -80,7 +70,7 @@ func TestFactoryWithPadding(t *testing.T) {
 		Digest: mimc.HashVec(vector.ForTest(0, 1, 2)),
 	}
 
-	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness, SolverOpts(scs)...)
@@ -94,7 +84,7 @@ func TestFactoryManySizes(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%v-hashes", size), func(t *testing.T) {
 			scs, err := frontend.Compile(
-				ecc.BN254.ScalarField(),
+				ecc.BLS12_377.ScalarField(),
 				scs.NewBuilder,
 				&SimpleHashingCircuit{Input: make([]frontend.Variable, size)},
 			)
@@ -112,7 +102,7 @@ func TestFactoryManySizes(t *testing.T) {
 				Digest: mimc.HashVec(vals),
 			}
 
-			witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+			witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 			require.NoError(t, err)
 
 			err = scs.IsSolved(witness, SolverOpts(scs)...)

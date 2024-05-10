@@ -5,21 +5,24 @@ import (
 	"math/big"
 	"math/rand"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-type Type int
+type smartVecType int
 
 // The order matters : combining type x with type y implies that the result
 // will be of type max(x, y)
 const (
-	ConstantT Type = iota
-	WindowT
-	RegularT
+	constantT smartVecType = iota
+	windowT
+	regularT
+	rotatedT
 )
+
+var smartVecTypeList = []smartVecType{constantT, windowT, regularT, rotatedT}
 
 type testCase struct {
 	name            string
@@ -51,10 +54,10 @@ type testCaseGen struct {
 	windowWithLen        int
 	windowMustStartAfter int
 	// Allowed smart-vector types for this testcase
-	allowedTypes []Type
+	allowedTypes []smartVecType
 }
 
-func NewTestBuilder(seed int) *testCaseGen {
+func newTestBuilder(seed int) *testCaseGen {
 	// Use a deterministic randomness source
 	res := &testCaseGen{seed: seed}
 	// #nosec G404 --we don't need a cryptographic RNG for fuzzing purpose
@@ -66,12 +69,14 @@ func NewTestBuilder(seed int) *testCaseGen {
 	res.numVec = res.gen.Intn(8) + 1
 
 	// In the test, we may restrict the inputs vectors to have a certain type
-	allowedTypes := []Type{RegularT, ConstantT, WindowT}
-	res.gen.Shuffle(len(allowedTypes), func(i, j int) { allowedTypes[i], allowedTypes[j] = allowedTypes[j], allowedTypes[i] })
+	allowedTypes := append([]smartVecType{}, smartVecTypeList...)
+	res.gen.Shuffle(len(allowedTypes), func(i, j int) {
+		allowedTypes[i], allowedTypes[j] = allowedTypes[j], allowedTypes[i]
+	})
 	res.allowedTypes = allowedTypes[:res.gen.Intn(len(allowedTypes)-1)+1]
 
-	// Generating the window : it should not be too small nor too large
-	// compared to the fullLength
+	// Generating the window : it should be roughly half of the total length
+	// this aims at maximizing the coverage.
 	res.windowWithLen = res.gen.Intn(res.fullLen-4)/2 + 2
 	res.windowMustStartAfter = res.gen.Intn(res.fullLen)
 	return res
@@ -86,7 +91,7 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 	// resVal will contain the value of the repeated in the expected result
 	// we will compute its value as we instantiate test vectors.
 	resVal := field.One()
-	maxType := ConstantT
+	maxType := constantT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -109,14 +114,14 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		resVal.Mul(&resVal, &tmp)
 
 		switch chosenType {
-		case ConstantT:
+		case constantT:
 			// Our implementation uses the convention that 0^0 == 0
 			// Even though, this case is avoided by the calling code.
 			if val.IsZero() && tcase.coeffs[i] != 0 {
 				hasConstZero = true
 			}
 			tcase.svecs[i] = NewConstant(val, gen.fullLen)
-		case WindowT:
+		case windowT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().start(), gen.windowMustStartAfter, gen.fullLen)
@@ -126,8 +131,10 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 				stop += gen.fullLen
 			}
 			winMaxStop = utils.Max(winMaxStop, stop)
-		case RegularT:
+		case regularT:
 			tcase.svecs[i] = gen.genRegular(val)
+		case rotatedT:
+			tcase.svecs[i] = gen.genRotated(val)
 		}
 	}
 
@@ -137,19 +144,22 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
 
+	// This switch statement resolves the type of smart-vector that we are
+	// expected for the result. It crucially relies on the number associated
+	// to the variants of the smartVecTypes enum.
 	switch {
 	case hasConstZero:
 		tcase.expectedValue = NewConstant(field.Zero(), gen.fullLen)
-	case maxType == ConstantT:
+	case maxType == constantT:
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
-	case maxType == WindowT:
+	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindow(
 			vector.Repeat(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
-	case maxType == RegularT:
+	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
 	}
 
@@ -165,7 +175,7 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	// resVal will contain the value of the repeated in the expected result
 	// we will compute its value as we instantiate test vectors.
 	resVal := field.Zero()
-	maxType := ConstantT
+	maxType := constantT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -185,9 +195,9 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		resVal.Add(&resVal, &tmp)
 
 		switch chosenType {
-		case ConstantT:
+		case constantT:
 			tcase.svecs[i] = NewConstant(val, gen.fullLen)
-		case WindowT:
+		case windowT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().start(), gen.windowMustStartAfter, gen.fullLen)
@@ -198,8 +208,10 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 				stop += gen.fullLen
 			}
 			winMaxStop = utils.Max(winMaxStop, stop)
-		case RegularT:
+		case regularT:
 			tcase.svecs[i] = gen.genRegular(val)
+		case rotatedT:
+			tcase.svecs[i] = gen.genRotated(val)
 		}
 	}
 
@@ -210,16 +222,16 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	}
 
 	switch {
-	case maxType == ConstantT:
+	case maxType == constantT:
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
-	case maxType == WindowT:
+	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindow(
 			vector.Repeat(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
-	case maxType == RegularT:
+	case maxType == regularT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
 	}
 
@@ -236,7 +248,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	vals := []field.Element{}
 
 	// MaxType is used to determine what type should the result be
-	maxType := ConstantT
+	maxType := constantT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -251,9 +263,9 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 		maxType = utils.Max(maxType, chosenType)
 
 		switch chosenType {
-		case ConstantT:
+		case constantT:
 			tcase.svecs[i] = NewConstant(val, gen.fullLen)
-		case WindowT:
+		case windowT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().start(), gen.windowMustStartAfter, gen.fullLen)
@@ -264,8 +276,10 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 				stop += gen.fullLen
 			}
 			winMaxStop = utils.Max(winMaxStop, stop)
-		case RegularT:
+		case regularT:
 			tcase.svecs[i] = gen.genRegular(val)
+		case rotatedT:
+			tcase.svecs[i] = gen.genRotated(val)
 		}
 	}
 
@@ -278,9 +292,9 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	resVal := poly.EvalUnivariate(vals, x)
 
 	switch {
-	case maxType == ConstantT:
+	case maxType == constantT:
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
-	case maxType == RegularT || maxType == WindowT:
+	case maxType == regularT || maxType == windowT || maxType == rotatedT:
 		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
 	}
 
@@ -313,4 +327,9 @@ func (gen *testCaseGen) genWindow(val, paddingVal field.Element) *PaddedCircular
 
 func (gen *testCaseGen) genRegular(val field.Element) *Regular {
 	return NewRegular(vector.Repeat(val, gen.fullLen))
+}
+
+func (gen *testCaseGen) genRotated(val field.Element) *Rotated {
+	offset := gen.gen.Intn(gen.fullLen)
+	return NewRotated(*gen.genRegular(val), offset)
 }

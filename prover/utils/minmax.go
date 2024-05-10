@@ -33,14 +33,3 @@ func Min[T constraints.Ordered](s ...T) T {
 	}
 	return m
 }
-
-// Returns true iff all integers are positive
-func AllStrictPositive[T constraints.Ordered](s ...T) bool {
-	var zero T
-	for _, x := range s {
-		if x <= zero {
-			return false
-		}
-	}
-	return true
-}

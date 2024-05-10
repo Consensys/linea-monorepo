@@ -1,8 +1,8 @@
 package logdata
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
 

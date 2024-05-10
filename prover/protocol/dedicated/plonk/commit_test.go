@@ -3,10 +3,10 @@ package plonk_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/plonk"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,8 +44,6 @@ func (circuit *TestCommitCircuit) Define(api frontend.API) error {
 
 func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 
-	t.SkipNow()
-
 	circuit := &TestCommitCircuit{}
 
 	// Assigner is a function returning an assignment. It is called
@@ -69,8 +67,6 @@ func TestPlonkWizardCircuitWithCommit(t *testing.T) {
 }
 
 func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
-
-	t.SkipNow()
 
 	circuit := &TestCommitCircuit{}
 

@@ -6,20 +6,19 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/profiling"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -618,7 +617,7 @@ func (ctx mptsCtx) getYsHs(
 			*/
 			if other, ok := checkNoDuplicateMap[struct {
 				ifaces.ColID
-				fr.Element
+				field.Element
 			}{polHandle.GetColID(), param.X}]; ok {
 				utils.Panic("Two queries for poly %v on point %v, (%v %v)", polHandle.GetColID(), param.X.String(), qName, other)
 			}

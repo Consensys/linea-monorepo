@@ -3,52 +3,12 @@ package fastpoly
 import (
 	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
-
-/*
-Evaluates a polynomial on a coset
-
-Let H be the domain of "N" root of unity
-Let Hr be the supergroup of "Nr" roots of unity.
-Let gr be a generator of Hr, and g = g^r the generator for H
-Let a be the multiplicative generator of F^*
-
-The polynomial should be given in coefficient form in bit-reversed order
-
-	`ReEvaluateOnCustomCoset` returns the cosetID of the coset a*gr^{numCoset}*H
-*/
-func ReEvaluateOnCustomCoset(coeffs []field.Element, N int, k int) []field.Element {
-
-	/*
-		Sanity-checks on the sizes of the elements
-	*/
-
-	n := len(coeffs)
-
-	if !utils.IsPowerOfTwo(n) || !utils.IsPowerOfTwo(N) {
-		utils.Panic("Both the length %v and the newLen %v should be powers of two", n, N)
-	}
-
-	if N < n {
-		utils.Panic("The newLen %v is smaller than the old one %v", n, N)
-	}
-
-	if k >= N/n {
-		utils.Panic("k %v larger than N/n %v", k, N/n)
-	}
-
-	res := vector.DeepCopy(coeffs)
-	domainReeval := fft.NewDomain(n).WithCustomCoset(N/n, k)
-	domainReeval.FFT(res, fft.DIT, true)
-	fft.BitReverse(res)
-
-	return res
-}
 
 /*
 Given a polynomial in standard order evaluation form. Return
@@ -96,7 +56,7 @@ The result is (in theory) of size N, but it has a periodicity
 of r = N/n. Thus, we only return the "r" first entries
 
 Largely inspired from gnark's
-https://github.com/ConsenSys/gnark/blob/8bc13b200cb9aa1ec74e4f4807e2e97fc8d8396f/internal/backend/bn254/plonk/prove.go#L734
+https://github.com/ConsenSys/gnark/blob/8bc13b200cb9aa1ec74e4f4807e2e97fc8d8396f/internal/backend/bls12-377/plonk/prove.go#L734
 */
 func EvalXnMinusOneOnACoset(n, N int) []field.Element {
 	/*

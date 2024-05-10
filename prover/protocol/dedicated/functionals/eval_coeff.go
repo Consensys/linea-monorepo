@@ -1,17 +1,14 @@
 package functionals
 
 import (
-	"fmt"
-
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 const (
@@ -24,7 +21,7 @@ const (
 // Create a dedicated wizard to perform an evaluation in coefficient basis.
 // Returns an accessor for the value of the polynomial. Takes an expression
 // as input.
-func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Column) *ifaces.Accessor {
+func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Column) ifaces.Accessor {
 
 	length := pol.Size()
 	maxRound := utils.Max(x.Round, pol.Round())
@@ -57,7 +54,7 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 	)
 
 	// The result is given by
-	comp.InsertLocalOpening(
+	localOpening := comp.InsertLocalOpening(
 		maxRound,
 		ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN),
 		hornerPoly,
@@ -82,19 +79,5 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 	})
 
-	return ifaces.NewAccessor(
-		fmt.Sprintf("EVAL_UNIVARIATE_RESULT_%v", name),
-		func(run ifaces.Runtime) field.Element {
-			// This will panic if the accessor is called too soon
-			// i.e. in a round too early
-			params := run.GetParams(ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN)).(query.LocalOpeningParams)
-			return params.Y
-		},
-		func(api frontend.API, c ifaces.GnarkRuntime) frontend.Variable {
-			params := c.GetParams(ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN)).(query.GnarkLocalOpeningParams)
-			return params.Y
-		},
-		maxRound,
-	)
-
+	return accessors.NewLocalOpeningAccessor(localOpening, maxRound)
 }

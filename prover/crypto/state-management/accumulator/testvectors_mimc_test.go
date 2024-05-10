@@ -1,11 +1,13 @@
+//go:build !fuzzlight
+
 package accumulator_test
 
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/accumulator"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +16,7 @@ func newTestAccumulatorMiMC() *accumulator.ProverState[DummyKey, DummyVal] {
 		HashFunc: hashtypes.MiMC,
 		Depth:    40,
 	}
-	return accumulator.InitializeProverState[DummyKey, DummyVal](config, LOCATION_TESTING)
+	return accumulator.InitializeProverState[DummyKey, DummyVal](config, locationTesting)
 }
 
 // Test the root hash of an empty accumulator
@@ -35,7 +37,7 @@ func TestEmptyAccumulatorMiMC(t *testing.T) {
 		)
 
 		// also checks its hash value (i.e, the corresponding leaf in the tree)
-		require.Equal(t, "0x276935e06bee60ac996e056c4917ae55afb4d43efd636447f52baf8d174db1f9", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x0891fa77c3d0c9b745840d71d41dcb58b638d4734bb4f0bba4a3d1a2d847b672", leafOpening.Hash(acc.Config()).Hex())
 	}
 
 	// check the value of the second leaf opening. It should be tail with an updated prev value
@@ -43,25 +45,25 @@ func TestEmptyAccumulatorMiMC(t *testing.T) {
 		leafOpening := acc.Data.MustGet(1).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
 			leafOpening.String(),
 		)
 
 		// also check its hash value
-		require.Equal(t, "0x103cca8163b021373b6f24e3098a091b40ada3564f9b5d40a4f8185c61e49c60", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x10ba2286f648a549b50ea5f1b6e1155d22c31eb4727c241e76c420200cd5dbe0", leafOpening.Hash(acc.Config()).Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
+		"0x0951bfcd4ac808d195af8247140b906a4379b3f2d37ec66e34d2f4a5d35fa166",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x2e7942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14",
+		"0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5",
 		acc.TopRoot().Hex(),
 	)
 }
@@ -92,7 +94,7 @@ func TestInsertionRootHashMiMC(t *testing.T) {
 
 		// also checks its hash value (i.e, the corresponding leaf in the tree)
 		leaf := leafOpening.Hash(acc.Config())
-		require.Equal(t, "0x0b070604db69fe26e6fff2c547a04321e96f99557a54427111d344a7f9c4fe21", leaf.Hex())
+		require.Equal(t, "0x09dd19003c62ec025c50e9eacb4fd9509bc5a150b43bce9240162eb4b1778e4b", leaf.Hex())
 	}
 
 	// check the value of the second leaf opening. It should be tail with an updated prev value
@@ -100,13 +102,13 @@ func TestInsertionRootHashMiMC(t *testing.T) {
 		leafOpening := acc.Data.MustGet(1).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 2, Next: 1, HKey: 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
+			"LeafOpening{Prev: 2, Next: 1, HKey: 0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
 			leafOpening.String(),
 		)
 
 		// also check its hash value
 		leaf := leafOpening.Hash(acc.Config())
-		require.Equal(t, "0x2d87eaae6ee164a80a573baac4c0c747296fe504c130a06a78f63c488ca43cdf", leaf.Hex())
+		require.Equal(t, "0x0ab3e0de05fd2b67ffa26aadd17e91b632a26013784e757028ae9d851508b055", leaf.Hex())
 	}
 
 	// check the value of the second leaf opening, corresponds to the inserted entry
@@ -114,26 +116,26 @@ func TestInsertionRootHashMiMC(t *testing.T) {
 		leafOpening := acc.Data.MustGet(2).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x2114af98d4b60e71fe3df51a0eb9e6b1f0625267d0788ec1e38988deb93f54a5, HVal: 0x15cc289ebc18cb3ba9301f46f0619391ee79007ea289fd3d9155d574f121e953}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x096ccb5dfe8d38d9e11f9f3ed692d0b377f4f12cb204d15338fe9862a7997743, HVal: 0x05d7b878349fc53b779b4b7e3a303694e88fba9521b6add1ed824a3be74104fd}",
 			leafOpening.String(),
 		)
 
 		// also check its hash value
 		leaf := leafOpening.Hash(acc.Config())
-		require.Equal(t, "0x065dc977bfb75fc5fb5f09925e42c1d13900b39f7e6b965d6e484595cb1c93a0", leaf.Hex())
+		require.Equal(t, "0x0002a72d394f16c6a063ca6b15a8bf36c6efbfc67831534707c39bee252400df", leaf.Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x1b8c9d905e0561b9ae850cf04ba39ff166f7b7306ea348b87f3f682a45cc82c1",
+		"0x0882afe875656680dceb7b17fcba7c136cec0c32becbe9039546c79f71c56d36",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x186cb83c254c5f6985f7929e02cfd5f19e6c953c4f01bc2af9e0276f75184d6b",
+		"0x0cfdc3990045390093be4e1cc9907b220324cccd1c8ea9ede980c7afa898ef8d",
 		acc.TopRoot().Hex(),
 	)
 }
@@ -159,14 +161,14 @@ func TestInsertAndUpdateRootHashMiMC(t *testing.T) {
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x1b8c9d905e0561b9ae850cf04ba39ff166f7b7306ea348b87f3f682a45cc82c1",
+		"0x0882afe875656680dceb7b17fcba7c136cec0c32becbe9039546c79f71c56d36",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x186cb83c254c5f6985f7929e02cfd5f19e6c953c4f01bc2af9e0276f75184d6b",
+		"0x0cfdc3990045390093be4e1cc9907b220324cccd1c8ea9ede980c7afa898ef8d",
 		acc.TopRoot().Hex(),
 	)
 }
@@ -192,7 +194,7 @@ func TestInsertAndDeleteRootHashMiMC(t *testing.T) {
 	// of the empty tree
 	require.Equal(
 		t,
-		"0x21bf7e28464bf26302be46623b706eacf89b08134665b8f425d437f13218091b",
+		"0x0951bfcd4ac808d195af8247140b906a4379b3f2d37ec66e34d2f4a5d35fa166",
 		acc.SubTreeRoot().Hex(),
 	)
 
@@ -201,7 +203,7 @@ func TestInsertAndDeleteRootHashMiMC(t *testing.T) {
 	// inserting.
 	require.Equal(
 		t,
-		"0x2844b523cac49f6c5205b7b44065a741fd5c4ba8481c0ebee1d06ecf33f5ef40",
+		"0x0bcb88342825fa7a079a5cf5f77d07b1590a140c311a35acd765080eea120329",
 		acc.TopRoot().Hex(),
 	)
 }

@@ -1,14 +1,17 @@
 package compiler
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/arithmetics"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/cleanup"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/logdata"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/specialqueries"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter/sticker"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/univariates"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/arithmetics"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/innerproduct"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter/sticker"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 // Arcane is a grouping of all compilers. It compiles
@@ -22,9 +25,9 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 	return func(comp *wizard.CompiledIOP) {
 		specialqueries.RangeProof(comp)
 		specialqueries.CompileFixedPermutations(comp)
-		specialqueries.CompilePermutations(comp)
-		specialqueries.LogDerivativeLookupCompiler(comp)
-		specialqueries.CompileInnerProduct(comp)
+		permutation.CompileGrandProduct(comp)
+		lookup.CompileLogDerivative(comp)
+		innerproduct.Compile(comp)
 		if withLog_ {
 			logdata.Log("after-expansion")(comp)
 		}

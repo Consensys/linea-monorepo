@@ -3,12 +3,12 @@ package verifiercol
 import (
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,11 +19,11 @@ var _ VerifierCol = FromYs{}
 type FromYs struct {
 	// The list of the evaluated column in the same order
 	// as we like to layout the currently-described column
-	ranges []ifaces.ColID
-	// The query from which we shall select the evaluations
-	query query.UnivariateEval
+	Ranges []ifaces.ColID
+	// The Query from which we shall select the evaluations
+	Query query.UnivariateEval
 	// Remember the round in which the query was made
-	round int
+	Round_ int
 }
 
 // Construct a new column from a univariate query and a list of of ifaces.ColID
@@ -42,7 +42,7 @@ func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces
 	// No make the explicit check
 	for _, rangeName := range ranges {
 		if _, ok := nameMap[rangeName]; !ok && !strings.Contains(string(rangeName), "SHADOW") {
-			logrus.Errorf("NewFromYs : %v is not part of the query %v. It will be zeroized", rangeName, q.QueryID)
+			logrus.Debugf("NewFromYs : %v is not part of the query %v. It will be zeroized", rangeName, q.QueryID)
 		}
 	}
 
@@ -51,9 +51,9 @@ func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces
 	round := comp.QueriesParams.Round(q.QueryID)
 
 	res := FromYs{
-		ranges: ranges,
-		query:  q,
-		round:  round,
+		Ranges: ranges,
+		Query:  q,
+		Round_: round,
 	}
 
 	return res
@@ -61,12 +61,12 @@ func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces
 
 // Returns the round of definition of the column
 func (fys FromYs) Round() int {
-	return fys.round
+	return fys.Round_
 }
 
 // Returns a generic name from the column. Defined from the coin's.
 func (fys FromYs) GetColID() ifaces.ColID {
-	return ifaces.ColIDf("FYS_%v", fys.query.QueryID)
+	return ifaces.ColIDf("FYS_%v", fys.Query.QueryID)
 }
 
 // Always return true. We sanity-check the existence of the
@@ -75,23 +75,23 @@ func (fys FromYs) MustExists() {}
 
 // Return the size of the fys
 func (fys FromYs) Size() int {
-	return len(fys.ranges)
+	return len(fys.Ranges)
 }
 
 // Returns the coin's value as a column assignment
 func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
-	queryParams := run.GetParams(fys.query.QueryID).(query.UnivariateEvalParams)
+	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
 	yMap := map[ifaces.ColID]field.Element{}
-	for i, polName := range fys.query.Pols {
+	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.Ys[i]
 	}
 
 	// This will leaves the columns missing from the query to zero.
-	res := make([]field.Element, len(fys.ranges))
-	for i, name := range fys.ranges {
+	res := make([]field.Element, len(fys.Ranges))
+	for i, name := range fys.Ranges {
 		res[i] = yMap[name]
 	}
 
@@ -101,17 +101,17 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 // Returns the coin's value as a column assignment
 func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 
-	queryParams := run.GetParams(fys.query.QueryID).(query.GnarkUnivariateEvalParams)
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
 	yMap := map[ifaces.ColID]frontend.Variable{}
-	for i, polName := range fys.query.Pols {
+	for i, polName := range fys.Query.Pols {
 		yMap[polName.GetColID()] = queryParams.Ys[i]
 	}
 
 	// This will leave some of the columns to nil
-	res := make([]frontend.Variable, len(fys.ranges))
-	for i, name := range fys.ranges {
+	res := make([]frontend.Variable, len(fys.Ranges))
+	for i, name := range fys.Ranges {
 		if y, found := yMap[name]; found {
 			res[i] = y
 		} else {
@@ -144,5 +144,5 @@ func (fys FromYs) String() string {
 
 // Split the FromYs by restricting to a range
 func (fys FromYs) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
-	return NewFromYs(comp, fys.query, fys.ranges[from:to])
+	return NewFromYs(comp, fys.Query, fys.Ranges[from:to])
 }

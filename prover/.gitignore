@@ -10,10 +10,10 @@ lispified
 !utils/profiling
 **/large_data
 **/*-*-zkProof.json
-**/full/proving_key.bin
-**/full/circuit.bin
-**/full-large/proving_key.bin
-**/full-large/circuit.bin
+**/proving_key.bin
+!**/verifying_key.bin
+**/circuit.bin
+prover/zkevm/arithmetization/zkevm.bin
 
 
 
@@ -77,3 +77,13 @@ node_modules
 
 # Output of the generator command
 test-data
+
+# Testdata, otherwise that's 400MB of data downloaded
+integration-testing/testdata/prover-requests/
+
+# Artefacts of the compilation with corset
+zkevm/arithmetization/zkevm.bin
+
+# Authorize the kzg srs folder
+prover-assets/**
+!prover-assets/kzgsrs/**

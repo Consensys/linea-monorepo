@@ -1,16 +1,19 @@
 package field
 
 import (
-	"fmt"
 	"runtime"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 )
 
-func ParBatchInvert(a []Element, numcpu int) []Element {
+// ParBatchInvert is as a parallel implementation of [BatchInvert]. The caller
+// can supply the target number of cores to use to perform the paralellization.
+// If `numCPU=0` is provided, the function defaults to using all the available
+// cores exposed by the OS.
+func ParBatchInvert(a []Element, numCPU int) []Element {
 
-	if numcpu == 0 {
-		numcpu = runtime.GOMAXPROCS(0)
+	if numCPU == 0 {
+		numCPU = runtime.NumCPU()
 	}
 
 	res := make([]Element, len(a))
@@ -18,12 +21,7 @@ func ParBatchInvert(a []Element, numcpu int) []Element {
 	parallel.Execute(len(a), func(start, stop int) {
 		subRes := BatchInvert(a[start:stop])
 		copy(res[start:stop], subRes)
-	}, numcpu)
+	}, numCPU)
 
 	return res
-}
-
-// Returns a string declaring in hard-code the field element value
-func ExplicitDeclarationStr(x Element) string {
-	return fmt.Sprintf("field.NewFromString(\"%v\")", x.String())
 }

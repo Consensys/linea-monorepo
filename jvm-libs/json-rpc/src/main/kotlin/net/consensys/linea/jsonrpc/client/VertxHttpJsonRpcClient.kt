@@ -1,97 +1,74 @@
 package net.consensys.linea.jsonrpc.client
 
+import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.databind.JsonSerializer
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Future
-import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.http.HttpClient
-import io.vertx.core.http.HttpClientOptions
-import io.vertx.core.http.HttpClientRequest
 import io.vertx.core.http.HttpClientResponse
 import io.vertx.core.http.HttpMethod
-import io.vertx.core.http.HttpVersion
+import io.vertx.core.http.RequestOptions
 import io.vertx.core.json.JsonObject
-import net.consensys.linea.async.get
+import io.vertx.core.json.jackson.VertxModule
 import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
-import net.consensys.linea.metrics.monitoring.SimpleTimerCapture
+import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.net.URL
-
-open class VertxHttpJsonRpcClientFactory(
-  private val vertx: Vertx,
-  private val meterRegistry: MeterRegistry
-) {
-  fun create(
-    endpoint: URL,
-    maxPoolSize: Int? = null,
-    httpVersion: HttpVersion? = null,
-    log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
-    requestDefaultLogLevel: Level = Level.TRACE,
-    requestFailureLogLevel: Level = Level.DEBUG
-  ): VertxHttpJsonRpcClient {
-    val clientOptions =
-      HttpClientOptions()
-        .setKeepAlive(true)
-        .setDefaultHost(endpoint.host)
-        .setDefaultPort(endpoint.port)
-    maxPoolSize?.let(clientOptions::setMaxPoolSize)
-    httpVersion?.let(clientOptions::setProtocolVersion)
-    val httpClient = vertx.createHttpClient(clientOptions)
-    return VertxHttpJsonRpcClient(
-      httpClient,
-      endpoint.path,
-      meterRegistry,
-      log,
-      requestDefaultLogLevel = requestDefaultLogLevel,
-      requestFailureLogLevel = requestFailureLogLevel
-    )
-  }
-}
+import java.util.HexFormat
 
 class VertxHttpJsonRpcClient(
   private val httpClient: HttpClient,
-  private val apiPath: String,
+  private val endpoint: URL,
   private val meterRegistry: MeterRegistry,
+  private val requestObjectMapper: ObjectMapper = objectMapper,
+  private val responseObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
-  private val requestDefaultLogLevel: Level = Level.TRACE,
-  private val requestFailureLogLevel: Level = Level.DEBUG
+  private val requestResponseLogLevel: Level = Level.TRACE,
+  private val failuresLogLevel: Level = Level.DEBUG
 ) : JsonRpcClient {
+  private val requestOptions = RequestOptions().apply {
+    setMethod(HttpMethod.POST)
+    setAbsoluteURI(endpoint)
+  }
+
   override fun makeRequest(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    return httpClient.request(HttpMethod.POST, apiPath).flatMap { httpClientRequest ->
-      httpClientRequest.putHeader("Content-Type", "application/json")
+    val json = requestObjectMapper.writeValueAsString(request)
 
-      val json = JsonObject.mapFrom(request).encode()
-      logRequest(httpClientRequest, json)
+    return httpClient.request(requestOptions).flatMap { httpClientRequest ->
+      httpClientRequest.putHeader("Content-Type", "application/json")
+      logRequest(json)
 
       val requestFuture =
         httpClientRequest.send(json).flatMap { response: HttpClientResponse ->
           if (isSuccessStatusCode(response.statusCode())) {
-            handleResponse(httpClientRequest, json, response, resultMapper)
+            handleResponse(json, response, resultMapper)
           } else {
             response.body().flatMap { bodyBuffer ->
-              log.warn(
-                "{}/{} {} {} rpc_method={} responseBody='{}'",
-                httpClientRequest.host,
-                httpClientRequest.path(),
-                response.statusCode(),
-                response.statusMessage(),
-                request.method,
-                bodyBuffer.toString()
+              logResponse(
+                isError = true,
+                response = response,
+                requestBody = json,
+                responseBody = bodyBuffer.toString().lines().firstOrNull() ?: ""
               )
               Future.failedFuture(
                 Exception(
-                  "HTTP error code=${response.statusCode()}, message=${response.statusMessage()}"
+                  "HTTP errorCode=${response.statusCode()}, message=${response.statusMessage()}"
                 )
               )
             }
@@ -107,10 +84,10 @@ class VertxHttpJsonRpcClient(
         .setTag("method", request.method)
         .captureTime(requestFuture)
     }
+      .onFailure { th -> logRequestFailure(json, th) }
   }
 
   private fun handleResponse(
-    request: HttpClientRequest,
     requestBody: String,
     httpResponse: HttpClientResponse,
     resultMapper: (Any?) -> Any?
@@ -122,7 +99,9 @@ class VertxHttpJsonRpcClient(
       .flatMap { bodyBuffer: Buffer ->
         responseBody = bodyBuffer.toString()
         try {
-          val jsonResponse = JsonObject(responseBody)
+          @Suppress("UNCHECKED_CAST")
+          val jsonResponse = (responseObjectMapper.readValue(responseBody, Map::class.java) as Map<String, Any>)
+            .let(::JsonObject)
           val response =
             when {
               jsonResponse.containsKey("result") ->
@@ -143,10 +122,7 @@ class VertxHttpJsonRpcClient(
                 )
               }
 
-              else ->
-                throw IllegalArgumentException(
-                  "Invalid JSON-RPC response without result or error"
-                )
+              else -> throw IllegalArgumentException("Invalid JSON-RPC response without result or error")
             }
           Future.succeededFuture(response)
         } catch (e: Throwable) {
@@ -157,38 +133,71 @@ class VertxHttpJsonRpcClient(
           }
         }
       }
-      .andThen { logResponse(isError, request, httpResponse, requestBody, responseBody) }
+      .andThen { asyncResult ->
+        logResponse(isError, httpResponse, requestBody, responseBody, asyncResult.cause())
+      }
   }
 
-  // somehow HttpClientRequest.uri does not work, so building manually
-  private fun HttpClientRequest.logUri(): String = "${this.host}:${this.port}${this.path()}"
-
-  private fun logRequest(
-    request: HttpClientRequest,
-    json: String,
-    level: Level = requestDefaultLogLevel
-  ) {
-    log.log(level, " --> {} {}", request.logUri(), json)
+  private fun logRequest(jsonBody: String, level: Level = requestResponseLogLevel) {
+    log.log(level, "--> {} {}", endpoint, jsonBody)
   }
 
   private fun logResponse(
     isError: Boolean,
-    request: HttpClientRequest,
     response: HttpClientResponse,
     requestBody: String,
-    responseBody: String
+    responseBody: String,
+    failureCause: Throwable? = null
   ) {
-    val logLevel = if (isError) requestFailureLogLevel else requestDefaultLogLevel
-    if (isError && log.level != requestDefaultLogLevel) {
+    val logLevel = if (isError) failuresLogLevel else requestResponseLogLevel
+    if (isError && log.level != requestResponseLogLevel) {
       // in case of error, log the request that originated the error
       // to help replicate and debug later
-      logRequest(request, requestBody, logLevel)
+      logRequest(requestBody, logLevel)
     }
 
-    log.log(logLevel, " <-- {} {} {}", request.logUri(), response.statusCode(), responseBody)
+    log.log(
+      logLevel,
+      "<-- {} {} {} {}",
+      endpoint,
+      response.statusCode(),
+      responseBody,
+      failureCause?.message ?: ""
+    )
+  }
+
+  private fun logRequestFailure(
+    requestBody: String,
+    failureCause: Throwable
+  ) {
+    log.log(
+      failuresLogLevel,
+      "<--> {} {} failed with error={}",
+      endpoint,
+      requestBody,
+      failureCause.message,
+      failureCause
+    )
   }
 
   private fun isSuccessStatusCode(statusCode: Int): Boolean {
     return statusCode >= 200 && statusCode < 300
+  }
+
+  companion object {
+    val objectMapper = jacksonObjectMapper()
+      .registerModules(VertxModule())
+      .registerModules(
+        SimpleModule().apply {
+          this.addSerializer(ByteArray::class.java, ByteArrayToHexStringSerializer())
+        }
+      )
+  }
+}
+
+class ByteArrayToHexStringSerializer : JsonSerializer<ByteArray>() {
+  private val hexFormatter = HexFormat.of()
+  override fun serialize(value: ByteArray?, gen: JsonGenerator?, serializers: SerializerProvider?) {
+    gen?.writeString(value?.let { "0x" + hexFormatter.formatHex(it) })
   }
 }

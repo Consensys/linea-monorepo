@@ -3,10 +3,10 @@ package plonk_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/plonk"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,15 +23,11 @@ type MyCircuit struct {
 // x**3 + x + 5 == y
 func (circuit *MyCircuit) Define(api frontend.API) error {
 	x3 := api.Mul(circuit.X, circuit.X, circuit.X)
-	a := api.Add(x3, circuit.X, 5)
-	api.Println(a)
 	api.AssertIsEqual(circuit.Y, api.Add(x3, circuit.X, 5))
 	return nil
 }
 
 func TestPlonkWizard(t *testing.T) {
-
-	t.SkipNow()
 
 	circuit := &MyCircuit{}
 
@@ -42,7 +38,6 @@ func TestPlonkWizard(t *testing.T) {
 		return &MyCircuit{X: 0, Y: 5}
 	}
 
-	//profiling.ProfileTrace("test-example", true, true, func() {
 	compiled := wizard.Compile(
 		func(build *wizard.Builder) {
 			plonk.PlonkCheck(build.CompiledIOP, "PLONK", 0, circuit, []func() frontend.Circuit{assigner})
@@ -53,6 +48,4 @@ func TestPlonkWizard(t *testing.T) {
 	proof := wizard.Prove(compiled, func(assi *wizard.ProverRuntime) {})
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
-	//})
-
 }

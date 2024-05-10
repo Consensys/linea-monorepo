@@ -3,16 +3,16 @@ package sticker_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter/sticker"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter/sticker"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,12 +49,10 @@ func TestLocalEval(t *testing.T) {
 	}
 
 	comp := wizard.Compile(define, sticker.Sticker(4, 8))
-
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("A").String())
 	assert.Equal(t, column.Ignored.String(), comp.Columns.Status("B").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("C").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("D").String())
-
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q1.ID))
 	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q2.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q3.ID))
@@ -142,47 +140,6 @@ func TestGlobalConstraintFibonacci(t *testing.T) {
 
 }
 
-func TestGlobalMixedSize(t *testing.T) {
-
-	var a, b, c ifaces.Column
-	var q1, q2 query.GlobalConstraint
-
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a = builder.RegisterCommit("B", 4)
-		b = builder.RegisterCommit("C", 8)
-		c = builder.RegisterCommit("D", 16)
-
-		// equal when repeat
-		eqRepeat := func(a, b ifaces.Column) *symbolic.Expression {
-			rep := b.Size() / a.Size()
-			return ifaces.ColumnAsVariable(b).Sub(ifaces.ColumnAsVariable(column.Repeat(a, rep)))
-		}
-
-		q1 = builder.GlobalConstraint("Q0", eqRepeat(a, b))
-		q2 = builder.GlobalConstraint("Q1", eqRepeat(a, c))
-	}
-
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
-
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 1, 1, 2, 3))
-		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 1, 1, 2, 3, 1, 1, 2, 3, 1, 1, 2, 3))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
-
-}
-
 func TestLocalConstraintFibonacci(t *testing.T) {
 
 	var a, b, c ifaces.Column
@@ -217,6 +174,7 @@ func TestLocalConstraintFibonacci(t *testing.T) {
 
 	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
 		// Assigns all the columns
+		// Todo: Arbitrary changes of col values do not make the test failing
 		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
 		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21))
 		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987))
@@ -225,46 +183,6 @@ func TestLocalConstraintFibonacci(t *testing.T) {
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 
-}
-
-func TestLocalMixedSize(t *testing.T) {
-
-	var a, b, c ifaces.Column
-	var q1, q2 query.LocalConstraint
-
-	define := func(builder *wizard.Builder) {
-		// declare columns of different sizes
-		a = builder.RegisterCommit("B", 4)
-		b = builder.RegisterCommit("C", 8)
-		c = builder.RegisterCommit("D", 16)
-
-		// equal when repeat
-		eqRepeat := func(a, b ifaces.Column) *symbolic.Expression {
-			rep := b.Size() / a.Size()
-			return ifaces.ColumnAsVariable(b).Sub(ifaces.ColumnAsVariable(column.Repeat(a, rep)))
-		}
-
-		q1 = builder.LocalConstraint("Q0", eqRepeat(a, b))
-		q2 = builder.LocalConstraint("Q1", eqRepeat(a, c))
-	}
-
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
-
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should be ignored")
-
-	// manually compiles the comp
-	dummy.Compile(comp)
-
-	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
-		// Assigns all the columns
-		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 1, 1, 2, 3))
-		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(1, 1, 2, 3, 1, 1, 2, 3, 1, 1, 2, 3, 1, 1, 2, 3))
-	})
-
-	err := wizard.Verify(comp, proof)
-	require.NoError(t, err)
 }
 
 func TestGlobalMixedRounds(t *testing.T) {

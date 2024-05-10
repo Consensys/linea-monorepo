@@ -3,7 +3,7 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
 // A constant vector is a vector obtained by repeated "length" time the same value
@@ -56,6 +56,6 @@ func (c *Constant) DeepCopy() SmartVector {
 	return NewConstant(c.val, c.length)
 }
 
-func (*Constant) AddRef() {}
-func (*Constant) DecRef() {}
-func (*Constant) Drop()   {}
+func (c *Constant) IntoRegVecSaveAlloc() []field.Element {
+	return IntoRegVec(c)
+}

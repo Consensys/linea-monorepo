@@ -4,15 +4,15 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // lock to save on precomputations
-var twiddleLock sync.Mutex = sync.Mutex{}
+var twiddleLock = sync.Mutex{}
 
 // The maximal order but as an int
-var maxOrderInt int = int(field.RootOrUnityOrder)
+var maxOrderInt int = int(field.RootOfUnityOrder)
 
 // The twiddle and twiddleInv arrays are computed lazily
 var twiddles [][]field.Element = make([][]field.Element, 0, maxOrderInt+1)

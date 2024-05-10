@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
 
-/*
-Constraint on the type of a variable
-*/
+// Metadata is an interface that must be implemented by type in order to be
+// used to instantiate a [Variable] with them.
 type Metadata interface {
 	/*
 		Strings allows adressing a map by variable 2 instances for which
@@ -22,28 +22,29 @@ type Metadata interface {
 	String() string
 }
 
-/*
-Implements `Operator“
-*/
+// Variable implements the [Operator] interface and implements a variable; i.e.
+// an abstract value that can be assigned in order to evaluate the expression.
 type Variable struct {
 	Metadata Metadata
 }
 
+// Degree implements the [Operator] interface. Yet, this panics if this is called.
 func (Variable) Degree([]int) int {
 	panic("we never call it for a variable")
 }
 
-func (v Variable) Evaluate([]sv.SmartVector) sv.SmartVector {
+// Evaluate implements the [Operator] interface. Yet, this panics if this is called.
+func (v Variable) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
+// GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
 func (v Variable) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	panic("we never call it for variables")
 }
 
-/*
-Returns an expression with a unique node
-*/
+// NewVariable constructs a new variable object from a parameter implementing
+// the [Metadata] interface.
 func NewVariable(metadata Metadata) *Expression {
 	return &Expression{
 		Children: []*Expression{},
@@ -52,7 +53,7 @@ func NewVariable(metadata Metadata) *Expression {
 	}
 }
 
-// Gets the ESH from a metadata. It is obtained by hashing
+// metadataToESH gets the ESH from a metadata. It is obtained by hashing
 // the string representation of the metadata.
 func metadataToESH(m Metadata) field.Element {
 	var esh field.Element
@@ -65,7 +66,7 @@ func metadataToESH(m Metadata) field.Element {
 }
 
 /*
-Dummy implementation of metadata. Used for testing internally.
+StringVar is an implementation of [Metadata] aimed toward testing.
 */
 type StringVar string
 
@@ -76,7 +77,7 @@ func NewDummyVar(s string) *Expression {
 func (s StringVar) String() string { return string(s) }
 
 /*
-Validates that the Variable is well-formed
+Validate implements the [Operator] interface.
 */
 func (v Variable) Validate(expr *Expression) error {
 	// This test that the variable is indeed the operator of the expression it is

@@ -11,15 +11,18 @@ data class BlockCounters(val tracesCounters: TracesCounters, val blockL1Size: UI
 
 interface TracesCountingServiceV1 {
   fun getBlockTracesCounters(
-    block: BlockNumberAndHash
+    block: BlockNumberAndHash,
+    version: String
   ): SafeFuture<Result<VersionedResult<BlockCounters>, TracesError>>
 }
 interface TracesConflationServiceV1 {
   fun getConflatedTraces(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<VersionedResult<JsonObject>, TracesError>>
 
   fun generateConflatedTracesToFile(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<VersionedResult<String>, TracesError>>
 }

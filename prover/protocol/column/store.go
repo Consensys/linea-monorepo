@@ -1,38 +1,43 @@
 package column
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 )
 
-/*
-Interface for structs that can return the infos given a name
-*/
+// Store registers [Natural] for structs that can return the infos given a name
+// and it is used by the [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.ProverRuntime] and the
+// [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.VerifierRuntime] to store the columns. The store keeps
+// tracks of the definition rounds of the columns and offers a handful of
+// methods to resolve all the columns that have a particular status.
 type Store struct {
-	indicesByNames collection.Mapping[ifaces.ColID, commitPosition]
-	byRounds       collection.VecVec[*storedCommitmentInfo]
+	// indicesByNames allows to resolve the position of the info of a column by
+	// supplying the name of the column.
+	indicesByNames collection.Mapping[ifaces.ColID, columnPosition]
+	// stores the columns informations by [round][posInRound]
+	byRounds collection.VecVec[*storedColumnInfo]
 }
 
-/*
-Construct a new empty store
-*/
+// NewStore constructs an empty Store object
 func NewStore() Store {
 	return Store{
-		indicesByNames: collection.NewMapping[ifaces.ColID, commitPosition](),
-		byRounds:       collection.NewVecVec[*storedCommitmentInfo](),
+		indicesByNames: collection.NewMapping[ifaces.ColID, columnPosition](),
+		byRounds:       collection.NewVecVec[*storedColumnInfo](),
 	}
 }
 
-// Utility struct that stores the position of the commitment
-// in all various arrays.
-type commitPosition struct {
+// columnPosition is a utility struct that stores the position of the commitment
+// in Store.byRounds. It is used inside of the Natural so that they can
+// track their own positions in the store.
+type columnPosition struct {
 	round      int
 	posInRound int
 }
 
-// Infos about commitments that are stored
-type storedCommitmentInfo struct {
+// storedColumnInfo represents an entry in the [Store] and is also used as part
+// of the [Natural] column.
+type storedColumnInfo struct {
 	// Size of the commitment
 	Size int
 	// ifaces.ColID of the column stored
@@ -41,12 +46,11 @@ type storedCommitmentInfo struct {
 	Status Status
 }
 
-/*
-Stores natural commitments and returns a handle to it
-  - name must not be an empty string
-  - round must be provided
-  - name must not have been registered already
-*/
+// AddToRound constructs a [Natural], registers it in the [Store] and returns
+// the column
+//   - name must not be an empty string
+//   - round must be provided
+//   - name must not have been registered already
 func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status) ifaces.Column {
 
 	if len(name) == 0 {
@@ -58,14 +62,14 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 	}
 
 	// Compute the location of the commitment in the store
-	position := commitPosition{
+	position := columnPosition{
 		round:      round,
 		posInRound: s.byRounds.LenOf(round),
 	}
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedCommitmentInfo{Size: size, ID: name, Status: status}
+	infos := &storedColumnInfo{Size: size, ID: name, Status: status}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)
@@ -74,9 +78,8 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 	return nat
 }
 
-/*
-Returns the stored size of a natural
-*/
+// GetSize returns the stored size of a [Natural] by its ID. This only works if
+// the requested column is a [Natural].
 func (s *Store) GetSize(n ifaces.ColID) int {
 	if s == nil {
 		panic("null pointer here")
@@ -85,10 +88,8 @@ func (s *Store) GetSize(n ifaces.ColID) int {
 	return info.Size
 }
 
-/*
-Returns the list of all keys for a given round. Result has deterministic
-order (order of insertion) (=assignment order)
-*/
+// AllKeysAt returns the list of all keys for a given round. The result follows
+// the insertion order of insertion) (=assignment order)
 func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.MustGet(round)
 	res := make([]ifaces.ColID, len(rnd))
@@ -98,7 +99,8 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the committed columns so far at a given round
+// Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
+// at a given round. The order of the returned slice follows the insertion order.
 func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.MustGet(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
@@ -113,7 +115,8 @@ func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the committed columns so far
+// AllHandleCommittedAt returns the list of all the [Committed] columns so far
+// at a given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
 	rnd := r.byRounds.MustGet(round)
 	res := make([]ifaces.Column, 0, len(rnd))
@@ -128,7 +131,8 @@ func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
 	return res
 }
 
-// Returns the list of all the ignored columns so far
+// AllKeysIgnoredAt returns the list of all the [Ignored] columns ids so far at a
+// given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
 	rnd := r.byRounds.MustGet(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
@@ -143,7 +147,8 @@ func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the proof messages so far
+// AllKeysProof returns the list of all the [Proof] column's IDs ordered by
+// round and then by order of insertion.
 func (r *Store) AllKeysProof() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
@@ -155,7 +160,8 @@ func (r *Store) AllKeysProof() []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the proof messages so far
+// AllKeysPublicInput returns the list of the [PublicInput] column's ID ordered
+// by rounds and then by order ot insertion.
 func (r *Store) AllKeysPublicInput() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
@@ -167,7 +173,8 @@ func (r *Store) AllKeysPublicInput() []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the committed messages so far
+// AllKeysCommitted returns the list of all the IDs of the all the [Committed]
+// columns ordered by rounds and then by IDs.
 func (r *Store) AllKeysCommitted() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
@@ -199,7 +206,8 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the prover messages in a given round so far
+// AllKeysProofAt returns the list of all the IDs of the[Proof] messages at a
+// given round. The returned list is ordered by order of insertion.
 func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.MustGet(round)
@@ -214,7 +222,8 @@ func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the prover messages in a given round so far
+// AllKeysPublicInputAt returns the list of all the prover messages in a given
+// round. The resulting slice is ordered by order of insertion.
 func (r *Store) AllKeysPublicInputAt(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.MustGet(round)
@@ -229,7 +238,8 @@ func (r *Store) AllKeysPublicInputAt(round int) []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the prover messages in a given round so far
+// Returns the list of all the [Precomputed] columns' ID. The returned slice is
+// ordered by rounds and then by order of insertion.
 func (r *Store) AllPrecomputed() []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
@@ -244,7 +254,8 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 	return res
 }
 
-// Returns the list of all the prover messages in a given round so far
+// AllVerifyingKey returns the list of all the IDs of the [VerifyingKey] columns
+// ordered by rounds and then by order of insertion.
 func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
 	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
@@ -259,7 +270,8 @@ func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	return res
 }
 
-// Returns the status of a handle
+// Returns the status of a column by its ID. This will panic if the provided
+// column is not registered in the store.
 func (s *Store) Status(name ifaces.ColID) Status {
 	return s.info(name).Status
 }
@@ -272,7 +284,7 @@ func (s *Store) SetStatus(name ifaces.ColID, status Status) {
 }
 
 // Get the info of a commitment by name, panic if not found
-func (s *Store) info(name ifaces.ColID) *storedCommitmentInfo {
+func (s *Store) info(name ifaces.ColID) *storedColumnInfo {
 	pos := s.indicesByNames.MustGet(name)
 	return s.byRounds.MustGet(pos.round)[pos.posInRound]
 }
@@ -319,7 +331,7 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 	for posInRound, info := range roundInfos {
 		res[posInRound] = Natural{
 			ID:       info.ID,
-			position: commitPosition{round: round, posInRound: posInRound},
+			position: columnPosition{round: round, posInRound: posInRound},
 			store:    s,
 		}
 	}
@@ -340,7 +352,7 @@ func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
 
 		res = append(res, Natural{
 			ID:       info.ID,
-			position: commitPosition{round: round, posInRound: posInRound},
+			position: columnPosition{round: round, posInRound: posInRound},
 			store:    s,
 		})
 	}
@@ -396,12 +408,13 @@ func (s *Store) MarkAsIgnored(name ifaces.ColID) {
 	infos.Status = Ignored
 }
 
-// Returns true if the commitment is ignored
+// IsIgnored returns true if the passed column ID relates to a column bearing
+// the [Ignored] status.
 func (s *Store) IsIgnored(name ifaces.ColID) (ignored bool) {
 	return s.Status(name) == Ignored
 }
 
-// Sanit-checks for the function changing the status of a column
+// Sanity-checks for the function changing the status of a column
 func assertCorrectStatusTransition(old, new Status) {
 
 	forbiddenTransition := false
@@ -412,9 +425,6 @@ func assertCorrectStatusTransition(old, new Status) {
 	}
 
 	switch {
-	// Precomputed are always computed offline no matter what
-	case old == Precomputed && new != VerifyingKey:
-		forbiddenTransition = true
 	// Verifying keys element are always computed offline no matter whats
 	case old == VerifyingKey && new != VerifyingKey:
 		forbiddenTransition = true

@@ -3,14 +3,17 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
-// Holds the state of the accumulator
+// ProverState holds the state of the accumulator: the tree itself and auxiliary
+// structures to help tracking the positions of the tree.
 type ProverState[K, V io.WriterTo] struct {
 	// Location, identifier for the tree
 	Location string
@@ -22,7 +25,7 @@ type ProverState[K, V io.WriterTo] struct {
 	Data collection.Mapping[int64, KVOpeningTuple[K, V]]
 }
 
-// Returns an initialized empty accumulator state
+// InitializeProverState returns an initialized empty accumulator state
 func InitializeProverState[K, V io.WriterTo](conf *smt.Config, location string) *ProverState[K, V] {
 	tree := smt.NewEmptyTree(conf)
 
@@ -43,20 +46,20 @@ func InitializeProverState[K, V io.WriterTo](conf *smt.Config, location string) 
 	}
 }
 
-// FindHKey returns the position of a leaf opening whose HKey is
+// Config returns the configuration of the accumulator.
 func (s *ProverState[K, V]) Config() *smt.Config {
 	return s.Tree.Config
 }
 
-// Returns the root of the tree
-func (s *ProverState[K, V]) SubTreeRoot() Digest {
+// SubTreeRoot returns the root of the tree
+func (s *ProverState[K, V]) SubTreeRoot() Bytes32 {
 	return s.Tree.Root
 }
 
-// Find the position of a key in the accumulator. If the key is
-// absent, it returns 0, false. The returned position corresponds
-// to the position in the tree
-func (s *ProverState[K, V]) findKey(k K) (int64, bool) {
+// FindKey finds the position of a key in the accumulator. If the key is absent,
+// it returns 0, false. The returned position corresponds to the position in the
+// tree.
+func (s *ProverState[K, V]) FindKey(k K) (int64, bool) {
 	// We do so with a linear scan to simplify (since it is only for testing)
 	hkey := hash(s.Config(), k)
 	for _, i := range s.Data.ListAllKeys() {
@@ -68,13 +71,29 @@ func (s *ProverState[K, V]) findKey(k K) (int64, bool) {
 	return 0, false
 }
 
-// Find the position of the two leaves sandwhich the queries leaf.
+// ListAllKeys is a function used for testing and traces sample generation which never should be called in production code
+// as it is extremely inefficient
+func (s *ProverState[K, V]) ListAllKeys() []K {
+	var containedKeys []K
+	// We compute the two keys that are used as bounds, to be able to ignore them later
+	lowerBound := Bytes32{}
+	upperBound := s.Config().HashFunc().MaxBytes32()
+	for _, i := range s.Data.ListAllKeys() {
+		tuple := s.Data.MustGet(i)
+		if !(Bytes32Cmp(tuple.LeafOpening.HKey, lowerBound) == 0 || Bytes32Cmp(tuple.LeafOpening.HKey, upperBound) == 0) {
+			containedKeys = append(containedKeys, tuple.Key)
+		}
+	}
+	return containedKeys
+}
+
+// findSandwich finds the position of the two leaves sandwhich the queries leaf.
 // It assumes that "k" is not stored in the tree.
 func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	// We do so with a linear scanning to simplify (since it is only for testing)
 	hkey := hash(s.Config(), k)
-	hminus, iminus := Digest{}, int64(0)                        // corresponds to head
-	hplus, iplus := s.Config().HashFunc().MaxDigest(), int64(1) // corresponds to tail
+	hminus, iminus := Bytes32{}, int64(0)                        // corresponds to head
+	hplus, iplus := s.Config().HashFunc().MaxBytes32(), int64(1) // corresponds to tail
 
 	// Technically, we should be able to skip the two first entries
 	// The traversal of the data is in non-deterministic order
@@ -83,18 +102,18 @@ func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 		leafOpening := s.Data.MustGet(i).LeafOpening
 		curHkey := leafOpening.HKey
 
-		switch hashtypes.Cmp(curHkey, hkey) {
+		switch Bytes32Cmp(curHkey, hkey) {
 		case 0:
 			// We should not have found a match
 			utils.Panic("Found a perfect match for %+v", k)
 		case 1:
 			// curHKey is larger : so we should look for an update of hmax
-			if hashtypes.Cmp(curHkey, hplus) == -1 {
+			if Bytes32Cmp(curHkey, hplus) == -1 {
 				hplus, iplus = curHkey, i
 			}
 		case -1:
 			// curHKey is smaller : so we should look for an update of hmin
-			if hashtypes.Cmp(curHkey, hminus) == 1 {
+			if Bytes32Cmp(curHkey, hminus) == 1 {
 				hminus, iminus = curHkey, i
 			}
 		}
@@ -107,17 +126,17 @@ func (s *ProverState[K, V]) findSandwich(k K) (int64, int64) {
 	return iminus, iplus
 }
 
-// Cleanly upsert a tuple in the accumulator, returns a Merkle proof
-func (p *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt.Proof {
+// upsertTuple cleanly upsert a tuple in the accumulator, returns a Merkle proof
+func (s *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt.Proof {
 
-	leaf, err := tuple.CheckAndLeaf(p.Config())
+	leaf, err := tuple.CheckAndLeaf(s.Config())
 	if err != nil {
 		utils.Panic("illegal tuple : %v", err)
 	}
 
-	if old, found := p.Data.TryGet(i); found {
+	if old, found := s.Data.TryGet(i); found {
 		// consistency-check of the old tuple
-		_, err = old.CheckAndLeaf(p.Config())
+		_, err = old.CheckAndLeaf(s.Config())
 		if err != nil {
 			utils.Panic("illegal old tuple : %v", err)
 		}
@@ -149,36 +168,38 @@ func (p *ProverState[K, V]) upsertTuple(i int64, tuple KVOpeningTuple[K, V]) smt
 		}
 	}
 
-	oldRoot := p.SubTreeRoot()
+	oldRoot := s.SubTreeRoot()
 
 	// Perform the update
-	p.Data.Update(i, tuple)
-	p.Tree.Update(int(i), leaf)
-	newRoot := p.SubTreeRoot()
+	s.Data.Update(i, tuple)
+	s.Tree.Update(int(i), leaf)
+	newRoot := s.SubTreeRoot()
 
 	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, leaf, oldRoot, newRoot)
-	return p.Tree.Prove(int(i))
+	return s.Tree.MustProve(int(i))
 }
 
-func (p *ProverState[K, V]) rmTuple(i int64) smt.Proof {
-	oldRoot := p.SubTreeRoot()
+// rmTuple erases a leaf from the tree.
+func (s *ProverState[K, V]) rmTuple(i int64) smt.Proof {
+	oldRoot := s.SubTreeRoot()
 
 	// Update the tree with an empty leaf
-	p.Data.MustExists(i)
-	p.Data.Del(i)
-	p.Tree.Update(int(i), smt.EmptyLeaf())
-	newRoot := p.SubTreeRoot()
+	s.Data.MustExists(i)
+	s.Data.Del(i)
+	s.Tree.Update(int(i), smt.EmptyLeaf())
+	newRoot := s.SubTreeRoot()
 
 	logrus.Tracef("upsert pos %v, leaf %x, root=%x -> %x", i, smt.EmptyLeaf(), oldRoot, newRoot)
-	return p.Tree.Prove(int(i))
+	return s.Tree.MustProve(int(i))
 }
 
-// Returns the top-root hash which includes `NextFreeNode` and the `SubTreeRoot`
-func (p *ProverState[K, V]) TopRoot() Digest {
-	hasher := p.Config().HashFunc()
-	hashtypes.WriteInt64To(hasher, p.NextFreeNode)
-	subTreeRoot := p.SubTreeRoot()
+// TopRoot returns the top-root hash which includes `NextFreeNode` and the
+// `SubTreeRoot`
+func (s *ProverState[K, V]) TopRoot() Bytes32 {
+	hasher := s.Config().HashFunc()
+	WriteInt64On32Bytes(hasher, s.NextFreeNode)
+	subTreeRoot := s.SubTreeRoot()
 	subTreeRoot.WriteTo(hasher)
-	digest := hasher.Sum(nil)
-	return hashtypes.BytesToDigest(digest)
+	Bytes32 := hasher.Sum(nil)
+	return AsBytes32(Bytes32)
 }

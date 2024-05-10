@@ -3,8 +3,8 @@ package vortex
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 )
 
 // return the name of the linear combination random coin
@@ -50,4 +50,19 @@ func (ctx *Ctx) MerkleProofName() ifaces.ColID {
 // returns the name of the vector containing all the Merkle proofs
 func (ctx *Ctx) MerkleRootName(round int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round)
+}
+
+// returns the name of the precomputed commitment when Merkle is not applied
+func (ctx *Ctx) PrecomputedCommitmentNameWithoutMerkle() ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_PRECOMPUTED_COMMITMENT_WITHOUT_MERKLE")
+}
+
+// returns the name of the precomputed sis digest when Merkle is applied
+func (ctx *Ctx) PrecomputedSisDigestNameWithMerkle() ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_PRECOMPUTED_SIS_DIGEST_WITH_MERKLE_%d", ctx.SelfRecursionCount)
+}
+
+// returns the name of the precomputed Merkle root when Merkle is applied
+func (ctx *Ctx) PrecomputedMerkleRootName() ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_PRECOMPUTED_MERKLE_ROOT_%d", ctx.SelfRecursionCount)
 }

@@ -3,11 +3,22 @@ plugins {
 }
 
 dependencies {
-  api "io.vertx:vertx-core:${versions.vertx}"
-  api "io.vertx:vertx-web:${versions.vertx}"
-  api "io.vertx:vertx-lang-kotlin:${versions.vertx}"
-  api "io.vertx:vertx-config:${versions.vertx}"
-  api "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
-  api "io.vertx:vertx-health-check:${versions.vertx}"
+  implementation project(':jvm-libs:future-extensions')
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-lang-kotlin"
+  implementation "io.vertx:vertx-config"
+  implementation "io.vertx:vertx-micrometer-metrics"
+  implementation "io.micrometer:micrometer-registry-prometheus:${versions.micrometer}"
+  api "io.vertx:vertx-health-check"
+
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "io.rest-assured:rest-assured:${versions.test.restassured}"
+  testImplementation "io.rest-assured:kotlin-extensions:${versions.test.restassured}"
+  testImplementation "io.rest-assured:json-schema-validator:${versions.test.restassured}"
+}
+
+test {
+  systemProperty "vertx.parameter.filename", "/vertx-options.json"
 }
 

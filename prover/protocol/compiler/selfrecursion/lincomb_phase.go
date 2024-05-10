@@ -3,16 +3,15 @@ package selfrecursion
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/reedsolomon"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/reedsolomon"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 // Linear combination phase,
@@ -41,6 +40,14 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 // Gather the alleged evaluation proven by vortex into a vector
 func (ctx *SelfRecursionCtx) defineYs() {
 	ranges := []ifaces.ColID{}
+	// Includes the precomputed colIds
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
+		precompColIds := make([]ifaces.ColID, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
+		for i, col := range ctx.VortexCtx.Items.Precomputeds.PrecomputedColums {
+			precompColIds[i] = col.GetColID()
+		}
+		ranges = append(ranges, precompColIds...)
+	}
 	for _, colIDs := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
 		ranges = append(ranges, colIDs...)
 	}
@@ -50,54 +57,35 @@ func (ctx *SelfRecursionCtx) defineYs() {
 // Registers the consistency check between Ys and Ualpha
 func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
-	// We cannot defer the check to the functional dedicated wizard
-	// so, we will instead explictly ask the verifier to evaluate
-	// the Ys
-	ctx.Accessors.CoeffEvalYsAlpha = ifaces.NewAccessor(
-		"SELFRECURSION_COEFFEVAL_YS_ALPHA",
-		func(run ifaces.Runtime) field.Element {
-			ys := ctx.Columns.Ys.GetColAssignment(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			return smartvectors.EvalCoeff(ys, alpha)
-		},
-		func(api frontend.API, run ifaces.GnarkRuntime) frontend.Variable {
-			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			return poly.EvaluateUnivariateGnark(api, ys, alpha)
-		},
-		ctx.comp.Coins.Round(ctx.Coins.Alpha.Name),
-	)
-
 	// Defer the interpolation of Ualpha to a dedicated wizard
 	ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
 		ctx.comp,
 		ctx.interpolateUAlphaX(),
-		accessors.AccessorFromUnivX(ctx.comp, ctx.VortexCtx.Query),
+		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
 		ctx.Columns.Ualpha,
 	)
 
-	// Assumption they should have the same rounds. Not that it's
-	// a catastroph if that's the case but that's odd.
-	if ctx.Accessors.CoeffEvalYsAlpha.Round != ctx.Accessors.InterpolateUalphaX.Round {
-		panic("inconsistency in the round numbers")
-	}
-
-	round := ctx.Accessors.CoeffEvalYsAlpha.Round
+	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
 	ctx.comp.InsertVerifier(
 		round,
 		func(run *wizard.VerifierRuntime) error {
+
+			ys := ctx.Columns.Ys.GetColAssignment(run)
+			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
+			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
-			ysAlpha := ctx.Accessors.CoeffEvalYsAlpha.GetVal(run)
 			if uAlphaX != ysAlpha {
 				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")
 			}
 			return nil
 		},
 		func(api frontend.API, run *wizard.WizardVerifierCircuit) {
+			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
+			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, run)
-			ysAlpha := ctx.Accessors.CoeffEvalYsAlpha.GetFrontendVariable(api, run)
+			ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
 			api.AssertIsEqual(uAlphaX, ysAlpha)
 		},
 	)

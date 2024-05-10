@@ -1,12 +1,10 @@
-import { BigNumber, ContractReceipt, PayableOverrides, Wallet } from "ethers";
+import { ContractTransactionReceipt, Overrides, JsonRpcProvider, Wallet } from "ethers";
 import { config } from "dotenv";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { L2MessageService__factory } from "../src/typechain/factories";
 import { SendMessageArgs } from "./types";
 import { sanitizeAddress, sanitizePrivKey } from "./cli";
-import { L2MessageService } from "../src/typechain/L2MessageService";
+import { L2MessageService, L2MessageService__factory } from "../src/clients/blockchain/typechain";
 
 config();
 
@@ -57,20 +55,21 @@ const argv = yargs(hideBin(process.argv))
 const sendMessage = async (
   contract: L2MessageService,
   args: SendMessageArgs,
-  overrides?: PayableOverrides,
-): Promise<ContractReceipt> => {
+  overrides: Overrides = {},
+): Promise<ContractTransactionReceipt | null> => {
   const tx = await contract.sendMessage(args.to, args.fee, args.calldata, overrides);
   return await tx.wait();
 };
 
 const sendMessages = async (
   contract: L2MessageService,
+  signer: Wallet,
   numberOfMessages: number,
   args: SendMessageArgs,
-  overrides?: PayableOverrides,
+  overrides?: Overrides,
 ) => {
-  let nonce = await contract.signer.getTransactionCount();
-  const sendMessagePromises: Promise<ContractReceipt>[] = [];
+  let nonce = await signer.getNonce();
+  const sendMessagePromises: Promise<ContractTransactionReceipt | null>[] = [];
 
   for (let i = 0; i < numberOfMessages; i++) {
     sendMessagePromises.push(
@@ -89,17 +88,17 @@ const main = async (args: typeof argv) => {
   const provider = new JsonRpcProvider(args.rpcUrl);
   const signer = new Wallet(args.privKey, provider);
 
-  const functionArgs: SendMessageArgs & PayableOverrides = {
+  const functionArgs: SendMessageArgs & Overrides = {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     to: args.to,
-    fee: BigNumber.from(args.fee),
+    fee: BigInt(args.fee!),
     calldata: args.calldata,
     value: args.value,
   };
 
   const l2MessageService = L2MessageService__factory.connect(args.contractAddress, signer) as L2MessageService;
 
-  await sendMessages(l2MessageService, args.numberOfMessage, functionArgs, { value: args.value });
+  await sendMessages(l2MessageService, signer, args.numberOfMessage, functionArgs, { value: args.value });
 };
 
 main(argv)

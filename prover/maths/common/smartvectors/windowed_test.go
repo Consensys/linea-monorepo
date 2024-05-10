@@ -3,11 +3,13 @@ package smartvectors
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-func TestProcessWindowed(t *testing.T) {
+// This is a simple error case we have faces in the past, the test ensures that
+// it does go through.
+func TestProcessWindowed(_ *testing.T) {
 
 	a := NewPaddedCircularWindow(
 		vector.Rand(5),

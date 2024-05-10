@@ -6,4 +6,7 @@ dependencies {
   api "tech.pegasys.teku.internal:executionclient:${versions.teku}"
   api "tech.pegasys.teku.internal:unsigned:${versions.teku}"
   api "tech.pegasys.teku.internal:bytes:${versions.teku}"
+
+  implementation "tech.pegasys.teku.internal:spec:${versions.teku}"
+  implementation "tech.pegasys.teku.internal:spec:${versions.teku}:test-fixtures"
 }

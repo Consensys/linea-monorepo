@@ -1,22 +1,18 @@
 {
+    "extends": "../tsconfig.json",
     "compilerOptions": {
-        "target": "es2021",
-        "module": "commonjs",
         "declaration": true,
         "rootDir": "./src",
         "outDir": "dist",
+        "lib": [
+            "dom"
+        ],
         "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true,
         "skipLibCheck": true,
-        "strictNullChecks": true,
-        "resolveJsonModule": true,
-        "noImplicitThis": true,
-        "noImplicitAny": true,
-        "noImplicitReturns": true,
         "strictPropertyInitialization": false,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
+        "composite": true
     },
     "include": [
         "src/**/*.ts",

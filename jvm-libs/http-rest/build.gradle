@@ -5,15 +5,15 @@ plugins {
 dependencies {
   implementation project(":jvm-libs:errors")
   implementation project(':jvm-libs:future-extensions')
-  implementation project(":jvm-libs:metrics:monitoring")
-  implementation "io.vertx:vertx-core:${versions.vertx}"
-  implementation "io.vertx:vertx-web-client:${versions.vertx}"
+  implementation project(":jvm-libs:metrics:micrometer")
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web-client"
 
-  api "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  api "io.vertx:vertx-micrometer-metrics"
 
-  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "io.vertx:vertx-junit5"
   testImplementation "com.github.tomakehurst:wiremock-jre8:${versions.test.wiremock}"
-  testImplementation "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  testImplementation "io.vertx:vertx-micrometer-metrics"
 }
 
 test {

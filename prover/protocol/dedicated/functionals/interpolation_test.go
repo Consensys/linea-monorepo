@@ -3,22 +3,22 @@ package functionals_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
 func TestInterpolate(t *testing.T) {
 
 	var (
-		x            *ifaces.Accessor
+		x            ifaces.Accessor
 		p            ifaces.Column
-		acc          *ifaces.Accessor
+		acc          ifaces.Accessor
 		savedRuntime *wizard.ProverRuntime
 	)
 
@@ -30,7 +30,7 @@ func TestInterpolate(t *testing.T) {
 
 	definer := func(b *wizard.Builder) {
 		p = b.RegisterCommit("P", wp.Len())
-		x = accessors.AccessorFromConstant(field.NewElement(2))
+		x = accessors.NewConstant(field.NewElement(2))
 		acc = functionals.Interpolation(b.CompiledIOP, "INTERPOLATE", x, p)
 
 	}
@@ -45,7 +45,7 @@ func TestInterpolate(t *testing.T) {
 		// specialqueries.RangeProof,
 		// specialqueries.CompileFixedPermutations,
 		// specialqueries.CompileInclusionPermutations,
-		// specialqueries.CompileInnerProduct,
+		// innerproduct.Compile,
 		// splitter.SplitColumns(8),
 		// arithmetics.CompileLocal,
 		// arithmetics.CompileGlobal,

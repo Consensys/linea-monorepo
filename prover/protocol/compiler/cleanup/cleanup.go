@@ -1,7 +1,7 @@
 package cleanup
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 // Simple compilation steps which frees ignored items

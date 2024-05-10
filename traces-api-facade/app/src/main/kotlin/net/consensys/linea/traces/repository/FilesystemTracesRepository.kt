@@ -6,28 +6,26 @@ import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.map
 import io.vertx.core.Future
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonObject
-import net.consensys.linea.BlockTraces
 import net.consensys.linea.ErrorType
 import net.consensys.linea.TracesError
 import net.consensys.linea.TracesRepository
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.linea.metrics.monitoring.elapsedTimeInMillisSince
+import net.consensys.linea.metrics.micrometer.elapsedTimeInMillisSince
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 
-internal fun tracesOnlyFromContent(content: JsonObject): JsonObject {
+internal fun tracesOnlyFromContent(content: String): String {
   // TODO: filter out from the file objects that are not traces
   return content
 }
 
 class FilesystemTracesRepository(
   private val vertx: Vertx,
-  private val tracesDirectory: Path,
+  tracesDirectory: Path,
   private val tracesFileExtension: String = "gz",
-  private val tracesOnlyFilter: (content: JsonObject) -> JsonObject = ::tracesOnlyFromContent
+  private val tracesOnlyFilter: (content: String) -> String = ::tracesOnlyFromContent
 ) : TracesRepository {
   private val log: Logger = LogManager.getLogger(FilesystemTracesRepository::class.java)
   private val fsHelper = FilesystemHelper(vertx, log = log)
@@ -59,12 +57,12 @@ class FilesystemTracesRepository(
 
   private fun loadTracesFileContent(
     blockNumber: UInt
-  ): Future<Result<Pair<String, JsonObject>, TracesError>> {
+  ): Future<Result<Pair<String, String>, TracesError>> {
     return findTracesFile(blockNumber).flatMap { fileFindResult: Result<String, TracesError> ->
       when (fileFindResult) {
         is Err -> Future.succeededFuture(fileFindResult)
         is Ok -> {
-          fsHelper.readGzipedJsonFile(Path.of(fileFindResult.value)).map { json ->
+          fsHelper.readGzipedJsonFileAsString(Path.of(fileFindResult.value)).map { json ->
             Ok(Pair(fileFindResult.value, tracesOnlyFilter(json)))
           }
         }
@@ -72,12 +70,12 @@ class FilesystemTracesRepository(
     }
   }
 
-  override fun getTraces(blockNumber: UInt): SafeFuture<Result<BlockTraces, TracesError>> {
+  override fun getTraces(blockNumber: UInt): SafeFuture<Result<String, TracesError>> {
     val startTime = System.nanoTime()
     return loadTracesFileContent(blockNumber)
       .map { result ->
-        result.map { (_: String, jsonContent: JsonObject) ->
-          BlockTraces(blockNumber.toULong(), tracesOnlyFromContent(jsonContent))
+        result.map { (_: String, jsonContent: String) ->
+          jsonContent
         }
       }
       .toSafeFuture()

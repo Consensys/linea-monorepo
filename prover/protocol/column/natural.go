@@ -1,39 +1,41 @@
 package column
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-/*
-Natural directly represents a committed vector without
-modification.
-*/
+// Natural represents a [ifaces.Column] that has been directly declared in the
+// corresponding [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.CompiledIOP] or [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.Builder]
+// object. The struct should not be constructed directly and should be
+// constructed from the [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.CompiledIOP]
 type Natural struct {
-	ID       ifaces.ColID
-	position commitPosition
-	store    *Store
+	// The ID of the column
+	ID ifaces.ColID
+	// position contains the indexes of the column in the store.
+	position columnPosition
+	// store points to the Store where the column is registered. It is accessed
+	// to fetch static informations about the column such as its size or its
+	// status.
+	store *Store
 }
 
-/*
-Accesses the size of the column. The natural column stores its own size
-*/
+// Size returns the size of the column, as required by the [ifaces.Column]
+// interface.
 func (n Natural) Size() int {
 	return n.store.GetSize(n.ID)
 }
 
-/*
-Just return the name as a string repr of the handle
-*/
+// GetColID implements the [ifaces.Column] interface and returns the string
+// identifier of the column.
 func (n Natural) GetColID() ifaces.ColID {
 	return n.ID
 }
 
-/*
-Validates the construction of the natural handle
-*/
+// MustExists validates the construction of the natural handle and implements
+// the [ifaces.Column] interface.
 func (n Natural) MustExists() {
 	// store pointer is set
 	if n.store == nil {
@@ -49,38 +51,44 @@ func (n Natural) MustExists() {
 	}
 }
 
-/*
-Get the round from the inner state of the handle
-*/
+// Round retuns the round of definition of the column. See [ifaces.Column] as
+// method implements the interface.
 func (n Natural) Round() int {
 	return n.position.round
 }
 
-// Implements InnerHandle, by definition, it is not a composite
-// thus it shall always return true
+// IsComposite implements [ifaces.Column], by definition, it is not a
+// composite thus it shall always return true
 func (n Natural) IsComposite() bool { return false }
 
-// Directly get the witness from the name
+// GetColAssignment implements [ifaces.Column]
 func (n Natural) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	return run.GetColumn(n.ID)
 }
 
-// Directly get the witness from the name
+// GetColAssignmentAt implements [ifaces.Column]
 func (n Natural) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return run.GetColumnAt(n.ID, pos)
 }
 
-// Returns a gnark assignment to the column
+// GetColAssignmentGnark implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	return run.GetColumn(n.ID)
 }
 
-// Directly get the witness from the name
+// GetColAssignmentGnarkAt implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
-// Returns the name of the column as a string
+// String returns the ID of the column as a string and implements [ifaces.Column]
+// and [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
 func (n Natural) String() string {
 	return string(n.GetColID())
+}
+
+// Status returns the status of the column. It is only implemented for Natural
+// and not by the other composite columns.
+func (n Natural) Status() Status {
+	return n.store.Status(n.ID)
 }

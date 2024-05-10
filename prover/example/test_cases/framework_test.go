@@ -1,21 +1,26 @@
+//go:build !fuzzlight
+
 package test_cases_test
 
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc/gkrmimc"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/arithmetics"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/specialqueries"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/univariates"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/vortex"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/arithmetics"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/innerproduct"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -59,9 +64,9 @@ var (
 	ALL_SPECIALS = compilationSuite{
 		specialqueries.RangeProof,
 		specialqueries.CompileFixedPermutations,
-		specialqueries.LogDerivativeLookupCompiler,
-		specialqueries.CompilePermutations,
-		specialqueries.CompileInnerProduct,
+		lookup.CompileLogDerivative,
+		permutation.CompileGrandProduct,
+		innerproduct.Compile,
 	}
 	ARITHMETICS = compilationSuite{
 		splitter.SplitColumns(8),
@@ -161,7 +166,7 @@ func checkSolved(
 	}
 
 	scs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
+		ecc.BLS12_377.ScalarField(),
 		scs.NewBuilder,
 		&circ,
 		frontend.IgnoreUnconstrainedInputs(),
@@ -175,7 +180,7 @@ func checkSolved(
 	}
 
 	assignment := GetAssignment(compiled, proof)
-	witness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness, gkrmimc.SolverOpts(scs)...)

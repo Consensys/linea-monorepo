@@ -13,7 +13,7 @@ fun testCount(args: List<String>) {
   for (arg in args) {
     println("reading $arg")
     val r =
-      counter.concreteCountTraces(JsonObject(File(arg).bufferedReader().use { it.readText() }))
+      counter.concreteCountTraces(File(arg).bufferedReader().use { it.readText() })
     println(r)
   }
 }

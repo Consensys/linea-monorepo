@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"reflect"
 )
 
@@ -26,7 +29,7 @@ func DivCeil(a, b int) int {
 // DivExact for int a, b. Panics if b does not divide a exactly.
 func DivExact(a, b int) int {
 	res := a / b
-	if res*b < a {
+	if res*b != a {
 		panic("inexact division")
 	}
 	return res
@@ -75,9 +78,7 @@ func NextPowerOfTwo[T ~int](in T) T {
 	return v
 }
 
-/*
-PositiveMod returns the positive modulus
-*/
+// PositiveMod returns the positive modulus
 func PositiveMod[T ~int](a, n T) T {
 	res := a % n
 	if res < 0 {
@@ -86,9 +87,8 @@ func PositiveMod[T ~int](a, n T) T {
 	return res
 }
 
-/*
-Joins a set of slices by appending them into a new array
-*/
+// Join joins a set of slices by appending them into a new array. It can also
+// be used to flatten a double array.
 func Join[T any](ts ...[]T) []T {
 	res := []T{}
 	for _, t := range ts {
@@ -115,7 +115,7 @@ func Log2Ceil(a int) int {
 	return floor
 }
 
-// GCDEuclidean calculates GCD by Euclidian algorithm.
+// GCD calculates GCD of a and b by Euclidian algorithm.
 func GCD[T ~int](a, b T) T {
 	for a != b {
 		if a > b {
@@ -126,4 +126,47 @@ func GCD[T ~int](a, b T) T {
 	}
 
 	return a
+}
+
+// Returns a SHA256 checksum of the given asset.
+// TODO @gbotrel merge with Digest
+// Sha2SumHexOf returns a SHA256 checksum of the given asset.
+func Sha2SumHexOf(w io.WriterTo) string {
+	hasher := sha256.New()
+	w.WriteTo(hasher)
+	res := hasher.Sum(nil)
+	return HexEncodeToString(res)
+}
+
+// Digest computes the SHA256 Digest of the contents of file and prepends a "0x"
+// byte to it. Callers are responsible for closing the file. The reliance on
+// SHA256 is motivated by the fact that we use the sum checksum for the verifier
+// key to identify which verifier contract to use.
+func Digest(src io.Reader) (string, error) {
+	h := sha256.New()
+	if _, err := io.Copy(h, src); err != nil {
+		return "", fmt.Errorf("copy into hasher: %w", err)
+	}
+
+	return "0x" + hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// RightPad copies `s` and returns a vector padded up the length `n` using
+// `padWith` as a filling value. The function panics if len(s) < n and returns
+// a copy of s if len(s) == n.
+func RightPad[T any](s []T, n int, padWith T) []T {
+	res := append(make([]T, 0, n), s...)
+	for len(res) < n {
+		res = append(res, padWith)
+	}
+	return res
+}
+
+// RepeatSlice returns the concatenation of `s` with itself `n` times
+func RepeatSlice[T any](s []T, n int) []T {
+	res := make([]T, 0, n*len(s))
+	for i := 0; i < n; i++ {
+		res = append(res, s...)
+	}
+	return res
 }

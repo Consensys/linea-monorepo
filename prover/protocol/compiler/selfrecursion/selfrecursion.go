@@ -1,7 +1,7 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 // Apply the self-recursion transformation over a vortex compiled

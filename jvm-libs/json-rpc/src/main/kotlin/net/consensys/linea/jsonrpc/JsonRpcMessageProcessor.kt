@@ -20,8 +20,8 @@ import io.vertx.core.json.Json
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
-import net.consensys.linea.metrics.monitoring.DynamicTagTimerCapture
-import net.consensys.linea.metrics.monitoring.SimpleTimerCapture
+import net.consensys.linea.metrics.micrometer.DynamicTagTimerCapture
+import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
@@ -119,25 +119,34 @@ class JsonRpcMessageProcessor(
     val serializedResponses =
       executionFutures.map { future -> future.map(this::encodeAndMeasureResponse) }
 
-    return CompositeFuture.all(serializedResponses).transform { ar: AsyncResult<CompositeFuture> ->
-      val methodTag =
-        if (isBulkRequest) "bulk_request" else parsingResults.first().unwrap().first.method
-      wholeRequestTimer.tag("method", methodTag)
+    return Future.all(serializedResponses)
+      .transform { ar: AsyncResult<CompositeFuture> ->
+        val methodTag =
+          if (isBulkRequest) {
+            "bulk_request"
+          } else {
+            parsingResults.first()
+              .unwrap().first.method
+          }
+        wholeRequestTimer.tag("method", methodTag)
 
-      val responses = ar.result().list<String>()
-      val finalResponseJsonStr =
-        if (responses.size == 1) {
-          responses.first()
-        } else {
-          SimpleTimerCapture<String>(meterRegistry, "jsonrpc.serialization.response.bulk")
-            .setDescription("Time of bulk json response serialization")
-            .captureTime { responses.joinToString(",", "[", "]") }
-        }
+        val responses = ar.result().list<String>()
+        val finalResponseJsonStr =
+          if (responses.size == 1) {
+            responses.first()
+          } else {
+            SimpleTimerCapture<String>(
+              meterRegistry,
+              "jsonrpc.serialization.response.bulk"
+            )
+              .setDescription("Time of bulk json response serialization")
+              .captureTime { responses.joinToString(",", "[", "]") }
+          }
 
-      timerSample.stop(wholeRequestTimer.register(meterRegistry))
-      logResponse(allSuccessful, finalResponseJsonStr, requestJsonStr)
-      Future.succeededFuture(finalResponseJsonStr)
-    }
+        timerSample.stop(wholeRequestTimer.register(meterRegistry))
+        logResponse(allSuccessful, finalResponseJsonStr, requestJsonStr)
+        Future.succeededFuture(finalResponseJsonStr)
+      }
   }
 
   private fun measureRequestParsing(
@@ -223,10 +232,12 @@ class JsonRpcMessageProcessor(
     fun parseRequest(json: Any): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
       try {
         json as JsonObject
-        if (json.getValue("method") !is String || json.getValue("params") !is JsonArray) {
-          return Err(JsonRpcErrorResponse.invalidRequest())
+        val request: JsonRpcRequest = when {
+          json.getValue("method") !is String -> return Err(JsonRpcErrorResponse.invalidRequest())
+          json.getValue("params") is JsonObject -> json.mapTo(JsonRpcRequestMapParams::class.java)
+          json.getValue("params") is JsonArray -> json.mapTo(JsonRpcRequestListParams::class.java)
+          else -> return Err(JsonRpcErrorResponse.invalidRequest())
         }
-        val request: BaseJsonRpcRequest = json.mapTo(BaseJsonRpcRequest::class.java)
         if (!request.isValid) {
           return Err(JsonRpcErrorResponse.invalidRequest())
         }

@@ -3,25 +3,28 @@ package vortex
 import (
 	"math"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/ringsis"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/vortex2"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/crypto"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/vortex"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
 /*
 Applies the Vortex compiler over the current polynomial-IOP
-  - blowUpFactor : inverse rate of the reed-solomon code to use1
+  - blowUpFactor : inverse rate of the reed-solomon code to use
   - dryTreshold : minimal number of polynomial in rounds to consider
-    applying the Vortex transform (i.e. using Vortex). Implictly, we
+    applying the Vortex transform (i.e. using Vortex). Implicitly, we
     consider that applying Vortex over too few vectors is not worth it.
     For these rounds all the "Committed" columns are swithed to "prover"
 
@@ -39,7 +42,13 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 		univQ, foundAny := extractTargetQuery(comp)
 		if !foundAny {
-			logrus.Warnf("no query found in the vortex compilation context")
+			logrus.Infof("no query found in the vortex compilation context ...compilation step skipped")
+			return
+		}
+
+		// registers all the commitments
+		if len(comp.Columns.AllKeysCommitted()) == 0 {
+			logrus.Infof("no committed polynomial in the compilation context... compilation step skipped")
 			return
 		}
 
@@ -52,8 +61,11 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		comp.CryptographicCompilerCtx = &ctx
 
 		// Converts the precomputed as verifying key (e.g. send
-		// them to the verifier)  in the offline phase.
-		ctx.precomputedIntoVerifyingKey()
+		// them to the verifier) in the offline phase if the
+		// CommitPrecomputes flag is false, otherwise set them as
+		// commited. If the flag `CommitPrecomputed` is set to true,
+		// then this will instead register the precomputed columns.
+		ctx.processStatusPrecomputed()
 
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
@@ -62,6 +74,10 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		}
 
 		ctx.generateVortexParams()
+		// Commit to precomputed in Vortex if IsCommitToPrecomputed is true
+		if ctx.IsCommitToPrecomputed() {
+			ctx.commitPrecomputeds()
+		}
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
@@ -79,10 +95,6 @@ type Ctx struct {
 	// when the context is created
 	SelfRecursionCount int
 
-	// Boolean flag indicating whether we are using the Merkle
-	// proof version of vortex
-	UseMerkleProof bool
-
 	// Flag indicating that we want to replace SIS by MiMC
 	ReplaceSisByMimc bool
 
@@ -97,7 +109,7 @@ type Ctx struct {
 	CommittedRowsCount int
 	NumCols            int
 	MaxCommittedRound  int
-	VortexParams       *vortex2.Params
+	VortexParams       *vortex.Params
 	SisParams          *ringsis.Params
 	// Optional parameter
 	numOpenedCol int
@@ -109,10 +121,25 @@ type Ctx struct {
 
 	// Items created by Vortex, includes the proof message and the coins
 	Items struct {
-		// Round by round commitments of the submatrices
+		// List of items used only if the CommitPrecomputed flag is set
+		Precomputeds struct {
+			// List of the precomputeds columns that we are compiling if the
+			// the precomputed flag is set.
+			PrecomputedColums []ifaces.Column
+			// Merkle Root of the precomputeds columns
+			MerkleRoot ifaces.Column
+			// List of the column hashes for the precomputed columns
+			Dh ifaces.Column
+			// Committed matrix (rs encoded) of the precomputed columns
+			CommittedMatrix vortex.EncodedMatrix
+			// Tree in case of Merkle mode
+			tree *smt.Tree
+			// colHashes used in self recursion
+			DhWithMerkle []field.Element
+		}
 		// (not used in the Merkle proof version)
 		Dh []ifaces.Column
-		// Alpha is random combination linear coin
+		// Alpha is a random combination linear coin
 		Alpha coin.Info
 		// Linear combination of the row-encoded matrix
 		Ualpha ifaces.Column
@@ -149,6 +176,14 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		// TODO : allows tuning for multiple instances at once
 		SisParams: &ringsis.StdParams,
 		Items: struct {
+			Precomputeds struct {
+				PrecomputedColums []ifaces.Column
+				MerkleRoot        ifaces.Column
+				Dh                ifaces.Column
+				CommittedMatrix   vortex.EncodedMatrix
+				tree              *smt.Tree
+				DhWithMerkle      []field.Element
+			}
 			Dh            []ifaces.Column
 			Alpha         coin.Info
 			Ualpha        ifaces.Column
@@ -174,15 +209,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		op(&ctx)
 	}
 
-	if ctx.UseMerkleProof {
-		// Preallocate all the merkle roots for all rounds
-		ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
-	}
-
-	if !ctx.UseMerkleProof {
-		// Preallocate the commitments for each rounds
-		ctx.Items.Dh = make([]ifaces.Column, comp.NumRounds())
-	}
+	// Preallocate all the merkle roots for all rounds
+	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
 	return ctx
 }
@@ -224,8 +252,9 @@ func (ctx *Ctx) compileRoundAsDry(round int, coms []ifaces.ColID) {
 	}
 }
 
-// Compile the round as a dry round : pass all committed as prover
-// messages directly instead of sending them to the oracle.
+// Compile the round as a Vortex round : ensure the number of limbs divides the degree by
+// introducing zero valued shadow columns if necessary, increase the number of rows count,
+// insert Dh columns in the proof in case of non Merkle mode, or the Merkle roots for the Merkle mode
 func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 
 	// Sanity-check for double insertions
@@ -241,13 +270,19 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		coms = make([]ifaces.ColID, 0, len(coms_))
 
 		for _, com := range coms_ {
+
 			if _, ok := ctx.PolynomialsTouchedByTheQuery[com]; !ok {
 				logrus.Warnf("found unconstrained column : %v", com)
 				ctx.comp.Columns.MarkAsIgnored(com)
-			} else {
-				coms = append(coms, com)
+				continue
 			}
+
+			coms = append(coms, com)
 		}
+	}
+
+	if len(coms) == 0 {
+		return
 	}
 
 	// To ensure the number limbs in each subcol divides the degree, we pad the list
@@ -265,7 +300,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		// We still require that the output size should be divisible by the number of
 		// limbs. @alex We could still support it if useful enough.
 		if deg%numLimbs != 0 {
-			utils.Panic("the deg should at least divide the number of limbs")
+			utils.Panic("the number of limbs should at least divide the degree")
 		}
 		numFieldPerPoly := deg / numLimbs
 		numShadow := (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
@@ -297,30 +332,13 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 	ctx.CommittedRowsCount += len(coms)
 	ctx.MaxCommittedRound = utils.Max(ctx.MaxCommittedRound, round)
 
-	// In case of Merkle proof we do not need to send all the columns
-	// hashes to the verifier.
-	if !ctx.UseMerkleProof {
-		// Then, we can register a commitment for the current round
-		// Since, we do not know a priori how many rounds we have, we
-		// cannot assume that Dh slice is properly initialized length.
-		// Hence, we reinitialize it with the desired length at every
-		// round.
-		ctx.Items.Dh[round] = ctx.comp.InsertProof(
-			round,
-			ctx.CommitmentName(round),
-			ctx.NumEncodedCols()*ctx.SisParams.OutputSize(),
-		)
-	}
-
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	if ctx.UseMerkleProof {
-		ctx.Items.MerkleRoots[round] = ctx.comp.InsertProof(
-			round,
-			ifaces.ColID(ctx.MerkleRootName(round)),
-			1,
-		)
-	}
+	ctx.Items.MerkleRoots[round] = ctx.comp.InsertProof(
+		round,
+		ifaces.ColID(ctx.MerkleRootName(round)),
+		1,
+	)
 }
 
 // asserts that the compiled IOP has only a single query and that this query
@@ -395,12 +413,7 @@ func (ctx *Ctx) generateVortexParams() {
 		}
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex2.NewParams(ctx.BlowUpFactor, ctx.NumCols, ctx.CommittedRowsCount, *sisParams)
-
-	// And amend them, with the Merkle proof mode otherwise
-	if ctx.UseMerkleProof {
-		ctx.VortexParams.WithMerkleMode(mimc.NewMiMC)
-	}
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, ctx.CommittedRowsCount, *sisParams, mimc.NewMiMC)
 
 	// And replace SIS by MiMC if this is deemed useful
 	if ctx.ReplaceSisByMimc {
@@ -434,8 +447,8 @@ func (ctx *Ctx) NbColsToOpen() int {
 
 	// the 2 factor comes from the factor that we rely on the Guruswami-Sudan
 	// list decoding regime and not the (alleged)-capacity decoding level.
-	nb := 2 * crypto.TARGET_SECURITY_LEVEL / logBlowUpFactor
-	if nb*logBlowUpFactor < crypto.TARGET_SECURITY_LEVEL {
+	nb := 2 * crypto.TargetSecurityLevel / logBlowUpFactor
+	if nb*logBlowUpFactor < crypto.TargetSecurityLevel {
 		nb++
 	}
 
@@ -480,23 +493,21 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
 	}
 
-	if ctx.UseMerkleProof {
-		// In case of the Merkle-proof mode, we also registers the
-		// column that will contain the Merkle proofs altogether. But
-		// first, we need to evaluate its size. The proof size needs to
-		// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-		ctx.Items.MerkleProofs = ctx.comp.InsertProof(
-			lastRound+2,
-			ifaces.ColID(ctx.MerkleProofName()),
-			ctx.MerkleProofSize(),
-		)
-	}
+	// In case of the Merkle-proof mode, we also registers the
+	// column that will contain the Merkle proofs altogether. But
+	// first, we need to evaluate its size. The proof size needs to
+	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
+	ctx.Items.MerkleProofs = ctx.comp.InsertProof(
+		lastRound+2,
+		ifaces.ColID(ctx.MerkleProofName()),
+		ctx.MerkleProofSize(),
+	)
 
 }
 
 // Returns the number of encoded columns in the vortex commitment. NB: it overlaps with
-// `vortex2.Params.NumEncodedCols` but we need a separate function because we need to
-// call it at a moment where the vortex2.Params are not all available.
+// `vortex.Params.NumEncodedCols` but we need a separate function because we need to
+// call it at a moment where the vortex.Params are not all available.
 func (ctx *Ctx) NumEncodedCols() int {
 	res := utils.NextPowerOfTwo(ctx.NumCols) * ctx.BlowUpFactor
 
@@ -513,15 +524,104 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// Turns the precomputed into verifying key messages. A possible
-// improvement would be to make them an entire commitment but we
-// estimate that it will not be worth it.
-func (ctx *Ctx) precomputedIntoVerifyingKey() {
-	precomputeds := ctx.comp.Columns.AllPrecomputed()
-	logrus.Infof("Moved %v columns into precomputed", len(precomputeds))
-	for _, precomp := range precomputeds {
-		ctx.comp.Columns.SetStatus(precomp, column.VerifyingKey)
+// Create a method to decide when to commit to the precomputed
+func (ctx *Ctx) IsCommitToPrecomputed() bool {
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.DryTreshold
+}
+
+// Turns the precomputed into verifying key messages. A possible improvement
+// would be to make them an entire commitment but we estimate that it will not
+// be worth it. If the flag `CommitPrecomputed` is set to `true`, this will
+// instead register the precomputed columns.
+func (ctx *Ctx) processStatusPrecomputed() {
+
+	var (
+		comp = ctx.comp
+	)
+
+	// This captures the precomputed column.  It is essential to do it this
+	// particular moment, because the number of precomputed columns is going to
+	// change during the compilation time (in later compilation stage). And
+	// we want the precomputed columns defined at the beginning of the current
+	// vortex compilation step to be captured only.
+	precomputedColNames := comp.Columns.AllPrecomputed()
+	if len(precomputedColNames) == 0 {
+		ctx.Items.Precomputeds.PrecomputedColums = []ifaces.Column{}
+		return
 	}
+
+	// Sanity-check. This should be enforced by the splitter compiler already.
+	ctx.assertPolynomialHaveSameLength(precomputedColNames)
+	precomputedCols := []ifaces.Column{}
+
+	// If there are not enough columns, for a commitment to be meaningful,
+	// explicitly sends the column to the verifier so that he can check the
+	// evaluation by itself.
+	if len(precomputedColNames) < ctx.DryTreshold {
+		for _, name := range precomputedColNames {
+			comp.Columns.SetStatus(name, column.VerifyingKey)
+			pCol := comp.Columns.GetHandle(name)
+
+			_, ok := ctx.PolynomialsTouchedByTheQuery[name]
+			if !ok {
+				logrus.Warnf("got an unconstrained column: %v -> marking as ignored", name)
+				comp.Columns.MarkAsIgnored(name)
+				continue
+			}
+
+			precomputedCols = append(precomputedCols, pCol)
+		}
+
+		// For consistency, with the older version of the code
+		ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
+		logrus.Infof("We are not committing to the %d precomputeds", len(precomputedColNames))
+		return
+	}
+
+	for _, name := range precomputedColNames {
+		pCol := comp.Columns.GetHandle(name)
+		// Marking all these columns as "Ignored" to mean that the compiler
+		// should ignore theses columns.
+		comp.Columns.MarkAsIgnored(name)
+		ctx.NumCols = pCol.Size()
+		precomputedCols = append(precomputedCols, pCol)
+	}
+
+	logrus.Infof("Processing %v precomputed columns", len(precomputedCols))
+
+	// This corresponds to a technical edge-case. The SIS hash function works
+	// by mapping fields elements to a list of limbs. Limbs are in turn mapped
+	// to coefficients of a polynomial in some polynomial ring. In some cases,
+	// we may have more than one field element that is mapped to the same
+	// polynomial. When that happens, we want to ensure that "rows" belonging
+	// to different rounds to do not end up mapped to the same SIS polynomials
+	// (recall that we SIS-hash the column of the committed matrix). Otherwise,
+	// it becomes a problem later on when dealing with self-recursion. To
+	// prevent that from happening, we insert "shadow" rows, which are rows that
+	// may only contain zero and may only evaluate to zero whichever is the
+	// queried evaluation point.
+	if ctx.SisParams != nil {
+
+		var (
+			sisDegree          = ctx.SisParams.OutputSize()
+			sisNumLimbs        = ctx.SisParams.NumLimbs()
+			sisNumFieldPerPoly = utils.Max(1, sisDegree/sisNumLimbs)
+			numShadowRows      = len(precomputedCols) % sisNumFieldPerPoly
+		)
+
+		if sisDegree > sisNumLimbs && numShadowRows > 0 {
+			for i := 0; i < numShadowRows; i++ {
+				// The shift by 20 is to avoid collision with the committed cols
+				// at round zero.
+				shadowCol := autoAssignedShadowRow(comp, ctx.NumCols, 0, 1<<20+i)
+				ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+				precomputedColNames = append(precomputedColNames, shadowCol.GetColID())
+				precomputedCols = append(precomputedCols, shadowCol)
+			}
+		}
+	}
+
+	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 }
 
 // Returns the number of committed rounds. Must be called after the
@@ -550,6 +650,10 @@ func (ctx *Ctx) MerkleProofSize() int {
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
 	depth := utils.Log2Ceil(ctx.NumEncodedCols())
 	numComs := ctx.NumCommittedRounds()
+	// The number of rounds increases by 1 when we commit to the precomputeds
+	if ctx.IsCommitToPrecomputed() {
+		numComs += 1
+	}
 	numOpening := ctx.NbColsToOpen()
 
 	if depth*numComs*numOpening == 0 {
@@ -557,4 +661,45 @@ func (ctx *Ctx) MerkleProofSize() int {
 	}
 
 	return utils.NextPowerOfTwo(depth * numComs * numOpening)
+}
+
+// Commit to the precomputed columns
+func (ctx *Ctx) commitPrecomputeds() {
+	precomputeds := ctx.Items.Precomputeds.PrecomputedColums
+	numPrecomputeds := len(precomputeds)
+
+	// This can happens if either the flag `CommitPrecomputeds` is
+	// unset or if there is not enough precomputed columns to make
+	// it worth committing to them (e.g. less precomputed columns than
+	// the dry threshold).
+	if numPrecomputeds == 0 {
+		logrus.Tracef("skip commit precomputeds, because either the flag `CommitPrecomputeds`" +
+			"is unset or there are less columns than dry threshold.")
+		return
+	}
+
+	// Fetch the assignments (known at compile time since they are precomputeds)
+	pols := make([]smartvectors.SmartVector, numPrecomputeds)
+	for i, precomputed := range precomputeds {
+		if _, ok := ctx.ShadowCols[precomputed.GetColID()]; ok {
+			pols[i] = smartvectors.NewConstant(field.Zero(), ctx.NumCols)
+			continue
+		}
+		pols[i] = ctx.comp.Precomputed.MustGet(precomputed.GetColID())
+	}
+
+	// Increase the number of committed rows
+	ctx.CommittedRowsCount += numPrecomputeds
+
+	// Call Vortex in Merkle mode
+	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
+	ctx.Items.Precomputeds.DhWithMerkle = colHashes
+	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
+	ctx.Items.Precomputeds.tree = tree
+
+	// And assign the 1-sized column to contain the root
+	var root field.Element
+	root.SetBytes(tree.Root[:])
+	ctx.Items.Precomputeds.MerkleRoot = ctx.comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
+
 }

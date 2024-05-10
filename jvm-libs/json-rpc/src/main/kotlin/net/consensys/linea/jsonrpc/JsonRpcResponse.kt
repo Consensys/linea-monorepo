@@ -61,7 +61,7 @@ data class JsonRpcErrorResponse(
     fun internalError(id: Any, data: Any?): JsonRpcErrorResponse {
       return JsonRpcErrorResponse(id, JsonRpcError.internalError(data))
     }
-    fun invalidPrams(id: Any, message: String?): JsonRpcErrorResponse {
+    fun invalidParams(id: Any, message: String?): JsonRpcErrorResponse {
       return JsonRpcErrorResponse(id, JsonRpcError.invalidMethodParameter(message))
     }
   }

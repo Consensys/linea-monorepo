@@ -5,7 +5,7 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.flatMap
 import io.vertx.core.json.JsonObject
-import net.consensys.linea.CommonDomainFunctions.batchIntervalString
+import net.consensys.linea.CommonDomainFunctions.blockIntervalString
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -15,10 +15,11 @@ class TracesCountingServiceV1Impl(
   private val tracesCounter: TracesCounter
 ) : TracesCountingServiceV1 {
   override fun getBlockTracesCounters(
-    block: BlockNumberAndHash
+    block: BlockNumberAndHash,
+    version: String
   ): SafeFuture<Result<VersionedResult<BlockCounters>, TracesError>> {
-    return repository.getTraces(block).thenApply { result ->
-      result.flatMap { blockTraces -> tracesCounter.countTraces(blockTraces.traces) }
+    return repository.getTracesAsString(TracesFileIndex(block, version)).thenApply { result ->
+      result.flatMap { blockTraces -> tracesCounter.countTraces(blockTraces) }
     }
   }
 }
@@ -31,9 +32,13 @@ class TracesConflationServiceV1Impl(
 ) : TracesConflationServiceV1 {
   val log: Logger = LogManager.getLogger(this::class.java)
   override fun getConflatedTraces(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<VersionedResult<JsonObject>, TracesError>> {
-    return repository.getTraces(blocks)
+    val tracesIndexes = blocks.map {
+      TracesFileIndex(it, version)
+    }
+    return repository.getTraces(tracesIndexes)
       .thenApply { result ->
         result.flatMap { blocksTraces ->
           tracesConflator.conflateTraces(blocksTraces.sortedBy { it.blockNumber }.map { it.traces })
@@ -42,7 +47,8 @@ class TracesConflationServiceV1Impl(
   }
 
   override fun generateConflatedTracesToFile(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<VersionedResult<String>, TracesError>> {
     val blocksSorted = blocks.sortedBy { it.number }
     // we check if we already have the conflation for the given blocks
@@ -53,13 +59,13 @@ class TracesConflationServiceV1Impl(
     ).thenCompose { conflatedTracesFileName: String? ->
       if (conflatedTracesFileName != null) {
         log.info(
-          "Reusing conflated traces for batch={}, file={}",
-          batchIntervalString(blocksSorted.first().number, blocksSorted.last().number),
+          "Reusing conflated traces for batch={} file={}",
+          blockIntervalString(blocksSorted.first().number, blocksSorted.last().number),
           conflatedTracesFileName
         )
         SafeFuture.completedFuture(Ok(VersionedResult(tracesVersion, conflatedTracesFileName)))
       } else {
-        getConflatedTraces(blocks).thenCompose { result ->
+        getConflatedTraces(blocks, version).thenCompose { result ->
           when (result) {
             is Ok -> {
               conflatedTracesRepository

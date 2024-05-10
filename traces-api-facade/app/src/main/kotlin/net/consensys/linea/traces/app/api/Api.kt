@@ -24,6 +24,7 @@ class Api(
   private val configs: ApiConfig,
   private val vertx: Vertx,
   private val meterRegistry: MeterRegistry,
+  private val semVerValidator: TracesSemanticVersionValidator,
   private val tracesCountingService: TracesCountingServiceV1,
   private val tracesConflationService: TracesConflationServiceV1
 ) {
@@ -33,12 +34,12 @@ class Api(
     val requestHandlersV1 =
       mapOf(
         ApiMethod.ROLLUP_GET_BLOCK_TRACES_COUNTERS_V1.method to
-          TracesCounterRequestHandlerV1(tracesCountingService),
+          TracesCounterRequestHandlerV1(tracesCountingService, semVerValidator),
         ApiMethod.ROLLUP_GENERATE_CONFLATED_TRACES_TO_FILE_V1.method to
-          GenerateConflatedTracesToFileRequestHandlerV1(tracesConflationService),
+          GenerateConflatedTracesToFileRequestHandlerV1(tracesConflationService, semVerValidator),
         // Just for Debug/Dev Purposes
         ApiMethod.ROLLUP_GET_CONFLATED_TRACES_V1.method to
-          GetConflatedTracesRequestHandlerV1(tracesConflationService)
+          GetConflatedTracesRequestHandlerV1(tracesConflationService, semVerValidator)
       )
 
     val messageHandler: JsonRpcMessageHandler =

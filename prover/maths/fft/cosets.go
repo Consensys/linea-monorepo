@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 /*
@@ -38,11 +38,11 @@ Find the position of the coset table
 
 	`CosetID` returns the cosetID of the coset a*gr^{numCoset}*H
 */
-func cosetID(N, r, numCoset int) (cosetID int) {
+func cosetID(r, numCoset int) (cosetID int) {
 	maxDomain := 1 << maxOrderInt
 	cosetID64 := uint64(maxDomain / r * numCoset)
 	cosetID64 = bits.Reverse64(cosetID64)
-	cosetID64 >>= 64 - field.RootOrUnityOrder
+	cosetID64 >>= 64 - field.RootOfUnityOrder
 	return int(cosetID64)
 }
 
@@ -78,7 +78,7 @@ func GetCoset(N, r, numCoset int) (cos, cosInv, cosBR, cosInvBR []field.Element)
 		utils.Panic("The current field does not have that coset (N %v, r %v, maxOrder %v)", N, r, maxOrderInt)
 	}
 
-	cosetID := cosetID(N, r, numCoset)
+	cosetID := cosetID(r, numCoset)
 	order := utils.Log2Floor(N)
 
 	// If necessary, grows the slice of precomputed coset tables

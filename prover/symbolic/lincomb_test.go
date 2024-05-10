@@ -1,16 +1,15 @@
-package symbolic_test
+package symbolic
 
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLinComb(t *testing.T) {
 
-	x := symbolic.NewDummyVar("x")
-	y := symbolic.NewDummyVar("y")
+	x := NewDummyVar("x")
+	y := NewDummyVar("y")
 
 	{
 		// x + x = 2x
@@ -34,6 +33,11 @@ func TestLinComb(t *testing.T) {
 		// ((x + x) + x) + x
 		expr := x.Add(x).Add(x).Add(x)
 		require.Len(t, expr.Children, 1)
+	}
+
+	{
+		expr := NewLinComb([]*Expression{x, y}, []int{0, 0})
+		require.Equal(t, NewConstant(0), expr)
 	}
 
 }

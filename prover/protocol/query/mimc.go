@@ -3,10 +3,10 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 var _ ifaces.Query = MiMC{}
@@ -27,6 +27,11 @@ type MiMC struct {
 	Blocks, OldState, NewState ifaces.Column
 	// The name of the query
 	ID ifaces.QueryID
+}
+
+// Name implements the [ifaces.Query] interface
+func (m MiMC) Name() ifaces.QueryID {
+	return m.ID
 }
 
 /*
@@ -75,7 +80,7 @@ func (m MiMC) Check(run ifaces.Runtime) error {
 		recomputed := mimc.BlockCompression(oldState, block)
 		if recomputed != newState {
 			return fmt.Errorf(
-				"MiMC compression checck failed for row #%v : block %v, oldState %v, newState %v",
+				"MiMC compression check failed for row #%v : block %v, oldState %v, newState %v",
 				i, block.String(), oldState.String(), newState.String(),
 			)
 		}

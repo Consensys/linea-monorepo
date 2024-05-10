@@ -76,3 +76,38 @@ MiMC: $(\text{Right}, \text{Interm}, \text{NodeHash})$
 
 Global : $\text{Proof}[i] = \text{IsActive}[i]\text{Proof}[i]$
 
+#### Constraint on Leaf
+Leaf is constant within a segment and at the bottom of it, it should equal Curr. This leaf must be zero when the inactive flag is up. We could have set the below global constraint,
+
+Global: $\text{Leaf}[i] = \text{IsActive}[i]\text{NotNewProof}[i]\text{Leaf}[i+1]+\text{NewProof}[i]\text{Curr}[i]$.
+
+But, instead we register the $\text{Leaf}$ column in the result module and 
+verify that all values in $\text{Leaf}$ are included in the $\text{Curr}$ column of the Compute module via a lookup query. This saves us 1 global constraint. 
+#### Optional queries to check reuse of Merkle proofs
+Suppose there are two Merkle proofs, one before and one after a leaf update of the tree. In this case, we are reusing the same merkle proof/tree and the `siblings` will be the same. This kind of operation are the basic building block of the state manager. To verify the reuse of merkle proofs, we resort to the below idea.
+
+We introduce a new column $\text{UseNextMerkleProof}$ and a boolean variable $\text{withOptProofReuseCheck}$. When the bool variable is false, the column $\text{UseNextMerkleProof}$ is essentially a zero column. When it is true, it is constructed as 1s of length `Depth` followed by 0s of length `Depth` and so on upto `numProof`. To justify this structure, we refer to the below table. Here we have `Depth` = 2 and 1 update (`numProof` = 2). If it is a reuse of Merkle proofs, then we have $h_1 = h_3$ and $h_2 = h_4$. (Here we have $\text{proof}_1 = (\text{pos}, (h_1, h_2))$ and $\text{proof}_2=(\text{pos}, (h_3, h_4))$).
+
+| UseNextMerkleProof | Proof   | ProofNextSegment |
+|--------------------|---------|------------------|
+|          1         | $h_1$   | $h_3$            |
+|          1         | $h_2$   | $h_4$            |
+|          0         | $h_3$   |  -               |
+|          0         | $h_4$   |  -               |
+---------------------------------------------------
+
+We put the proofs (`Siblings`) consecutively in the $\text{Proof}$ column and define a pseudo-column $\text{ProofNextSegment}[i] = \text{Proof}[i+\text{Depth}]$. Then reuse of Merkle proofs is verified by the below constraints,
+$$
+\begin{aligned}
+\text{UseNextMerkleProof}[i]*(\text{Proof}[i]-\text{ProofNextSegment}[i]) &= 0 \\
+\text{UseNextMerkleProof}[i]*(\text{PosBit}[i]-\text{PosBitNextSegment}[i]) &= 0
+\end{aligned}
+$$
+Note that the same trick applies for $\text{PosBit}$. Also note that similar technique can be used if we pack multiple update operations consecutively. Since an Insert and a Delete operation can be thought of 3 update operations in three different positions, this trick is useful for the state manager gadget.
+
+We also need a constraint to show that the column $\text{UseNextMerkleProof}$ is constant throughout a particular segment e.g.,
+$$
+\text{IsActive}[i] * (\text{UseNextMerkleProof}[i+1] - \text{UseNextMerkleProof}[i]) * \text{NotNewProof}[i] = 0
+$$
+
+Finally, both the result module and compute module compute the column $\text{UseNextMerkleProof}$ and we verify that they are the same through a lookup query.   

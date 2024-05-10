@@ -1,69 +1,83 @@
 package wizard
 
 import (
-	"fmt"
-
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
-// Represents generically a proof.
+// Proof generically represents a proof obtained from the wizard. This object does not
+// implement any logic and only serves as a registry for all the prover messages
+// that are assigned by the prover runtime and that are necessary to run
+// the verifier. It includes the assignment of all the columns that are visible
+// to the verifier; meaning all columns bearing the tag [column.Proof] and the
+// query parameters [ifaces.QueryParams] provided by the prover runtime.
+//
+// The proof can be constructed using the [Prove] function and can be
+// used as an input to the [Verify] function. It can also be used to
+// assign a [WizardVerifierCircuit] in order to recursively compose
+// the proof within a gnark circuit.
+//
+// The struct does not implement any serialization logic.
 type Proof struct {
-	// Collection of the prover's message sent to the verifier.
-	// In short, it is the proof.
+	// Messages collection of the prover's message sent to the verifier.
 	Messages collection.Mapping[ifaces.ColID, ifaces.ColAssignment]
 
-	// Stores all the query parameters (i.e) the messages of the
+	// QueriesParams stores all the query parameters (i.e) the messages of the
 	// oracle to the verifier.
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 }
 
-// Describes a single step of verifier for a single subprotocol.
+// VerifierStep specifies a single step of verifier for a single subprotocol.
+// This can be used to specify verifier checks involving user-provided
+// columns for relations that cannot be automatically enforced via a
+// [ifaces.Query]
 type VerifierStep func(a *VerifierRuntime) error
 
-// VerifierRuntime runtime gathers all data for the verifier
+// VerifierRuntime runtime collects all data that visible or computed by the
+// verifier of the wizard protocol. This includes the prover's messages, the
+// [column.VerifyingKey] tagged columns.
+//
+// The struct is not intended to be constructed by the user and is internally
+// constructed by the [Verify] function. The user should instead
+// restricts its usage of the function within [VerifierStep] functions that are
+// provided to either the [CompiledIOP] or the [Verify] function.
 type VerifierRuntime struct {
-	/*
-		A static description of the protocol
-	*/
-	Spec *CompiledIOP
-	/*
-		Collection of the prover's message sent to the verifier.
-		In short, it is the proof.
-	*/
-	Columns collection.Mapping[ifaces.ColID, ifaces.ColAssignment]
-	/*
-		Stores all the random coins issued during the protocol
-	*/
-	Coins collection.Mapping[coin.Name, interface{}]
-	/*
-		Stores all the query parameters (i.e) the messages of the
-		oracle to the verifier.
-	*/
-	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
-	/*
-		It is supposed to be an internal and private attribute.
 
-		Fiat-Shamir State, you probably don't want to use it directly unless
-		you know what you are doing. Just know that if you use it to update
-		the FS hash, this can potentially result in the prover and the verifer
-		end up having different state or the same message being included a second
-		time.
-	*/
+	// Spec points to the static description of the underlying protocol
+	Spec *CompiledIOP
+
+	// Collection of the prover's message sent to the verifier.
+	Columns collection.Mapping[ifaces.ColID, ifaces.ColAssignment]
+
+	// Coins stores all the random coins issued during the protocol
+	Coins collection.Mapping[coin.Name, interface{}]
+
+	// Stores all the query parameters (i.e) the messages of the oracle to the
+	// verifier.
+	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
+
+	// FS stores the Fiat-Shamir State, you probably don't want to use it
+	// directly unless you know what you are doing. Just know that if you use
+	// it to update the FS hash, this can potentially result in the prover and
+	// the verifer end up having different state or the same message being
+	// included a second time. Use it externally at your own risks.
 	FS *fiatshamir.State
 }
 
-// Top-level function to pass an assignment
+// Verify verifies a wizard proof. The caller specifies a [CompiledIOP] that
+// describes the protocol to run and a proof to verify. The function returns
+// `nil` to indicate that the proof passed and an error to indicate the proof
+// was invalid.
 func Verify(c *CompiledIOP, proof Proof) error {
 
-	runtime := c.CreateVerifier(proof)
+	runtime := c.createVerifier(proof)
 
 	/*
 		Pre-emptively generates the random coins. As the entire set of prover
@@ -73,32 +87,31 @@ func Verify(c *CompiledIOP, proof Proof) error {
 	runtime.generateAllRandomCoins()
 
 	/*
-		And run all the precompiled rounds. Collecting the errors if there are any
+		And run all the precompiled rounds. Collecting the errors if there are
+		any
 	*/
-	anyError := false
-	errMsg := ""
+	errs := []error{}
 	for _, roundSteps := range runtime.Spec.subVerifiers.Inner() {
 		for _, step := range roundSteps {
 			if err := step(&runtime); err != nil {
-				errMsg += fmt.Sprintf("\t%v\n", err)
-				anyError = true
+				errs = append(errs, err)
 			}
 		}
 	}
 
-	if anyError {
-		return fmt.Errorf("verifier failed : \n%v", errMsg)
+	if len(errs) > 0 {
+		return utils.WrapErrsAlphabetically(errs)
 	}
 
 	return nil
 }
 
-/*
-Construct a new empty verifier runtime and populates its verifier
-steps from the `VerifierFuncGen` in the `c`. The user also passes
-the list of prover messages (which can also be pronounced "proof")
-*/
-func (c *CompiledIOP) CreateVerifier(proof Proof) VerifierRuntime {
+// createVerifier is an internal constructor for a new empty [VerifierRuntime] runtime. It
+// prepopulates the [VerifierRuntime.Columns] and [VerifierRuntime.QueriesParams]
+// with the one that are in the proof. It also populates its verifier steps from
+// the `VerifierFuncGen` in the `c`. The user also passes the list of prover
+// messages. It is internally called by the [Verify] function.
+func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 
 	/*
 		Instantiate an empty assigment for the verifier
@@ -122,9 +135,12 @@ func (c *CompiledIOP) CreateVerifier(proof Proof) VerifierRuntime {
 	return runtime
 }
 
-/*
-Generates all the random coins at the beginning
-*/
+// generateAllRandomCoins populates the Coin field of the VerifierRuntime by
+// generating all the required for all the rounds at once. This contrasts with
+// the prover which can only do it round by round and is justified by the fact
+// that this is possible for the verifier since he is given all the messages at
+// once in the [Proof] and by the fact that it is simpler to work like that as
+// it avoid implementing a "round-after-round" coin population logic.
 func (run *VerifierRuntime) generateAllRandomCoins() {
 
 	for currRound := 0; currRound < run.Spec.NumRounds(); currRound++ {
@@ -185,10 +201,11 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 
 }
 
-/*
-Returns a field element random a preassigned random coin as field element.
-The implementation implicitly checks that the field element is of the right typ
-*/
+// GetRandomCoinField returns a field element random. The coin should be issued
+// at the same round as it was registered. The same coin can't be retrieved more
+// than once. The coin should also have been registered as a field element
+// before doing this call. Will also trigger the "goNextRound" logic if
+// appropriate.
 func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	/*
 		Early check, ensures the coin has been registered at all
@@ -202,9 +219,11 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.Coins.MustGet(name).(field.Element)
 }
 
-/*
-Returns a pre-sampled integer vec random coin.
-*/
+// GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
+// coin should be issued at the same round as it was registered. The same coin
+// can't be retrieved more than once. The coin should also have been registered
+// as an integer vec before doing this call. Will also trigger the
+// "goNextRound" logic if appropriate.
 func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 	/*
 		Early check, ensures the coin has been registered at all
@@ -218,16 +237,16 @@ func (run *VerifierRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 	return run.Coins.MustGet(name).([]int)
 }
 
-/*
-Returns the parameters of a univariate evaluation (i.e: x, the evaluation point)
-and y, the alleged polynomial opening.
-*/
+// GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
+// x, the evaluation point) and y, the alleged polynomial opening. This is
+// intended to resolve parameters that have been provided by the proof.
 func (run *VerifierRuntime) GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams {
 	return run.QueriesParams.MustGet(name).(query.UnivariateEvalParams)
 }
 
 /*
 Returns the number of rounds in the assignment.
+Deprecated: get it from the CompiledIOP instead
 */
 func (run *VerifierRuntime) NumRounds() int {
 	/*
@@ -238,15 +257,16 @@ func (run *VerifierRuntime) NumRounds() int {
 }
 
 /*
-Get univariate eval metadata. Panic if not found.
+GetUnivariateEval returns a registered [query.UnivariateEval]. Panic if not found.
+Deprecated: get it from the CompiledIOP instead
 */
 func (run *VerifierRuntime) GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval {
 	return run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
 }
 
-/*
-Returns a column by name. The status of the columns should be either proof or public input
-*/
+// GetColumn returns a column by name. The status of the columns must be
+// either proof or public input and the column must be visible to the verifier
+// and consequently be available in the proof.
 func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 
 	msgStatus := run.Spec.Columns.Status(name)
@@ -269,22 +289,25 @@ func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 	return msgIFace
 }
 
-// Returns pre-assigned parameters for the current query
+// GetInnerProductParams returns the parameters of an inner-product query
+// [query.InnerProduct] provided by the proof. The function will panic if the
+// query does not exist or if the parameters are not available in the proof.
 func (run *VerifierRuntime) GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams {
 	return run.QueriesParams.MustGet(name).(query.InnerProductParams)
 }
 
-/*
-Returns the parameters of a univariate evaluation (i.e: x, the evaluation point)
-and y, the alleged polynomial opening.
-*/
+// GetLocalPointEvalParams returns the parameters of a [query.LocalOpening]
+// query  (i.e: y, the alleged opening of the query's column at the first
+// position.
 func (run *VerifierRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
 	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
 }
 
 /*
-This implements `column.GetWitness`
+CopyColumnInto implements `column.GetWitness`
 Copies the witness into a slice
+
+Deprecated: this is deadcode
 */
 func (run VerifierRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {
 	/*
@@ -302,10 +325,10 @@ func (run VerifierRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAss
 	smartvectors.Copy(buff, toCopy)
 }
 
-/*
-This implements `column.GetWitness`
-Returns a particular entry of a witness
-*/
+// GetColumnAt returns the value of a verifier [ifaces.Column] at a specified
+// position. This is needed to implement the [column.GetWitness] interface and
+// it will only work if the requested column is part of the proof the verifier
+// is running on.
 func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	/*
 		Make sure the column is registered. If the name is the one specified
@@ -322,8 +345,11 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	return wit.Get(pos)
 }
 
-// Generic function to extract the parameters of a query. Will panic if no
+// GetParams extracts the parameters of a query. Will panic if no
 // parameters are found
+//
+// Deprecated: there are already methods to return parameters with an explicit
+// type.
 func (run *VerifierRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }

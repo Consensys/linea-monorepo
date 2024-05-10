@@ -3,27 +3,27 @@ package functionals
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
-func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x *ifaces.Accessor, innerDegree int) ifaces.Column {
+func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDegree int) ifaces.Column {
 
-	round := x.Round
+	round := x.Round()
 
 	foldedSize := h.Size() / innerDegree
-	foldedName := ifaces.ColIDf("FOLDED_%v_%v_%v", h.GetColID(), x.Name, innerDegree)
+	foldedName := ifaces.ColIDf("FOLDED_%v_%v_%v", h.GetColID(), x.Name(), innerDegree)
 	folded := comp.InsertCommit(round, foldedName, foldedSize)
 
-	if x.Round <= h.Round() {
-		logrus.Errorf("unsafe, the coin is before the commitment : %v", foldedName)
+	if x.Round() <= h.Round() {
+		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
 	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
@@ -42,12 +42,12 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x *ifaces.Accessor, innerDe
 
 	outerCoinName := coin.Namef("OUTER_COIN_%v", folded.GetColID())
 	outerCoin := comp.InsertCoin(round+1, outerCoinName, coin.Field)
-	outerCoinAcc := accessors.AccessorFromCoin(outerCoin)
+	outerCoinAcc := accessors.NewFromCoin(outerCoin)
 
 	foldedEvalAcc := CoeffEval(comp, folded.String(), outerCoin, folded)
 	hEvalAcc := EvalCoeffBivariate(comp, folded.String(), h, x, outerCoinAcc, innerDegree, folded.Size())
 
-	verRound := utils.Max(outerCoinAcc.Round, foldedEvalAcc.Round)
+	verRound := utils.Max(outerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
 	comp.InsertVerifier(verRound, func(a *wizard.VerifierRuntime) error {

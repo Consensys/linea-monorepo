@@ -3,30 +3,35 @@ package smt
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
 // ProvedClaim is the composition of a proof with the claim it proves.
 type ProvedClaim struct {
 	Proof      Proof
-	Root, Leaf Digest
+	Root, Leaf types.Bytes32
 }
 
-// Merkle proof of membership for the Merkle-tree
+// Proof represents a Merkle proof of membership for the Merkle-tree
 type Proof struct {
-	Path     int                // Position of the leaf
-	Siblings []hashtypes.Digest // length 40
+	Path     int             `json:"leafIndex"` // Position of the leaf
+	Siblings []types.Bytes32 `json:"siblings"`  // length 40
 }
 
-// Update a leaf in the tree
-func (t *Tree) Prove(pos int) Proof {
+// Prove returns a Merkle proof  of membership of the leaf at position `pos` and
+// an error if the position is out of bounds.
+func (t *Tree) Prove(pos int) (Proof, error) {
 	depth := t.Config.Depth
-	siblings := make([]hashtypes.Digest, depth)
+	siblings := make([]types.Bytes32, depth)
 	idx := pos
 
 	if pos >= 1<<depth {
-		utils.Panic("pos %v is larger than the tree width %v", pos, 1<<depth)
+		return Proof{}, fmt.Errorf("pos=%v is too high: max is %v for depth %v", pos, 1<<depth, depth)
+	}
+
+	if pos < 0 {
+		return Proof{}, fmt.Errorf("pos=%v is negative should be positive or zero", pos)
 	}
 
 	for level := 0; level < depth; level++ {
@@ -43,38 +48,67 @@ func (t *Tree) Prove(pos int) Proof {
 	return Proof{
 		Siblings: siblings,
 		Path:     pos,
-	}
+	}, nil
 }
 
-// Returns the root as an output of the Merkle verification
-func (p *Proof) RecoverRoot(conf *Config, leaf hashtypes.Digest) hashtypes.Digest {
-	current := leaf
-	idx := p.Path
+// MustProve runs [Tree.Prove] and panics on error
+func (t *Tree) MustProve(pos int) Proof {
+	proof, err := t.Prove(pos)
+	if err != nil {
+		utils.Panic("could not prover: %v", err.Error())
+	}
+	return proof
+}
+
+// RecoverRoot returns the root recovered from the Merkle proof.
+func (p *Proof) RecoverRoot(conf *Config, leaf types.Bytes32) (types.Bytes32, error) {
+
+	if p.Path > 1<<conf.Depth {
+		return types.Bytes32{}, fmt.Errorf("invalid proof: path is %v larger than the number of leaves in the tree %v", p.Path, 1<<len(p.Siblings))
+	}
+
+	if p.Path < 0 {
+		return types.Bytes32{}, fmt.Errorf("invalid proof: path is negative %v", p.Path)
+	}
+
+	if len(p.Siblings) != conf.Depth {
+		return types.Bytes32{}, fmt.Errorf("the proof contains %v siblings but the tree has a depth of %v", len(p.Siblings), conf.Depth)
+	}
+
+	var (
+		current = leaf
+		idx     = p.Path
+	)
 
 	for _, sibling := range p.Siblings {
 		left, right := current, sibling
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = HashLR(conf, left, right)
+		current = hashLR(conf, left, right)
 		idx >>= 1
 	}
 
-	// Sanity-check: the idx should be zero
+	// Sanity-check: the idx should be zero. We already checked the path to
+	// be within bounds.
 	if idx != 0 {
 		panic("idx should be zero")
 	}
 
-	return current
+	return current, nil
 }
 
 // Verify the Merkle-proof against a hash and a root
-func (p *Proof) Verify(conf *Config, leaf, root hashtypes.Digest) bool {
-	actual := p.RecoverRoot(conf, leaf)
+func (p *Proof) Verify(conf *Config, leaf, root types.Bytes32) bool {
+	actual, err := p.RecoverRoot(conf, leaf)
+	if err != nil {
+		fmt.Printf("mtree verify: %v\n", err.Error())
+		return false
+	}
 	return actual == root
 }
 
-// Pretty-print a proof
+// String pretty-prints a proof
 func (p *Proof) String() string {
 	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, p.Siblings)
 }

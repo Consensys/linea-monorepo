@@ -1,7 +1,7 @@
-import { BigNumber, BytesLike } from "ethers";
+import { BytesLike } from "ethers";
 
 export type SendMessageArgs = {
   to: string;
-  fee: BigNumber;
+  fee: bigint;
   calldata: BytesLike;
 };

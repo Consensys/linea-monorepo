@@ -3,7 +3,7 @@ package parallel_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 )
 
 func TestParChunky(t *testing.T) {
@@ -12,7 +12,7 @@ func TestParChunky(t *testing.T) {
 
 	worker := func(start, stop int) {
 		for i := start; i < stop; i++ {
-			testArr[i] += 1
+			testArr[i]++
 		}
 	}
 

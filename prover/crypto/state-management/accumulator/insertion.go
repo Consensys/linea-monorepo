@@ -4,29 +4,42 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
-// Trace the accumulator : insertion
+// InsertionTrace gathers all the input needed for a verifier to audit the
+// insertion of a key in the map.
 type InsertionTrace[K, V io.WriterTo] struct {
-	Location               string
-	OldSubRoot, NewSubRoot Digest
-	NewNextFreeNode        int
+	// Identifier for the tree this trace belongs to
+	Type     int    `json:"type"`
+	Location string `json:"location"`
+
+	NewNextFreeNode int     `json:"newNextFreeNode"`
+	OldSubRoot      Bytes32 `json:"oldSubRoot"`
+	NewSubRoot      Bytes32 `json:"newSubRoot"`
+
 	// `New` correspond to the inserted leaf
-	ProofMinus, ProofNew, ProofPlus smt.Proof
-	Key                             K
-	Val                             V
+	ProofMinus smt.Proof `json:"leftProof"`
+	ProofNew   smt.Proof `json:"newProof"`
+	ProofPlus  smt.Proof `json:"rightProof"`
+	Key        K         `json:"key"`
+	Val        V         `json:"value"`
+
 	// Value of the leaf opening before being modified
-	OldOpenMinus, OldOpenPlus LeafOpening
+	OldOpenMinus LeafOpening `json:"priorLeftLeaf"`
+	OldOpenPlus  LeafOpening `json:"priorRightLeaf"`
 }
 
-// Inserts in the accumulator and returns a trace
+// InsertAndProve inserts in the accumulator and returns a trace. The function
+// panics if the key is already in the accumulator or if the tree is corrupted.
 func (p *ProverState[K, V]) InsertAndProve(key K, val V) (trace InsertionTrace[K, V]) {
 
 	// Sanity-check : assert that the key is missing in the proof
-	_posFound, found := p.findKey(key)
+	_posFound, found := p.FindKey(key)
 	if found {
 		utils.Panic("called insert, but the key was present : %v as position %v", key, _posFound)
 	}
@@ -73,7 +86,8 @@ func (p *ProverState[K, V]) InsertAndProve(key K, val V) (trace InsertionTrace[K
 	return trace
 }
 
-// Audit the deletion of an entry in the accumulator
+// VerifyInsertion audit the insertion of an entry in the accumulator w.r.t to
+// the state of the verifier. It returns an error if the verification failed.
 func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error {
 
 	// If the location does not match the we return an error
@@ -108,7 +122,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 
 	// Also checks that the their hkey are lower/larger than the inserted one
 	hkey := hash(v.Config, trace.Key)
-	if hashtypes.Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || hashtypes.Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
+	if Bytes32Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
 			trace.OldOpenMinus.HKey, hkey, trace.OldOpenPlus.HKey,
@@ -159,8 +173,7 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 	return nil
 }
 
-// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace verification
-// into a slice of smt.ProvedClaim.
+// DeferMerkleChecks implements [DeferableCheck]
 func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,

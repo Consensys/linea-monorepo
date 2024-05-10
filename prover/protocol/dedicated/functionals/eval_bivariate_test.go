@@ -3,15 +3,15 @@ package functionals_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,11 +19,11 @@ func TestEvalBivariateSimple(t *testing.T) {
 
 	wp := smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8)
 
-	x := accessors.AccessorFromConstant(field.NewElement(2))
-	y := accessors.AccessorFromConstant(field.NewElement(3))
+	x := accessors.NewConstant(field.NewElement(2))
+	y := accessors.NewConstant(field.NewElement(3))
 
 	var (
-		acc          *ifaces.Accessor
+		acc          ifaces.Accessor
 		savedRuntime *wizard.ProverRuntime
 	)
 
@@ -59,8 +59,8 @@ func TestEvalBivariateWithCoin(t *testing.T) {
 
 	definer := func(b *wizard.Builder) {
 		p := b.RegisterCommit("P", wp.Len())
-		x := accessors.AccessorFromCoin(b.RegisterRandomCoin("X", coin.Field))
-		y := accessors.AccessorFromCoin(b.RegisterRandomCoin("Y", coin.Field))
+		x := accessors.NewFromCoin(b.RegisterRandomCoin("X", coin.Field))
+		y := accessors.NewFromCoin(b.RegisterRandomCoin("Y", coin.Field))
 		_ = functionals.EvalCoeffBivariate(b.CompiledIOP, "EVAL_BIVARIATE", p, x, y, 4, 8)
 	}
 
@@ -90,8 +90,8 @@ func TestEvalBivariateWithCoinAndConstant(t *testing.T) {
 
 	definer := func(b *wizard.Builder) {
 		p := b.RegisterCommit("P", wp.Len())
-		x := accessors.AccessorFromConstant(field.NewElement(2))
-		y := accessors.AccessorFromConstant(field.NewElement(242))
+		x := accessors.NewConstant(field.NewElement(2))
+		y := accessors.NewConstant(field.NewElement(242))
 		_ = functionals.EvalCoeffBivariate(b.CompiledIOP, "EVAL_BIVARIATE", p, x, y, 4, 8)
 	}
 
@@ -111,8 +111,8 @@ func TestEvalBivariateSimpleWithSplitting(t *testing.T) {
 
 	wp := smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8)
 
-	x := accessors.AccessorFromConstant(field.NewElement(2))
-	y := accessors.AccessorFromConstant(field.NewElement(2))
+	x := accessors.NewConstant(field.NewElement(2))
+	y := accessors.NewConstant(field.NewElement(2))
 
 	definer := func(b *wizard.Builder) {
 		p := b.RegisterCommit("P", wp.Len())

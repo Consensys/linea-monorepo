@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/profiling"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -124,7 +124,7 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 				precomp := comp.Precomputed.MustGet(h.GetColID())
 				for i := 0; i < len(subSlices); i++ {
 					subSlices[i] = comp.InsertPrecomputed(
-						nameHandleSlice(ctx, h, i, h.Size()/ctx.size),
+						nameHandleSlice(h, i, h.Size()/ctx.size),
 						precomp.SubVector(i*ctx.size, (i+1)*ctx.size),
 					)
 					// For the case when the original slice is a verifying key.
@@ -137,7 +137,7 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 
 			default:
 				for i := 0; i < len(subSlices); i++ {
-					subSlices[i] = comp.InsertColumn(round, nameHandleSlice(ctx, h, i, h.Size()/ctx.size), ctx.size, status)
+					subSlices[i] = comp.InsertColumn(round, nameHandleSlice(h, i, h.Size()/ctx.size), ctx.size, status)
 				}
 			}
 
@@ -216,7 +216,7 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 
 }
 
-func nameHandleSlice(ctx splitterCtx, h ifaces.Column, num, numSlots int) ifaces.ColID {
+func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }
 
@@ -449,10 +449,6 @@ func hasInterleaved(h ifaces.Column) bool {
 		return false
 	case column.Shifted:
 		return hasInterleaved(inner.Parent)
-	case column.Repeated:
-		return hasInterleaved(inner.Parent)
-	case column.Interleaved:
-		return true
 	default:
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
 	}
@@ -565,42 +561,6 @@ func (ctx splitterCtx) handleForSubsliceInGlobal(h ifaces.Column, num int) iface
 		parent := ctx.handleForSubsliceInGlobal(inner.Parent, num+deltaNum)
 		return column.Shift(parent, offset%ctx.size)
 
-	case column.Repeated:
-		// The case where the parent has a size smaller than the ctx.size is
-		// unexpected and we forbid it.
-		if inner.Parent.Size() < ctx.size {
-			// In this case, we repeat the same subhandle but less time
-			logrus.Tracef(
-				"Parent size (%v) is smaller than the context size (%v) : %v",
-				inner.Parent.Size(), ctx.size, inner.Parent.GetColID(),
-			)
-
-			// At this point, we assume the parents status is "full" public
-			// so we cannot sanity-check it.
-			verifiercol.AssertIsPublicCol(ctx.comp, inner.Parent)
-
-			// Making sure the parents size divides the target size and the
-			// ratio is a power of two;
-			if ctx.size%inner.Parent.Size() != 0 && !utils.IsPowerOfTwo(ctx.size/inner.Parent.Size()) {
-				utils.Panic(
-					"We have a division issue %v / %v should be a clean power of two",
-					ctx.size, inner.Parent.Size(),
-				)
-			}
-
-			// And, so we will repeat the parent as much as needed
-			numRepeat := ctx.size / inner.Parent.Size()
-			return column.Repeat(inner.Parent, numRepeat)
-		}
-
-		// Compute the parent's slice index we are looking for
-		numSliceParent := inner.Parent.Size() / ctx.size
-		num_ := num % numSliceParent
-		return ctx.handleForSubsliceInGlobal(inner.Parent, num_)
-
-	case column.Interleaved:
-		panic("we should skip the interleaved columns")
-
 	default:
 		if !h.IsComposite() {
 			// No changes
@@ -644,42 +604,6 @@ func (ctx splitterCtx) handleForSubsliceInLocal(h ifaces.Column, num int) (res i
 		deltaNum := offset / ctx.size // This works fine in the case where h.Size() < ctx.size
 		parent := ctx.handleForSubsliceInLocal(inner.Parent, num+deltaNum)
 		return column.Shift(parent, offset%ctx.size)
-
-	case column.Repeated:
-		// The case where the parent has a size smaller than the ctx.size is
-		// unexpected and we forbid it unless the variable is public
-		if inner.Parent.Size() < ctx.size {
-			// In this case, we repeat the same subhandle but less time
-			logrus.Tracef(
-				"Parent size (%v) is smaller than the context size (%v) : %v",
-				inner.Parent.Size(), ctx.size, inner.Parent.GetColID(),
-			)
-
-			// At this point, we assume the parents status are all public
-			// so we must sanity-check it.
-			verifiercol.AssertIsPublicCol(ctx.comp, inner)
-
-			// Making sure the parents size divides the target size and the
-			// ratio is a power of two;
-			if ctx.size%inner.Parent.Size() != 0 && !utils.IsPowerOfTwo(ctx.size/inner.Parent.Size()) {
-				utils.Panic(
-					"We have a division issue %v / %v should be a clean power of two",
-					ctx.size, inner.Parent.Size(),
-				)
-			}
-
-			// And, so we will repeat the parent as much as needed
-			numRepeat := ctx.size / inner.Parent.Size()
-			return column.Repeat(inner.Parent, numRepeat)
-		}
-
-		// Compute the parent's slice index we are looking for
-		numSliceParent := inner.Parent.Size() / ctx.size
-		num_ := num % numSliceParent
-		return ctx.handleForSubsliceInLocal(inner.Parent, num_)
-
-	case column.Interleaved:
-		panic("we should skip the interleaved columns")
 
 	default:
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))

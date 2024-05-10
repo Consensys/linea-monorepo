@@ -3,12 +3,12 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Queries the opening of a handle at zero
@@ -49,6 +49,11 @@ func NewLocalOpening(id ifaces.QueryID, pol ifaces.Column) LocalOpening {
 	}
 
 	return LocalOpening{ID: id, Pol: pol}
+}
+
+// Name implements the [ifaces.Query] interface
+func (r LocalOpening) Name() ifaces.QueryID {
+	return r.ID
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters

@@ -1,17 +1,19 @@
+//go:build !fuzzlight
+
 package test_cases_test
 
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc/gkrmimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/splitter"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +46,7 @@ func TestGnarkCompile(t *testing.T) {
 	}
 
 	assignment := GetAssignment(comp, proof)
-	witness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = scs.IsSolved(witness, gkrmimc.SolverOpts(scs)...)
