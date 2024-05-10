@@ -3,14 +3,14 @@ package reedsolomon
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 const (
@@ -56,7 +56,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	evalCheck := functionals.Interpolation(
 		comp,
 		fmt.Sprintf("%v_%v", REED_SOLOMON_EVAL_CHECK, h.GetColID()),
-		accessors.AccessorFromCoin(beta),
+		accessors.NewFromCoin(beta),
 		h,
 	)
 

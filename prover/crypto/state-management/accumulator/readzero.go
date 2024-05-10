@@ -4,27 +4,33 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
-// Trace that allows checking a read zero operation : aka proof of non membership
+// Trace that allows checking a read zero operation: e.g. proof of non-membership
 type ReadZeroTrace[K, V io.WriterTo] struct {
-	Location                  string
-	Key                       K
-	SubRoot                   Digest
-	NextFreeNode              int
-	OpeningMinus, OpeningPlus LeafOpening
-	ProofMinus, ProofPlus     smt.Proof
+	Type         int         `json:"type"`
+	Location     string      `json:"location"`
+	Key          K           `json:"key"`
+	SubRoot      Bytes32     `json:"subRoot"`
+	NextFreeNode int         `json:"nextFreeNode"`
+	OpeningMinus LeafOpening `json:"leftLeaf"`
+	OpeningPlus  LeafOpening `json:"rightLeaf"`
+	ProofMinus   smt.Proof   `json:"leftProof"`
+	ProofPlus    smt.Proof   `json:"rightProof"`
 }
 
-// Perform a read on the accumulator. Panics if the the associated value
-// is zero. Returns a trace object containing the
+// ReadZeroAndProve performs a read-zero on the accumulator. Panics if the
+// associated key exists in the tree. Returns a ReadZeroTrace object in case of
+// success.
 func (p *ProverState[K, V]) ReadZeroAndProve(key K) ReadZeroTrace[K, V] {
 
 	// Find the position of the leaf containing our value
-	_, found := p.findKey(key)
+	_, found := p.FindKey(key)
 	if found {
 		utils.Panic("called read-zero, but the key was present")
 	}
@@ -37,15 +43,16 @@ func (p *ProverState[K, V]) ReadZeroAndProve(key K) ReadZeroTrace[K, V] {
 		Location:     p.Location,
 		Key:          key,
 		SubRoot:      p.SubTreeRoot(),
-		ProofMinus:   p.Tree.Prove(int(iMinus)),
+		ProofMinus:   p.Tree.MustProve(int(iMinus)),
 		OpeningMinus: dataMinus.LeafOpening,
-		ProofPlus:    p.Tree.Prove(int(iPlus)),
+		ProofPlus:    p.Tree.MustProve(int(iPlus)),
 		OpeningPlus:  dataPlus.LeafOpening,
 		NextFreeNode: int(p.NextFreeNode),
 	}
 }
 
-// Verify a read zero operation
+// ReadZeroVerify verifies a [ReadZeroTrace] and returns an error in case of
+// failure.
 func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 	// If the location does not match the we return an error
@@ -71,7 +78,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 
 	// Check that the opening's hkeys make a correct sandwich
 	hkey := hash(v.Config, trace.Key)
-	if hashtypes.Cmp(hkey, trace.OpeningMinus.HKey) < 1 || hashtypes.Cmp(hkey, trace.OpeningPlus.HKey) > -1 {
+	if Bytes32Cmp(hkey, trace.OpeningMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OpeningPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
 			trace.OpeningMinus.HKey, hkey, trace.OpeningPlus.HKey,
@@ -93,8 +100,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace verification
-// into a slice of smt.ProvedClaim.
+// DeferMerkleChecks implements the [DeferableCheck] interface.
 func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,

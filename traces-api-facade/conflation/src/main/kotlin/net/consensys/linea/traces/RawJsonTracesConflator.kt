@@ -116,17 +116,25 @@ class ConflatedTrace : ConflatedTraceStorage() {
     this.hubState.updateState(newHub)
     appendTo(newHub, this.hub)
   }
+
   fun insertShfRt(shfRt: ShfRt) {
     this.shfRt = shfRt
   }
+
   fun insertBinRt(binRt: BinRt) {
     this.binRt = binRt
   }
+
   fun insertInstructionDecoder(id: InstructionDecoder) {
     this.instructionDecoder = id
   }
+
   fun insertMmuid(mmuId: MmuId) {
     this.mmuId = mmuId
+  }
+
+  fun fakeEcData() {
+    this.ecData.cleanState()
   }
 
   fun fakeRom() {
@@ -1102,10 +1110,12 @@ class ConflatedTrace : ConflatedTraceStorage() {
         this.hubState.ecDataStamp = module.STAMP.lastOrNull()?.toInt() ?: this.hubState.ecDataStamp
         appendTo(module, this.ecData)
       }
+
       is HashData -> {
         appendToRestamp(module, this.hashData, "NUM")
         this.hubState.hashNum = this.hashData.NUM.lastOrNull()?.toInt() ?: this.hubState.hashNum
       }
+
       is HashInfo -> appendToRestamp(module, this.hashInfo, "HASH_NUM")
       is Hub -> appendToHub(module)
       is InstructionDecoder -> this.insertInstructionDecoder(module)
@@ -1113,15 +1123,18 @@ class ConflatedTrace : ConflatedTraceStorage() {
         appendToRestamp(module, this.logData, "NUM")
         this.hubState.logNum = this.hashData.NUM.lastOrNull()?.toInt() ?: this.hubState.logNum
       }
+
       is LogInfo -> appendToRestamp(module, this.logInfo, "NUM")
       is Mmio -> {
         module.TX_NUM.mapInPlace { it -> (it.toInt() + this.hubState.txNum).toString() }
         appendTo(module, this.mmio)
       }
+
       is Mmu -> {
         appendToRestamp(module, this.mmu, "RAM_STAMP")
         this.hubState.ramStamp = 1 + (this.mmu.RAM_STAMP.lastOrNull()?.toInt() ?: this.hubState.ramStamp)
       }
+
       is MmuId -> this.insertMmuid(module)
       is Mod -> appendToRestamp(module, this.mod, "STAMP")
       is Mul -> appendToRestamp(module, this.mul, "MUL_STAMP")
@@ -1129,10 +1142,12 @@ class ConflatedTrace : ConflatedTraceStorage() {
         module.CN.mapInPlace { it -> (it.toInt() + this.hubState.contextNumber).toString() }
         appendToRestamp(module, this.mxp, "STAMP")
       }
+
       is PhoneyRlp -> {
         module.TX_NUM.mapInPlace { it -> (it.toInt() + this.hubState.txNum).toString() }
         appendTo(module, this.phoneyRlp)
       }
+
       is Rlp -> appendToRestamp(module, this.rlp, "STAMP")
       is Rom -> {} // appendToMaybeSkip(module, this.rom, 32)
       is Shf -> appendToRestamp(module, this.shf, "SHIFT_STAMP")
@@ -1140,6 +1155,7 @@ class ConflatedTrace : ConflatedTraceStorage() {
       is TxRlp -> {
         appendToRestamp(module, this.txRlp, "ABS_TX_NUM")
       }
+
       is Wcp -> appendToRestamp(module, this.wcp, "WORD_COMPARISON_STAMP")
       else -> log.warn("unknown module {}", module::class.simpleName)
     }
@@ -1174,6 +1190,8 @@ class RawJsonTracesConflator(val tracesEngineVersion: String) : TracesConflator 
       }
 
       ax.fakeRom()
+      // Geth EC_DATA arithmetization is erroneous and may overflow the field; disable it.
+      ax.fakeEcData()
       val result = JsonObject()
       result.put("add", JsonObject.of("Trace", ax.add))
       result.put("bin", JsonObject.of("Trace", ax.bin))

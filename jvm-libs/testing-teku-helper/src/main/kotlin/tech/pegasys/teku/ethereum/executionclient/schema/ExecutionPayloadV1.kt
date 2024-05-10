@@ -5,6 +5,8 @@ import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
+import tech.pegasys.teku.spec.TestSpecFactory
+import tech.pegasys.teku.spec.util.DataStructureUtil
 
 fun executionPayloadV1(
   blockNumber: Long = 0,
@@ -38,4 +40,53 @@ fun executionPayloadV1(
     blockHash,
     transactions
   )
+}
+
+fun randomExecutionPayload(
+  transactionsRlp: List<Bytes> = emptyList(),
+  blockNumber: Long? = null
+): ExecutionPayloadV1 {
+  val executionPayload = dataStructureUtil.randomExecutionPayload()
+  return ExecutionPayloadV1(
+    /* parentHash = */ executionPayload.parentHash,
+    /* feeRecipient = */
+    executionPayload.feeRecipient,
+    /* stateRoot = */
+    executionPayload.stateRoot,
+    /* receiptsRoot = */
+    executionPayload.receiptsRoot,
+    /* logsBloom = */
+    executionPayload.logsBloom,
+    /* prevRandao = */
+    executionPayload.prevRandao,
+    /* blockNumber = */
+    blockNumber?.let(UInt64::valueOf) ?: executionPayload.blockNumber.cropToPositiveSignedLong(),
+    /* gasLimit = */
+    executionPayload.gasLimit.cropToPositiveSignedLong(),
+    /* gasUsed = */
+    executionPayload.gasUsed.cropToPositiveSignedLong(),
+    /* timestamp = */
+    executionPayload.timestamp.cropToPositiveSignedLong(),
+    /* extraData = */
+    executionPayload.extraData,
+    /* baseFeePerGas = */
+    executionPayload.baseFeePerGas,
+    /* blockHash = */
+    executionPayload.blockHash,
+    /* transactions = */
+    transactionsRlp
+  )
+}
+
+private val dataStructureUtil: DataStructureUtil = DataStructureUtil(TestSpecFactory.createMinimalBellatrix())
+
+// Teku UInt64 has a bug allow negative number to be created
+// random test payload creates such cases we need to fix it
+private fun UInt64.cropToPositiveSignedLong(): UInt64 {
+  val longValue = this.longValue()
+  return if (longValue < 0) {
+    return UInt64.valueOf(-longValue)
+  } else {
+    this
+  }
 }

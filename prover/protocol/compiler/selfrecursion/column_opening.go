@@ -4,30 +4,34 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
-
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/accessors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/expr_handle"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/functionals"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/merkle"
+	mimcW "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
-	ctx.registerMerging()
 	ctx.colSelection()
+	ctx.linearHashAndMerkle()
+	ctx.RootHashGlue()
+	ctx.GluePositions()
 	ctx.registersPreimageLimbs()
 	ctx.collapsingPhase()
 	ctx.foldPhase()
@@ -60,9 +64,14 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 			round,
 			ifaces.QueryIDf("SHORTNESS_%v", limbs[i].GetColID()),
 			limbs[i],
-			1<<ctx.VortexCtx.SisParams.LogTwoBound_,
+			1<<ctx.VortexCtx.SisParams.LogTwoBound,
 		)
 	}
+
+	logrus.Infof(
+		"Self-recursion compiler (%v) - registererd %v columns of %v limbs",
+		ctx.SelfRecursionCnt, len(limbs), limbs[0].Size(),
+	)
 
 	// Registers them in the context as well
 	ctx.Columns.Preimages = limbs
@@ -78,83 +87,7 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 				run.AssignColumn(limbs[i].GetColID(), expanded)
 			}
 		})
-
 	})
-}
-
-// Registers the merging coin and compute Amerge and Dmerge
-//
-//   - Sample the Merge coin : rmerge ← FCompute the
-//     linear combination of the digests
-//     `Dmerge = ∑h rmerge^h Dh`
-//
-//   - Compute the linear combination of the key shard
-//     `Amerge = ∑h rmerge^h Ah`
-func (ctx *SelfRecursionCtx) registerMerging() {
-
-	// Definition round for the merge coin. At the same time as Alpha
-	round := ctx.comp.Coins.Round(ctx.Coins.Alpha.Name)
-
-	ctx.Coins.Merge = ctx.comp.InsertCoin(round, ctx.mergeCoinName(), coin.Field)
-
-	// Assumption : there are as many Dh as there Ah and there are both
-	// nil/non-nil at the same positions
-	if len(ctx.Columns.Ah) != len(ctx.Columns.Dh) {
-
-		for i := 0; i < utils.Max(len(ctx.Columns.Ah), len(ctx.Columns.Dh)); i++ {
-
-			dHisNil := true
-			aHiSNil := true
-
-			if i < len(ctx.Columns.Dh) {
-				dHisNil = ctx.Columns.Dh[i] == nil
-			}
-
-			if i < len(ctx.Columns.Ah) {
-				aHiSNil = ctx.Columns.Ah[i] == nil
-			}
-
-			logrus.Errorf("SELFRECURSION : nilness of Ah %v vs Dh %v\n", aHiSNil, dHisNil)
-		}
-
-		utils.Panic(
-			"There are %v Ahs but %v Dhs",
-			len(ctx.Columns.Ah), len(ctx.Columns.Dh),
-		)
-	}
-
-	// since some of the Ah and Dh can be nil, we compactify the slice by
-	// only retaining the non-nil elements before sending it to the
-	// linear combination operator.
-	nonNilAh := []ifaces.Column{}
-	nonNilDh := []ifaces.Column{}
-	for i, ah := range ctx.Columns.Ah {
-
-		if (ah == nil) != (ctx.Columns.Dh[i] == nil) {
-			utils.Panic("for round %v, ah and dh should be either both nil or non-nil", i)
-		}
-
-		if ah != nil {
-			nonNilAh = append(nonNilAh, ah)
-			nonNilDh = append(nonNilDh, ctx.Columns.Dh[i])
-		}
-	}
-
-	// And declare the random linear combinations columns aMerge and dMerge
-	// since it is using expr_handle, this is already auto-assigned
-	ctx.Columns.Amerge = expr_handle.RandLinCombCol(
-		ctx.comp,
-		accessors.AccessorFromCoin(ctx.Coins.Merge),
-		nonNilAh,
-		ctx.aMergeColName(),
-	)
-
-	ctx.Columns.Dmerge = expr_handle.RandLinCombCol(
-		ctx.comp,
-		accessors.AccessorFromCoin(ctx.Coins.Merge),
-		nonNilDh,
-		ctx.dMergeColName(),
-	)
 }
 
 // Declare the queries justifying the column selection:
@@ -162,36 +95,18 @@ func (ctx *SelfRecursionCtx) registerMerging() {
 //   - Build a public column from the selected entries
 //     `q=(q0,q1,…,qt−1)`
 //
-//   - Commits to a column containing the selected hashes:
-//     `D\merge,q`
-//
 //   - Commits to a column containing the selected entries of
 //     the linear combination: `Uα,q`
 //
-//   - Sample a random coin `r\squash ← F`
-//
-//   - Computes the foldings:
-//     `D\merge,\squash,q = Fold(D\merge,q,r\squash)` and
-//     `D\merge,\squash=Fold(D\merge,r\squash)`
-//
 //   - Performs the following lookup constraint:
-//     `(q,D\merge,\squash,q,Uα,q)⊂(I,D\merge,\squash,Uα)`
+//     `(q,Uα,q)⊂(I,Uα)`
 func (ctx *SelfRecursionCtx) colSelection() {
 
 	// Build the column q, (auto-assigned)
 	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.comp, ctx.Coins.Q)
 
-	// Size of a SIS hash
-	sisHashSize := ctx.VortexCtx.SisParams.OutputSize()
 	// Declaration round of the coin Q
 	roundQ := ctx.Columns.Q.Round()
-
-	// Declare an assign `DmergeQ` and `UalphaQ`
-	ctx.Columns.DmergeQ = ctx.comp.InsertCommit(
-		roundQ,
-		ctx.dMergeQName(),
-		ctx.Coins.Q.Size*sisHashSize,
-	)
 
 	ctx.Columns.UalphaQ = ctx.comp.InsertCommit(
 		roundQ,
@@ -209,88 +124,272 @@ func (ctx *SelfRecursionCtx) colSelection() {
 			uAlpha := smartvectors.IntoRegVec(
 				run.GetColumn(ctx.Columns.Ualpha.GetColID()),
 			)
-			dMerge := smartvectors.IntoRegVec(
-				run.GetColumn(ctx.Columns.Dmerge.GetColID()),
-			)
 
 			// And select the columns
 			uAlphaQ := make([]field.Element, 0, ctx.Columns.UalphaQ.Size())
-			dMergeQ := make([]field.Element, 0, ctx.Columns.DmergeQ.Size())
 
 			for _, qi := range q {
 				uAlphaQ = append(uAlphaQ, uAlpha[qi])
-				dMergeQ = append(dMergeQ, dMerge[qi*sisHashSize:(qi+1)*sisHashSize]...)
 			}
 
 			run.AssignColumn(
 				ctx.Columns.UalphaQ.GetColID(),
 				smartvectors.NewRegular(uAlphaQ),
 			)
-
-			run.AssignColumn(
-				ctx.Columns.DmergeQ.GetColID(),
-				smartvectors.NewRegular(dMergeQ),
-			)
 		},
-	)
-
-	// Now, we need to fold Dmerge and DmergeQ in order to include in the same
-	// lookup as the other variables to ensure the column selection was perfor-
-	// med truthfully.
-	ctx.Coins.Squash = ctx.comp.InsertCoin(roundQ+1, ctx.squashCoin(), coin.Field)
-
-	// Fold Dmerge and DmergeQ over the squash randomness
-	ctx.Columns.DmergeQsquash = functionals.Fold(
-		ctx.comp,
-		ctx.Columns.DmergeQ,
-		accessors.AccessorFromCoin(ctx.Coins.Squash),
-		sisHashSize,
-	)
-
-	ctx.Columns.DmergeSquash = functionals.Fold(
-		ctx.comp,
-		ctx.Columns.Dmerge,
-		accessors.AccessorFromCoin(ctx.Coins.Squash),
-		sisHashSize,
 	)
 
 	// Declare an inclusion query to finalize the selection check
 	ctx.comp.InsertInclusion(
-		roundQ+1,
+		roundQ,
 		ctx.selectQInclusion(),
 		[]ifaces.Column{
 			ctx.Columns.I,
 			ctx.Columns.Ualpha,
-			ctx.Columns.DmergeSquash,
 		},
 		[]ifaces.Column{
 			ctx.Columns.Q,
 			ctx.Columns.UalphaQ,
-			ctx.Columns.DmergeQsquash,
 		},
 	)
 }
 
-// Func collapsing phase
-//
-//   - Sample the Collapse coin : `r\collapse ← F`
-//
-//   - Compute the collapsed preimage:
-//     `preimage_\collapse = ∑i preimagei*r_\collapse^i`
-//
-//   - Consistency with the row lincheck
-//     `EvalCoeff(Uα,q,r\collapse)=?=EvalBivariate(preimage\collapse,2,α)`
-//
-//   - Compute the collapsed hashes
-//     `D\merge,\collapse,q = Fold(D\merge,q,r\collapse)`
-//
-//   - Evaluate the dual sis hash of the merged key represented by
-//     `A\merge` and the collapsed preimage preimage (ignoring, non-shortness
-//     of the coefficients) to obtain Edual
+// Merkle proof and Linear hashing verification
+func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
+
+	// Declaration round of the coin Q
+	roundQ := ctx.Columns.Q.Round()
+
+	// Size of the concatenated DhQ
+	numRound := ctx.VortexCtx.NumCommittedRounds()
+	// If we commit to the precomputeds, number of rounds increases by 1
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
+		numRound += 1
+	}
+	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() *
+		ctx.VortexCtx.NbColsToOpen() *
+		numRound
+	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
+
+	// Size of the vector of the MiMC digestes of the above SIS hashes
+	// (which we call the leaves)
+	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() *
+		numRound
+	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
+
+	// The vector of all the opened SIS hashes for all rounds concatenated
+	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(
+		roundQ,
+		ctx.concatenatedDhQ(),
+		concatDhQSize,
+	)
+
+	// The vector collecting the hashes of all the SIS hashes to be used for
+	// merkle proof verification
+	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(
+		roundQ,
+		ctx.merkleLeavesName(),
+		leavesSize,
+	)
+
+	// The vector collecting all the leaves positions to be used for merkle proof
+	// verification
+	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(
+		roundQ,
+		ctx.merklePositionssName(),
+		leavesSize,
+	)
+
+	// The collection of all the merkle roots to be used for merkle proof verification
+	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(
+		roundQ,
+		ctx.merkleRootsName(),
+		leavesSize,
+	)
+
+	// Assign the linear hashing column
+	ctx.comp.SubProvers.AppendToInner(roundQ, func(run *wizard.ProverRuntime) {
+
+		openingIndices := run.GetRandomCoinIntegerVec(ctx.Coins.Q.Name)
+		concatDhQ := make([]field.Element, concatDhQSizeUnpadded)
+		linearLeaves := make([]field.Element, leavesSizeUnpadded)
+		merkleLeaves := make([]field.Element, leavesSizeUnpadded)
+		merklePositions := make([]field.Element, leavesSizeUnpadded)
+		merkleRoots := make([]field.Element, leavesSizeUnpadded)
+
+		hashSize := ctx.VortexCtx.SisParams.OutputSize()
+		numOpenedCol := ctx.VortexCtx.NbColsToOpen()
+		totalNumRounds := ctx.comp.NumRounds()
+
+		// indexes the committed rounds
+		committedRound := 0
+
+		// Ammend for the precomputeds, precomputed values are pre-appended to
+		// conCatDhQ, linearLeaves, merkleLeaves, and merkleRoots
+		if ctx.VortexCtx.IsCommitToPrecomputed() {
+			rootPrecomp := ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
+			precompColSisHash := ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+
+			for i, selectedCol := range openingIndices {
+				// Assign the concatDhQ
+				srcStart := selectedCol * hashSize
+				destStart := i * hashSize
+				sisHash := precompColSisHash[srcStart : srcStart+hashSize]
+				copy(concatDhQ[destStart:destStart+hashSize], sisHash)
+
+				// Compute the corresponding leaf
+				leaf := mimc.HashVec(sisHash)
+
+				// And the position we will insert it
+				insertAt := i
+
+				linearLeaves[insertAt] = leaf
+				merkleLeaves[insertAt] = leaf
+				merkleRoots[insertAt] = rootPrecomp
+				merklePositions[insertAt].SetInt64(int64(selectedCol))
+			}
+			committedRound++
+			// The total number of rounds effectively increases by 1
+			// if we commit to the precomputeds
+			totalNumRounds++
+		}
+
+		for round := 0; round <= totalNumRounds; round++ {
+			colSisHashName := ctx.VortexCtx.CommitmentName(round)
+			colSisHashSV, found := run.State.TryGet(string(colSisHashName))
+			if !found {
+				// continue with the same committedRound until we meet a non-dry
+				// round or we  reach the total number of committed rounds
+				continue
+			}
+
+			// Attempt getting the corresponding root (if this makes a
+			// nil dereference, it means that the round was not-committed,
+			// but we check that above).
+			rooth := ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
+
+			// It's guaranteed to be a regular s-vector. So no performance loss
+			colSisHash := colSisHashSV.([]field.Element)
+
+			for i, selectedCol := range openingIndices {
+				// Assign the concatDhQ
+				srcStart := selectedCol * hashSize
+				destStart := committedRound*numOpenedCol*hashSize + i*hashSize
+				sisHash := colSisHash[srcStart : srcStart+hashSize]
+				copy(concatDhQ[destStart:destStart+hashSize], sisHash)
+
+				// Compute the corresponding leaf
+				leaf := mimc.HashVec(sisHash)
+
+				// And the position we will insert it
+				insertAt := committedRound*numOpenedCol + i
+
+				linearLeaves[insertAt] = leaf
+				merkleLeaves[insertAt] = leaf
+				merkleRoots[insertAt] = rooth
+				merklePositions[insertAt].SetInt64(int64(selectedCol))
+			}
+
+			// Frees the colSisHash
+			run.State.TryDel(string(colSisHashName))
+
+			// Increment only if the committedRound is non-dry
+			committedRound++
+		}
+
+		// Sanity check, we should gave now reached the total number of committed
+		// rounds
+		numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
+		// numCommittedRound increases by 1 if we commit to the precomputeds
+		if ctx.VortexCtx.IsCommitToPrecomputed() {
+			numCommittedRound += 1
+		}
+		if committedRound != numCommittedRound {
+			utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
+		}
+
+		//
+		// And assigns the columns with the corresponding padding
+		//
+
+		//
+		// First for linear hashing
+
+		// the concatenated DhQs
+		// we need right zero padding because we are not guaranteed that
+		// the concatenation will be a power of two
+
+		run.AssignColumn(
+			ctx.Columns.ConcatenatedDhQ.GetColID(),
+			smartvectors.RightZeroPadded(concatDhQ, concatDhQSize),
+		)
+
+		//
+		// Now, for the Merkle proofs
+
+		// the leaves
+		run.AssignColumn(
+			ctx.Columns.MerkleProofsLeaves.GetColID(),
+			smartvectors.RightZeroPadded(merkleLeaves, leavesSize),
+		)
+
+		// the position
+		run.AssignColumn(
+			ctx.Columns.MerkleProofPositions.GetColID(),
+			smartvectors.RightZeroPadded(merklePositions, leavesSize),
+		)
+
+		// the roots : again we must zero pad
+		run.AssignColumn(
+			ctx.Columns.MerkleRoots.GetColID(),
+			smartvectors.RightZeroPadded(merkleRoots, leavesSize),
+		)
+
+	})
+
+	// depth of the merkle tree
+	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
+
+	// After the assignment, we can check both linear
+	// hashing and merkle proof verification
+	merkle.MerkleProofCheck(
+		ctx.comp,
+		ctx.merkleProofVerificationName(),
+		depth, // depth
+		leavesSizeUnpadded,
+		ctx.Columns.MerkleProofs,
+		ctx.Columns.MerkleRoots,
+		ctx.Columns.MerkleProofsLeaves,
+		ctx.Columns.MerkleProofPositions,
+	)
+
+	// And the linear hashing
+	mimcW.CheckLinearHash(
+		ctx.comp,
+		ctx.Columns.ConcatenatedDhQ,
+		ctx.VortexCtx.SisParams.OutputSize(),
+		leavesSizeUnpadded,
+		ctx.Columns.MerkleProofsLeaves,
+	)
+}
+
+/*
+Collapsing phase
+
+- Sample the random coin "collapse"
+- Collapse all the SIS hashes into a single hash
+  - DmergeQCollapse := Fold(DmergeQ, collapse)
+
+- Collapse all the SIS keys into a single sis key
+  - Acollapse := \sum_{k} A_{k} (collapse^{t})^k
+
+- Collapse all the preimages
+  - PreimageCollapse := \sum_{i} P_{i} (collapse)^i
+*/
 func (ctx *SelfRecursionCtx) collapsingPhase() {
 
-	// starting round
-	round := ctx.Columns.UalphaQ.Round() + 1
+	// starting one round after Q is sampled
+	round := ctx.Columns.Q.Round() + 1
 
 	// Sampling of r_collapse
 	ctx.Coins.Collapse = ctx.comp.InsertCoin(round, ctx.collapseCoin(), coin.Field)
@@ -299,7 +398,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	// aka, the collapsed preimage
 	ctx.Columns.PreimagesCollapse = expr_handle.RandLinCombCol(
 		ctx.comp,
-		accessors.AccessorFromCoin(ctx.Coins.Collapse),
+		accessors.NewFromCoin(ctx.Coins.Collapse),
 		ctx.Columns.Preimages,
 	)
 
@@ -312,18 +411,30 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.UalphaQ,
 		)
 
+		/*
+			- The preimages are given in the form of several columns of the form:
+			  [limb0, limb1, ..., limbL-1, limb0, ... limbL-1, ...], each field element is represented by
+			  L limbs (say)
+			- Next, we collapse the limbs
+			- First, we observe that "\sum_{i=0}^{numb_limbs} limb_i 2^(log_two_bound * i) = jth field element
+			  of the preimage" and that this corresponds to evaluating a polynomial whose coefficients are
+			  [limb0, ... limbL-1], numb_limbs is the number of limbs required to represent a field element
+			- Then making the double sum for all elements in an opened column using alpha as a second
+			  evaluation point, we get a bivariate polynomial evaluation
+		*/
+
 		right := functionals.EvalCoeffBivariate(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageRight(),
 			ctx.Columns.PreimagesCollapse,
-			accessors.AccessorFromConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
-			accessors.AccessorFromCoin(ctx.Coins.Alpha),
+			accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
+			accessors.NewFromCoin(ctx.Coins.Alpha),
 			ctx.VortexCtx.SisParams.NumLimbs(),
 			ctx.Columns.WholePreimages[0].Size(),
 		)
 
 		ctx.comp.InsertVerifier(
-			left.Round,
+			left.Round(),
 			func(run *wizard.VerifierRuntime) error {
 				if left.GetVal(run) != right.GetVal(run) {
 					l, r := left.GetVal(run), right.GetVal(run)
@@ -343,13 +454,53 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		)
 	}
 
+	sisDeg := ctx.VortexCtx.SisParams.OutputSize()
+	// Currently, only powers of two SIS degree are allowed
+	// (in practice, we restrict ourselves to pure power of two)
+	// lattices instances.
+	if !utils.IsPowerOfTwo(sisDeg) {
+		utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
+	}
+
 	// Compute the collapsed hashes
-	ctx.Columns.DmergeQcollapse = functionals.FoldOuter(
+	ctx.Columns.DhQCollapse = functionals.FoldOuter(
 		ctx.comp,
-		ctx.Columns.DmergeQ,
-		accessors.AccessorFromCoin(ctx.Coins.Collapse),
-		ctx.Coins.Q.Size,
+		ctx.Columns.ConcatenatedDhQ,
+		accessors.NewFromCoin(ctx.Coins.Collapse),
+		ctx.Columns.ConcatenatedDhQ.Size()/sisDeg,
 	)
+
+	// sanity-check : the size of DhQCollapse must equal to sisDeg
+	if ctx.Columns.DhQCollapse.Size() != sisDeg {
+		utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
+	}
+
+	//
+	// Merging the SIS keys
+	//
+
+	// Create an accessor for collapse^t, where t is the number of opened columns
+	collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
+
+	// since some of the Ah and Dh can be nil, we compactify the slice by
+	// only retaining the non-nil elements before sending it to the
+	// linear combination operator.
+	nonNilAh := []ifaces.Column{}
+	for _, ah := range ctx.Columns.Ah {
+		if ah != nil {
+			nonNilAh = append(nonNilAh, ah)
+		}
+	}
+
+	// And computes the linear combination
+	ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
+		ctx.comp,
+		collapsePowT,
+		nonNilAh,
+		ctx.aCollapsedName(),
+	)
+
+	// And edual
 
 	// Declare Edual
 	ctx.Columns.Edual = ctx.comp.InsertCommit(
@@ -366,6 +517,26 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		// Returns the list of all the hashes modulo X^n - 1
 		subDuals := []smartvectors.SmartVector{}
 		roundStartAt := 0
+		// Ammendments for the committed precomputeds
+		if ctx.VortexCtx.IsCommitToPrecomputed() {
+			numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
+
+			// Sanity check: the number of precomputeds must be non-zero
+			if numPrecomputeds == 0 {
+				utils.Panic("The number of precomputeds must be non-zero!")
+			}
+
+			// Compute the dual for the chunk I
+			preimageSlice := collapsedPreimage.SubVector(
+				roundStartAt*sisKey.NumLimbs(),
+				(roundStartAt + numPrecomputeds*sisKey.NumLimbs()),
+			)
+			subDual := sisKey.HashModXnMinus1(smartvectors.IntoRegVec(preimageSlice))
+			subDuals = append(subDuals, smartvectors.NewRegular(subDual))
+
+			// And update the start cursor
+			roundStartAt += numPrecomputeds
+		}
 		for _, comsInRoundI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
 
 			// Check and skip if there is no committed rows
@@ -385,11 +556,10 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			roundStartAt += len(comsInRoundI)
 		}
 
-		mergerCoin := run.GetRandomCoinField(ctx.Coins.Merge.Name)
-		eDual := smartvectors.PolyEval(subDuals, mergerCoin)
+		colPowT := collapsePowT.GetVal(run)
+		eDual := smartvectors.PolyEval(subDuals, colPowT)
 
 		run.AssignColumn(ctx.Columns.Edual.GetColID(), eDual)
-
 	})
 }
 
@@ -397,12 +567,12 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 //
 //   - Sample the folding random coin r\fold
 //
-//   - Fold A\merge by rFold to obtain AmergeFold
+//   - Fold A\merge by rFold to obtain ACollapsed
 //
 //   - Fold PreimageCollapse by rFold to obtain PreimageCollapseFold
 //
 //   - Declare and assign the inner-product between PreimageCollapseFold
-//     and AmergeFold
+//     and ACollapsed
 //
 //   - Perform the final check to evaluate the consistency vs
 //     Edual and D\merge,\collapse,q
@@ -414,40 +584,40 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	// Sample rFold
 	ctx.Coins.Fold = ctx.comp.InsertCoin(round, ctx.foldCoinName(), coin.Field)
 
-	// Constructs AmergeFold
-	ctx.Columns.AmergeFold = functionals.Fold(
-		ctx.comp, ctx.Columns.Amerge,
-		accessors.AccessorFromCoin(ctx.Coins.Fold),
+	// Constructs ACollapsedFold
+	ctx.Columns.ACollapseFold = functionals.Fold(
+		ctx.comp, ctx.Columns.ACollapsed,
+		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
 	// Construct DmergeCollapseFold
 	ctx.Columns.PreimageCollapseFold = functionals.Fold(
 		ctx.comp, ctx.Columns.PreimagesCollapse,
-		accessors.AccessorFromCoin(ctx.Coins.Fold),
+		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
 	// Mark Edual and the DmergeQCollapse fold as proof
-	ctx.comp.Columns.SetStatus(ctx.Columns.DmergeQcollapse.GetColID(), column.Proof)
+	ctx.comp.Columns.SetStatus(ctx.Columns.DhQCollapse.GetColID(), column.Proof)
 	ctx.comp.Columns.SetStatus(ctx.Columns.Edual.GetColID(), column.Proof)
 
 	// Declare and assign the inner-product
 	ctx.Queries.LatticeInnerProd = ctx.comp.InsertInnerProduct(
-		round, ctx.preimagesAndAmergeIP(), ctx.Columns.AmergeFold,
+		round, ctx.preimagesAndAmergeIP(), ctx.Columns.ACollapseFold,
 		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})
 
 	// Assignment part of the inner product
 	ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 		// compute the inner-product
-		foldedKey := ctx.Columns.AmergeFold.GetColAssignment(run)                // overshadows the handle
+		foldedKey := ctx.Columns.ACollapseFold.GetColAssignment(run)             // overshadows the handle
 		foldedPreimage := ctx.Columns.PreimageCollapseFold.GetColAssignment(run) // overshadows the handle
 
 		y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
 		run.AssignInnerProduct(ctx.preimagesAndAmergeIP(), y)
 	})
 
-	degree := ctx.SisKey().Degree
+	degree := ctx.SisKey().OutputSize()
 
 	// And the final check
 	// check the folding of the polynomial is correct
@@ -455,7 +625,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignment(run)
-		dcollapse := ctx.Columns.DmergeQcollapse.GetColAssignment(run)
+		dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
 
 		// the folding coin
 		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
@@ -500,7 +670,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 
 		// fetch the assignments to edual and dcollapse
 		edual := ctx.Columns.Edual.GetColAssignmentGnark(run)
-		dcollapse := ctx.Columns.DmergeQcollapse.GetColAssignmentGnark(run)
+		dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 
 		// the folding coin
 		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)

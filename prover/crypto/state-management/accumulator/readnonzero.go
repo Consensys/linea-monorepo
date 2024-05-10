@@ -4,29 +4,34 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+
+	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
 
-// Trace the accumulator : read non-zero
+// ReadNonZeroTrace contains all the information needed to audit a read-only
+// access to an existing key in the map.
 type ReadNonZeroTrace[K, V io.WriterTo] struct {
-	Location     string
-	NextFreeNode int
-	Key          K
-	Value        V
-	SubRoot      Digest
-	LeafOpening  LeafOpening
-	Proof        smt.Proof
+	// Identifier for the tree this trace belongs to
+	Type         int         `json:"type"`
+	Location     string      `json:"location"`
+	NextFreeNode int         `json:"nextFreeNode"`
+	Key          K           `json:"key"`
+	Value        V           `json:"value"`
+	SubRoot      Bytes32     `json:"subRoot"`
+	LeafOpening  LeafOpening `json:"leaf"`
+	Proof        smt.Proof   `json:"proof"`
 }
 
-// Perform a read on the accumulator. Panics if the
-// the associated value is zero. Returns a trace object
-// containing the
+// ReadNonZeroAndProve perform a read on the accumulator and returns a trace.
+// Panics if the the associated key is missing.
 func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 
 	// Find the position of the leaf containing our value
-	i, found := p.findKey(key)
+	i, found := p.FindKey(key)
 	if !found {
 		utils.Panic("called read-non-zero, but the key was not present")
 	}
@@ -43,13 +48,12 @@ func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 		Value:        tuple.Value,
 		LeafOpening:  tuple.LeafOpening,
 		SubRoot:      p.SubTreeRoot(),
-		Proof:        p.Tree.Prove(int(i)),
+		Proof:        p.Tree.MustProve(int(i)),
 		NextFreeNode: int(p.NextFreeNode),
 	}
 }
 
-// Verify a read on the accumulator. Panics if the associated
-// value is non-zero.
+// Verify a read on the accumulator. Returns an error if the verification fails.
 func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) error {
 
 	// If the location does not match the we return an error
@@ -80,8 +84,7 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 	return nil
 }
 
-// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace verification
-// into a slice of smt.ProvedClaim.
+// DeferMerkleChecks implements [DeferableCheck]
 func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,

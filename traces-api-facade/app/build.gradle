@@ -7,17 +7,18 @@ dependencies {
   implementation project(':traces-api-facade:conflation')
   implementation project(':traces-api-facade:core')
   implementation project(':jvm-libs:json-rpc')
-  implementation project(':jvm-libs:metrics:monitoring')
+  implementation project(':jvm-libs:metrics:micrometer')
+  implementation project(':jvm-libs:kotlin-extensions')
   implementation project(':jvm-libs:future-extensions')
   implementation project(':jvm-libs:vertx-helper')
 
   implementation "com.github.ben-manes.caffeine:caffeine:${versions.caffeine}"
-  implementation "io.vertx:vertx-core:${versions.vertx}"
-  implementation "io.vertx:vertx-web:${versions.vertx}"
-  implementation "io.vertx:vertx-health-check:${versions.vertx}"
-  implementation "io.vertx:vertx-lang-kotlin:${versions.vertx}"
-  implementation "io.vertx:vertx-config:${versions.vertx}"
-  implementation "io.vertx:vertx-micrometer-metrics:${versions.vertx}"
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-health-check"
+  implementation "io.vertx:vertx-lang-kotlin"
+  implementation "io.vertx:vertx-config"
+  implementation "io.vertx:vertx-micrometer-metrics"
   implementation "info.picocli:picocli:${versions.picoli}"
   implementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
   implementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
@@ -34,7 +35,7 @@ dependencies {
     // Note that its version should match netty version used in Vertx
   }
 
-  testImplementation "io.vertx:vertx-junit5:${versions.vertx}"
+  testImplementation "io.vertx:vertx-junit5"
   testImplementation "io.rest-assured:rest-assured:${versions.test.restassured}"
   testImplementation "io.rest-assured:json-schema-validator:${versions.test.restassured}"
 }
@@ -56,10 +57,14 @@ jar {
 run {
   workingDir = rootProject.projectDir
   jvmArgs = [
-    "-Dvertx.configurationFile=config/traces-api/vertx.properties",
+    "-Dvertx.configurationFile=config/traces-api/vertx.json",
     "-Dlog4j2.configurationFile=config/traces-api/log4j2-dev.xml"
   ] + System.properties.entrySet()
     .findAll { it.key.startsWith("config") }
     .collect { "-D${it.key}=${it.value}" }
   args = ["config/traces-api/traces-app-docker.config.toml", "config/traces-api/traces-app-local-dev.config.overrides.toml"]
+}
+
+test {
+  systemProperty "vertx.configurationFile", "vertx-options.json"
 }

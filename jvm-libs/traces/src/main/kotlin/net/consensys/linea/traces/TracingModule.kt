@@ -1,7 +1,14 @@
 package net.consensys.linea.traces
 
+import net.consensys.KMath
+
 /** Module's traces counters are not expected to go above 2^31 */
 typealias TracesCounters = Map<TracingModule, UInt>
+fun TracesCounters.toLogString(): String {
+  return this.entries.joinToString(prefix = "[", postfix = "]", separator = " ") { (module, count) ->
+    "$module=$count"
+  }
+}
 
 /** More info: https://github.com/ConsenSys/zkevm-monorepo/issues/525 */
 enum class TracingModule {
@@ -75,4 +82,37 @@ enum class TracingModule {
     )
     val allModules: Set<TracingModule> = TracingModule.values().toSet()
   }
+}
+
+fun emptyTracesCounts(): TracesCounters {
+  return TracingModule.values().associateWith { 0u }
+}
+
+fun sumTracesCounters(
+  vararg tracesCounters: TracesCounters
+): TracesCounters {
+  val result = emptyTracesCounts().toMutableMap()
+
+  TracingModule.values().forEach { module ->
+    tracesCounters.forEach { counters ->
+      result[module] = KMath.addExact(result[module]!!, (counters[module] ?: 0u))
+    }
+  }
+
+  return result
+}
+
+fun allTracesWithinLimits(tracesCounters: TracesCounters, tracesCountersLimits: TracesCounters): Boolean {
+  return tracesCounters.entries.all { (moduleName, moduleCount) ->
+    val moduleCap = tracesCountersLimits[moduleName]!!
+    moduleCount <= moduleCap
+  }
+}
+
+fun allTracesEmpty(tracesCounters: TracesCounters): Boolean {
+  return tracesCounters.values.all { it == 0u }
+}
+
+fun allModulesAreDefined(tracesCounters: TracesCounters): Boolean {
+  return tracesCounters.keys.containsAll(TracingModule.allModules)
 }

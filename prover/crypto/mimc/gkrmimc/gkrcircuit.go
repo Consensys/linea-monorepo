@@ -4,16 +4,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	cGkr "github.com/consensys/gnark-crypto/ecc/bn254/fr/gkr"
+	cGkr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/gkr"
 	"github.com/consensys/gnark/constraint"
-	cs "github.com/consensys/gnark/constraint/bn254"
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
 	gGkr "github.com/consensys/gnark/std/gkr"
 	"github.com/consensys/gnark/std/hash"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/multicommit"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,28 +24,31 @@ var (
 )
 
 func init() {
-	// Registers the names of the GKR gates into the
-	// global gkr registry.
+	// Registers the names of the GKR gates into the global GKR registry.
 	createGateNames()
 	registerGates()
 
-	// Registers the mimc hash function in the hash builder
-	// registry.
-	hash.BuilderRegistry["mimc"] = func(api frontend.API) (hash.FieldHasher, error) {
+	// Registers the mimc hash function in the hash builder registry.
+	hash.Register("mimc", func(api frontend.API) (hash.FieldHasher, error) {
 		h, err := gmimc.NewMiMC(api)
 		return &h, err
-	}
+	})
 
 	// Registers the hasher to be used in the GKR prover
-	cs.HashBuilderRegistry["mimc"] = mimc.NewMiMC
+	cs.RegisterHashBuilder("mimc", mimc.NewMiMC)
 }
 
+// writePaddedHex appends the integer `n` (assumedly less than 1<<(4*nbDigits))
+// into `sbb` formatted: (1) in hexadecimal, (2) left padded with zeroes so that
+// the total size of the appended string is `nbDigits` characters.
 func writePaddedHex(sbb *strings.Builder, n, nbDigits int) {
 	hex := strconv.FormatInt(int64(n), 16)
 	sbb.WriteString(strings.Repeat("0", nbDigits-len(hex)))
 	sbb.WriteString(hex)
 }
 
+// createGateName initializes and populates the `gateNames` global variable
+// with the name of the gates forming each the GKR layers of the MiMC circuit.
 func createGateNames() {
 	nbDigits := 0
 	for i := numGates; i > 0; i /= 16 {
@@ -67,6 +70,9 @@ func createGateNames() {
 	}
 }
 
+// registerGates instantiates and populates the cGkr and gGkr global variables
+// which contains the "normal" and the "gnark" version of the GKR gates forming
+// the MiMC GKR circuit.
 func registerGates() {
 	for i := 4; i < numGates-1; i++ {
 		name := gateNames[i]
@@ -79,7 +85,13 @@ func registerGates() {
 	cGkr.Gates[name] = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
 }
 
-// gkrMiMC a gadget that defines a MiMC
+// gkrMiMC constructs and return the GKR circuit. The function is concretely
+// responsible for declaring the topology of the MiMC circuit: "which" gate takes
+// as input the result of "which" gate.
+//
+// The returned object symbolizees the last layer of the GKR circuit and formally
+// contains the result of the MiMC block compression as computed by the GKR
+// circuit.
 func gkrMiMC(gkr *gGkr.API, initStates, blocks []frontend.Variable) (constraint.GkrVariable, error) {
 
 	var err error
@@ -103,6 +115,11 @@ func gkrMiMC(gkr *gGkr.API, initStates, blocks []frontend.Variable) (constraint.
 	return res, nil
 }
 
+// checkWithGkr encapsulate the verification of the statement that: all
+// triplets initStates[i], blocks[i] and allegedNewState[i] satisfies that
+// allegedNewState == mimcBlockCompression(initState, block) within a gnark
+// circuit
+//
 // Toy compression: just summing them up. TODO: Replace with actual compression
 // instances are the inner indexes
 func checkWithGkr(api frontend.API, initStates, blocks, allegedNewState []frontend.Variable) {

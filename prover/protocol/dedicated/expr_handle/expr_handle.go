@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizardutils"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,10 +22,13 @@ import (
 // from the ESH of the expression.
 func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...string) ifaces.Column {
 
-	maxRound := wizardutils.LastRoundToEval(comp, expr)
-	length := wizardutils.ExprIsOnSameLengthHandles(comp, expr)
+	var (
+		boarded    = expr.Board()
+		maxRound   = wizardutils.LastRoundToEval(expr)
+		length     = wizardutils.ExprIsOnSameLengthHandles(&boarded)
+		handleName = fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
+	)
 
-	handleName := fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
 	if len(name) > 0 {
 		handleName = name[0]
 	}
@@ -37,7 +40,6 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 
 		logrus.Tracef("running the expr handle assignment for %v, (round %v)", handleName, maxRound)
 
-		boarded := expr.Board()
 		metadatas := boarded.ListVariableMetadata()
 
 		/*
@@ -92,7 +94,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 				evalInputs[k] = meta.EvalCoset(length, 0, 1, false)
 			case variables.PeriodicSample:
 				evalInputs[k] = meta.EvalCoset(length, 0, 1, false)
-			case *ifaces.Accessor:
+			case ifaces.Accessor:
 				evalInputs[k] = sv.NewConstant(meta.GetVal(run), length)
 			default:
 				utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)

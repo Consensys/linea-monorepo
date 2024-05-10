@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 

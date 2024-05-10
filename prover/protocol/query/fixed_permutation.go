@@ -3,12 +3,11 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,9 +50,9 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 		ifaces.Column.Size,
 		append(a, b...))
 	if err == nil {
-		// a,b should have the same number of rows as S
+		// a,b must have the same number of rows as S
 		if S[0].Len() != a[0].Size() {
-			logrus.Errorf("S and 'a' dont have the same number of rows: %v, %v", S[0].Len(), a[0].Size())
+			utils.Panic("S and 'a' dont have the same number of rows: %v, %v", S[0].Len(), a[0].Size())
 		}
 	}
 
@@ -89,8 +88,12 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 	}
 }
 
-/*
- */
+// Name implements the [ifaces.Query] interface
+func (r FixedPermutation) Name() ifaces.QueryID {
+	return r.ID
+}
+
+// Check implements the [ifaces.Query] interface
 func (r FixedPermutation) Check(run ifaces.Runtime) error {
 	/*
 		They should have the same size and it should be tested
@@ -162,7 +165,7 @@ func CheckFixedPermutation(a, b []ifaces.ColAssignment, S []ifaces.ColAssignment
 
 	prodA := field.One()
 	prodB := field.One()
-	var tmp fr.Element
+	var tmp field.Element
 	for j := range a {
 		for i := 0; i < nRow; i++ {
 			//for a

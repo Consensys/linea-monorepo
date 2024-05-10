@@ -6,9 +6,9 @@ import com.github.michaelbull.result.unwrap
 import io.vertx.core.Future
 import io.vertx.core.Promise
 import net.consensys.linea.async.get
-import net.consensys.linea.jsonrpc.BaseJsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
+import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -37,14 +37,14 @@ class LoadBalancingJsonRpcClientTest {
   private fun rpcRequest(
     method: String = "eth_blockNumber",
     params: List<Any> = emptyList()
-  ): BaseJsonRpcRequest = BaseJsonRpcRequest("2.0", requestId.incrementAndGet(), method, params)
+  ): JsonRpcRequestListParams = JsonRpcRequestListParams("2.0", requestId.incrementAndGet(), method, params)
 
   @BeforeEach
   fun beforeEach() {
     rpcClient1 = mock()
     rpcClient2 = mock()
     loadBalancer =
-      LoadBalancingJsonRpcClient(listOf(rpcClient1, rpcClient2), maxInflightRequestsPerClient)
+      LoadBalancingJsonRpcClient.create(listOf(rpcClient1, rpcClient2), maxInflightRequestsPerClient)
   }
 
   @AfterEach fun afterEach() {}
@@ -167,7 +167,7 @@ class LoadBalancingJsonRpcClientTest {
     val receivedResponsesLatch = CountDownLatch(totalRequestsToWait)
 
     val rpcClients = (1..numberOfRpcClients).map { FakeJsonRpcClient(it) }
-    val loadBalancer = LoadBalancingJsonRpcClient(rpcClients, maxInflightRequestsPerRpcClient)
+    val loadBalancer = LoadBalancingJsonRpcClient.create(rpcClients, maxInflightRequestsPerRpcClient)
     val requestProducers =
       (1..numberOfThreads).map {
         RequestProducer(
@@ -209,7 +209,7 @@ class LoadBalancingJsonRpcClientTest {
         val requestId = "${id}_$req"
         loadBalancer
           .makeRequest(
-            BaseJsonRpcRequest("2.0", requestId, "sleepMs", listOf(responseDelay, shallFail))
+            JsonRpcRequestListParams("2.0", requestId, "sleepMs", listOf(responseDelay, shallFail))
           )
           .map {
             if (futureHandlerShallThrow) {
@@ -233,8 +233,9 @@ class LoadBalancingJsonRpcClientTest {
       resultMapper: (Any?) -> Any?
     ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
       val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
-      val delayInMilliseconds = request.params[0] as Long
-      val shallFail = request.params[1] as Boolean
+      val paramsList = request.params as List<*>
+      val delayInMilliseconds = paramsList[0] as Long
+      val shallFail = paramsList[1] as Boolean
 
       timer("rcp-client-$id", false, delayInMilliseconds, 100L) {
         if (!promise.future().isComplete) {

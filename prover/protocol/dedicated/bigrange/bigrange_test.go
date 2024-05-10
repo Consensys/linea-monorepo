@@ -3,11 +3,14 @@ package bigrange_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/bigrange"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/bigrange"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,4 +30,36 @@ func TestBigRangeFullField(t *testing.T) {
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 
+}
+
+func TestBigRangeNegative(t *testing.T) {
+
+	assignments := []smartvectors.SmartVector{
+		smartvectors.Rand(16),
+		smartvectors.RightPadded(
+			vector.Repeat(
+				field.NewFromString("0x10000000000000000000000000"), 10),
+			field.Zero(),
+			16,
+		),
+	}
+
+	define := func(b *wizard.Builder) {
+		P := b.RegisterCommit("P", 16)
+		bigrange.BigRange(b.CompiledIOP, ifaces.ColumnAsVariable(P), 1, 16, "BIGRANGE")
+	}
+
+	comp := wizard.Compile(define, dummy.Compile)
+
+	for _, v := range assignments {
+		prover := func(run *wizard.ProverRuntime) {
+			run.AssignColumn("P", v)
+		}
+
+		// This should not pass since we assigned a random field element and the
+		// constraint is that the field should have less than 16 bits.
+		assert.Panics(t, func() {
+			_ = wizard.Prove(comp, prover)
+		})
+	}
 }

@@ -1,8 +1,8 @@
 package fft
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Generators of the successive subgroup or roots of unity
@@ -11,9 +11,9 @@ var generators []field.Element = initGenerators()
 // Computes all the generators of the imbricated subgroups of roots of unity
 func initGenerators() []field.Element {
 
-	maxOrder := int(field.RootOrUnityOrder)
+	maxOrder := int(field.RootOfUnityOrder)
 	generators := make([]field.Element, maxOrder+1)
-	generators[maxOrder].SetString(field.RootOfUnity)
+	generators[maxOrder] = field.RootOfUnity
 
 	for i := maxOrder - 1; i >= 0; i-- {
 		generators[i].Square(&generators[i+1])
@@ -25,7 +25,7 @@ func initGenerators() []field.Element {
 	}
 
 	if !generators[0].IsOne() {
-		utils.Panic("root_of_unity %v ^ (2 ^ %v) != 1", field.RootOfUnity, field.RootOrUnityOrder)
+		utils.Panic("root_of_unity %v ^ (2 ^ %v) != 1", field.RootOfUnity, field.RootOfUnityOrder)
 	}
 
 	return generators
@@ -37,11 +37,6 @@ Omega is a root of unity which generates the domain of evaluation of the
 constraint.
 */
 func GetOmega(domainSize int) field.Element {
-	/*
-		Smallest root of unity available
-	*/
-	var res field.Element
-	res.SetString(field.RootOfUnity)
 
 	/*
 		We enforce that the passed domainSize
@@ -55,8 +50,8 @@ func GetOmega(domainSize int) field.Element {
 		Sanity-check : the domainSize should not excess the
 		maximal domain size
 	*/
-	if domainSize > (1 << field.RootOrUnityOrder) {
-		utils.Panic("Required a domain of size %v but the max is %v \n", domainSize, 1<<field.RootOrUnityOrder)
+	if domainSize > (1 << field.RootOfUnityOrder) {
+		utils.Panic("Required a domain of size %v but the max is %v \n", domainSize, 1<<field.RootOfUnityOrder)
 	}
 
 	order := utils.Log2Ceil(domainSize)

@@ -3,15 +3,15 @@ package mimc_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	linhash "github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	linhash "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 

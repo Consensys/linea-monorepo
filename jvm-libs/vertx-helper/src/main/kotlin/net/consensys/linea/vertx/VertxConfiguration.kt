@@ -4,31 +4,29 @@ import io.vertx.config.ConfigRetriever
 import io.vertx.config.ConfigRetrieverOptions
 import io.vertx.config.ConfigStoreOptions
 import io.vertx.core.Vertx
+import io.vertx.core.VertxOptions
 import io.vertx.core.json.JsonObject
+import net.consensys.linea.async.get
 
-fun loadVertxConfig(vertxPropertiesConfigFile: String?, vertx: Vertx = Vertx.vertx()): JsonObject {
+fun loadVertxConfig(): VertxOptions {
+  val vertx: Vertx = Vertx.vertx()
   val sysPropsStore = ConfigStoreOptions().setType("sys")
   val options = ConfigRetrieverOptions()
-
-  if (vertxPropertiesConfigFile != null) {
-    val fileStore =
-      ConfigStoreOptions()
-        .setType("file")
-        .setFormat("properties")
-        .setConfig(
-          JsonObject()
-            .put("path", vertxPropertiesConfigFile)
-            .put("raw-data", false)
-            .put("hierarchical", true)
-        )
-    options.addStore(fileStore)
-  }
-
   options.addStore(sysPropsStore)
 
-  return ConfigRetriever.create(vertx, options)
-    .config
-    .toCompletionStage()
-    .toCompletableFuture()
-    .get()
+  val vertxPropertiesConfigFile = System.getProperty("vertx.configurationFile")
+  if (vertxPropertiesConfigFile != null) {
+    val jsonRetrieverOptions = ConfigStoreOptions().setType("file").setConfig(
+      JsonObject()
+        .put("hierarchical", true)
+        .put("path", vertxPropertiesConfigFile)
+    )
+    options.addStore(jsonRetrieverOptions)
+  }
+
+  // Close the vert.x instance, we don't need it anymore.
+  val retriever = ConfigRetriever.create(vertx, options)
+  val parsedOptions = VertxOptions(retriever.config.get())
+  vertx.close()
+  return parsedOptions
 }

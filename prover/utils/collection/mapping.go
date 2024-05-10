@@ -3,7 +3,7 @@ package collection
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Mapping wraps a map and adds utility functions
@@ -24,7 +24,7 @@ func (kv *Mapping[K, V]) MustGet(key K) V {
 	res, found := kv.innerMap[key]
 
 	if !found {
-		utils.Panic("entry %v does not exists", key)
+		utils.Panic("Entry %v does not exists", key)
 	}
 
 	return res
@@ -41,7 +41,7 @@ func (kv *Mapping[K, V]) TryGet(key K) (V, bool) {
 // contained already
 func (kv *Mapping[K, V]) InsertNew(key K, value V) {
 	if _, found := kv.innerMap[key]; found {
-		utils.Panic("entry %v already found", key)
+		utils.Panic("Entry %v already found", key)
 	}
 	kv.innerMap[key] = value
 }

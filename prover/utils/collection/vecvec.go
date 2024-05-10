@@ -1,8 +1,6 @@
 package collection
 
-import (
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-)
+import "github.com/consensys/zkevm-monorepo/prover/utils"
 
 // VecVec is a wrapper around double vecs
 // The inner slice is append only
@@ -72,19 +70,19 @@ func (v *VecVec[T]) AppendToInner(pos int, t ...T) {
 }
 
 // Allocates up to a given rounds number
-func (s *VecVec[T]) Reserve(newLen int) {
+func (v *VecVec[T]) Reserve(newLen int) {
 	// We may not have to append the sequence
 	// If we need to, we append to it as many time as we need
-	for len(s.inner) < newLen {
-		s.inner = append(s.inner, []T{})
+	for len(v.inner) < newLen {
+		v.inner = append(v.inner, []T{})
 	}
 }
 
 // Returns the length of an inner slice, also allocate the slice
 // if it was not allocated, it will reserve it.
-func (s *VecVec[T]) LenOf(pos int) int {
-	if s.Len() <= pos {
-		s.Reserve(pos + 1)
+func (v *VecVec[T]) LenOf(pos int) int {
+	if v.Len() <= pos {
+		v.Reserve(pos + 1)
 	}
-	return len(s.inner[pos])
+	return len(v.inner[pos])
 }

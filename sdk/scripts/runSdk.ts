@@ -1,35 +1,52 @@
 import * as dotenv from "dotenv";
-import { LineaSDK } from "../src/lib";
+import { LineaSDK, OnChainMessageStatus } from "../src";
 
 dotenv.config();
 
 async function main() {
   const sdk = new LineaSDK({
-    l1RpcUrl: process.env.L1_RPC_URL ?? "",
-    l2RpcUrl: process.env.L2_RPC_URL ?? "",
-    l1SignerPrivateKey: process.env.L1_SIGNER_PRIVATE_KEY ?? "",
-    l2SignerPrivateKey: process.env.L2_SIGNER_PRIVATE_KEY ?? "",
-    network: "linea-goerli",
+    l1RpcUrlOrProvider: process.env.L1_RPC_URL ?? "",
+    l2RpcUrlOrProvider: process.env.L2_RPC_URL ?? "",
+    l1SignerPrivateKeyOrWallet: process.env.L1_SIGNER_PRIVATE_KEY ?? "",
+    l2SignerPrivateKeyOrWallet: process.env.L2_SIGNER_PRIVATE_KEY ?? "",
+    network: "linea-mainnet",
     mode: "read-write",
   });
 
-  const l1Contract = sdk.getL1Contract();
-  const l2Contract = sdk.getL2Contract();
+  const localL1ContractAddress = undefined; // need to be provided if network is "custom"
+  const localL2ContractAddress = undefined; // need to be provided if network is "custom"
 
-  console.log(await l2Contract.getMessageStatus("0x3e1bdceea0a4d5693af825a29d44fc41b7db7c4947121362a130326b82b84e65"));
-  console.log(await l1Contract.getMessageStatus("0x28e9e11b53d624500f7610377c97877bb1ecb3127a88f7eba84dd7a146891946"));
-  const message = await l2Contract.getMessageByMessageHash(
-    "0xe36bb6d4122a2874692c7fa5bf189cfa6f80c77da0414d26b3a728b97aa18ee5",
-  );
-  const messageByTx = await l1Contract.getMessagesByTransactionHash(
-    "0xeaeaa2f8bab82aa7d2d53770545399fe9783434bd8a53e5aa93abfadaa19df51",
-  );
+  const l1Contract = sdk.getL1Contract(localL1ContractAddress, localL2ContractAddress);
+  const l2Contract = sdk.getL2Contract(localL2ContractAddress);
 
-  const receipt = await l1Contract.getTransactionReceiptByMessageHash(
-    "0x28e9e11b53d624500f7610377c97877bb1ecb3127a88f7eba84dd7a146891946",
-  );
+  // L2 -> L1 message, check its status on L1, and claim it on L1 if it's claimable
+  const l2MessageHash = "0x9ab654972fbb4d513e76aea43cdb9bad1cb747bbfcebacd6b6f01bbaf0df28d9"; // from a real message sent on L2 and claimed on L1
+  const l2MessageStatusOnL1 = await l1Contract.getMessageStatus(l2MessageHash);
+  const l2MessageSentEvent = await l2Contract.getMessageByMessageHash(l2MessageHash);
+  const l2MessageSentTxReceipt = await l2Contract.getTransactionReceiptByMessageHash(l2MessageHash);
+  const [l2MessageSentEventByTxHash] =
+    (await l2Contract.getMessagesByTransactionHash(l2MessageSentTxReceipt!.hash)) ?? [];
+  if (l2MessageSentEvent?.messageHash !== l2MessageSentEventByTxHash.messageHash) {
+    console.log("Something wrong here, the two message hashes should be equal");
+  }
+  console.log({ l2MessageStatusOnL1, l2MessageSentEvent, l2MessageSentTxReceipt });
 
-  console.log({ message, messageByTx, receipt });
+  if (l2MessageStatusOnL1 === OnChainMessageStatus.CLAIMABLE) {
+    const l1ClaimingService = sdk.getL1ClaimingService(localL1ContractAddress, localL2ContractAddress);
+    const estimateClaimGas = await l1ClaimingService.estimateClaimMessageGas(l2MessageSentEvent!);
+    console.log({ estimateClaimGas });
+
+    const l1ClaimTxResponse = await l1ClaimingService.claimMessage(l2MessageSentEvent!, {
+      maxPriorityFeePerGas: 100000000000n,
+      maxFeePerGas: 100000000000n,
+    });
+
+    const l1ClaimTxReceipt = await l1ClaimTxResponse.wait();
+    console.log({ l1ClaimTxReceipt });
+
+    const finalL2MessageStatusOnL1 = await l1Contract.getMessageStatus(l2MessageHash);
+    console.log({ finalL2MessageStatusOnL1 });
+  }
 }
 
 main()
@@ -37,6 +54,6 @@ main()
     process.exit(0);
   })
   .catch((error) => {
-    console.error("", error);
+    console.error(error);
     process.exit(1);
   });

@@ -1,12 +1,17 @@
 package smartvectors
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-// LinComb computes a linear combination of the given vectors with integer coefficients
-func LinComb(coeffs []int, svecs []SmartVector) SmartVector {
+// LinComb computes a linear combination of the given vectors with integer coefficients.
+//   - The function panics if provided SmartVector of different lengths
+//   - The function panics if svecs is empty
+//   - The function panics if the length of coeffs does not match the length of
+//     svecs
+func LinComb(coeffs []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
 	// Sanity check : all svec should have the same length
 	length := svecs[0].Len()
 	for i := 0; i < len(svecs); i++ {
@@ -14,16 +19,24 @@ func LinComb(coeffs []int, svecs []SmartVector) SmartVector {
 			utils.Panic("bad size %v, expected %v", svecs[i].Len(), length)
 		}
 	}
-	return processOperator(linCombOp{}, coeffs, svecs)
+	return processOperator(linCombOp{}, coeffs, svecs, p...)
 }
 
 // Product computes a product of smart-vectors with integer exponents
-func Product(exponents []int, svecs []SmartVector) SmartVector {
-	return processOperator(productOp{}, exponents, svecs)
+//   - The function panics if provided SmartVector of different lengths
+//   - The function panics if svecs is empty
+//   - The function panics if the length of exponents does not match the length of
+//     svecs
+func Product(exponents []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
+	return processOperator(productOp{}, exponents, svecs, p...)
 }
 
-// Computes the result of the linear combination and put the result into res
-func processOperator(op operator, coeffs []int, svecs []SmartVector) SmartVector {
+// processOperator computes the result of an [operator] and put the result into res
+//   - The function panics if provided SmartVector of different lengths
+//   - The function panics if svecs is empty
+//   - The function panics if the length of coeffs does not match the length of
+//     svecs
+func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {
@@ -63,20 +76,21 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector) SmartVector
 	// Accumulate the windowed smart-vectors
 	windowRes, matchedWindow := processWindowedOnly(op, svecs, coeffs)
 
-	// Edge-case : the list of smart-vectors to combine is windowed-only
+	// Edge-case : the list of smart-vectors to combine is windowed-only. In
+	// this case we can return directly.
 	if matchedWindow == totalToMatch {
 		return windowRes
 	}
 
-	// If we had both matches for constants vectors, we merge the constant
-	// into the window
+	// If we had matches for both constants vectors and the windows, we merge
+	// the constant into the window.
 	if matchedWindow > 0 && matchedConst > 0 {
 		switch w := windowRes.(type) {
 		case *PaddedCircularWindow:
-			op.ConstTermIntoVec(w.window, &constRes.val)
-			op.ConstTermIntoConst(&w.paddingVal, &constRes.val)
+			op.constTermIntoVec(w.window, &constRes.val)
+			op.constTermIntoConst(&w.paddingVal, &constRes.val)
 		case *Regular:
-			op.ConstTermIntoVec(*w, &constRes.val)
+			op.constTermIntoVec(*w, &constRes.val)
 		}
 	}
 
@@ -86,7 +100,7 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector) SmartVector
 	}
 
 	// Accumulate the regular part of the vector
-	regularRes, matchedRegular := processRegularOnly(op, svecs, coeffs)
+	regularRes, matchedRegular := processRegularOnly(op, svecs, coeffs, p...)
 
 	// Sanity-check : all of the vector should fall into only one of the two
 	// category.
@@ -96,18 +110,17 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector) SmartVector
 
 	switch {
 	case matchedRegular == totalToMatch:
-		// Do nuffing
 		return regularRes
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.ConstTermIntoVec(*regularRes, &constRes.val)
+		op.constTermIntoVec(*regularRes, &constRes.val)
 		return regularRes
 	default:
 
 		// If windowRes is a regular (can happen if all windows arguments cover the full circle)
 		if w, ok := windowRes.(*Regular); ok {
-			op.VecTermIntoVec(*regularRes, *w)
+			op.vecTermIntoVec(*regularRes, *w)
 			return regularRes
 		}
 
@@ -122,16 +135,16 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector) SmartVector
 
 		// The windows rolls over
 		if interval.doesWrapAround() {
-			op.VecTermIntoVec(regvec[:interval.stop()], windowRes.window[length-interval.start():])
-			op.VecTermIntoVec(regvec[interval.start():], windowRes.window[:length-interval.start()])
-			op.ConstTermIntoVec(regvec[interval.stop():interval.start()], &windowRes.paddingVal)
+			op.vecTermIntoVec(regvec[:interval.stop()], windowRes.window[length-interval.start():])
+			op.vecTermIntoVec(regvec[interval.start():], windowRes.window[:length-interval.start()])
+			op.constTermIntoVec(regvec[interval.stop():interval.start()], &windowRes.paddingVal)
 			return regularRes
 		}
 
 		// Else, no roll-over
-		op.VecTermIntoVec(regvec[interval.start():interval.stop()], windowRes.window)
-		op.ConstTermIntoVec(regvec[:interval.start()], &windowRes.paddingVal)
-		op.ConstTermIntoVec(regvec[interval.stop():], &windowRes.paddingVal)
+		op.vecTermIntoVec(regvec[interval.start():interval.stop()], windowRes.window)
+		op.constTermIntoVec(regvec[:interval.start()], &windowRes.paddingVal)
+		op.constTermIntoVec(regvec[interval.stop():], &windowRes.paddingVal)
 		return regularRes
 	}
 }
@@ -144,11 +157,11 @@ func processConstOnly(op operator, svecs []SmartVector, coeffs []int) (constRes 
 		if cnst, ok := svec.(*Constant); ok {
 			if numMatches < 1 {
 				// First one, no need to add it into constVal since constVal is zero
-				op.ConstIntoTerm(&constVal, &cnst.val, coeffs[i])
+				op.constIntoTerm(&constVal, &cnst.val, coeffs[i])
 				numMatches++
 				continue
 			}
-			op.ConstIntoConst(&constVal, &cnst.val, coeffs[i])
+			op.constIntoConst(&constVal, &cnst.val, coeffs[i])
 			numMatches++
 		}
 	}

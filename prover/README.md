@@ -1,147 +1,36 @@
-# accelerated-crypto-monorepo
+# zkevm-monorepo/prover
 
-Monorepo of ConsenSys Protocol R&amp;D Accelerated crypto
+This directory contains the implementation of the prover of Linea. As part of it,
+it contains an implementation of the Vortex polynomial commitment, of the
+Arcane compiler, the instantiation of the zk-EVM using the arithmetization and
+the server implementation.
 
-## Example
+# Building and running
 
-Here is a documented example of proof system declaration
+The prover has the following build dependencies
+* `rust@1.74.0` and `cargo`
+* `go@1.21.5`
+* `make`
 
-```go
-package single_round
+The repository counts 2 main binaries:
 
-import (
-	"github.com/consensys/accelerated-crypto-monorepo/zkevm"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/commitment"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-)
+- `bin/prover` : `bin/prover setup` generate the assets (setup / preprocessing) `bin/prover prove` run process a request, create a proof and outputs a response.
+- `bin/controller` : a file-system based server to run Linea's prover
 
-const (
-	SIZE           int             = 1 << 17
-	SMALL_SIZE     int             = 1 << 12
-	P1, P2, P3, P4 commitment.Name = "P1", "P2", "P3", "P4"
-)
+### Building and runningmake  the setup generator
 
-/*
-	The example aims at showing a mixture of all the different features of the
-	wizard.IOPs
-*/
-func Define(build *zkevm.Builder) {
+The setup-generation (`make setup`) is used to generate the setup for all the types of provers. Execution, Decompression and Aggregation.
+By default, if the `--force` flag is not provided, the tool will compile the circuit and check if the destination dir already contains a setup that matches, skipping the cpu intensive phase of the actual plonk Setup if needed.
 
-	/*
-		Registration of the polynomials
-	*/
+**Run**
 
-	P1 := build.RegisterCommit("P1", SIZE)
-	P2 := build.RegisterCommit("P2", SIZE)
-	P3 := build.RegisterCommit("P3", SIZE)
-	P4 := build.RegisterCommit("P4", SMALL_SIZE)
+```sh
+make setup
+```
 
-	/*
-		Advanced references to already committed polynomials
-	*/
+# Integration tests
 
-	_ = P1.Shift(1)
-	_ = P4.Repeat(2)
-	_ = P3.Shift(-3).Repeat(4)
-	_ = zkevm.Interleave(P1, P2)
-
-	/*
-		It is also possible to instantiate symbolic expressions to formulate
-		more complex queries.
-	*/
-
-	var1 := P4.Repeat(2).AsVariable()
-	var2 := zkevm.Interleave(P1, P2).AsVariable()
-	constant := symbolic.NewConstant(12)
-	_ = symbolic.NewConstant("45")
-	_ = var1.Add(var2)               // var1 + var2
-	_ = var2.Mul(var1)               // var1 * var2
-	_ = constant.Sub(var1).Add(var1) // (cnst - var1) + var1
-	_ = var1.Neg()                   // - var1
-	_ = var2.Square()                // var2 ^ 2
-
-	/*
-		Create a global constraint between variables. "Shift" indicates that
-		we reference P(wX) in place of P(X). In order to use a committed polynomial
-		in an expression, it must be converted in `Variable` using `AsVariable`. It
-		is possible to pass an advanced reference as well.
-
-		The constraint below enforces that
-
-			`P1(x) * P2(w^3.x) = 0 for all x such that x^SIZE = 1`
-	*/
-
-	expr := P1.AsVariable().Mul(
-		P2.Shift(3).AsVariable(),
-	)
-
-	build.GlobalConstraint("GLOBAL", expr)
-
-	/*
-		A local constraint is formatted in the same way as a global one.
-		The evaluation point is always 0 (the global constraint will check
-		on the entire domain). In that case, the shift is used to point to
-		another point.
-
-		The constraint below enforces that
-
-			`P1(1) * P2(w^3) = 0`
-	*/
-
-	expr = P1.AsVariable().Mul(
-		P2.Shift(3).AsVariable(),
-	)
-
-	build.LocalConstraint("NAME_OF_THE_GLOBAL_CONSTRAINT", expr)
-
-	/*
-		A permutation constraint enforces that two vector of polynomials
-		evaluates to row-permuted matrices (considering that each polynomial)
-		evaluates to a column.
-
-		For instance, assume that N=4 is the size of the domain of roots of unity
-		here. Let A1(X), A2(X), B1(X), B2(X) with the following evaluations on the
-		domain. The example below works because (A1, A2) and (B1, B2) works.
-
-						A1(X)	A2(X)	|	B1(X)	B2(X)
-										|
-				1		a		e		|	b		f
-				w		b		f		|	d		h
-				w^2		c		g		|	a		e
-				w^3		d		h		|	c		g
-
-		In case, each side contains one column (A1, B1). Then the check consists in
-		asserting that the evaluation vectors of A1 and B1 are permutation of each
-		other. Equivalently, this means that both evaluation vectors contains the
-		same elements the same number of time.
-
-		In the example below, we are adding the constraint that P2 and P3 are permutation
-		of each other.
-	*/
-
-	build.Permutation("NAME_OF_THE_PERMUTATION_CONSTRAINT",
-		[]zkevm.Handle{P2}, []zkevm.Handle{P3})
-
-	/*
-		In the example below, we are adding the constraint that P3 evaluates only to
-		elements that are contained in P4. The difference with the permutation constraint
-		is that P3 does not have to contain every element of P4. P3 can contain has many
-		times the same element of P4 as it wants.
-
-		As for the permutations, it is possible to register multi-inclusions by passing
-		several polynomials in both sides of the inclusion constraint. In that case, the
-		constraint will assert of the rows of the evaluation matrix of both sides (with
-		the same conventions as for the permutation).
-	*/
-
-	build.Inclusion("NAME_OF_THE_INCLUSION_CONSTRAINT",
-		[]zkevm.Handle{P4}, []zkevm.Handle{P3})
-
-	/*
-		In the example below, we are adding the constraint that P4
-		has only values contained within [0, SMALL_SIZE)
-	*/
-	build.Range("NAME_OF_THE_RANGE_CONSTRAINT", P4, SMALL_SIZE)
-
-}
+```
+./integration/run.sh dev-mode
+./integration/run.sh full-mode
 ```

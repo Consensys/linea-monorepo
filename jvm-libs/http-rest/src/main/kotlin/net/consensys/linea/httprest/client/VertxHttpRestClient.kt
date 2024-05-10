@@ -14,6 +14,7 @@ import net.consensys.linea.errors.ErrorResponse
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.net.URL
 
 class VertxHttpRestClient(
   private val webClientOptions: WebClientOptions,
@@ -40,7 +41,11 @@ class VertxHttpRestClient(
           log.debug("Received response with status code: ${response.statusCode()}")
           Future.succeededFuture(Ok(resultMapper(response)))
         } else {
-          log.error("Something went wrong ${response.statusMessage()}")
+          log.error(
+            "Something went wrong: " +
+              "endpoint=${URL("http", webClientOptions.defaultHost, webClientOptions.defaultPort, path)}, " +
+              "statusMessage=${response.statusMessage()}"
+          )
           val errorType = RestErrorType.fromStatusCode(response.statusCode())
           Future.succeededFuture(Err(ErrorResponse(errorType, response.statusMessage())))
         }
@@ -65,7 +70,11 @@ class VertxHttpRestClient(
           log.debug("Received response with status code: ${httpResponse.statusCode()}")
           Future.succeededFuture(Ok(resultMapper(httpResponse)))
         } else {
-          log.error("Something went wrong ${httpResponse.statusMessage()}")
+          log.error(
+            "Something went wrong: " +
+              "endpoint=${URL("http", webClientOptions.defaultHost, webClientOptions.defaultPort, path)}, " +
+              "statusMessage=${httpResponse.statusMessage()}"
+          )
           val errorType = RestErrorType.fromStatusCode(httpResponse.statusCode())
           Future.succeededFuture(Err(ErrorResponse(errorType, httpResponse.statusMessage())))
         }

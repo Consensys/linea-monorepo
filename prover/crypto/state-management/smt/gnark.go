@@ -5,13 +5,15 @@ import (
 	"github.com/consensys/gnark/std/hash"
 )
 
-// Merkle proofs
+// GnarkProof mirrors [Proof] in a gnark circuit.
 type GnarkProof struct {
 	Path     frontend.Variable
 	Siblings []frontend.Variable
 }
 
-// Returns the root as an output of the Merkle verification
+// GnarkRecoverRoot is as [RecoverRoot] in a gnark circuit. The provided
+// position is range-checked against the number of siblings in the Merkle proof
+// object.
 func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
@@ -32,6 +34,7 @@ func GnarkRecoverRoot(
 	return current
 }
 
+// GnarkVerifyMerkleProof asserts the validity of a [GnarkProof] against a root.
 func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
@@ -41,5 +44,4 @@ func GnarkVerifyMerkleProof(
 
 	r := GnarkRecoverRoot(api, proof, leaf, h)
 	api.AssertIsEqual(root, r)
-
 }

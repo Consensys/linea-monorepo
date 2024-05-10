@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import net.consensys.linea.metrics.monitoring.elapsedTimeInMillisSince
+import net.consensys.linea.metrics.micrometer.elapsedTimeInMillisSince
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.nio.file.Path
@@ -26,13 +26,33 @@ class FilesystemHelper(
         val jsonTime = elapsedTimeInMillisSince(startUngzipTime)
         val totalTime = elapsedTimeInMillisSince(startTime)
         log.debug(
-          "total_time={}ms (file_load={}, unzip+json_parse={}) in {}",
+          "total_time={}ms (file_load={} unzip+json_parse={}) in {}",
           totalTime,
           filesystemLoadTime,
           jsonTime,
           filePath.fileName
         )
         Future.succeededFuture(json)
+      }
+    }
+  }
+
+  fun readGzipedJsonFileAsString(filePath: Path): Future<String> {
+    val startTime = System.nanoTime()
+    return java.io.FileInputStream(filePath.toFile()).use { fileIs ->
+      val filesystemLoadTime = elapsedTimeInMillisSince(startTime)
+      GZIPInputStream(fileIs).use { gzipInputStream ->
+        val unzipTime = elapsedTimeInMillisSince(startTime)
+        val result = String(gzipInputStream.readAllBytes())
+        val toStringTime = elapsedTimeInMillisSince(startTime)
+        log.debug(
+          "total_time={}ms (file_load={} unzip={} toString={}) in {}",
+          elapsedTimeInMillisSince(startTime),
+          unzipTime - filesystemLoadTime,
+          toStringTime - unzipTime - filesystemLoadTime,
+          filePath.fileName
+        )
+        Future.succeededFuture(result)
       }
     }
   }

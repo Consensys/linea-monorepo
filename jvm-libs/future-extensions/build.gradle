@@ -4,7 +4,8 @@ plugins {
 }
 
 dependencies {
-  implementation "io.vertx:vertx-core:${versions.vertx}"
+  implementation "io.vertx:vertx-core"
+  testImplementation("io.vertx:vertx-junit5")
 }
 
 jar {

@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 )
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
@@ -63,6 +63,11 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 // Constructor for fixed point univariate evaluation query parameters
 func NewInnerProductParams(ys ...field.Element) InnerProductParams {
 	return InnerProductParams{Ys: ys}
+}
+
+// Name implements the [ifaces.Query] interface
+func (r InnerProduct) Name() ifaces.QueryID {
+	return r.ID
 }
 
 // Check the inner-product manually

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -27,7 +27,11 @@ type Signature struct {
 func GetFrom(tx *types.Transaction) common.Address {
 	from, err := GetSigner(tx).Sender(tx)
 	if err != nil {
-		utils.Panic("sender address recovery failed : %v. tx has chainID %v", err, tx.ChainId())
+		v, r, s := tx.RawSignatureValues()
+		utils.Panic(
+			"sender address recovery failed: tx.chainID=%v, tx.signature=[v=%v, r=%v, s=%v], tx.details=%++v, error=%v",
+			tx.ChainId(), v.String(), r.String(), s.String(), tx, err.Error(),
+		)
 	}
 	return from
 }
@@ -109,21 +113,4 @@ func RecoverPublicKey(msgHash [32]byte, sig Signature) (pubKey [64]byte, encoded
 	pubkey_, err := crypto.Ecrecover(msgHash[:], encodedSig[:])
 	copy(pubKey[:], pubkey_[1:])
 	return pubKey, encodedSig, err
-}
-
-// ECrecover the signature from properly encoded transaction
-func ECRecover(msg []byte, sig Signature) common.Address {
-
-	// Ethereum signatures are signed using Keccak
-	msgHash := crypto.Keccak256Hash(msg)
-	pubKey, _, err := RecoverPublicKey(msgHash, sig)
-	if err != nil {
-		// Can happen if the signature is incorrect. Since we use this function
-		// only for testing purpose, it is fine to panic.
-		panic(err)
-	}
-
-	res := common.Address{}
-	res.SetBytes(crypto.Keccak256(pubKey[:])[12:])
-	return res
 }

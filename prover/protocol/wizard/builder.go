@@ -1,19 +1,32 @@
 package wizard
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
 )
 
 /*
-Main object responsible for building an IOP protocol
-It is exposed to the user directly, and the user should
-use it to specify his protocol
+Builder provides the go-to user interface to specify a custom Wizard protocol.
+The builder is essentially a wrapper around the [CompiledIOP] struct and
+has the additional capability to track the "current" prover-verifier interaction
+round.
+
+In particular, Builder provides the utilities to
+  - Declare columns
+  - Declare random coins
+  - Declare queries
+
+Deprecated: @alex: we should deprecate this and directly embed the "round"
+tracking capability within the [CompiledIOP] struct. The round-tracking
+mechanism does not allow for a smooth way to decompose the user's protocol into
+sub-protocols that spans on multiple rounds efficiently as a new round will be
+created everytime the user declares a new Coin.
 */
 type Builder struct {
 	*CompiledIOP
@@ -85,6 +98,14 @@ func (b *Builder) RegisterCommit(name ifaces.ColID, size int) ifaces.Column {
 }
 
 /*
+Registers a precomputed column in the protocol
+*/
+func (b *Builder) RegisterPrecomputed(name ifaces.ColID, v smartvectors.SmartVector) ifaces.Column {
+	b.fsStateIsDirty = true
+	return b.CompiledIOP.InsertPrecomputed(name, v)
+}
+
+/*
 Asserts there will be a Fiat-Shamir hash
 
 (for integer vec coin only, the caller must pass a slice of length 2 such that
@@ -137,6 +158,30 @@ that are contained within `includings`, regardless of the multiplicity.
 */
 func (b *Builder) Inclusion(name ifaces.QueryID, including, included []ifaces.Column) {
 	b.InsertInclusion(b.currRound, name, including, included)
+}
+
+/*
+An inclusion query that adds two filters on the including and included arrays
+The filters should be columns that contain only field elements for 0 and 1.
+*/
+func (b *Builder) InclusionDoubleConditional(name ifaces.QueryID, including, included []ifaces.Column, includingFilter, includedFilter ifaces.Column) {
+	b.InsertInclusionDoubleConditional(b.currRound, name, including, included, includingFilter, includedFilter)
+}
+
+/*
+An inclusion query that adds a filter on the including array
+The filter should be a column that contains only field elements for 0 and 1.
+*/
+func (b *Builder) InclusionConditionalOnIncluding(name ifaces.QueryID, including, included []ifaces.Column, includingFilter ifaces.Column) {
+	b.InsertInclusionConditionalOnIncluding(b.currRound, name, including, included, includingFilter)
+}
+
+/*
+An inclusion query that adds a filter on the included array
+The filter should be a column that contains only field elements for 0 and 1.
+*/
+func (b *Builder) InclusionConditionalOnIncluded(name ifaces.QueryID, including, included []ifaces.Column, includedFilter ifaces.Column) {
+	b.InsertInclusionConditionalOnIncluded(b.currRound, name, including, included, includedFilter)
 }
 
 /*

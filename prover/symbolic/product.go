@@ -1,55 +1,95 @@
 package symbolic
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 )
 
-/*
-Operator symbolizing "Multiplication"
-*/
+var (
+	ErrTermIsProduct    error = errors.New("term is product")
+	ErrTermIsNotProduct error = errors.New("term is not product")
+)
+
+// Product is an implementation of the [Operator] interface and represents a
+// product of terms with exponents.
+//
+// For expression building it is advised to use the constructors instead of this
+// directly. The exposition of this Operator is meant to allow implementing
+// symbolic expression optimizations.
+//
+// Note that the library does not support exponents with negative values and
+// such expressions would be treated as invalid and yield panic errors if the
+// package sees it.
 type Product struct {
 	// Exponents for each term in the multiplication
 	Exponents []int
 }
 
-/*
-Returns the degree of the operation given, as input, the degree of its children
-*/
-func (m Product) Degree(inputDegrees []int) int {
-	res := 0
-	// Just the sum of all the degrees
-	for i, exp := range m.Exponents {
-		res += exp * inputDegrees[i]
-	}
-	return res
-}
-
-/*
-Evaluates a k-ary multiplication. It can take vectors or scalars as inputs
-*/
-func (m Product) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
-	return sv.Product(m.Exponents, inputs)
-}
-
-/*
-Creates a new linear combination. Performs no simplification
-*/
+// NewProduct returns an expression representing a product of items applying
+// exponents to them. The newly constructed expression is subjected to basic
+// optimizations routines: detection of zero factors, expansion by
+// associativity, regroupment of terms and removal or terms with a coefficient
+// of zero.
+//
+// Thus, the returned expression is not guaranteed to be of type [Product]. To
+// actually multiply or exponentiate [Expression] objects, the user is advised
+// to use [Mul] [Square] or [Pow] instead.
+//
+// If provided an empty list of items/exponents the function returns 1 as a
+// default value and if the lengths of the two parameters do not match, the
+// function panics.
 func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	if len(items) != len(exponents) {
 		panic("unmatching lengths")
 	}
 
+	for i := range exponents {
+		if exponents[i] < 0 {
+			panic("negative exponents are not allowed")
+		}
+	}
+
+	for i := range items {
+		if items[i].ESHash.IsZero() {
+			return NewConstant(0)
+		}
+	}
+
+	exponents, items = expandTerms(&Product{}, exponents, items)
+	exponents, items, constExponents, constVal := regroupTerms(exponents, items)
+
+	// This regroups all the constants into a global constant with a coefficient
+	// of 1.
+	var c, t field.Element
+	c.SetOne()
+	for i := range constExponents {
+		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
+		c.Mul(&c, &t)
+	}
+
+	if !c.IsOne() {
+		exponents = append(exponents, 1)
+		items = append(items, NewConstant(c))
+	}
+
+	exponents, items = removeZeroCoeffs(exponents, items)
+
 	if len(items) == 0 {
-		panic("no item are forbidden")
+		return NewConstant(1)
+	}
+
+	if len(items) == 1 && exponents[0] == 1 {
+		return items[0]
 	}
 
 	e := &Expression{
@@ -64,7 +104,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	}
 
 	if len(items) > 0 {
-		// The cast back to sv.Constant is not functionally important but is an easy
+		// The cast back to sv.Constant is no important functionally but is an easy
 		// sanity check.
 		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
 	}
@@ -72,148 +112,23 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	return e
 }
 
-/*
-Add to non-LC terms
-*/
-func MulTwoNonProd(a, b *Expression) *Expression {
-
-	if a.IsMul() || b.IsMul() {
-		panic("Add two terms with an LC term")
+// Degree implements the [Operator] interface and returns the sum of the degree
+// of all the operands weighted by the exponents.
+func (prod Product) Degree(inputDegrees []int) int {
+	res := 0
+	// Just the sum of all the degrees
+	for i, exp := range prod.Exponents {
+		res += exp * inputDegrees[i]
 	}
-
-	if a.ESHash == b.ESHash {
-		return NewSingleTermProduct(a, 2)
-	}
-
-	// Otherwise, addition
-	res := &Expression{
-		Operator: Product{Exponents: []int{1, 1}},
-		Children: []*Expression{a, b},
-	}
-
-	res.ESHash.Mul(&a.ESHash, &b.ESHash)
 	return res
 }
 
-/*
-Returns a sum of linear combinations as another linear combination
-*/
-func MulProducts(exprs ...*Expression) *Expression {
-
-	newExponents := []int{}
-	newChildren := []*Expression{}
-	ESHtoExponentsPos := map[field.Element]int{}
-
-	for _, expr := range exprs {
-		// This will panic if the expression is not a Mul but this is expected
-		// behaviour.
-		curExponents := expr.Operator.(Product).Exponents
-
-		for i := range expr.Children {
-			currESHash := expr.Children[i].ESHash
-			// Check if the ESH was already discoved
-			if pos, ok := ESHtoExponentsPos[currESHash]; ok {
-				// Found, add the coefficient
-				newExponents[pos] += curExponents[i]
-			} else {
-				// Not found, add an entry
-				ESHtoExponentsPos[currESHash] = len(newExponents)
-				newExponents = append(newExponents, curExponents[i])
-				newChildren = append(newChildren, expr.Children[i])
-			}
-		}
-	}
-
-	/*
-		We do not support division so there is no chances that one of the
-		exponents cancels out. Thus no need to prune the product from the
-		zero-exponents term.
-	*/
-
-	newESH := field.One()
-	for i := range exprs {
-		newESH.Mul(&newESH, &exprs[i].ESHash)
-	}
-
-	/*
-		Construct the merged linear combination
-	*/
-	return &Expression{
-		Children: newChildren,
-		Operator: Product{Exponents: newExponents},
-		ESHash:   newESH,
-	}
+// Evaluate implements the [Operator] interface.
+func (prod Product) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+	return sv.Product(prod.Exponents, inputs, p...)
 }
 
-/*
-Append a new term into a Product
-*/
-func MulNewTermProduct(prod *Expression, newExponent int, newTerm *Expression) *Expression {
-
-	// Sanity-check, the newTerm should not be Product
-	if _, ok := newTerm.Operator.(Product); ok {
-		panic("newTerm is Product")
-	}
-
-	newExponents := append([]int{}, prod.Operator.(Product).Exponents...)
-	children := prod.Children
-
-	found := false
-	for i, child := range prod.Children {
-		if child.ESHash == newTerm.ESHash {
-			found = true
-			newExponents[i] += newExponent
-		}
-	}
-
-	if !found {
-		newExponents = append(newExponents, newExponent)
-		children = append(children, newTerm)
-	}
-
-	var newESH field.Element
-	newESH.Exp(newTerm.ESHash, big.NewInt(int64(newExponent)))
-	newESH.Mul(&newESH, &prod.ESHash)
-
-	return &Expression{
-		ESHash:   newESH,
-		Children: children,
-		Operator: Product{Exponents: newExponents},
-	}
-
-}
-
-/*
-Creates a linerar combination from a single term
-*/
-func NewSingleTermProduct(term *Expression, exponent int) *Expression {
-	// Sanity-check, the term should not be Product
-	if _, ok := term.Operator.(Product); ok {
-		panic("term is Product")
-	}
-
-	if exponent == 0 {
-		return NewConstant(1)
-	}
-
-	// Circuit-breaker : coeff == 1 means it is pointless to wrap it in a LC
-	if exponent == 1 {
-		return term
-	}
-
-	newESH := term.ESHash
-	newESH.Exp(newESH, big.NewInt(int64(exponent)))
-
-	return &Expression{
-		ESHash:   newESH,
-		Children: []*Expression{term},
-		Operator: Product{Exponents: []int{exponent}},
-	}
-}
-
-/*
-Validates that the product is well-formed
-*/
+// Validate implements the [Operator] interface.
 func (prod Product) Validate(expr *Expression) error {
 	if !reflect.DeepEqual(prod, expr.Operator) {
 		panic("expr.operator != prod")
@@ -223,13 +138,16 @@ func (prod Product) Validate(expr *Expression) error {
 		return fmt.Errorf("mismatch in the size of the children and coefficients")
 	}
 
+	for _, e := range prod.Exponents {
+		if e < 0 {
+			panic("found a negative exponent")
+		}
+	}
+
 	return nil
 }
 
-/*
-Evaluate the expression in a gnark circuit
-Does not support vector evaluation
-*/
+// GnarkEval implements the [Operator] interface.
 func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 
 	res := frontend.Variable(1)

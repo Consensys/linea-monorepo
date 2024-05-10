@@ -2,4 +2,4 @@
 
 package smartvectors
 
-const FUZZ_ITERATION int = 100
+const fuzzIteration int = 100

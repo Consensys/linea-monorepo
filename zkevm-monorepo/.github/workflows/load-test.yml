@@ -1,0 +1,64 @@
+name: Load Test Manual Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Load test network'
+        required: true
+        type: choice
+        options:
+          - devnet
+          - sepolia
+        default: 'devnet'
+      file:
+        description: 'Load test filename'
+        required: true
+        type: string
+        default: 'money-transfer.json'
+      private_key_overwrite:
+        description: 'Optional private key overwrite'
+        required: false
+        type: string
+
+concurrency: 
+  group: load-test-${{ github.event.inputs.network }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run-load-test:
+    runs-on: ubuntu-latest
+    name: Run Load Test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+          
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        
+      - name: Determine Private Key
+        id: set_private_key
+        run: |
+          if [ -n "${{ github.event.inputs.private_key_overwrite }}" ]; then
+            echo "Using provided private key."
+            echo "PRIVATE_KEY=${{ github.event.inputs.private_key_overwrite }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.network }}" == "devnet" ]; then
+            echo "Using devnet private key from secrets."
+            echo "PRIVATE_KEY=${{ secrets.DEVNET_LOAD_TEST_PRIVATE_KEY }}" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.network }}" == "sepolia" ]; then
+            echo "Using sepolia private key from secrets."
+            echo "PRIVATE_KEY=${{ secrets.SEPOLIA_LOAD_TEST_PRIVATE_KEY }}" >> $GITHUB_ENV
+          fi
+          
+      - name: Load Test
+        run: |
+          echo "Network to execute load test on: ${{ github.event.inputs.network }}"
+          ./gradlew :testing-tools:app:run --args="-request ${{ github.event.inputs.network }}/${{ github.event.inputs.file }} -pk $PRIVATE_KEY"

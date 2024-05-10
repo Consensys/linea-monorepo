@@ -3,12 +3,12 @@ package arithmetics_test
 import (
 	"testing"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/arithmetics"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/arithmetics"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 

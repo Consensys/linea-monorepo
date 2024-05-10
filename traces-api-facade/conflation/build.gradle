@@ -8,6 +8,7 @@ dependencies {
     implementation project(':traces-api-facade:core')
     implementation "org.jetbrains.kotlin:kotlin-reflect:1.7.20"
     implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
 }
 
 application {

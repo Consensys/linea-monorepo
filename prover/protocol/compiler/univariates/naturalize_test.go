@@ -3,24 +3,24 @@ package univariates
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/compiler/dummy"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNaturalize(t *testing.T) {
 
 	var (
-		P1                 ifaces.ColID   = "P1"
-		P2                 ifaces.ColID   = "P2"
-		P3                 ifaces.ColID   = "P3"
-		P4                 ifaces.ColID   = "P4"
-		EVAL               ifaces.QueryID = "EVAL"
-		P1S2, P1R2, P1R2S1 ifaces.Column
+		P1   ifaces.ColID   = "P1"
+		P2   ifaces.ColID   = "P2"
+		P3   ifaces.ColID   = "P3"
+		P4   ifaces.ColID   = "P4"
+		EVAL ifaces.QueryID = "EVAL"
+		P1S2 ifaces.Column
 	)
 
 	definer := func(build *wizard.Builder) {
@@ -29,9 +29,7 @@ func TestNaturalize(t *testing.T) {
 		P3 := build.RegisterCommit(P3, 8) // overshadowing
 		P4 := build.RegisterCommit(P4, 8) // overshadowing
 		P1S2 = column.Shift(P1, 2)
-		P1R2 = column.Repeat(P1, 2)
-		P1R2S1 = column.Shift(column.Repeat(P1, 2), 1)
-		build.UnivariateEval(EVAL, P1, P1S2, P2, P1R2, P3, P1R2S1, P4)
+		build.UnivariateEval(EVAL, P1, P1S2, P2, P3, P4)
 	}
 
 	comp := wizard.Compile(
@@ -41,7 +39,7 @@ func TestNaturalize(t *testing.T) {
 		dummy.Compile,
 	)
 
-	require.Equal(t, len(comp.QueriesParams.AllKeysAt(0)), 5)
+	require.Equal(t, len(comp.QueriesParams.AllKeysAt(0)), 3)
 
 	hLProver := func(assi *wizard.ProverRuntime) {
 		p1 := smartvectors.ForTest(1, 2, 3, 4)
@@ -62,14 +60,9 @@ func TestNaturalize(t *testing.T) {
 		y4 := smartvectors.Interpolate(p4, x)
 
 		p1s2 := P1S2.GetColAssignment(assi)
-		p1r2 := P1R2.GetColAssignment(assi)
-		p1r2s1 := P1R2S1.GetColAssignment(assi)
 
 		require.Equal(t, p1s2.Pretty(), p2.Pretty())
-		require.Equal(t, p1r2.Pretty(), p3.Pretty())
-		require.Equal(t, p1r2s1.Pretty(), p4.Pretty())
-
-		assi.AssignUnivariate(EVAL, x, y1, y2, y2, y3, y3, y4, y4)
+		assi.AssignUnivariate(EVAL, x, y1, y2, y2, y3, y4)
 	}
 
 	proof := wizard.Prove(comp, hLProver)

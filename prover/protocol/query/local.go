@@ -4,26 +4,27 @@ import (
 	"fmt"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // A local constraint is an arithmetic relation between prespecified
 // polynomial commitment openings and random coin.
+// the local constraint is evaluated at 0
+// in order to obtain evaluations at different points, the vector should be shifted first
+// and the constraint applied after
 type LocalConstraint struct {
 	*symbolic.Expression
 	ID ifaces.QueryID
 }
 
 // Construct a new local constraint
-// getSize is a handle (intended to be an accessor CompiledIOP) that allows
-// getting the size of a commitment without creating import cycles.
 func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConstraint {
 
 	if len(id) == 0 {
@@ -65,6 +66,11 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 	return res
 }
 
+// Name implements the [ifaces.Query] interface
+func (r LocalConstraint) Name() ifaces.QueryID {
+	return r.ID
+}
+
 // Test the polynomial identity
 func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 	board := cs.Board()
@@ -93,7 +99,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 			inputs[i] = sv.NewConstant(metadata.EvalAtOnDomain(0), 1)
 		case variables.X:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
-		case *ifaces.Accessor:
+		case ifaces.Accessor:
 			inputs[i] = sv.NewConstant(metadata.GetVal(run), 1)
 		default:
 			utils.Panic("Unknown variable type %v in local constraint %v", reflect.TypeOf(metadataInterface), cs.ID)
@@ -146,7 +152,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 			inputs[i] = run.GetRandomCoinField(metadata.Name)
 		case variables.X, variables.PeriodicSample:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
-		case *ifaces.Accessor:
+		case ifaces.Accessor:
 			inputs[i] = metadata.GetFrontendVariable(api, run)
 		default:
 			utils.Panic("Unknown variable type %v in local constraint %v", reflect.TypeOf(metadataInterface), cs.ID)

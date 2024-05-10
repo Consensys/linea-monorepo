@@ -4,16 +4,17 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	globalCs "github.com/consensys/gnark/constraint"
-	cs "github.com/consensys/gnark/constraint/bn254"
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	fcs "github.com/consensys/gnark/frontend/cs"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Struct gathering synchronization variable for the prover
@@ -26,13 +27,21 @@ type solverSync struct {
 	solChan chan *cs.SparseR1CSSolution
 }
 
-// Registers the prover in case there are commitments
-func (ctx *Ctx) RegisterCommitProver() {
+// This function is responsible for scheduling the assignment of the Wizard
+// columns related to the currently compiled Plonk circuit. It is used
+// specifically for when we use BBS commitment as part of the circuit.
+//
+// In essence, the function works by starting the Plonk solver in the
+// background. From then on, the function registers two prover functions, one
+// for the first round where we assign the BBS commitment polynomial and one
+// for the second round where we assign the LRO polynomials. The solver
+// goroutine terminates at the end of the second round and is paused between the
+// two rounds.
+func (ctx *compilationCtx) RegisterCommitProver() {
 
-	commitHintID := ctx.CommitmentInfo().HintID
+	commitHintID := solver.GetHintID(fcs.Bsb22CommitmentComputePlaceholder)
 
-	// The first function bootstraps the solver and
-	// return once the commitment has been assigned
+	// The first function bootstraps the solver and return once the commitment has been assigned
 	commitProver := func(run *wizard.ProverRuntime) {
 
 		for i := 0; i < ctx.nbInstances; i++ {
@@ -49,7 +58,7 @@ func (ctx *Ctx) RegisterCommitProver() {
 			run.State.InsertNew(ctx.Sprintf("SOLSYNC_%v", i), solSync)
 
 			// Let the assigner return an assignment
-			assignment := ctx.Plonk.Assigner[i]()
+			assignment := ctx.Plonk.WitnessAssigner[i]()
 
 			// Check that both the assignment and the base
 			// circuit have the same type
@@ -58,7 +67,7 @@ func (ctx *Ctx) RegisterCommitProver() {
 			}
 
 			// Also assigns the public witness
-			publicWitness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField(), frontend.PublicOnly())
+			publicWitness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
 			if err != nil {
 				utils.Panic("Could not parse the assignment into a public witness")
 			}
@@ -73,7 +82,7 @@ func (ctx *Ctx) RegisterCommitProver() {
 			run.AssignColumn(ctx.Columns.PI[i].GetColID(), pubWitSV)
 
 			// Parse it as witness
-			witness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField())
+			witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 			if err != nil {
 				utils.Panic("Could not parse the assignment into a witness")
 			}
@@ -138,8 +147,20 @@ func (ctx *Ctx) RegisterCommitProver() {
 
 }
 
-// Extract the hint
-func (ctx *Ctx) solverCommitmentHint(
+// Computes the replacement hint that we pass to the gnark's solver in place of
+// the default BBS22 initial challenge hint. This hint will be passed to the
+// gnark Solver. Instead of computing and hashing a group element as in the
+// BBS22 paper. We instead use the FS mechanism that is embedded in the wizard.
+// As a reminder, the shape of the committed polynomial is as follows: it is all
+// zero except in the position containing committed polynomials.
+//
+// To proceed we need to allocate the column outside of the Solver function; the
+// assignment of the column cannot be done at the same time as the rest of the
+// Plonk witness. Thus, the function will only extract the corresponding column
+// , pass it to a channel and pause. It will resume in a later stage of the
+// Wizard proving runtime to complete the solving once the the challenge to
+// return is available.
+func (ctx *compilationCtx) solverCommitmentHint(
 	// Channel through which the committed poly is obtained
 	pi2Chan chan []field.Element,
 	// Channel through which the randomness is injected back
@@ -147,12 +168,29 @@ func (ctx *Ctx) solverCommitmentHint(
 ) func(_ *big.Int, ins, outs []*big.Int) error {
 
 	return func(_ *big.Int, ins, outs []*big.Int) error {
-		// Extract the commitments inputs as a
-		pi2 := make([]field.Element, ctx.DomainSize())
-		spr := ctx.Plonk.SPR
-		offset := spr.GetNbPublicVariables()
-		sprCommittedIDs := spr.CommitmentInfo.(globalCs.PlonkCommitments)[0].Committed
+		// pi2 is meant to store a copy of the BBS22 "commitment" which are
+		// collecting in the following lines of code. The polynomial is
+		// constructed as follows. All "non-committed" wires are zero and
+		// the only non-committed values are
+		var (
+			pi2    = make([]field.Element, ctx.DomainSize())
+			spr    = ctx.Plonk.SPR
+			offset = spr.GetNbPublicVariables()
+			// The first input of the function Hint function does not correspond
+			// to a committed wire but to a position to use in the
+			// `PlonkCommitments` of the circuit. My guess is that it is used
+			// in the multi-round BBS22 case (which the current implementation
+			// of Plonk in Wizard does not support). We still reflect that here
+			// in case we want to support it in the future.
+			comDepth = int(ins[0].Int64())
+		)
 
+		// Trims the above-mentionned comdepth
+		ins = ins[1:]
+
+		// We use the first commit ID because, there is allegedly only one
+		// commitment
+		sprCommittedIDs := spr.CommitmentInfo.(globalCs.PlonkCommitments)[comDepth].Committed
 		for i := range ins {
 			pi2[offset+sprCommittedIDs[i]].SetBigInt(ins[i])
 		}
@@ -169,13 +207,8 @@ func (ctx *Ctx) solverCommitmentHint(
 	}
 }
 
-// Return the position of the commit-randomness in the inputs
-func (ctx *Ctx) CommitPos() int {
-	return ctx.Plonk.SPR.GetNbPublicVariables() + ctx.CommitmentInfo().CommitmentIndex
-}
-
 // Return whether the current circuit uses api.Commit
-func (ctx *Ctx) HasCommitment() bool {
+func (ctx *compilationCtx) HasCommitment() bool {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.
@@ -189,8 +222,10 @@ func (ctx *Ctx) HasCommitment() bool {
 	return len(commitmentsInfo) > 0
 }
 
-// Returns the commitment info
-func (ctx *Ctx) CommitmentInfo() globalCs.PlonkCommitment {
+// Returns the Plonk commitment info of the compiled gnark circuit. This is used
+// derive information such as which wires are being committed and how many
+// commitments there are.
+func (ctx *compilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.

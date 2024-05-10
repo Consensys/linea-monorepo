@@ -1,93 +1,84 @@
-package fiatshamir_test
+package fiatshamir
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc/gkrmimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/stretchr/testify/require"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 )
 
-type GnarkFSTestCircuit struct {
-	X, YFe, YInt frontend.Variable
+func TestGnarkSafeGuardUpdate(t *testing.T) {
+
+	f := func(api frontend.API) error {
+		fs := NewGnarkFiatShamir(api, nil)
+		a := fs.RandomField()
+		b := fs.RandomField()
+		api.AssertIsDifferent(a, b)
+		return nil
+	}
+
+	gnarkutil.AssertCircuitSolved(t, f)
 }
 
-func (c *GnarkFSTestCircuit) Define(api frontend.API) error {
-	// Run what would be otherwise in the Define
-	factory := gkrmimc.NewHasherFactory(api)
-	fs := fiatshamir.NewGnarkFiatShamir(api, factory)
-	fs.Update(c.X)
-	actualYFe := fs.RandomField()
-	actualInts := fs.RandomManyIntegers(2, 16)
-	api.AssertIsEqual(c.YFe, actualYFe)
-	api.Println(c.YFe, actualYFe)
-	api.AssertIsEqual(c.YInt, actualInts[0])
-	api.Println(c.YInt, actualInts[0])
-	return nil
-}
+func TestGnarkRandomVec(t *testing.T) {
 
-type GnarkFSCircuitEmptyHash struct {
-	Y frontend.Variable
-}
+	for _, testCase := range randomIntVecTestCases {
+		testName := fmt.Sprintf("%v-integers-of-%v-bits", testCase.NumIntegers, testCase.IntegerBitSize)
+		t.Run(testName, func(t *testing.T) {
 
-func (c *GnarkFSCircuitEmptyHash) Define(api frontend.API) error {
-	factory := gkrmimc.NewHasherFactory(api)
-	fs := fiatshamir.NewGnarkFiatShamir(api, factory)
-	y := fs.RandomField()
-	api.AssertIsEqual(c.Y, y)
-	return nil
+			f := func(api frontend.API) error {
+
+				gnarkFs := NewGnarkFiatShamir(api, nil)
+				fs := NewMiMCFiatShamir()
+
+				fs.Update(field.NewElement(2))
+				gnarkFs.Update(field.NewElement(2))
+
+				a := fs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
+				aGnark := gnarkFs.RandomManyIntegers(testCase.NumIntegers, 1<<testCase.IntegerBitSize)
+
+				for i := range a {
+					api.AssertIsEqual(a[i], aGnark[i])
+				}
+
+				return nil
+			}
+
+			gnarkutil.AssertCircuitSolved(t, f)
+		})
+	}
 }
 
 func TestGnarkFiatShamirEmpty(t *testing.T) {
 
-	ccs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
-		scs.NewBuilder,
-		&GnarkFSCircuitEmptyHash{},
-	)
-	require.NoError(t, err)
-
-	fs := fiatshamir.NewMiMCFiatShamir()
-	y := fs.RandomField()
-
-	assignment := GnarkFSCircuitEmptyHash{
-		Y: y,
+	f := func(api frontend.API) error {
+		Y := NewMiMCFiatShamir().RandomField()
+		fs := NewGnarkFiatShamir(api, nil)
+		y := fs.RandomField()
+		api.AssertIsEqual(Y, y)
+		return nil
 	}
 
-	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
-	require.NoError(t, err)
-
-	err = ccs.IsSolved(witness, gkrmimc.SolverOpts(ccs)...)
-	require.NoError(t, err)
+	gnarkutil.AssertCircuitSolved(t, f)
 }
 
-func TestGnarkFiatShamir(t *testing.T) {
+func TestGnarkUpdateVec(t *testing.T) {
 
-	ccs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
-		scs.NewBuilder,
-		&GnarkFSTestCircuit{},
-	)
-	require.NoError(t, err)
+	f := func(api frontend.API) error {
+		fs := NewMiMCFiatShamir()
+		fs.UpdateVec(vector.ForTest(2, 2, 1, 2))
+		y1 := fs.RandomField()
 
-	x := field.NewElement(2)
-	fs := fiatshamir.NewMiMCFiatShamir()
-	fs.Update(x)
-	yFe := fs.RandomField()
-	yInt := field.NewElement(uint64(fs.RandomManyIntegers(2, 16)[0]))
+		fs2 := NewGnarkFiatShamir(api, nil)
+		fs2.UpdateVec([]frontend.Variable{2, 2, 1, 2})
+		y2 := fs2.RandomField()
 
-	assignment := GnarkFSTestCircuit{
-		X:    x,
-		YFe:  yFe,
-		YInt: yInt,
+		api.AssertIsEqual(y1, y2)
+		return nil
 	}
-	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
-	require.NoError(t, err)
 
-	err = ccs.IsSolved(witness, gkrmimc.SolverOpts(ccs)...)
-	require.NoError(t, err)
+	gnarkutil.AssertCircuitSolved(t, f)
 }

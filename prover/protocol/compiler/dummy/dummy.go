@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 

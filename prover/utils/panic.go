@@ -11,10 +11,3 @@ func Require(cond bool, msg string, args ...any) {
 		Panic(msg, args...)
 	}
 }
-
-func OrErr(cond bool, msg string, args ...any) error {
-	if !cond {
-		return fmt.Errorf(msg, args...)
-	}
-	return nil
-}

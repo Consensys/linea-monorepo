@@ -3,87 +3,120 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
-	"github.com/sirupsen/logrus"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-// Test that two table are row-permutations of one another
+// Permutation is a predicate that assess that two tables contains the same rows
+// up to a permutation. The tables can contain several columns and they can be
+// described in a fractioned way: the table is the union of the rows of several
+// tables.
 type Permutation struct {
-	A, B []ifaces.Column
-	ID   ifaces.QueryID
+	// A and B represent the tables on both sides of the argument. The
+	// permutation can be fractionned (len(A) = len(B) > 1) and it can be
+	// multi-column (len(A[*]) = len(B[*]) > 1.
+	A, B [][]ifaces.Column
+	// ID is the string indentifier of the query.
+	ID ifaces.QueryID
 }
 
-/*
-Construct a permutation. Will panic if it is mal-formed
-*/
-func NewPermutation(id ifaces.QueryID, a, b []ifaces.Column) Permutation {
-	/*
-		Both side of the permutation must have the same number of columns
-	*/
-	if len(a) != len(b) {
-		utils.Panic("a and b_ don't have the same number of commitments %v %v", len(a), len(b))
-	}
+// NewPermutation constructs a new permutation query and performs all the
+// well-formedness sanity-checks. In case of failure, it will panic.
+func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 
-	// All polynomials must have the same MaxSize
-	_, err := utils.AllReturnEqual(
-		ifaces.Column.Size,
-		append(a, b...),
+	var (
+		nCol     = len(a[0])
+		totalRow = [2]int{}
 	)
 
-	if err != nil {
+	for side, aOrB := range [2][][]ifaces.Column{a, b} {
+		for frag := range aOrB {
 
-		for i := range a {
-			logrus.Errorf("size of the column %v of a : %v\n", i, a[i].Size())
+			if len(aOrB[frag]) != nCol {
+				utils.Panic("all tables must have the same number of columns")
+			}
+
+			for _, col := range aOrB[frag] {
+				col.MustExists()
+			}
+
+			sizeFrag, err := utils.AllReturnEqual(
+				ifaces.Column.Size,
+				aOrB[frag],
+			)
+
+			if err != nil {
+				utils.Panic("all tables must be sets of columns with the same size")
+			}
+
+			totalRow[side] += sizeFrag
 		}
-
-		for i := range b {
-			logrus.Errorf("size of the column %v of b : %v\n", i, b[i].Size())
-		}
-
-		utils.Panic("Permutation (%v) requires that all columns have the same size %v", id, err)
 	}
 
-	// recall that a and b have the same size
-	for i := range a {
-		a[i].MustExists()
-		b[i].MustExists()
+	if totalRow[0] != totalRow[1] {
+		utils.Panic("a and b must have the same total number of rows")
 	}
 
 	return Permutation{A: a, B: b, ID: id}
 }
 
-/*
-Test that the polynomial evaluation holds
-It's a probabilistic check - good enough for testing
-*/
-func (r Permutation) Check(run ifaces.Runtime) error {
-	/*
-		They should have the same size and it should be tested
-		prior to calling check
-	*/
-	a := make([]ifaces.ColAssignment, len(r.B))
-	b := make([]ifaces.ColAssignment, len(r.A))
-
-	// Populate the `a`
-	for i, pol := range r.A {
-		a[i] = pol.GetColAssignment(run)
-	}
-
-	// Populate the b
-	for i, pol := range r.B {
-		b[i] = pol.GetColAssignment(run)
-	}
-
-	return CheckPermutation(a, b)
+// Name implements the [ifaces.Query] interface
+func (r Permutation) Name() ifaces.QueryID {
+	return r.ID
 }
 
-/*
-Checks a permutation query manually. The test is probabilistic.
-The soundness is only appropriate for testing purposes.
-*/
+// Check probabilistically checks whether the permutation predicates holds. The
+// test works by incrementally computes the products:
+//
+//	\prod_i (\gamma + \sum_j C{i, j} \alpha^j)
+//
+// With overhelming probability, if the predicate is wrong then then the
+// products will be unequal and this will be equal if the predicate is
+// satisfied.
+func (r Permutation) Check(run ifaces.Runtime) error {
+
+	var (
+		numCol    = len(r.A)
+		prods     = []field.Element{field.One(), field.One()}
+		randGamma = field.Element{}
+		randAlpha = field.Element{}
+	)
+
+	randGamma.SetRandom()
+	randAlpha.SetRandom()
+
+	for k, aOrB := range [2][][]ifaces.Column{r.A, r.B} {
+		for frag := range aOrB {
+			var (
+				tab        = make([]ifaces.ColAssignment, numCol)
+				numRowFrag = aOrB[frag][0].Size()
+				gamma      = smartvectors.NewConstant(randGamma, numRowFrag)
+			)
+
+			for col := range aOrB[frag] {
+				tab[col] = aOrB[frag][col].GetColAssignment(run)
+			}
+
+			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha)
+
+			for row := 0; row < collapsed.Len(); row++ {
+				tmp := collapsed.Get(row)
+				prods[k].Mul(&prods[k], &tmp)
+			}
+		}
+	}
+
+	if prods[0] != prods[1] {
+		return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+	}
+
+	return nil
+}
+
+// CheckPermutation manually checks that a permutation argument is satisfied.
 func CheckPermutation(a, b []ifaces.ColAssignment) error {
 	/*
 		Sample a random element alpha, usefull for multivalued inclusion checks
@@ -146,5 +179,5 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
 func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
+	panic("UNSUPPORTED : can't check an permutation query directly into the circuit")
 }

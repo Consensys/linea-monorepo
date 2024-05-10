@@ -3,8 +3,8 @@ package fft
 import (
 	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 /*
@@ -30,13 +30,9 @@ func NewDomain(m int) *Domain {
 	domain.FrMultiplicativeGen.SetUint64(field.MultiplicativeGen)
 	domain.FrMultiplicativeGenInv.Inverse(&domain.FrMultiplicativeGen)
 
-	// generator of the largest 2-adic subgroup
-	var rootOfUnity field.Element
-	rootOfUnity.SetString(field.RootOfUnity)
-
 	// Generator = FinerGenerator^2 has order x
 	expo := uint64(1 << (maxOrderInt - order))
-	domain.Generator.Exp(rootOfUnity, big.NewInt(int64(expo))) // order x
+	domain.Generator.Exp(field.RootOfUnity, big.NewInt(int64(expo))) // order x
 	domain.GeneratorInv.Inverse(&domain.Generator)
 	domain.CardinalityInv.SetUint64(uint64(m)).Inverse(&domain.CardinalityInv)
 

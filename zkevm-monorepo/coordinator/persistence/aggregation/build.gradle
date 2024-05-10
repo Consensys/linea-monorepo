@@ -1,0 +1,39 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+}
+
+dependencies {
+  api(project(":coordinator:core"))
+  api project(':coordinator:clients:prover-client:serialization')
+  implementation(project(":coordinator:persistence:db"))
+
+  testImplementation(project(":coordinator:persistence:blob"))
+  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(testFixtures(project(":coordinator:core")))
+  testImplementation("io.vertx:vertx-junit5")
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+tasks.register('integrationTest', Test) {
+  test ->
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackComposeUp")
+}
+
+check.finalizedBy("integrationTest")

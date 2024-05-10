@@ -1,0 +1,40 @@
+{
+  "id": 2,
+  "name": "generic call",
+  "context": {
+    "chainId": 59139,
+    "url": "https://rpc.devnet.linea.build",
+    "nbOfExecutions": 1
+  },
+  "calls": [
+    {
+      "nbOfExecution": 3,
+      "scenario": {
+        "scenarioType": "ContractCall",
+        "wallet": "new",
+        "contract": {
+          "contractCallType": "CallExistingContract",
+          "contractAddress": "0x1464eE1cdCBa8c15FE031c8A05179D81D8b16555",
+          "methodAndParameters": {
+            "type": "GenericCall",
+            "numberOfTimes": 100,
+            "methodName": "testAddmod",
+            "price": 120000,
+            "parameters": [
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "150"
+              },
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "31"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

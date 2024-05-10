@@ -3,11 +3,11 @@ package mimc_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +27,7 @@ func (circuit *Circuit) Define(api frontend.API) error {
 func TestGnarkCompression(t *testing.T) {
 
 	r1cs, err := frontend.Compile(
-		ecc.BN254.ScalarField(),
+		ecc.BLS12_377.ScalarField(),
 		r1cs.NewBuilder,
 		&Circuit{},
 	)
@@ -39,7 +39,7 @@ func TestGnarkCompression(t *testing.T) {
 		New:   mimc.BlockCompression(field.NewElement(2), field.NewElement(1)),
 	}
 
-	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
 	err = r1cs.IsSolved(witness)

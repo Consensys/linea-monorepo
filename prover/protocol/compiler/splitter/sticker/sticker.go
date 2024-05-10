@@ -3,19 +3,20 @@ package sticker
 import (
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column/verifiercol"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/profiling"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 )
 
 // Stick columns by size
@@ -135,17 +136,128 @@ func (ctx *stickContext) collectColums() {
 
 }
 
-func (ctx *stickContext) createMapToNew() {
-	for round := 0; round < ctx.comp.NumRounds(); round++ {
+// The cols must have the same size
+func groupCols(cols []ifaces.Column, numToStick int) (groups [][]ifaces.Column) {
 
-		ctx.News[round].List = make([]ifaces.Column, 0)
+	numGroups := utils.DivCeil(len(cols), numToStick)
+	groups = make([][]ifaces.Column, numGroups)
+
+	size := cols[0].Size()
+
+	for i, col := range cols {
+		if col.Size() != size {
+			utils.Panic(
+				"column %v of size %v has been grouped with %v of size %v",
+				col.GetColID(), col.Size(), cols[0].GetColID(), cols[0].Size(),
+			)
+		}
+		groups[i/numToStick] = append(groups[i/numToStick], col)
+	}
+
+	lastGroup := &groups[len(groups)-1]
+	zeroCol := verifiercol.NewConstantCol(field.Zero(), size)
+
+	for i := len(*lastGroup); i < numToStick; i++ {
+		*lastGroup = append(*lastGroup, zeroCol)
+	}
+
+	return groups
+}
+
+// Registers groups of columns in the sticky context
+func insertNew(ctx *stickContext, round int, groups [][]ifaces.Column, news []ifaces.Column) {
+
+	for i := range groups {
+		group := groups[i]
+		new := news[i]
+
+		// Initialize the bySubCol if necessary
+		if ctx.News[round].BySubCol == nil {
+			ctx.News[round].BySubCol = map[ifaces.ColID]struct {
+				NameNew  ifaces.ColID
+				PosInNew int
+			}{}
+		}
+
+		// Populate the bySubCol
+		for posInNew, c := range group {
+			ctx.News[round].BySubCol[c.GetColID()] = struct {
+				NameNew  ifaces.ColID
+				PosInNew int
+			}{
+				NameNew:  new.GetColID(),
+				PosInNew: posInNew,
+			}
+		}
+
+		// Populate the Column.ByNew
+		if ctx.CompiledColumns[round].ByNew == nil {
+			ctx.CompiledColumns[round].ByNew = make(map[ifaces.ColID][]ifaces.Column)
+		}
+		ctx.CompiledColumns[round].ByNew[new.GetColID()] = group
+
+	}
+
+	// And append the new columns to the global list
+	ctx.News[round].List = append(ctx.News[round].List, news...)
+}
+
+func (ctx *stickContext) createMapToNew() {
+
+	// Process the precomputed columns.
+	for s := ctx.MinSize; s <= ctx.MaxSize; s *= 2 {
+		// The list of columns of size `s` that we wish to group together
+		cols_, ok := ctx.CompiledColumns[0].BySize[s]
+		if !ok {
+			// there are no columns of size `s`, we can keep
+			// going with the next size since there is nothing
+			// to do here.
+			continue
+		}
+
+		// Filter out the precomputed columns
+		cols := make([]ifaces.Column, 0, len(cols_))
+		for _, col := range cols_ {
+			if ctx.comp.Columns.Status(col.GetColID()) == column.Precomputed {
+				cols = append(cols, col)
+			}
+		}
+
+		if len(cols) == 0 {
+			continue
+		}
+
+		// Organize the columns of size `s` into groups such that total size
+		// of each group reaches the target size (MaxSize).
+		groups := groupCols(cols, ctx.MaxSize/s)
+
+		// Declare the new columns
+		news := make([]ifaces.Column, len(groups))
+		for i := range news {
+			group := groups[i]
+			values := make([][]field.Element, len(group))
+			for j := range values {
+				values[i] = smartvectors.IntoRegVec(ctx.comp.Precomputed.MustGet(group[j].GetColID()))
+			}
+			assignement := vector.Interleave(values...)
+			ctx.comp.InsertPrecomputed(
+				groupedName(group),
+				smartvectors.NewRegular(assignement),
+			)
+		}
+
+		// And append the new columns to the global list
+		insertNew(ctx, 0, groups, news)
+	}
+
+	// Process all the non precomputed columns
+	for round := 0; round < ctx.comp.NumRounds(); round++ {
 
 		// Iterate over the columns sizes in ascending order
 		for s := ctx.MinSize; s <= ctx.MaxSize; s *= 2 {
 
-			// The list of columns of size `s` that we wish to
-			// group together
-			cols, ok := ctx.CompiledColumns[round].BySize[s]
+			// The list of columns of size `s` that we wish to group together
+			cols_, ok := ctx.CompiledColumns[round].BySize[s]
 			if !ok {
 				// there are no columns of size `s`, we can keep
 				// going with the next size since there is nothing
@@ -153,68 +265,34 @@ func (ctx *stickContext) createMapToNew() {
 				continue
 			}
 
-			// Number of columns of size `s` to stick at once to
-			// obtain a column of size `ctx.maxSize`
-			numToStick := ctx.MaxSize / s
-
-			// Make the groups of columns. If the number of columns
-			// is not exactly a multiple of numToStick, then we artfifically
-			// pad with `ZeroConstCols`
-			newForS := make([]ifaces.Column, utils.DivCeil(len(cols), numToStick))
-
-			for newID := range newForS {
-
-				// gather the columns in groups of numToStick
-				group := make([]ifaces.Column, numToStick)
-				copy(group, cols[newID*numToStick:])
-
-				// In case it is non-multiple of numToStick, in the last
-				// iteration will be incomplete : the last entries of
-				// group will be `nil`
-				for i := range group {
-					if group[i] == nil {
-						group[i] = verifiercol.NewConstantCol(field.Zero(), s)
-					}
+			// Filter out the precomputed columns
+			cols := make([]ifaces.Column, 0, len(cols_))
+			for _, col := range cols_ {
+				if ctx.comp.Columns.Status(col.GetColID()) != column.Precomputed {
+					cols = append(cols, col)
 				}
+			}
 
-				// Create the group column
-				new := ctx.comp.InsertCommit(
+			if len(cols) == 0 {
+				continue
+			}
+
+			// Organize the columns of size `s` into groups such that total size
+			// of each group reaches the target size (MaxSize).
+			groups := groupCols(cols, ctx.MaxSize/s)
+
+			// Declare the new columns
+			news := make([]ifaces.Column, len(groups))
+			for i := range news {
+				news[i] = ctx.comp.InsertCommit(
 					round,
-					groupedName(group),
+					groupedName(groups[i]),
 					ctx.MaxSize,
 				)
-
-				// Save it
-				newForS[newID] = new
-
-				// Initialize the bySubCol if necessary
-				if ctx.News[round].BySubCol == nil {
-					ctx.News[round].BySubCol = map[ifaces.ColID]struct {
-						NameNew  ifaces.ColID
-						PosInNew int
-					}{}
-				}
-
-				// Populate the bySubCol
-				for posInNew, c := range group {
-					ctx.News[round].BySubCol[c.GetColID()] = struct {
-						NameNew  ifaces.ColID
-						PosInNew int
-					}{
-						NameNew:  new.GetColID(),
-						PosInNew: posInNew,
-					}
-				}
-
-				// Populate the Column.ByNew
-				if ctx.CompiledColumns[round].ByNew == nil {
-					ctx.CompiledColumns[round].ByNew = make(map[ifaces.ColID][]ifaces.Column)
-				}
-				ctx.CompiledColumns[round].ByNew[new.GetColID()] = group
 			}
 
 			// And append the new columns to the global list
-			ctx.News[round].List = append(ctx.News[round].List, newForS...)
+			insertNew(ctx, round, groups, news)
 		}
 
 		// assign the new columns
@@ -383,7 +461,7 @@ func (ctx *stickContext) replacedExpression(
 			// it's always a compiled column
 			newCol := columnReplacement(*ctx, m)
 			replaceMap.InsertNew(m.String(), ifaces.ColumnAsVariable(newCol))
-		case coin.Info, *ifaces.Accessor:
+		case coin.Info, ifaces.Accessor:
 			replaceMap.InsertNew(m.String(), symbolic.NewVariable(m))
 		case variables.X:
 			// @alex: this could be supported in theory though

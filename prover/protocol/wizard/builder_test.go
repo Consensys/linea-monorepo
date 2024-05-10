@@ -3,8 +3,8 @@ package wizard_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 

@@ -5,31 +5,34 @@ import (
 	"math/big"
 	"reflect"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-/*
-Constant operator
-*/
+// Constant is an implementation of [Operator] which represents a constant value
 type Constant struct {
 	Val field.Element
 }
 
+// Degree implements the [Operator] interface
 func (Constant) Degree([]int) int {
 	panic("we never call it for a constant")
 }
 
-func (c Constant) Evaluate([]sv.SmartVector) sv.SmartVector {
+// Evaluates implements the [Operator] interface
+func (c Constant) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
 	panic("we never call it for a constant")
 }
 
+// GnarkEval implements the [Operator] interface.
 func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	panic("we never call it for a constant")
 }
 
-// Creates a new constant
+// NewConstant creates a new [Constant]. The function admits any input types
+// that is either: field.Element, int, uint or decimal string.
 func NewConstant(val interface{}) *Expression {
 	var x field.Element
 	if _, err := x.SetInterface(val); err != nil {
@@ -49,7 +52,7 @@ func NewConstant(val interface{}) *Expression {
 }
 
 /*
-Validates that the constant is well-formed
+Validate implements the [Operator] interface.
 */
 func (c Constant) Validate(expr *Expression) error {
 	if !reflect.DeepEqual(c, expr.Operator) {

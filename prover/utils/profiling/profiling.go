@@ -6,12 +6,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/pkg/profile"
 	"github.com/sirupsen/logrus"
 )
 
-var SKIP_PROFILING = false
+var SKIP_PROFILING = true
 
 // ProfileTrace run the benchmark function with optionally, benchmarking and tracing
 // The path should neither start nor end with a "/".
@@ -29,15 +29,15 @@ func ProfileTrace(name string, profiled, traced bool, fn func()) {
 		Some validation on the inputs
 	*/
 	if strings.HasPrefix(name, "/") {
-		utils.Panic("forbidden, name starts with /")
+		utils.Panic("Forbidden, name starts with /")
 	}
 
 	if strings.HasPrefix(name, "./") {
-		utils.Panic("forbidden, name starts with ./")
+		utils.Panic("Forbidden, name starts with ./")
 	}
 
 	if strings.HasSuffix(name, "/") {
-		utils.Panic("forbidden, name starts with /")
+		utils.Panic("Forbidden, name starts with /")
 	}
 
 	dir := fmt.Sprintf("profiling/%v", name)

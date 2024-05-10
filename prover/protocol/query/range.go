@@ -3,10 +3,10 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 /*
@@ -32,6 +32,11 @@ func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
 		B:      b,
 		Handle: h,
 	}
+}
+
+// Name implements the [ifaces.Query] interface
+func (r Range) Name() ifaces.QueryID {
+	return r.ID
 }
 
 /*

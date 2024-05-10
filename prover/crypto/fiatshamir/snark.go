@@ -3,39 +3,57 @@ package fiatshamir
 import (
 	"math"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/mimc/gkrmimc"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-/*
-GnarkFiatShamir mirrors `fiatshamire.State` in a gnark circuit.
-*/
+// GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous
+// methods for every of [State]'s method and works over [frontend.Variable]
+// instead of [field.Element].
+//
+// This implementation design eases the task of writing a gnark circuit version
+// of the verifier of a protocol calling [State] as it allows having a very
+// similar code for both tasks.
 type GnarkFiatShamir struct {
 	hasher hash.FieldHasher
-	/*
-		pointer to the gnark-API (also passed to the hasher but
-		behind an interface)
-	*/
+	// pointer to the gnark-API (also passed to the hasher but behind an
+	// interface). This is needed to perform bit-decomposition.
 	api frontend.API
 }
 
-/*
-Creates a new fiat-shamir state that mirrors `fiatshamir.State`
-in a gnark circuit.
-*/
+// NewGnarkFiatShamir creates a [GnarkFiatShamir] object. The function accepts
+// an optional [gkrmimc.HasherFactory] object as input. This is expected to be
+// used in the scope of a [frontend.Define] function.
 func NewGnarkFiatShamir(api frontend.API, factory *gkrmimc.HasherFactory) *GnarkFiatShamir {
-	hasher := factory.NewHasher()
+
+	var hasher hash.FieldHasher
+	if factory != nil {
+		h := factory.NewHasher()
+		hasher = &h
+	} else {
+		h, err := mimc.NewMiMC(api)
+		if err != nil {
+			// There is no real case where this can happen. The only case I
+			// can think of is when the function is called outside of the scope
+			// of a Define function and `api == nil` but then, there is no way
+			// the user can do anything useful with this function anyway.
+			panic(err)
+		}
+		hasher = &h
+	}
 
 	return &GnarkFiatShamir{
-		hasher: &hasher,
+		hasher: hasher,
 		api:    api,
 	}
 }
 
-// Update the Fiat-Shamir state with a vector of field element
+// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// representing field element each.
 func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 	// Safeguard against nil
 	for _, x := range vec {
@@ -46,43 +64,48 @@ func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
 
-// Update the Fiat-Shamir state with a matrix of field element
+// UpdateVec updates the Fiat-Shamir state with a matrix of field element.
 func (fs *GnarkFiatShamir) UpdateVec(mat ...[]frontend.Variable) {
 	for i := range mat {
 		fs.Update(mat[i]...)
 	}
 }
 
-// Returns a single valued fiat-shamir hash
+// RandomField returns a single valued fiat-shamir hash
 func (fs *GnarkFiatShamir) RandomField() frontend.Variable {
 	defer fs.safeguardUpdate()
 	return fs.hasher.Sum()
 }
 
-// Returns a vector of variable that will contain small integers
+// RandomManyIntegers returns a vector of variable that will contain small integers
 func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Variable {
-	defer fs.safeguardUpdate()
 
-	if !utils.IsPowerOfTwo(upperBound) {
-		utils.Panic("expected a power of two but got %v", upperBound)
+	// Even `1` would be wierd, there would be only one acceptable coin value.
+	if upperBound < 1 {
+		utils.Panic("UpperBound was %v", upperBound)
 	}
 
-	// Compute the number of bytes to generate the challenges in bits
-	challsBitSize := int(math.Ceil(math.Log2(float64(upperBound))))
+	if !utils.IsPowerOfTwo(upperBound) {
+		utils.Panic("Expected a power of two but got %v", upperBound)
+	}
 
-	/*
-		The function is done in a way that minimizes the number
-		of calls to the hash function. We try to extract as many
-		"ranged integer challenges" for each digest
+	if num == 0 {
+		return []frontend.Variable{}
+	}
 
-		Number of challenges computable with one call to hash
-		(implicitly, round it down)
-	*/
-	maxNumChallsPerDigest := field.Bits / int(challsBitSize)
+	defer fs.safeguardUpdate()
 
-	res := make([]frontend.Variable, 0, num)
-
-	challCount := 0
+	var (
+		// Compute the number of bytes to generate the challenges in bits
+		challsBitSize = int(math.Ceil(math.Log2(float64(upperBound))))
+		// Number of challenges computable with one call to hash (implicitly, the
+		// the division is rounded-down)
+		maxNumChallsPerDigest = (field.Bits - 1) / int(challsBitSize)
+		// res stores the function result
+		res = make([]frontend.Variable, 0, num)
+		// challCount stores the number of generated small integers
+		challCount = 0
+	)
 
 	for {
 		digest := fs.hasher.Sum()
@@ -94,10 +117,8 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 				return res
 			}
 
-			/*
-				Drains the first `challsBitSize` of the digestBits into
-				a new challenge to be returned.
-			*/
+			// Drains the first `challsBitSize` of the digestBits into
+			// a new challenge to be returned.
 			newChall := fs.api.FromBinary(digestBits[:challsBitSize]...)
 			digestBits = digestBits[challsBitSize:]
 			res = append(res, newChall)
@@ -117,8 +138,10 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 
 }
 
-// Update the stae as a safeguard. This way, if we query another
-// vector of integers just after. We do not get the same result.
+// safeguardUpdate updates the state as a safeguard by appending a field element
+// representing a "0". This is used every time a field element is consumed from
+// the hasher to ensure that the next field element will have a different
+// value.
 func (fs *GnarkFiatShamir) safeguardUpdate() {
 	fs.Update(0)
 }

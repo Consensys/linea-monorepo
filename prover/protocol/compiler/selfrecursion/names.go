@@ -3,11 +3,11 @@ package selfrecursion
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/ringsis"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/dedicated/sishashing"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Name of the polynomial I(x)
@@ -22,7 +22,7 @@ func (ctx *SelfRecursionCtx) ahName(key *ringsis.Key, start, length, maxSize int
 		utils.Panic("inconsistent arguments : %v + %v > %v", start, length, maxSize)
 	}
 
-	subName := sishashing.SisKeyName(key)
+	subName := ifaces.ColIDf("SISKEY_%v_%v_%v", key.LogTwoBound, key.LogTwoDegree, key.MaxNumFieldHashable())
 	return ifaces.ColIDf("%v_%v_%v_%v", subName, start, length, maxSize)
 }
 
@@ -32,34 +32,9 @@ func (ctx *SelfRecursionCtx) limbExpandedPreimageName(nameWhole ifaces.ColID) if
 	return ifaces.ColIDf("%v_LIMB_EXPANDED_%v", nameWhole, ctx.SelfRecursionCnt)
 }
 
-// Name of the merge coin
-func (ctx *SelfRecursionCtx) mergeCoinName() coin.Name {
-	return coin.Namef("SELFRECURSION_MERGE_COIN_%v", ctx.SelfRecursionCnt)
-}
-
-// Name of the A merge column
-func (ctx *SelfRecursionCtx) aMergeColName() string {
-	return fmt.Sprintf("SELFRECURSION_A_MERGE_%v", ctx.SelfRecursionCnt)
-}
-
-// Name of the A merge column
-func (ctx *SelfRecursionCtx) dMergeColName() string {
-	return fmt.Sprintf("SELFRECURSION_D_MERGE_%v", ctx.SelfRecursionCnt)
-}
-
-// Name of the DmergeQ column
-func (ctx *SelfRecursionCtx) dMergeQName() ifaces.ColID {
-	return ifaces.ColIDf("SELFRECURSION_D_MERGE_Q_%v", ctx.SelfRecursionCnt)
-}
-
 // Name of the UalphaQ column
 func (ctx *SelfRecursionCtx) uAlphaQName() ifaces.ColID {
 	return ifaces.ColIDf("SELFRECURSION_U_ALPHA_Q_%v", ctx.SelfRecursionCnt)
-}
-
-// Name of the squash coin
-func (ctx *SelfRecursionCtx) squashCoin() coin.Name {
-	return coin.Namef("SELFRECURSION_SQUASH_COIN_%v", ctx.SelfRecursionCnt)
 }
 
 // Name of the self-recursed inclusion query
@@ -94,7 +69,7 @@ func (ctx *SelfRecursionCtx) foldCoinName() coin.Name {
 	return coin.Namef("SELFRECURSION_FOLD_COIN_%v", ctx.SelfRecursionCnt)
 }
 
-// Name of the inner product between between PreimageCollapseFold and AmergeFold
+// Name of the inner product between between PreimageCollapseFold and ACollapseFold
 func (ctx *SelfRecursionCtx) preimagesAndAmergeIP() ifaces.QueryID {
 	return ifaces.QueryIDf("SELFRECURSION_PREIMAGE_A_IP_%v", ctx.SelfRecursionCnt)
 }
@@ -102,4 +77,44 @@ func (ctx *SelfRecursionCtx) preimagesAndAmergeIP() ifaces.QueryID {
 // Name of the interpolation context for Ualpha
 func (ctx *SelfRecursionCtx) interpolateUAlphaX() string {
 	return fmt.Sprintf("SELFRECURSION_INTERPOLATE_UALPHA_X_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the concatenation of the DhQs
+func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
+	return ifaces.ColIDf("SELFRECURSION_CONCAT_DHQ_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the MerkleLeaves
+func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
+	return ifaces.ColIDf("SELFRECURSION_MERKLE_LEAVES_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the MerklePositions
+func (ctx *SelfRecursionCtx) merklePositionssName() ifaces.ColID {
+	return ifaces.ColIDf("SELFRECURSION_MERKLE_POSITIONS_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the MerkleRoots
+func (ctx *SelfRecursionCtx) merkleRootsName() ifaces.ColID {
+	return ifaces.ColIDf("SELFRECURSION_MERKLE_ROOTS_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the Merkle proof verification
+func (ctx *SelfRecursionCtx) merkleProofVerificationName() string {
+	return fmt.Sprintf("SELFRECURSION_MERKLE_%v", ctx.SelfRecursionCnt)
+}
+
+// Name of the collapsed key
+func (ctx *SelfRecursionCtx) aCollapsedName() string {
+	return fmt.Sprintf("SELFRECURSION_ACOLLAPSE_%v", ctx.comp.SelfRecursionCount)
+}
+
+// Name of the collapsed key
+func (ctx *SelfRecursionCtx) rootHasGlue() ifaces.QueryID {
+	return ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.comp.SelfRecursionCount)
+}
+
+// Positions glue
+func (ctx *SelfRecursionCtx) positionGlue() ifaces.QueryID {
+	return ifaces.QueryIDf("SELFRECURSION_POSITION_GLUE_%v", ctx.comp.SelfRecursionCount)
 }

@@ -3,9 +3,9 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // It's a slice - zero padded up to a certain length - and rotated
@@ -242,8 +242,9 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 		// multiplying / adding
 		if isFirst {
 			isFirst = false
-			op.VecIntoTerm(unionWindow[start_:stop_], pcw.window, coeffs[i])
-			op.ConstIntoTerm(&paddedTerm, &pcw.paddingVal, coeffs[i])
+			op.vecIntoTerm(unionWindow[start_:stop_], pcw.window, coeffs[i])
+			// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
+			op.constIntoTerm(&paddedTerm, &pcw.paddingVal, coeffs[i])
 			vector.Fill(unionWindow[:start_], paddedTerm)
 			vector.Fill(unionWindow[stop_:], paddedTerm)
 			continue
@@ -257,15 +258,18 @@ func processWindowedOnly(op operator, svecs []SmartVector, coeffs_ []int) (res S
 			)
 		}
 
-		op.VecIntoVec(unionWindow[start_:stop_], pcw.window, coeffs[i])
+		op.vecIntoVec(unionWindow[start_:stop_], pcw.window, coeffs[i])
 
 		// Update the padded term
-		op.ConstIntoConst(&paddedTerm, &pcw.paddingVal, coeffs[i])
+		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
+		op.constIntoConst(&paddedTerm, &pcw.paddingVal, coeffs[i])
 
 		// Complete the left and the right-side of the window (i.e) the part
 		// of unionWindow that does not overlap with pcw.window.
-		op.ConstIntoVec(unionWindow[:start_], &pcw.paddingVal, coeffs[i])
-		op.ConstIntoVec(unionWindow[stop_:], &pcw.paddingVal, coeffs[i])
+		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
+		op.constIntoVec(unionWindow[:start_], &pcw.paddingVal, coeffs[i])
+		// #nosec G601 -- Deliberate pass by reference. (We trust the pointed object is not mutated)
+		op.constIntoVec(unionWindow[stop_:], &pcw.paddingVal, coeffs[i])
 	}
 
 	if smallestCover.isFullCircle() {
@@ -280,6 +284,8 @@ func (w *PaddedCircularWindow) DeepCopy() SmartVector {
 	return NewPaddedCircularWindow(window, w.paddingVal, w.offset, w.totLen)
 }
 
-func (*PaddedCircularWindow) AddRef() {}
-func (*PaddedCircularWindow) DecRef() {}
-func (*PaddedCircularWindow) Drop()   {}
+// Converts a smart-vector into a normal vec. The implementation minimizes
+// then number of copies.
+func (w *PaddedCircularWindow) IntoRegVecSaveAlloc() []field.Element {
+	return IntoRegVec(w)
+}

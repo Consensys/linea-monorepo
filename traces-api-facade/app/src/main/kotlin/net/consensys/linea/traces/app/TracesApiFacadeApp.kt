@@ -4,10 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Future
 import io.vertx.core.Vertx
-import io.vertx.core.VertxOptions
 import io.vertx.core.json.jackson.VertxModule
-import io.vertx.micrometer.MicrometerMetricsOptions
-import io.vertx.micrometer.VertxPrometheusOptions
 import io.vertx.micrometer.backends.BackendRegistries
 import net.consensys.linea.TracesConflationServiceV1Impl
 import net.consensys.linea.TracesCountingServiceV1Impl
@@ -15,9 +12,9 @@ import net.consensys.linea.traces.RawJsonTracesConflator
 import net.consensys.linea.traces.RawJsonTracesCounter
 import net.consensys.linea.traces.app.api.Api
 import net.consensys.linea.traces.app.api.ApiConfig
+import net.consensys.linea.traces.app.api.TracesSemanticVersionValidator
 import net.consensys.linea.traces.repository.FilesystemConflatedTracesRepository
 import net.consensys.linea.traces.repository.FilesystemTracesRepositoryV1
-import net.consensys.linea.traces.repository.ReadTracesCacheConfig
 import net.consensys.linea.vertx.loadVertxConfig
 import org.apache.logging.log4j.LogManager
 import java.nio.file.Files
@@ -26,9 +23,8 @@ import java.nio.file.Path
 data class AppConfig(
   val inputTracesDirectory: String,
   val outputTracesDirectory: String,
-  val tracesVersion: String,
+  val tracesApiVersion: String,
   val api: ApiConfig,
-  val readTracesCache: ReadTracesCacheConfig,
   val tracesFileExtension: String,
   // This is meant fo be false for local Debug only. Not in prod
   // Override in CLI with --Dconfig.override.conflated_trace_compression=false
@@ -43,18 +39,7 @@ class TracesApiFacadeApp(config: AppConfig) {
 
   init {
     log.debug("System properties: {}", System.getProperties())
-    val vertxConfigJson = loadVertxConfig(System.getProperty("vertx.configurationFile"))
-    log.info("Vertx custom configs: {}", vertxConfigJson)
-    val vertxConfig =
-      VertxOptions(vertxConfigJson)
-        .setMetricsOptions(
-          MicrometerMetricsOptions()
-            .setJvmMetricsEnabled(true)
-            .setPrometheusOptions(
-              VertxPrometheusOptions().setPublishQuantiles(true).setEnabled(true)
-            )
-            .setEnabled(true)
-        )
+    val vertxConfig = loadVertxConfig()
     log.debug("Vertx full configs: {}", vertxConfig)
     log.info("App configs: {}", config)
     validateConfig(config)
@@ -65,7 +50,6 @@ class TracesApiFacadeApp(config: AppConfig) {
         vertx,
         FilesystemTracesRepositoryV1.Config(
           Path.of(config.inputTracesDirectory),
-          config.tracesVersion,
           config.tracesFileExtension
         )
       )
@@ -74,7 +58,7 @@ class TracesApiFacadeApp(config: AppConfig) {
     // val cachedTracesRepository = CachedTracesRepository(tracesRepository, config.readTracesCache)
     val cachedTracesRepository = tracesRepository
     val jsonSerializerObjectMapper = jacksonObjectMapper().apply {
-      this.registerModule(VertxModule())
+      registerModule(VertxModule())
     }
     val conflatedTracesRepository =
       FilesystemConflatedTracesRepository(
@@ -86,16 +70,27 @@ class TracesApiFacadeApp(config: AppConfig) {
     val tracesCounterService =
       TracesCountingServiceV1Impl(
         cachedTracesRepository,
-        RawJsonTracesCounter(config.tracesVersion)
+        RawJsonTracesCounter(config.tracesApiVersion)
       )
     val tracesConflationService =
       TracesConflationServiceV1Impl(
         cachedTracesRepository,
-        RawJsonTracesConflator(config.tracesVersion),
+        RawJsonTracesConflator(config.tracesApiVersion),
         conflatedTracesRepository,
-        config.tracesVersion
+        config.tracesApiVersion
       )
-    this.api = Api(config.api, vertx, meterRegistry, tracesCounterService, tracesConflationService)
+    val semVerValidator = TracesSemanticVersionValidator(
+      TracesSemanticVersionValidator.SemanticVersion.fromString(config.tracesApiVersion)
+    )
+    this.api =
+      Api(
+        config.api,
+        vertx,
+        meterRegistry,
+        semVerValidator,
+        tracesCounterService,
+        tracesConflationService
+      )
   }
 
   fun start(): Future<*> {

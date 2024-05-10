@@ -8,23 +8,24 @@ import (
 	"sync"
 	"time"
 
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/variables"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/collection"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/gnarkutil"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/parallel"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/profiling"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,7 +36,27 @@ const (
 	QUOTIENT_POLY_TMPL              string = "QUOTIENT_DEG_%v_SHARE_%v"
 	EVALUATION_RANDOMESS            string = "EVALUATION_RANDOMNESS"
 	UNIVARIATE_EVAL_ALL_HANDLES     string = "UNIV_EVAL_ALL_HANDLES"
-	UNIVARIATE_EVAL_QUOTIENT_SHARES string = "UNIV_EVAL_QUOTIENT"
+	UNIVARIATE_EVAL_QUOTIENT_SHARES string = "UNIV_EVAL_QUOTIENT_%v_OVER_%v"
+
+	/*
+		Explanation for Manual Garbage Collection Thresholds
+	*/
+	// These two threshold work well for the real-world traces at the moment of writing and a 340GiB memory limit,
+	// but this approach can be generalized and further improved.
+
+	// When ctx.domainSize>=524288, proverEvaluationQueries() experiences a heavy workload,
+	// consistently hitting the GOMEMLIMIT of 340GiB.
+	// This results in numerous auto GCs during CPU-intensive small tasks, significantly degrading performance.
+	// In the benchmark input files, GC_DOMAIN_SIZE >= 524288 means only the first call of proverEvaluationQueries().
+	// With ctx.domainSize<=262144, manual GC is not necessary as auto GCs triggered by GOMEMLIMIT suffice.
+	GC_DOMAIN_SIZE int = 524288
+
+	// Auto GCs are triggered during ReEvaluate and Batch evaluation
+	// when len(handles) exceeds approximately 4000, causing performance degradation.
+	// This threshold is set to perform manual GCs before ReEvaluate and Batch evaluation
+	// only when len(handles) reaches a size substantial enough to trigger auto GC during ReEvaluate and Batch evaluation.
+	// Note that the value of GC_HANDLES_SIZE 4000 is derived from experience and analytics on the benchmark input files.
+	GC_HANDLES_SIZE int = 4000
 )
 
 // Compute profile
@@ -74,7 +95,7 @@ func CompileGlobal(comp *wizard.CompiledIOP) {
 	ctx.evaluationRandomness = comp.InsertCoin(initialNumRound+1, coin.Name(ctx.derivename(EVALUATION_RANDOMESS)), coin.Field)
 	ctx.allHandlesEval = comp.InsertUnivariate(initialNumRound+1, ifaces.QueryID(ctx.derivename(UNIVARIATE_EVAL_ALL_HANDLES)), ctx.allInvolvedHandles)
 	ctx.gatherQuotientHandles(comp)
-	ctx.quotientsEval = comp.InsertUnivariate(initialNumRound+1, ifaces.QueryID(ctx.derivename(UNIVARIATE_EVAL_QUOTIENT_SHARES)), ctx.quotientHandles)
+	ctx.declareUnivOnQuotient()
 
 	comp.SubProvers.AppendToInner(initialNumRound+1, ctx.proverEvaluationQueries(comp))
 	comp.InsertVerifier(initialNumRound+1, ctx.verifierStep, ctx.gnarkVerifierStep)
@@ -94,22 +115,22 @@ type pocGlobalCtx struct {
 	// Aggregate expressions by deg
 	aggregatesExpressions    []*symbolic.Expression
 	aggregateExpressionBoard []*symbolic.ExpressionBoard
+	maxNbNodesPerExpressions int
 	// Size of the domain expressions
 	domainSize int
 
-	handlePerRatio          [][]ifaces.Column
-	rootPerRatio            [][]ifaces.Column
-	allInvolvedHandles      []ifaces.Column
-	allInvolvedRoots        []ifaces.Column
-	allInvolvedHandlesIndex map[ifaces.ColID]int
+	handlePerRatio     [][]ifaces.Column
+	rootPerRatio       [][]ifaces.Column
+	allInvolvedHandles []ifaces.Column
+	allInvolvedRoots   []ifaces.Column
 
-	quotientHandles      []ifaces.Column
 	quotientShareHandles [][]ifaces.Column
 
 	// Coins
 	offsetRandomness, degreeRandomness, evaluationRandomness coin.Info
 	// UnivariateQueries
-	allHandlesEval, quotientsEval query.UnivariateEval
+	allHandlesEval query.UnivariateEval
+	quotientsEval  []query.UnivariateEval
 }
 
 // Sort the constraints in buckets indexed by the offset profile and the degree
@@ -197,6 +218,7 @@ func (ctx *pocGlobalCtx) aggregateConstraints() {
 
 	ctx.aggregatesExpressions = make([]*symbolic.Expression, len(ctx.ratioIndexes))
 	ctx.aggregateExpressionBoard = make([]*symbolic.ExpressionBoard, len(ctx.ratioIndexes))
+	maxNodeCount := 0
 
 	for i, ratio := range ctx.ratioIndexes {
 		sameRangeAggregates := make([]*symbolic.Expression, len(ctx.rangeIndexes[ratio]))
@@ -220,7 +242,12 @@ func (ctx *pocGlobalCtx) aggregateConstraints() {
 		ctx.aggregatesExpressions[i] = symbolic.NewPolyEval(ctx.degreeRandomness.AsVariable(), sameRangeAggregates)
 		board := ctx.aggregatesExpressions[i].Board()
 		ctx.aggregateExpressionBoard[i] = &board
+
+		// Tracks the largest node count in all aggregated expressions
+		maxNodeCount = utils.Max(maxNodeCount, board.CountNodes())
 	}
+
+	ctx.maxNbNodesPerExpressions = maxNodeCount
 }
 
 // Cancel an expression on a given range (given a domain)
@@ -313,12 +340,10 @@ func (ctx *pocGlobalCtx) organizeTheHandles(comp *wizard.CompiledIOP) {
 	ctx.handlePerRatio = handlePerRatio
 	ctx.rootPerRatio = rootsPerRatio
 	ctx.allInvolvedHandles = allInvolvedHandles
-	ctx.allInvolvedHandlesIndex = allInvolvedHandlesIndex
 	ctx.allInvolvedRoots = allInvolvedRoots
 }
 
 func (ctx *pocGlobalCtx) gatherQuotientHandles(comp *wizard.CompiledIOP) {
-	ctx.quotientHandles = make([]ifaces.Column, len(ctx.ratioIndexes))
 	ctx.quotientShareHandles = make([][]ifaces.Column, len(ctx.rangeIndexes))
 	for i, ratio := range ctx.ratioIndexes {
 		shareHandles := make([]ifaces.Column, ratio)
@@ -327,7 +352,6 @@ func (ctx *pocGlobalCtx) gatherQuotientHandles(comp *wizard.CompiledIOP) {
 				ifaces.ColID(ctx.derivename(quotientShareName(share, ratio))),
 			)
 		}
-		ctx.quotientHandles[i] = column.Interleave(shareHandles...)
 		ctx.quotientShareHandles[i] = shareHandles
 	}
 }
@@ -346,67 +370,74 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 
 		lock := sync.Mutex{}
 		lockRun := sync.Mutex{}
+		pool := mempool.Create(symbolic.MaxChunkSize).Prewarm(runtime.NumCPU() * ctx.maxNbNodesPerExpressions)
 
-		// Force the GC to run
-		tGc := time.Now()
-		runtime.GC()
-		totalTimeGc += time.Since(tGc).Milliseconds()
-		logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+		if ctx.domainSize >= GC_DOMAIN_SIZE {
+			// Force the GC to run
+			tGc := time.Now()
+			runtime.GC()
+			totalTimeGc += time.Since(tGc).Milliseconds()
+			logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+		}
 
-		// Compute once the FFT of the natural columns
-		parallel.ExecuteChunky(len(ctx.allInvolvedRoots), func(start, stop int) {
-			for k := start; k < stop; k++ {
-				pol := ctx.allInvolvedRoots[k]
-				name := pol.GetColID()
+		var wg sync.WaitGroup
+		wg.Add(2)
 
-				// gets directly a shallow copy in the map of the runtime
-				var witness sv.SmartVector
-				lockRun.Lock()
-				witness, isNatural := run.Columns.TryGet(name)
-				lockRun.Unlock()
+		go func() {
+			// Compute once the FFT of the natural columns
+			parallel.ExecuteChunky(len(ctx.allInvolvedRoots), func(start, stop int) {
+				for k := start; k < stop; k++ {
+					pol := ctx.allInvolvedRoots[k]
+					name := pol.GetColID()
 
-				// can happen if the column is verifier defined. In that case, no
-				// need to protect with a lock. This will not touch run.Columns.
-				if !isNatural {
-					witness = pol.GetColAssignment(run)
+					// gets directly a shallow copy in the map of the runtime
+					var witness sv.SmartVector
+					lockRun.Lock()
+					witness, isNatural := run.Columns.TryGet(name)
+					lockRun.Unlock()
+
+					// can happen if the column is verifier defined. In that case, no
+					// need to protect with a lock. This will not touch run.Columns.
+					if !isNatural {
+						witness = pol.GetColAssignment(run)
+					}
+					witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
+
+					lock.Lock()
+					coeffs[name] = witness
+					lock.Unlock()
 				}
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
+			})
+			wg.Done()
+		}()
 
-				lock.Lock()
-				coeffs[name] = witness
-				lock.Unlock()
-			}
-		})
+		go func() {
+			parallel.ExecuteChunky(len(ctx.allInvolvedHandles), func(start, stop int) {
+				for k := start; k < stop; k++ {
+					pol := ctx.allInvolvedHandles[k]
 
-		parallel.ExecuteChunky(len(ctx.allInvolvedHandles), func(start, stop int) {
-			for k := start; k < stop; k++ {
-				pol := ctx.allInvolvedHandles[k]
+					// short-path, the column is a shifted column of an already
+					// present columns rule out interleaved and repeated columns.
+					rootCols := column.RootParents(pol)
+					if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
+						// It was already processed by the above loop. Go on with the next entry
+						continue
+					}
 
-				// short-path, the column is a shifted column of an already
-				// present columns rule out interleaved and repeated columns.
-				rootCols := column.RootParents(pol)
-				if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
-					// It was already processed by the above loop. Go on with the next entry
-					continue
+					// normal case for interleaved or repeated columns
+					witness := pol.GetColAssignment(run)
+					witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
+					name := pol.GetColID()
+					lock.Lock()
+					coeffs[name] = witness
+					lock.Unlock()
 				}
+			})
+			wg.Done()
+		}()
 
-				// normal case for interleaved or repeated columns
-				witness := pol.GetColAssignment(run)
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
-				name := pol.GetColID()
-				lock.Lock()
-				coeffs[name] = witness
-				lock.Unlock()
-			}
-		})
-
+		wg.Wait()
 		stopTimer()
-
-		// Force the GC to run
-		tGc = time.Now()
-		runtime.GC()
-		totalTimeGc += time.Since(tGc).Milliseconds()
-		logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc).Milliseconds(), totalTimeGc)
 
 		// Take the max quotient degree
 		maxRatio := utils.Max(ctx.ratioIndexes...)
@@ -430,7 +461,9 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 
 		for i := 0; i < maxRatio; i++ {
 
-			computedReeval := map[ifaces.ColID]sv.SmartVector{}
+			// use sync map
+			computedReeval := sync.Map{}
+
 			stopTimer = profiling.LogTimer("Creation of omega")
 
 			/*
@@ -473,6 +506,14 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 				board := ctx.aggregateExpressionBoard[j]
 				metadatas := board.ListVariableMetadata()
 
+				if ctx.domainSize >= GC_DOMAIN_SIZE {
+					// Force the GC to run
+					tGc := time.Now()
+					runtime.GC()
+					totalTimeGc += time.Since(tGc).Milliseconds()
+					logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+				}
+
 				stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.domainSize, share, ratio)
 
 				parallel.ExecuteChunky(len(roots), func(start, stop int) {
@@ -480,9 +521,7 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 						root := roots[k]
 						name := root.GetColID()
 
-						lock.Lock()
-						_, found := computedReeval[name]
-						lock.Unlock()
+						_, found := computedReeval.Load(name)
 
 						if found {
 							// it was already computed in a previous iteration of `j`
@@ -492,10 +531,7 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 						// else it's the first value of j that sees it. so we compute the
 						// coset reevaluation.
 						reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share)
-						lock.Lock()
-						computedReeval[name] = reevaledRoot
-						lock.Unlock()
-
+						computedReeval.Store(name, reevaledRoot)
 					}
 				})
 
@@ -511,9 +547,7 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 							root := rootCols[0]
 							name := root.GetColID()
 
-							lock.Lock()
-							reevaledRoot, found := computedReeval[name]
-							lock.Unlock()
+							reevaledRoot, found := computedReeval.Load(name)
 
 							if !found {
 								// it is expected to computed in the above loop
@@ -528,19 +562,15 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 
 							if shifted, isShifted := pol.(column.Shifted); isShifted {
 								polName := pol.GetColID()
-								res := sv.SoftRotate(reevaledRoot, shifted.Offset)
-								lock.Lock()
-								computedReeval[polName] = res
-								lock.Unlock()
+								res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+								computedReeval.Store(polName, res)
 								continue
 							}
 
 						}
 
 						name := pol.GetColID()
-						lock.Lock()
-						_, ok := computedReeval[name]
-						lock.Unlock()
+						_, ok := computedReeval.Load(name)
 						if ok {
 							continue
 						}
@@ -549,19 +579,19 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 							utils.Panic("handle %v not found in the coeffs\n", name)
 						}
 						res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share)
-						lock.Lock()
-						computedReeval[name] = res
-						lock.Unlock()
+						computedReeval.Store(name, res)
 					}
 				})
 
 				stopTimer()
 
-				// Force the GC to run
-				tGc := time.Now()
-				runtime.GC()
-				totalTimeGc += time.Since(tGc).Milliseconds()
-				logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+				if len(handles) >= GC_HANDLES_SIZE {
+					// Force the GC to run
+					tGc := time.Now()
+					runtime.GC()
+					totalTimeGc += time.Since(tGc).Milliseconds()
+					logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+				}
 
 				stopTimer = profiling.LogTimer("Batch evaluation of %v pols of size %v (ratio is %v)", len(handles), ctx.domainSize, ratio)
 
@@ -570,31 +600,34 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 				for k, metadataInterface := range metadatas {
 					switch metadata := metadataInterface.(type) {
 					case ifaces.Column:
-						name := metadata.GetColID()
-						evalInputs[k] = computedReeval[name]
+						//name := metadata.GetColID()
+						//evalInputs[k] = computedReeval[name]
+						value, _ := computedReeval.Load(metadata.GetColID())
+						evalInputs[k] = value.(sv.SmartVector)
 					case coin.Info:
-						x := run.GetRandomCoinField(metadata.Name)
-						evalInputs[k] = sv.NewConstant(x, ctx.domainSize)
+						evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.domainSize)
 					case variables.X:
 						evalInputs[k] = metadata.EvalCoset(ctx.domainSize, i, maxRatio, true)
 					case variables.PeriodicSample:
 						evalInputs[k] = metadata.EvalCoset(ctx.domainSize, i, maxRatio, true)
-					case *ifaces.Accessor:
+					case ifaces.Accessor:
 						evalInputs[k] = sv.NewConstant(metadata.GetVal(run), ctx.domainSize)
 					default:
 						utils.Panic("Not a variable type %v", reflect.TypeOf(metadataInterface))
 					}
 				}
 
-				// Force the GC to run
-				tGc = time.Now()
-				runtime.GC()
-				totalTimeGc += time.Since(tGc).Milliseconds()
-				logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+				if len(handles) >= GC_HANDLES_SIZE {
+					// Force the GC to run
+					tGc := time.Now()
+					runtime.GC()
+					totalTimeGc += time.Since(tGc).Milliseconds()
+					logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+				}
 
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
-				quotientShare := ctx.aggregateExpressionBoard[j].Evaluate(evalInputs)
+				quotientShare := ctx.aggregateExpressionBoard[j].Evaluate(evalInputs, pool)
 				quotientShare = sv.ScalarMul(quotientShare, annulatorInvVals[i])
 				run.AssignColumn(ctx.quotientShareHandles[j][share].GetColID(), quotientShare)
 
@@ -603,15 +636,10 @@ func (ctx *pocGlobalCtx) proverComputeQuotient(comp *wizard.CompiledIOP) wizard.
 			}
 
 			// Forcefuly clean the memory for the computed reevals
-			for colname := range computedReeval {
-				computedReeval[colname] = nil
-			}
-
-			// Force the GC to run
-			tGc := time.Now()
-			runtime.GC()
-			totalTimeGc += time.Since(tGc).Milliseconds()
-			logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
+			computedReeval.Range(func(k, v interface{}) bool {
+				computedReeval.Delete(k)
+				return true
+			})
 		}
 
 	}
@@ -626,41 +654,63 @@ func (ctx *pocGlobalCtx) proverEvaluationQueries(comp *wizard.CompiledIOP) wizar
 		stoptimer := profiling.LogTimer("Evaluate the queries for the global constraints")
 		r := run.GetRandomCoinField(ctx.evaluationRandomness.Name)
 
+		witnesses := make([]sv.SmartVector, len(ctx.allInvolvedHandles))
 		// Compute the evaluations
-		ys := make([]field.Element, len(ctx.allInvolvedHandles))
-
-		parallel.ExecuteChunky(len(ctx.allInvolvedHandles), func(start, stop int) {
-			for k := start; k < stop; k++ {
-				handle := ctx.allInvolvedHandles[k]
+		parallel.Execute(len(ctx.allInvolvedHandles), func(start, stop int) {
+			for i := start; i < stop; i++ {
+				handle := ctx.allInvolvedHandles[i]
 				witness := handle.GetColAssignment(run)
-				ys[k] = sv.Interpolate(witness, r) // numcpus = 8 is empirical
+				witnesses[i] = witness
+
 			}
 		})
 
+		ys := sv.BatchInterpolate(witnesses, r)
 		run.AssignUnivariate(ctx.allHandlesEval.QueryID, r, ys...)
 
 		/*
 			For the quotient evaluate it on `x = r / g`, where g is the coset
 			shift. The generation of the domain is memoized.
 		*/
-		x := fft.NewDomain(ctx.domainSize * utils.Max(ctx.ratioIndexes...)).FrMultiplicativeGenInv
-		x.Mul(&x, &r)
 
-		quotientYs := make([]field.Element, len(ctx.quotientHandles))
+		var (
+			maxRatio          = utils.Max(ctx.ratioIndexes...)
+			mulGenInv         = fft.NewDomain(maxRatio * ctx.domainSize).FrMultiplicativeGenInv
+			rootInv           = fft.GetOmega(maxRatio * ctx.domainSize)
+			quotientEvalPoint field.Element
+			wg                = &sync.WaitGroup{}
+		)
 
-		parallel.Execute(len(ctx.quotientHandles), func(start, stop int) {
-			for i := start; i < stop; i++ {
-				quotient := ctx.quotientHandles[i].GetColAssignment(run)
-				quotientYs[i] = sv.Interpolate(quotient, x)
+		rootInv.Inverse(&rootInv)
+		quotientEvalPoint.Mul(&mulGenInv, &r)
 
-			}
-		})
+		for i := range ctx.quotientsEval {
+			wg.Add(1)
+			go func(i int, evalPoint field.Element) {
+				var (
+					q  = ctx.quotientsEval[i]
+					ys = make([]field.Element, len(q.Pols))
+				)
+
+				parallel.Execute(len(q.Pols), func(start, stop int) {
+					for i := start; i < stop; i++ {
+						c := q.Pols[i].GetColAssignment(run)
+						ys[i] = sv.Interpolate(c, evalPoint)
+					}
+				})
+
+				run.AssignUnivariate(q.Name(), evalPoint, ys...)
+				wg.Done()
+			}(i, quotientEvalPoint)
+			quotientEvalPoint.Mul(&quotientEvalPoint, &rootInv)
+		}
+
+		wg.Wait()
 
 		/*
 			as we shifted the evaluation point. No need to do do coset evaluation
 			here
 		*/
-		run.AssignUnivariate(ctx.quotientsEval.QueryID, x, quotientYs...)
 		stoptimer()
 	}
 }
@@ -668,15 +718,20 @@ func (ctx *pocGlobalCtx) proverEvaluationQueries(comp *wizard.CompiledIOP) wizar
 // Verifier step, evaluate the constraint and checks that
 func (ctx *pocGlobalCtx) verifierStep(run *wizard.VerifierRuntime) error {
 
-	// Will be assigned to "X", the random point at which we check the constraint.
-	r := run.GetRandomCoinField(ctx.evaluationRandomness.Name)
+	var (
+		// Will be assigned to "X", the random point at which we check the constraint.
+		r = run.GetRandomCoinField(ctx.evaluationRandomness.Name)
+		// Map all the evaluations and checks the evaluations points
+		mapYs = make(map[ifaces.ColID]field.Element)
+		// Get the parameters
+		params           = run.GetUnivariateParams(ctx.allHandlesEval.QueryID)
+		univQuery        = run.GetUnivariateEval(ctx.allHandlesEval.QueryID)
+		quotientYs, errQ = ctx.recombineQuotientSharesEvaluation(run, r)
+	)
 
-	// Map all the evaluations and checks the evaluations points
-	mapYs := make(map[ifaces.ColID]field.Element)
-
-	// Get the parameters
-	params := run.GetUnivariateParams(ctx.allHandlesEval.QueryID)
-	univQuery := run.GetUnivariateEval(ctx.allHandlesEval.QueryID)
+	if errQ != nil {
+		return fmt.Errorf("invalid evaluation point for the quotients: %v", errQ.Error())
+	}
 
 	// Check the evaluation point is consistent with r
 	if params.X != r {
@@ -712,7 +767,7 @@ func (ctx *pocGlobalCtx) verifierStep(run *wizard.VerifierRuntime) error {
 				evalInputs[k] = sv.NewConstant(r, 1)
 			case variables.PeriodicSample:
 				evalInputs[k] = sv.NewConstant(metadata.EvalAtOutOfDomain(ctx.domainSize, r), 1)
-			case *ifaces.Accessor:
+			case ifaces.Accessor:
 				evalInputs[k] = sv.NewConstant(metadata.GetVal(run), 1)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
@@ -722,7 +777,7 @@ func (ctx *pocGlobalCtx) verifierStep(run *wizard.VerifierRuntime) error {
 		left := board.Evaluate(evalInputs).Get(0)
 
 		// right : r^{n}-1 Q(r)
-		qr := run.QueriesParams.MustGet(ctx.quotientsEval.QueryID).(query.UnivariateEvalParams).Ys[i]
+		qr := quotientYs[i]
 		var right field.Element
 		right.Mul(&annulator, &qr)
 
@@ -741,6 +796,7 @@ func (ctx *pocGlobalCtx) gnarkVerifierStep(api frontend.API, c *wizard.WizardVer
 	r := c.GetRandomCoinField(ctx.evaluationRandomness.Name)
 	annulator := gnarkutil.Exp(api, r, ctx.domainSize)
 	annulator = api.Sub(annulator, frontend.Variable(1))
+	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
 
 	// Get the parameters
 	params := c.GetUnivariateParams(ctx.allHandlesEval.QueryID)
@@ -772,7 +828,7 @@ func (ctx *pocGlobalCtx) gnarkVerifierStep(api frontend.API, c *wizard.WizardVer
 				evalInputs[k] = r
 			case variables.PeriodicSample:
 				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.domainSize, r)
-			case *ifaces.Accessor:
+			case ifaces.Accessor:
 				evalInputs[k] = metadata.GetFrontendVariable(api, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
@@ -782,8 +838,7 @@ func (ctx *pocGlobalCtx) gnarkVerifierStep(api frontend.API, c *wizard.WizardVer
 		left := board.GnarkEval(api, evalInputs)
 
 		// right : r^{n}-1 Q(r)
-		ys := c.GetUnivariateParams(ctx.quotientsEval.QueryID).Ys
-		qr := ys[i]
+		qr := quotientYs[i]
 		right := api.Mul(annulator, qr)
 
 		api.AssertIsEqual(left, right)
@@ -807,7 +862,7 @@ func GetDegree(size int) func(iface interface{}) int {
 			// The size gives the number of coefficients , but we return the degree
 			// hence the - 1
 			return v.Size() - 1
-		case coin.Info, *ifaces.Accessor:
+		case coin.Info, ifaces.Accessor:
 			// Coins are treated
 			return 0
 		case variables.X:
@@ -824,4 +879,207 @@ func GetDegree(size int) func(iface interface{}) int {
 func (ctx *pocGlobalCtx) derivename(s string, args ...any) string {
 	fmts := fmt.Sprintf(s, args...)
 	return fmt.Sprintf("%v_%v_%v", GLOBAL_REDUCTION, ctx.comp.SelfRecursionCount, fmts)
+}
+
+// declareUnivOnQuotient declares the univariate queries over all the quotient
+// shares, making sure that the shares needing to be evaluated over the same
+// point are in the same query. This is a req from the upcoming naturalization
+// compiler.
+func (ctx *pocGlobalCtx) declareUnivOnQuotient() {
+
+	var (
+		round       = ctx.quotientShareHandles[0][0].Round()
+		maxRatio    = utils.Max(ctx.ratioIndexes...)
+		queriesPols = make([][]ifaces.Column, maxRatio)
+	)
+
+	for i, ratio := range ctx.ratioIndexes {
+		var (
+			jumpBy = maxRatio / ratio
+		)
+		for j := range ctx.quotientShareHandles[i] {
+			queriesPols[j*jumpBy] = append(queriesPols[j*jumpBy], ctx.quotientShareHandles[i][j])
+		}
+	}
+
+	ctx.quotientsEval = make([]query.UnivariateEval, maxRatio)
+
+	for i := range queriesPols {
+		ctx.quotientsEval[i] = ctx.comp.InsertUnivariate(
+			round+1,
+			ifaces.QueryID(ctx.derivename(UNIVARIATE_EVAL_QUOTIENT_SHARES, i, maxRatio)),
+			queriesPols[i],
+		)
+	}
+}
+
+// recombineQuotientSharesEvaluation returns the evaluations of the quotients
+// on point r
+func (ctx pocGlobalCtx) recombineQuotientSharesEvaluation(run *wizard.VerifierRuntime, r field.Element) ([]field.Element, error) {
+
+	var (
+		// res stores the list of the recombined quotient evaluations for each
+		// combination.
+		recombinedYs = make([]field.Element, len(ctx.ratioIndexes))
+		// ys stores the values of the quotient shares ordered by ratio
+		qYs      = make([][]field.Element, utils.Max(ctx.ratioIndexes...))
+		maxRatio = utils.Max(ctx.ratioIndexes...)
+		// shiftedR = r / g where g is the generator of the multiplicative group
+		shiftedR field.Element
+		// mulGen is the generator of the multiplicative group
+		mulGenInv = fft.NewDomain(maxRatio * ctx.domainSize).FrMultiplicativeGenInv
+		// omegaN is a root of unity generating the domain of size `domainSize
+		// * maxRatio`
+		omegaN = fft.GetOmega(ctx.domainSize * maxRatio)
+	)
+
+	shiftedR.Mul(&r, &mulGenInv)
+
+	for i, q := range ctx.quotientsEval {
+		params := run.GetUnivariateParams(q.Name())
+		qYs[i] = params.Ys
+
+		// Check that the provided value for x is the right one
+		providedX := params.X
+		var expectedX field.Element
+		expectedX.Inverse(&omegaN)
+		expectedX.Exp(expectedX, big.NewInt(int64(i)))
+		expectedX.Mul(&expectedX, &shiftedR)
+		if providedX != expectedX {
+			return nil, fmt.Errorf("bad X value")
+		}
+	}
+
+	for i, ratio := range ctx.ratioIndexes {
+		var (
+			jumpBy = maxRatio / ratio
+			ys     = make([]field.Element, ratio)
+		)
+
+		for j := range ctx.quotientShareHandles[i] {
+			ys[j] = qYs[j*jumpBy][0]
+			qYs[j*jumpBy] = qYs[j*jumpBy][1:]
+		}
+
+		var (
+			m          = ctx.domainSize
+			n          = ctx.domainSize * ratio
+			omegaRatio = fft.GetOmega(ratio)
+			rPowM      field.Element
+			// outerFactor stores m/n*(r^n - 1)
+			outerFactor   = shiftedR
+			one           = field.One()
+			omegaRatioInv field.Element
+			res           field.Element
+			ratioInvField = field.NewElement(uint64(ratio))
+		)
+
+		rPowM.Exp(shiftedR, big.NewInt(int64(m)))
+		ratioInvField.Inverse(&ratioInvField)
+		omegaRatioInv.Inverse(&omegaRatio)
+
+		for k := range ys {
+
+			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
+			var tmp field.Element
+			tmp.Exp(omegaRatioInv, big.NewInt(int64(k)))
+			tmp.Mul(&tmp, &rPowM)
+			tmp.Sub(&tmp, &one)
+			tmp.Div(&ys[k], &tmp)
+
+			res.Add(&res, &tmp)
+		}
+
+		outerFactor.Exp(shiftedR, big.NewInt(int64(n)))
+		outerFactor.Sub(&outerFactor, &one)
+		outerFactor.Mul(&outerFactor, &ratioInvField)
+		res.Mul(&res, &outerFactor)
+		recombinedYs[i] = res
+	}
+
+	return recombinedYs, nil
+}
+
+// recombineQuotientSharesEvaluation returns the evaluations of the quotients
+// on point r
+func (ctx pocGlobalCtx) recombineQuotientSharesEvaluationGnark(api frontend.API, run *wizard.WizardVerifierCircuit, r frontend.Variable) []frontend.Variable {
+
+	var (
+		// res stores the list of the recombined quotient evaluations for each
+		// combination.
+		recombinedYs = make([]frontend.Variable, len(ctx.ratioIndexes))
+		// ys stores the values of the quotient shares ordered by ratio
+		qYs      = make([][]frontend.Variable, utils.Max(ctx.ratioIndexes...))
+		maxRatio = utils.Max(ctx.ratioIndexes...)
+		// shiftedR = r / g where g is the generator of the multiplicative group
+		shiftedR frontend.Variable
+		// mulGen is the generator of the multiplicative group
+		mulGenInv = fft.NewDomain(maxRatio * ctx.domainSize).FrMultiplicativeGenInv
+		// omegaN is a root of unity generating the domain of size `domainSize
+		// * maxRatio`
+		omegaN = fft.GetOmega(ctx.domainSize * maxRatio)
+	)
+
+	shiftedR = api.Mul(r, mulGenInv)
+
+	for i, q := range ctx.quotientsEval {
+		params := run.GetUnivariateParams(q.Name())
+		qYs[i] = params.Ys
+
+		// Check that the provided value for x is the right one
+		providedX := params.X
+		var expectedX frontend.Variable
+		expectedX = api.Inverse(omegaN)
+		expectedX = gnarkutil.Exp(api, expectedX, i)
+		expectedX = api.Mul(expectedX, shiftedR)
+		api.AssertIsEqual(providedX, expectedX)
+	}
+
+	for i, ratio := range ctx.ratioIndexes {
+		var (
+			jumpBy = maxRatio / ratio
+			ys     = make([]frontend.Variable, ratio)
+		)
+
+		for j := range ctx.quotientShareHandles[i] {
+			ys[j] = qYs[j*jumpBy][0]
+			qYs[j*jumpBy] = qYs[j*jumpBy][1:]
+		}
+
+		var (
+			m          = ctx.domainSize
+			n          = ctx.domainSize * ratio
+			omegaRatio = fft.GetOmega(ratio)
+			// outerFactor stores m/n*(r^n - 1)
+			one           = field.One()
+			omegaRatioInv field.Element
+			res           = frontend.Variable(0)
+			ratioInvField = field.NewElement(uint64(ratio))
+		)
+
+		rPowM := gnarkutil.Exp(api, shiftedR, m)
+		ratioInvField.Inverse(&ratioInvField)
+		omegaRatioInv.Inverse(&omegaRatio)
+
+		for k := range ys {
+
+			// tmp stores ys[k] / ((r^m / omegaRatio^k) - 1)
+			var omegaInvPowK field.Element
+			omegaInvPowK.Exp(omegaRatioInv, big.NewInt(int64(k)))
+			tmp := api.Mul(omegaInvPowK, rPowM)
+			tmp = api.Sub(tmp, one)
+			tmp = api.Div(ys[k], tmp)
+
+			res = api.Add(res, tmp)
+		}
+
+		outerFactor := gnarkutil.Exp(api, shiftedR, n)
+		outerFactor = api.Sub(outerFactor, one)
+		outerFactor = api.Mul(outerFactor, ratioInvField)
+		res = api.Mul(res, outerFactor)
+		recombinedYs[i] = res
+	}
+
+	return recombinedYs
+
 }

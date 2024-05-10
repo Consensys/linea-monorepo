@@ -3,11 +3,10 @@ package fastpoly_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/matrix"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft/fastpoly"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 
 	"github.com/stretchr/testify/require"
 )
@@ -73,26 +72,6 @@ func TestMulitplication(t *testing.T) {
 
 		require.Equal(t, vector.Prettify(res[1:]), vector.Prettify(vecBackup[:n-1]))
 		require.Equal(t, res[0].String(), vecBackup[n-1].String())
-
-	}
-
-	// Consistency between batching and non-batching
-	{
-		precomp := vector.Rand(n)
-		rand := vector.Rand(n)
-		nSamples := 10
-
-		randMat := matrix.RepeatSubslice(rand, nSamples)
-		randMat = matrix.Transpose(randMat)
-		resMat := matrix.Zeroes(n, nSamples)
-		res := make([]field.Element, n)
-
-		fastpoly.BatchMultModXnMinus1Precomputed(domain, resMat, randMat, precomp)
-		fastpoly.MultModXnMinus1Precomputed(domain, res, rand, precomp)
-
-		resBis := matrix.Transpose(resMat)[0]
-
-		require.Equal(t, vector.Prettify(res), vector.Prettify(resBis))
 
 	}
 }

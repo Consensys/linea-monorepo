@@ -7,18 +7,18 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFFTFuzzyDIFDIT(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -54,10 +54,10 @@ func TestFFTFuzzyDIFDIT(t *testing.T) {
 
 func TestFFTFuzzyDITDIF(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -93,10 +93,10 @@ func TestFFTFuzzyDITDIF(t *testing.T) {
 
 func TestFFTFuzzyDIFDITBitReverse(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -132,10 +132,10 @@ func TestFFTFuzzyDIFDITBitReverse(t *testing.T) {
 
 func TestFFTFuzzyDITDIFBitReverse(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -171,10 +171,10 @@ func TestFFTFuzzyDITDIFBitReverse(t *testing.T) {
 
 func TestFFTFuzzyEvaluation(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(
@@ -223,10 +223,10 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 
 func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 
-	for i := 0; i < FUZZ_ITERATION; i++ {
+	for i := 0; i < fuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := NewTestBuilder(i)
+		builder := newTestBuilder(i)
 		tcase := builder.NewTestCaseForLinComb()
 
 		success := t.Run(

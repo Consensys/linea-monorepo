@@ -40,6 +40,17 @@ val MODULES = listOf(
   Pair(listOf("hub"), Hub::class.java)
 )
 
+interface EVMTracesState {
+  fun cleanState() {
+    for (field in this.javaClass.declaredFields) {
+      field.isAccessible = true
+      if (field.type == MutableList::class.java) {
+        field.set(this, mutableListOf<String>())
+      }
+    }
+  }
+}
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class Hub(
   @get:JsonProperty("ALPHA")
@@ -424,7 +435,7 @@ data class EcData(
   val WCP_INST: MutableList<String> = arrayListOf(),
   @get:JsonProperty("WCP_RES")
   val WCP_RES: MutableList<String> = arrayListOf()
-)
+) : EVMTracesState
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class Ext(

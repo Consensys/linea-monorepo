@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 

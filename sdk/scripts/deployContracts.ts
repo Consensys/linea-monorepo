@@ -1,17 +1,16 @@
-import { Contract, ContractFactory, Wallet, ethers } from "ethers";
+import { BaseContract, ContractFactory, JsonRpcProvider, Wallet, ethers } from "ethers";
 import { config } from "dotenv";
 import fs from "fs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { JsonRpcProvider } from "@ethersproject/providers";
 import {
   ZkEvmV2__factory,
   TransparentUpgradeableProxy__factory,
   ProxyAdmin__factory,
   PlonkVerifier__factory,
   L2MessageService__factory,
-} from "../src/typechain/factories";
-import { ProxyAdmin } from "../src/typechain/ProxyAdmin";
+} from "../src/clients/blockchain/typechain/factories";
+import { ProxyAdmin } from "../src/clients/blockchain/typechain/ProxyAdmin";
 import { sanitizePrivKey } from "./cli";
 
 config();
@@ -41,10 +40,10 @@ const argv = yargs(hideBin(process.argv))
   })
   .parseSync();
 
-const getInitializerData = (contractInterface: ethers.utils.Interface, args: unknown[]) => {
+const getInitializerData = (contractInterface: ethers.Interface, args: unknown[]) => {
   const initializer = "initialize";
   const fragment = contractInterface.getFunction(initializer);
-  return contractInterface.encodeFunctionData(fragment, args);
+  return contractInterface.encodeFunctionData(fragment!, args);
 };
 
 const deployUpgradableContract = async <T extends ContractFactory>(
@@ -52,52 +51,53 @@ const deployUpgradableContract = async <T extends ContractFactory>(
   deployer: Wallet,
   admin: ProxyAdmin,
   initializerData = "0x",
-): Promise<Contract> => {
+): Promise<BaseContract> => {
   const instance = await contractFactory.connect(deployer).deploy();
-  await instance.deployed();
+  await instance.waitForDeployment();
 
   const proxy = await new TransparentUpgradeableProxy__factory()
     .connect(deployer)
-    .deploy(instance.address, admin.address, initializerData);
-  await proxy.deployed();
+    .deploy(await instance.getAddress(), await admin.getAddress(), initializerData);
+  await proxy.waitForDeployment();
 
-  return instance.attach(proxy.address);
+  return instance.attach(await proxy.getAddress());
 };
 
-const deployZkEvmV2 = async (deployer: Wallet): Promise<{ zkevmV2ContractAddress: string }> => {
+const deployLineaRollup = async (deployer: Wallet): Promise<{ zkevmV2ContractAddress: string }> => {
   const proxyFactory = new ProxyAdmin__factory(deployer);
   const proxyAdmin = await proxyFactory.connect(deployer).deploy();
-  await proxyAdmin.deployed();
-  console.log(`ProxyAdmin contract deployed at address: ${proxyAdmin.address}`);
+  await proxyAdmin.waitForDeployment();
+  console.log(`ProxyAdmin contract deployed at address: ${await proxyAdmin.getAddress()}`);
 
   const plonkVerifierFactory = new PlonkVerifier__factory(deployer);
   const plonkVerifier = await plonkVerifierFactory.deploy();
-  await plonkVerifier.deployed();
-  console.log(`PlonkVerifier contract deployed at address: ${plonkVerifier.address}`);
+  await plonkVerifier.waitForDeployment();
+  console.log(`PlonkVerifier contract deployed at address: ${await plonkVerifier.getAddress()}`);
 
   const zkevmV2Contract = await deployUpgradableContract(
     new ZkEvmV2__factory(deployer),
     deployer,
     proxyAdmin,
     getInitializerData(ZkEvmV2__factory.createInterface(), [
-      ethers.constants.HashZero,
+      ethers.ZeroHash,
       0,
-      plonkVerifier.address,
+      await plonkVerifier.getAddress(),
       deployer.address,
       [deployer.address],
       86400,
-      ethers.utils.parseEther("5"),
+      ethers.parseEther("5"),
     ]),
   );
-  console.log(`ZkEvmV2 contract deployed at address: ${zkevmV2Contract.address}`);
-  return { zkevmV2ContractAddress: zkevmV2Contract.address };
+  const zkEvmV2Address = await zkevmV2Contract.getAddress();
+  console.log(`ZkEvmV2 contract deployed at address: ${zkEvmV2Address}`);
+  return { zkevmV2ContractAddress: zkEvmV2Address };
 };
 
 const deployL2MessageService = async (deployer: Wallet): Promise<string> => {
   const proxyFactory = new ProxyAdmin__factory(deployer);
   const proxyAdmin = await proxyFactory.connect(deployer).deploy();
-  await proxyAdmin.deployed();
-  console.log(`L2 ProxyAdmin contract deployed at address: ${proxyAdmin.address}`);
+  await proxyAdmin.waitForDeployment();
+  console.log(`L2 ProxyAdmin contract deployed at address: ${await proxyAdmin.getAddress()}`);
 
   const l2MessageService = await deployUpgradableContract(
     new L2MessageService__factory(deployer),
@@ -107,11 +107,12 @@ const deployL2MessageService = async (deployer: Wallet): Promise<string> => {
       deployer.address,
       deployer.address,
       86400,
-      ethers.utils.parseEther("5"),
+      ethers.parseEther("5"),
     ]),
   );
-  console.log(`L2MessageService contract deployed at address: ${l2MessageService.address}`);
-  return l2MessageService.address;
+  const l2MessageServiceAddress = await l2MessageService.getAddress();
+  console.log(`L2MessageService contract deployed at address: ${l2MessageServiceAddress}`);
+  return l2MessageServiceAddress;
 };
 
 const main = async (args: typeof argv) => {
@@ -122,12 +123,12 @@ const main = async (args: typeof argv) => {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const l2Deployer = new Wallet(args.l2DeployerPrivKey, l2Provider);
 
-  const { zkevmV2ContractAddress } = await deployZkEvmV2(l1Deployer);
+  const { zkevmV2ContractAddress } = await deployLineaRollup(l1Deployer);
   const l2MessageServiceAddress = await deployL2MessageService(l2Deployer);
 
   const tx = await l2Deployer.sendTransaction({
     to: l2MessageServiceAddress,
-    value: ethers.utils.parseEther("1000"),
+    value: ethers.parseEther("1000"),
     data: "0x",
   });
 
@@ -135,7 +136,7 @@ const main = async (args: typeof argv) => {
 
   const tx2 = await l1Deployer.sendTransaction({
     to: zkevmV2ContractAddress,
-    value: ethers.utils.parseEther("1000"),
+    value: ethers.parseEther("1000"),
     data: "0x",
   });
 

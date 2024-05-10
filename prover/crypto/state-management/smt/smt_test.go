@@ -3,15 +3,16 @@ package smt_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/smt"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
-// Deterministically creates random digests
-func RandDigest(pos int) smt.Digest {
-	res := smt.Digest{}
+// Deterministically creates random Bytes32s
+func RandBytes32(pos int) Bytes32 {
+	res := Bytes32{}
 	for i := range res {
 		res[i] = byte(pos ^ (i + pos*156) ^ (pos + i*256) ^ (i * pos))
 	}
@@ -31,7 +32,7 @@ func TestTreeInitialization(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		x := tree.GetLeaf(pos)
+		x, _ := tree.GetLeaf(pos)
 		require.Equal(t, x, smt.EmptyLeaf())
 	}
 }
@@ -46,15 +47,15 @@ func TestTreeUpdateLeaf(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid digest
-		newLeaf := RandDigest(pos)
+		// Make a valid Bytes32
+		newLeaf := RandBytes32(pos)
 		tree.Update(pos, newLeaf)
-		recovered := tree.GetLeaf(pos)
+		recovered, _ := tree.GetLeaf(pos)
 		require.Equal(t, newLeaf, recovered)
 	}
 }
 
-func TestMerkleProof(t *testing.T) {
+func TestMerkleProofNative(t *testing.T) {
 	config := &smt.Config{
 		HashFunc: hashtypes.Keccak,
 		Depth:    40,
@@ -64,9 +65,9 @@ func TestMerkleProof(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		// Make a valid digest
-		oldLeaf := tree.GetLeaf(pos)
-		proof := tree.Prove(pos)
+		// Make a valid Bytes32
+		oldLeaf, _ := tree.GetLeaf(pos)
+		proof, _ := tree.Prove(pos)
 
 		// Directly verify the proof
 		valid := proof.Verify(config, oldLeaf, tree.Root)
@@ -84,11 +85,11 @@ func TestMerkleProofWithUpdate(t *testing.T) {
 
 	// Only contains empty leaves
 	for pos := 0; pos < 1000; pos++ {
-		proof := tree.Prove(pos)
+		proof, _ := tree.Prove(pos)
 
 		// Updat the leaf with a random-looking value before
 		// checking the proof
-		newLeaf := RandDigest(pos)
+		newLeaf := RandBytes32(pos)
 		tree.Update(pos, newLeaf)
 
 		// After updating the old proof should still be valid
@@ -105,11 +106,11 @@ func TestBuildFromScratch(t *testing.T) {
 		Depth:    10,
 	}
 
-	// Generate random field elements and cast them into digestes
+	// Generate random field elements and cast them into Bytes32es
 	leavesFr := vector.Rand(1 << config.Depth)
-	leaves := make([]smt.Digest, len(leavesFr))
+	leaves := make([]Bytes32, len(leavesFr))
 	for i := range leaves {
-		leaves[i] = smt.Digest(leavesFr[i].Bytes())
+		leaves[i] = Bytes32(leavesFr[i].Bytes())
 	}
 
 	// And generate the
@@ -117,7 +118,7 @@ func TestBuildFromScratch(t *testing.T) {
 
 	// Test-Merkle tests the merkle proof point by point
 	for i := range leaves {
-		proof := tree.Prove(i)
+		proof, _ := tree.Prove(i)
 		ok := proof.Verify(config, leaves[i], tree.Root)
 
 		if !ok {

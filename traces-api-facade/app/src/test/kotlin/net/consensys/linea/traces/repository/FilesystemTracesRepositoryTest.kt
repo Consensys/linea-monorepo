@@ -1,12 +1,10 @@
 package net.consensys.linea.traces.repository
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
 import net.consensys.linea.ErrorType
-import net.consensys.linea.traces.TracingModule
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -14,8 +12,9 @@ import kotlin.io.path.Path
 
 class FilesystemTracesRepositoryTest {
   private val tracesDirectory = Path("../../testdata/traces/raw")
-  private val fakeTraces: JsonObject = JsonObject().put(TracingModule.ADD.name, JsonArray())
+  private val fakeTraces: String = """{"ADD":[]}"""
   private lateinit var repository: FilesystemTracesRepository
+  private val objectMapper = ObjectMapper()
 
   @BeforeEach
   fun beforeEach() {
@@ -39,7 +38,6 @@ class FilesystemTracesRepositoryTest {
 
     assertThat(result).isInstanceOf(Ok::class.java)
     result as Ok
-    assertThat(result.value.blockNumber).isEqualTo(13673u.toULong())
-    assertThat(result.value.traces).isEqualTo(fakeTraces)
+    assertThat(result.value).isEqualTo(fakeTraces)
   }
 }

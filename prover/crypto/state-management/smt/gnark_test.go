@@ -3,16 +3,17 @@ package smt
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/state-management/hashtypes"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 
-func getMerkleProof(t *testing.T) ([]Proof, []hashtypes.Digest, hashtypes.Digest) {
+func getMerkleProof(t *testing.T) ([]Proof, []Bytes32, Bytes32) {
 
 	config := &Config{
 		HashFunc: hashtypes.MiMC,
@@ -24,12 +25,12 @@ func getMerkleProof(t *testing.T) ([]Proof, []hashtypes.Digest, hashtypes.Digest
 	// Only contains empty leaves
 	nbProofs := 1
 	proofs := make([]Proof, nbProofs)
-	leafs := make([]hashtypes.Digest, nbProofs)
+	leafs := make([]Bytes32, nbProofs)
 	for pos := 0; pos < nbProofs; pos++ {
 
-		// Make a valid digest
-		leafs[pos] = tree.GetLeaf(pos)
-		proofs[pos] = tree.Prove(pos)
+		// Make a valid Bytes32
+		leafs[pos], _ = tree.GetLeaf(pos)
+		proofs[pos], _ = tree.Prove(pos)
 
 		// Directly verify the proof
 		valid := proofs[pos].Verify(config, leafs[pos], tree.Root)
@@ -40,8 +41,8 @@ func getMerkleProof(t *testing.T) ([]Proof, []hashtypes.Digest, hashtypes.Digest
 }
 
 type MerkleProofCircuit struct {
-	Proofs []GnarkProof        `gnark:"public"`
-	Leafs  []frontend.Variable `gnark:"public"`
+	Proofs []GnarkProof        `gnark:",public"`
+	Leafs  []frontend.Variable `gnark:",public"`
 	Root   frontend.Variable
 }
 
@@ -57,7 +58,7 @@ func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-func TestMerkleProof(t *testing.T) {
+func TestMerkleProofGnark(t *testing.T) {
 
 	// generate witness
 	proofs, leafs, root := getMerkleProof(t)
@@ -86,13 +87,13 @@ func TestMerkleProof(t *testing.T) {
 	for i := 0; i < nbProofs; i++ {
 		circuit.Proofs[i].Siblings = make([]frontend.Variable, len(proofs[i].Siblings))
 	}
-	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BN254.ScalarField())
+	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		t.Fatal(err)
 	}

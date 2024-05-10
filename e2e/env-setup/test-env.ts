@@ -13,7 +13,7 @@ export class TestEnvironment {
     this.dockerEnvironment = await new DockerComposeEnvironment(composeFilePath, composeFile)
       .withProfiles("l1", "l2")
       .withWaitStrategy(
-        "l1-validator",
+        "l1-el-node",
         Wait.forAll([Wait.forLogMessage("HTTP server started"), Wait.forLogMessage("WebSocket enabled")]),
       )
       .withWaitStrategy(
@@ -24,14 +24,8 @@ export class TestEnvironment {
         "traces-node",
         Wait.forAll([Wait.forLogMessage("HTTP server started"), Wait.forLogMessage("WebSocket enabled")]),
       )
-      .withWaitStrategy(
-        "postgres",
-        Wait.forHealthCheck()
-      )
-      .withWaitStrategy(
-        "coordinator",
-        Wait.forAll([Wait.forLogMessage("CoordinatorApp - Waiting for block number")])
-      )
+      .withWaitStrategy("postgres", Wait.forHealthCheck())
+      .withWaitStrategy("coordinator", Wait.forAll([Wait.forLogMessage("CoordinatorApp - Waiting for block number")]))
       .up();
     console.log("Tests environment started.");
   }
@@ -42,7 +36,7 @@ export class TestEnvironment {
     console.log("Tests environment stopped.");
   }
 
-  public async restartCoordinator(localSetup: Boolean): Promise<void> {
+  public async restartCoordinator(localSetup: boolean): Promise<void> {
     console.log("Restarting coordinator...");
     if (localSetup) {
       await Promise.all([this.dockerEnvironment.getContainer("coordinator").restart()]);
@@ -59,16 +53,16 @@ export class TestEnvironment {
 
   public bindProcess(): void {
     process.on("SIGINT", async () => {
-      this.stopProcess()
+      this.stopProcess();
     });
     process.on("SIGTERM", async () => {
-      this.stopProcess()
+      this.stopProcess();
     });
     process.on("uncaughtException", async () => {
-      this.stopProcess()
+      this.stopProcess();
     });
     process.on("unhandledRejection", async () => {
-      this.stopProcess()
+      this.stopProcess();
     });
   }
 }

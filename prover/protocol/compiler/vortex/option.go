@@ -1,16 +1,11 @@
 package vortex
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/ringsis"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
 )
 
 // Option to be passed to vortex
 type VortexOp func(ctx *Ctx)
-
-// Enables the Merkle mode
-func MerkleMode(ctx *Ctx) {
-	ctx.UseMerkleProof = true
-}
 
 // Overrides the number of opened columns (should
 // not be used in production)

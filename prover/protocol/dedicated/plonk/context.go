@@ -1,21 +1,25 @@
 package plonk
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
-	plonkBN254 "github.com/consensys/gnark/backend/plonk/bn254"
-	cs "github.com/consensys/gnark/constraint/bn254"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	plonkBLS12_377 "github.com/consensys/gnark/backend/plonk/bls12-377"
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
-// The context
-type Ctx struct {
+// The compilationCtx (context) carries all the compilation informations about a call to
+// Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
+// informations about it, the generated Wizard columns and the compilation
+// parameters that are used for the compilation. The context is also the
+// receiver of all the methods allowing to construct the Plonk in Wizard module.
+type compilationCtx struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
 	// Name of the context
@@ -30,7 +34,7 @@ type Ctx struct {
 		// The plonk circuit being integrated
 		Circuit frontend.Circuit
 		// The compiled circuit
-		Trace plonkBN254.Trace
+		Trace *plonkBLS12_377.Trace
 		// The sparse constrained system
 		SPR *cs.SparseR1CS
 		// Domain to gets the polynomials in lagrange form
@@ -42,9 +46,9 @@ type Ctx struct {
 		// Function that returns an assignment when called
 		// it should be the same function for several instance
 		// so it might require a channel under the hood.
-		Assigner []func() frontend.Circuit
+		WitnessAssigner []func() frontend.Circuit
 		// Receives the list of rows which have to be marked containing range checks.
-		RcGetter func() [2][]int // the same for all circuits
+		RcGetter func() [][2]int // the same for all circuits
 	}
 
 	// Columns
@@ -63,9 +67,10 @@ type Ctx struct {
 
 	// Optional field used for specifying range checks
 	RangeCheck struct {
-		Enabled bool
-		NbBits  int
-		NbLimbs int
+		Enabled              bool
+		NbBits               int
+		NbLimbs              int
+		AddGateForRangeCheck bool
 	}
 }
 
@@ -76,47 +81,54 @@ func createCtx(
 	name string,
 	round int,
 	circuit frontend.Circuit,
-	assigner []func() frontend.Circuit,
+	witnessAssigner []func() frontend.Circuit,
 	opts ...Option,
-) (ctx Ctx) {
+) (ctx compilationCtx) {
 
-	// Track the inputs
-	ctx.comp = comp
-	ctx.name = name
-	ctx.round = round
+	ctx = compilationCtx{
+		comp:        comp,
+		name:        name,
+		round:       round,
+		nbInstances: len(witnessAssigner),
+	}
+
 	ctx.Plonk.Circuit = circuit
-	ctx.Plonk.Assigner = assigner
-	ctx.nbInstances = len(assigner)
+	ctx.Plonk.WitnessAssigner = witnessAssigner
+
 	for _, opt := range opts {
 		opt(&ctx)
 	}
 
 	// Build the trace and track it in the context
+	gnarkBuilder, rcGetter := newExternalRangeChecker(comp, ctx.RangeCheck.AddGateForRangeCheck)
+
 	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
-	gnarkBuilder, rcGetter := newExternalRangeChecker(comp)
-	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
-	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), gnarkBuilder, circuit)
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circuit)
 	if err != nil {
-		utils.Panic("error compiling the circuit: %v", err)
+		utils.Panic("error compiling the circuit with name `%v` : %v", name, err)
 	}
 
 	logrus.Debugf(
 		"constraint system has %v constraints and %v internal variables",
 		ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
 	)
+
+	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
 	ctx.Plonk.SPR = ccs.(*cs.SparseR1CS)
+	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
 
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
-	plonkBN254.BuildTrace(ctx.Plonk.SPR, &ctx.Plonk.Trace)
+	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
+
 	logrus.Debugf("Plonk in Wizard (%v) build permutation", name)
-	ctx.buildPermutation(ctx.Plonk.SPR, &ctx.Plonk.Trace) // no part of BuildTrace
+	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
 
 	logrus.Debugf("Plonk in Wizard (%v) done", name)
 	return ctx
 }
 
 // Return the size of the domain
-func (ctx *Ctx) DomainSize() int {
+func (ctx *compilationCtx) DomainSize() int {
 	// fft domains
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.NbConstraints + len(ctx.Plonk.SPR.Public),
@@ -138,7 +150,7 @@ func (ctx *Ctx) DomainSize() int {
 // The permutation is encoded as a slice s of size 3*size(l), where the
 // i-th entry of l∥r∥o is sent to the s[i]-th entry, so it acts on a tab
 // like this: for i in tab: tab[i] = tab[permutation[i]]
-func (ctx *Ctx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBN254.Trace) {
+func (ctx *compilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
 
 	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
 

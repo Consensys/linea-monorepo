@@ -1,53 +1,29 @@
 package ifaces
 
 import (
-	"fmt"
-
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 )
 
-// Function that can be used to retrieve the result of a
-// functional wizard. It also satisfy the the `symbolic.Variable`
-// interface. It can be used to generalize coins or any single-valued
-// value known by the verifier (coin, Params, message)
-type Accessor struct {
-	Name                string
-	GetVal              func(run Runtime) field.Element
-	GetFrontendVariable func(api frontend.API, c GnarkRuntime) frontend.Variable
-	Round               int
-}
-
-// Construct a new accessor
-func NewAccessor(
-	name string,
-	getVal func(run Runtime) field.Element,
-	getFrontendVariable func(api frontend.API, c GnarkRuntime) frontend.Variable,
-	round int,
-) *Accessor {
-	return &Accessor{
-		Name:                name,
-		GetVal:              getVal,
-		GetFrontendVariable: getFrontendVariable,
-		Round:               round,
-	}
-}
-
-// We importantly pass a ptr because we want DeepEqual to work.
-// If we pass it to copies of the accessor, it will not work
-// because the accessor contains function pointers. But if we pass
-// a pointer, DeepEqual will detect that the two instances are
-// dereferencing to the same place.
-func (acc *Accessor) String() string {
-	return fmt.Sprintf("ACCESSOR_%v", acc.Name)
-}
-
-// We importantly pass a ptr because we want DeepEqual to work.
-// If we pass it to copies of the accessor, it will not work
-// because the accessor contains function pointers. But if we pass
-// a pointer, DeepEqual will detect that the two instances are
-// dereferencing to the same place.
-func (acc *Accessor) AsVariable() *symbolic.Expression {
-	return symbolic.NewVariable(acc)
+// Accessor represents a function that can be used to retrieve a field element
+// value from a [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.VerifierRuntime].
+// It also satisfies the the [symbolic.Metadata] interface so that it can be
+// used within arithmetic expression. A good use-case example is using the
+// evaluation point of a [github.com/consensys/zkevm-monorepo/prover/protocol/query.UnivariateEval]
+// as part of an arithmetic expression.
+type Accessor interface {
+	symbolic.Metadata
+	// Name returns a unique identifier for the accessor.
+	Name() string
+	// GetVal returns the value represented by the Accessor from a [Runtime]
+	// object.
+	GetVal(run Runtime) field.Element
+	// GetFrontendVariable is as [Accessor.GetVal] but in a gnark circuit.
+	GetFrontendVariable(api frontend.API, c GnarkRuntime) frontend.Variable
+	// Round returns the definition round of the accessor.
+	Round() int
+	// AsVariable converts the accessor to a variable object.
+	// Deprecated: use the new [symbolic] API, this function won't be needed anymore. We keep it since most uses of the symbolic package within this repository uses the old API, but this will be removed in the future.
+	AsVariable() *symbolic.Expression
 }

@@ -1,4 +1,4 @@
-import { Contract, ContractFactory, Wallet, ethers, utils } from "ethers";
+import { Contract, ContractFactory, Overrides, Wallet, ethers, utils } from "ethers";
 import { ProxyAdmin__factory, TransparentUpgradeableProxy__factory, ProxyAdmin } from "../typechain";
 
 function getInitializerData(contractInterface: ethers.utils.Interface, args: unknown[]) {
@@ -15,8 +15,12 @@ export const encodeLibraryName = (libraryName: string) => {
 export const deployContract = async <T extends ContractFactory>(
   contractFactory: T,
   deployer: Wallet,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  args?: any[],
+  overrides?: Overrides,
 ): Promise<Contract> => {
-  const instance = await contractFactory.connect(deployer).deploy();
+  const deploymentArgs = args || [];
+  const instance = await contractFactory.connect(deployer).deploy(...deploymentArgs, overrides);
   await instance.deployed();
   return instance;
 };

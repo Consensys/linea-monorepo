@@ -1,13 +1,17 @@
-import { BigNumber, BytesLike, ContractReceipt, PayableOverrides, Wallet } from "ethers";
+import { BytesLike, ContractTransactionReceipt, Overrides, Wallet, JsonRpcProvider } from "ethers";
 import { config } from "dotenv";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { L2MessageService__factory, ZkEvmV2__factory } from "../src/typechain/factories";
-import { ZkEvmV2 } from "../src/typechain/ZkEvmV2";
 import { SendMessageArgs } from "./types";
 import { sanitizeAddress, sanitizePrivKey } from "./cli";
-import { L2MessageService } from "../src/typechain";
+import {
+  L2MessageService,
+  L2MessageService__factory,
+  ZkEvmV2__factory,
+  ZkEvmV2,
+  LineaRollup,
+  LineaRollup__factory,
+} from "../src/clients/blockchain/typechain";
 import { encodeSendMessage } from "./helpers";
 
 config();
@@ -23,10 +27,16 @@ const argv = yargs(hideBin(process.argv))
     type: "string",
     demandOption: true,
   })
-  .option("priv-key", {
-    describe: "Signer private key",
+  .option("l1-priv-key", {
+    describe: "Signer private key on L1",
     type: "string",
     demandOption: true,
+    coerce: sanitizePrivKey("priv-key"),
+  })
+  .option("l2-priv-key", {
+    describe: "Signer private key on L2 from account with L1_L2_MESSAGE_SETTER_ROLE",
+    type: "string",
+    demandOption: false,
     coerce: sanitizePrivKey("priv-key"),
   })
   .option("l1-contract-address", {
@@ -67,25 +77,32 @@ const argv = yargs(hideBin(process.argv))
     type: "number",
     demandOption: true,
   })
+  .option("auto-anchoring", {
+    describe: "Auto anchoring",
+    type: "boolean",
+    demandOption: false,
+    default: false,
+  })
   .parseSync();
 
 const sendMessage = async (
   contract: ZkEvmV2,
   args: SendMessageArgs,
-  overrides?: PayableOverrides,
-): Promise<ContractReceipt> => {
+  overrides: Overrides = {},
+): Promise<ContractTransactionReceipt | null> => {
   const tx = await contract.sendMessage(args.to, args.fee, args.calldata, overrides);
   return await tx.wait();
 };
 
 const sendMessages = async (
   contract: ZkEvmV2,
+  signer: Wallet,
   numberOfMessages: number,
   args: SendMessageArgs,
-  overrides?: PayableOverrides,
+  overrides?: Overrides,
 ) => {
-  let nonce = await contract.signer.getTransactionCount();
-  const sendMessagePromises: Promise<ContractReceipt>[] = [];
+  let nonce = await signer.getNonce();
+  const sendMessagePromises: Promise<ContractTransactionReceipt | null>[] = [];
 
   for (let i = 0; i < numberOfMessages; i++) {
     sendMessagePromises.push(
@@ -101,56 +118,75 @@ const sendMessages = async (
 };
 
 const getMessageCounter = async (contractAddress: string, signer: Wallet) => {
-  const zkEvmV2 = ZkEvmV2__factory.getContract(contractAddress, ZkEvmV2__factory.createInterface(), signer) as ZkEvmV2;
-  return await zkEvmV2.nextMessageNumber();
+  const lineaRollup = ZkEvmV2__factory.connect(contractAddress, signer) as ZkEvmV2;
+  return lineaRollup.nextMessageNumber();
 };
 
-const anchorMessageHashesOnL2 = async (contractAddress: string, signer: Wallet, messageHashes: BytesLike[]) => {
-  const l2MessageService = L2MessageService__factory.getContract(
-    contractAddress,
-    L2MessageService__factory.createInterface(),
-    signer,
-  ) as L2MessageService;
-  const tx = await l2MessageService.addL1L2MessageHashes(messageHashes);
+const anchorMessageHashesOnL2 = async (
+  lineaRollup: LineaRollup,
+  l2MessageService: L2MessageService,
+  messageHashes: BytesLike[],
+  startingMessageNumber: bigint,
+) => {
+  const finalMessageNumber = startingMessageNumber + BigInt(messageHashes.length - 1);
+  const rollingHashes = await lineaRollup.rollingHashes(finalMessageNumber);
+  const tx = await l2MessageService.anchorL1L2MessageHashes(
+    messageHashes,
+    startingMessageNumber,
+    finalMessageNumber,
+    rollingHashes,
+  );
   await tx.wait();
 };
 
 const main = async (args: typeof argv) => {
+  if (args.autoAnchoring && !args.l2PrivKey) {
+    console.error(
+      `private key from an L2 account with L1_L2_MESSAGE_SETTER_ROLE must be given if auto-anchoring is true`,
+    );
+    return;
+  }
+
   const l1Provider = new JsonRpcProvider(args.l1RpcUrl);
   const l2Provider = new JsonRpcProvider(args.l2RpcUrl);
-  const l1Signer = new Wallet(args.privKey, l1Provider);
-  const l2Signer = new Wallet(args.privKey, l2Provider);
+  const l1Signer = new Wallet(args.l1PrivKey, l1Provider);
 
-  const functionArgs: SendMessageArgs & PayableOverrides = {
+  const functionArgs: SendMessageArgs & Overrides = {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     to: args.to,
-    fee: BigNumber.from(args.fee.toString()),
+    fee: BigInt(args.fee.toString()),
     calldata: args.calldata,
   };
 
   const zkEvmV2 = ZkEvmV2__factory.connect(args.l1ContractAddress, l1Signer) as ZkEvmV2;
 
-  await sendMessages(zkEvmV2, args.numberOfMessage, functionArgs, { value: BigNumber.from(args.value.toString()) });
+  await sendMessages(zkEvmV2, l1Signer, args.numberOfMessage, functionArgs, { value: BigInt(args.value.toString()) });
 
   // Anchor messages hash on L2
   const nextMessageCounter = await getMessageCounter(args.l1ContractAddress, l1Signer);
-  const startCounter = nextMessageCounter.sub(args.numberOfMessage);
+  const startCounter = nextMessageCounter - BigInt(args.numberOfMessage);
 
   const messageHashesToAnchor: string[] = [];
-  for (let i = startCounter.toNumber(); i < nextMessageCounter.toNumber(); i++) {
+  for (let i = startCounter; i < nextMessageCounter; i++) {
     const messageHash = await encodeSendMessage(
       l1Signer.address,
       args.to,
-      BigNumber.from(args.fee.toString()),
-      BigNumber.from(args.value.toString()).sub(args.fee.toString()),
-      BigNumber.from(i),
+      BigInt(args.fee.toString()),
+      BigInt(args.value.toString()) - BigInt(args.fee.toString()),
+      BigInt(i),
       args.calldata,
     );
     console.log(messageHash);
     messageHashesToAnchor.push(messageHash);
   }
 
-  await anchorMessageHashesOnL2(args.l2ContractAddress, l2Signer, messageHashesToAnchor);
+  if (!args.autoAnchoring) return;
+
+  const l2Signer = new Wallet(args.l2PrivKey!, l2Provider);
+  const lineaRollup = LineaRollup__factory.connect(args.l1ContractAddress, l1Signer) as LineaRollup;
+  const l2MessageService = L2MessageService__factory.connect(args.l2ContractAddress, l2Signer) as L2MessageService;
+  const startingMessageNumber = startCounter;
+  await anchorMessageHashesOnL2(lineaRollup, l2MessageService, messageHashesToAnchor, startingMessageNumber);
 };
 
 main(argv)

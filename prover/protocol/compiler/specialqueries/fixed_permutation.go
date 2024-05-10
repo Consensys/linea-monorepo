@@ -1,17 +1,16 @@
 package specialqueries
 
 import (
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/coin"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/query"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/symbolic"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
-	"github.com/consensys/accelerated-crypto-monorepo/utils/profiling"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 )
 
 const (
@@ -67,7 +66,7 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation, 
 	/*
 		Derives the identifiers name
 	*/
-	p := createFixedPermutationCtx(comp, q, round)
+	p := createFixedPermutationCtx(q, round)
 
 	/*
 		 collapses all the columns of A and B to the
@@ -88,7 +87,7 @@ Initializes all the static variable occuring during the protocol
 The commitment.Info / coin.Info are describe later in the compilation
 process. (Typically when they are defined).
 */
-func createFixedPermutationCtx(comp *wizard.CompiledIOP, q query.FixedPermutation, round int) fixedPermutationCtx {
+func createFixedPermutationCtx(q query.FixedPermutation, round int) fixedPermutationCtx {
 	n := q.S[0].Len()
 
 	//name for S,S_id
@@ -111,15 +110,15 @@ func createFixedPermutationCtx(comp *wizard.CompiledIOP, q query.FixedPermutatio
 		sidWit[j] = sv.NewRegular(identity)
 	}
 	res := fixedPermutationCtx{
-		Acollapse_NAME: deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, PERMUTATION_A_SUFFIX),
-		Bcollapse_NAME: deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, PERMUTATION_B_SUFFIX),
-		Z_NAME:         deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, PERMUTATION_Z_SUFFIX),
-		ALPHA:          deriveName[coin.Name](FIXED_PERMUTATION, q.ID, PERMUTATION_ALPHA_SUFFIX),
-		BETA:           deriveName[coin.Name](FIXED_PERMUTATION, q.ID, PERMUTATION_BETA_SUFFIX),
-		QA:             deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, PERMUTATION_QA),
-		QB:             deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, PERMUTATION_QB),
-		COLLAPSE_A:     deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, PERMUTATION_COLLAPSE_A),
-		COLLAPSE_B:     deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, PERMUTATION_COLLAPSE_B),
+		Acollapse_NAME: deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, "A"),
+		Bcollapse_NAME: deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, "B"),
+		Z_NAME:         deriveName[ifaces.ColID](FIXED_PERMUTATION, q.ID, "Z"),
+		ALPHA:          deriveName[coin.Name](FIXED_PERMUTATION, q.ID, "ALPHA"),
+		BETA:           deriveName[coin.Name](FIXED_PERMUTATION, q.ID, "BETA"),
+		QA:             deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, "QA"),
+		QB:             deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, "QB"),
+		COLLAPSE_A:     deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, "COLLAPSE_A"),
+		COLLAPSE_B:     deriveName[ifaces.QueryID](FIXED_PERMUTATION, q.ID, "COLLAPSE_B"),
 		// for S_id,S
 		Sid_NAME: nameID,
 		S_NAME:   name,
@@ -142,10 +141,6 @@ func (t *fixedPermutationCtx) compilerColapsStep(comp *wizard.CompiledIOP) {
 	for i := range t.S {
 		t.S[i] = comp.InsertCommit(t.round, t.S_NAME[i], t.N)
 		t.S_id[i] = comp.InsertCommit(t.round, t.Sid_NAME[i], t.N)
-	}
-
-	if field.USING_GOLDILOCKS {
-		utils.Panic("Not supported yet : can't do only one linear combination in this context")
 	}
 
 	t.alpha = comp.InsertCoin(t.round+1, t.ALPHA, coin.Field)

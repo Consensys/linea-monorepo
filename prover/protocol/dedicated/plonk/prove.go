@@ -3,17 +3,25 @@ package plonk
 import (
 	"reflect"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	cs "github.com/consensys/gnark/constraint/bn254"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-func (ctx *Ctx) RegisterNoCommitProver() {
+// This function is responsible for scheduling the assignment of the Wizard
+// columns related to the currently compiled Plonk circuit. It is used
+// specifically for when we do not wish to use BBS commitment as part of the
+// circuit.
+//
+// In essence, the function works by computing the Plonk witness by calling the
+// gnark solver over the circuit and assign the LRO columns from the resulting
+// solution.
+func (ctx *compilationCtx) registerNoCommitProver() {
 
 	// Sanity-check
 	if ctx.HasCommitment() {
@@ -24,23 +32,23 @@ func (ctx *Ctx) RegisterNoCommitProver() {
 
 		for i := range ctx.Columns.L {
 			// Let the assigner return an assignment
-			assignment := ctx.Plonk.Assigner[i]()
+			assignment := ctx.Plonk.WitnessAssigner[i]()
 
 			// Check that both the assignment and the base
 			// circuit have the same type
 			if reflect.TypeOf(ctx.Plonk.Circuit) != reflect.TypeOf(assignment) {
-				utils.Panic("circuit and assignment do not have the same type")
+				utils.Panic("circuit and assignment do not have the same type (%T != %T)", ctx.Plonk.Circuit, assignment)
 			}
 
 			// Parse it as witness
-			witness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField())
+			witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 			if err != nil {
-				utils.Panic("Could not parse the assignment into a witness")
+				utils.Panic("Could not cast the assignment into a witness: %v", err)
 			}
 
-			publicWitness, err := frontend.NewWitness(assignment, ecc.BN254.ScalarField(), frontend.PublicOnly())
+			publicWitness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly())
 			if err != nil {
-				utils.Panic("Could not parse the assignment into a public witness")
+				utils.Panic("Could not cast the assignment into a public witness: %v", err)
 			}
 
 			// Converts it as a smart-vector

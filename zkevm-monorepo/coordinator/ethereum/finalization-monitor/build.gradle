@@ -1,0 +1,27 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+  id "net.consensys.zkevm.linea-contracts-helper"
+}
+
+dependencies {
+  api(project(":coordinator:core"))
+  implementation(project(":coordinator:ethereum:common"))
+  implementation("io.vertx:vertx-core")
+  implementation("org.web3j:crypto:${versions["web3j"]}") {
+    exclude group: "org.slf4j", module: "slf4j-nop"
+  }
+  implementation("org.web3j:core:${versions["web3j"]}") {
+    exclude group: "org.slf4j", module: "slf4j-nop"
+  }
+  implementation(project(":coordinator:clients:smart-contract-client"))
+  implementation(project(":jvm-libs:future-extensions"))
+
+  testImplementation(project(":coordinator:ethereum:test-utils"))
+  testImplementation(project(":jvm-libs:web3j-extensions"))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation("io.vertx:vertx-junit5")
+}
+
+test {
+  useJUnitPlatform()
+}

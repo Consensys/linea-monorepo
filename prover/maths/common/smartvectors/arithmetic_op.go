@@ -3,33 +3,85 @@ package smartvectors
 import (
 	"math/big"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-// Represent either a linear combination with integer coefficients or a product with exponents
+// operator represents a mathematical operation that can be performed between
+// scalars and integers. It is implemented by [linCombOp] and [productOp]. The
+// operator interface allows applying the operator in all the combination of
+// scalars or vectors operands, in immutable version or assigning version.
+//
+// In the terminology of this interface:
+//   - "const" means a scalar. Or equivalently, abstractly, a vector whose all
+//     coordinates have the same value.
+//   - "vec" means a slice of field element
+//   - "term" is a couple (const|vec, coeff)
+//   - "coeff" means either a linear combination coefficient or an exponent and
+//     is always assumed to be reasonnably small
+//
+// The reason to resort to this interface is because applying n-ary mathematical
+// operator to smart-vector comes with a lot of inherent complexity. This is
+// mitigated that we have a single function [processOperator] owning all the
+// "smartvector" logic and all the logic pertaining to doing additions,
+// multiplication etc.. is implemented by the [operator] interface.
 type operator interface {
-	// res += x * coeff or res *= x ^coeff where both res and x are constants
-	ConstIntoConst(res, x *field.Element, coeff int)
-	// res += x * coeff or res *= x ^coeff where both res and x are vectors
-	VecIntoVec(res, x []field.Element, coeff int)
-	// res += x * coeff or res *= x ^coeff where res is a vector and x is a constant
-	ConstIntoVec(res []field.Element, x *field.Element, coeff int)
-	// res = x * coeff or res = x ^ coeff where x is a constant
-	ConstIntoTerm(res, x *field.Element, coeff int)
-	// res = x * coeff or res = x ^ coeff where x is a vector
-	VecIntoTerm(res, x []field.Element, coeff int)
-	// res += term or res *= coeff for constants
-	ConstTermIntoConst(res, term *field.Element)
-	// res += term for vectors
-	VecTermIntoVec(res, term []field.Element)
-	// res += term where res is a vector and term is a constant
-	ConstTermIntoVec(res []field.Element, term *field.Element)
+	// constIntoConst applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where both res and
+	// x are scalars.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	constIntoConst(res, x *field.Element, coeff int)
+	// vecIntoVec applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where both res and
+	// x are vectors.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	vecIntoVec(res, x []field.Element, coeff int)
+	// VecIntoVec applies the operator over `res` and `(c, coeff)` and sets
+	// the result into res. This is specialized for the case where res is a
+	// vector and c is a constant.
+	//
+	// 		res += x * coeff or res *= x^coeff
+	constIntoVec(res []field.Element, x *field.Element, coeff int)
+	// constIntoTerm evaluates the operator over (x, coeff) and sets the result
+	// into `res`, overwriting it.
+	// It is specialized for the case where x and res are both scalars.
+	//
+	// 		res = x * coeff or res = x^coeff
+	constIntoTerm(res, x *field.Element, coeff int)
+	// vecIntoTerm evaluates the operator over (x, coeff) and sets the result
+	// into `res`, overwriting it.
+	// It is specialized for the case where x and res are both vectors.
+	//
+	// 		res = x * coeff or res = x^coeff where x is a vector
+	vecIntoTerm(res, x []field.Element, coeff int)
+	// constTermIntoConst updates applies the operator over res and term and
+	// sets the result into res.
+	// This function is specialized for the case where the term and res are
+	// scalar.
+	//
+	// res += term or res *= term for constants
+	constTermIntoConst(res, term *field.Element)
+	// vecTermIntoVec updates applies the operator over res and term and
+	// sets the result into res.
+	// This function is specialized for the case where the term and res are
+	// vector.
+	//
+	// res += term or res *= term
+	vecTermIntoVec(res, term []field.Element)
+	// constTermIntoVec updates a vector `res` by applying the operator over
+	// it
+	//
+	// res += term or res *= term
+	constTermIntoVec(res []field.Element, term *field.Element)
 }
 
+// linCompOp is an implementation of the [operator] interface. It represents a
+// linear combination with coefficients.
 type linCombOp struct{}
 
-func (linCombOp) ConstIntoConst(res, x *field.Element, coeff int) {
+func (linCombOp) constIntoConst(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		res.Add(res, x)
@@ -47,7 +99,7 @@ func (linCombOp) ConstIntoConst(res, x *field.Element, coeff int) {
 	}
 }
 
-func (linCombOp) VecIntoVec(res, x []field.Element, coeff int) {
+func (linCombOp) vecIntoVec(res, x []field.Element, coeff int) {
 	// Sanity-check
 	assertHasLength(len(res), len(x))
 	switch coeff {
@@ -73,13 +125,13 @@ func (linCombOp) VecIntoVec(res, x []field.Element, coeff int) {
 	}
 }
 
-func (linCombOp) ConstIntoVec(res []field.Element, val *field.Element, coeff int) {
+func (linCombOp) constIntoVec(res []field.Element, val *field.Element, coeff int) {
 	var term field.Element
-	linCombOp.ConstIntoTerm(linCombOp{}, &term, val, coeff)
-	linCombOp.ConstTermIntoVec(linCombOp{}, res, &term)
+	linCombOp.constIntoTerm(linCombOp{}, &term, val, coeff)
+	linCombOp.constTermIntoVec(linCombOp{}, res, &term)
 }
 
-func (linCombOp) VecIntoTerm(term, x []field.Element, coeff int) {
+func (linCombOp) vecIntoTerm(term, x []field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		copy(term, x)
@@ -102,7 +154,7 @@ func (linCombOp) VecIntoTerm(term, x []field.Element, coeff int) {
 	}
 }
 
-func (linCombOp) ConstIntoTerm(term, x *field.Element, coeff int) {
+func (linCombOp) constIntoTerm(term, x *field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		term.Set(x)
@@ -119,15 +171,15 @@ func (linCombOp) ConstIntoTerm(term, x *field.Element, coeff int) {
 	}
 }
 
-func (linCombOp) ConstTermIntoConst(res, term *field.Element) {
+func (linCombOp) constTermIntoConst(res, term *field.Element) {
 	res.Add(res, term)
 }
 
-func (linCombOp) VecTermIntoVec(res, term []field.Element) {
+func (linCombOp) vecTermIntoVec(res, term []field.Element) {
 	vector.Add(res, res, term)
 }
 
-func (linCombOp) ConstTermIntoVec(res []field.Element, term *field.Element) {
+func (linCombOp) constTermIntoVec(res []field.Element, term *field.Element) {
 	for i := range res {
 		res[i].Add(&res[i], term)
 	}
@@ -136,7 +188,7 @@ func (linCombOp) ConstTermIntoVec(res []field.Element, term *field.Element) {
 type productOp struct{}
 
 // res *= x ^coeff where both res and x are constants
-func (productOp) ConstIntoConst(res, x *field.Element, coeff int) {
+func (productOp) constIntoConst(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 0:
 		// Nothing to do
@@ -157,7 +209,7 @@ func (productOp) ConstIntoConst(res, x *field.Element, coeff int) {
 }
 
 // res *= x ^coeff where both res and x are vectors
-func (productOp) VecIntoVec(res, x []field.Element, coeff int) {
+func (productOp) vecIntoVec(res, x []field.Element, coeff int) {
 
 	// Sanity-check
 	assertHasLength(len(res), len(x))
@@ -188,14 +240,14 @@ func (productOp) VecIntoVec(res, x []field.Element, coeff int) {
 }
 
 // res *= x ^coeff where res is a vector and x is a constant
-func (productOp) ConstIntoVec(res []field.Element, x *field.Element, coeff int) {
+func (productOp) constIntoVec(res []field.Element, x *field.Element, coeff int) {
 	var term field.Element
-	productOp.ConstIntoTerm(productOp{}, &term, x, coeff)
-	productOp.ConstTermIntoVec(productOp{}, res, &term)
+	productOp.constIntoTerm(productOp{}, &term, x, coeff)
+	productOp.constTermIntoVec(productOp{}, res, &term)
 }
 
 // res = x ^ coeff where x is a constant
-func (productOp) ConstIntoTerm(res, x *field.Element, coeff int) {
+func (productOp) constIntoTerm(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 0:
 		res.SetOne()
@@ -213,7 +265,7 @@ func (productOp) ConstIntoTerm(res, x *field.Element, coeff int) {
 }
 
 // res = x * coeff or res = x ^ coeff where x is a vector
-func (productOp) VecIntoTerm(res, x []field.Element, coeff int) {
+func (productOp) vecIntoTerm(res, x []field.Element, coeff int) {
 	switch coeff {
 	case 0:
 		vector.Fill(res, field.One())
@@ -237,17 +289,17 @@ func (productOp) VecIntoTerm(res, x []field.Element, coeff int) {
 }
 
 // res += term or res *= coeff for constants
-func (productOp) ConstTermIntoConst(res, term *field.Element) {
+func (productOp) constTermIntoConst(res, term *field.Element) {
 	res.Mul(res, term)
 }
 
 // res += term for vectors
-func (productOp) VecTermIntoVec(res, term []field.Element) {
+func (productOp) vecTermIntoVec(res, term []field.Element) {
 	vector.MulElementWise(res, res, term)
 
 }
 
 // res += term where res is a vector and term is a constant
-func (productOp) ConstTermIntoVec(res []field.Element, term *field.Element) {
+func (productOp) constTermIntoVec(res []field.Element, term *field.Element) {
 	vector.ScalarMul(res, res, *term)
 }

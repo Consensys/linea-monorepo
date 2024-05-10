@@ -1,7 +1,10 @@
 package net.consensys.linea.traces.app.api
 
 import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.flatMap
+import com.github.michaelbull.result.get
 import com.github.michaelbull.result.map
 import com.github.michaelbull.result.mapError
 import io.vertx.core.Future
@@ -16,6 +19,7 @@ import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import net.consensys.linea.jsonrpc.JsonRpcRequestHandler
+import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -25,25 +29,75 @@ private fun parseBlockNumberAndHash(json: JsonObject) = BlockNumberAndHash(
   Bytes32.fromHexString(json.getString("blockHash"))
 )
 
-class TracesCounterRequestHandlerV1(private val tracesCountingService: TracesCountingServiceV1) :
+internal fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequestMapParams, JsonRpcErrorResponse> {
+  if (request.params !is Map<*, *>) {
+    return Err(
+      JsonRpcErrorResponse.invalidParams(
+        request.id,
+        "params should be an object"
+      )
+    )
+  }
+  return try {
+    val jsonRpcRequest = request as JsonRpcRequestMapParams
+    if (jsonRpcRequest.params.isEmpty()) {
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "Parameters map is empty!"
+        )
+      )
+    } else {
+      Ok(request)
+    }
+  } catch (e: Exception) {
+    Err(JsonRpcErrorResponse.invalidRequest())
+  }
+}
+
+class TracesCounterRequestHandlerV1(
+  private val tracesCountingService: TracesCountingServiceV1,
+  private val validator: TracesSemanticVersionValidator
+) :
   JsonRpcRequestHandler {
+
   override fun invoke(
     user: User?,
     request: JsonRpcRequest,
     requestJson: JsonObject
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    val block: BlockNumberAndHash
-    try {
-      if (request.params.isEmpty()) {
-        return Future.succeededFuture(Err(JsonRpcErrorResponse.invalidPrams(request.id, "Invalid block parameter!")))
+    val (block, version) = try {
+      val parsingResult = validateParams(request).flatMap { validatedRequest ->
+        validator.validateExpectedVersion(
+          validatedRequest.id,
+          validatedRequest.params["expectedTracesApiVersion"].toString()
+        ).map {
+          val version =
+            validatedRequest.params["rawExecutionTracesVersion"].toString()
+          Pair(
+            parseBlockNumberAndHash(JsonObject.mapFrom(validatedRequest.params["block"])),
+            version
+          )
+        }
       }
-      block = parseBlockNumberAndHash(JsonObject.mapFrom(request.params.first()))
+      if (parsingResult is Err) {
+        return Future.succeededFuture(parsingResult)
+      } else {
+        parsingResult.get()!!
+      }
     } catch (e: Exception) {
-      return Future.succeededFuture(Err(JsonRpcErrorResponse.invalidPrams(request.id, e.message)))
+      return Future.succeededFuture(
+        Err(
+          JsonRpcErrorResponse.invalidParams(
+            request.id,
+            e.message
+          )
+        )
+      )
     }
 
     return tracesCountingService
-      .getBlockTracesCounters(block)
+      .getBlockTracesCounters(block, version)
       .thenApply { result ->
         result
           .map {
@@ -64,10 +118,12 @@ class TracesCounterRequestHandlerV1(private val tracesCountingService: TracesCou
   }
 }
 
-abstract class AbstractTracesConflationRequestHandlerV1<T> : JsonRpcRequestHandler {
+abstract class AbstractTracesConflationRequestHandlerV1<T>(private val validator: TracesSemanticVersionValidator) :
+  JsonRpcRequestHandler {
 
   abstract fun tracesContent(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<T, TracesError>>
 
   override fun invoke(
@@ -75,17 +131,51 @@ abstract class AbstractTracesConflationRequestHandlerV1<T> : JsonRpcRequestHandl
     request: JsonRpcRequest,
     requestJson: JsonObject
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    val blocks: List<BlockNumberAndHash>
-    try {
-      if (request.params.isEmpty()) {
-        return Future.succeededFuture(Err(JsonRpcErrorResponse.invalidPrams(request.id, "Empty list of blocks!")))
+    val (blocks: List<BlockNumberAndHash>, version: String) = try {
+      val parsingResult = validateParams(request).flatMap { validatedRequest ->
+        validator.validateExpectedVersion(
+          validatedRequest.id,
+          validatedRequest.params["expectedTracesApiVersion"].toString()
+        ).map {
+          val version = validatedRequest.params["rawExecutionTracesVersion"].toString()
+          val blocks = validatedRequest.params["blocks"] as List<Any?>
+          Pair(
+            blocks.map { blockJson ->
+              parseBlockNumberAndHash(
+                JsonObject.mapFrom(blockJson)
+              )
+            },
+            version
+          )
+        }
       }
-      blocks = request.params.map { blockJson -> parseBlockNumberAndHash(JsonObject.mapFrom(blockJson)) }
+      if (parsingResult is Err) {
+        return Future.succeededFuture(parsingResult)
+      } else {
+        parsingResult.get()!!
+      }
     } catch (e: Exception) {
-      return Future.succeededFuture(Err(JsonRpcErrorResponse.invalidPrams(request.id, e.message)))
+      return Future.succeededFuture(
+        Err(
+          JsonRpcErrorResponse.invalidParams(
+            request.id,
+            e.message
+          )
+        )
+      )
+    }
+    if (blocks.isEmpty()) {
+      return Future.succeededFuture(
+        Err(
+          JsonRpcErrorResponse.invalidParams(
+            request.id,
+            "Empty list of blocks!"
+          )
+        )
+      )
     }
 
-    return tracesContent(blocks)
+    return tracesContent(blocks, version)
       .thenApply { result ->
         result
           .map { JsonRpcSuccessResponse(request.id, it) }
@@ -95,13 +185,17 @@ abstract class AbstractTracesConflationRequestHandlerV1<T> : JsonRpcRequestHandl
   }
 }
 
-class GenerateConflatedTracesToFileRequestHandlerV1(private val service: TracesConflationServiceV1) :
-  AbstractTracesConflationRequestHandlerV1<JsonObject>() {
+class GenerateConflatedTracesToFileRequestHandlerV1(
+  private val service: TracesConflationServiceV1,
+  validator: TracesSemanticVersionValidator
+) :
+  AbstractTracesConflationRequestHandlerV1<JsonObject>(validator) {
   override fun tracesContent(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<JsonObject, TracesError>> {
     val blocksSorted = blocks.sortedBy { it.number }
-    return service.generateConflatedTracesToFile(blocksSorted)
+    return service.generateConflatedTracesToFile(blocksSorted, version)
       .thenApply { result: Result<VersionedResult<String>, TracesError> ->
         result.map {
           JsonObject()
@@ -114,16 +208,22 @@ class GenerateConflatedTracesToFileRequestHandlerV1(private val service: TracesC
   }
 }
 
-class GetConflatedTracesRequestHandlerV1(val service: TracesConflationServiceV1) :
-  AbstractTracesConflationRequestHandlerV1<JsonObject>() {
+class GetConflatedTracesRequestHandlerV1(
+  private val service: TracesConflationServiceV1,
+  validator: TracesSemanticVersionValidator
+) :
+  AbstractTracesConflationRequestHandlerV1<JsonObject>(validator) {
 
   override fun tracesContent(
-    blocks: List<BlockNumberAndHash>
+    blocks: List<BlockNumberAndHash>,
+    version: String
   ): SafeFuture<Result<JsonObject, TracesError>> {
-    return service.getConflatedTraces(blocks).thenApply { result: Result<VersionedResult<JsonObject>, TracesError> ->
-      result.map {
-        JsonObject().put("tracesEngineVersion", it.version).put("conflatedTraces", it.result)
+    return service.getConflatedTraces(blocks, version)
+      .thenApply { result: Result<VersionedResult<JsonObject>, TracesError> ->
+        result.map {
+          JsonObject().put("tracesEngineVersion", it.version)
+            .put("conflatedTraces", it.result)
+        }
       }
-    }
   }
 }

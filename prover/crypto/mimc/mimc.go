@@ -3,16 +3,13 @@ package mimc
 import (
 	"hash"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-/*
-	This package wraps the mimc package of gnark-crypto and implements
-	some extra methods.
-*/
-
+// NewMiMC wraps [mimc.NewMiMC], this is used to limit the number of import to
+// gnark-crypto.
 func NewMiMC() hash.Hash {
 	return mimc.NewMiMC()
 }
@@ -27,13 +24,15 @@ var Constants []field.Element = func() []field.Element {
 	return res
 }()
 
-// Applies the MiMC permutation to a given block
+// BlockCompression applies the MiMC block compression function to a given block
+// over a given state. This what is run under the hood by the MiMC hash function
+// in Miyaguchi-Preneel mode.
 func BlockCompression(oldState, block field.Element) (newState field.Element) {
 
 	res := block
 	var tmp field.Element
 
-	// s <- (s + old + c)^5
+	// s <- (s + old + c)^17
 	for i := range Constants {
 		// We don't use the loop value of Constant to explictly
 		// show the linter that we are not mutating the loop value.
@@ -42,6 +41,8 @@ func BlockCompression(oldState, block field.Element) (newState field.Element) {
 		res.Add(&res, &oldState)
 		tmp.Square(&res)
 		tmp.Square(&tmp)
+		tmp.Square(&tmp)
+		tmp.Square(&tmp)
 		res.Mul(&tmp, &res)
 	}
 
@@ -49,17 +50,20 @@ func BlockCompression(oldState, block field.Element) (newState field.Element) {
 	return res
 }
 
-// Applies the MiMC permutation to a given block
+// GnarkBlockCompression applies the MiMC permutation to a given block within
+// a gnark circuit and mirrors exactly [BlockCompression].
 func GnarkBlockCompression(api frontend.API, oldState, block frontend.Variable) (newState frontend.Variable) {
 
 	res := block
 	var tmp frontend.Variable
 
-	// s <- (s + old + c)^5
+	// s <- (s + old + c)^17
 	for _, c := range Constants {
 		res = api.Add(res, c)
 		res = api.Add(res, oldState)
 		tmp = api.Mul(res, res)
+		tmp = api.Mul(tmp, tmp)
+		tmp = api.Mul(tmp, tmp)
 		tmp = api.Mul(tmp, tmp)
 		res = api.Mul(tmp, res)
 	}
@@ -71,7 +75,7 @@ func GnarkBlockCompression(api frontend.API, oldState, block frontend.Variable) 
 	return res
 }
 
-// Hash a vector of field elements
+// HashVec hashes a vector of field elements
 func HashVec(v []field.Element) (h field.Element) {
 	state := NewMiMC()
 	for i := range v {

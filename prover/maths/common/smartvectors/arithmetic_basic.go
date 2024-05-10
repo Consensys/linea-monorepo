@@ -1,9 +1,15 @@
 package smartvectors
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
+// Add returns a smart-vector obtained by position-wise adding [SmartVector].
+//   - all inputs `vecs` must have the same size, or the function panics
+//   - the output smart-vector has the same size as the input vectors
+//   - if no input vectors are provided, the function panics
 func Add(vecs ...SmartVector) SmartVector {
 
 	coeffs := make([]int, len(vecs))
@@ -14,19 +20,10 @@ func Add(vecs ...SmartVector) SmartVector {
 	return LinComb(coeffs, vecs)
 }
 
-func Sub(vecs ...SmartVector) SmartVector {
-	coeffs := make([]int, len(vecs))
-	for i := range coeffs {
-		if i == 0 {
-			coeffs[i] = 1
-		} else {
-			coeffs[i] = -1
-		}
-	}
-
-	return LinComb(coeffs, vecs)
-}
-
+// Mul returns a smart-vector obtained by position-wise multiplying [SmartVector].
+//   - all inputs `vecs` must have the same size, or the function panics
+//   - the output smart-vector has the same size as the input vectors
+//   - if no input vectors are provided, the function panics
 func Mul(vecs ...SmartVector) SmartVector {
 	coeffs := make([]int, len(vecs))
 	for i := range coeffs {
@@ -36,11 +33,15 @@ func Mul(vecs ...SmartVector) SmartVector {
 	return Product(coeffs, vecs)
 }
 
+// ScalarMul returns a smart-vector obtained by  multiplying a scalar with a [SmartVector].
+//   - the output smart-vector has the same size as the input vector
 func ScalarMul(vec SmartVector, x field.Element) SmartVector {
 	xVec := NewConstant(x, vec.Len())
 	return Mul(vec, xVec)
 }
 
+// InnerProduct returns a scalar obtained as the inner-product of `a` and `b`.
+//   - a and b must have the same length, otherwise the function panics
 func InnerProduct(a, b SmartVector) field.Element {
 	if a.Len() != b.Len() {
 		panic("length mismatch")
@@ -58,17 +59,32 @@ func InnerProduct(a, b SmartVector) field.Element {
 	return res
 }
 
-func PolyEval(vecs []SmartVector, x field.Element) SmartVector {
+// PolyEval returns a [SmartVector] computed as:
+//
+//	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
+//
+// where `x` is a scalar and `vecs[i]` are [SmartVector]
+func PolyEval(vecs []SmartVector, x field.Element, p ...*mempool.Pool) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
+	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	// Preallocate the intermediate values
-	resReg := make([]field.Element, length)
-	tmpVec := make([]field.Element, length)
+	var resReg, tmpVec []field.Element
+	if !hasPool {
+		resReg = make([]field.Element, length)
+		tmpVec = make([]field.Element, length)
+	} else {
+		a, b := pool.Alloc(), pool.Alloc()
+		resReg, tmpVec = *a, *b
+		vector.Fill(resReg, field.Zero())
+		defer pool.Free(b)
+	}
+
 	var tmpF, resCon field.Element
 	var anyReg, anyCon bool
 	xPow := field.One()
@@ -83,7 +99,12 @@ func PolyEval(vecs []SmartVector, x field.Element) SmartVector {
 	// Computes the polynomial operation separately on the const,
 	// windows and regular and the aggregate the results at the end.
 	// The computation is done following horner's method.
-	for _, v := range vecs {
+	for i := range vecs {
+
+		v := vecs[i]
+		if asRotated, ok := v.(*Rotated); ok {
+			v = rotatedAsRegular(asRotated)
+		}
 
 		switch casted := v.(type) {
 		case *Constant:
@@ -111,6 +132,10 @@ func PolyEval(vecs []SmartVector, x field.Element) SmartVector {
 		}
 		return NewRegular(resReg)
 	case anyCon && !anyReg:
+		// and we can directly unpool resreg because it was not used
+		if hasPool {
+			pool.Free(&resReg)
+		}
 		return NewConstant(resCon, length)
 	case !anyCon && anyReg:
 		return NewRegular(resReg)
@@ -120,7 +145,87 @@ func PolyEval(vecs []SmartVector, x field.Element) SmartVector {
 	panic("unreachable")
 }
 
-// Naive implementation of the butterfly
-func Butterfly(a, b SmartVector) (SmartVector, SmartVector) {
-	return Add(a, b), Sub(a, b)
+// BatchInvert performs the batch inverse operation over a [SmartVector] and
+// returns a SmartVector of the same type. When an input element is zero, the
+// function returns 0 at the corresponding position.
+func BatchInvert(x SmartVector) SmartVector {
+
+	switch v := x.(type) {
+	case *Constant:
+		res := &Constant{length: v.length}
+		res.val.Inverse(&v.val)
+		return res
+	case *PaddedCircularWindow:
+		res := &PaddedCircularWindow{
+			totLen: v.totLen,
+			offset: v.offset,
+			window: field.BatchInvert(v.window),
+		}
+		res.paddingVal.Inverse(&v.paddingVal)
+		return res
+	case *Rotated:
+		return NewRotated(
+			field.BatchInvert(v.v),
+			v.offset,
+		)
+	case *Regular:
+		return NewRegular(field.BatchInvert(*v))
+	}
+
+	panic("unsupported type")
+}
+
+// IsZero returns a [SmartVector] z with the same type of structure than x such
+// that x[i] = 0 => z[i] = 1 AND x[i] != 0 => z[i] = 0.
+func IsZero(x SmartVector) SmartVector {
+	switch v := x.(type) {
+
+	case *Constant:
+		res := &Constant{length: v.length}
+		if v.val == field.Zero() {
+			res.val = field.One()
+		}
+		return res
+
+	case *PaddedCircularWindow:
+		res := &PaddedCircularWindow{
+			totLen: v.totLen,
+			offset: v.offset,
+			window: make([]field.Element, len(v.window)),
+		}
+
+		if v.paddingVal == field.Zero() {
+			res.paddingVal = field.One()
+		}
+
+		for i := range res.window {
+			if v.window[i] == field.Zero() {
+				res.window[i] = field.One()
+			}
+		}
+		return res
+
+	case *Rotated:
+		res := make([]field.Element, len(v.v))
+		for i := range res {
+			if v.v[i] == field.Zero() {
+				res[i] = field.One()
+			}
+		}
+		return NewRotated(
+			res,
+			v.offset,
+		)
+
+	case *Regular:
+		res := make([]field.Element, len(*v))
+		for i := range res {
+			if (*v)[i] == field.Zero() {
+				res[i] = field.One()
+			}
+		}
+		return NewRegular(res)
+	}
+
+	panic("unsupported type")
 }

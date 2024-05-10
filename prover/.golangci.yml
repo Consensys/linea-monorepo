@@ -14,3 +14,11 @@ run:
   # Default: [].
   build-tags:
     - nocorset
+  skip-dirs:
+    - compressor
+
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+      - '-SA1019' # disable the rule against deprecated code

@@ -2,9 +2,10 @@ package coin
 
 import (
 	"fmt"
+	"strconv"
 
-	"github.com/consensys/accelerated-crypto-monorepo/crypto/fiatshamir"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Wrapper type for naming the coins
@@ -15,17 +16,43 @@ func Namef(s string, args ...interface{}) Name {
 	return Name(fmt.Sprintf(s, args...))
 }
 
+// MarshalJSON implements [json.Marshaler] directly returning the name as a
+// quoted string.
+func (n *Name) MarshalJSON() ([]byte, error) {
+	var (
+		nString = string(*n)
+		nQuoted = strconv.Quote(nString)
+	)
+	return []byte(nQuoted), nil
+}
+
+// UnmarshalJSON implements [json.Unmarshaler] directly assigning the receiver's
+// value from the unquoted string value of the bytes.
+func (n *Name) UnmarshalJSON(b []byte) error {
+	var (
+		nQuoted        = string(b)
+		nUnquoted, err = strconv.Unquote(nQuoted)
+	)
+
+	if err != nil {
+		return fmt.Errorf("could not unmarshal Name from unquoted string: %v : %w", nQuoted, err)
+	}
+
+	*n = Name(nUnquoted)
+	return nil
+}
+
 // Metadata around the random coin
 type Info struct {
-	Type
+	Type Type `json:"type"`
 	// Set if applicable (for instance, IntegerVec)
-	Size int
+	Size int `json:"size"`
 	// Upper-bound (if applicable, for instance for integers)
-	UpperBound int
+	UpperBound int `json:"upperBound"`
 	// Name of the coin
-	Name Name
+	Name Name `json:"name"`
 	// Round at which the coin was declared
-	Round int
+	Round int `json:"round"`
 }
 
 // Type of random coin
@@ -35,6 +62,28 @@ const (
 	Field Type = iota
 	IntegerVec
 )
+
+// MarshalJSON implements [json.Marshaler] directly returning the Itoa of the
+// integer.
+func (t Type) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.Itoa(int(t))), nil
+}
+
+// UnmarshalJSON implements [json.Unmarshaler] and directly reuses ParseInt and
+// performing validation : only 0 and 1 are acceptable values.
+func (t *Type) UnmarshalJSON(b []byte) error {
+	n, err := strconv.ParseInt(string(b), 10, 64)
+	if err != nil {
+		return fmt.Errorf("could not parse Type as integer: %w, got `%v`", err, string(b))
+	}
+
+	if n < 0 || Type(n) > IntegerVec {
+		return fmt.Errorf("could not parse the integer `%v` as Type, must be in range [0, 1]", n)
+	}
+
+	*t = Type(n)
+	return nil
+}
 
 /*
 Sample a random coin, according to its `spec`
@@ -60,7 +109,7 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 	switch type_ {
 	case IntegerVec:
 		if len(size) != 2 || size[0] < 1 || size[1] < 1 {
-			utils.Panic("size was %v", size)
+			utils.Panic("caller requested an `IntegerVec` and was expected to provide [nbIntegers, upperBound] and additional parameters but provided `%v`", size)
 		}
 		infos.Size = size[0]
 		infos.UpperBound = size[1]

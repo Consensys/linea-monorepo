@@ -3,18 +3,27 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
-// Represents a rotated version of a regular smartvector
+// Rotated represents a rotated version of a regular smartvector and also
+// implements the [SmartVector] interface. Rotated have a very niche use-case
+// in the repository as they are used to help saving FFT operations in the
+// [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/arithmetic.CompileGlobal]
+// compiler when the coset evaluation is done over a cyclic rotation of a
+// smart-vector.
+//
+// Rotated works by abstractly storing the offset and only applying the rotation
+// when the vector is written or sub-vectored. This makes rotations essentially
+// free.
 type Rotated struct {
 	v      Regular
 	offset int
 }
 
-// Construct a new rotated
+// NewRotated constructs a new Rotated
 func NewRotated(reg Regular, offset int) *Rotated {
 
 	// empty vector
@@ -97,17 +106,9 @@ func (r *Rotated) DeepCopy() SmartVector {
 	return NewRotated(vector.DeepCopy(r.v), r.offset)
 }
 
-func (*Rotated) AddRef() {}
-func (*Rotated) DecRef() {}
-func (*Rotated) Drop()   {}
-
 func (r *Rotated) WriteInSlice(s []field.Element) {
-	// the casting is a mechanism to prevent against infinity loop
-	// in case we decide that subvectors of rotated are no longer
-	// always regular.
 	res := rotatedAsRegular(r)
 	res.WriteInSlice(s)
-
 }
 
 func (r *Rotated) Pretty() string {
@@ -115,10 +116,19 @@ func (r *Rotated) Pretty() string {
 	return fmt.Sprintf("Rotated[%v, %v]", v.Pretty(), r.offset)
 }
 
+// rotatedAsRegular converts a [Rotated] into a [Regular] by effecting the
+// symbolic shifting operation. The function allocates the result.
 func rotatedAsRegular(r *Rotated) *Regular {
 	return r.SubVector(0, r.Len()).(*Regular)
 }
 
+func (r *Rotated) IntoRegVecSaveAlloc() []field.Element {
+	return *rotatedAsRegular(r)
+}
+
+// SoftRotate converts v into a [SmartVector] representing the same
+// [SmartVector]. The function tries to not reallocate the result. This means
+// that changing the v can subsequently affects the result of this function.
 func SoftRotate(v SmartVector, offset int) SmartVector {
 
 	switch casted := v.(type) {

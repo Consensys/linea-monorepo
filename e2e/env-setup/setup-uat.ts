@@ -1,27 +1,27 @@
 import { beforeAll, jest } from "@jest/globals";
-import { Wallet } from "ethers";
 import {
   DummyContract,
   DummyContract__factory,
   L2MessageService,
   L2MessageService__factory,
-  ZkEvmV2,
-  ZkEvmV2__factory,
   L2TestContract__factory,
-  L2TestContract
+  L2TestContract,
+  LineaRollup,
+  LineaRollup__factory,
 } from "../src/typechain";
 import {
-  getL1Provider, 
+  getL1Provider,
   getL2Provider,
   CHAIN_ID,
-  ZKEVMV2_CONTRACT_ADDRESS,
+  LINEA_ROLLUP_CONTRACT_ADDRESS,
   MESSAGE_SERVICE_ADDRESS,
   DUMMY_CONTRACT_ADDRESS,
   ACCOUNT_0_PRIVATE_KEY,
   TRANSACTION_CALLDATA_LIMIT,
-  L1_DUMMY_CONTRACT_ADDRESS
+  L1_DUMMY_CONTRACT_ADDRESS,
+  SHOMEI_ENDPOINT,
+  SHOMEI_FRONTEND_ENDPOINT,
 } from "../src/utils/constants.uat";
-import { deployContract, deployUpgradableContractWithProxyAdmin, encodeLibraryName } from "../src/utils/deployments";
 
 jest.setTimeout(5 * 60 * 1000);
 
@@ -32,14 +32,17 @@ beforeAll(async () => {
 
   const l1DummyContract: DummyContract = DummyContract__factory.connect(L1_DUMMY_CONTRACT_ADDRESS, l1Provider);
   const dummyContract: DummyContract = DummyContract__factory.connect(DUMMY_CONTRACT_ADDRESS, l2Provider);
-  const l2TestContract: L2TestContract = L2TestContract__factory.connect("0xaD711a736ae454Be345078C0bc849997b78A30B9", l2Provider);
+  const l2TestContract: L2TestContract = L2TestContract__factory.connect(
+    "0xaD711a736ae454Be345078C0bc849997b78A30B9",
+    l2Provider,
+  );
   // L2MessageService contract
   const l2MessageService: L2MessageService = L2MessageService__factory.connect(MESSAGE_SERVICE_ADDRESS, l2Provider);
 
   /*********** L1 Contracts ***********/
 
-  // ZkEvmV2 deployment
-  const zkEvmV2: ZkEvmV2 = ZkEvmV2__factory.connect(ZKEVMV2_CONTRACT_ADDRESS, l1Provider);
+  // LineaRollup deployment
+  const lineaRollup: LineaRollup = LineaRollup__factory.connect(LINEA_ROLLUP_CONTRACT_ADDRESS, l1Provider);
 
   global.l1Provider = l1Provider;
   global.l2Provider = l2Provider;
@@ -47,8 +50,10 @@ beforeAll(async () => {
   global.l1DummyContract = l1DummyContract;
   global.dummyContract = dummyContract;
   global.l2MessageService = l2MessageService;
-  global.zkEvmV2 = zkEvmV2;
+  global.lineaRollup = lineaRollup;
   global.chainId = CHAIN_ID;
-  global.ACCOUNT_0_PRIVATE_KEY = ACCOUNT_0_PRIVATE_KEY;
+  global.L1_ACCOUNT_0_PRIVATE_KEY = ACCOUNT_0_PRIVATE_KEY;
   global.TRANSACTION_CALLDATA_LIMIT = TRANSACTION_CALLDATA_LIMIT;
+  global.SHOMEI_ENDPOINT = SHOMEI_ENDPOINT;
+  global.SHOMEI_FRONTEND_ENDPOINT = SHOMEI_FRONTEND_ENDPOINT;
 });

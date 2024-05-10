@@ -3,18 +3,19 @@ package symbolic
 import (
 	"fmt"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/poly"
-	sv "github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
+	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 /*
 	Dedicated type of expression for evaluating a polynomial
 	whose coefficients are sub-expressions. It is use for batching
 	multiple evaluation constraints into a single check using the
-	Schwartz-Zipfel lemma
+	Schwartz-Zippel lemma
 */
 
 type PolyEval struct{}
@@ -26,7 +27,7 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		feel free to return the constant zero instead.
 	*/
 	if len(coeffs) == 0 {
-		utils.Panic("polynomial with no coeffs")
+		utils.Panic("Polynomial with no coeffs")
 	}
 
 	/*
@@ -61,12 +62,12 @@ func (PolyEval) Degree(inputDegrees []int) int {
 /*
 Evaluates a polynomial evaluation
 */
-func (PolyEval) Evaluate(inputs []sv.SmartVector) sv.SmartVector {
+func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
 	x := inputs[0].(*sv.Constant).Get(0)
-	return sv.PolyEval(inputs[1:], x)
+	return sv.PolyEval(inputs[1:], x, p...)
 }
 
 /*

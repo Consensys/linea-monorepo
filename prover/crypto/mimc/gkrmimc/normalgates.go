@@ -1,17 +1,22 @@
 package gkrmimc
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 )
 
-// RoundGate represents a normal round of gkr (i.e. any
-// round except for the first one)
+// RoundGate represents a normal round of gkr (i.e. any round except for the
+// first and last ones). It represents the computation of the S-box of MiMC
+//
+//	(curr + init + ark)^17
+//
+// This struct is meant to be used to represent the GKR gate within a gnark
+// circuit and is used for the verifier part of GKR.
 type RoundGate struct {
 	Ark frontend.Variable
 }
 
-// NewRoundGateGnark creates a new MiMCCipherGate with the given parameters
+// NewRoundGateGnark creates a new RoundGate using the provided round constant
 func NewRoundGateGnark(ark field.Element) *RoundGate {
 	return &RoundGate{
 		Ark: ark,
@@ -27,23 +32,32 @@ func (m RoundGate) Evaluate(api frontend.API, input ...frontend.Variable) fronte
 	initialState := input[0]
 	curr := input[1]
 
-	// Compute the s-box (curr + init + ark)^5
+	// Compute the s-box (curr + init + ark)^17
 	sum := api.Add(curr, initialState, m.Ark)
 
-	sumPow4 := api.Mul(sum, sum)        // sum^2
-	sumPow4 = api.Mul(sumPow4, sumPow4) // sum^4
-	return api.Mul(sumPow4, sum)
+	sumPow16 := api.Mul(sum, sum)          // sum^2
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^4
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^8
+	sumPow16 = api.Mul(sumPow16, sumPow16) // sum^16
+	return api.Mul(sumPow16, sum)
 }
 
 func (m RoundGate) Degree() int {
-	return 5
+	return 17
 }
 
-// CryptoRoundgate implements the gate for the GKR prover's side
+// RoundGate represents a normal round of gkr (i.e. any round except for the
+// first and last ones). It represents the computation of the S-box of MiMC
+//
+//	(curr + init + ark)^17
+//
+// This struct is meant to be used for the prover part of GKR
 type RoundGateCrypto struct {
 	Ark field.Element
 }
 
+// NewRoundGateCrypto construct a new instance of a [RoundGate] with the
+// caller-supplied round constant `ark`
 func NewRoundGateCrypto(ark field.Element) *RoundGateCrypto {
 	return &RoundGateCrypto{Ark: ark}
 }
@@ -57,15 +71,17 @@ func (m RoundGateCrypto) Evaluate(inputs ...field.Element) field.Element {
 	initialState := inputs[0]
 	curr := inputs[1]
 
-	var sum, sumPow4 field.Element
+	var sum, sumPow16 field.Element
 	sum.Add(&initialState, &curr).Add(&sum, &m.Ark)
-	sumPow4.Mul(&sum, &sum)
-	sumPow4.Mul(&sumPow4, &sumPow4)
-	sum.Mul(&sumPow4, &sum)
+	sumPow16.Mul(&sum, &sum)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sumPow16.Mul(&sumPow16, &sumPow16)
+	sum.Mul(&sumPow16, &sum)
 
 	return sum
 }
 
 func (m RoundGateCrypto) Degree() int {
-	return 5
+	return 17
 }

@@ -3,12 +3,12 @@ package merkle
 import (
 	"strings"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/vector"
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Module summarizing the Merkle proof claims
@@ -25,6 +25,8 @@ type ResultMod struct {
 	Name string
 	// Round of the module
 	Round int
+	// Depth of the proof
+	Depth int
 
 	// Leaf contains the alleged leaves
 	Leaf ifaces.Column
@@ -32,19 +34,29 @@ type ResultMod struct {
 	Roots ifaces.Column
 	// Pos contains the positions of the alleged leaves
 	Pos ifaces.Column
-	// One is a dummy column containing only ones
 	// Use for looking up and selecting only the
 	// the columns containing the root in the ComputeMod
 	IsActive ifaces.Column
+	// Column used to verify reuse of Merkle proofs
+	UseNextMerkleProof ifaces.Column
+	// Column to verify the sequentiality of Merkle proofs
+	Counter ifaces.Column
+	// variable denoting whether we want to reuse the Merkle proofs
+	withOptProofReuseCheck bool
 }
 
 // Registers all the columns also assumes that Leaf, Roots and Pos have been
 // passed already.
-func (rm *ResultMod) Define(comp *wizard.CompiledIOP, round int, name string, numProofs int) {
+func (rm *ResultMod) Define(comp *wizard.CompiledIOP, round int, name string, numProofs int, depth int, useNextMerkleProof ifaces.Column, isActive ifaces.Column, counter ifaces.Column) {
 
 	// Sanity check that the columns have been passed
 	if rm.Roots == nil || rm.Pos == nil || rm.Leaf == nil {
 		panic("please set all the required columns before calling define")
+	}
+
+	// Sanity check that the depth is consistent
+	if rm.Depth != depth {
+		panic("there is an inconsitency in the assignment of the depth of the Merkle proof")
 	}
 
 	// Sanity check that they all have the same size
@@ -73,6 +85,12 @@ func (rm *ResultMod) Define(comp *wizard.CompiledIOP, round int, name string, nu
 			rm.NumRows,
 		),
 	)
+	// Columns registered/redefined to verify reuse of Merkle proof in the Accumulator
+	if rm.withOptProofReuseCheck {
+		rm.UseNextMerkleProof = useNextMerkleProof
+		rm.IsActive = isActive
+		rm.Counter = counter
+	}
 
 }
 

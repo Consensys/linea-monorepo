@@ -3,19 +3,20 @@ package hashtypes
 import (
 	"hash"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/field"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc"
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 // Wrapper types for hasher which additionally provides a max value
 type Hasher struct {
-	hash.Hash        // the underlying hasher
-	maxValue  Digest // the maximal value obtainable with that hasher
+	hash.Hash         // the underlying hasher
+	maxValue  Bytes32 // the maximal value obtainable with that hasher
 }
 
 // Immutable accessor for the max value of the hasher
-func (h Hasher) MaxDigest() Digest {
+func (h Hasher) MaxBytes32() Bytes32 {
 	return h.maxValue
 }
 
@@ -23,7 +24,7 @@ func (h Hasher) MaxDigest() Digest {
 func Keccak() Hasher {
 	return Hasher{
 		Hash: crypto.NewKeccakState(),
-		maxValue: Digest{
+		maxValue: Bytes32{
 			255, 255, 255, 255,
 			255, 255, 255, 255,
 			255, 255, 255, 255,

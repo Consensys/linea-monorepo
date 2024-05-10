@@ -1,11 +1,12 @@
 package smt
 
-import "github.com/consensys/accelerated-crypto-monorepo/utils"
+import (
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+)
 
-/*
-Overwrite a leaf in the tree and update the tree in consequence
-*/
-func (t *Tree) Update(pos int, newVal Digest) {
+// Update overwrites a leaf in the tree and updates the associated parent nodes.
+func (t *Tree) Update(pos int, newVal types.Bytes32) {
 	depth := t.Config.Depth
 	current := newVal
 	idx := pos
@@ -22,7 +23,7 @@ func (t *Tree) Update(pos int, newVal Digest) {
 		if idx&1 == 1 {
 			left, right = right, left
 		}
-		current = HashLR(t.Config, left, right)
+		current = hashLR(t.Config, left, right)
 		idx >>= 1
 	}
 

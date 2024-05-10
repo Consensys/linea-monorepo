@@ -1,0 +1,12 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+  id 'java-test-fixtures'
+}
+
+dependencies {
+  api "org.jetbrains.kotlinx:kotlinx-datetime:${versions.kotlinxDatetime}"
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}

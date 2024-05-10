@@ -1,10 +1,12 @@
 package verifiercol
 
 import (
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/column"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
-	"github.com/consensys/accelerated-crypto-monorepo/utils"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 type VerifierCol interface {
@@ -38,4 +40,48 @@ func AssertIsPublicCol(comp *wizard.CompiledIOP, col ifaces.Column) {
 			)
 		}
 	}
+}
+
+// NewConcatTinyColumns creates a new ConcatTinyColumns. The columns must all
+// have a length of "1"
+func NewConcatTinyColumns(
+	comp *wizard.CompiledIOP,
+	paddedSize int,
+	paddingVal field.Element,
+	cols ...ifaces.Column,
+) ifaces.Column {
+
+	access := []ifaces.Accessor{}
+
+	// Check the length of the columns
+	for _, col := range cols {
+		// sanity-check
+		col.MustExists()
+
+		// sanity check the publicity of the column
+		AssertIsPublicCol(comp, col)
+
+		if cc, isCC := col.(ConstCol); isCC {
+			access = append(access, accessors.NewConstant(cc.F))
+			continue
+		}
+
+		// sanity-check : we only support length 1 tiny columns
+		if col.Size() != 1 {
+			utils.Panic("expected column to have length 1, but got %v for `%v`", col.Size(), col.GetColID())
+		}
+
+		access = append(access, accessors.NewFromPublicColumn(col, 0))
+	}
+
+	// Then, the total length must not exceed the the PaddedSize
+	if paddedSize < len(cols) {
+		utils.Panic("the target length (=%v) is smaller than the given columns (=%v)", paddedSize, len(cols))
+	}
+
+	for len(access) < paddedSize {
+		access = append(access, accessors.NewConstant(paddingVal))
+	}
+
+	return NewFromAccessors(access)
 }

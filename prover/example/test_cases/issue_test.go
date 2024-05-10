@@ -1,13 +1,15 @@
 //permutation test is passing for wrong inputs; saying that (1, 1, 2, 3, 4, 5, 8, 10) is a permuation of (0, 0, 0, 0, 0, 0, 0, 0)
 
+//go:build !fuzzlight
+
 package test_cases_test
 
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/common/smartvectors"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/ifaces"
-	"github.com/consensys/accelerated-crypto-monorepo/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
 func defineIssuePermSingleCol(build *wizard.Builder) {

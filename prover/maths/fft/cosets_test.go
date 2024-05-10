@@ -3,7 +3,7 @@ package fft_test
 import (
 	"testing"
 
-	"github.com/consensys/accelerated-crypto-monorepo/maths/fft"
+	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
 )
 
 // Aimed at being run only during go-race

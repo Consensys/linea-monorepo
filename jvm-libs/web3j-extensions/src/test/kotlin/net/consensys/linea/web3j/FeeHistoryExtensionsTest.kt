@@ -4,6 +4,7 @@ import net.consensys.linea.FeeHistory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.methods.response.EthFeeHistory
+import java.math.BigDecimal
 import java.math.BigInteger
 
 class FeeHistoryExtensionsTest {
@@ -21,7 +22,9 @@ class FeeHistoryExtensionsTest {
         oldestBlock = BigInteger("f", 16),
         baseFeePerGas = listOf(BigInteger("a1", 16), BigInteger("a2", 16)),
         reward = listOf(listOf(BigInteger("ba1", 16), BigInteger("ba2", 16))),
-        gasUsedRatio = listOf(0.25.toBigDecimal())
+        gasUsedRatio = listOf(0.25.toBigDecimal()),
+        baseFeePerBlobGas = listOf(BigInteger.ZERO),
+        blobGasUsedRatio = listOf(BigDecimal.ZERO)
       )
     )
   }
@@ -48,7 +51,9 @@ class FeeHistoryExtensionsTest {
           listOf(BigInteger("ba1", 16), BigInteger("ba2", 16)),
           listOf(BigInteger("bb1", 16), BigInteger("bb2", 16))
         ),
-        gasUsedRatio = listOf(0.25.toBigDecimal(), 0.75.toBigDecimal())
+        gasUsedRatio = listOf(0.25.toBigDecimal(), 0.75.toBigDecimal()),
+        baseFeePerBlobGas = listOf(BigInteger.ZERO),
+        blobGasUsedRatio = listOf(BigDecimal.ZERO)
       )
     )
   }
