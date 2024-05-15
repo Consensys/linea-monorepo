@@ -13,15 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.romLex;
+package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_INVALID;
-import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_JUMPDEST;
-import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_PUSH1;
-import static net.consensys.linea.zktracer.module.romLex.Trace.EVM_INST_PUSH32;
-import static net.consensys.linea.zktracer.module.romLex.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.romLex.Trace.LLARGEMO;
-import static net.consensys.linea.zktracer.module.romLex.Trace.WORD_SIZE_MO;
+import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_INVALID;
+import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_JUMPDEST;
+import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_PUSH1;
+import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_PUSH32;
+import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.module.romlex.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.EqualsAndHashCode;

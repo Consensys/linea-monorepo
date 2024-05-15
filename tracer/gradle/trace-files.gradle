@@ -36,52 +36,38 @@ tasks.register("hub", TraceFilesTask) {
             .collect {"hub_v2/columns/${it}.lisp"} + 'constants/constants.lisp'
 }
 
-// Special case: PUB modules
-['block', 'hash', 'log'].each { moduleName ->
-    ['data', 'info'].each { submoduleName ->
-        tasks.register("${moduleName}_${submoduleName}", TraceFilesTask) {
-            group "Trace files generation"
-            dependsOn corsetExists
-
-            moduleDir = "${moduleName}/${submoduleName}"
-            module = submoduleName
-            files = ["pub/${moduleName}/${submoduleName}/${moduleName}.lisp"]
-        }
-    }
-}
-
 //
 // Reference table
 //
-tasks.register('instructionDecoder', TraceFilesTask) {
+tasks.register('instdecoder', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
 
     moduleDir = "tables/instructionDecoder"
     module = "instructionDecoder"
-    files = ["reference_tables/instruction_decoder.lisp"]
+    files = ["reftables/inst_decoder.lisp"]
 }
-tasks.register('shfRT', TraceFilesTask) {
+tasks.register('shfreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
 
     moduleDir = "tables/shf"
     module = "ShfRt"
-    files = ["reference_tables/shfRT.lisp"]
+    files = ["reftables/shf_reftable.lisp"]
 }
-tasks.register('binRT', TraceFilesTask) {
+tasks.register('binreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
 
     moduleDir = "tables/bin"
     module = "BinRt"
-    files = ["reference_tables/binRT.lisp"]
+    files = ["reftables/bin_reftable.lisp"]
 }
 
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rlptxn', 'rom', 'romLex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
+['bin', 'blockhash', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
@@ -94,7 +80,7 @@ tasks.register('binRT', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2f_modexp_data', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'txndata'].each {moduleName ->
+['mmu', 'blake2f_modexp_data', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'txndata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists

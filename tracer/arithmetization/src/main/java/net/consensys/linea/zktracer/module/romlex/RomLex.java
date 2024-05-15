@@ -13,9 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.romLex;
+package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.module.romLex.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
 

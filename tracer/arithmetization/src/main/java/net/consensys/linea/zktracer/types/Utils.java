@@ -15,9 +15,7 @@
 
 package net.consensys.linea.zktracer.types;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.List;
 
 import com.google.common.base.Preconditions;
 import org.apache.tuweni.bytes.Bytes;
@@ -82,38 +80,6 @@ public class Utils {
 
       output.bitDecList().add(nbStep - i - 1, bitDec);
       output.bitAccList().add(nbStep - i - 1, bitAcc);
-    }
-    return output;
-  }
-
-  public static List<Boolean> plateau(int trigger) {
-    List<Boolean> output = new ArrayList<>(16);
-    for (int i = 0; i < 16; i++) {
-      output.set(i, i >= trigger);
-    }
-    return output;
-  }
-
-  public static List<BigInteger> powerOf256(int trigger) {
-    List<BigInteger> output = new ArrayList<>(16);
-    BigInteger value = BigInteger.ONE;
-    for (int i = 0; i < 16; i++) {
-      if (i >= trigger) {
-        value = value.multiply(BigInteger.valueOf(256));
-      }
-      output.set(i, value);
-    }
-    return output;
-  }
-
-  public static List<BigInteger> antiPowerOf256(int trigger) {
-    List<BigInteger> output = new ArrayList<>(16);
-    BigInteger value = trigger <= 0 ? BigInteger.ONE : BigInteger.valueOf(256);
-    for (int i = 0; i < 16; i++) {
-      if (i < trigger) {
-        value = value.multiply(BigInteger.valueOf(256));
-      }
-      output.set(i, value);
     }
     return output;
   }

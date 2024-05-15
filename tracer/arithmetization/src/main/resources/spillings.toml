@@ -1,6 +1,8 @@
 # These values should be set from `corset debug -s zkevm.bin`
 [spillings]
 ADD = 2
+BLOCKDATA = 6
+BLOCKHASH = 1
 BIN = 16
 EC_DATA = 12
 EUC = 1

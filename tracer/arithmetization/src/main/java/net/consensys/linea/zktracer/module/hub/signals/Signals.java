@@ -48,6 +48,7 @@ public class Signals {
           InstructionFamily.INVALID);
 
   @Getter private boolean add;
+  @Getter private boolean blockhash;
   @Getter private boolean bin;
   @Getter private boolean mul;
   @Getter private boolean ext;
@@ -71,6 +72,7 @@ public class Signals {
 
   public void reset() {
     this.add = false;
+    this.blockhash = false;
     this.bin = false;
     this.mul = false;
     this.ext = false;
@@ -94,6 +96,7 @@ public class Signals {
   public Signals snapshot() {
     Signals r = new Signals(null);
     r.add = this.add;
+    r.blockhash = this.blockhash;
     r.bin = this.bin;
     r.mul = this.mul;
     r.ext = this.ext;
@@ -274,6 +277,7 @@ public class Signals {
       case SLOAD -> {}
       case SSTORE, JUMP, JUMPI -> this.oob = true;
       case MSIZE -> this.mxp = ex.none();
+      case BLOCKHASH -> this.blockhash = ex.none();
     }
   }
 }

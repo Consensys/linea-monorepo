@@ -42,12 +42,12 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("shfRT.BYTE1", 1, length),
-        new ColumnHeader("shfRT.IOMF", 1, length),
-        new ColumnHeader("shfRT.LAS", 1, length),
-        new ColumnHeader("shfRT.MSHP", 2, length),
-        new ColumnHeader("shfRT.ONES", 1, length),
-        new ColumnHeader("shfRT.RAP", 1, length));
+        new ColumnHeader("shfreftable.BYTE1", 1, length),
+        new ColumnHeader("shfreftable.IOMF", 1, length),
+        new ColumnHeader("shfreftable.LAS", 1, length),
+        new ColumnHeader("shfreftable.MSHP", 2, length),
+        new ColumnHeader("shfreftable.ONES", 1, length),
+        new ColumnHeader("shfreftable.RAP", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -69,7 +69,7 @@ public class Trace {
 
   public Trace byte1(final UnsignedByte b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("shfRT.BYTE1 already set");
+      throw new IllegalStateException("shfreftable.BYTE1 already set");
     } else {
       filled.set(0);
     }
@@ -81,7 +81,7 @@ public class Trace {
 
   public Trace iomf(final Boolean b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("shfRT.IOMF already set");
+      throw new IllegalStateException("shfreftable.IOMF already set");
     } else {
       filled.set(1);
     }
@@ -93,7 +93,7 @@ public class Trace {
 
   public Trace las(final UnsignedByte b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("shfRT.LAS already set");
+      throw new IllegalStateException("shfreftable.LAS already set");
     } else {
       filled.set(2);
     }
@@ -105,7 +105,7 @@ public class Trace {
 
   public Trace mshp(final short b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("shfRT.MSHP already set");
+      throw new IllegalStateException("shfreftable.MSHP already set");
     } else {
       filled.set(3);
     }
@@ -117,7 +117,7 @@ public class Trace {
 
   public Trace ones(final UnsignedByte b) {
     if (filled.get(4)) {
-      throw new IllegalStateException("shfRT.ONES already set");
+      throw new IllegalStateException("shfreftable.ONES already set");
     } else {
       filled.set(4);
     }
@@ -129,7 +129,7 @@ public class Trace {
 
   public Trace rap(final UnsignedByte b) {
     if (filled.get(5)) {
-      throw new IllegalStateException("shfRT.RAP already set");
+      throw new IllegalStateException("shfreftable.RAP already set");
     } else {
       filled.set(5);
     }
@@ -141,27 +141,27 @@ public class Trace {
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("shfRT.BYTE1 has not been filled");
+      throw new IllegalStateException("shfreftable.BYTE1 has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("shfRT.IOMF has not been filled");
+      throw new IllegalStateException("shfreftable.IOMF has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("shfRT.LAS has not been filled");
+      throw new IllegalStateException("shfreftable.LAS has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("shfRT.MSHP has not been filled");
+      throw new IllegalStateException("shfreftable.MSHP has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("shfRT.ONES has not been filled");
+      throw new IllegalStateException("shfreftable.ONES has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("shfRT.RAP has not been filled");
+      throw new IllegalStateException("shfreftable.RAP has not been filled");
     }
 
     filled.clear();
