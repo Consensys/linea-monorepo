@@ -29,6 +29,7 @@ import static net.consensys.linea.zktracer.module.txndata.Trace.GAS_CONST_G_TX_C
 import static net.consensys.linea.zktracer.module.txndata.Trace.GAS_CONST_G_TX_DATA_NONZERO;
 import static net.consensys.linea.zktracer.module.txndata.Trace.GAS_CONST_G_TX_DATA_ZERO;
 import static net.consensys.linea.zktracer.module.txndata.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.txndata.Trace.MAX_REFUND_QUOTIENT;
 import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_0;
 import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_1;
 import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_2;
@@ -386,7 +387,7 @@ public final class TransactionSnapshot extends ModuleOperation {
 
     // i+2
     final Bytes row2arg1 = Bytes.minimalBytes(this.gasLimit - this.leftoverGas);
-    final Bytes row2arg2 = Bytes.of(2);
+    final Bytes row2arg2 = Bytes.of(MAX_REFUND_QUOTIENT);
     final Bytes refundLimit = euc.callEUC(row2arg1, row2arg2).quotient();
     this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToEuc(row2arg1, row2arg2, refundLimit));
 
