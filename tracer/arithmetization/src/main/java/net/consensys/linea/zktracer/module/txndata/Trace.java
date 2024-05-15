@@ -260,6 +260,7 @@ public class Trace {
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
   public static final int LLARGEPO = 0x11;
+  public static final int MAX_REFUND_QUOTIENT = 0x5;
   public static final int MISC_EXP_WEIGHT = 0x1;
   public static final int MISC_MMU_WEIGHT = 0x2;
   public static final int MISC_MXP_WEIGHT = 0x4;
