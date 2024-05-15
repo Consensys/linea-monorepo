@@ -31,8 +31,8 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
-import net.consensys.linea.zktracer.module.romLex.RomLex;
+import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -61,7 +61,7 @@ public class TxnData implements Module {
     return "TXN_DATA";
   }
 
-  private final List<BlockSnapshot> blocks = new ArrayList<>();
+  public final List<BlockSnapshot> blocks = new ArrayList<>();
   /** accumulate the gas used since the beginning of the current block */
   public final Deque<Integer> cumulatedGasUsed = new ArrayDeque<>();
 
@@ -82,7 +82,7 @@ public class TxnData implements Module {
         this.wcp.additionalRows.pop() + 4); /* 4 = byte length of LINEA_BLOCK_GAS_LIMIT */
   }
 
-  private BlockSnapshot currentBlock() {
+  public BlockSnapshot currentBlock() {
     return this.blocks.get(this.blocks.size() - 1);
   }
 
@@ -146,8 +146,7 @@ public class TxnData implements Module {
       TransactionSnapshot tx,
       int absTxNumMax,
       int absTxNum,
-      int btcNumMax,
-      int btcNum,
+      int blockNum,
       int relTxNumMax,
       int relTxNum) {
 
@@ -185,8 +184,7 @@ public class TxnData implements Module {
       trace
           .absTxNumMax(absTxNumMax)
           .absTxNum(absTxNum)
-          .btcNumMax(btcNumMax)
-          .btcNum(btcNum)
+          .relBlock(blockNum)
           .relTxNumMax(relTxNumMax)
           .relTxNum(relTxNum)
           .isLastTxOfBlock(isLastTxOfTheBlock)
@@ -246,24 +244,19 @@ public class TxnData implements Module {
 
     int absTxNumMax = 0;
     int absTxNum = 0;
-    int batchNumMax = 0;
-    int btchNum = 0;
+    int blockNum = 0;
     for (BlockSnapshot block : this.blocks) {
       absTxNumMax += block.getTxs().size();
-      if (!block.getTxs().isEmpty()) {
-        batchNumMax += 1;
-      }
     }
     for (BlockSnapshot block : this.blocks) {
-      int relTxNumMax = block.getTxs().size();
+      final int relTxNumMax = block.getTxs().size();
       if (relTxNumMax != 0) {
-        btchNum++;
+        blockNum++;
         int relTxNum = 0;
         for (TransactionSnapshot tx : block.getTxs()) {
           absTxNum++;
           relTxNum++;
-          this.traceTx(
-              trace, block, tx, absTxNumMax, absTxNum, batchNumMax, btchNum, relTxNumMax, relTxNum);
+          this.traceTx(trace, block, tx, absTxNumMax, absTxNum, blockNum, relTxNumMax, relTxNum);
         }
       }
     }

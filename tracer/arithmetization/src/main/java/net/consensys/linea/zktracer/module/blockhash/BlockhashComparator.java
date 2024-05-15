@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,26 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.romLex;
+package net.consensys.linea.zktracer.module.blockhash;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
 
-public class DeferRegistry {
-  private final List<RomLexDefer> defers = new ArrayList<>();
-
-  public void register(RomLexDefer defer) {
-    this.defers.add(defer);
-  }
-
-  public void clear() {
-    this.defers.clear();
-  }
-
-  public void trigger(final ContractMetadata contractMetadata) {
-    for (RomLexDefer defer : this.defers) {
-      defer.updateContractMetadata(contractMetadata);
+public class BlockhashComparator implements Comparator<BlockhashOperation> {
+  @Override
+  public int compare(BlockhashOperation o1, BlockhashOperation o2) {
+    // First, sort by BLOCK_NUMBER
+    final int blockNumberComparison = o1.opcodeArgument().compareTo(o2.opcodeArgument());
+    if (blockNumberComparison != 0) {
+      return blockNumberComparison;
+    } else {
+      // Second, sort by RELATIVE_BLOCK
+      return o1.relativeBlock() - o2.relativeBlock();
     }
-    this.clear();
   }
 }

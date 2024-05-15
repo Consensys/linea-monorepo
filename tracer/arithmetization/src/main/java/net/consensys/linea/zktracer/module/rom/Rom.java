@@ -21,8 +21,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.romLex.RomChunk;
-import net.consensys.linea.zktracer.module.romLex.RomLex;
+import net.consensys.linea.zktracer.module.romlex.RomChunk;
+import net.consensys.linea.zktracer.module.romlex.RomLex;
 
 @RequiredArgsConstructor
 public class Rom implements Module {

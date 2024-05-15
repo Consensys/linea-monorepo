@@ -19,8 +19,8 @@ import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RAM_TO_EXO_
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.romLex.ContractMetadata;
-import net.consensys.linea.zktracer.module.romLex.RomLexDefer;
+import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.module.romlex.RomLexDefer;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.evm.internal.Words;
 

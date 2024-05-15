@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.testing;
 
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BLOCK_GAS_LIMIT;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_DIFFICULTY;
 import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,10 +72,14 @@ public class ToyExecutionEnvironment {
   private static final Bytes DEFAULT_BYTECODE = Bytes.EMPTY;
   private static final long DEFAULT_GAS_LIMIT = 1_000_000;
   private static final ToyWorld DEFAULT_TOY_WORLD = ToyWorld.empty();
-  private static final Wei DEFAULT_BASE_FEE = Wei.of(1_000_000L);
+  private static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   private static final GasCalculator gasCalculator = ZkTracer.gasCalculator;
   private static final Address minerAddress = Address.fromHexString("0x1234532342");
+  private static final long DEFAULT_BLOCK_NUMBER = 6678980;
+  private static final long DEFAULT_TIME_STAMP = 1347310;
+  private static final Hash DEFAULT_HASH =
+      Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
 
   private final ToyWorld toyWorld;
   private final EVM evm = MainnetEVMs.london(EvmConfiguration.DEFAULT);
@@ -173,7 +180,12 @@ public class ToyExecutionEnvironment {
     BlockHeader header =
         BlockHeaderBuilder.createDefault()
             .baseFee(DEFAULT_BASE_FEE)
+            .gasLimit(LINEA_BLOCK_GAS_LIMIT)
+            .difficulty(Difficulty.of(LINEA_DIFFICULTY))
+            .number(DEFAULT_BLOCK_NUMBER)
             .coinbase(minerAddress)
+            .timestamp(DEFAULT_TIME_STAMP)
+            .parentHash(DEFAULT_HASH)
             .buildBlockHeader();
     BlockBody mockBlockBody = new BlockBody(transactions, new ArrayList<>());
 

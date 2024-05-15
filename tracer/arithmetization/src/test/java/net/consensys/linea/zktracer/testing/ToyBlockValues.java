@@ -15,12 +15,15 @@
 
 package net.consensys.linea.zktracer.testing;
 
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BLOCK_GAS_LIMIT;
+import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_DIFFICULTY;
+
 import java.util.Optional;
 
 import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.BlockValues;
 
@@ -28,11 +31,11 @@ import org.hyperledger.besu.evm.frame.BlockValues;
 @Builder
 @RequiredArgsConstructor
 public class ToyBlockValues implements BlockValues {
-  private static final Bytes DEFAULT_DIFFICULTY_BYTES = UInt256.ZERO;
-  private static final long DEFAULT_NUMBER = 0L;
-  private static final long DEFAULT_GAS_LIMIT = 30_000_000L;
+  private static final Bytes DEFAULT_DIFFICULTY_BYTES = Bytes.ofUnsignedShort(LINEA_DIFFICULTY);
+  private static final long DEFAULT_NUMBER = 1667872L;
+  private static final long DEFAULT_GAS_LIMIT = LINEA_BLOCK_GAS_LIMIT;
   private static final long DEFAULT_TIMESTAMP = 1234987L;
-  private static final Optional<Wei> DEFAULT_BASE_FEE = Optional.empty();
+  private static final Optional<Wei> DEFAULT_BASE_FEE = Optional.of(Wei.of(LINEA_BASE_FEE));
 
   private final Long number;
   private final Long gasLimit;

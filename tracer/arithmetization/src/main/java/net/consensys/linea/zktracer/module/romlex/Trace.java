@@ -13,8 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.romLex;
+package net.consensys.linea.zktracer.module.romlex;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
@@ -29,6 +30,26 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
+  public static final int EC_DATA_PHASE_ECADD_DATA = 0x3;
+  public static final int EC_DATA_PHASE_ECADD_RESULT = 0x4;
+  public static final int EC_DATA_PHASE_ECMUL_DATA = 0x5;
+  public static final int EC_DATA_PHASE_ECMUL_RESULT = 0x6;
+  public static final int EC_DATA_PHASE_ECRECOVER_DATA = 0x1;
+  public static final int EC_DATA_PHASE_ECRECOVER_RESULT = 0x2;
+  public static final int EC_DATA_PHASE_PAIRING_DATA = 0x7;
+  public static final int EC_DATA_PHASE_PAIRING_RESULT = 0x8;
+  public static final int EIP_3541_MARKER = 0xef;
+  public static final BigInteger EMPTY_KECCAK_HI =
+      new BigInteger("16434357337474432580558001204043214908");
+  public static final BigInteger EMPTY_KECCAK_LO =
+      new BigInteger("19024806816994025362060938983270537799");
+  public static final int EMPTY_RIPEMD_HI = 0x9c1185a;
+  public static final BigInteger EMPTY_RIPEMD_LO =
+      new BigInteger("16442052386882578548602430796343695571");
+  public static final BigInteger EMPTY_SHA2_HI =
+      new BigInteger("18915786244935348617899154533661473682");
+  public static final BigInteger EMPTY_SHA2_LO =
+      new BigInteger("3296542996298665609207448061432114053");
   public static final int EVM_INST_ADD = 0x1;
   public static final int EVM_INST_ADDMOD = 0x8;
   public static final int EVM_INST_ADDRESS = 0x30;
@@ -36,6 +57,7 @@ public class Trace {
   public static final int EVM_INST_BALANCE = 0x31;
   public static final int EVM_INST_BASEFEE = 0x48;
   public static final int EVM_INST_BLOCKHASH = 0x40;
+  public static final int EVM_INST_BLOCKHASH_MAX_HISTORY = 0x100;
   public static final int EVM_INST_BYTE = 0x1a;
   public static final int EVM_INST_CALL = 0xf1;
   public static final int EVM_INST_CALLCODE = 0xf2;
@@ -172,10 +194,70 @@ public class Trace {
   public static final int EVM_INST_SWAP9 = 0x98;
   public static final int EVM_INST_TIMESTAMP = 0x42;
   public static final int EVM_INST_XOR = 0x18;
-  public static final int INVALID_CODE_PREFIX_VALUE = 0xef;
+  public static final int EXO_SUM_INDEX_BLAKEMODEXP = 0x6;
+  public static final int EXO_SUM_INDEX_ECDATA = 0x4;
+  public static final int EXO_SUM_INDEX_KEC = 0x1;
+  public static final int EXO_SUM_INDEX_LOG = 0x2;
+  public static final int EXO_SUM_INDEX_RIPSHA = 0x5;
+  public static final int EXO_SUM_INDEX_ROM = 0x0;
+  public static final int EXO_SUM_INDEX_TXCD = 0x3;
+  public static final int EXO_SUM_WEIGHT_BLAKEMODEXP = 0x40;
+  public static final int EXO_SUM_WEIGHT_ECDATA = 0x10;
+  public static final int EXO_SUM_WEIGHT_KEC = 0x2;
+  public static final int EXO_SUM_WEIGHT_LOG = 0x4;
+  public static final int EXO_SUM_WEIGHT_RIPSHA = 0x20;
+  public static final int EXO_SUM_WEIGHT_ROM = 0x1;
+  public static final int EXO_SUM_WEIGHT_TXCD = 0x8;
+  public static final int EXP_INST_EXPLOG = 0xee0a;
+  public static final int EXP_INST_MODEXPLOG = 0xee05;
+  public static final int GAS_CONST_G_ACCESS_LIST_ADRESS = 0x960;
+  public static final int GAS_CONST_G_ACCESS_LIST_STORAGE = 0x76c;
+  public static final int GAS_CONST_G_BASE = 0x2;
+  public static final int GAS_CONST_G_BLOCKHASH = 0x14;
+  public static final int GAS_CONST_G_CALL_STIPEND = 0x8fc;
+  public static final int GAS_CONST_G_CALL_VALUE = 0x2328;
+  public static final int GAS_CONST_G_CODE_DEPOSIT = 0xc8;
+  public static final int GAS_CONST_G_COLD_ACCOUNT_ACCESS = 0xa28;
+  public static final int GAS_CONST_G_COLD_SLOAD = 0x834;
+  public static final int GAS_CONST_G_COPY = 0x3;
+  public static final int GAS_CONST_G_CREATE = 0x7d00;
+  public static final int GAS_CONST_G_EXP = 0xa;
+  public static final int GAS_CONST_G_EXP_BYTE = 0x32;
+  public static final int GAS_CONST_G_HIGH = 0xa;
+  public static final int GAS_CONST_G_JUMPDEST = 0x1;
+  public static final int GAS_CONST_G_KECCAK_256 = 0x1e;
+  public static final int GAS_CONST_G_KECCAK_256_WORD = 0x6;
+  public static final int GAS_CONST_G_LOG = 0x177;
+  public static final int GAS_CONST_G_LOG_DATA = 0x8;
+  public static final int GAS_CONST_G_LOG_TOPIC = 0x177;
+  public static final int GAS_CONST_G_LOW = 0x5;
+  public static final int GAS_CONST_G_MEMORY = 0x3;
+  public static final int GAS_CONST_G_MID = 0x8;
+  public static final int GAS_CONST_G_NEW_ACCOUNT = 0x61a8;
+  public static final int GAS_CONST_G_SELFDESTRUCT = 0x1388;
+  public static final int GAS_CONST_G_SRESET = 0xb54;
+  public static final int GAS_CONST_G_SSET = 0x4e20;
+  public static final int GAS_CONST_G_TRANSACTION = 0x5208;
+  public static final int GAS_CONST_G_TX_CREATE = 0x7d00;
+  public static final int GAS_CONST_G_TX_DATA_NONZERO = 0x10;
+  public static final int GAS_CONST_G_TX_DATA_ZERO = 0x4;
+  public static final int GAS_CONST_G_VERY_LOW = 0x3;
+  public static final int GAS_CONST_G_WARM_ACCESS = 0x64;
+  public static final int GAS_CONST_G_ZERO = 0x0;
+  public static final int LINEA_BASE_FEE = 0x7;
+  public static final int LINEA_BLOCK_GAS_LIMIT = 0x3a2c940;
+  public static final int LINEA_CHAIN_ID = 0xe708;
+  public static final int LINEA_DIFFICULTY = 0x2;
+  public static final int LINEA_GOERLI_CHAIN_ID = 0xe704;
+  public static final int LINEA_SEPOLIA_CHAIN_ID = 0xe705;
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
   public static final int LLARGEPO = 0x11;
+  public static final int MISC_EXP_WEIGHT = 0x1;
+  public static final int MISC_MMU_WEIGHT = 0x2;
+  public static final int MISC_MXP_WEIGHT = 0x4;
+  public static final int MISC_OOB_WEIGHT = 0x8;
+  public static final int MISC_STP_WEIGHT = 0x10;
   public static final int MMEDIUM = 0x8;
   public static final int MMEDIUMMO = 0x7;
   public static final int MMIO_INST_LIMB_TO_RAM_ONE_TARGET = 0xfe12;
@@ -192,8 +274,6 @@ public class Trace {
   public static final int MMIO_INST_RAM_TO_RAM_TWO_TARGET = 0xfe33;
   public static final int MMIO_INST_RAM_VANISHES = 0xfe42;
   public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING = 0xfe50;
-  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING_PURE_PADDING = 0xfe52;
-  public static final int MMU_INST_ANY_TO_RAM_WITH_PADDING_SOME_DATA = 0xfe51;
   public static final int MMU_INST_BLAKE = 0xfe80;
   public static final int MMU_INST_EXO_TO_RAM_TRANSPLANTS = 0xfe30;
   public static final int MMU_INST_INVALID_CODE_PREFIX = 0xfe00;
@@ -205,19 +285,44 @@ public class Trace {
   public static final int MMU_INST_RAM_TO_EXO_WITH_PADDING = 0xfe20;
   public static final int MMU_INST_RAM_TO_RAM_SANS_PADDING = 0xfe40;
   public static final int MMU_INST_RIGHT_PADDED_WORD_EXTRACTION = 0xfe10;
+  public static final int OOB_INST_blake_cds = 0xfa09;
+  public static final int OOB_INST_blake_params = 0xfb09;
+  public static final int OOB_INST_call = 0xca;
+  public static final int OOB_INST_cdl = 0x35;
+  public static final int OOB_INST_create = 0xce;
+  public static final int OOB_INST_deployment = 0xf3;
+  public static final int OOB_INST_ecadd = 0xff06;
+  public static final int OOB_INST_ecmul = 0xff07;
+  public static final int OOB_INST_ecpairing = 0xff08;
+  public static final int OOB_INST_ecrecover = 0xff01;
+  public static final int OOB_INST_identity = 0xff04;
+  public static final int OOB_INST_jump = 0x56;
+  public static final int OOB_INST_jumpi = 0x57;
+  public static final int OOB_INST_modexp_cds = 0xfa05;
+  public static final int OOB_INST_modexp_extract = 0xfe05;
+  public static final int OOB_INST_modexp_lead = 0xfc05;
+  public static final int OOB_INST_modexp_pricing = 0xfd05;
+  public static final int OOB_INST_modexp_xbs = 0xfb05;
+  public static final int OOB_INST_rdc = 0x3e;
+  public static final int OOB_INST_ripemd = 0xff03;
+  public static final int OOB_INST_sha2 = 0xff02;
+  public static final int OOB_INST_sstore = 0x55;
+  public static final int OOB_INST_xcall = 0xcc;
   public static final int PHASE_BLAKE_DATA = 0x5;
   public static final int PHASE_BLAKE_PARAMS = 0x6;
   public static final int PHASE_BLAKE_RESULT = 0x7;
-  public static final int PHASE_KECCAK_DATA = 0x8;
-  public static final int PHASE_KECCAK_RESULT = 0x9;
+  public static final int PHASE_KECCAK_DATA = 0x5;
+  public static final int PHASE_KECCAK_RESULT = 0x6;
   public static final int PHASE_MODEXP_BASE = 0x1;
   public static final int PHASE_MODEXP_EXPONENT = 0x2;
   public static final int PHASE_MODEXP_MODULUS = 0x3;
   public static final int PHASE_MODEXP_RESULT = 0x4;
-  public static final int PHASE_RIPEMD_DATA = 0xc;
-  public static final int PHASE_RIPEMD_RESULT = 0xd;
-  public static final int PHASE_SHA2_DATA = 0xa;
-  public static final int PHASE_SHA2_RESULT = 0xb;
+  public static final int PHASE_RIPEMD_DATA = 0x3;
+  public static final int PHASE_RIPEMD_RESULT = 0x4;
+  public static final int PHASE_SHA2_DATA = 0x1;
+  public static final int PHASE_SHA2_RESULT = 0x2;
+  public static final int REFUND_CONST_R_SCLEAR = 0x3a98;
+  public static final int REFUND_CONST_R_SELFDESTRUCT = 0x5dc0;
   public static final int RLP_ADDR_RECIPE_1 = 0x1;
   public static final int RLP_ADDR_RECIPE_2 = 0x2;
   public static final int RLP_PREFIX_INT_LONG = 0xb7;
@@ -233,21 +338,21 @@ public class Trace {
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_BASE = 0x41;
   public static final int RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA = 0x60;
   public static final int RLP_RCPT_SUBPHASE_ID_TYPE = 0x7;
-  public static final int RLP_TXN_PHASE_ACCESS_LIST_VALUE = 0xb;
-  public static final int RLP_TXN_PHASE_BETA_VALUE = 0xc;
-  public static final int RLP_TXN_PHASE_CHAIN_ID_VALUE = 0x2;
-  public static final int RLP_TXN_PHASE_DATA_VALUE = 0xa;
-  public static final int RLP_TXN_PHASE_GAS_LIMIT_VALUE = 0x7;
-  public static final int RLP_TXN_PHASE_GAS_PRICE_VALUE = 0x4;
-  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS_VALUE = 0x6;
-  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS_VALUE = 0x5;
-  public static final int RLP_TXN_PHASE_NONCE_VALUE = 0x3;
-  public static final int RLP_TXN_PHASE_RLP_PREFIX_VALUE = 0x1;
-  public static final int RLP_TXN_PHASE_R_VALUE = 0xe;
-  public static final int RLP_TXN_PHASE_S_VALUE = 0xf;
-  public static final int RLP_TXN_PHASE_TO_VALUE = 0x8;
-  public static final int RLP_TXN_PHASE_VALUE_VALUE = 0x9;
-  public static final int RLP_TXN_PHASE_Y_VALUE = 0xd;
+  public static final int RLP_TXN_PHASE_ACCESS_LIST = 0xb;
+  public static final int RLP_TXN_PHASE_BETA = 0xc;
+  public static final int RLP_TXN_PHASE_CHAIN_ID = 0x2;
+  public static final int RLP_TXN_PHASE_DATA = 0xa;
+  public static final int RLP_TXN_PHASE_GAS_LIMIT = 0x7;
+  public static final int RLP_TXN_PHASE_GAS_PRICE = 0x4;
+  public static final int RLP_TXN_PHASE_MAX_FEE_PER_GAS = 0x6;
+  public static final int RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS = 0x5;
+  public static final int RLP_TXN_PHASE_NONCE = 0x3;
+  public static final int RLP_TXN_PHASE_R = 0xe;
+  public static final int RLP_TXN_PHASE_RLP_PREFIX = 0x1;
+  public static final int RLP_TXN_PHASE_S = 0xf;
+  public static final int RLP_TXN_PHASE_TO = 0x8;
+  public static final int RLP_TXN_PHASE_VALUE = 0x9;
+  public static final int RLP_TXN_PHASE_Y = 0xd;
   public static final int WCP_INST_GEQ = 0xe;
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
@@ -268,15 +373,15 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("romLex.ADDRESS_HI", 8, length),
-        new ColumnHeader("romLex.ADDRESS_LO", 32, length),
-        new ColumnHeader("romLex.CODE_FRAGMENT_INDEX", 8, length),
-        new ColumnHeader("romLex.CODE_FRAGMENT_INDEX_INFTY", 8, length),
-        new ColumnHeader("romLex.CODE_SIZE", 8, length),
-        new ColumnHeader("romLex.COMMIT_TO_STATE", 1, length),
-        new ColumnHeader("romLex.DEPLOYMENT_NUMBER", 4, length),
-        new ColumnHeader("romLex.DEPLOYMENT_STATUS", 1, length),
-        new ColumnHeader("romLex.READ_FROM_STATE", 1, length));
+        new ColumnHeader("romlex.ADDRESS_HI", 8, length),
+        new ColumnHeader("romlex.ADDRESS_LO", 32, length),
+        new ColumnHeader("romlex.CODE_FRAGMENT_INDEX", 8, length),
+        new ColumnHeader("romlex.CODE_FRAGMENT_INDEX_INFTY", 8, length),
+        new ColumnHeader("romlex.CODE_SIZE", 8, length),
+        new ColumnHeader("romlex.COMMIT_TO_STATE", 1, length),
+        new ColumnHeader("romlex.DEPLOYMENT_NUMBER", 4, length),
+        new ColumnHeader("romlex.DEPLOYMENT_STATUS", 1, length),
+        new ColumnHeader("romlex.READ_FROM_STATE", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -301,7 +406,7 @@ public class Trace {
 
   public Trace addressHi(final long b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("romLex.ADDRESS_HI already set");
+      throw new IllegalStateException("romlex.ADDRESS_HI already set");
     } else {
       filled.set(0);
     }
@@ -313,7 +418,7 @@ public class Trace {
 
   public Trace addressLo(final Bytes b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("romLex.ADDRESS_LO already set");
+      throw new IllegalStateException("romlex.ADDRESS_LO already set");
     } else {
       filled.set(1);
     }
@@ -329,7 +434,7 @@ public class Trace {
 
   public Trace codeFragmentIndex(final long b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX already set");
+      throw new IllegalStateException("romlex.CODE_FRAGMENT_INDEX already set");
     } else {
       filled.set(2);
     }
@@ -341,7 +446,7 @@ public class Trace {
 
   public Trace codeFragmentIndexInfty(final long b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX_INFTY already set");
+      throw new IllegalStateException("romlex.CODE_FRAGMENT_INDEX_INFTY already set");
     } else {
       filled.set(3);
     }
@@ -353,7 +458,7 @@ public class Trace {
 
   public Trace codeSize(final long b) {
     if (filled.get(4)) {
-      throw new IllegalStateException("romLex.CODE_SIZE already set");
+      throw new IllegalStateException("romlex.CODE_SIZE already set");
     } else {
       filled.set(4);
     }
@@ -365,7 +470,7 @@ public class Trace {
 
   public Trace commitToState(final Boolean b) {
     if (filled.get(5)) {
-      throw new IllegalStateException("romLex.COMMIT_TO_STATE already set");
+      throw new IllegalStateException("romlex.COMMIT_TO_STATE already set");
     } else {
       filled.set(5);
     }
@@ -377,7 +482,7 @@ public class Trace {
 
   public Trace deploymentNumber(final int b) {
     if (filled.get(6)) {
-      throw new IllegalStateException("romLex.DEPLOYMENT_NUMBER already set");
+      throw new IllegalStateException("romlex.DEPLOYMENT_NUMBER already set");
     } else {
       filled.set(6);
     }
@@ -389,7 +494,7 @@ public class Trace {
 
   public Trace deploymentStatus(final Boolean b) {
     if (filled.get(7)) {
-      throw new IllegalStateException("romLex.DEPLOYMENT_STATUS already set");
+      throw new IllegalStateException("romlex.DEPLOYMENT_STATUS already set");
     } else {
       filled.set(7);
     }
@@ -401,7 +506,7 @@ public class Trace {
 
   public Trace readFromState(final Boolean b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("romLex.READ_FROM_STATE already set");
+      throw new IllegalStateException("romlex.READ_FROM_STATE already set");
     } else {
       filled.set(8);
     }
@@ -413,39 +518,39 @@ public class Trace {
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("romLex.ADDRESS_HI has not been filled");
+      throw new IllegalStateException("romlex.ADDRESS_HI has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("romLex.ADDRESS_LO has not been filled");
+      throw new IllegalStateException("romlex.ADDRESS_LO has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX has not been filled");
+      throw new IllegalStateException("romlex.CODE_FRAGMENT_INDEX has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("romLex.CODE_FRAGMENT_INDEX_INFTY has not been filled");
+      throw new IllegalStateException("romlex.CODE_FRAGMENT_INDEX_INFTY has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("romLex.CODE_SIZE has not been filled");
+      throw new IllegalStateException("romlex.CODE_SIZE has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("romLex.COMMIT_TO_STATE has not been filled");
+      throw new IllegalStateException("romlex.COMMIT_TO_STATE has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("romLex.DEPLOYMENT_NUMBER has not been filled");
+      throw new IllegalStateException("romlex.DEPLOYMENT_NUMBER has not been filled");
     }
 
     if (!filled.get(7)) {
-      throw new IllegalStateException("romLex.DEPLOYMENT_STATUS has not been filled");
+      throw new IllegalStateException("romlex.DEPLOYMENT_STATUS has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("romLex.READ_FROM_STATE has not been filled");
+      throw new IllegalStateException("romlex.READ_FROM_STATE has not been filled");
     }
 
     filled.clear();

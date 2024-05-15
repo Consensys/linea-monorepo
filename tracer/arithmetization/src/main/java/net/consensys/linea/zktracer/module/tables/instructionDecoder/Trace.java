@@ -122,91 +122,91 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("instruction-decoder.ADDRESS_TRIMMING_INSTRUCTION", 1, length),
-        new ColumnHeader("instruction-decoder.ALPHA", 1, length),
-        new ColumnHeader("instruction-decoder.BILLING_PER_BYTE", 32, length),
-        new ColumnHeader("instruction-decoder.BILLING_PER_WORD", 32, length),
-        new ColumnHeader("instruction-decoder.DELTA", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_ACCOUNT", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_ADD", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_BATCH", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_BIN", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_CALL", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_CONTEXT", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_COPY", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_CREATE", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_DUP", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_EXT", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_HALT", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_INVALID", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_JUMP", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_KEC", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_LOG", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_MACHINE_STATE", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_MOD", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_MUL", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_PUSH_POP", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_SHF", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_STACK_RAM", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_STORAGE", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_SWAP", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_TRANSACTION", 1, length),
-        new ColumnHeader("instruction-decoder.FAMILY_WCP", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG_1", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG_2", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG_3", 1, length),
-        new ColumnHeader("instruction-decoder.FLAG_4", 1, length),
-        new ColumnHeader("instruction-decoder.IS_JUMPDEST", 1, length),
-        new ColumnHeader("instruction-decoder.IS_PUSH", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_FLAG", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_TYPE_1", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_TYPE_2", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_TYPE_3", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_TYPE_4", 1, length),
-        new ColumnHeader("instruction-decoder.MXP_TYPE_5", 1, length),
-        new ColumnHeader("instruction-decoder.NB_ADDED", 1, length),
-        new ColumnHeader("instruction-decoder.NB_REMOVED", 1, length),
-        new ColumnHeader("instruction-decoder.OPCODE", 32, length),
-        new ColumnHeader("instruction-decoder.PATTERN_CALL", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_COPY", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_CREATE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_DUP", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_LOAD_STORE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_LOG", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_ONE_ONE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_ONE_ZERO", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_SWAP", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_THREE_ONE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_TWO_ONE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_TWO_ZERO", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_ZERO_ONE", 1, length),
-        new ColumnHeader("instruction-decoder.PATTERN_ZERO_ZERO", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_ENABLED", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_BLAKE_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_EC_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_EC_INFO", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_HASH_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_HASH_INFO", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_LOG_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_MODEXP_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_RAM", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_ROM", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_STACK", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_SOURCE_TXN_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_BLAKE_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_EC_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_EC_INFO", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_HASH_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_HASH_INFO", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_LOG_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_MODEXP_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_RAM", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_ROM", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_STACK", 1, length),
-        new ColumnHeader("instruction-decoder.RAM_TARGET_TXN_DATA", 1, length),
-        new ColumnHeader("instruction-decoder.STATIC_FLAG", 1, length),
-        new ColumnHeader("instruction-decoder.STATIC_GAS", 32, length),
-        new ColumnHeader("instruction-decoder.TWO_LINE_INSTRUCTION", 1, length));
+        new ColumnHeader("instdecoder.ADDRESS_TRIMMING_INSTRUCTION", 1, length),
+        new ColumnHeader("instdecoder.ALPHA", 1, length),
+        new ColumnHeader("instdecoder.BILLING_PER_BYTE", 32, length),
+        new ColumnHeader("instdecoder.BILLING_PER_WORD", 32, length),
+        new ColumnHeader("instdecoder.DELTA", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_ACCOUNT", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_ADD", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_BATCH", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_BIN", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_CALL", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_CONTEXT", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_COPY", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_CREATE", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_DUP", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_EXT", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_HALT", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_INVALID", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_JUMP", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_KEC", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_LOG", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_MACHINE_STATE", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_MOD", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_MUL", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_PUSH_POP", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_SHF", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_STACK_RAM", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_STORAGE", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_SWAP", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_TRANSACTION", 1, length),
+        new ColumnHeader("instdecoder.FAMILY_WCP", 1, length),
+        new ColumnHeader("instdecoder.FLAG_1", 1, length),
+        new ColumnHeader("instdecoder.FLAG_2", 1, length),
+        new ColumnHeader("instdecoder.FLAG_3", 1, length),
+        new ColumnHeader("instdecoder.FLAG_4", 1, length),
+        new ColumnHeader("instdecoder.IS_JUMPDEST", 1, length),
+        new ColumnHeader("instdecoder.IS_PUSH", 1, length),
+        new ColumnHeader("instdecoder.MXP_FLAG", 1, length),
+        new ColumnHeader("instdecoder.MXP_TYPE_1", 1, length),
+        new ColumnHeader("instdecoder.MXP_TYPE_2", 1, length),
+        new ColumnHeader("instdecoder.MXP_TYPE_3", 1, length),
+        new ColumnHeader("instdecoder.MXP_TYPE_4", 1, length),
+        new ColumnHeader("instdecoder.MXP_TYPE_5", 1, length),
+        new ColumnHeader("instdecoder.NB_ADDED", 1, length),
+        new ColumnHeader("instdecoder.NB_REMOVED", 1, length),
+        new ColumnHeader("instdecoder.OPCODE", 32, length),
+        new ColumnHeader("instdecoder.PATTERN_CALL", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_COPY", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_CREATE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_DUP", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_LOAD_STORE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_LOG", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_ONE_ONE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_ONE_ZERO", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_SWAP", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_THREE_ONE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_TWO_ONE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_TWO_ZERO", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_ZERO_ONE", 1, length),
+        new ColumnHeader("instdecoder.PATTERN_ZERO_ZERO", 1, length),
+        new ColumnHeader("instdecoder.RAM_ENABLED", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_BLAKE_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_EC_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_EC_INFO", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_HASH_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_HASH_INFO", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_LOG_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_MODEXP_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_RAM", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_ROM", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_STACK", 1, length),
+        new ColumnHeader("instdecoder.RAM_SOURCE_TXN_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_BLAKE_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_EC_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_EC_INFO", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_HASH_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_HASH_INFO", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_LOG_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_MODEXP_DATA", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_RAM", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_ROM", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_STACK", 1, length),
+        new ColumnHeader("instdecoder.RAM_TARGET_TXN_DATA", 1, length),
+        new ColumnHeader("instdecoder.STATIC_FLAG", 1, length),
+        new ColumnHeader("instdecoder.STATIC_GAS", 32, length),
+        new ColumnHeader("instdecoder.TWO_LINE_INSTRUCTION", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -307,8 +307,7 @@ public class Trace {
 
   public Trace addressTrimmingInstruction(final Boolean b) {
     if (filled.get(0)) {
-      throw new IllegalStateException(
-          "instruction-decoder.ADDRESS_TRIMMING_INSTRUCTION already set");
+      throw new IllegalStateException("instdecoder.ADDRESS_TRIMMING_INSTRUCTION already set");
     } else {
       filled.set(0);
     }
@@ -320,7 +319,7 @@ public class Trace {
 
   public Trace alpha(final UnsignedByte b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("instruction-decoder.ALPHA already set");
+      throw new IllegalStateException("instdecoder.ALPHA already set");
     } else {
       filled.set(1);
     }
@@ -332,7 +331,7 @@ public class Trace {
 
   public Trace billingPerByte(final Bytes b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("instruction-decoder.BILLING_PER_BYTE already set");
+      throw new IllegalStateException("instdecoder.BILLING_PER_BYTE already set");
     } else {
       filled.set(2);
     }
@@ -348,7 +347,7 @@ public class Trace {
 
   public Trace billingPerWord(final Bytes b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("instruction-decoder.BILLING_PER_WORD already set");
+      throw new IllegalStateException("instdecoder.BILLING_PER_WORD already set");
     } else {
       filled.set(3);
     }
@@ -364,7 +363,7 @@ public class Trace {
 
   public Trace delta(final UnsignedByte b) {
     if (filled.get(4)) {
-      throw new IllegalStateException("instruction-decoder.DELTA already set");
+      throw new IllegalStateException("instdecoder.DELTA already set");
     } else {
       filled.set(4);
     }
@@ -376,7 +375,7 @@ public class Trace {
 
   public Trace familyAccount(final Boolean b) {
     if (filled.get(5)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_ACCOUNT already set");
+      throw new IllegalStateException("instdecoder.FAMILY_ACCOUNT already set");
     } else {
       filled.set(5);
     }
@@ -388,7 +387,7 @@ public class Trace {
 
   public Trace familyAdd(final Boolean b) {
     if (filled.get(6)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_ADD already set");
+      throw new IllegalStateException("instdecoder.FAMILY_ADD already set");
     } else {
       filled.set(6);
     }
@@ -400,7 +399,7 @@ public class Trace {
 
   public Trace familyBatch(final Boolean b) {
     if (filled.get(7)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_BATCH already set");
+      throw new IllegalStateException("instdecoder.FAMILY_BATCH already set");
     } else {
       filled.set(7);
     }
@@ -412,7 +411,7 @@ public class Trace {
 
   public Trace familyBin(final Boolean b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_BIN already set");
+      throw new IllegalStateException("instdecoder.FAMILY_BIN already set");
     } else {
       filled.set(8);
     }
@@ -424,7 +423,7 @@ public class Trace {
 
   public Trace familyCall(final Boolean b) {
     if (filled.get(9)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CALL already set");
+      throw new IllegalStateException("instdecoder.FAMILY_CALL already set");
     } else {
       filled.set(9);
     }
@@ -436,7 +435,7 @@ public class Trace {
 
   public Trace familyContext(final Boolean b) {
     if (filled.get(10)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CONTEXT already set");
+      throw new IllegalStateException("instdecoder.FAMILY_CONTEXT already set");
     } else {
       filled.set(10);
     }
@@ -448,7 +447,7 @@ public class Trace {
 
   public Trace familyCopy(final Boolean b) {
     if (filled.get(11)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_COPY already set");
+      throw new IllegalStateException("instdecoder.FAMILY_COPY already set");
     } else {
       filled.set(11);
     }
@@ -460,7 +459,7 @@ public class Trace {
 
   public Trace familyCreate(final Boolean b) {
     if (filled.get(12)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CREATE already set");
+      throw new IllegalStateException("instdecoder.FAMILY_CREATE already set");
     } else {
       filled.set(12);
     }
@@ -472,7 +471,7 @@ public class Trace {
 
   public Trace familyDup(final Boolean b) {
     if (filled.get(13)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_DUP already set");
+      throw new IllegalStateException("instdecoder.FAMILY_DUP already set");
     } else {
       filled.set(13);
     }
@@ -484,7 +483,7 @@ public class Trace {
 
   public Trace familyExt(final Boolean b) {
     if (filled.get(14)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_EXT already set");
+      throw new IllegalStateException("instdecoder.FAMILY_EXT already set");
     } else {
       filled.set(14);
     }
@@ -496,7 +495,7 @@ public class Trace {
 
   public Trace familyHalt(final Boolean b) {
     if (filled.get(15)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_HALT already set");
+      throw new IllegalStateException("instdecoder.FAMILY_HALT already set");
     } else {
       filled.set(15);
     }
@@ -508,7 +507,7 @@ public class Trace {
 
   public Trace familyInvalid(final Boolean b) {
     if (filled.get(16)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_INVALID already set");
+      throw new IllegalStateException("instdecoder.FAMILY_INVALID already set");
     } else {
       filled.set(16);
     }
@@ -520,7 +519,7 @@ public class Trace {
 
   public Trace familyJump(final Boolean b) {
     if (filled.get(17)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_JUMP already set");
+      throw new IllegalStateException("instdecoder.FAMILY_JUMP already set");
     } else {
       filled.set(17);
     }
@@ -532,7 +531,7 @@ public class Trace {
 
   public Trace familyKec(final Boolean b) {
     if (filled.get(18)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_KEC already set");
+      throw new IllegalStateException("instdecoder.FAMILY_KEC already set");
     } else {
       filled.set(18);
     }
@@ -544,7 +543,7 @@ public class Trace {
 
   public Trace familyLog(final Boolean b) {
     if (filled.get(19)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_LOG already set");
+      throw new IllegalStateException("instdecoder.FAMILY_LOG already set");
     } else {
       filled.set(19);
     }
@@ -556,7 +555,7 @@ public class Trace {
 
   public Trace familyMachineState(final Boolean b) {
     if (filled.get(20)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_MACHINE_STATE already set");
+      throw new IllegalStateException("instdecoder.FAMILY_MACHINE_STATE already set");
     } else {
       filled.set(20);
     }
@@ -568,7 +567,7 @@ public class Trace {
 
   public Trace familyMod(final Boolean b) {
     if (filled.get(21)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_MOD already set");
+      throw new IllegalStateException("instdecoder.FAMILY_MOD already set");
     } else {
       filled.set(21);
     }
@@ -580,7 +579,7 @@ public class Trace {
 
   public Trace familyMul(final Boolean b) {
     if (filled.get(22)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_MUL already set");
+      throw new IllegalStateException("instdecoder.FAMILY_MUL already set");
     } else {
       filled.set(22);
     }
@@ -592,7 +591,7 @@ public class Trace {
 
   public Trace familyPushPop(final Boolean b) {
     if (filled.get(23)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_PUSH_POP already set");
+      throw new IllegalStateException("instdecoder.FAMILY_PUSH_POP already set");
     } else {
       filled.set(23);
     }
@@ -604,7 +603,7 @@ public class Trace {
 
   public Trace familyShf(final Boolean b) {
     if (filled.get(24)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_SHF already set");
+      throw new IllegalStateException("instdecoder.FAMILY_SHF already set");
     } else {
       filled.set(24);
     }
@@ -616,7 +615,7 @@ public class Trace {
 
   public Trace familyStackRam(final Boolean b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_STACK_RAM already set");
+      throw new IllegalStateException("instdecoder.FAMILY_STACK_RAM already set");
     } else {
       filled.set(25);
     }
@@ -628,7 +627,7 @@ public class Trace {
 
   public Trace familyStorage(final Boolean b) {
     if (filled.get(26)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_STORAGE already set");
+      throw new IllegalStateException("instdecoder.FAMILY_STORAGE already set");
     } else {
       filled.set(26);
     }
@@ -640,7 +639,7 @@ public class Trace {
 
   public Trace familySwap(final Boolean b) {
     if (filled.get(27)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_SWAP already set");
+      throw new IllegalStateException("instdecoder.FAMILY_SWAP already set");
     } else {
       filled.set(27);
     }
@@ -652,7 +651,7 @@ public class Trace {
 
   public Trace familyTransaction(final Boolean b) {
     if (filled.get(28)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_TRANSACTION already set");
+      throw new IllegalStateException("instdecoder.FAMILY_TRANSACTION already set");
     } else {
       filled.set(28);
     }
@@ -664,7 +663,7 @@ public class Trace {
 
   public Trace familyWcp(final Boolean b) {
     if (filled.get(29)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_WCP already set");
+      throw new IllegalStateException("instdecoder.FAMILY_WCP already set");
     } else {
       filled.set(29);
     }
@@ -676,7 +675,7 @@ public class Trace {
 
   public Trace flag1(final Boolean b) {
     if (filled.get(30)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_1 already set");
+      throw new IllegalStateException("instdecoder.FLAG_1 already set");
     } else {
       filled.set(30);
     }
@@ -688,7 +687,7 @@ public class Trace {
 
   public Trace flag2(final Boolean b) {
     if (filled.get(31)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_2 already set");
+      throw new IllegalStateException("instdecoder.FLAG_2 already set");
     } else {
       filled.set(31);
     }
@@ -700,7 +699,7 @@ public class Trace {
 
   public Trace flag3(final Boolean b) {
     if (filled.get(32)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_3 already set");
+      throw new IllegalStateException("instdecoder.FLAG_3 already set");
     } else {
       filled.set(32);
     }
@@ -712,7 +711,7 @@ public class Trace {
 
   public Trace flag4(final Boolean b) {
     if (filled.get(33)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_4 already set");
+      throw new IllegalStateException("instdecoder.FLAG_4 already set");
     } else {
       filled.set(33);
     }
@@ -724,7 +723,7 @@ public class Trace {
 
   public Trace isJumpdest(final Boolean b) {
     if (filled.get(34)) {
-      throw new IllegalStateException("instruction-decoder.IS_JUMPDEST already set");
+      throw new IllegalStateException("instdecoder.IS_JUMPDEST already set");
     } else {
       filled.set(34);
     }
@@ -736,7 +735,7 @@ public class Trace {
 
   public Trace isPush(final Boolean b) {
     if (filled.get(35)) {
-      throw new IllegalStateException("instruction-decoder.IS_PUSH already set");
+      throw new IllegalStateException("instdecoder.IS_PUSH already set");
     } else {
       filled.set(35);
     }
@@ -748,7 +747,7 @@ public class Trace {
 
   public Trace mxpFlag(final Boolean b) {
     if (filled.get(36)) {
-      throw new IllegalStateException("instruction-decoder.MXP_FLAG already set");
+      throw new IllegalStateException("instdecoder.MXP_FLAG already set");
     } else {
       filled.set(36);
     }
@@ -760,7 +759,7 @@ public class Trace {
 
   public Trace mxpType1(final Boolean b) {
     if (filled.get(37)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_1 already set");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_1 already set");
     } else {
       filled.set(37);
     }
@@ -772,7 +771,7 @@ public class Trace {
 
   public Trace mxpType2(final Boolean b) {
     if (filled.get(38)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_2 already set");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_2 already set");
     } else {
       filled.set(38);
     }
@@ -784,7 +783,7 @@ public class Trace {
 
   public Trace mxpType3(final Boolean b) {
     if (filled.get(39)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_3 already set");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_3 already set");
     } else {
       filled.set(39);
     }
@@ -796,7 +795,7 @@ public class Trace {
 
   public Trace mxpType4(final Boolean b) {
     if (filled.get(40)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_4 already set");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_4 already set");
     } else {
       filled.set(40);
     }
@@ -808,7 +807,7 @@ public class Trace {
 
   public Trace mxpType5(final Boolean b) {
     if (filled.get(41)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_5 already set");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_5 already set");
     } else {
       filled.set(41);
     }
@@ -820,7 +819,7 @@ public class Trace {
 
   public Trace nbAdded(final UnsignedByte b) {
     if (filled.get(42)) {
-      throw new IllegalStateException("instruction-decoder.NB_ADDED already set");
+      throw new IllegalStateException("instdecoder.NB_ADDED already set");
     } else {
       filled.set(42);
     }
@@ -832,7 +831,7 @@ public class Trace {
 
   public Trace nbRemoved(final UnsignedByte b) {
     if (filled.get(43)) {
-      throw new IllegalStateException("instruction-decoder.NB_REMOVED already set");
+      throw new IllegalStateException("instdecoder.NB_REMOVED already set");
     } else {
       filled.set(43);
     }
@@ -844,7 +843,7 @@ public class Trace {
 
   public Trace opcode(final Bytes b) {
     if (filled.get(44)) {
-      throw new IllegalStateException("instruction-decoder.OPCODE already set");
+      throw new IllegalStateException("instdecoder.OPCODE already set");
     } else {
       filled.set(44);
     }
@@ -860,7 +859,7 @@ public class Trace {
 
   public Trace patternCall(final Boolean b) {
     if (filled.get(45)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_CALL already set");
+      throw new IllegalStateException("instdecoder.PATTERN_CALL already set");
     } else {
       filled.set(45);
     }
@@ -872,7 +871,7 @@ public class Trace {
 
   public Trace patternCopy(final Boolean b) {
     if (filled.get(46)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_COPY already set");
+      throw new IllegalStateException("instdecoder.PATTERN_COPY already set");
     } else {
       filled.set(46);
     }
@@ -884,7 +883,7 @@ public class Trace {
 
   public Trace patternCreate(final Boolean b) {
     if (filled.get(47)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_CREATE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_CREATE already set");
     } else {
       filled.set(47);
     }
@@ -896,7 +895,7 @@ public class Trace {
 
   public Trace patternDup(final Boolean b) {
     if (filled.get(48)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_DUP already set");
+      throw new IllegalStateException("instdecoder.PATTERN_DUP already set");
     } else {
       filled.set(48);
     }
@@ -908,7 +907,7 @@ public class Trace {
 
   public Trace patternLoadStore(final Boolean b) {
     if (filled.get(49)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_LOAD_STORE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_LOAD_STORE already set");
     } else {
       filled.set(49);
     }
@@ -920,7 +919,7 @@ public class Trace {
 
   public Trace patternLog(final Boolean b) {
     if (filled.get(50)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_LOG already set");
+      throw new IllegalStateException("instdecoder.PATTERN_LOG already set");
     } else {
       filled.set(50);
     }
@@ -932,7 +931,7 @@ public class Trace {
 
   public Trace patternOneOne(final Boolean b) {
     if (filled.get(51)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ONE_ONE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_ONE_ONE already set");
     } else {
       filled.set(51);
     }
@@ -944,7 +943,7 @@ public class Trace {
 
   public Trace patternOneZero(final Boolean b) {
     if (filled.get(52)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ONE_ZERO already set");
+      throw new IllegalStateException("instdecoder.PATTERN_ONE_ZERO already set");
     } else {
       filled.set(52);
     }
@@ -956,7 +955,7 @@ public class Trace {
 
   public Trace patternSwap(final Boolean b) {
     if (filled.get(53)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_SWAP already set");
+      throw new IllegalStateException("instdecoder.PATTERN_SWAP already set");
     } else {
       filled.set(53);
     }
@@ -968,7 +967,7 @@ public class Trace {
 
   public Trace patternThreeOne(final Boolean b) {
     if (filled.get(54)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_THREE_ONE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_THREE_ONE already set");
     } else {
       filled.set(54);
     }
@@ -980,7 +979,7 @@ public class Trace {
 
   public Trace patternTwoOne(final Boolean b) {
     if (filled.get(55)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_TWO_ONE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_TWO_ONE already set");
     } else {
       filled.set(55);
     }
@@ -992,7 +991,7 @@ public class Trace {
 
   public Trace patternTwoZero(final Boolean b) {
     if (filled.get(56)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_TWO_ZERO already set");
+      throw new IllegalStateException("instdecoder.PATTERN_TWO_ZERO already set");
     } else {
       filled.set(56);
     }
@@ -1004,7 +1003,7 @@ public class Trace {
 
   public Trace patternZeroOne(final Boolean b) {
     if (filled.get(57)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ZERO_ONE already set");
+      throw new IllegalStateException("instdecoder.PATTERN_ZERO_ONE already set");
     } else {
       filled.set(57);
     }
@@ -1016,7 +1015,7 @@ public class Trace {
 
   public Trace patternZeroZero(final Boolean b) {
     if (filled.get(58)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ZERO_ZERO already set");
+      throw new IllegalStateException("instdecoder.PATTERN_ZERO_ZERO already set");
     } else {
       filled.set(58);
     }
@@ -1028,7 +1027,7 @@ public class Trace {
 
   public Trace ramEnabled(final Boolean b) {
     if (filled.get(59)) {
-      throw new IllegalStateException("instruction-decoder.RAM_ENABLED already set");
+      throw new IllegalStateException("instdecoder.RAM_ENABLED already set");
     } else {
       filled.set(59);
     }
@@ -1040,7 +1039,7 @@ public class Trace {
 
   public Trace ramSourceBlakeData(final Boolean b) {
     if (filled.get(60)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_BLAKE_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_BLAKE_DATA already set");
     } else {
       filled.set(60);
     }
@@ -1052,7 +1051,7 @@ public class Trace {
 
   public Trace ramSourceEcData(final Boolean b) {
     if (filled.get(61)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_EC_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_EC_DATA already set");
     } else {
       filled.set(61);
     }
@@ -1064,7 +1063,7 @@ public class Trace {
 
   public Trace ramSourceEcInfo(final Boolean b) {
     if (filled.get(62)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_EC_INFO already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_EC_INFO already set");
     } else {
       filled.set(62);
     }
@@ -1076,7 +1075,7 @@ public class Trace {
 
   public Trace ramSourceHashData(final Boolean b) {
     if (filled.get(63)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_HASH_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_HASH_DATA already set");
     } else {
       filled.set(63);
     }
@@ -1088,7 +1087,7 @@ public class Trace {
 
   public Trace ramSourceHashInfo(final Boolean b) {
     if (filled.get(64)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_HASH_INFO already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_HASH_INFO already set");
     } else {
       filled.set(64);
     }
@@ -1100,7 +1099,7 @@ public class Trace {
 
   public Trace ramSourceLogData(final Boolean b) {
     if (filled.get(65)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_LOG_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_LOG_DATA already set");
     } else {
       filled.set(65);
     }
@@ -1112,7 +1111,7 @@ public class Trace {
 
   public Trace ramSourceModexpData(final Boolean b) {
     if (filled.get(66)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_MODEXP_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_MODEXP_DATA already set");
     } else {
       filled.set(66);
     }
@@ -1124,7 +1123,7 @@ public class Trace {
 
   public Trace ramSourceRam(final Boolean b) {
     if (filled.get(67)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_RAM already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_RAM already set");
     } else {
       filled.set(67);
     }
@@ -1136,7 +1135,7 @@ public class Trace {
 
   public Trace ramSourceRom(final Boolean b) {
     if (filled.get(68)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_ROM already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_ROM already set");
     } else {
       filled.set(68);
     }
@@ -1148,7 +1147,7 @@ public class Trace {
 
   public Trace ramSourceStack(final Boolean b) {
     if (filled.get(69)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_STACK already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_STACK already set");
     } else {
       filled.set(69);
     }
@@ -1160,7 +1159,7 @@ public class Trace {
 
   public Trace ramSourceTxnData(final Boolean b) {
     if (filled.get(70)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_TXN_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_TXN_DATA already set");
     } else {
       filled.set(70);
     }
@@ -1172,7 +1171,7 @@ public class Trace {
 
   public Trace ramTargetBlakeData(final Boolean b) {
     if (filled.get(71)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_BLAKE_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_BLAKE_DATA already set");
     } else {
       filled.set(71);
     }
@@ -1184,7 +1183,7 @@ public class Trace {
 
   public Trace ramTargetEcData(final Boolean b) {
     if (filled.get(72)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_EC_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_EC_DATA already set");
     } else {
       filled.set(72);
     }
@@ -1196,7 +1195,7 @@ public class Trace {
 
   public Trace ramTargetEcInfo(final Boolean b) {
     if (filled.get(73)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_EC_INFO already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_EC_INFO already set");
     } else {
       filled.set(73);
     }
@@ -1208,7 +1207,7 @@ public class Trace {
 
   public Trace ramTargetHashData(final Boolean b) {
     if (filled.get(74)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_HASH_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_HASH_DATA already set");
     } else {
       filled.set(74);
     }
@@ -1220,7 +1219,7 @@ public class Trace {
 
   public Trace ramTargetHashInfo(final Boolean b) {
     if (filled.get(75)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_HASH_INFO already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_HASH_INFO already set");
     } else {
       filled.set(75);
     }
@@ -1232,7 +1231,7 @@ public class Trace {
 
   public Trace ramTargetLogData(final Boolean b) {
     if (filled.get(76)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_LOG_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_LOG_DATA already set");
     } else {
       filled.set(76);
     }
@@ -1244,7 +1243,7 @@ public class Trace {
 
   public Trace ramTargetModexpData(final Boolean b) {
     if (filled.get(77)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_MODEXP_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_MODEXP_DATA already set");
     } else {
       filled.set(77);
     }
@@ -1256,7 +1255,7 @@ public class Trace {
 
   public Trace ramTargetRam(final Boolean b) {
     if (filled.get(78)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_RAM already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_RAM already set");
     } else {
       filled.set(78);
     }
@@ -1268,7 +1267,7 @@ public class Trace {
 
   public Trace ramTargetRom(final Boolean b) {
     if (filled.get(79)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_ROM already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_ROM already set");
     } else {
       filled.set(79);
     }
@@ -1280,7 +1279,7 @@ public class Trace {
 
   public Trace ramTargetStack(final Boolean b) {
     if (filled.get(80)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_STACK already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_STACK already set");
     } else {
       filled.set(80);
     }
@@ -1292,7 +1291,7 @@ public class Trace {
 
   public Trace ramTargetTxnData(final Boolean b) {
     if (filled.get(81)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_TXN_DATA already set");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_TXN_DATA already set");
     } else {
       filled.set(81);
     }
@@ -1304,7 +1303,7 @@ public class Trace {
 
   public Trace staticFlag(final Boolean b) {
     if (filled.get(82)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_FLAG already set");
+      throw new IllegalStateException("instdecoder.STATIC_FLAG already set");
     } else {
       filled.set(82);
     }
@@ -1316,7 +1315,7 @@ public class Trace {
 
   public Trace staticGas(final Bytes b) {
     if (filled.get(83)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_GAS already set");
+      throw new IllegalStateException("instdecoder.STATIC_GAS already set");
     } else {
       filled.set(83);
     }
@@ -1332,7 +1331,7 @@ public class Trace {
 
   public Trace twoLineInstruction(final Boolean b) {
     if (filled.get(84)) {
-      throw new IllegalStateException("instruction-decoder.TWO_LINE_INSTRUCTION already set");
+      throw new IllegalStateException("instdecoder.TWO_LINE_INSTRUCTION already set");
     } else {
       filled.set(84);
     }
@@ -1345,357 +1344,343 @@ public class Trace {
   public Trace validateRow() {
     if (!filled.get(0)) {
       throw new IllegalStateException(
-          "instruction-decoder.ADDRESS_TRIMMING_INSTRUCTION has not been filled");
+          "instdecoder.ADDRESS_TRIMMING_INSTRUCTION has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("instruction-decoder.ALPHA has not been filled");
+      throw new IllegalStateException("instdecoder.ALPHA has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("instruction-decoder.BILLING_PER_BYTE has not been filled");
+      throw new IllegalStateException("instdecoder.BILLING_PER_BYTE has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("instruction-decoder.BILLING_PER_WORD has not been filled");
+      throw new IllegalStateException("instdecoder.BILLING_PER_WORD has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("instruction-decoder.DELTA has not been filled");
+      throw new IllegalStateException("instdecoder.DELTA has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_ACCOUNT has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_ACCOUNT has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_ADD has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_ADD has not been filled");
     }
 
     if (!filled.get(7)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_BATCH has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_BATCH has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_BIN has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_BIN has not been filled");
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CALL has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_CALL has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CONTEXT has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_CONTEXT has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_COPY has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_COPY has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_CREATE has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_CREATE has not been filled");
     }
 
     if (!filled.get(13)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_DUP has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_DUP has not been filled");
     }
 
     if (!filled.get(14)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_EXT has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_EXT has not been filled");
     }
 
     if (!filled.get(15)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_HALT has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_HALT has not been filled");
     }
 
     if (!filled.get(16)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_INVALID has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_INVALID has not been filled");
     }
 
     if (!filled.get(17)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_JUMP has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_JUMP has not been filled");
     }
 
     if (!filled.get(18)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_KEC has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_KEC has not been filled");
     }
 
     if (!filled.get(19)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_LOG has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_LOG has not been filled");
     }
 
     if (!filled.get(20)) {
-      throw new IllegalStateException(
-          "instruction-decoder.FAMILY_MACHINE_STATE has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_MACHINE_STATE has not been filled");
     }
 
     if (!filled.get(21)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_MOD has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_MOD has not been filled");
     }
 
     if (!filled.get(22)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_MUL has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_MUL has not been filled");
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_PUSH_POP has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_PUSH_POP has not been filled");
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_SHF has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_SHF has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_STACK_RAM has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_STACK_RAM has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_STORAGE has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_STORAGE has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_SWAP has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_SWAP has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_TRANSACTION has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_TRANSACTION has not been filled");
     }
 
     if (!filled.get(29)) {
-      throw new IllegalStateException("instruction-decoder.FAMILY_WCP has not been filled");
+      throw new IllegalStateException("instdecoder.FAMILY_WCP has not been filled");
     }
 
     if (!filled.get(30)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_1 has not been filled");
+      throw new IllegalStateException("instdecoder.FLAG_1 has not been filled");
     }
 
     if (!filled.get(31)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_2 has not been filled");
+      throw new IllegalStateException("instdecoder.FLAG_2 has not been filled");
     }
 
     if (!filled.get(32)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_3 has not been filled");
+      throw new IllegalStateException("instdecoder.FLAG_3 has not been filled");
     }
 
     if (!filled.get(33)) {
-      throw new IllegalStateException("instruction-decoder.FLAG_4 has not been filled");
+      throw new IllegalStateException("instdecoder.FLAG_4 has not been filled");
     }
 
     if (!filled.get(34)) {
-      throw new IllegalStateException("instruction-decoder.IS_JUMPDEST has not been filled");
+      throw new IllegalStateException("instdecoder.IS_JUMPDEST has not been filled");
     }
 
     if (!filled.get(35)) {
-      throw new IllegalStateException("instruction-decoder.IS_PUSH has not been filled");
+      throw new IllegalStateException("instdecoder.IS_PUSH has not been filled");
     }
 
     if (!filled.get(36)) {
-      throw new IllegalStateException("instruction-decoder.MXP_FLAG has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_FLAG has not been filled");
     }
 
     if (!filled.get(37)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_1 has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_1 has not been filled");
     }
 
     if (!filled.get(38)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_2 has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_2 has not been filled");
     }
 
     if (!filled.get(39)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_3 has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_3 has not been filled");
     }
 
     if (!filled.get(40)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_4 has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_4 has not been filled");
     }
 
     if (!filled.get(41)) {
-      throw new IllegalStateException("instruction-decoder.MXP_TYPE_5 has not been filled");
+      throw new IllegalStateException("instdecoder.MXP_TYPE_5 has not been filled");
     }
 
     if (!filled.get(42)) {
-      throw new IllegalStateException("instruction-decoder.NB_ADDED has not been filled");
+      throw new IllegalStateException("instdecoder.NB_ADDED has not been filled");
     }
 
     if (!filled.get(43)) {
-      throw new IllegalStateException("instruction-decoder.NB_REMOVED has not been filled");
+      throw new IllegalStateException("instdecoder.NB_REMOVED has not been filled");
     }
 
     if (!filled.get(44)) {
-      throw new IllegalStateException("instruction-decoder.OPCODE has not been filled");
+      throw new IllegalStateException("instdecoder.OPCODE has not been filled");
     }
 
     if (!filled.get(45)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_CALL has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_CALL has not been filled");
     }
 
     if (!filled.get(46)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_COPY has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_COPY has not been filled");
     }
 
     if (!filled.get(47)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_CREATE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_CREATE has not been filled");
     }
 
     if (!filled.get(48)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_DUP has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_DUP has not been filled");
     }
 
     if (!filled.get(49)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_LOAD_STORE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_LOAD_STORE has not been filled");
     }
 
     if (!filled.get(50)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_LOG has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_LOG has not been filled");
     }
 
     if (!filled.get(51)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ONE_ONE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_ONE_ONE has not been filled");
     }
 
     if (!filled.get(52)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ONE_ZERO has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_ONE_ZERO has not been filled");
     }
 
     if (!filled.get(53)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_SWAP has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_SWAP has not been filled");
     }
 
     if (!filled.get(54)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_THREE_ONE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_THREE_ONE has not been filled");
     }
 
     if (!filled.get(55)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_TWO_ONE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_TWO_ONE has not been filled");
     }
 
     if (!filled.get(56)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_TWO_ZERO has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_TWO_ZERO has not been filled");
     }
 
     if (!filled.get(57)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ZERO_ONE has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_ZERO_ONE has not been filled");
     }
 
     if (!filled.get(58)) {
-      throw new IllegalStateException("instruction-decoder.PATTERN_ZERO_ZERO has not been filled");
+      throw new IllegalStateException("instdecoder.PATTERN_ZERO_ZERO has not been filled");
     }
 
     if (!filled.get(59)) {
-      throw new IllegalStateException("instruction-decoder.RAM_ENABLED has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_ENABLED has not been filled");
     }
 
     if (!filled.get(60)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_BLAKE_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_BLAKE_DATA has not been filled");
     }
 
     if (!filled.get(61)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_EC_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_EC_DATA has not been filled");
     }
 
     if (!filled.get(62)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_EC_INFO has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_EC_INFO has not been filled");
     }
 
     if (!filled.get(63)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_HASH_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_HASH_DATA has not been filled");
     }
 
     if (!filled.get(64)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_HASH_INFO has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_HASH_INFO has not been filled");
     }
 
     if (!filled.get(65)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_LOG_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_LOG_DATA has not been filled");
     }
 
     if (!filled.get(66)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_MODEXP_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_MODEXP_DATA has not been filled");
     }
 
     if (!filled.get(67)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_RAM has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_RAM has not been filled");
     }
 
     if (!filled.get(68)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_ROM has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_ROM has not been filled");
     }
 
     if (!filled.get(69)) {
-      throw new IllegalStateException("instruction-decoder.RAM_SOURCE_STACK has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_STACK has not been filled");
     }
 
     if (!filled.get(70)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_SOURCE_TXN_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_SOURCE_TXN_DATA has not been filled");
     }
 
     if (!filled.get(71)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_BLAKE_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_BLAKE_DATA has not been filled");
     }
 
     if (!filled.get(72)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_EC_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_EC_DATA has not been filled");
     }
 
     if (!filled.get(73)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_EC_INFO has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_EC_INFO has not been filled");
     }
 
     if (!filled.get(74)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_HASH_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_HASH_DATA has not been filled");
     }
 
     if (!filled.get(75)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_HASH_INFO has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_HASH_INFO has not been filled");
     }
 
     if (!filled.get(76)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_LOG_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_LOG_DATA has not been filled");
     }
 
     if (!filled.get(77)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_MODEXP_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_MODEXP_DATA has not been filled");
     }
 
     if (!filled.get(78)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_RAM has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_RAM has not been filled");
     }
 
     if (!filled.get(79)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_ROM has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_ROM has not been filled");
     }
 
     if (!filled.get(80)) {
-      throw new IllegalStateException("instruction-decoder.RAM_TARGET_STACK has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_STACK has not been filled");
     }
 
     if (!filled.get(81)) {
-      throw new IllegalStateException(
-          "instruction-decoder.RAM_TARGET_TXN_DATA has not been filled");
+      throw new IllegalStateException("instdecoder.RAM_TARGET_TXN_DATA has not been filled");
     }
 
     if (!filled.get(82)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_FLAG has not been filled");
+      throw new IllegalStateException("instdecoder.STATIC_FLAG has not been filled");
     }
 
     if (!filled.get(83)) {
-      throw new IllegalStateException("instruction-decoder.STATIC_GAS has not been filled");
+      throw new IllegalStateException("instdecoder.STATIC_GAS has not been filled");
     }
 
     if (!filled.get(84)) {
-      throw new IllegalStateException(
-          "instruction-decoder.TWO_LINE_INSTRUCTION has not been filled");
+      throw new IllegalStateException("instdecoder.TWO_LINE_INSTRUCTION has not been filled");
     }
 
     filled.clear();

@@ -40,10 +40,10 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("binRT.INPUT_BYTE_1", 1, length),
-        new ColumnHeader("binRT.INPUT_BYTE_2", 1, length),
-        new ColumnHeader("binRT.INST", 1, length),
-        new ColumnHeader("binRT.RESULT_BYTE", 1, length));
+        new ColumnHeader("binreftable.INPUT_BYTE_1", 1, length),
+        new ColumnHeader("binreftable.INPUT_BYTE_2", 1, length),
+        new ColumnHeader("binreftable.INST", 1, length),
+        new ColumnHeader("binreftable.RESULT_BYTE", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -63,7 +63,7 @@ public class Trace {
 
   public Trace inputByte1(final UnsignedByte b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("binRT.INPUT_BYTE_1 already set");
+      throw new IllegalStateException("binreftable.INPUT_BYTE_1 already set");
     } else {
       filled.set(0);
     }
@@ -75,7 +75,7 @@ public class Trace {
 
   public Trace inputByte2(final UnsignedByte b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("binRT.INPUT_BYTE_2 already set");
+      throw new IllegalStateException("binreftable.INPUT_BYTE_2 already set");
     } else {
       filled.set(1);
     }
@@ -87,7 +87,7 @@ public class Trace {
 
   public Trace inst(final UnsignedByte b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("binRT.INST already set");
+      throw new IllegalStateException("binreftable.INST already set");
     } else {
       filled.set(2);
     }
@@ -99,7 +99,7 @@ public class Trace {
 
   public Trace resultByte(final UnsignedByte b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("binRT.RESULT_BYTE already set");
+      throw new IllegalStateException("binreftable.RESULT_BYTE already set");
     } else {
       filled.set(3);
     }
@@ -111,19 +111,19 @@ public class Trace {
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("binRT.INPUT_BYTE_1 has not been filled");
+      throw new IllegalStateException("binreftable.INPUT_BYTE_1 has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("binRT.INPUT_BYTE_2 has not been filled");
+      throw new IllegalStateException("binreftable.INPUT_BYTE_2 has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("binRT.INST has not been filled");
+      throw new IllegalStateException("binreftable.INST has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("binRT.RESULT_BYTE has not been filled");
+      throw new IllegalStateException("binreftable.RESULT_BYTE has not been filled");
     }
 
     filled.clear();
