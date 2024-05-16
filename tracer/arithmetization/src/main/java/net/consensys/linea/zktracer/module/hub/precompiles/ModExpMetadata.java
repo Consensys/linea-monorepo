@@ -58,6 +58,8 @@ public record ModExpMetadata(
             : Bytes.EMPTY;
     final EWord mbs = EWord.of(rawMbs.shiftRight(mbsShift).shiftLeft(mbsShift));
 
+    // TODO: maybe do not use intValueExact() here and just convert to int
+    // TODO: checks over size may be done later
     final int bbsInt = bbs.toUnsignedBigInteger().intValueExact();
     final int ebsInt = ebs.toUnsignedBigInteger().intValueExact();
 

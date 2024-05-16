@@ -13,15 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp;
 
-import net.consensys.linea.zktracer.module.exp.ModExpLogChunk;
+import net.consensys.linea.zktracer.module.exp.ModexpLogOperation;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
-public record ModExpLogCall(EWord rawLeadingWord, int cdsCutoff, int ebsCutoff)
+public record ExpCallForModexpLogComputation(EWord rawLeadingWord, int cdsCutoff, int ebsCutoff)
     implements TraceSubFragment {
 
   @Override
@@ -34,7 +34,7 @@ public record ModExpLogCall(EWord rawLeadingWord, int cdsCutoff, int ebsCutoff)
         .pMiscExpData4(Bytes.ofUnsignedShort(ebsCutoff))
         .pMiscExpData5(
             Bytes.ofUnsignedShort(
-                ModExpLogChunk.LeadLogTrimLead.fromArgs(rawLeadingWord, cdsCutoff, ebsCutoff)
+                ModexpLogOperation.LeadLogTrimLead.fromArgs(rawLeadingWord, cdsCutoff, ebsCutoff)
                     .leadLog()));
   }
 }

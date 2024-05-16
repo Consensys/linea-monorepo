@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.call;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp;
 
 import static net.consensys.linea.zktracer.opcode.gas.GasConstants.G_EXP_BYTE;
 
@@ -22,11 +22,12 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
-public record ExpLogCall(EWord exponent) implements TraceSubFragment {
+public record ExpCallForExpPricing(EWord exponent) implements TraceSubFragment {
   @Override
   public Trace trace(Trace trace) {
     return trace
         .pMiscExpFlag(true)
+        .pMiscExpInst(Trace.EXP_INST_EXPLOG)
         .pMiscExpData1(exponent.hi())
         .pMiscExpData2(exponent.lo())
         .pMiscExpData5(Bytes.ofUnsignedShort(G_EXP_BYTE.cost() * exponent.byteLength()));

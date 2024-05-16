@@ -26,11 +26,11 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.TransactionStack;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.ExpLogCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.StpCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp.ExpCallForExpPricing;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp.ExpCallForModexpLogComputation;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.ModExpLogCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.Call;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.CallDataLoad;
@@ -176,7 +176,7 @@ public class ImcFragment implements TraceFragment {
     }
 
     if (hub.pch().signals().exp()) {
-      r.callExp(new ExpLogCall(EWord.of(hub.messageFrame().getStackItem(1))));
+      r.callExp(new ExpCallForExpPricing(EWord.of(hub.messageFrame().getStackItem(1))));
     }
 
     if (hub.pch().signals().exp() && !hub.pch().exceptions().stackException()) {
@@ -270,7 +270,7 @@ public class ImcFragment implements TraceFragment {
     return this;
   }
 
-  public ImcFragment callExp(ExpLogCall f) {
+  public ImcFragment callExp(ExpCallForExpPricing f) {
     if (expIsSet) {
       throw new IllegalStateException("EXP already called");
     } else {
@@ -281,7 +281,7 @@ public class ImcFragment implements TraceFragment {
     return this;
   }
 
-  public ImcFragment callModExp(ModExpLogCall f) {
+  public ImcFragment callExp(ExpCallForModexpLogComputation f) {
     if (modExpIsSet) {
       throw new IllegalStateException("MODEXP already called");
     } else {
