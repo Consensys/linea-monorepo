@@ -19,7 +19,6 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -96,8 +95,6 @@ public class ContinuousTracingPlugin implements BesuPlugin {
           ENV_WEBHOOK_URL);
       System.exit(1);
     }
-
-    OpCodes.load(); // must be loaded explicitly
 
     besuEvents.addBlockAddedListener(
         new ContinuousTracingBlockAddedListener(

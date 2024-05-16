@@ -18,7 +18,6 @@ package net.consensys.linea.rpc.tracegeneration;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaSharedOptionsPlugin;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -74,7 +73,5 @@ public class TracesEndpointServicePlugin extends AbstractLineaSharedOptionsPlugi
 
   /** Start the RPC service. This method loads the OpCodes. */
   @Override
-  public void start() {
-    OpCodes.load();
-  }
+  public void start() {}
 }

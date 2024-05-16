@@ -25,9 +25,7 @@ import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
-import net.consensys.linea.zktracer.testing.EvmExtension;
 import net.consensys.linea.zktracer.testing.ToyAccount;
 import net.consensys.linea.zktracer.testing.ToyExecutionEnvironment;
 import net.consensys.linea.zktracer.testing.ToyTransaction;
@@ -42,9 +40,7 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
-@ExtendWith(EvmExtension.class)
 public class StpTest {
   private static final Random RAND = new Random(666L);
   final int NB_CALL = 200;
@@ -52,7 +48,6 @@ public class StpTest {
 
   @Test
   void testCall() {
-    OpCodes.load();
     ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
     List<Transaction> txList = new ArrayList<>();
 
@@ -78,7 +73,6 @@ public class StpTest {
 
   @Test
   void testCreate() {
-    OpCodes.load();
     ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
     List<Transaction> txList = new ArrayList<>();
 

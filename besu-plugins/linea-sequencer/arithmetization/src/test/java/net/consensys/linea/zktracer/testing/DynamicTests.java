@@ -31,7 +31,6 @@ import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.shf.Shf;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.DynamicTest;
 
@@ -48,7 +47,6 @@ public class DynamicTests {
   private final Module module;
 
   private DynamicTests(Module module) {
-    OpCodes.load();
     this.module = module;
     this.testCaseRegistry = new LinkedList<>();
   }

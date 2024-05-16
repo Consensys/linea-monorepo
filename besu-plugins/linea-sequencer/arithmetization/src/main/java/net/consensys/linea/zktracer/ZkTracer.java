@@ -32,10 +32,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.opcode.OpCodes;
+import net.consensys.linea.zktracer.types.Utils;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.toml.Toml;
-import org.apache.tuweni.toml.TomlTable;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -54,8 +52,21 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
 
+  private static final Map<String, Integer> spillings;
+
+  static {
+    try {
+      // Load spillings configured in src/main/resources/spillings.toml.
+      spillings = Utils.computeSpillings();
+    } catch (final Exception e) {
+      final String errorMsg =
+          "A problem happened during spillings initialization, cause " + e.getCause();
+      log.error(errorMsg);
+      throw new RuntimeException(e);
+    }
+  }
+
   @Getter private final Hub hub;
-  private final Map<String, Integer> spillings = new HashMap<>();
   private Hash hashOfLastTransactionTraced = Hash.EMPTY;
 
   public ZkTracer() {
@@ -64,25 +75,11 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public ZkTracer(final LineaL1L2BridgeConfiguration bridgeConfiguration) {
     this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic());
-
-    // Load opcodes configured in src/main/resources/opcodes.yml.
-    OpCodes.load();
-
-    // Load spillings configured in src/main/resources/spillings.toml.
-    try {
-      final TomlTable table =
-          Toml.parse(getClass().getClassLoader().getResourceAsStream("spillings.toml"))
-              .getTable("spillings");
-      table.toMap().keySet().forEach(k -> spillings.put(k, Math.toIntExact(table.getLong(k))));
-
-      for (Module m : this.hub.getModulesToCount()) {
-        if (!this.spillings.containsKey(m.moduleKey())) {
-          throw new IllegalStateException(
-              "Spilling for module " + m.moduleKey() + " not defined in spillings.toml");
-        }
+    for (Module m : this.hub.getModulesToCount()) {
+      if (!spillings.containsKey(m.moduleKey())) {
+        throw new IllegalStateException(
+            "Spilling for module " + m.moduleKey() + " not defined in spillings.toml");
       }
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -231,7 +228,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
                 modulesLineCount.put(
                     m.moduleKey(),
                     m.lineCount()
-                        + Optional.ofNullable(this.spillings.get(m.moduleKey()))
+                        + Optional.ofNullable(spillings.get(m.moduleKey()))
                             .orElseThrow(
                                 () ->
                                     new IllegalStateException(
