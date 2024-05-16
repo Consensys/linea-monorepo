@@ -19,13 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.module.exp.ModExpLogChunk;
+import net.consensys.linea.zktracer.module.exp.ModexpLogOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp.ExpCallForModexpLogComputation;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.ModExpLogCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles.Blake2FPrecompile1;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles.Blake2FPrecompile2;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles.EcAdd;
@@ -155,8 +155,8 @@ public class PrecompileLinesGenerator {
                 .callOob(new ModexpLead(bbsInt, p.callDataSource().length(), ebsInt))
                 .callMmu(m.loadRawLeadingWord() ? MmuCall.forModExp(hub, p, 5) : MmuCall.nop());
         if (m.loadRawLeadingWord()) {
-          line5.callModExp(
-              new ModExpLogCall(
+          line5.callExp(
+              new ExpCallForModexpLogComputation(
                   m.rawLeadingWord(),
                   Math.min((int) (p.callDataSource().length() - 96 - bbsInt), 32),
                   Math.min(ebsInt, 32)));
@@ -168,7 +168,7 @@ public class PrecompileLinesGenerator {
                     new ModexpPricing(
                         p,
                         m.loadRawLeadingWord()
-                            ? ModExpLogChunk.LeadLogTrimLead.fromArgs(
+                            ? ModexpLogOperation.LeadLogTrimLead.fromArgs(
                                     m.rawLeadingWord(),
                                     Math.min((int) (p.callDataSource().length() - 96 - bbsInt), 32),
                                     Math.min(ebsInt, 32))

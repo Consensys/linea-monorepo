@@ -27,7 +27,7 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 @Getter
-public abstract class ExpChunk extends ModuleOperation {
+public abstract class ExpOperation extends ModuleOperation {
   protected short pComputationPltJmp = 0;
   protected Bytes pComputationRawAcc; // (last row) paired with RawByte
   protected Bytes pComputationTrimAcc = Bytes.EMPTY; // (last row) paired with TrimByte

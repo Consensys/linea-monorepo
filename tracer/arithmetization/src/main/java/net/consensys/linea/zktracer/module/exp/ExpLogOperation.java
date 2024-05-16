@@ -15,23 +15,24 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
-import static net.consensys.linea.zktracer.module.exp.Trace.EXP_EXPLOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.EXP_INST_EXPLOG;
 import static net.consensys.linea.zktracer.module.exp.Trace.ISZERO;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_EXP_LOG;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_EXP_LOG;
 import static net.consensys.linea.zktracer.opcode.gas.GasConstants.G_EXP_BYTE;
 
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.ExpLogCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp.ExpCallForExpPricing;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @RequiredArgsConstructor
-public class ExpLogChunk extends ExpChunk {
-  private final EWord exponent;
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
+public class ExpLogOperation extends ExpOperation {
+  @EqualsAndHashCode.Include private final EWord exponent;
   private final long dynCost;
 
   @Override
@@ -39,19 +40,9 @@ public class ExpLogChunk extends ExpChunk {
     return true;
   }
 
-  public static ExpLogChunk fromMessageFrame(final Wcp wcp, final MessageFrame frame) {
-    EWord exponent = EWord.of(frame.getStackItem(1));
-    final ExpLogChunk r =
-        new ExpLogChunk(exponent, (long) G_EXP_BYTE.cost() * exponent.byteLength());
-    r.wcp = wcp;
-    r.preCompute();
-
-    return r;
-  }
-
-  public static ExpLogChunk fromExpLogCall(final Wcp wcp, final ExpLogCall c) {
-    final ExpLogChunk r =
-        new ExpLogChunk(c.exponent(), (long) G_EXP_BYTE.cost() * c.exponent().byteLength());
+  public static ExpLogOperation fromExpLogCall(final Wcp wcp, final ExpCallForExpPricing c) {
+    final ExpLogOperation r =
+        new ExpLogOperation(c.exponent(), (long) G_EXP_BYTE.cost() * c.exponent().byteLength());
     r.wcp = wcp;
     r.preCompute();
 
@@ -60,7 +51,7 @@ public class ExpLogChunk extends ExpChunk {
 
   @Override
   public void preCompute() {
-    pMacroExpInst = EXP_EXPLOG;
+    pMacroExpInst = EXP_INST_EXPLOG;
     pMacroData1 = this.exponent.hi();
     pMacroData2 = this.exponent.lo();
     pMacroData5 = Bytes.ofUnsignedLong(this.dynCost);
@@ -74,11 +65,9 @@ public class ExpLogChunk extends ExpChunk {
     pPreprocessingWcpArg2Hi[0] = Bytes.EMPTY;
     pPreprocessingWcpArg2Lo[0] = Bytes.EMPTY;
     pPreprocessingWcpInst[0] = UnsignedByte.of(ISZERO);
-    pPreprocessingWcpRes[0] = this.exponent.hi().isZero();
-    final boolean expnHiIsZero = pPreprocessingWcpRes[0];
-
-    // Lookup
-    wcp.callISZERO(this.exponent.hi());
+    final boolean expnHiIsZero = wcp.callISZERO(this.exponent.hi());
+    ;
+    pPreprocessingWcpRes[0] = expnHiIsZero;
 
     // Linking constraints and fill rawAcc
     pComputationPltJmp = 16;
