@@ -15,13 +15,22 @@
 
 package net.consensys.linea.zktracer.module.mmio;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_VANISHES;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.antiPower;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.isolateChunk;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.isolatePrefix;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.isolateSuffix;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.plateau;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.power;
-import static net.consensys.linea.zktracer.module.mmio.Trace.LLARGE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -158,11 +167,11 @@ public class MmioData {
 
   public static boolean isFastOperation(final int mmioInstruction) {
     return List.of(
-            Trace.MMIO_INST_LIMB_VANISHES,
-            Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
-            Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
-            Trace.MMIO_INST_RAM_TO_RAM_TRANSPLANT,
-            Trace.MMIO_INST_RAM_VANISHES)
+            MMIO_INST_LIMB_VANISHES,
+            MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
+            MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
+            MMIO_INST_RAM_TO_RAM_TRANSPLANT,
+            MMIO_INST_RAM_VANISHES)
         .contains(mmioInstruction);
   }
 
@@ -275,12 +284,12 @@ public class MmioData {
 
   public boolean operationRequiresOperation() {
     return List.of(
-            Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
-            Trace.MMIO_INST_LIMB_TO_RAM_ONE_TARGET,
-            Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET,
-            Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
-            Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE,
-            Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
+            MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
+            MMIO_INST_LIMB_TO_RAM_ONE_TARGET,
+            MMIO_INST_LIMB_TO_RAM_TWO_TARGET,
+            MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
+            MMIO_INST_RAM_TO_LIMB_ONE_SOURCE,
+            MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
         .contains(this.instruction);
   }
 }

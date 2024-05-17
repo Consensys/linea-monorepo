@@ -15,7 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
@@ -256,8 +260,7 @@ public class ModexpData implements MmuInstruction {
     firstOrOnlyMicroInstruction(mmuData);
 
     middleFirstSourceLimbOffset = aligned ? initialSourceLimbOffset + 1 : initialSourceLimbOffset;
-    middleMicroInst =
-        aligned ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+    middleMicroInst = aligned ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
     for (int i = 1; i < mmuData.totalNonTrivialInitials() - 1; i++) {
       final long sourceLimbOffset = middleFirstSourceLimbOffset + i - 1;
       final int targetLimbOffset = initialTotalLeftZeroes + i;
@@ -277,16 +280,14 @@ public class ModexpData implements MmuInstruction {
   private void vanishingMicroInstruction(MmuData mmuData, final int i) {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_LIMB_VANISHES)
+            .mmioInstruction(MMIO_INST_LIMB_VANISHES)
             .targetLimbOffset(i)
             .build());
   }
 
   private void firstOrOnlyMicroInstruction(MmuData mmuData) {
     final int firstMicroInst =
-        firstLimbSingleSource
-            ? Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE
-            : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+        firstLimbSingleSource ? MMIO_INST_RAM_TO_LIMB_ONE_SOURCE : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
             .mmioInstruction(firstMicroInst)
@@ -312,9 +313,7 @@ public class ModexpData implements MmuInstruction {
 
   private void lastMicroInstruction(MmuData mmuData) {
     final int lastMicroInstruction =
-        lastLimbSingleSource
-            ? Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE
-            : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+        lastLimbSingleSource ? MMIO_INST_RAM_TO_LIMB_ONE_SOURCE : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
     final long sourceLimbOffset = middleFirstSourceLimbOffset + initialTotalNonTrivial;
 
     mmuData.mmuToMmioInstruction(

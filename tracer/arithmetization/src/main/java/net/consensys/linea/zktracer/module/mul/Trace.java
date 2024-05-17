@@ -108,7 +108,7 @@ public class Trace {
         new ColumnHeader("mul.ARG_1_LO", 32, length),
         new ColumnHeader("mul.ARG_2_HI", 32, length),
         new ColumnHeader("mul.ARG_2_LO", 32, length),
-        new ColumnHeader("mul.BIT_NUM", 32, length),
+        new ColumnHeader("mul.BIT_NUM", 1, length),
         new ColumnHeader("mul.BITS", 1, length),
         new ColumnHeader("mul.BYTE_A_0", 1, length),
         new ColumnHeader("mul.BYTE_A_1", 1, length),
@@ -126,12 +126,12 @@ public class Trace {
         new ColumnHeader("mul.BYTE_H_1", 1, length),
         new ColumnHeader("mul.BYTE_H_2", 1, length),
         new ColumnHeader("mul.BYTE_H_3", 1, length),
-        new ColumnHeader("mul.COUNTER", 32, length),
+        new ColumnHeader("mul.COUNTER", 1, length),
         new ColumnHeader("mul.EXPONENT_BIT", 1, length),
         new ColumnHeader("mul.EXPONENT_BIT_ACCUMULATOR", 32, length),
         new ColumnHeader("mul.EXPONENT_BIT_SOURCE", 1, length),
-        new ColumnHeader("mul.INSTRUCTION", 32, length),
-        new ColumnHeader("mul.MUL_STAMP", 32, length),
+        new ColumnHeader("mul.INSTRUCTION", 1, length),
+        new ColumnHeader("mul.MUL_STAMP", 8, length),
         new ColumnHeader("mul.OLI", 1, length),
         new ColumnHeader("mul.RES_HI", 32, length),
         new ColumnHeader("mul.RES_LO", 32, length),
@@ -523,18 +523,14 @@ public class Trace {
     return this;
   }
 
-  public Trace bitNum(final Bytes b) {
+  public Trace bitNum(final UnsignedByte b) {
     if (filled.get(21)) {
       throw new IllegalStateException("mul.BIT_NUM already set");
     } else {
       filled.set(21);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      bitNum.put((byte) 0);
-    }
-    bitNum.put(b.toArrayUnsafe());
+    bitNum.put(b.toByte());
 
     return this;
   }
@@ -743,18 +739,14 @@ public class Trace {
     return this;
   }
 
-  public Trace counter(final Bytes b) {
+  public Trace counter(final UnsignedByte b) {
     if (filled.get(38)) {
       throw new IllegalStateException("mul.COUNTER already set");
     } else {
       filled.set(38);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      counter.put((byte) 0);
-    }
-    counter.put(b.toArrayUnsafe());
+    counter.put(b.toByte());
 
     return this;
   }
@@ -799,34 +791,26 @@ public class Trace {
     return this;
   }
 
-  public Trace instruction(final Bytes b) {
+  public Trace instruction(final UnsignedByte b) {
     if (filled.get(42)) {
       throw new IllegalStateException("mul.INSTRUCTION already set");
     } else {
       filled.set(42);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      instruction.put((byte) 0);
-    }
-    instruction.put(b.toArrayUnsafe());
+    instruction.put(b.toByte());
 
     return this;
   }
 
-  public Trace mulStamp(final Bytes b) {
+  public Trace mulStamp(final long b) {
     if (filled.get(43)) {
       throw new IllegalStateException("mul.MUL_STAMP already set");
     } else {
       filled.set(43);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      mulStamp.put((byte) 0);
-    }
-    mulStamp.put(b.toArrayUnsafe());
+    mulStamp.putLong(b);
 
     return this;
   }
@@ -1216,7 +1200,7 @@ public class Trace {
     }
 
     if (!filled.get(21)) {
-      bitNum.position(bitNum.position() + 32);
+      bitNum.position(bitNum.position() + 1);
     }
 
     if (!filled.get(20)) {
@@ -1288,7 +1272,7 @@ public class Trace {
     }
 
     if (!filled.get(38)) {
-      counter.position(counter.position() + 32);
+      counter.position(counter.position() + 1);
     }
 
     if (!filled.get(39)) {
@@ -1304,11 +1288,11 @@ public class Trace {
     }
 
     if (!filled.get(42)) {
-      instruction.position(instruction.position() + 32);
+      instruction.position(instruction.position() + 1);
     }
 
     if (!filled.get(43)) {
-      mulStamp.position(mulStamp.position() + 32);
+      mulStamp.position(mulStamp.position() + 8);
     }
 
     if (!filled.get(44)) {

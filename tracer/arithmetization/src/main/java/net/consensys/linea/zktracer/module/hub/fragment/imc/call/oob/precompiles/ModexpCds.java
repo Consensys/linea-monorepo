@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_modexp_cds;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_MODEXP_CDS;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -36,6 +36,6 @@ public record ModexpCds(long callDataSize) implements OobCall {
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_modexp_cds;
+    return OOB_INST_MODEXP_CDS;
   }
 }

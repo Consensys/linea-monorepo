@@ -15,9 +15,13 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGEPO;
-import static net.consensys.linea.zktracer.module.mmu.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEPO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
@@ -213,11 +217,9 @@ public class RightPaddedWordExtraction implements MmuInstruction {
   private void firstMicroInstruction(MmuData mmuData) {
     if (firstLimbSingleSource) {
       firstMicroInst =
-          firstLimbIsFull
-              ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT
-              : Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+          firstLimbIsFull ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
     } else {
-      firstMicroInst = Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+      firstMicroInst = MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
     }
 
     mmuData.mmuToMmioInstruction(
@@ -232,15 +234,13 @@ public class RightPaddedWordExtraction implements MmuInstruction {
 
   private void secondMicroInstruction(MmuData mmuData) {
     if (secondLimbVoid) {
-      secondMicroInst = Trace.MMIO_INST_LIMB_VANISHES;
+      secondMicroInst = MMIO_INST_LIMB_VANISHES;
     } else {
       if (secondLimbSingleSource) {
         secondMicroInst =
-            secondLimbPadded
-                ? Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE
-                : Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+            secondLimbPadded ? MMIO_INST_RAM_TO_LIMB_ONE_SOURCE : MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
       } else {
-        secondMicroInst = Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+        secondMicroInst = MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
       }
     }
 

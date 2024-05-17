@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ripemd;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_RIPEMD;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -40,6 +40,6 @@ public record RipeMd160(PrecompileInvocation p) implements OobCall {
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_ripemd;
+    return OOB_INST_RIPEMD;
   }
 }

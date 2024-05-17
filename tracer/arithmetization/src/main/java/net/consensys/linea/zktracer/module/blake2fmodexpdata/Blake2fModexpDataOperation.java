@@ -15,6 +15,13 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_PARAMS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToUnsignedBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
@@ -50,29 +57,24 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
 
   private static final Map<Integer, PhaseInfo> PHASE_INFO_MAP =
       Map.of(
-          Trace.PHASE_MODEXP_BASE,
-              new PhaseInfo(Trace.PHASE_MODEXP_BASE, Trace.INDEX_MAX_MODEXP_BASE),
-          Trace.PHASE_MODEXP_EXPONENT,
-              new PhaseInfo(Trace.PHASE_MODEXP_EXPONENT, Trace.INDEX_MAX_MODEXP_EXPONENT),
-          Trace.PHASE_MODEXP_MODULUS,
-              new PhaseInfo(Trace.PHASE_MODEXP_MODULUS, Trace.INDEX_MAX_MODEXP_MODULUS),
-          Trace.PHASE_MODEXP_RESULT,
-              new PhaseInfo(Trace.PHASE_MODEXP_RESULT, Trace.INDEX_MAX_MODEXP_RESULT),
-          Trace.PHASE_BLAKE_DATA, new PhaseInfo(Trace.PHASE_BLAKE_DATA, Trace.INDEX_MAX_BLAKE_DATA),
-          Trace.PHASE_BLAKE_PARAMS,
-              new PhaseInfo(Trace.PHASE_BLAKE_PARAMS, Trace.INDEX_MAX_BLAKE_PARAMS),
-          Trace.PHASE_BLAKE_RESULT,
-              new PhaseInfo(Trace.PHASE_BLAKE_RESULT, Trace.INDEX_MAX_BLAKE_RESULT));
+          PHASE_MODEXP_BASE, new PhaseInfo(PHASE_MODEXP_BASE, Trace.INDEX_MAX_MODEXP_BASE),
+          PHASE_MODEXP_EXPONENT,
+              new PhaseInfo(PHASE_MODEXP_EXPONENT, Trace.INDEX_MAX_MODEXP_EXPONENT),
+          PHASE_MODEXP_MODULUS, new PhaseInfo(PHASE_MODEXP_MODULUS, Trace.INDEX_MAX_MODEXP_MODULUS),
+          PHASE_MODEXP_RESULT, new PhaseInfo(PHASE_MODEXP_RESULT, Trace.INDEX_MAX_MODEXP_RESULT),
+          PHASE_BLAKE_DATA, new PhaseInfo(PHASE_BLAKE_DATA, Trace.INDEX_MAX_BLAKE_DATA),
+          PHASE_BLAKE_PARAMS, new PhaseInfo(PHASE_BLAKE_PARAMS, Trace.INDEX_MAX_BLAKE_PARAMS),
+          PHASE_BLAKE_RESULT, new PhaseInfo(PHASE_BLAKE_RESULT, Trace.INDEX_MAX_BLAKE_RESULT));
 
-  @EqualsAndHashCode.Include public final int hubStampPlusOne;
-  @Getter private int prevHubStamp;
+  @EqualsAndHashCode.Include public final long hubStampPlusOne;
+  @Getter private long prevHubStamp;
 
   @EqualsAndHashCode.Include public final Optional<ModexpComponents> modexpComponents;
   @EqualsAndHashCode.Include public final Optional<Blake2fComponents> blake2fComponents;
 
   public Blake2fModexpDataOperation(
-      int hubStamp,
-      int prevHubStamp,
+      long hubStamp,
+      long prevHubStamp,
       ModexpComponents modexpComponents,
       Blake2fComponents blake2fComponents) {
     this.hubStampPlusOne = hubStamp + 1;
@@ -90,9 +92,8 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
 
   void trace(Trace trace, int stamp) {
     final UnsignedByte stampByte = UnsignedByte.of(stamp);
-    final Bytes currentHubStamp = Bytes.ofUnsignedInt(this.hubStampPlusOne);
 
-    final UnsignedByte[] hubStampDiffBytes = getHubStampDiffBytes(currentHubStamp);
+    final UnsignedByte[] hubStampDiffBytes = getHubStampDiffBytes(this.hubStampPlusOne);
 
     final Bytes modexpComponentsLimb =
         modexpComponents.map(this::buildModexpComponentsLimb).orElse(Bytes.EMPTY);
@@ -103,7 +104,7 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
     var tracerBuilder =
         Blake2fModexpTraceHelper.builder()
             .trace(trace)
-            .currentHubStamp(currentHubStamp)
+            .currentHubStamp(this.hubStampPlusOne)
             .prevHubStamp(prevHubStamp)
             .phaseInfoMap(PHASE_INFO_MAP)
             .hubStampDiffBytes(hubStampDiffBytes)
@@ -112,8 +113,8 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
     if (modexpComponents.isPresent()) {
       Blake2fModexpTraceHelper modexpTraceHelper =
           tracerBuilder
-              .startPhaseIndex(Trace.PHASE_MODEXP_BASE)
-              .endPhaseIndex(Trace.PHASE_MODEXP_RESULT)
+              .startPhaseIndex(PHASE_MODEXP_BASE)
+              .endPhaseIndex(PHASE_MODEXP_RESULT)
               .currentRowIndexFunction(
                   ((phaseInfo, phaseIndex, index) ->
                       phaseInfo.indexMax() * (phaseIndex - 1) + index))
@@ -136,19 +137,19 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
       Blake2fComponents components = blake2fComponents.get();
       Blake2fModexpTraceHelper blake2fTraceHelper =
           tracerBuilder
-              .startPhaseIndex(Trace.PHASE_BLAKE_DATA)
-              .endPhaseIndex(Trace.PHASE_BLAKE_RESULT)
+              .startPhaseIndex(PHASE_BLAKE_DATA)
+              .endPhaseIndex(PHASE_BLAKE_RESULT)
               .currentRowIndexFunction(((phaseInfo, phaseIndex, index) -> index))
               .traceLimbConsumer(
                   (rowIndex, phaseIndex) -> {
-                    if (phaseIndex == Trace.PHASE_BLAKE_DATA) {
+                    if (phaseIndex == PHASE_BLAKE_DATA) {
                       trace.limb(
                           components
                               .data()
                               .slice(
                                   BLAKE2f_LIMB_INT_BYTE_SIZE * rowIndex,
                                   BLAKE2f_LIMB_INT_BYTE_SIZE));
-                    } else if (phaseIndex == Trace.PHASE_BLAKE_PARAMS) {
+                    } else if (phaseIndex == PHASE_BLAKE_PARAMS) {
                       if (rowIndex == Trace.INDEX_MAX_BLAKE_PARAMS - 1) {
                         trace.limb(components.r());
                       } else {
@@ -194,16 +195,13 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
     return Hash.blake2bf(input);
   }
 
-  private UnsignedByte[] getHubStampDiffBytes(Bytes currentHubStamp) {
-    BigInteger prevHubStampBigInt = BigInteger.valueOf(prevHubStamp);
-    BigInteger hubStampBigInt = currentHubStamp.toUnsignedBigInteger();
-    BigInteger hubStampDiff = hubStampBigInt.subtract(prevHubStampBigInt).subtract(BigInteger.ONE);
+  private UnsignedByte[] getHubStampDiffBytes(long currentHubStamp) {
+    final long hubStampDiff = currentHubStamp - prevHubStamp - 1;
 
     Preconditions.checkArgument(
-        hubStampDiff.compareTo(BigInteger.valueOf(256 ^ 6)) < 0,
-        "Hub stamp difference should never exceed 256 ^ 6");
+        hubStampDiff < Math.pow(256, 6), "Hub stamp difference should never exceed 256 ^ 6");
 
     return bytesToUnsignedBytes(
-        rightPadTo(leftPadTo(bigIntegerToBytes(hubStampDiff), 6), 128).toArray());
+        rightPadTo(leftPadTo(Bytes.ofUnsignedInt(hubStampDiff), 6), 128).toArray());
   }
 }

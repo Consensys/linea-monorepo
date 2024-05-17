@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_cdl;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_CDL;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -44,6 +44,6 @@ public record CallDataLoad(EWord readOffset, EWord callDataSize) implements OobC
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_cdl;
+    return OOB_INST_CDL;
   }
 }

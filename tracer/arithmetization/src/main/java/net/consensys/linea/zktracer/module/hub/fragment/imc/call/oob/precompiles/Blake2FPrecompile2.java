@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_blake2f_params;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_BLAKE_PARAMS;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -42,6 +42,6 @@ public record Blake2FPrecompile2(PrecompileInvocation p) implements OobCall {
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_blake2f_params;
+    return OOB_INST_BLAKE_PARAMS;
   }
 }

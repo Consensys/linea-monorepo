@@ -66,7 +66,7 @@ public class Trace {
         new ColumnHeader("add.OVERFLOW", 1, length),
         new ColumnHeader("add.RES_HI", 32, length),
         new ColumnHeader("add.RES_LO", 32, length),
-        new ColumnHeader("add.STAMP", 32, length));
+        new ColumnHeader("add.STAMP", 8, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -295,18 +295,14 @@ public class Trace {
     return this;
   }
 
-  public Trace stamp(final Bytes b) {
+  public Trace stamp(final long b) {
     if (filled.get(14)) {
       throw new IllegalStateException("add.STAMP already set");
     } else {
       filled.set(14);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      stamp.put((byte) 0);
-    }
-    stamp.put(b.toArrayUnsafe());
+    stamp.putLong(b);
 
     return this;
   }
@@ -436,7 +432,7 @@ public class Trace {
     }
 
     if (!filled.get(14)) {
-      stamp.position(stamp.position() + 32);
+      stamp.position(stamp.position() + 8);
     }
 
     filled.clear();

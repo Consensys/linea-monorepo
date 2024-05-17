@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -28,8 +30,8 @@ public class Shb {
   @Getter private final UnsignedByte[][] shbLo;
 
   public static Shb create(final OpCode opCode, final Bytes32 arg2, final UnsignedByte lsb) {
-    final UnsignedByte[][] shbHi = new UnsignedByte[5][Trace.LLARGE];
-    final UnsignedByte[][] shbLo = new UnsignedByte[5][Trace.LLARGE];
+    final UnsignedByte[][] shbHi = new UnsignedByte[5][LLARGE];
+    final UnsignedByte[][] shbLo = new UnsignedByte[5][LLARGE];
 
     for (int i = 3; i < 8; i++) {
       final UnsignedByte shiftAmount = (lsb.shiftLeft(8 - i)).shiftRight(8 - i);

@@ -24,12 +24,12 @@ import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 
 @Builder
-public record TxndataComparaisonRecord(
+public record TxnDataComparisonRecord(
     boolean wcpFlag, boolean eucFlag, int instruction, Bytes arg1, Bytes arg2, Bytes result) {
 
-  public static TxndataComparaisonRecord callToEuc(
+  public static TxnDataComparisonRecord callToEuc(
       final Bytes arg1, final Bytes arg2, final Bytes result) {
-    return TxndataComparaisonRecord.builder()
+    return TxnDataComparisonRecord.builder()
         .wcpFlag(false)
         .eucFlag(true)
         .instruction(0)
@@ -39,9 +39,9 @@ public record TxndataComparaisonRecord(
         .build();
   }
 
-  public static TxndataComparaisonRecord callToLt(
+  public static TxnDataComparisonRecord callToLt(
       final Bytes arg1, final Bytes arg2, final boolean result) {
-    return TxndataComparaisonRecord.builder()
+    return TxnDataComparisonRecord.builder()
         .wcpFlag(true)
         .eucFlag(false)
         .instruction(EVM_INST_LT)
@@ -51,9 +51,9 @@ public record TxndataComparaisonRecord(
         .build();
   }
 
-  public static TxndataComparaisonRecord callToLeq(
+  public static TxnDataComparisonRecord callToLeq(
       final Bytes arg1, final Bytes arg2, final boolean result) {
-    return TxndataComparaisonRecord.builder()
+    return TxnDataComparisonRecord.builder()
         .wcpFlag(true)
         .eucFlag(false)
         .instruction(WCP_INST_LEQ)
@@ -63,8 +63,8 @@ public record TxndataComparaisonRecord(
         .build();
   }
 
-  public static TxndataComparaisonRecord callToIsZero(final Bytes arg1, final boolean result) {
-    return TxndataComparaisonRecord.builder()
+  public static TxnDataComparisonRecord callToIsZero(final Bytes arg1, final boolean result) {
+    return TxnDataComparisonRecord.builder()
         .wcpFlag(true)
         .eucFlag(false)
         .instruction(EVM_INST_ISZERO)
@@ -74,8 +74,8 @@ public record TxndataComparaisonRecord(
         .build();
   }
 
-  public static TxndataComparaisonRecord empty() {
-    return TxndataComparaisonRecord.builder()
+  public static TxnDataComparisonRecord empty() {
+    return TxnDataComparisonRecord.builder()
         .wcpFlag(false)
         .eucFlag(false)
         .instruction(0)

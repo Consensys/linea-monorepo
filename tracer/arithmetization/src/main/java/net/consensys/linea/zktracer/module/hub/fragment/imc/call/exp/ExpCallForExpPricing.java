@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.exp;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_EXPLOG;
 import static net.consensys.linea.zktracer.opcode.gas.GasConstants.G_EXP_BYTE;
 
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -27,7 +28,7 @@ public record ExpCallForExpPricing(EWord exponent) implements TraceSubFragment {
   public Trace trace(Trace trace) {
     return trace
         .pMiscExpFlag(true)
-        .pMiscExpInst(Trace.EXP_INST_EXPLOG)
+        .pMiscExpInst(EXP_INST_EXPLOG)
         .pMiscExpData1(exponent.hi())
         .pMiscExpData2(exponent.lo())
         .pMiscExpData5(Bytes.ofUnsignedShort(G_EXP_BYTE.cost() * exponent.byteLength()));

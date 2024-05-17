@@ -15,6 +15,19 @@
 
 package net.consensys.linea.zktracer.module.mmio;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_EXCISION;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_PARTIAL;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_VANISHES;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.isFastOperation;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.numberOfRowOfMmioInstruction;
 
@@ -103,28 +116,25 @@ public class Mmio implements Module {
     final boolean effectiveExoIsKeccak = requiresExoFlag && mmioData.exoIsKeccak();
 
     final boolean isLimbToRamOneTarget =
-        (mmioData.instruction() == Trace.MMIO_INST_LIMB_TO_RAM_ONE_TARGET);
+        (mmioData.instruction() == MMIO_INST_LIMB_TO_RAM_ONE_TARGET);
     final boolean isLimbToRamTransplant =
-        (mmioData.instruction() == Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT);
+        (mmioData.instruction() == MMIO_INST_LIMB_TO_RAM_TRANSPLANT);
     final boolean isLimbToRamTwoTarget =
-        (mmioData.instruction() == Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET);
-    final boolean isLimbVanishes = (mmioData.instruction() == Trace.MMIO_INST_LIMB_VANISHES);
-    final boolean isRamExcision = (mmioData.instruction() == Trace.MMIO_INST_RAM_EXCISION);
+        (mmioData.instruction() == MMIO_INST_LIMB_TO_RAM_TWO_TARGET);
+    final boolean isLimbVanishes = (mmioData.instruction() == MMIO_INST_LIMB_VANISHES);
+    final boolean isRamExcision = (mmioData.instruction() == MMIO_INST_RAM_EXCISION);
     final boolean isRamToLimbOneSource =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE);
+        (mmioData.instruction() == MMIO_INST_RAM_TO_LIMB_ONE_SOURCE);
     final boolean isRamToLimbTransplant =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT);
+        (mmioData.instruction() == MMIO_INST_RAM_TO_LIMB_TRANSPLANT);
     final boolean isRamToLimbTwoSource =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE);
-    final boolean isRamToRamPartial =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_RAM_PARTIAL);
+        (mmioData.instruction() == MMIO_INST_RAM_TO_LIMB_TWO_SOURCE);
+    final boolean isRamToRamPartial = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_PARTIAL);
     final boolean isRamToRamTransplant =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_RAM_TRANSPLANT);
-    final boolean isRamToRamTwoSource =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_RAM_TWO_SOURCE);
-    final boolean isRamToRamTwoTarget =
-        (mmioData.instruction() == Trace.MMIO_INST_RAM_TO_RAM_TWO_TARGET);
-    final boolean isRamVanishes = (mmioData.instruction() == Trace.MMIO_INST_RAM_VANISHES);
+        (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TRANSPLANT);
+    final boolean isRamToRamTwoSource = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TWO_SOURCE);
+    final boolean isRamToRamTwoTarget = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TWO_TARGET);
+    final boolean isRamVanishes = (mmioData.instruction() == MMIO_INST_RAM_VANISHES);
 
     for (short ct = 0; ct < numberOfRowOfMmioInstruction(mmioData.instruction()); ct++) {
       trace

@@ -13,11 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpAddr;
+package net.consensys.linea.zktracer.module.rlpaddr;
 
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randBigInt;
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randData;
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randLong;
+import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randBigInt;
+import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randData;
+import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randLong;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;

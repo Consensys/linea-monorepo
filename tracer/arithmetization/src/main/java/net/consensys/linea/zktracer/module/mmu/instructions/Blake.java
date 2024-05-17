@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
 import java.util.ArrayList;
@@ -58,19 +61,19 @@ public class Blake implements MmuInstruction {
 
     // Preprocessing row n°1
     final long dividendRow1 = hubToMmuValues.sourceOffsetLo().longValueExact();
-    EucOperation eucOpRow1 = euc.callEUC(longToBytes(dividendRow1), Bytes.of(Trace.LLARGE));
+    EucOperation eucOpRow1 = euc.callEUC(longToBytes(dividendRow1), Bytes.of(LLARGE));
     sourceLimbOffsetR = eucOpRow1.quotient().toLong();
     sourceByteOffsetR = (short) eucOpRow1.remainder().toInt();
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividendRow1)
-            .divisor((short) Trace.LLARGE)
+            .divisor((short) LLARGE)
             .quotient(eucOpRow1.quotient().toLong())
             .remainder((short) eucOpRow1.remainder().toInt())
             .build());
 
     final Bytes wcpArg1 = longToBytes(sourceByteOffsetR + 3);
-    final Bytes wcpArg2 = Bytes.of(Trace.LLARGE);
+    final Bytes wcpArg2 = Bytes.of(LLARGE);
     blakeRSingleSource = wcp.callLT(wcpArg1, wcpArg2);
     wcpCallRecords.add(
         MmuWcpCallRecord.instLtBuilder()
@@ -81,13 +84,13 @@ public class Blake implements MmuInstruction {
 
     // Preprocessing row n°2
     final long dividendRow2 = hubToMmuValues.sourceOffsetLo().longValueExact() + 213 - 1;
-    EucOperation eucOpRow2 = euc.callEUC(longToBytes(dividendRow2), Bytes.of(Trace.LLARGE));
+    EucOperation eucOpRow2 = euc.callEUC(longToBytes(dividendRow2), Bytes.of(LLARGE));
     sourceLimbOffsetF = eucOpRow2.quotient().toLong();
     sourceByteOffsetF = (short) eucOpRow2.remainder().toInt();
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividendRow2)
-            .divisor((short) Trace.LLARGE)
+            .divisor((short) LLARGE)
             .quotient(eucOpRow2.quotient().toLong())
             .remainder((short) eucOpRow2.remainder().toInt())
             .build());
@@ -131,23 +134,23 @@ public class Blake implements MmuInstruction {
         MmuToMmioInstruction.builder()
             .mmioInstruction(
                 blakeRSingleSource
-                    ? Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE
-                    : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
+                    ? MMIO_INST_RAM_TO_LIMB_ONE_SOURCE
+                    : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
             .size((short) 4)
             .sourceLimbOffset(sourceLimbOffsetR)
             .sourceByteOffset(sourceByteOffsetR)
-            .targetByteOffset((short) (Trace.LLARGE - 4))
+            .targetByteOffset((short) (LLARGE - 4))
             .limb(hubToMmuValues.limb1())
             .build());
 
     // Second micro instruction
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE)
+            .mmioInstruction(MMIO_INST_RAM_TO_LIMB_ONE_SOURCE)
             .size((short) 1)
             .sourceLimbOffset(sourceLimbOffsetF)
             .sourceByteOffset(sourceByteOffsetF)
-            .targetByteOffset((short) (Trace.LLARGE - 1))
+            .targetByteOffset((short) (LLARGE - 1))
             .limb(hubToMmuValues.limb2())
             .build());
 

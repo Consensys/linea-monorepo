@@ -15,36 +15,49 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu;
 
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECADD_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECADD_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECMUL_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECMUL_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECRECOVER_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_ECRECOVER_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_PAIRING_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.EC_DATA_PHASE_PAIRING_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_MODEXP_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_RIPEMD_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_RIPEMD_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_SHA2_DATA;
-import static net.consensys.linea.zktracer.module.hub.Trace.PHASE_SHA2_RESULT;
-import static net.consensys.linea.zktracer.module.hub.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_ANY_TO_RAM_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_BLAKE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MLOAD;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MODEXP_DATA;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MODEXP_ZERO;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MSTORE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MSTORE8;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RAM_TO_EXO_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RAM_TO_RAM_SANS_PADDING;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_RIPEMD_HI;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_RIPEMD_LO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_SHA2_HI;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_SHA2_LO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_BLAKEMODEXP;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_ECDATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_KEC;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_LOG;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_RIPSHA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_ROM;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXO_SUM_WEIGHT_TXCD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE8;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_PARAMS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_RIPEMD_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_RIPEMD_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.util.Arrays;
@@ -112,31 +125,31 @@ public class MmuCall implements TraceSubFragment {
   }
 
   final MmuCall setRlpTxn() {
-    return this.exoIsRlpTxn(true).updateExoSum(Trace.EXO_SUM_WEIGHT_TXCD);
+    return this.exoIsRlpTxn(true).updateExoSum(EXO_SUM_WEIGHT_TXCD);
   }
 
   public final MmuCall setLog() {
-    return this.exoIsLog(true).updateExoSum(Trace.EXO_SUM_WEIGHT_LOG);
+    return this.exoIsLog(true).updateExoSum(EXO_SUM_WEIGHT_LOG);
   }
 
   public final MmuCall setRom() {
-    return this.exoIsRom(true).updateExoSum(Trace.EXO_SUM_WEIGHT_ROM);
+    return this.exoIsRom(true).updateExoSum(EXO_SUM_WEIGHT_ROM);
   }
 
   public final MmuCall setKec() {
-    return this.exoIsKec(true).updateExoSum(Trace.EXO_SUM_WEIGHT_KEC);
+    return this.exoIsKec(true).updateExoSum(EXO_SUM_WEIGHT_KEC);
   }
 
   final MmuCall setRipSha() {
-    return this.exoIsRipSha(true).updateExoSum(Trace.EXO_SUM_WEIGHT_RIPSHA);
+    return this.exoIsRipSha(true).updateExoSum(EXO_SUM_WEIGHT_RIPSHA);
   }
 
   final MmuCall setBlakeModexp() {
-    return this.exoIsBlakeModexp(true).updateExoSum(Trace.EXO_SUM_WEIGHT_BLAKEMODEXP);
+    return this.exoIsBlakeModexp(true).updateExoSum(EXO_SUM_WEIGHT_BLAKEMODEXP);
   }
 
   final MmuCall setEcData() {
-    return this.exoIsEcData(true).updateExoSum(Trace.EXO_SUM_WEIGHT_ECDATA);
+    return this.exoIsEcData(true).updateExoSum(EXO_SUM_WEIGHT_ECDATA);
   }
 
   public MmuCall(final int instruction) {
@@ -227,8 +240,7 @@ public class MmuCall implements TraceSubFragment {
 
   public static MmuCall mload(final Hub hub) {
     final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(0));
-    final EWord loadedValue =
-        EWord.of(hub.messageFrame().shadowReadMemory(offset, Trace.WORD_SIZE));
+    final EWord loadedValue = EWord.of(hub.messageFrame().shadowReadMemory(offset, WORD_SIZE));
     return new MmuCall(MMU_INST_MLOAD)
         .sourceId(hub.currentFrame().contextNumber())
         .sourceOffset(EWord.of(offset))
@@ -289,7 +301,7 @@ public class MmuCall implements TraceSubFragment {
         .sourceId(hub.transients().tx().absNumber())
         .targetId(hub.stamp())
         .size(hub.transients().tx().besuTx().getData().map(Bytes::size).orElse(0))
-        .phase(Trace.RLP_TXN_PHASE_DATA_VALUE)
+        .phase(RLP_TXN_PHASE_DATA)
         .setRlpTxn();
   }
 
@@ -307,7 +319,7 @@ public class MmuCall implements TraceSubFragment {
           .size(p.callDataSource().length())
           .referenceSize(128)
           .successBit(recoverySuccessful)
-          .phase(EC_DATA_PHASE_ECRECOVER_DATA)
+          .phase(PHASE_ECRECOVER_DATA)
           .setEcData();
     } else if (i == 1) {
       if (recoverySuccessful) {
@@ -315,7 +327,7 @@ public class MmuCall implements TraceSubFragment {
             .sourceId(precompileContextNumber)
             .targetId(precompileContextNumber)
             .size(WORD_SIZE)
-            .phase(EC_DATA_PHASE_ECRECOVER_RESULT)
+            .phase(PHASE_ECRECOVER_RESULT)
             .setEcData();
       } else {
         return nop();
@@ -362,13 +374,8 @@ public class MmuCall implements TraceSubFragment {
             .targetId(precompileContextNumber)
             .targetOffset(EWord.ZERO)
             .limb1(
-                isSha
-                    ? bigIntegerToBytes(Trace.EMPTY_SHA2_HI)
-                    : Bytes.ofUnsignedShort(Trace.EMPTY_RIPEMD_HI))
-            .limb2(
-                isSha
-                    ? bigIntegerToBytes(Trace.EMPTY_SHA2_LO)
-                    : bigIntegerToBytes(Trace.EMPTY_RIPEMD_LO));
+                isSha ? bigIntegerToBytes(EMPTY_SHA2_HI) : Bytes.ofUnsignedShort(EMPTY_RIPEMD_HI))
+            .limb2(isSha ? bigIntegerToBytes(EMPTY_SHA2_LO) : bigIntegerToBytes(EMPTY_RIPEMD_LO));
       } else {
         return new MmuCall(MMU_INST_EXO_TO_RAM_TRANSPLANTS)
             .sourceId(precompileContextNumber)
@@ -444,14 +451,14 @@ public class MmuCall implements TraceSubFragment {
           .referenceSize(128)
           .successBit(!p.ramFailure())
           .setEcData()
-          .phase(EC_DATA_PHASE_ECADD_DATA);
+          .phase(PHASE_ECADD_DATA);
     } else if (i == 1) {
       return new MmuCall(MMU_INST_EXO_TO_RAM_TRANSPLANTS)
           .sourceId(precompileContextNumber)
           .targetId(precompileContextNumber)
           .size(64)
           .setEcData()
-          .phase(EC_DATA_PHASE_ECADD_RESULT);
+          .phase(PHASE_ECADD_RESULT);
     } else {
       return new MmuCall(MMU_INST_RAM_TO_RAM_SANS_PADDING)
           .sourceId(precompileContextNumber)
@@ -474,14 +481,14 @@ public class MmuCall implements TraceSubFragment {
           .referenceSize(96)
           .successBit(!p.ramFailure())
           .setEcData()
-          .phase(EC_DATA_PHASE_ECMUL_DATA);
+          .phase(PHASE_ECMUL_DATA);
     } else if (i == 1) {
       return new MmuCall(MMU_INST_EXO_TO_RAM_TRANSPLANTS)
           .sourceId(precompileContextNumber)
           .targetId(precompileContextNumber)
           .size(64)
           .setEcData()
-          .phase(EC_DATA_PHASE_ECMUL_RESULT);
+          .phase(PHASE_ECMUL_RESULT);
     } else {
       return new MmuCall(MMU_INST_RAM_TO_RAM_SANS_PADDING)
           .sourceId(precompileContextNumber)
@@ -504,7 +511,7 @@ public class MmuCall implements TraceSubFragment {
           .referenceSize(p.callDataSource().length())
           .successBit(!p.ramFailure())
           .setEcData()
-          .phase(EC_DATA_PHASE_PAIRING_DATA);
+          .phase(PHASE_ECPAIRING_DATA);
     } else if (i == 1) {
       if (p.callDataSource().isEmpty()) {
         return new MmuCall(MMU_INST_MSTORE).targetId(precompileContextNumber).limb2(Bytes.of(1));
@@ -514,7 +521,7 @@ public class MmuCall implements TraceSubFragment {
             .targetId(precompileContextNumber)
             .size(WORD_SIZE)
             .setEcData()
-            .phase(EC_DATA_PHASE_PAIRING_RESULT);
+            .phase(PHASE_ECPAIRING_RESULT);
       }
     } else {
       return new MmuCall(MMU_INST_RAM_TO_RAM_SANS_PADDING)
@@ -538,7 +545,7 @@ public class MmuCall implements TraceSubFragment {
           .limb1(EWord.of(((Blake2fMetadata) p.metadata()).r()))
           .limb2(EWord.of(((Blake2fMetadata) p.metadata()).f()))
           .setBlakeModexp()
-          .phase(Trace.PHASE_BLAKE_PARAMS);
+          .phase(PHASE_BLAKE_PARAMS);
     } else if (i == 1) {
       return new MmuCall(MMU_INST_RAM_TO_EXO_WITH_PADDING)
           .sourceId(hub.currentFrame().contextNumber())

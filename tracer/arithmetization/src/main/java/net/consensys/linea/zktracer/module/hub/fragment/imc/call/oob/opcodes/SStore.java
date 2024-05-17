@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_SSTORE;
 import static net.consensys.linea.zktracer.module.oob.Trace.G_CALLSTIPEND;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_sstore;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -35,6 +35,6 @@ public record SStore(long gas) implements OobCall {
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_sstore;
+    return OOB_INST_SSTORE;
   }
 }

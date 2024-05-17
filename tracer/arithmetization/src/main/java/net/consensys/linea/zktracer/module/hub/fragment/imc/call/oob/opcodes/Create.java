@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_create;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_CREATE;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -48,6 +48,6 @@ public record Create(
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_create;
+    return OOB_INST_CREATE;
   }
 }

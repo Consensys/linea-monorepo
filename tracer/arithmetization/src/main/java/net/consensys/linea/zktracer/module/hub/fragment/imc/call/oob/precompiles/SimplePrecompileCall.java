@@ -15,13 +15,13 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ecadd;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ecmul;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ecpairing;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ecrecover;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_identity;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ripemd;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_sha2;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_ECADD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_ECMUL;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_ECPAIRING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_ECRECOVER;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_IDENTITY;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_RIPEMD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_SHA2;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -55,13 +55,13 @@ public record SimplePrecompileCall(
   @Override
   public int oobInstruction() {
     return switch (scenario.precompile()) {
-      case EC_RECOVER -> OOB_INST_ecrecover;
-      case SHA2_256 -> OOB_INST_sha2;
-      case RIPEMD_160 -> OOB_INST_ripemd;
-      case IDENTITY -> OOB_INST_identity;
-      case EC_ADD -> OOB_INST_ecadd;
-      case EC_MUL -> OOB_INST_ecmul;
-      case EC_PAIRING -> OOB_INST_ecpairing;
+      case EC_RECOVER -> OOB_INST_ECRECOVER;
+      case SHA2_256 -> OOB_INST_SHA2;
+      case RIPEMD_160 -> OOB_INST_RIPEMD;
+      case IDENTITY -> OOB_INST_IDENTITY;
+      case EC_ADD -> OOB_INST_ECADD;
+      case EC_MUL -> OOB_INST_ECMUL;
+      case EC_PAIRING -> OOB_INST_ECPAIRING;
       default -> throw new IllegalArgumentException("unexpected complex precompile");
     };
   }

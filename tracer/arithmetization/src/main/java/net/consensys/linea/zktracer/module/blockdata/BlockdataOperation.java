@@ -15,17 +15,17 @@
 
 package net.consensys.linea.zktracer.module.blockdata;
 
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_BASEFEE;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_CHAINID;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_COINBASE;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_DIFFICULTY;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_GASLIMIT;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_NUMBER;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.EVM_INST_TIMESTAMP;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.LINEA_BLOCK_GAS_LIMIT;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.blockdata.Trace.MAX_CT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_BASEFEE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_CHAINID;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_COINBASE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_DIFFICULTY;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_GASLIMIT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_NUMBER;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_TIMESTAMP;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BLOCK_GAS_LIMIT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;

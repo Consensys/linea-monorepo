@@ -15,9 +15,10 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.EIP_3541_MARKER;
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -114,7 +115,7 @@ public class InvalidCodePrefix implements MmuInstruction {
     // First and only micro-instruction.
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE)
+            .mmioInstruction(MMIO_INST_RAM_TO_LIMB_ONE_SOURCE)
             .size((short) 1)
             .sourceLimbOffset(initialSourceLimbOffset)
             .sourceByteOffset(initialSourceByteOffset)

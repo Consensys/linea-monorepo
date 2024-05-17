@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_jump;
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_jumpi;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_JUMP;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_JUMPI;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -41,11 +41,11 @@ public final class Jump implements OobCall {
     long jumpCondition = 0;
     switch (hub.currentFrame().opCode()) {
       case JUMP -> {
-        this.oobInst = OOB_INST_jump;
+        this.oobInst = OOB_INST_JUMP;
         this.event1 = invalidDestination;
       }
       case JUMPI -> {
-        this.oobInst = OOB_INST_jumpi;
+        this.oobInst = OOB_INST_JUMPI;
         jumpCondition = Words.clampedToLong(frame.getStackItem(1));
         this.event1 = (jumpCondition != 0) && invalidDestination;
       }

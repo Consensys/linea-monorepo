@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
-import net.consensys.linea.zktracer.module.ec_data.EcData;
+import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;

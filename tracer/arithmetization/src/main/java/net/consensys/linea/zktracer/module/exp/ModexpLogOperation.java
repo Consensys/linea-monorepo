@@ -17,11 +17,11 @@ package net.consensys.linea.zktracer.module.exp;
 
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
-import static net.consensys.linea.zktracer.module.exp.Trace.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.module.exp.Trace.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.exp.Trace.EXP_INST_MODEXPLOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.exp.Trace.LLARGEPO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_MODEXPLOG;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEPO;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_MODEXP_LOG;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_MODEXP_LOG;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;

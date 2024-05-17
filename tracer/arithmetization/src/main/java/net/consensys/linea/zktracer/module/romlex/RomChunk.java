@@ -15,13 +15,13 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_INVALID;
-import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_JUMPDEST;
-import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_PUSH1;
-import static net.consensys.linea.zktracer.module.romlex.Trace.EVM_INST_PUSH32;
-import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGEMO;
-import static net.consensys.linea.zktracer.module.romlex.Trace.WORD_SIZE_MO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_INVALID;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_JUMPDEST;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH1;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH32;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.EqualsAndHashCode;
@@ -76,7 +76,7 @@ public final class RomChunk extends ModuleOperation {
           .codeFragmentIndex(cfi)
           .codeFragmentIndexInfty(cfiInfty)
           .programCounter(i)
-          .limb(dataPadded.slice(sliceNumber * Trace.LLARGE, Trace.LLARGE))
+          .limb(dataPadded.slice(sliceNumber * LLARGE, LLARGE))
           .codeSize(codeSize)
           .paddedBytecodeByte(UnsignedByte.of(dataPadded.get(i)))
           .acc(dataPadded.slice(sliceNumber * LLARGE, (i % LLARGE) + 1))

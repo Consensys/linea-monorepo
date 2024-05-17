@@ -113,7 +113,7 @@ public final class TransactionSnapshot extends ModuleOperation {
 
   @Setter private boolean getFullTip;
 
-  private final List<TxndataComparaisonRecord> callsToEucAndWcp;
+  private final List<TxnDataComparisonRecord> callsToEucAndWcp;
   private final List<RlptxnOutgoing> valuesToRlptxn;
   private final List<RlptxrcptOutgoing> valuesToRlpTxrcpt;
 
@@ -377,25 +377,25 @@ public final class TransactionSnapshot extends ModuleOperation {
     final BigInteger gasLimit = BigInteger.valueOf(this.gasLimit);
     final Bytes row0arg2 = bigIntegerToBytes(value.add(maxFeeShortHand.multiply(gasLimit)));
     wcp.callLT(row0arg1, row0arg2);
-    this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLt(row0arg1, row0arg2, false));
+    this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(row0arg1, row0arg2, false));
 
     // i+1
     final Bytes row1arg1 = Bytes.minimalBytes(this.gasLimit);
     final Bytes row1arg2 = Bytes.minimalBytes(this.getUpfrontGasCost());
     wcp.callLT(row1arg1, row1arg2);
-    this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLt(row1arg1, row1arg2, false));
+    this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(row1arg1, row1arg2, false));
 
     // i+2
     final Bytes row2arg1 = Bytes.minimalBytes(this.gasLimit - this.leftoverGas);
     final Bytes row2arg2 = Bytes.of(MAX_REFUND_QUOTIENT);
     final Bytes refundLimit = euc.callEUC(row2arg1, row2arg2).quotient();
-    this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToEuc(row2arg1, row2arg2, refundLimit));
+    this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToEuc(row2arg1, row2arg2, refundLimit));
 
     // i+3
     final Bytes refundCounterMax = Bytes.minimalBytes(this.refundCounter);
     final boolean getFullRefund = wcp.callLT(refundCounterMax, refundLimit);
     this.callsToEucAndWcp.add(
-        TxndataComparaisonRecord.callToLt(refundCounterMax, refundLimit, getFullRefund));
+        TxnDataComparisonRecord.callToLt(refundCounterMax, refundLimit, getFullRefund));
 
     this.effectiveGasRefund(
         getFullRefund ? leftoverGas + this.refundCounter : leftoverGas + refundLimit.toInt());
@@ -403,17 +403,17 @@ public final class TransactionSnapshot extends ModuleOperation {
     // i+4
     final Bytes row4arg1 = Bytes.minimalBytes(this.payload.size());
     final boolean nonZeroDataSize = wcp.callISZERO(row4arg1);
-    this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToIsZero(row4arg1, nonZeroDataSize));
+    this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToIsZero(row4arg1, nonZeroDataSize));
 
     switch (this.type) {
       case FRONTIER -> {
         for (int i = 5; i < NB_ROWS_TYPE_0; i++) {
-          this.callsToEucAndWcp.add(TxndataComparaisonRecord.empty());
+          this.callsToEucAndWcp.add(TxnDataComparisonRecord.empty());
         }
       }
       case ACCESS_LIST -> {
         for (int i = 5; i < NB_ROWS_TYPE_1; i++) {
-          this.callsToEucAndWcp.add(TxndataComparaisonRecord.empty());
+          this.callsToEucAndWcp.add(TxnDataComparisonRecord.empty());
         }
       }
       case EIP1559 -> {
@@ -421,12 +421,12 @@ public final class TransactionSnapshot extends ModuleOperation {
         final Bytes maxFee = bigIntegerToBytes(this.maxFeePerGas.get().getAsBigInteger());
         final Bytes row5arg2 = Bytes.minimalBytes(this.baseFee.get().intValue());
         wcp.callLT(maxFee, row5arg2);
-        this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLt(maxFee, row5arg2, false));
+        this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row5arg2, false));
 
         // i+6
         final Bytes row6arg2 = bigIntegerToBytes(this.maxPriorityFeePerGas.get().getAsBigInteger());
         wcp.callLT(maxFee, row6arg2);
-        this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLt(maxFee, row6arg2, false));
+        this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row6arg2, false));
 
         // i+7
         final Bytes row7arg2 =
@@ -437,7 +437,7 @@ public final class TransactionSnapshot extends ModuleOperation {
                     .add(this.baseFee.get().getAsBigInteger()));
         final boolean result = wcp.callLT(maxFee, row7arg2);
         getFullTip = !result;
-        this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLt(maxFee, row7arg2, result));
+        this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row7arg2, result));
       }
     }
   }
@@ -445,7 +445,7 @@ public final class TransactionSnapshot extends ModuleOperation {
   public void setCallWcpLastTxOfBlock(final Bytes blockGasLimit) {
     final Bytes arg1 = Bytes.minimalBytes(this.cumulativeGasConsumption);
     this.wcp.callLEQ(arg1, blockGasLimit);
-    this.callsToEucAndWcp.add(TxndataComparaisonRecord.callToLeq(arg1, blockGasLimit, true));
+    this.callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(arg1, blockGasLimit, true));
   }
 
   public Bytes computeGasPriceColumn() {

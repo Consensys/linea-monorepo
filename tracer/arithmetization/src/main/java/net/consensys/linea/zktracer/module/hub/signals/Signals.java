@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.module.ec_data.EcData.EC_PRECOMPILES;
+import static net.consensys.linea.zktracer.module.ecdata.EcData.EC_PRECOMPILES;
 
 import java.util.Optional;
 import java.util.Set;

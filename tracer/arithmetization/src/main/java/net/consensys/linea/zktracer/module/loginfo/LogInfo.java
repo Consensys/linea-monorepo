@@ -13,9 +13,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.logInfo;
+package net.consensys.linea.zktracer.module.loginfo;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -23,6 +22,8 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptChunk;
+import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.log.Log;
 
@@ -99,33 +100,33 @@ public class LogInfo implements Module {
   public void traceTxWoLog(
       final int absTxNum, final int absLogNum, final int absLogNumMax, Trace trace) {
     trace
-        .absTxnNumMax(BigInteger.valueOf(this.rlpTxrcpt.chunkList.size()))
-        .absTxnNum(BigInteger.valueOf(absTxNum))
+        .absTxnNumMax(this.rlpTxrcpt.chunkList.size())
+        .absTxnNum(absTxNum)
         .txnEmitsLogs(false)
-        .absLogNumMax(BigInteger.valueOf(absLogNumMax))
-        .absLogNum(BigInteger.valueOf(absLogNum))
-        .ctMax(BigInteger.ZERO)
-        .ct(BigInteger.ZERO)
-        .addrHi(BigInteger.ZERO)
-        .addrLo(BigInteger.ZERO)
-        .topicHi1(BigInteger.ZERO)
-        .topicLo1(BigInteger.ZERO)
-        .topicHi2(BigInteger.ZERO)
-        .topicLo2(BigInteger.ZERO)
-        .topicHi3(BigInteger.ZERO)
-        .topicLo3(BigInteger.ZERO)
-        .topicHi4(BigInteger.ZERO)
-        .topicLo4(BigInteger.ZERO)
-        .dataSize(BigInteger.ZERO)
-        .inst(BigInteger.ZERO)
+        .absLogNumMax(absLogNumMax)
+        .absLogNum(absLogNum)
+        .ctMax(UnsignedByte.ZERO)
+        .ct(UnsignedByte.ZERO)
+        .addrHi(0L)
+        .addrLo(Bytes.EMPTY)
+        .topicHi1(Bytes.EMPTY)
+        .topicLo1(Bytes.EMPTY)
+        .topicHi2(Bytes.EMPTY)
+        .topicLo2(Bytes.EMPTY)
+        .topicHi3(Bytes.EMPTY)
+        .topicLo3(Bytes.EMPTY)
+        .topicHi4(Bytes.EMPTY)
+        .topicLo4(Bytes.EMPTY)
+        .dataSize(0L)
+        .inst(UnsignedByte.ZERO)
         .isLogX0(false)
         .isLogX1(false)
         .isLogX2(false)
         .isLogX3(false)
         .isLogX4(false)
-        .phase(BigInteger.valueOf(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY))
-        .dataHi(BigInteger.ZERO)
-        .dataLo(BigInteger.ZERO)
+        .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY)
+        .dataHi(Bytes.EMPTY)
+        .dataLo(Bytes.EMPTY)
         .validateRow();
   }
 
@@ -139,25 +140,25 @@ public class LogInfo implements Module {
     final Bytes32 topic4 = nbTopic >= 4 ? log.getTopics().get(3) : Bytes32.ZERO;
     for (int ct = 0; ct < ctMax + 1; ct++) {
       trace
-          .absTxnNumMax(BigInteger.valueOf(this.rlpTxrcpt.chunkList.size()))
-          .absTxnNum(BigInteger.valueOf(absTxNum))
+          .absTxnNumMax(this.rlpTxrcpt.chunkList.size())
+          .absTxnNum(absTxNum)
           .txnEmitsLogs(true)
-          .absLogNumMax(BigInteger.valueOf(absLogNumMax))
-          .absLogNum(BigInteger.valueOf(absLogNum))
-          .ctMax(BigInteger.valueOf(ctMax))
-          .ct(BigInteger.valueOf(ct))
-          .addrHi(log.getLogger().slice(0, 4).toUnsignedBigInteger())
-          .addrLo(log.getLogger().slice(4, 16).toUnsignedBigInteger())
-          .topicHi1(topic1.slice(0, 16).toUnsignedBigInteger())
-          .topicLo1(topic1.slice(16, 16).toUnsignedBigInteger())
-          .topicHi2(topic2.slice(0, 16).toUnsignedBigInteger())
-          .topicLo2(topic2.slice(16, 16).toUnsignedBigInteger())
-          .topicHi3(topic3.slice(0, 16).toUnsignedBigInteger())
-          .topicLo3(topic3.slice(16, 16).toUnsignedBigInteger())
-          .topicHi4(topic4.slice(0, 16).toUnsignedBigInteger())
-          .topicLo4(topic4.slice(16, 16).toUnsignedBigInteger())
-          .dataSize(BigInteger.valueOf(log.getData().size()))
-          .inst(BigInteger.valueOf(LOG0 + nbTopic))
+          .absLogNumMax(absLogNumMax)
+          .absLogNum(absLogNum)
+          .ctMax(UnsignedByte.of(ctMax))
+          .ct(UnsignedByte.of(ct))
+          .addrHi(log.getLogger().slice(0, 4).toLong())
+          .addrLo(log.getLogger().slice(4, 16))
+          .topicHi1(topic1.slice(0, 16))
+          .topicLo1(topic1.slice(16, 16))
+          .topicHi2(topic2.slice(0, 16))
+          .topicLo2(topic2.slice(16, 16))
+          .topicHi3(topic3.slice(0, 16))
+          .topicLo3(topic3.slice(16, 16))
+          .topicHi4(topic4.slice(0, 16))
+          .topicLo4(topic4.slice(16, 16))
+          .dataSize(log.getData().size())
+          .inst(UnsignedByte.of(LOG0 + nbTopic))
           .isLogX0(nbTopic == 0)
           .isLogX1(nbTopic == 1)
           .isLogX2(nbTopic == 2)
@@ -167,56 +168,52 @@ public class LogInfo implements Module {
       switch (ct) {
         case 0 -> {
           trace
-              .phase(BigInteger.valueOf(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_DATA_SIZE))
-              .dataHi(BigInteger.valueOf(log.getData().size()))
-              .dataLo(BigInteger.valueOf(nbTopic))
+              .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_DATA_SIZE)
+              .dataHi(Bytes.ofUnsignedInt(log.getData().size()))
+              .dataLo(Bytes.ofUnsignedInt(nbTopic))
               .validateRow();
         }
         case 1 -> {
           trace
-              .phase(BigInteger.valueOf(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_ADDR))
-              .dataHi(log.getLogger().slice(0, 4).toUnsignedBigInteger())
-              .dataLo(log.getLogger().slice(4, 16).toUnsignedBigInteger())
+              .phase(LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_ADDR)
+              .dataHi(log.getLogger().slice(0, 4))
+              .dataLo(log.getLogger().slice(4, 16))
               .validateRow();
         }
         case 2 -> {
           trace
               .phase(
-                  BigInteger.valueOf(
-                      LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                          + LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA))
-              .dataHi(topic1.slice(0, 16).toUnsignedBigInteger())
-              .dataLo(topic1.slice(16, 16).toUnsignedBigInteger())
+                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
+                      + LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .dataHi(topic1.slice(0, 16))
+              .dataLo(topic1.slice(16, 16))
               .validateRow();
         }
         case 3 -> {
           trace
               .phase(
-                  BigInteger.valueOf(
-                      LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                          + 2 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA))
-              .dataHi(topic2.slice(0, 16).toUnsignedBigInteger())
-              .dataLo(topic2.slice(16, 16).toUnsignedBigInteger())
+                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
+                      + 2 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .dataHi(topic2.slice(0, 16))
+              .dataLo(topic2.slice(16, 16))
               .validateRow();
         }
         case 4 -> {
           trace
               .phase(
-                  BigInteger.valueOf(
-                      LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                          + 3 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA))
-              .dataHi(topic3.slice(0, 16).toUnsignedBigInteger())
-              .dataLo(topic3.slice(16, 16).toUnsignedBigInteger())
+                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
+                      + 3 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .dataHi(topic3.slice(0, 16))
+              .dataLo(topic3.slice(16, 16))
               .validateRow();
         }
         case 5 -> {
           trace
               .phase(
-                  BigInteger.valueOf(
-                      LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
-                          + 4 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA))
-              .dataHi(topic4.slice(0, 16).toUnsignedBigInteger())
-              .dataLo(topic4.slice(16, 16).toUnsignedBigInteger())
+                  LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE
+                      + 4 * LogInfoTrace.RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA)
+              .dataHi(topic4.slice(0, 16))
+              .dataLo(topic4.slice(16, 16))
               .validateRow();
         }
         default -> throw new IllegalArgumentException(

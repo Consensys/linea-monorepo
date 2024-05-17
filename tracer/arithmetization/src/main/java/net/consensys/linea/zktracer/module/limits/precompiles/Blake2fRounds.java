@@ -44,7 +44,7 @@ public final class Blake2fRounds implements Module {
 
   @Getter private final Blake2fModexpData blake2fModexpData;
 
-  private int lastDataCallHubStamp = 0;
+  private long lastDataCallHubStamp = 0;
 
   private final Stack<Integer> counts = new Stack<>();
 

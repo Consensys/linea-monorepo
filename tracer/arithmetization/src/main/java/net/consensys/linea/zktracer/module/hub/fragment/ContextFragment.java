@@ -104,7 +104,7 @@ public record ContextFragment(
         .pContextAccountDeploymentNumber(Bytes.ofUnsignedInt(callFrame.accountDeploymentNumber()))
         .pContextByteCodeDeploymentNumber(Bytes.ofUnsignedInt(callFrame.codeDeploymentNumber()))
         .pContextByteCodeDeploymentStatus(callFrame.underDeployment() ? Bytes.of(1) : Bytes.EMPTY)
-        .pContextCallerContextNumber(Bytes.ofUnsignedInt(parent.contextNumber()))
+        .pContextCallDataContextNumber(Bytes.ofUnsignedInt(parent.contextNumber()))
         .pContextCallerAddressHi(parentAddress.hi())
         .pContextCallerAddressLo(parentAddress.lo())
         .pContextCallValue(callFrame.value())
@@ -116,7 +116,7 @@ public record ContextFragment(
         .pContextReturnAtCapacity(
             Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().length()))
         .pContextUpdate(updateCallerReturndata)
-        .pContextReturnerContextNumber(
+        .pContextReturnDataContextNumber(
             Bytes.ofUnsignedInt(
                 callFrame.lastCallee().map(c -> callStack.getById(c).contextNumber()).orElse(0)))
         .pContextReturnDataOffset(Bytes.ofUnsignedLong(returnDataSegment.offset()))

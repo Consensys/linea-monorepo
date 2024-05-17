@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_call;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_CALL;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -40,6 +40,6 @@ public record Call(EWord value, EWord balance, int callStackDepth, boolean hasAb
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_call;
+    return OOB_INST_CALL;
   }
 }

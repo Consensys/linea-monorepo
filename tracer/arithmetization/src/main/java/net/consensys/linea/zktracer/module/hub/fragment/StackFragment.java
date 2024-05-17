@@ -266,8 +266,8 @@ public final class StackFragment implements TraceFragment {
         .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         // Hash data
         .pStackHashInfoSize(Bytes.ofUnsignedInt(hashInfoSize))
-        .pStackHashInfoKecHi(this.hashInfoKeccak.hi())
-        .pStackHashInfoKecLo(this.hashInfoKeccak.lo())
+        .pStackHashInfoKeccakHi(this.hashInfoKeccak.hi())
+        .pStackHashInfoKeccakLo(this.hashInfoKeccak.lo())
         .pStackHashInfoFlag(this.hashInfoFlag);
   }
 }

@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.mod;
 
 import static com.google.common.base.Preconditions.checkElementIndex;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
-import static net.consensys.linea.zktracer.module.mod.Trace.MMEDIUM;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import java.math.BigInteger;
 import java.util.Arrays;

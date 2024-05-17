@@ -13,9 +13,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlp_txrcpt;
+package net.consensys.linea.zktracer.module.rlptxrcpt;
 
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randData;
+import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randData;
 
 import java.math.BigInteger;
 import java.util.ArrayList;

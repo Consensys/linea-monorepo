@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.bin;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
 
 import java.util.ArrayList;
@@ -65,8 +67,8 @@ public class BinOperation extends ModuleOperation {
 
   private int maxCt() {
     return switch (opCode) {
-      case NOT -> Trace.LLARGEMO;
-      case BYTE, SIGNEXTEND -> arg1.getHigh().isZero() ? Trace.LLARGEMO : 0;
+      case NOT -> LLARGEMO;
+      case BYTE, SIGNEXTEND -> arg1.getHigh().isZero() ? LLARGEMO : 0;
       case AND, OR, XOR -> Math.max(
           0,
           Math.max(
@@ -196,7 +198,7 @@ public class BinOperation extends ModuleOperation {
     this.compute();
 
     final int length = ctMax + 1;
-    final int offset = Trace.LLARGE - length;
+    final int offset = LLARGE - length;
 
     final Bytes arg1Hi = this.arg1.getHigh().slice(offset, length);
     final Bytes arg1Lo = this.arg1.getLow().slice(offset, length);

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.ec_data;
+package net.consensys.linea.zktracer.module.ecdata;
 
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
@@ -75,44 +75,44 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("ec_data.ACC_DELTA", 32, length),
-        new ColumnHeader("ec_data.ACC_PAIRINGS", 32, length),
-        new ColumnHeader("ec_data.ALL_CHECKS_PASSED", 1, length),
-        new ColumnHeader("ec_data.BYTE_DELTA", 1, length),
-        new ColumnHeader("ec_data.COMPARISONS", 1, length),
-        new ColumnHeader("ec_data.CT_MIN", 32, length),
-        new ColumnHeader("ec_data.CUBE", 32, length),
-        new ColumnHeader("ec_data.EC_ADD", 1, length),
-        new ColumnHeader("ec_data.EC_MUL", 1, length),
-        new ColumnHeader("ec_data.EC_PAIRING", 1, length),
-        new ColumnHeader("ec_data.EC_RECOVER", 1, length),
-        new ColumnHeader("ec_data.EQUALITIES", 1, length),
-        new ColumnHeader("ec_data.EXT_ARG1_HI", 32, length),
-        new ColumnHeader("ec_data.EXT_ARG1_LO", 32, length),
-        new ColumnHeader("ec_data.EXT_ARG2_HI", 32, length),
-        new ColumnHeader("ec_data.EXT_ARG2_LO", 32, length),
-        new ColumnHeader("ec_data.EXT_ARG3_HI", 32, length),
-        new ColumnHeader("ec_data.EXT_ARG3_LO", 32, length),
-        new ColumnHeader("ec_data.EXT_INST", 32, length),
-        new ColumnHeader("ec_data.EXT_RES_HI", 32, length),
-        new ColumnHeader("ec_data.EXT_RES_LO", 32, length),
-        new ColumnHeader("ec_data.HURDLE", 1, length),
-        new ColumnHeader("ec_data.INDEX", 32, length),
-        new ColumnHeader("ec_data.LIMB", 32, length),
-        new ColumnHeader("ec_data.PRELIMINARY_CHECKS_PASSED", 1, length),
-        new ColumnHeader("ec_data.SOMETHING_WASNT_ON_G2", 1, length),
-        new ColumnHeader("ec_data.SQUARE", 32, length),
-        new ColumnHeader("ec_data.STAMP", 32, length),
-        new ColumnHeader("ec_data.THIS_IS_NOT_ON_G2", 1, length),
-        new ColumnHeader("ec_data.THIS_IS_NOT_ON_G2_ACC", 1, length),
-        new ColumnHeader("ec_data.TOTAL_PAIRINGS", 32, length),
-        new ColumnHeader("ec_data.TYPE", 32, length),
-        new ColumnHeader("ec_data.WCP_ARG1_HI", 32, length),
-        new ColumnHeader("ec_data.WCP_ARG1_LO", 32, length),
-        new ColumnHeader("ec_data.WCP_ARG2_HI", 32, length),
-        new ColumnHeader("ec_data.WCP_ARG2_LO", 32, length),
-        new ColumnHeader("ec_data.WCP_INST", 32, length),
-        new ColumnHeader("ec_data.WCP_RES", 32, length));
+        new ColumnHeader("ecdata.ACC_DELTA", 32, length),
+        new ColumnHeader("ecdata.ACC_PAIRINGS", 2, length),
+        new ColumnHeader("ecdata.ALL_CHECKS_PASSED", 1, length),
+        new ColumnHeader("ecdata.BYTE_DELTA", 1, length),
+        new ColumnHeader("ecdata.COMPARISONS", 1, length),
+        new ColumnHeader("ecdata.CT_MIN", 1, length),
+        new ColumnHeader("ecdata.CUBE", 32, length),
+        new ColumnHeader("ecdata.EC_ADD", 1, length),
+        new ColumnHeader("ecdata.EC_MUL", 1, length),
+        new ColumnHeader("ecdata.EC_PAIRING", 1, length),
+        new ColumnHeader("ecdata.EC_RECOVER", 1, length),
+        new ColumnHeader("ecdata.EQUALITIES", 1, length),
+        new ColumnHeader("ecdata.EXT_ARG1_HI", 32, length),
+        new ColumnHeader("ecdata.EXT_ARG1_LO", 32, length),
+        new ColumnHeader("ecdata.EXT_ARG2_HI", 32, length),
+        new ColumnHeader("ecdata.EXT_ARG2_LO", 32, length),
+        new ColumnHeader("ecdata.EXT_ARG3_HI", 32, length),
+        new ColumnHeader("ecdata.EXT_ARG3_LO", 32, length),
+        new ColumnHeader("ecdata.EXT_INST", 1, length),
+        new ColumnHeader("ecdata.EXT_RES_HI", 32, length),
+        new ColumnHeader("ecdata.EXT_RES_LO", 32, length),
+        new ColumnHeader("ecdata.HURDLE", 1, length),
+        new ColumnHeader("ecdata.INDEX", 1, length),
+        new ColumnHeader("ecdata.LIMB", 32, length),
+        new ColumnHeader("ecdata.PRELIMINARY_CHECKS_PASSED", 1, length),
+        new ColumnHeader("ecdata.SOMETHING_WASNT_ON_G2", 1, length),
+        new ColumnHeader("ecdata.SQUARE", 32, length),
+        new ColumnHeader("ecdata.STAMP", 8, length),
+        new ColumnHeader("ecdata.THIS_IS_NOT_ON_G2", 1, length),
+        new ColumnHeader("ecdata.THIS_IS_NOT_ON_G2_ACC", 1, length),
+        new ColumnHeader("ecdata.TOTAL_PAIRINGS", 2, length),
+        new ColumnHeader("ecdata.TYPE", 1, length),
+        new ColumnHeader("ecdata.WCP_ARG1_HI", 32, length),
+        new ColumnHeader("ecdata.WCP_ARG1_LO", 32, length),
+        new ColumnHeader("ecdata.WCP_ARG2_HI", 32, length),
+        new ColumnHeader("ecdata.WCP_ARG2_LO", 32, length),
+        new ColumnHeader("ecdata.WCP_INST", 1, length),
+        new ColumnHeader("ecdata.WCP_RES", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -166,7 +166,7 @@ public class Trace {
 
   public Trace accDelta(final Bytes b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("ec_data.ACC_DELTA already set");
+      throw new IllegalStateException("ecdata.ACC_DELTA already set");
     } else {
       filled.set(0);
     }
@@ -180,25 +180,21 @@ public class Trace {
     return this;
   }
 
-  public Trace accPairings(final Bytes b) {
+  public Trace accPairings(final short b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("ec_data.ACC_PAIRINGS already set");
+      throw new IllegalStateException("ecdata.ACC_PAIRINGS already set");
     } else {
       filled.set(1);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      accPairings.put((byte) 0);
-    }
-    accPairings.put(b.toArrayUnsafe());
+    accPairings.putShort(b);
 
     return this;
   }
 
   public Trace allChecksPassed(final Boolean b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("ec_data.ALL_CHECKS_PASSED already set");
+      throw new IllegalStateException("ecdata.ALL_CHECKS_PASSED already set");
     } else {
       filled.set(2);
     }
@@ -210,7 +206,7 @@ public class Trace {
 
   public Trace byteDelta(final UnsignedByte b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("ec_data.BYTE_DELTA already set");
+      throw new IllegalStateException("ecdata.BYTE_DELTA already set");
     } else {
       filled.set(3);
     }
@@ -222,7 +218,7 @@ public class Trace {
 
   public Trace comparisons(final Boolean b) {
     if (filled.get(4)) {
-      throw new IllegalStateException("ec_data.COMPARISONS already set");
+      throw new IllegalStateException("ecdata.COMPARISONS already set");
     } else {
       filled.set(4);
     }
@@ -232,25 +228,21 @@ public class Trace {
     return this;
   }
 
-  public Trace ctMin(final Bytes b) {
+  public Trace ctMin(final UnsignedByte b) {
     if (filled.get(5)) {
-      throw new IllegalStateException("ec_data.CT_MIN already set");
+      throw new IllegalStateException("ecdata.CT_MIN already set");
     } else {
       filled.set(5);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      ctMin.put((byte) 0);
-    }
-    ctMin.put(b.toArrayUnsafe());
+    ctMin.put(b.toByte());
 
     return this;
   }
 
   public Trace cube(final Bytes b) {
     if (filled.get(6)) {
-      throw new IllegalStateException("ec_data.CUBE already set");
+      throw new IllegalStateException("ecdata.CUBE already set");
     } else {
       filled.set(6);
     }
@@ -266,7 +258,7 @@ public class Trace {
 
   public Trace ecAdd(final Boolean b) {
     if (filled.get(7)) {
-      throw new IllegalStateException("ec_data.EC_ADD already set");
+      throw new IllegalStateException("ecdata.EC_ADD already set");
     } else {
       filled.set(7);
     }
@@ -278,7 +270,7 @@ public class Trace {
 
   public Trace ecMul(final Boolean b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("ec_data.EC_MUL already set");
+      throw new IllegalStateException("ecdata.EC_MUL already set");
     } else {
       filled.set(8);
     }
@@ -290,7 +282,7 @@ public class Trace {
 
   public Trace ecPairing(final Boolean b) {
     if (filled.get(9)) {
-      throw new IllegalStateException("ec_data.EC_PAIRING already set");
+      throw new IllegalStateException("ecdata.EC_PAIRING already set");
     } else {
       filled.set(9);
     }
@@ -302,7 +294,7 @@ public class Trace {
 
   public Trace ecRecover(final Boolean b) {
     if (filled.get(10)) {
-      throw new IllegalStateException("ec_data.EC_RECOVER already set");
+      throw new IllegalStateException("ecdata.EC_RECOVER already set");
     } else {
       filled.set(10);
     }
@@ -314,7 +306,7 @@ public class Trace {
 
   public Trace equalities(final Boolean b) {
     if (filled.get(11)) {
-      throw new IllegalStateException("ec_data.EQUALITIES already set");
+      throw new IllegalStateException("ecdata.EQUALITIES already set");
     } else {
       filled.set(11);
     }
@@ -326,7 +318,7 @@ public class Trace {
 
   public Trace extArg1Hi(final Bytes b) {
     if (filled.get(12)) {
-      throw new IllegalStateException("ec_data.EXT_ARG1_HI already set");
+      throw new IllegalStateException("ecdata.EXT_ARG1_HI already set");
     } else {
       filled.set(12);
     }
@@ -342,7 +334,7 @@ public class Trace {
 
   public Trace extArg1Lo(final Bytes b) {
     if (filled.get(13)) {
-      throw new IllegalStateException("ec_data.EXT_ARG1_LO already set");
+      throw new IllegalStateException("ecdata.EXT_ARG1_LO already set");
     } else {
       filled.set(13);
     }
@@ -358,7 +350,7 @@ public class Trace {
 
   public Trace extArg2Hi(final Bytes b) {
     if (filled.get(14)) {
-      throw new IllegalStateException("ec_data.EXT_ARG2_HI already set");
+      throw new IllegalStateException("ecdata.EXT_ARG2_HI already set");
     } else {
       filled.set(14);
     }
@@ -374,7 +366,7 @@ public class Trace {
 
   public Trace extArg2Lo(final Bytes b) {
     if (filled.get(15)) {
-      throw new IllegalStateException("ec_data.EXT_ARG2_LO already set");
+      throw new IllegalStateException("ecdata.EXT_ARG2_LO already set");
     } else {
       filled.set(15);
     }
@@ -390,7 +382,7 @@ public class Trace {
 
   public Trace extArg3Hi(final Bytes b) {
     if (filled.get(16)) {
-      throw new IllegalStateException("ec_data.EXT_ARG3_HI already set");
+      throw new IllegalStateException("ecdata.EXT_ARG3_HI already set");
     } else {
       filled.set(16);
     }
@@ -406,7 +398,7 @@ public class Trace {
 
   public Trace extArg3Lo(final Bytes b) {
     if (filled.get(17)) {
-      throw new IllegalStateException("ec_data.EXT_ARG3_LO already set");
+      throw new IllegalStateException("ecdata.EXT_ARG3_LO already set");
     } else {
       filled.set(17);
     }
@@ -420,25 +412,21 @@ public class Trace {
     return this;
   }
 
-  public Trace extInst(final Bytes b) {
+  public Trace extInst(final UnsignedByte b) {
     if (filled.get(18)) {
-      throw new IllegalStateException("ec_data.EXT_INST already set");
+      throw new IllegalStateException("ecdata.EXT_INST already set");
     } else {
       filled.set(18);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      extInst.put((byte) 0);
-    }
-    extInst.put(b.toArrayUnsafe());
+    extInst.put(b.toByte());
 
     return this;
   }
 
   public Trace extResHi(final Bytes b) {
     if (filled.get(19)) {
-      throw new IllegalStateException("ec_data.EXT_RES_HI already set");
+      throw new IllegalStateException("ecdata.EXT_RES_HI already set");
     } else {
       filled.set(19);
     }
@@ -454,7 +442,7 @@ public class Trace {
 
   public Trace extResLo(final Bytes b) {
     if (filled.get(20)) {
-      throw new IllegalStateException("ec_data.EXT_RES_LO already set");
+      throw new IllegalStateException("ecdata.EXT_RES_LO already set");
     } else {
       filled.set(20);
     }
@@ -470,7 +458,7 @@ public class Trace {
 
   public Trace hurdle(final Boolean b) {
     if (filled.get(21)) {
-      throw new IllegalStateException("ec_data.HURDLE already set");
+      throw new IllegalStateException("ecdata.HURDLE already set");
     } else {
       filled.set(21);
     }
@@ -480,25 +468,21 @@ public class Trace {
     return this;
   }
 
-  public Trace index(final Bytes b) {
+  public Trace index(final UnsignedByte b) {
     if (filled.get(22)) {
-      throw new IllegalStateException("ec_data.INDEX already set");
+      throw new IllegalStateException("ecdata.INDEX already set");
     } else {
       filled.set(22);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      index.put((byte) 0);
-    }
-    index.put(b.toArrayUnsafe());
+    index.put(b.toByte());
 
     return this;
   }
 
   public Trace limb(final Bytes b) {
     if (filled.get(23)) {
-      throw new IllegalStateException("ec_data.LIMB already set");
+      throw new IllegalStateException("ecdata.LIMB already set");
     } else {
       filled.set(23);
     }
@@ -514,7 +498,7 @@ public class Trace {
 
   public Trace preliminaryChecksPassed(final Boolean b) {
     if (filled.get(24)) {
-      throw new IllegalStateException("ec_data.PRELIMINARY_CHECKS_PASSED already set");
+      throw new IllegalStateException("ecdata.PRELIMINARY_CHECKS_PASSED already set");
     } else {
       filled.set(24);
     }
@@ -526,7 +510,7 @@ public class Trace {
 
   public Trace somethingWasntOnG2(final Boolean b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("ec_data.SOMETHING_WASNT_ON_G2 already set");
+      throw new IllegalStateException("ecdata.SOMETHING_WASNT_ON_G2 already set");
     } else {
       filled.set(25);
     }
@@ -538,7 +522,7 @@ public class Trace {
 
   public Trace square(final Bytes b) {
     if (filled.get(26)) {
-      throw new IllegalStateException("ec_data.SQUARE already set");
+      throw new IllegalStateException("ecdata.SQUARE already set");
     } else {
       filled.set(26);
     }
@@ -552,25 +536,21 @@ public class Trace {
     return this;
   }
 
-  public Trace stamp(final Bytes b) {
+  public Trace stamp(final long b) {
     if (filled.get(27)) {
-      throw new IllegalStateException("ec_data.STAMP already set");
+      throw new IllegalStateException("ecdata.STAMP already set");
     } else {
       filled.set(27);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      stamp.put((byte) 0);
-    }
-    stamp.put(b.toArrayUnsafe());
+    stamp.putLong(b);
 
     return this;
   }
 
   public Trace thisIsNotOnG2(final Boolean b) {
     if (filled.get(28)) {
-      throw new IllegalStateException("ec_data.THIS_IS_NOT_ON_G2 already set");
+      throw new IllegalStateException("ecdata.THIS_IS_NOT_ON_G2 already set");
     } else {
       filled.set(28);
     }
@@ -582,7 +562,7 @@ public class Trace {
 
   public Trace thisIsNotOnG2Acc(final Boolean b) {
     if (filled.get(29)) {
-      throw new IllegalStateException("ec_data.THIS_IS_NOT_ON_G2_ACC already set");
+      throw new IllegalStateException("ecdata.THIS_IS_NOT_ON_G2_ACC already set");
     } else {
       filled.set(29);
     }
@@ -592,41 +572,33 @@ public class Trace {
     return this;
   }
 
-  public Trace totalPairings(final Bytes b) {
+  public Trace totalPairings(final short b) {
     if (filled.get(30)) {
-      throw new IllegalStateException("ec_data.TOTAL_PAIRINGS already set");
+      throw new IllegalStateException("ecdata.TOTAL_PAIRINGS already set");
     } else {
       filled.set(30);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      totalPairings.put((byte) 0);
-    }
-    totalPairings.put(b.toArrayUnsafe());
+    totalPairings.putShort(b);
 
     return this;
   }
 
-  public Trace type(final Bytes b) {
+  public Trace type(final UnsignedByte b) {
     if (filled.get(31)) {
-      throw new IllegalStateException("ec_data.TYPE already set");
+      throw new IllegalStateException("ecdata.TYPE already set");
     } else {
       filled.set(31);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      type.put((byte) 0);
-    }
-    type.put(b.toArrayUnsafe());
+    type.put(b.toByte());
 
     return this;
   }
 
   public Trace wcpArg1Hi(final Bytes b) {
     if (filled.get(32)) {
-      throw new IllegalStateException("ec_data.WCP_ARG1_HI already set");
+      throw new IllegalStateException("ecdata.WCP_ARG1_HI already set");
     } else {
       filled.set(32);
     }
@@ -642,7 +614,7 @@ public class Trace {
 
   public Trace wcpArg1Lo(final Bytes b) {
     if (filled.get(33)) {
-      throw new IllegalStateException("ec_data.WCP_ARG1_LO already set");
+      throw new IllegalStateException("ecdata.WCP_ARG1_LO already set");
     } else {
       filled.set(33);
     }
@@ -658,7 +630,7 @@ public class Trace {
 
   public Trace wcpArg2Hi(final Bytes b) {
     if (filled.get(34)) {
-      throw new IllegalStateException("ec_data.WCP_ARG2_HI already set");
+      throw new IllegalStateException("ecdata.WCP_ARG2_HI already set");
     } else {
       filled.set(34);
     }
@@ -674,7 +646,7 @@ public class Trace {
 
   public Trace wcpArg2Lo(final Bytes b) {
     if (filled.get(35)) {
-      throw new IllegalStateException("ec_data.WCP_ARG2_LO already set");
+      throw new IllegalStateException("ecdata.WCP_ARG2_LO already set");
     } else {
       filled.set(35);
     }
@@ -688,189 +660,181 @@ public class Trace {
     return this;
   }
 
-  public Trace wcpInst(final Bytes b) {
+  public Trace wcpInst(final UnsignedByte b) {
     if (filled.get(36)) {
-      throw new IllegalStateException("ec_data.WCP_INST already set");
+      throw new IllegalStateException("ecdata.WCP_INST already set");
     } else {
       filled.set(36);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      wcpInst.put((byte) 0);
-    }
-    wcpInst.put(b.toArrayUnsafe());
+    wcpInst.put(b.toByte());
 
     return this;
   }
 
-  public Trace wcpRes(final Bytes b) {
+  public Trace wcpRes(final Boolean b) {
     if (filled.get(37)) {
-      throw new IllegalStateException("ec_data.WCP_RES already set");
+      throw new IllegalStateException("ecdata.WCP_RES already set");
     } else {
       filled.set(37);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
-      wcpRes.put((byte) 0);
-    }
-    wcpRes.put(b.toArrayUnsafe());
+    wcpRes.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("ec_data.ACC_DELTA has not been filled");
+      throw new IllegalStateException("ecdata.ACC_DELTA has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("ec_data.ACC_PAIRINGS has not been filled");
+      throw new IllegalStateException("ecdata.ACC_PAIRINGS has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("ec_data.ALL_CHECKS_PASSED has not been filled");
+      throw new IllegalStateException("ecdata.ALL_CHECKS_PASSED has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("ec_data.BYTE_DELTA has not been filled");
+      throw new IllegalStateException("ecdata.BYTE_DELTA has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("ec_data.COMPARISONS has not been filled");
+      throw new IllegalStateException("ecdata.COMPARISONS has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("ec_data.CT_MIN has not been filled");
+      throw new IllegalStateException("ecdata.CT_MIN has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("ec_data.CUBE has not been filled");
+      throw new IllegalStateException("ecdata.CUBE has not been filled");
     }
 
     if (!filled.get(7)) {
-      throw new IllegalStateException("ec_data.EC_ADD has not been filled");
+      throw new IllegalStateException("ecdata.EC_ADD has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("ec_data.EC_MUL has not been filled");
+      throw new IllegalStateException("ecdata.EC_MUL has not been filled");
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException("ec_data.EC_PAIRING has not been filled");
+      throw new IllegalStateException("ecdata.EC_PAIRING has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException("ec_data.EC_RECOVER has not been filled");
+      throw new IllegalStateException("ecdata.EC_RECOVER has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("ec_data.EQUALITIES has not been filled");
+      throw new IllegalStateException("ecdata.EQUALITIES has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("ec_data.EXT_ARG1_HI has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG1_HI has not been filled");
     }
 
     if (!filled.get(13)) {
-      throw new IllegalStateException("ec_data.EXT_ARG1_LO has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG1_LO has not been filled");
     }
 
     if (!filled.get(14)) {
-      throw new IllegalStateException("ec_data.EXT_ARG2_HI has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG2_HI has not been filled");
     }
 
     if (!filled.get(15)) {
-      throw new IllegalStateException("ec_data.EXT_ARG2_LO has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG2_LO has not been filled");
     }
 
     if (!filled.get(16)) {
-      throw new IllegalStateException("ec_data.EXT_ARG3_HI has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG3_HI has not been filled");
     }
 
     if (!filled.get(17)) {
-      throw new IllegalStateException("ec_data.EXT_ARG3_LO has not been filled");
+      throw new IllegalStateException("ecdata.EXT_ARG3_LO has not been filled");
     }
 
     if (!filled.get(18)) {
-      throw new IllegalStateException("ec_data.EXT_INST has not been filled");
+      throw new IllegalStateException("ecdata.EXT_INST has not been filled");
     }
 
     if (!filled.get(19)) {
-      throw new IllegalStateException("ec_data.EXT_RES_HI has not been filled");
+      throw new IllegalStateException("ecdata.EXT_RES_HI has not been filled");
     }
 
     if (!filled.get(20)) {
-      throw new IllegalStateException("ec_data.EXT_RES_LO has not been filled");
+      throw new IllegalStateException("ecdata.EXT_RES_LO has not been filled");
     }
 
     if (!filled.get(21)) {
-      throw new IllegalStateException("ec_data.HURDLE has not been filled");
+      throw new IllegalStateException("ecdata.HURDLE has not been filled");
     }
 
     if (!filled.get(22)) {
-      throw new IllegalStateException("ec_data.INDEX has not been filled");
+      throw new IllegalStateException("ecdata.INDEX has not been filled");
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("ec_data.LIMB has not been filled");
+      throw new IllegalStateException("ecdata.LIMB has not been filled");
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("ec_data.PRELIMINARY_CHECKS_PASSED has not been filled");
+      throw new IllegalStateException("ecdata.PRELIMINARY_CHECKS_PASSED has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("ec_data.SOMETHING_WASNT_ON_G2 has not been filled");
+      throw new IllegalStateException("ecdata.SOMETHING_WASNT_ON_G2 has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("ec_data.SQUARE has not been filled");
+      throw new IllegalStateException("ecdata.SQUARE has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("ec_data.STAMP has not been filled");
+      throw new IllegalStateException("ecdata.STAMP has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("ec_data.THIS_IS_NOT_ON_G2 has not been filled");
+      throw new IllegalStateException("ecdata.THIS_IS_NOT_ON_G2 has not been filled");
     }
 
     if (!filled.get(29)) {
-      throw new IllegalStateException("ec_data.THIS_IS_NOT_ON_G2_ACC has not been filled");
+      throw new IllegalStateException("ecdata.THIS_IS_NOT_ON_G2_ACC has not been filled");
     }
 
     if (!filled.get(30)) {
-      throw new IllegalStateException("ec_data.TOTAL_PAIRINGS has not been filled");
+      throw new IllegalStateException("ecdata.TOTAL_PAIRINGS has not been filled");
     }
 
     if (!filled.get(31)) {
-      throw new IllegalStateException("ec_data.TYPE has not been filled");
+      throw new IllegalStateException("ecdata.TYPE has not been filled");
     }
 
     if (!filled.get(32)) {
-      throw new IllegalStateException("ec_data.WCP_ARG1_HI has not been filled");
+      throw new IllegalStateException("ecdata.WCP_ARG1_HI has not been filled");
     }
 
     if (!filled.get(33)) {
-      throw new IllegalStateException("ec_data.WCP_ARG1_LO has not been filled");
+      throw new IllegalStateException("ecdata.WCP_ARG1_LO has not been filled");
     }
 
     if (!filled.get(34)) {
-      throw new IllegalStateException("ec_data.WCP_ARG2_HI has not been filled");
+      throw new IllegalStateException("ecdata.WCP_ARG2_HI has not been filled");
     }
 
     if (!filled.get(35)) {
-      throw new IllegalStateException("ec_data.WCP_ARG2_LO has not been filled");
+      throw new IllegalStateException("ecdata.WCP_ARG2_LO has not been filled");
     }
 
     if (!filled.get(36)) {
-      throw new IllegalStateException("ec_data.WCP_INST has not been filled");
+      throw new IllegalStateException("ecdata.WCP_INST has not been filled");
     }
 
     if (!filled.get(37)) {
-      throw new IllegalStateException("ec_data.WCP_RES has not been filled");
+      throw new IllegalStateException("ecdata.WCP_RES has not been filled");
     }
 
     filled.clear();
@@ -885,7 +849,7 @@ public class Trace {
     }
 
     if (!filled.get(1)) {
-      accPairings.position(accPairings.position() + 32);
+      accPairings.position(accPairings.position() + 2);
     }
 
     if (!filled.get(2)) {
@@ -901,7 +865,7 @@ public class Trace {
     }
 
     if (!filled.get(5)) {
-      ctMin.position(ctMin.position() + 32);
+      ctMin.position(ctMin.position() + 1);
     }
 
     if (!filled.get(6)) {
@@ -953,7 +917,7 @@ public class Trace {
     }
 
     if (!filled.get(18)) {
-      extInst.position(extInst.position() + 32);
+      extInst.position(extInst.position() + 1);
     }
 
     if (!filled.get(19)) {
@@ -969,7 +933,7 @@ public class Trace {
     }
 
     if (!filled.get(22)) {
-      index.position(index.position() + 32);
+      index.position(index.position() + 1);
     }
 
     if (!filled.get(23)) {
@@ -989,7 +953,7 @@ public class Trace {
     }
 
     if (!filled.get(27)) {
-      stamp.position(stamp.position() + 32);
+      stamp.position(stamp.position() + 8);
     }
 
     if (!filled.get(28)) {
@@ -1001,11 +965,11 @@ public class Trace {
     }
 
     if (!filled.get(30)) {
-      totalPairings.position(totalPairings.position() + 32);
+      totalPairings.position(totalPairings.position() + 2);
     }
 
     if (!filled.get(31)) {
-      type.position(type.position() + 32);
+      type.position(type.position() + 1);
     }
 
     if (!filled.get(32)) {
@@ -1025,11 +989,11 @@ public class Trace {
     }
 
     if (!filled.get(36)) {
-      wcpInst.position(wcpInst.position() + 32);
+      wcpInst.position(wcpInst.position() + 1);
     }
 
     if (!filled.get(37)) {
-      wcpRes.position(wcpRes.position() + 32);
+      wcpRes.position(wcpRes.position() + 1);
     }
 
     filled.clear();

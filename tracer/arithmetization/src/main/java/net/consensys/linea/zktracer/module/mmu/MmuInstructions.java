@@ -15,6 +15,19 @@
 
 package net.consensys.linea.zktracer.module.mmu;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_INVALID_CODE_PREFIX;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE8;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
+
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -68,51 +81,51 @@ class MmuInstructions {
     int mmuInstruction = mmuData.hubToMmuValues().mmuInstruction();
 
     return switch (mmuInstruction) {
-      case Trace.MMU_INST_MLOAD -> {
+      case MMU_INST_MLOAD -> {
         mmuData = mLoadPreComputation.preProcess(mmuData, callStack);
         yield mLoadPreComputation.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_MSTORE -> {
+      case MMU_INST_MSTORE -> {
         mmuData = mStorePreComputation.preProcess(mmuData, callStack);
         yield mStorePreComputation.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_MSTORE8 -> {
+      case MMU_INST_MSTORE8 -> {
         mmuData = mStore8PreComputation.preProcess(mmuData, callStack);
         yield mStore8PreComputation.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_INVALID_CODE_PREFIX -> {
+      case MMU_INST_INVALID_CODE_PREFIX -> {
         mmuData = invalidCodePrefix.preProcess(mmuData, callStack);
         yield invalidCodePrefix.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION -> {
+      case MMU_INST_RIGHT_PADDED_WORD_EXTRACTION -> {
         mmuData = rightPaddedWordExtraction.preProcess(mmuData, callStack);
         yield rightPaddedWordExtraction.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_RAM_TO_EXO_WITH_PADDING -> {
+      case MMU_INST_RAM_TO_EXO_WITH_PADDING -> {
         mmuData = ramToExoWithPadding.preProcess(mmuData, callStack);
         yield ramToExoWithPadding.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_EXO_TO_RAM_TRANSPLANTS -> {
+      case MMU_INST_EXO_TO_RAM_TRANSPLANTS -> {
         mmuData = exoToRamTransplants.preProcess(mmuData, callStack);
         yield exoToRamTransplants.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_RAM_TO_RAM_SANS_PADDING -> {
+      case MMU_INST_RAM_TO_RAM_SANS_PADDING -> {
         mmuData = ramToRamSansPadding.preProcess(mmuData, callStack);
         yield ramToRamSansPadding.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_ANY_TO_RAM_WITH_PADDING -> {
+      case MMU_INST_ANY_TO_RAM_WITH_PADDING -> {
         mmuData = anyToRamWithPadding.preProcess(mmuData, callStack);
         yield anyToRamWithPadding.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_MODEXP_ZERO -> {
+      case MMU_INST_MODEXP_ZERO -> {
         mmuData = modexpZero.preProcess(mmuData, callStack);
         yield modexpZero.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_MODEXP_DATA -> {
+      case MMU_INST_MODEXP_DATA -> {
         mmuData = modexpData.preProcess(mmuData, callStack);
         yield modexpData.setMicroInstructions(mmuData);
       }
-      case Trace.MMU_INST_BLAKE -> {
+      case MMU_INST_BLAKE -> {
         mmuData = blake.preProcess(mmuData, callStack);
         yield blake.setMicroInstructions(mmuData);
       }
