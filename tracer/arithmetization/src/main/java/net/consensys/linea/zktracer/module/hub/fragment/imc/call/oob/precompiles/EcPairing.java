@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_ecpairing;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_ECPAIRING;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -40,6 +40,6 @@ public record EcPairing(PrecompileInvocation p) implements OobCall {
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_ecpairing;
+    return OOB_INST_ECPAIRING;
   }
 }

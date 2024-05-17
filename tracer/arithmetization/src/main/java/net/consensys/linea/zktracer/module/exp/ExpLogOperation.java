@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
-import static net.consensys.linea.zktracer.module.exp.Trace.EXP_INST_EXPLOG;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_EXPLOG;
 import static net.consensys.linea.zktracer.module.exp.Trace.ISZERO;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_EXP_LOG;
 import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_EXP_LOG;

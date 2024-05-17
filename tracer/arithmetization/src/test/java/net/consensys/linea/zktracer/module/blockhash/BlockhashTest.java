@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.zktracer.module.blockhash.Trace.EVM_INST_BLOCKHASH_MAX_HISTORY;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOCKHASH_MAX_HISTORY;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
@@ -78,35 +78,35 @@ public class BlockhashTest {
                 .op(OpCode.POP)
 
                 // arg of BlockHash is Blocknumber -256 -2
-                .push(EVM_INST_BLOCKHASH_MAX_HISTORY + 2)
+                .push(BLOCKHASH_MAX_HISTORY + 2)
                 .op(OpCode.NUMBER)
                 .op(OpCode.SUB)
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
 
                 // arg of BlockHash is Blocknumber -256 -1
-                .push(EVM_INST_BLOCKHASH_MAX_HISTORY + 1)
+                .push(BLOCKHASH_MAX_HISTORY + 1)
                 .op(OpCode.NUMBER)
                 .op(OpCode.SUB)
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
 
                 // arg of BlockHash is Blocknumber -256
-                .push(EVM_INST_BLOCKHASH_MAX_HISTORY)
+                .push(BLOCKHASH_MAX_HISTORY)
                 .op(OpCode.NUMBER)
                 .op(OpCode.SUB)
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
 
                 // arg of BlockHash is Blocknumber -256 +1
-                .push(EVM_INST_BLOCKHASH_MAX_HISTORY - 1)
+                .push(BLOCKHASH_MAX_HISTORY - 1)
                 .op(OpCode.NUMBER)
                 .op(OpCode.SUB)
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
 
                 // arg of BlockHash is Blocknumber -256 +2
-                .push(EVM_INST_BLOCKHASH_MAX_HISTORY - 2)
+                .push(BLOCKHASH_MAX_HISTORY - 2)
                 .op(OpCode.NUMBER)
                 .op(OpCode.SUB)
                 .op(OpCode.BLOCKHASH)

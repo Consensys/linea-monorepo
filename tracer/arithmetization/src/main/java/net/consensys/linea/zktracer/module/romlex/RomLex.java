@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.module.romlex.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
 
@@ -31,6 +30,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -238,7 +238,7 @@ public class RomLex implements Module {
         .codeFragmentIndexInfty(codeFragmentIndexInfinity)
         .codeSize(chunk.byteCode().size())
         .addressHi(chunk.metadata().address().slice(0, 4).toLong())
-        .addressLo(chunk.metadata().address().slice(4, LLARGE))
+        .addressLo(chunk.metadata().address().slice(4, GlobalConstants.LLARGE))
         .commitToState(chunk.commitToTheState())
         .deploymentNumber(chunk.metadata().deploymentNumber())
         .deploymentStatus(chunk.metadata().underDeployment())

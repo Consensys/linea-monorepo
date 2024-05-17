@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.module.trm.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;

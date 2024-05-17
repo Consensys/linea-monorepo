@@ -13,15 +13,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.logInfo;
+package net.consensys.linea.zktracer.module.loginfo;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.BitSet;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import org.apache.tuweni.units.bigints.UInt256;
+import net.consensys.linea.zktracer.types.UnsignedByte;
+import org.apache.tuweni.bytes.Bytes;
 
 /**
  * WARNING: This code is generated automatically.
@@ -30,26 +30,6 @@ import org.apache.tuweni.units.bigints.UInt256;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  static final int CREATE2_SHIFT = 255;
-  static final int G_TXDATA_NONZERO = 16;
-  static final int G_TXDATA_ZERO = 4;
-  static final int INT_LONG = 183;
-  static final int INT_SHORT = 128;
-  static final int LIST_LONG = 247;
-  static final int LIST_SHORT = 192;
-  static final int LLARGE = 16;
-  static final int LLARGEMO = 15;
-  static final int RLPADDR_CONST_RECIPE_1 = 1;
-  static final int RLPADDR_CONST_RECIPE_2 = 2;
-  static final int RLPRECEIPT_SUBPHASE_ID_ADDR = 53;
-  static final int RLPRECEIPT_SUBPHASE_ID_CUMUL_GAS = 3;
-  static final int RLPRECEIPT_SUBPHASE_ID_DATA_LIMB = 77;
-  static final int RLPRECEIPT_SUBPHASE_ID_DATA_SIZE = 83;
-  static final int RLPRECEIPT_SUBPHASE_ID_NO_LOG_ENTRY = 11;
-  static final int RLPRECEIPT_SUBPHASE_ID_STATUS_CODE = 2;
-  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_BASE = 65;
-  static final int RLPRECEIPT_SUBPHASE_ID_TOPIC_DELTA = 96;
-  static final int RLPRECEIPT_SUBPHASE_ID_TYPE = 7;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -84,33 +64,33 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("logInfo.ABS_LOG_NUM", 32, length),
-        new ColumnHeader("logInfo.ABS_LOG_NUM_MAX", 32, length),
-        new ColumnHeader("logInfo.ABS_TXN_NUM", 32, length),
-        new ColumnHeader("logInfo.ABS_TXN_NUM_MAX", 32, length),
-        new ColumnHeader("logInfo.ADDR_HI", 32, length),
-        new ColumnHeader("logInfo.ADDR_LO", 32, length),
-        new ColumnHeader("logInfo.CT", 32, length),
-        new ColumnHeader("logInfo.CT_MAX", 32, length),
-        new ColumnHeader("logInfo.DATA_HI", 32, length),
-        new ColumnHeader("logInfo.DATA_LO", 32, length),
-        new ColumnHeader("logInfo.DATA_SIZE", 32, length),
-        new ColumnHeader("logInfo.INST", 32, length),
-        new ColumnHeader("logInfo.IS_LOG_X_0", 1, length),
-        new ColumnHeader("logInfo.IS_LOG_X_1", 1, length),
-        new ColumnHeader("logInfo.IS_LOG_X_2", 1, length),
-        new ColumnHeader("logInfo.IS_LOG_X_3", 1, length),
-        new ColumnHeader("logInfo.IS_LOG_X_4", 1, length),
-        new ColumnHeader("logInfo.PHASE", 32, length),
-        new ColumnHeader("logInfo.TOPIC_HI_1", 32, length),
-        new ColumnHeader("logInfo.TOPIC_HI_2", 32, length),
-        new ColumnHeader("logInfo.TOPIC_HI_3", 32, length),
-        new ColumnHeader("logInfo.TOPIC_HI_4", 32, length),
-        new ColumnHeader("logInfo.TOPIC_LO_1", 32, length),
-        new ColumnHeader("logInfo.TOPIC_LO_2", 32, length),
-        new ColumnHeader("logInfo.TOPIC_LO_3", 32, length),
-        new ColumnHeader("logInfo.TOPIC_LO_4", 32, length),
-        new ColumnHeader("logInfo.TXN_EMITS_LOGS", 1, length));
+        new ColumnHeader("loginfo.ABS_LOG_NUM", 4, length),
+        new ColumnHeader("loginfo.ABS_LOG_NUM_MAX", 4, length),
+        new ColumnHeader("loginfo.ABS_TXN_NUM", 4, length),
+        new ColumnHeader("loginfo.ABS_TXN_NUM_MAX", 4, length),
+        new ColumnHeader("loginfo.ADDR_HI", 8, length),
+        new ColumnHeader("loginfo.ADDR_LO", 32, length),
+        new ColumnHeader("loginfo.CT", 1, length),
+        new ColumnHeader("loginfo.CT_MAX", 1, length),
+        new ColumnHeader("loginfo.DATA_HI", 32, length),
+        new ColumnHeader("loginfo.DATA_LO", 32, length),
+        new ColumnHeader("loginfo.DATA_SIZE", 8, length),
+        new ColumnHeader("loginfo.INST", 1, length),
+        new ColumnHeader("loginfo.IS_LOG_X_0", 1, length),
+        new ColumnHeader("loginfo.IS_LOG_X_1", 1, length),
+        new ColumnHeader("loginfo.IS_LOG_X_2", 1, length),
+        new ColumnHeader("loginfo.IS_LOG_X_3", 1, length),
+        new ColumnHeader("loginfo.IS_LOG_X_4", 1, length),
+        new ColumnHeader("loginfo.PHASE", 4, length),
+        new ColumnHeader("loginfo.TOPIC_HI_1", 32, length),
+        new ColumnHeader("loginfo.TOPIC_HI_2", 32, length),
+        new ColumnHeader("loginfo.TOPIC_HI_3", 32, length),
+        new ColumnHeader("loginfo.TOPIC_HI_4", 32, length),
+        new ColumnHeader("loginfo.TOPIC_LO_1", 32, length),
+        new ColumnHeader("loginfo.TOPIC_LO_2", 32, length),
+        new ColumnHeader("loginfo.TOPIC_LO_3", 32, length),
+        new ColumnHeader("loginfo.TOPIC_LO_4", 32, length),
+        new ColumnHeader("loginfo.TXN_EMITS_LOGS", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -151,153 +131,165 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace absLogNum(final BigInteger b) {
+  public Trace absLogNum(final int b) {
     if (filled.get(0)) {
-      throw new IllegalStateException("logInfo.ABS_LOG_NUM already set");
+      throw new IllegalStateException("loginfo.ABS_LOG_NUM already set");
     } else {
       filled.set(0);
     }
 
-    absLogNum.put(UInt256.valueOf(b).toBytes().toArray());
+    absLogNum.putInt(b);
 
     return this;
   }
 
-  public Trace absLogNumMax(final BigInteger b) {
+  public Trace absLogNumMax(final int b) {
     if (filled.get(1)) {
-      throw new IllegalStateException("logInfo.ABS_LOG_NUM_MAX already set");
+      throw new IllegalStateException("loginfo.ABS_LOG_NUM_MAX already set");
     } else {
       filled.set(1);
     }
 
-    absLogNumMax.put(UInt256.valueOf(b).toBytes().toArray());
+    absLogNumMax.putInt(b);
 
     return this;
   }
 
-  public Trace absTxnNum(final BigInteger b) {
+  public Trace absTxnNum(final int b) {
     if (filled.get(2)) {
-      throw new IllegalStateException("logInfo.ABS_TXN_NUM already set");
+      throw new IllegalStateException("loginfo.ABS_TXN_NUM already set");
     } else {
       filled.set(2);
     }
 
-    absTxnNum.put(UInt256.valueOf(b).toBytes().toArray());
+    absTxnNum.putInt(b);
 
     return this;
   }
 
-  public Trace absTxnNumMax(final BigInteger b) {
+  public Trace absTxnNumMax(final int b) {
     if (filled.get(3)) {
-      throw new IllegalStateException("logInfo.ABS_TXN_NUM_MAX already set");
+      throw new IllegalStateException("loginfo.ABS_TXN_NUM_MAX already set");
     } else {
       filled.set(3);
     }
 
-    absTxnNumMax.put(UInt256.valueOf(b).toBytes().toArray());
+    absTxnNumMax.putInt(b);
 
     return this;
   }
 
-  public Trace addrHi(final BigInteger b) {
+  public Trace addrHi(final long b) {
     if (filled.get(4)) {
-      throw new IllegalStateException("logInfo.ADDR_HI already set");
+      throw new IllegalStateException("loginfo.ADDR_HI already set");
     } else {
       filled.set(4);
     }
 
-    addrHi.put(UInt256.valueOf(b).toBytes().toArray());
+    addrHi.putLong(b);
 
     return this;
   }
 
-  public Trace addrLo(final BigInteger b) {
+  public Trace addrLo(final Bytes b) {
     if (filled.get(5)) {
-      throw new IllegalStateException("logInfo.ADDR_LO already set");
+      throw new IllegalStateException("loginfo.ADDR_LO already set");
     } else {
       filled.set(5);
     }
 
-    addrLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      addrLo.put((byte) 0);
+    }
+    addrLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace ct(final BigInteger b) {
+  public Trace ct(final UnsignedByte b) {
     if (filled.get(6)) {
-      throw new IllegalStateException("logInfo.CT already set");
+      throw new IllegalStateException("loginfo.CT already set");
     } else {
       filled.set(6);
     }
 
-    ct.put(UInt256.valueOf(b).toBytes().toArray());
+    ct.put(b.toByte());
 
     return this;
   }
 
-  public Trace ctMax(final BigInteger b) {
+  public Trace ctMax(final UnsignedByte b) {
     if (filled.get(7)) {
-      throw new IllegalStateException("logInfo.CT_MAX already set");
+      throw new IllegalStateException("loginfo.CT_MAX already set");
     } else {
       filled.set(7);
     }
 
-    ctMax.put(UInt256.valueOf(b).toBytes().toArray());
+    ctMax.put(b.toByte());
 
     return this;
   }
 
-  public Trace dataHi(final BigInteger b) {
+  public Trace dataHi(final Bytes b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("logInfo.DATA_HI already set");
+      throw new IllegalStateException("loginfo.DATA_HI already set");
     } else {
       filled.set(8);
     }
 
-    dataHi.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      dataHi.put((byte) 0);
+    }
+    dataHi.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace dataLo(final BigInteger b) {
+  public Trace dataLo(final Bytes b) {
     if (filled.get(9)) {
-      throw new IllegalStateException("logInfo.DATA_LO already set");
+      throw new IllegalStateException("loginfo.DATA_LO already set");
     } else {
       filled.set(9);
     }
 
-    dataLo.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      dataLo.put((byte) 0);
+    }
+    dataLo.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace dataSize(final BigInteger b) {
+  public Trace dataSize(final long b) {
     if (filled.get(10)) {
-      throw new IllegalStateException("logInfo.DATA_SIZE already set");
+      throw new IllegalStateException("loginfo.DATA_SIZE already set");
     } else {
       filled.set(10);
     }
 
-    dataSize.put(UInt256.valueOf(b).toBytes().toArray());
+    dataSize.putLong(b);
 
     return this;
   }
 
-  public Trace inst(final BigInteger b) {
+  public Trace inst(final UnsignedByte b) {
     if (filled.get(11)) {
-      throw new IllegalStateException("logInfo.INST already set");
+      throw new IllegalStateException("loginfo.INST already set");
     } else {
       filled.set(11);
     }
 
-    inst.put(UInt256.valueOf(b).toBytes().toArray());
+    inst.put(b.toByte());
 
     return this;
   }
 
   public Trace isLogX0(final Boolean b) {
     if (filled.get(12)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_0 already set");
+      throw new IllegalStateException("loginfo.IS_LOG_X_0 already set");
     } else {
       filled.set(12);
     }
@@ -309,7 +301,7 @@ public class Trace {
 
   public Trace isLogX1(final Boolean b) {
     if (filled.get(13)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_1 already set");
+      throw new IllegalStateException("loginfo.IS_LOG_X_1 already set");
     } else {
       filled.set(13);
     }
@@ -321,7 +313,7 @@ public class Trace {
 
   public Trace isLogX2(final Boolean b) {
     if (filled.get(14)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_2 already set");
+      throw new IllegalStateException("loginfo.IS_LOG_X_2 already set");
     } else {
       filled.set(14);
     }
@@ -333,7 +325,7 @@ public class Trace {
 
   public Trace isLogX3(final Boolean b) {
     if (filled.get(15)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_3 already set");
+      throw new IllegalStateException("loginfo.IS_LOG_X_3 already set");
     } else {
       filled.set(15);
     }
@@ -345,7 +337,7 @@ public class Trace {
 
   public Trace isLogX4(final Boolean b) {
     if (filled.get(16)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_4 already set");
+      throw new IllegalStateException("loginfo.IS_LOG_X_4 already set");
     } else {
       filled.set(16);
     }
@@ -355,117 +347,149 @@ public class Trace {
     return this;
   }
 
-  public Trace phase(final BigInteger b) {
+  public Trace phase(final int b) {
     if (filled.get(17)) {
-      throw new IllegalStateException("logInfo.PHASE already set");
+      throw new IllegalStateException("loginfo.PHASE already set");
     } else {
       filled.set(17);
     }
 
-    phase.put(UInt256.valueOf(b).toBytes().toArray());
+    phase.putInt(b);
 
     return this;
   }
 
-  public Trace topicHi1(final BigInteger b) {
+  public Trace topicHi1(final Bytes b) {
     if (filled.get(18)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_1 already set");
+      throw new IllegalStateException("loginfo.TOPIC_HI_1 already set");
     } else {
       filled.set(18);
     }
 
-    topicHi1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicHi1.put((byte) 0);
+    }
+    topicHi1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicHi2(final BigInteger b) {
+  public Trace topicHi2(final Bytes b) {
     if (filled.get(19)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_2 already set");
+      throw new IllegalStateException("loginfo.TOPIC_HI_2 already set");
     } else {
       filled.set(19);
     }
 
-    topicHi2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicHi2.put((byte) 0);
+    }
+    topicHi2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicHi3(final BigInteger b) {
+  public Trace topicHi3(final Bytes b) {
     if (filled.get(20)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_3 already set");
+      throw new IllegalStateException("loginfo.TOPIC_HI_3 already set");
     } else {
       filled.set(20);
     }
 
-    topicHi3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicHi3.put((byte) 0);
+    }
+    topicHi3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicHi4(final BigInteger b) {
+  public Trace topicHi4(final Bytes b) {
     if (filled.get(21)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_4 already set");
+      throw new IllegalStateException("loginfo.TOPIC_HI_4 already set");
     } else {
       filled.set(21);
     }
 
-    topicHi4.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicHi4.put((byte) 0);
+    }
+    topicHi4.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicLo1(final BigInteger b) {
+  public Trace topicLo1(final Bytes b) {
     if (filled.get(22)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_1 already set");
+      throw new IllegalStateException("loginfo.TOPIC_LO_1 already set");
     } else {
       filled.set(22);
     }
 
-    topicLo1.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicLo1.put((byte) 0);
+    }
+    topicLo1.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicLo2(final BigInteger b) {
+  public Trace topicLo2(final Bytes b) {
     if (filled.get(23)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_2 already set");
+      throw new IllegalStateException("loginfo.TOPIC_LO_2 already set");
     } else {
       filled.set(23);
     }
 
-    topicLo2.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicLo2.put((byte) 0);
+    }
+    topicLo2.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicLo3(final BigInteger b) {
+  public Trace topicLo3(final Bytes b) {
     if (filled.get(24)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_3 already set");
+      throw new IllegalStateException("loginfo.TOPIC_LO_3 already set");
     } else {
       filled.set(24);
     }
 
-    topicLo3.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicLo3.put((byte) 0);
+    }
+    topicLo3.put(b.toArrayUnsafe());
 
     return this;
   }
 
-  public Trace topicLo4(final BigInteger b) {
+  public Trace topicLo4(final Bytes b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_4 already set");
+      throw new IllegalStateException("loginfo.TOPIC_LO_4 already set");
     } else {
       filled.set(25);
     }
 
-    topicLo4.put(UInt256.valueOf(b).toBytes().toArray());
+    final byte[] bs = b.toArrayUnsafe();
+    for (int i = bs.length; i < 32; i++) {
+      topicLo4.put((byte) 0);
+    }
+    topicLo4.put(b.toArrayUnsafe());
 
     return this;
   }
 
   public Trace txnEmitsLogs(final Boolean b) {
     if (filled.get(26)) {
-      throw new IllegalStateException("logInfo.TXN_EMITS_LOGS already set");
+      throw new IllegalStateException("loginfo.TXN_EMITS_LOGS already set");
     } else {
       filled.set(26);
     }
@@ -477,111 +501,111 @@ public class Trace {
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("logInfo.ABS_LOG_NUM has not been filled");
+      throw new IllegalStateException("loginfo.ABS_LOG_NUM has not been filled");
     }
 
     if (!filled.get(1)) {
-      throw new IllegalStateException("logInfo.ABS_LOG_NUM_MAX has not been filled");
+      throw new IllegalStateException("loginfo.ABS_LOG_NUM_MAX has not been filled");
     }
 
     if (!filled.get(2)) {
-      throw new IllegalStateException("logInfo.ABS_TXN_NUM has not been filled");
+      throw new IllegalStateException("loginfo.ABS_TXN_NUM has not been filled");
     }
 
     if (!filled.get(3)) {
-      throw new IllegalStateException("logInfo.ABS_TXN_NUM_MAX has not been filled");
+      throw new IllegalStateException("loginfo.ABS_TXN_NUM_MAX has not been filled");
     }
 
     if (!filled.get(4)) {
-      throw new IllegalStateException("logInfo.ADDR_HI has not been filled");
+      throw new IllegalStateException("loginfo.ADDR_HI has not been filled");
     }
 
     if (!filled.get(5)) {
-      throw new IllegalStateException("logInfo.ADDR_LO has not been filled");
+      throw new IllegalStateException("loginfo.ADDR_LO has not been filled");
     }
 
     if (!filled.get(6)) {
-      throw new IllegalStateException("logInfo.CT has not been filled");
+      throw new IllegalStateException("loginfo.CT has not been filled");
     }
 
     if (!filled.get(7)) {
-      throw new IllegalStateException("logInfo.CT_MAX has not been filled");
+      throw new IllegalStateException("loginfo.CT_MAX has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("logInfo.DATA_HI has not been filled");
+      throw new IllegalStateException("loginfo.DATA_HI has not been filled");
     }
 
     if (!filled.get(9)) {
-      throw new IllegalStateException("logInfo.DATA_LO has not been filled");
+      throw new IllegalStateException("loginfo.DATA_LO has not been filled");
     }
 
     if (!filled.get(10)) {
-      throw new IllegalStateException("logInfo.DATA_SIZE has not been filled");
+      throw new IllegalStateException("loginfo.DATA_SIZE has not been filled");
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("logInfo.INST has not been filled");
+      throw new IllegalStateException("loginfo.INST has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_0 has not been filled");
+      throw new IllegalStateException("loginfo.IS_LOG_X_0 has not been filled");
     }
 
     if (!filled.get(13)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_1 has not been filled");
+      throw new IllegalStateException("loginfo.IS_LOG_X_1 has not been filled");
     }
 
     if (!filled.get(14)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_2 has not been filled");
+      throw new IllegalStateException("loginfo.IS_LOG_X_2 has not been filled");
     }
 
     if (!filled.get(15)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_3 has not been filled");
+      throw new IllegalStateException("loginfo.IS_LOG_X_3 has not been filled");
     }
 
     if (!filled.get(16)) {
-      throw new IllegalStateException("logInfo.IS_LOG_X_4 has not been filled");
+      throw new IllegalStateException("loginfo.IS_LOG_X_4 has not been filled");
     }
 
     if (!filled.get(17)) {
-      throw new IllegalStateException("logInfo.PHASE has not been filled");
+      throw new IllegalStateException("loginfo.PHASE has not been filled");
     }
 
     if (!filled.get(18)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_1 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_HI_1 has not been filled");
     }
 
     if (!filled.get(19)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_2 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_HI_2 has not been filled");
     }
 
     if (!filled.get(20)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_3 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_HI_3 has not been filled");
     }
 
     if (!filled.get(21)) {
-      throw new IllegalStateException("logInfo.TOPIC_HI_4 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_HI_4 has not been filled");
     }
 
     if (!filled.get(22)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_1 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_LO_1 has not been filled");
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_2 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_LO_2 has not been filled");
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_3 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_LO_3 has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("logInfo.TOPIC_LO_4 has not been filled");
+      throw new IllegalStateException("loginfo.TOPIC_LO_4 has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("logInfo.TXN_EMITS_LOGS has not been filled");
+      throw new IllegalStateException("loginfo.TXN_EMITS_LOGS has not been filled");
     }
 
     filled.clear();
@@ -592,23 +616,23 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      absLogNum.position(absLogNum.position() + 32);
+      absLogNum.position(absLogNum.position() + 4);
     }
 
     if (!filled.get(1)) {
-      absLogNumMax.position(absLogNumMax.position() + 32);
+      absLogNumMax.position(absLogNumMax.position() + 4);
     }
 
     if (!filled.get(2)) {
-      absTxnNum.position(absTxnNum.position() + 32);
+      absTxnNum.position(absTxnNum.position() + 4);
     }
 
     if (!filled.get(3)) {
-      absTxnNumMax.position(absTxnNumMax.position() + 32);
+      absTxnNumMax.position(absTxnNumMax.position() + 4);
     }
 
     if (!filled.get(4)) {
-      addrHi.position(addrHi.position() + 32);
+      addrHi.position(addrHi.position() + 8);
     }
 
     if (!filled.get(5)) {
@@ -616,11 +640,11 @@ public class Trace {
     }
 
     if (!filled.get(6)) {
-      ct.position(ct.position() + 32);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(7)) {
-      ctMax.position(ctMax.position() + 32);
+      ctMax.position(ctMax.position() + 1);
     }
 
     if (!filled.get(8)) {
@@ -632,11 +656,11 @@ public class Trace {
     }
 
     if (!filled.get(10)) {
-      dataSize.position(dataSize.position() + 32);
+      dataSize.position(dataSize.position() + 8);
     }
 
     if (!filled.get(11)) {
-      inst.position(inst.position() + 32);
+      inst.position(inst.position() + 1);
     }
 
     if (!filled.get(12)) {
@@ -660,7 +684,7 @@ public class Trace {
     }
 
     if (!filled.get(17)) {
-      phase.position(phase.position() + 32);
+      phase.position(phase.position() + 4);
     }
 
     if (!filled.get(18)) {

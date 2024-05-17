@@ -13,26 +13,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.rlpCommon;
+package net.consensys.linea.zktracer.module.rlpcommon;
 
 import java.math.BigInteger;
 import java.util.Random;
 
 import org.apache.tuweni.bytes.Bytes;
 
-public class rlpRandEdgeCase {
-  private static Random rnd = new Random(666);
+public class RlpRandEdgeCase {
+  private static final Random RAND = new Random(666);
 
-  public static final BigInteger randBigInt(boolean onlyFourteenByte) {
+  public static BigInteger randBigInt(boolean onlyFourteenByte) {
     final int selectorBound = onlyFourteenByte ? 4 : 5;
-    int selector = rnd.nextInt(0, selectorBound);
+    int selector = RAND.nextInt(0, selectorBound);
 
     return switch (selector) {
       case 0 -> BigInteger.ZERO;
-      case 1 -> BigInteger.valueOf(rnd.nextInt(1, 128));
-      case 2 -> BigInteger.valueOf(rnd.nextInt(128, 256));
-      case 3 -> new BigInteger(14 * 8, rnd);
-      case 4 -> new BigInteger(32 * 8, rnd);
+      case 1 -> BigInteger.valueOf(RAND.nextInt(1, 128));
+      case 2 -> BigInteger.valueOf(RAND.nextInt(128, 256));
+      case 3 -> new BigInteger(14 * 8, RAND);
+      case 4 -> new BigInteger(32 * 8, RAND);
       default -> throw new IllegalStateException("Unexpected value: " + selector);
     };
   }
@@ -43,25 +43,25 @@ public class rlpRandEdgeCase {
     if (nonEmpty) {
       selectorOrigin += 1;
     }
-    int selector = rnd.nextInt(selectorOrigin, 6);
+    int selector = RAND.nextInt(selectorOrigin, 6);
     return switch (selector) {
       case 0 -> Bytes.EMPTY;
       case 1 -> Bytes.of(0x0);
-      case 2 -> Bytes.minimalBytes(rnd.nextLong(1, 128));
-      case 3 -> Bytes.minimalBytes(rnd.nextLong(128, 256));
-      case 4 -> Bytes.random(rnd.nextInt(1, 56), rnd);
-      case 5 -> Bytes.random(rnd.nextInt(56, maxDataSize), rnd);
+      case 2 -> Bytes.minimalBytes(RAND.nextLong(1, 128));
+      case 3 -> Bytes.minimalBytes(RAND.nextLong(128, 256));
+      case 4 -> Bytes.random(RAND.nextInt(1, 56), RAND);
+      case 5 -> Bytes.random(RAND.nextInt(56, maxDataSize), RAND);
       default -> throw new IllegalStateException("Unexpected value: " + selector);
     };
   }
 
   public static Long randLong() {
-    int selector = rnd.nextInt(0, 4);
+    int selector = RAND.nextInt(0, 4);
     return switch (selector) {
       case 0 -> 0L;
-      case 1 -> rnd.nextLong(1, 128);
-      case 2 -> rnd.nextLong(128, 256);
-      case 3 -> rnd.nextLong(256, 0xfffffffffffffffL);
+      case 1 -> RAND.nextLong(1, 128);
+      case 2 -> RAND.nextLong(128, 256);
+      case 3 -> RAND.nextLong(256, 0xfffffffffffffffL);
       default -> throw new IllegalStateException("Unexpected value: " + selector);
     };
   }

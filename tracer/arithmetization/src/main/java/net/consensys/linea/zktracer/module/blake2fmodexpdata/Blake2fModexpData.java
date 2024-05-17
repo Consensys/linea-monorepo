@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.PHASE_MODEXP_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
@@ -58,7 +58,7 @@ public class Blake2fModexpData implements Module {
     return Trace.headers(this.lineCount());
   }
 
-  public int call(final Blake2fModexpDataOperation operation) {
+  public long call(final Blake2fModexpDataOperation operation) {
     this.state.add(operation);
 
     return operation.prevHubStamp();

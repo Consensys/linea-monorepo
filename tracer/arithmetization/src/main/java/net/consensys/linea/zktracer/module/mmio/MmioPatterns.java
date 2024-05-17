@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.mmio;
 
-import static net.consensys.linea.zktracer.module.mmio.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.util.ArrayList;
 import java.util.List;

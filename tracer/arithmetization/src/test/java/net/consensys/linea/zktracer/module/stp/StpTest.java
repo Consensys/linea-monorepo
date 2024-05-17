@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.stp;
 
-import static net.consensys.linea.zktracer.module.rlpCommon.rlpRandEdgeCase.randBigInt;
+import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randBigInt;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 

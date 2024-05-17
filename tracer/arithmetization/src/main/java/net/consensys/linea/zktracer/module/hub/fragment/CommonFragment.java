@@ -155,11 +155,11 @@ public final class CommonFragment implements TraceFragment {
         .gasActual(Bytes.ofUnsignedLong(gasActual))
         .gasCost(Bytes.ofUnsignedLong(gasCost))
         .gasNext(Bytes.ofUnsignedLong(gasNext))
-        .refgas(Bytes.ofUnsignedLong(gasRefund))
-        .refgasNew(Bytes.EMPTY)
+        .refundCounter(Bytes.ofUnsignedInt(gasRefund))
+        .refundCounterNew(Bytes.EMPTY)
         .twoLineInstruction(twoLinesInstruction)
         .counterTli(twoLinesInstructionCounter)
-        .numberOfNonStackRows(Bytes.ofUnsignedShort(numberOfNonStackRows))
+        .nonStackRows(Bytes.ofUnsignedShort(numberOfNonStackRows))
         .counterNsr(Bytes.ofUnsignedShort(nonStackRowsCounter));
   }
 }

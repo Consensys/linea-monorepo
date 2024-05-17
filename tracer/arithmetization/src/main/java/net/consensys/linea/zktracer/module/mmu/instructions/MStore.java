@@ -15,6 +15,10 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,7 +67,7 @@ public class MStore implements MmuInstruction {
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividend)
-            .divisor((short) Trace.LLARGE)
+            .divisor((short) LLARGE)
             .quotient(quot)
             .remainder(rem)
             .build());
@@ -108,10 +112,8 @@ public class MStore implements MmuInstruction {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
             .mmioInstruction(
-                aligned
-                    ? Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT
-                    : Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET)
-            .size((short) Trace.LLARGE)
+                aligned ? MMIO_INST_LIMB_TO_RAM_TRANSPLANT : MMIO_INST_LIMB_TO_RAM_TWO_TARGET)
+            .size((short) LLARGE)
             .targetLimbOffset(initialTargetLimbOffset)
             .targetByteOffset(initialTargetByteOffset)
             .limb(hubToMmuValues.limb1())
@@ -122,10 +124,8 @@ public class MStore implements MmuInstruction {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
             .mmioInstruction(
-                aligned
-                    ? Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT
-                    : Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET)
-            .size((short) Trace.LLARGE)
+                aligned ? MMIO_INST_LIMB_TO_RAM_TRANSPLANT : MMIO_INST_LIMB_TO_RAM_TWO_TARGET)
+            .size((short) LLARGE)
             .targetLimbOffset(initialTargetLimbOffset + 1)
             .targetByteOffset(initialTargetByteOffset)
             .limb(hubToMmuValues.limb2())

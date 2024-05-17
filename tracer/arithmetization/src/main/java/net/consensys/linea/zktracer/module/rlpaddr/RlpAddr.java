@@ -15,12 +15,13 @@
 
 package net.consensys.linea.zktracer.module.rlpaddr;
 
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_ADDR_RECIPE_1;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_ADDR_RECIPE_2;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE;
 import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE2;
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_ADDR_RECIPE_2;
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_INT_SHORT;
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddress;
@@ -231,7 +232,7 @@ public class RlpAddr implements Module {
     for (int ct = 0; ct < recipe1NbRows; ct++) {
       trace
           .stamp(stamp)
-          .recipe(UnsignedByte.of(Trace.RLP_ADDR_RECIPE_1))
+          .recipe(UnsignedByte.of(RLP_ADDR_RECIPE_1))
           .recipe1(true)
           .recipe2(false)
           .addrHi(chunk.address().slice(0, 4).toLong())

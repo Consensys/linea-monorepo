@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.module.trm.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.trm.Trm.MAX_CT;
 import static net.consensys.linea.zktracer.module.trm.Trm.PIVOT_BIT_FLIPS_TO_TRUE;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;

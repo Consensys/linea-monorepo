@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmu;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_ANY_TO_RAM_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_BLAKE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +26,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmio.CallStackReader;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
@@ -83,9 +84,9 @@ public class MmuData {
             .contains(mmuCall.instruction()),
         List.of(
                 MMU_INST_BLAKE,
-                Trace.MMU_INST_MODEXP_DATA,
-                Trace.MMU_INST_MODEXP_ZERO,
-                Trace.MMU_INST_RAM_TO_EXO_WITH_PADDING)
+                GlobalConstants.MMU_INST_MODEXP_DATA,
+                GlobalConstants.MMU_INST_MODEXP_ZERO,
+                GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING)
             .contains(mmuCall.instruction()));
   }
 

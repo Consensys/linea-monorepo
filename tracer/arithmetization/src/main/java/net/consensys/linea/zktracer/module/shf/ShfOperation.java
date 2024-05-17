@@ -16,6 +16,8 @@
 package net.consensys.linea.zktracer.module.shf;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,7 +72,7 @@ final class ShfOperation extends ModuleOperation {
   }
 
   private static boolean allButLastByteZero(final Bytes16 bytes) {
-    for (int i = 0; i < Trace.LLARGEMO; i++) {
+    for (int i = 0; i < LLARGEMO; i++) {
       if (bytes.get(i) != 0) {
         return false;
       }
@@ -128,7 +130,7 @@ final class ShfOperation extends ModuleOperation {
   }
 
   public int maxCt() {
-    return this.isOneLineInstruction ? 1 : Trace.LLARGE;
+    return this.isOneLineInstruction ? 1 : LLARGE;
   }
 
   public void trace(Trace trace, int stamp) {

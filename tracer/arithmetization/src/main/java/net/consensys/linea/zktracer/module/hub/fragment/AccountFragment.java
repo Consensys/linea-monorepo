@@ -124,7 +124,7 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
     return trace
         .peekAtAccount(true)
         .pAccountTrmFlag(this.addressToTrim.isPresent())
-        .pAccountTrmRawAddrHi(this.addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
+        .pAccountTrmRawAddressHi(this.addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
         .pAccountAddressHi(eWho.hi())
         .pAccountAddressLo(eWho.lo())
         .pAccountIsPrecompile(isPrecompile(who))
@@ -148,8 +148,8 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
             newState.nonce() > 0
                 || newState.code().getCodeHash() != Hash.EMPTY
                 || !newState.balance().isZero())
-        .pAccountWarm(oldState.warm())
-        .pAccountWarmNew(newState.warm())
+        .pAccountWarmth(oldState.warm())
+        .pAccountWarmthNew(newState.warm())
         .pAccountDeploymentNumber(Bytes.ofUnsignedInt(oldState.deploymentNumber()))
         .pAccountDeploymentNumberNew(Bytes.ofUnsignedInt(newState.deploymentNumber()))
         .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfnty))

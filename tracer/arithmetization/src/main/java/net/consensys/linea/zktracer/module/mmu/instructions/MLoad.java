@@ -15,7 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,9 +101,7 @@ public class MLoad implements MmuInstruction {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
             .mmioInstruction(
-                aligned
-                    ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT
-                    : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
+                aligned ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
             .size((short) LLARGE)
             .sourceLimbOffset(initialSourceLimbOffset)
             .sourceByteOffset(initialSourceByteOffset)
@@ -112,9 +112,7 @@ public class MLoad implements MmuInstruction {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
             .mmioInstruction(
-                aligned
-                    ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT
-                    : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
+                aligned ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE)
             .size((short) LLARGE)
             .sourceLimbOffset(initialSourceLimbOffset + 1)
             .sourceByteOffset(initialSourceByteOffset)

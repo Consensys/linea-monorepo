@@ -15,8 +15,7 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
-
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Bytecodes {
@@ -32,6 +31,6 @@ public class Bytecodes {
   }
 
   public static Bytes16 readLimb(final Bytes data, final long limbOffset) {
-    return readBytes(data, LLARGE * limbOffset, LLARGE);
+    return readBytes(data, GlobalConstants.LLARGE * limbOffset, GlobalConstants.LLARGE);
   }
 }

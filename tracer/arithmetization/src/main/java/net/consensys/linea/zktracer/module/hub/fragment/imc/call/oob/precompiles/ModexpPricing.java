@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_modexp_pricing;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_MODEXP_PRICING;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -41,6 +41,6 @@ public record ModexpPricing(PrecompileInvocation p, int exponentLog, int maxMbsB
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_modexp_pricing;
+    return OOB_INST_MODEXP_PRICING;
   }
 }

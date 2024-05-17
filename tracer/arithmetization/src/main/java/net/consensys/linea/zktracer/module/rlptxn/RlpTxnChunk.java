@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlptxn;
 
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.math.BigInteger;
 
@@ -106,7 +107,7 @@ public final class RlpTxnChunk extends ModuleOperation {
       rowSize += 2; // 1 for prefix + 1 for padding
     } else {
       final int dataSize = this.tx.getPayload().size();
-      rowSize += 8 + Trace.LLARGE * ((dataSize - 1) / Trace.LLARGE + 1);
+      rowSize += 8 + LLARGE * ((dataSize - 1) / LLARGE + 1);
       rowSize += 2; // 2 lines of padding
     }
 

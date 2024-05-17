@@ -35,7 +35,7 @@ public record StpCall(
   public Trace trace(Trace trace) {
     return trace
         .pMiscStpFlag(true)
-        .pMiscStpInst(Bytes.of(opCode))
+        .pMiscStpInstruction(Bytes.of(opCode))
         .pMiscStpGasHi(gas.hi())
         .pMiscStpGasLo(gas.lo())
         .pMiscStpValHi(value.hi())

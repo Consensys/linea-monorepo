@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.zktracer.module.blockhash.Trace.EVM_INST_BLOCKHASH_MAX_HISTORY;
-import static net.consensys.linea.zktracer.module.blockhash.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOCKHASH_MAX_HISTORY;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
@@ -83,8 +83,7 @@ public class Blockhash implements Module {
     this.opcodeArgument = Bytes32.leftPad(frame.getStackItem(0));
     lowerBound =
         this.wcp.callGEQ(
-            opcodeArgument,
-            Bytes.ofUnsignedLong(this.absoluteBlockNumber - EVM_INST_BLOCKHASH_MAX_HISTORY));
+            opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber - BLOCKHASH_MAX_HISTORY));
     upperBound = this.wcp.callLT(opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber));
 
     /* To prove the lex order of BLOCK_NUMBER_HI/LO, we call WCP at endConflation, so we need to add rows in WCP now.

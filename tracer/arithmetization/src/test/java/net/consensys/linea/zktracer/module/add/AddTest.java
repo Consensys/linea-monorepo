@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class addTest {
+public class AddTest {
   @Test
   void testSmallZeroAdd() {
     BytecodeRunner.of(

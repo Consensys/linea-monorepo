@@ -20,7 +20,7 @@
         dependsOn corsetExists
 
         module = moduleName
-        files = ["alu/${moduleName}/columns.lisp", "constants/constants.lisp"]
+        files = ["alu/${moduleName}/columns.lisp"]
     }
 }
 
@@ -33,7 +33,7 @@ tasks.register("hub", TraceFilesTask) {
 
     module = 'hub'
     files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction', 'scenario', 'miscellaneous']
-            .collect {"hub_v2/columns/${it}.lisp"} + 'constants/constants.lisp'
+            .collect {"hub/columns/${it}.lisp"}
 }
 
 //
@@ -47,6 +47,7 @@ tasks.register('instdecoder', TraceFilesTask) {
     module = "instructionDecoder"
     files = ["reftables/inst_decoder.lisp"]
 }
+
 tasks.register('shfreftable', TraceFilesTask) {
     group "Trace files generation"
     dependsOn corsetExists
@@ -67,25 +68,52 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'blockhash', 'ec_data', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'logInfo', 'logData'].each {moduleName ->
+['bin', 'blockhash', 'ecdata', 'euc', 'mmio', 'mxp', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
 
         module = moduleName
-        files = ["${moduleName}/columns.lisp", "constants/constants.lisp"]
+        files = ["${moduleName}/columns.lisp"]
     }
 }
 
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2f_modexp_data', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'txndata'].each {moduleName ->
+['mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         dependsOn corsetExists
 
         module = moduleName
-        files = [ "constants/constants.lisp", "${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
+        files = ["${moduleName}/columns.lisp", "${moduleName}/constants.lisp"]
+    }
+}
+
+//
+// TODO: txndata is an exception and should be fixed in the future to not reference global constants in this way
+// and it should be able to import those values in the corset files themselves.
+//
+['txndata'].each {moduleName ->
+    tasks.register(moduleName, TraceFilesTask) {
+        group "Trace files generation"
+        dependsOn corsetExists
+
+        module = moduleName
+        files = ["${moduleName}/columns.lisp", "constants/constants.lisp", "${moduleName}/constants.lisp"]
+    }
+}
+
+//
+// Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
+//
+['constants'].each {moduleName ->
+    tasks.register(moduleName, TraceFilesTask) {
+        group "Trace files generation"
+        dependsOn corsetExists
+
+        module = moduleName
+        files = [ "${moduleName}/constants.lisp"]
     }
 }

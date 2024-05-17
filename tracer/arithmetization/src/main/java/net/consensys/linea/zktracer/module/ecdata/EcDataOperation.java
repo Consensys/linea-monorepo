@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.ec_data;
+package net.consensys.linea.zktracer.module.ecdata;
 
 import static net.consensys.linea.zktracer.types.Containers.repeat;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
@@ -328,7 +328,7 @@ public class EcDataOperation extends ModuleOperation {
   }
 
   private void traceRow(Trace trace, int i) {
-    trace.stamp(Bytes.ofUnsignedShort(this.contextNumber));
+    trace.stamp(this.contextNumber);
     // TODO: the rest
   }
 

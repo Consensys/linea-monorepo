@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,7 +83,7 @@ public class ModexpZero implements MmuInstruction {
   private void vanishingMicroInstruction(MmuData mmuData, final int i) {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_LIMB_VANISHES)
+            .mmioInstruction(MMIO_INST_LIMB_VANISHES)
             .targetLimbOffset(i)
             .build());
   }

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.zktracer.module.blockhash.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

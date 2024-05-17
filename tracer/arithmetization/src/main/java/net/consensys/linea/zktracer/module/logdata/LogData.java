@@ -13,11 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.logData;
+package net.consensys.linea.zktracer.module.logdata;
 
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -25,6 +24,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptChunk;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.log.Log;
 
@@ -102,14 +102,14 @@ public class LogData implements Module {
 
   public void traceLogWoData(final int absLogNum, final int absLogNumMax, Trace trace) {
     trace
-        .absLogNumMax(BigInteger.valueOf(absLogNumMax))
-        .absLogNum(BigInteger.valueOf(absLogNum))
+        .absLogNumMax(absLogNumMax)
+        .absLogNum(absLogNum)
         .logsData(false)
-        .sizeTotal(BigInteger.ZERO)
-        .sizeAcc(BigInteger.ZERO)
-        .sizeLimb(BigInteger.ZERO)
-        .limb(BigInteger.ZERO)
-        .index(BigInteger.ZERO)
+        .sizeTotal(0)
+        .sizeAcc(0)
+        .sizeLimb(UnsignedByte.ZERO)
+        .limb(Bytes.EMPTY)
+        .index(0)
         .validateRow();
   }
 
@@ -119,17 +119,14 @@ public class LogData implements Module {
     final int lastLimbSize = (log.getData().size() % 16 == 0) ? 16 : log.getData().size() % 16;
     for (int index = 0; index < indexMax + 1; index++) {
       trace
-          .absLogNumMax(BigInteger.valueOf(absLogNumMax))
-          .absLogNum(BigInteger.valueOf(absLogNum))
+          .absLogNumMax(absLogNumMax)
+          .absLogNum(absLogNum)
           .logsData(true)
-          .sizeTotal(BigInteger.valueOf(log.getData().size()))
-          .sizeAcc(
-              index == indexMax
-                  ? BigInteger.valueOf(log.getData().size())
-                  : BigInteger.valueOf(16 * (index + 1)))
-          .sizeLimb(index == indexMax ? BigInteger.valueOf(lastLimbSize) : BigInteger.valueOf(16))
-          .limb(dataPadded.slice(16 * index, 16).toUnsignedBigInteger())
-          .index(BigInteger.valueOf(index))
+          .sizeTotal(log.getData().size())
+          .sizeAcc(index == indexMax ? log.getData().size() : 16L * (index + 1))
+          .sizeLimb(index == indexMax ? UnsignedByte.of(lastLimbSize) : UnsignedByte.of(16))
+          .limb(dataPadded.slice(16 * index, 16))
+          .index(index)
           .validateRow();
     }
   }

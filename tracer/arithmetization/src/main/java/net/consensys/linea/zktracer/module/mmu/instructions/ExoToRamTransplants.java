@@ -15,7 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +25,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -40,8 +41,8 @@ public class ExoToRamTransplants implements MmuInstruction {
 
   public ExoToRamTransplants(Euc euc) {
     this.euc = euc;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS);
   }
 
   @Override
@@ -94,7 +95,7 @@ public class ExoToRamTransplants implements MmuInstruction {
     for (int i = 0; i < mmuData.totalNonTrivialInitials(); i++) {
       mmuData.mmuToMmioInstruction(
           MmuToMmioInstruction.builder()
-              .mmioInstruction(Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT)
+              .mmioInstruction(MMIO_INST_LIMB_TO_RAM_TRANSPLANT)
               .sourceLimbOffset(i)
               .targetLimbOffset(i)
               .size((short) LLARGE)

@@ -92,16 +92,17 @@ public final class TransactionFragment implements TraceFragment, PostTransaction
         .pTransactionToAddressLo(to.lo())
         .pTransactionGasPrice(gasPrice)
         .pTransactionBasefee(baseFee)
-        .pTransactionInitialGas(Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
+        .pTransactionGasInitiallyAvailable(
+            Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
         .pTransactionInitialBalance(Bytes.ofUnsignedLong(initialGas))
         .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
         .pTransactionCoinbaseAddressHi(miner.hi())
         .pTransactionCoinbaseAddressLo(miner.lo())
         .pTransactionCallDataSize(Bytes.ofUnsignedInt(tx.getData().map(Bytes::size).orElse(0)))
         .pTransactionRequiresEvmExecution(evmExecutes)
-        .pTransactionLeftoverGas(Bytes.ofUnsignedLong(leftoverGas))
+        .pTransactionGasLeftover(Bytes.ofUnsignedLong(leftoverGas))
         .pTransactionRefundCounterInfinity(Bytes.ofUnsignedLong(gasRefundFinalCounter))
-        .pTransactionRefundAmount(Bytes.ofUnsignedLong(gasRefundAmount))
+        .pTransactionRefundEffective(Bytes.ofUnsignedLong(gasRefundAmount))
         .pTransactionStatusCode(txSuccess);
   }
 

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.logData;
+package net.consensys.linea.zktracer.module.loginfo;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.consensys.linea.zktracer.module.ModuleTrace;
@@ -22,7 +22,7 @@ import net.consensys.linea.zktracer.module.ModuleTrace;
  * WARNING: This code is generated automatically. Any modifications to this code may be overwritten
  * and could lead to unexpected behavior. Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
-record LogDataTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
+record LogInfoTrace(@JsonProperty("Trace") Trace trace) implements ModuleTrace {
   static final int CREATE2_SHIFT = 255;
   static final int G_TXDATA_NONZERO = 16;
   static final int G_TXDATA_ZERO = 4;

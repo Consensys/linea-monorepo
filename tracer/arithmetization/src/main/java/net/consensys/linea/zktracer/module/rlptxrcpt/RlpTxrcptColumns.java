@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlptxrcpt;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
 
 import java.math.BigInteger;
@@ -98,6 +99,6 @@ class RlpTxrcptColumns {
         + Trace.SUBPHASE_ID_WEIGHT_IS_OT * booleanToInt(this.isTopic)
         + Trace.SUBPHASE_ID_WEIGHT_IS_OD * booleanToInt(this.isData)
         + Trace.SUBPHASE_ID_WEIGHT_DEPTH * booleanToInt(this.depth1)
-        + Trace.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
+        + RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
   }
 }

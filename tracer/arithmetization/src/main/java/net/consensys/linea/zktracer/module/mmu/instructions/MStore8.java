@@ -15,6 +15,10 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,7 +62,7 @@ public class MStore8 implements MmuInstruction {
     eucCallRecords.add(
         MmuEucCallRecord.builder()
             .dividend(dividend1)
-            .divisor((short) Trace.LLARGE)
+            .divisor((short) LLARGE)
             .quotient(quot)
             .remainder(rem)
             .build());
@@ -92,9 +96,9 @@ public class MStore8 implements MmuInstruction {
     // First and only micro-instruction.
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_LIMB_TO_RAM_ONE_TARGET)
+            .mmioInstruction(MMIO_INST_LIMB_TO_RAM_ONE_TARGET)
             .size((short) 1)
-            .sourceByteOffset((short) Trace.LLARGEMO)
+            .sourceByteOffset((short) LLARGEMO)
             .targetLimbOffset(initialTargetLimbOffset)
             .targetByteOffset(initialTargetByteOffset)
             .limb(hubToMmuValues.limb2())

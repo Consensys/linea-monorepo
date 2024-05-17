@@ -15,7 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
@@ -206,7 +210,7 @@ public class RamToExoWithPadding implements MmuInstruction {
     } else {
       firstMicroInstruction(mmuData);
       final int middleMicroInst =
-          aligned ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+          aligned ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
       for (int i = 1; i < mmuData.totalNonTrivialInitials() - 1; i++) {
         middleMicroInstruction(mmuData, i, middleMicroInst);
       }
@@ -223,7 +227,7 @@ public class RamToExoWithPadding implements MmuInstruction {
   private void vanishingMicroInstruction(MmuData mmuData, final int i) {
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
-            .mmioInstruction(Trace.MMIO_INST_LIMB_VANISHES)
+            .mmioInstruction(MMIO_INST_LIMB_VANISHES)
             .targetLimbOffset(mmuData.totalNonTrivialInitials() + i)
             .build());
   }
@@ -246,12 +250,10 @@ public class RamToExoWithPadding implements MmuInstruction {
 
   private int calculateLastOrOnlyMicroInstruction() {
     if (lastLimbSingleSource) {
-      return lastLimbIsFull
-          ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT
-          : Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+      return lastLimbIsFull ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
     }
 
-    return Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+    return MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
   }
 
   private void onlyMicroInstruction(MmuData mmuData) {
@@ -269,7 +271,7 @@ public class RamToExoWithPadding implements MmuInstruction {
 
   private void firstMicroInstruction(MmuData mmuData) {
     final int firstMicroInst =
-        aligned ? Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT : Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+        aligned ? MMIO_INST_RAM_TO_LIMB_TRANSPLANT : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()

@@ -16,6 +16,19 @@
 package net.consensys.linea.zktracer.module.mmio;
 
 import static java.util.Map.entry;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_EXCISION;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_PARTIAL;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TWO_SOURCE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_VANISHES;
 
 import java.util.Map;
 
@@ -43,39 +56,38 @@ public class MmioInstructions {
   public MmioInstructions(final MmuData mmuData, final int mmioInstructionNumber) {
     mmioInstructionMap =
         Map.ofEntries(
-            entry(Trace.MMIO_INST_LIMB_VANISHES, new LimbVanishes(mmuData, mmioInstructionNumber)),
+            entry(MMIO_INST_LIMB_VANISHES, new LimbVanishes(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
+                MMIO_INST_LIMB_TO_RAM_TRANSPLANT,
                 new LimbToRamTransplant(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_LIMB_TO_RAM_ONE_TARGET,
+                MMIO_INST_LIMB_TO_RAM_ONE_TARGET,
                 new LimbToRamOneTarget(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET,
+                MMIO_INST_LIMB_TO_RAM_TWO_TARGET,
                 new LimbToRamTwoTarget(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
+                MMIO_INST_RAM_TO_LIMB_TRANSPLANT,
                 new RamToLimbTransplant(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE,
+                MMIO_INST_RAM_TO_LIMB_ONE_SOURCE,
                 new RamToLimbOneSource(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE,
+                MMIO_INST_RAM_TO_LIMB_TWO_SOURCE,
                 new RamToLimbTwoSource(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_RAM_TRANSPLANT,
+                MMIO_INST_RAM_TO_RAM_TRANSPLANT,
                 new RamToRamTransplant(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_RAM_PARTIAL,
-                new RamToRamPartial(mmuData, mmioInstructionNumber)),
+                MMIO_INST_RAM_TO_RAM_PARTIAL, new RamToRamPartial(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_RAM_TWO_TARGET,
+                MMIO_INST_RAM_TO_RAM_TWO_TARGET,
                 new RamToRamTwoTarget(mmuData, mmioInstructionNumber)),
-            entry(Trace.MMIO_INST_RAM_EXCISION, new RamExcision(mmuData, mmioInstructionNumber)),
+            entry(MMIO_INST_RAM_EXCISION, new RamExcision(mmuData, mmioInstructionNumber)),
             entry(
-                Trace.MMIO_INST_RAM_TO_RAM_TWO_SOURCE,
+                MMIO_INST_RAM_TO_RAM_TWO_SOURCE,
                 new RamToRamTwoSource(mmuData, mmioInstructionNumber)),
-            entry(Trace.MMIO_INST_RAM_VANISHES, new RamVanishes(mmuData, mmioInstructionNumber)));
+            entry(MMIO_INST_RAM_VANISHES, new RamVanishes(mmuData, mmioInstructionNumber)));
   }
 
   public MmioData compute(final int mmioInstruction) {

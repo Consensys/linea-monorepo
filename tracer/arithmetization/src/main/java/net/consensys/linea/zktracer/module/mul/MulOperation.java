@@ -421,13 +421,13 @@ public class MulOperation extends ModuleOperation {
   private void traceSubOp(Trace trace, int stamp) {
     for (int i = 0; i < this.maxCt(); i++) {
       trace
-          .mulStamp(Bytes.ofUnsignedLong(stamp))
-          .counter(Bytes.of(i))
+          .mulStamp(stamp)
+          .counter(UnsignedByte.of(i))
           .oli(this.isOneLineInstruction())
           .tinyBase(this.isTinyBase())
           .tinyExponent(this.isTinyExponent())
           .resultVanishes(this.res.isZero())
-          .instruction(Bytes.of(this.getOpCode().byteValue()))
+          .instruction(UnsignedByte.of(this.getOpCode().byteValue()))
           .arg1Hi(this.getArg1Hi())
           .arg1Lo(this.getArg1Lo())
           .arg2Hi(this.getArg2Hi())
@@ -471,7 +471,7 @@ public class MulOperation extends ModuleOperation {
           .exponentBitAccumulator(this.expAcc)
           .exponentBitSource(this.isExponentInSource())
           .squareAndMultiply(this.squareAndMultiply)
-          .bitNum(Bytes.ofUnsignedShort(this.getBitNum()))
+          .bitNum(UnsignedByte.of(this.getBitNum()))
           .validateRow();
     }
   }

@@ -16,16 +16,16 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import static net.consensys.linea.zktracer.module.Util.byteBits;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_EQ;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_GT;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_SGT;
-import static net.consensys.linea.zktracer.module.wcp.Trace.EVM_INST_SLT;
-import static net.consensys.linea.zktracer.module.wcp.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.wcp.Trace.LLARGEMO;
-import static net.consensys.linea.zktracer.module.wcp.Trace.WCP_INST_GEQ;
-import static net.consensys.linea.zktracer.module.wcp.Trace.WCP_INST_LEQ;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_EQ;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_GT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_SGT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_SLT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_GEQ;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.reallyToSignedBigInteger;
 

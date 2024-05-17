@@ -15,10 +15,11 @@
 
 package net.consensys.linea.zktracer.module.rlptxrcpt;
 
-import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_INT_LONG;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_INT_SHORT;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_LIST_LONG;
-import static net.consensys.linea.zktracer.module.rlptxrcpt.Trace.RLP_PREFIX_LIST_SHORT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_LONG;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -48,7 +49,6 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxrcpt implements Module {
   private final TxnData txnData;
-  private static final int LLARGE = Trace.LLARGE;
   private static final Bytes BYTES_RLP_INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
 

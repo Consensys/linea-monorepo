@@ -128,7 +128,7 @@ public final class AddOperation extends ModuleOperation {
           .overflow(overflowBit(ct, overflowHi, overflowLo))
           .resHi(resHi)
           .resLo(resLo)
-          .stamp(Bytes.ofUnsignedLong(stamp))
+          .stamp(stamp)
           .validateRow();
     }
   }

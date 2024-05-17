@@ -18,4 +18,4 @@ import net.consensys.linea.zktracer.testing.EvmExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-public class precTests {}
+public class PrecompileTests {}

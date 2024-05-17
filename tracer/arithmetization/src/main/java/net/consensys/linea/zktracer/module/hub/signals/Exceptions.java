@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
@@ -272,7 +273,7 @@ public final class Exceptions {
     }
 
     final Bytes deployedCode = frame.getOutputData();
-    return !deployedCode.isEmpty() && (deployedCode.get(0) == (byte) Trace.EIP_3541_MARKER);
+    return !deployedCode.isEmpty() && (deployedCode.get(0) == (byte) EIP_3541_MARKER);
   }
 
   private static boolean isCodeSizeOverflow(MessageFrame frame) {

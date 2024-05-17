@@ -53,8 +53,8 @@ public enum Precompile {
       return Optional.of(Precompile.EC_PAIRING);
     } else if (a.equals(Address.BLAKE2B_F_COMPRESSION)) {
       return Optional.of(Precompile.BLAKE2F);
-    } else {
-      return Optional.empty();
     }
+
+    return Optional.empty();
   }
 }

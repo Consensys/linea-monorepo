@@ -49,7 +49,7 @@ public class ModexpEffectiveCall implements Module {
   private static final BigInteger PROVER_MAX_INPUT_BYTE_SIZE = BigInteger.valueOf(4096 / 8);
   private static final int EVM_WORD_SIZE = 32;
 
-  private int lastDataCallHubStamp = 0;
+  private long lastDataCallHubStamp = 0;
 
   @Override
   public String moduleKey() {

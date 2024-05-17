@@ -23,13 +23,12 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.commons.lang3.function.TriFunction;
-import org.apache.tuweni.bytes.Bytes;
 
 @Builder
 @Accessors(fluent = true)
 public class Blake2fModexpTraceHelper {
-  private final Bytes currentHubStamp;
-  @Getter private int prevHubStamp;
+  private final long currentHubStamp;
+  @Getter private long prevHubStamp;
   private final int startPhaseIndex;
   private final int endPhaseIndex;
 
@@ -76,6 +75,6 @@ public class Blake2fModexpTraceHelper {
       phaseFlags[phaseIndex - 1] = false;
     }
 
-    prevHubStamp = currentHubStamp.toInt();
+    prevHubStamp = currentHubStamp;
   }
 }

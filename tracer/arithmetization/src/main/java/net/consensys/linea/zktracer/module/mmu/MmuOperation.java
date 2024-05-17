@@ -18,13 +18,20 @@ the License for the
 
 package net.consensys.linea.zktracer.module.mmu;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_INVALID_CODE_PREFIX;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE8;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.numberOfRowOfMmioInstruction;
-import static net.consensys.linea.zktracer.module.mmu.Trace.LLARGE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_ANY_TO_RAM_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_BLAKE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_INVALID_CODE_PREFIX;
-import static net.consensys.linea.zktracer.module.mmu.Trace.MMU_INST_MLOAD;
 import static net.consensys.linea.zktracer.types.Bytecodes.readBytes;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
@@ -102,21 +109,21 @@ public class MmuOperation extends ModuleOperation {
   private void setInstructionFlag() {
     final int mmuInstruction = mmuData.hubToMmuValues().mmuInstruction();
     isMload = mmuInstruction == MMU_INST_MLOAD;
-    isMstore = mmuInstruction == Trace.MMU_INST_MSTORE;
-    isMstore8 = mmuInstruction == Trace.MMU_INST_MSTORE8;
+    isMstore = mmuInstruction == MMU_INST_MSTORE;
+    isMstore8 = mmuInstruction == MMU_INST_MSTORE8;
     isInvalidCodePrefix = mmuInstruction == MMU_INST_INVALID_CODE_PREFIX;
-    isRightPaddedWordExtraction = mmuInstruction == Trace.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
-    isRamToExoWithPadding = mmuInstruction == Trace.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+    isRightPaddedWordExtraction = mmuInstruction == MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
+    isRamToExoWithPadding = mmuInstruction == MMU_INST_RAM_TO_EXO_WITH_PADDING;
     isExoToRamTransplants = mmuInstruction == MMU_INST_EXO_TO_RAM_TRANSPLANTS;
-    isRamToRamSansPadding = mmuInstruction == Trace.MMU_INST_RAM_TO_RAM_SANS_PADDING;
+    isRamToRamSansPadding = mmuInstruction == MMU_INST_RAM_TO_RAM_SANS_PADDING;
     isAnyToRamWithPaddingSomeData =
         mmuInstruction == MMU_INST_ANY_TO_RAM_WITH_PADDING
             && !mmuData.mmuInstAnyToRamWithPaddingIsPurePadding();
     isAnyToRamWithPaddingPurePadding =
         mmuInstruction == MMU_INST_ANY_TO_RAM_WITH_PADDING
             && mmuData.mmuInstAnyToRamWithPaddingIsPurePadding();
-    isModexpZero = mmuInstruction == Trace.MMU_INST_MODEXP_ZERO;
-    isModexpData = mmuInstruction == Trace.MMU_INST_MODEXP_DATA;
+    isModexpZero = mmuInstruction == MMU_INST_MODEXP_ZERO;
+    isModexpData = mmuInstruction == MMU_INST_MODEXP_DATA;
     isBlake = mmuInstruction == MMU_INST_BLAKE;
   }
 

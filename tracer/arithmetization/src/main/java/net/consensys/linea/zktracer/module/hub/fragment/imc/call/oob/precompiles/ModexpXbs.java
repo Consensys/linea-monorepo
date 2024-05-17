@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.precompiles;
 
-import static net.consensys.linea.zktracer.module.oob.Trace.OOB_INST_modexp_xbs;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.OOB_INST_MODEXP_XBS;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.OobCall;
@@ -39,6 +39,6 @@ public record ModexpXbs(EWord xbs, EWord ybs, boolean compute) implements OobCal
 
   @Override
   public int oobInstruction() {
-    return OOB_INST_modexp_xbs;
+    return OOB_INST_MODEXP_XBS;
   }
 }
