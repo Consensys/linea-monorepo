@@ -85,4 +85,22 @@ public class ModuleLimitsValidationResult {
         cumulativeModuleLineCount,
         cumulativeModuleLineLimit);
   }
+
+  @Override
+  public String toString() {
+    final StringBuilder sb = new StringBuilder(result.name());
+    if (moduleName != null) {
+      sb.append("[module=").append(moduleName);
+
+      if (moduleLineCount != null) {
+        sb.append(",lineCount=").append(moduleLineCount);
+        sb.append(",lineLimit=").append(moduleLineLimit);
+        sb.append(",cumulativeLineCount=").append(cumulativeModuleLineCount);
+        sb.append(",cumulativeLineLimit=").append(cumulativeModuleLineLimit);
+      }
+
+      sb.append(']');
+    }
+    return sb.toString();
+  }
 }
