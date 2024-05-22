@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.4-test26
+Test pre-release 26 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Improve ZkTracer initialization time [#11](https://github.com/Consensys/linea-sequencer/pull/11)
+* Add more log to txpool simulation validator [#12](https://github.com/Consensys/linea-sequencer/pull/12)
+
+## 0.1.4-test25
+Test pre-release 25 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Extend Module Line Count Verification to linea_estimateGas RPC Method [#1](https://github.com/Consensys/linea-sequencer/pull/1)
+* In the txpool, reject a tx if its simulation fails [#2](https://github.com/Consensys/linea-sequencer/pull/2)
+
 ## 0.1.4-test24
 Test pre-release 24 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Improve linea_estimateGas error response [#650](https://github.com/Consensys/besu-sequencer-plugins/pull/650)
