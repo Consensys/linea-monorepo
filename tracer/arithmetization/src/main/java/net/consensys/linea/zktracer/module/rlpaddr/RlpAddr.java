@@ -41,6 +41,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.trm.Trm;
@@ -56,7 +57,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 public class RlpAddr implements Module {
-  private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(Trace.CREATE2_SHIFT);
+  private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(GlobalConstants.CREATE2_SHIFT);
   private static final Bytes INT_SHORT = Bytes.ofUnsignedShort(RLP_PREFIX_INT_SHORT);
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
 
@@ -156,15 +157,28 @@ public class RlpAddr implements Module {
         case 0 -> {
           trace.limb(
               rightPadTo(Bytes.concatenate(CREATE2_SHIFT, chunk.address().slice(0, 4)), LLARGE));
-          trace.nBytes(UnsignedByte.of(5));
+          trace.nBytes(UnsignedByte.of(5)).selectorKeccakRes(true);
         }
-        case 1 -> trace.limb(chunk.address().slice(4, LLARGE)).nBytes(BYTES_LLARGE);
-        case 2 -> trace.limb(chunk.salt().orElseThrow().slice(0, LLARGE)).nBytes(BYTES_LLARGE);
-        case 3 -> trace.limb(chunk.salt().orElseThrow().slice(LLARGE, LLARGE)).nBytes(BYTES_LLARGE);
-        case 4 -> trace.limb(chunk.keccak().orElseThrow().slice(0, LLARGE)).nBytes(BYTES_LLARGE);
+        case 1 -> trace
+            .limb(chunk.address().slice(4, LLARGE))
+            .nBytes(BYTES_LLARGE)
+            .selectorKeccakRes(false);
+        case 2 -> trace
+            .limb(chunk.salt().orElseThrow().slice(0, LLARGE))
+            .nBytes(BYTES_LLARGE)
+            .selectorKeccakRes(false);
+        case 3 -> trace
+            .limb(chunk.salt().orElseThrow().slice(LLARGE, LLARGE))
+            .nBytes(BYTES_LLARGE)
+            .selectorKeccakRes(false);
+        case 4 -> trace
+            .limb(chunk.keccak().orElseThrow().slice(0, LLARGE))
+            .nBytes(BYTES_LLARGE)
+            .selectorKeccakRes(false);
         case 5 -> trace
             .limb(chunk.keccak().orElseThrow().slice(LLARGE, LLARGE))
-            .nBytes(BYTES_LLARGE);
+            .nBytes(BYTES_LLARGE)
+            .selectorKeccakRes(false);
       }
 
       // Columns unused for Recipe2
@@ -256,7 +270,8 @@ public class RlpAddr implements Module {
             .lc(false)
             .limb(Bytes.EMPTY)
             .nBytes(UnsignedByte.ZERO)
-            .index(UnsignedByte.ZERO);
+            .index(UnsignedByte.ZERO)
+            .selectorKeccakRes(ct == 0);
         case 4 -> trace
             .lc(true)
             .limb(
@@ -267,7 +282,8 @@ public class RlpAddr implements Module {
                             .add(BigInteger.valueOf(size_rlp_nonce))),
                     LLARGE))
             .nBytes(UnsignedByte.of(1))
-            .index(UnsignedByte.ZERO);
+            .index(UnsignedByte.ZERO)
+            .selectorKeccakRes(false);
         case 5 -> trace
             .lc(true)
             .limb(
@@ -276,17 +292,20 @@ public class RlpAddr implements Module {
                         bigIntegerToBytes(BigInteger.valueOf(148)), chunk.address().slice(0, 4)),
                     LLARGE))
             .nBytes(UnsignedByte.of(5))
-            .index(UnsignedByte.of(1));
+            .index(UnsignedByte.of(1))
+            .selectorKeccakRes(false);
         case 6 -> trace
             .lc(true)
             .limb(chunk.address().slice(4, LLARGE))
             .nBytes(UnsignedByte.of(LLARGE))
-            .index(UnsignedByte.of(2));
+            .index(UnsignedByte.of(2))
+            .selectorKeccakRes(false);
         case 7 -> trace
             .lc(true)
             .limb(rightPadTo(rlpNonce, LLARGE))
             .nBytes(UnsignedByte.of(size_rlp_nonce))
-            .index(UnsignedByte.of(3));
+            .index(UnsignedByte.of(3))
+            .selectorKeccakRes(false);
       }
 
       // Column not used fo recipe 1:
