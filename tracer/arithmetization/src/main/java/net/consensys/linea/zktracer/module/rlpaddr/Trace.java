@@ -30,7 +30,6 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  public static final int CREATE2_SHIFT = 0xff;
   public static final int MAX_CT_CREATE = 0x7;
   public static final int MAX_CT_CREATE2 = 0x5;
 
@@ -61,6 +60,7 @@ public class Trace {
   private final MappedByteBuffer recipe2;
   private final MappedByteBuffer saltHi;
   private final MappedByteBuffer saltLo;
+  private final MappedByteBuffer selectorKeccakRes;
   private final MappedByteBuffer stamp;
   private final MappedByteBuffer tinyNonZeroNonce;
 
@@ -90,6 +90,7 @@ public class Trace {
         new ColumnHeader("rlpaddr.RECIPE_2", 1, length),
         new ColumnHeader("rlpaddr.SALT_HI", 32, length),
         new ColumnHeader("rlpaddr.SALT_LO", 32, length),
+        new ColumnHeader("rlpaddr.SELECTOR_KECCAK_RES", 1, length),
         new ColumnHeader("rlpaddr.STAMP", 4, length),
         new ColumnHeader("rlpaddr.TINY_NON_ZERO_NONCE", 1, length));
   }
@@ -119,8 +120,9 @@ public class Trace {
     this.recipe2 = buffers.get(21);
     this.saltHi = buffers.get(22);
     this.saltLo = buffers.get(23);
-    this.stamp = buffers.get(24);
-    this.tinyNonZeroNonce = buffers.get(25);
+    this.selectorKeccakRes = buffers.get(24);
+    this.stamp = buffers.get(25);
+    this.tinyNonZeroNonce = buffers.get(26);
   }
 
   public int size() {
@@ -336,10 +338,10 @@ public class Trace {
   }
 
   public Trace nBytes(final UnsignedByte b) {
-    if (filled.get(25)) {
+    if (filled.get(26)) {
       throw new IllegalStateException("rlpaddr.nBYTES already set");
     } else {
-      filled.set(25);
+      filled.set(26);
     }
 
     nBytes.put(b.toByte());
@@ -463,11 +465,23 @@ public class Trace {
     return this;
   }
 
-  public Trace stamp(final int b) {
+  public Trace selectorKeccakRes(final Boolean b) {
     if (filled.get(23)) {
-      throw new IllegalStateException("rlpaddr.STAMP already set");
+      throw new IllegalStateException("rlpaddr.SELECTOR_KECCAK_RES already set");
     } else {
       filled.set(23);
+    }
+
+    selectorKeccakRes.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace stamp(final int b) {
+    if (filled.get(24)) {
+      throw new IllegalStateException("rlpaddr.STAMP already set");
+    } else {
+      filled.set(24);
     }
 
     stamp.putInt(b);
@@ -476,10 +490,10 @@ public class Trace {
   }
 
   public Trace tinyNonZeroNonce(final Boolean b) {
-    if (filled.get(24)) {
+    if (filled.get(25)) {
       throw new IllegalStateException("rlpaddr.TINY_NON_ZERO_NONCE already set");
     } else {
-      filled.set(24);
+      filled.set(25);
     }
 
     tinyNonZeroNonce.put((byte) (b ? 1 : 0));
@@ -548,7 +562,7 @@ public class Trace {
       throw new IllegalStateException("rlpaddr.LIMB has not been filled");
     }
 
-    if (!filled.get(25)) {
+    if (!filled.get(26)) {
       throw new IllegalStateException("rlpaddr.nBYTES has not been filled");
     }
 
@@ -585,10 +599,14 @@ public class Trace {
     }
 
     if (!filled.get(23)) {
-      throw new IllegalStateException("rlpaddr.STAMP has not been filled");
+      throw new IllegalStateException("rlpaddr.SELECTOR_KECCAK_RES has not been filled");
     }
 
     if (!filled.get(24)) {
+      throw new IllegalStateException("rlpaddr.STAMP has not been filled");
+    }
+
+    if (!filled.get(25)) {
       throw new IllegalStateException("rlpaddr.TINY_NON_ZERO_NONCE has not been filled");
     }
 
@@ -659,7 +677,7 @@ public class Trace {
       limb.position(limb.position() + 32);
     }
 
-    if (!filled.get(25)) {
+    if (!filled.get(26)) {
       nBytes.position(nBytes.position() + 1);
     }
 
@@ -696,10 +714,14 @@ public class Trace {
     }
 
     if (!filled.get(23)) {
-      stamp.position(stamp.position() + 4);
+      selectorKeccakRes.position(selectorKeccakRes.position() + 1);
     }
 
     if (!filled.get(24)) {
+      stamp.position(stamp.position() + 4);
+    }
+
+    if (!filled.get(25)) {
       tinyNonZeroNonce.position(tinyNonZeroNonce.position() + 1);
     }
 

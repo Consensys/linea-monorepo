@@ -58,6 +58,7 @@ public class GlobalConstants {
   public static final int EVM_INST_COINBASE = 0x41;
   public static final int EVM_INST_CREATE = 0xf0;
   public static final int EVM_INST_CREATE2 = 0xf5;
+  public static final int CREATE2_SHIFT = 0xff;
   public static final int EVM_INST_DELEGATECALL = 0xf4;
   public static final int EVM_INST_DIFFICULTY = 0x44;
   public static final int EVM_INST_DIV = 0x4;
