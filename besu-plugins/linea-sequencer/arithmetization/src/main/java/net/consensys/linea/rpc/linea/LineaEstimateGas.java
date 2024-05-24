@@ -209,15 +209,14 @@ public class LineaEstimateGas {
       final Transaction transaction,
       final Wei minGasPrice) {
 
-    final var estimateGasOperationTracer = new EstimateGasOperationTracer();
+    final var estimateGasTracer = new EstimateGasOperationTracer();
     final var chainHeadHeader = blockchainService.getChainHeadHeader();
     final var zkTracer = createZkTracer(chainHeadHeader);
-    TracerAggregator tracerAggregator =
-        TracerAggregator.create(estimateGasOperationTracer, zkTracer);
+    final TracerAggregator zkAndGasTracer = TracerAggregator.create(estimateGasTracer, zkTracer);
 
     final var chainHeadHash = chainHeadHeader.getBlockHash();
     final var maybeSimulationResults =
-        transactionSimulationService.simulate(transaction, chainHeadHash, tracerAggregator, true);
+        transactionSimulationService.simulate(transaction, chainHeadHash, zkAndGasTracer, true);
 
     ModuleLimitsValidationResult moduleLimit =
         moduleLineCountValidator.validate(zkTracer.getModulesLineCount());
@@ -265,7 +264,7 @@ public class LineaEstimateGas {
                   transactionSimulationService.simulate(
                       createTransactionForSimulation(callParameters, lowGasEstimation, minGasPrice),
                       chainHeadHash,
-                      tracerAggregator,
+                      estimateGasTracer,
                       true);
 
               return lowResult
@@ -289,8 +288,7 @@ public class LineaEstimateGas {
 
                           // else do a binary search to find the right estimation
                           int iterations = 0;
-                          var high =
-                              highGasEstimation(lr.getGasEstimate(), estimateGasOperationTracer);
+                          var high = highGasEstimation(lr.getGasEstimate(), estimateGasTracer);
                           var mid = high;
                           var low = lowGasEstimation;
                           while (low + 1 < high) {
@@ -302,7 +300,7 @@ public class LineaEstimateGas {
                                     createTransactionForSimulation(
                                         callParameters, mid, minGasPrice),
                                     chainHeadHash,
-                                    tracerAggregator,
+                                    estimateGasTracer,
                                     true);
 
                             if (binarySearchResult.isEmpty()
@@ -383,17 +381,17 @@ public class LineaEstimateGas {
    * calls
    *
    * @param gasEstimation transaction gas estimation
-   * @param operationTracer estimate gas operation tracer
+   * @param estimateGasTracer estimate gas operation tracer
    * @return estimate gas
    */
   private long highGasEstimation(
-      final long gasEstimation, final EstimateGasOperationTracer operationTracer) {
+      final long gasEstimation, final EstimateGasOperationTracer estimateGasTracer) {
 
     // no more than 63/64s of the remaining gas can be passed to the sub calls
     final double subCallMultiplier =
-        Math.pow(SUB_CALL_REMAINING_GAS_RATIO, operationTracer.getMaxDepth());
+        Math.pow(SUB_CALL_REMAINING_GAS_RATIO, estimateGasTracer.getMaxDepth());
     // and minimum gas remaining is necessary for some operation (additionalStipend)
-    final long gasStipend = operationTracer.getStipendNeeded();
+    final long gasStipend = estimateGasTracer.getStipendNeeded();
     return ((long) ((gasEstimation + gasStipend) * subCallMultiplier));
   }
 
