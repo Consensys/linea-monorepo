@@ -53,7 +53,7 @@ public record ShfRt() implements Module {
         trace
             .byte1(UnsignedByte.of(a))
             .las(unsignedByteA.shiftLeft(8 - uShp))
-            .mshp((short) uShp)
+            .mshp(UnsignedByte.of(uShp))
             .rap(unsignedByteA.shiftRight(uShp))
             .ones(UnsignedByte.of((Bytes.fromHexString("0xFF").shiftRight(uShp)).not().toInt()))
             .iomf(true)
