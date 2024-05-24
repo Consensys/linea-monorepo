@@ -45,7 +45,7 @@ public class Trace {
         new ColumnHeader("shfreftable.BYTE1", 1, length),
         new ColumnHeader("shfreftable.IOMF", 1, length),
         new ColumnHeader("shfreftable.LAS", 1, length),
-        new ColumnHeader("shfreftable.MSHP", 2, length),
+        new ColumnHeader("shfreftable.MSHP", 1, length),
         new ColumnHeader("shfreftable.ONES", 1, length),
         new ColumnHeader("shfreftable.RAP", 1, length));
   }
@@ -103,14 +103,14 @@ public class Trace {
     return this;
   }
 
-  public Trace mshp(final short b) {
+  public Trace mshp(final UnsignedByte b) {
     if (filled.get(3)) {
       throw new IllegalStateException("shfreftable.MSHP already set");
     } else {
       filled.set(3);
     }
 
-    mshp.putShort(b);
+    mshp.put(b.toByte());
 
     return this;
   }
@@ -184,7 +184,7 @@ public class Trace {
     }
 
     if (!filled.get(3)) {
-      mshp.position(mshp.position() + 2);
+      mshp.position(mshp.position() + 1);
     }
 
     if (!filled.get(4)) {
