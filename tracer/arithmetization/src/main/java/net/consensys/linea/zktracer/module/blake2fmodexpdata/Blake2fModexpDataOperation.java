@@ -57,14 +57,20 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
 
   private static final Map<Integer, PhaseInfo> PHASE_INFO_MAP =
       Map.of(
-          PHASE_MODEXP_BASE, new PhaseInfo(PHASE_MODEXP_BASE, Trace.INDEX_MAX_MODEXP_BASE),
+          PHASE_MODEXP_BASE,
+          new PhaseInfo(PHASE_MODEXP_BASE, Trace.INDEX_MAX_MODEXP_BASE),
           PHASE_MODEXP_EXPONENT,
-              new PhaseInfo(PHASE_MODEXP_EXPONENT, Trace.INDEX_MAX_MODEXP_EXPONENT),
-          PHASE_MODEXP_MODULUS, new PhaseInfo(PHASE_MODEXP_MODULUS, Trace.INDEX_MAX_MODEXP_MODULUS),
-          PHASE_MODEXP_RESULT, new PhaseInfo(PHASE_MODEXP_RESULT, Trace.INDEX_MAX_MODEXP_RESULT),
-          PHASE_BLAKE_DATA, new PhaseInfo(PHASE_BLAKE_DATA, Trace.INDEX_MAX_BLAKE_DATA),
-          PHASE_BLAKE_PARAMS, new PhaseInfo(PHASE_BLAKE_PARAMS, Trace.INDEX_MAX_BLAKE_PARAMS),
-          PHASE_BLAKE_RESULT, new PhaseInfo(PHASE_BLAKE_RESULT, Trace.INDEX_MAX_BLAKE_RESULT));
+          new PhaseInfo(PHASE_MODEXP_EXPONENT, Trace.INDEX_MAX_MODEXP_EXPONENT),
+          PHASE_MODEXP_MODULUS,
+          new PhaseInfo(PHASE_MODEXP_MODULUS, Trace.INDEX_MAX_MODEXP_MODULUS),
+          PHASE_MODEXP_RESULT,
+          new PhaseInfo(PHASE_MODEXP_RESULT, Trace.INDEX_MAX_MODEXP_RESULT),
+          PHASE_BLAKE_DATA,
+          new PhaseInfo(PHASE_BLAKE_DATA, Trace.INDEX_MAX_BLAKE_DATA),
+          PHASE_BLAKE_PARAMS,
+          new PhaseInfo(PHASE_BLAKE_PARAMS, Trace.INDEX_MAX_BLAKE_PARAMS),
+          PHASE_BLAKE_RESULT,
+          new PhaseInfo(PHASE_BLAKE_RESULT, Trace.INDEX_MAX_BLAKE_RESULT));
 
   @EqualsAndHashCode.Include public final long hubStampPlusOne;
   @Getter private long prevHubStamp;

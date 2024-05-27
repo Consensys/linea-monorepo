@@ -57,23 +57,22 @@ public class OperationAncillaries {
   public long gasAllowanceForCall() {
     final OpCode opCode = hub.opCode();
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final long gas = Words.clampedToLong(hub.messageFrame().getStackItem(0));
-        EWord value = EWord.ZERO;
-        if (opCode == OpCode.CALL || opCode == OpCode.CALLCODE) {
-          value = EWord.of(hub.messageFrame().getStackItem(2));
-        }
-        final long stipend = value.isZero() ? 0 : GasConstants.G_CALL_STIPEND.cost();
-        final long upfrontCost = Hub.GAS_PROJECTOR.of(hub.messageFrame(), opCode).total();
-        return stipend
-            + Math.max(
-                Words.unsignedMin(
-                    allButOneSixtyFourth(hub.messageFrame().getRemainingGas() - upfrontCost), gas),
-                0);
+    if (opCode.isCall()) {
+      final long gas = Words.clampedToLong(hub.messageFrame().getStackItem(0));
+      EWord value = EWord.ZERO;
+      if (opCode == OpCode.CALL || opCode == OpCode.CALLCODE) {
+        value = EWord.of(hub.messageFrame().getStackItem(2));
       }
-      default -> throw new IllegalStateException("not a CALL");
+      final long stipend = value.isZero() ? 0 : GasConstants.G_CALL_STIPEND.cost();
+      final long upfrontCost = Hub.GAS_PROJECTOR.of(hub.messageFrame(), opCode).total();
+      return stipend
+          + Math.max(
+              Words.unsignedMin(
+                  allButOneSixtyFourth(hub.messageFrame().getRemainingGas() - upfrontCost), gas),
+              0);
     }
+
+    throw new IllegalStateException("not a CALL");
   }
 
   /**
