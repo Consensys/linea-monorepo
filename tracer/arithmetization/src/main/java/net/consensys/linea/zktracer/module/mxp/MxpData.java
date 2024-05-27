@@ -16,6 +16,9 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import static net.consensys.linea.zktracer.module.Util.max;
+import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL;
+import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL_BUT_MXPX;
+import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_TRIVIAL;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
@@ -46,8 +49,6 @@ import org.hyperledger.besu.evm.internal.Words;
 public class MxpData extends ModuleOperation {
   public static final BigInteger TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
   public static final BigInteger TWO_POW_32 = BigInteger.ONE.shiftLeft(32);
-
-  // constants from protocol_params.go
 
   private final OpCodeData opCodeData;
   private final int contextNumber;
@@ -114,7 +115,7 @@ public class MxpData extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.maxCt();
+    return this.ctMax();
   }
 
   void compute() {
@@ -130,15 +131,15 @@ public class MxpData extends ModuleOperation {
   }
 
   private void setInitializeByteArrays() {
-    byte1 = new UnsignedByte[maxCt()];
-    byte2 = new UnsignedByte[maxCt()];
-    byte3 = new UnsignedByte[maxCt()];
-    byte4 = new UnsignedByte[maxCt()];
-    byteA = new UnsignedByte[maxCt()];
-    byteW = new UnsignedByte[maxCt()];
-    byteQ = new UnsignedByte[maxCt()];
-    byteQQ = new UnsignedByte[maxCt()];
-    byteR = new UnsignedByte[maxCt()];
+    byte1 = new UnsignedByte[ctMax()];
+    byte2 = new UnsignedByte[ctMax()];
+    byte3 = new UnsignedByte[ctMax()];
+    byte4 = new UnsignedByte[ctMax()];
+    byteA = new UnsignedByte[ctMax()];
+    byteW = new UnsignedByte[ctMax()];
+    byteQ = new UnsignedByte[ctMax()];
+    byteQQ = new UnsignedByte[ctMax()];
+    byteR = new UnsignedByte[ctMax()];
     Arrays.fill(byte1, UnsignedByte.of(0));
     Arrays.fill(byte2, UnsignedByte.of(0));
     Arrays.fill(byte3, UnsignedByte.of(0));
@@ -380,11 +381,11 @@ public class MxpData extends ModuleOperation {
     return mxpExecutionPath.NON_TRIVIAL;
   }
 
-  public int maxCt() {
+  public int ctMax() {
     return switch (this.getMxpExecutionPath()) {
-      case TRIVIAL -> 1;
-      case NON_TRIVIAL_BUT_MXPX -> 17;
-      case NON_TRIVIAL -> 4;
+      case TRIVIAL -> CT_MAX_TRIVIAL + 1;
+      case NON_TRIVIAL_BUT_MXPX -> CT_MAX_NON_TRIVIAL_BUT_MXPX + 1;
+      case NON_TRIVIAL -> CT_MAX_NON_TRIVIAL + 1;
     };
   }
 
@@ -413,7 +414,7 @@ public class MxpData extends ModuleOperation {
   }
 
   protected void setBytes() {
-    int maxCt = maxCt();
+    int ctMax = ctMax();
     Bytes32 b1 = UInt256.valueOf(acc1);
     Bytes32 b2 = UInt256.valueOf(acc2);
     Bytes32 b3 = UInt256.valueOf(acc3);
@@ -421,14 +422,14 @@ public class MxpData extends ModuleOperation {
     Bytes32 bA = UInt256.valueOf(accA);
     Bytes32 bW = UInt256.valueOf(accW);
     Bytes32 bQ = UInt256.valueOf(accQ);
-    for (int i = 0; i < maxCt; i++) {
-      byte1[i] = UnsignedByte.of(b1.get(b1.size() - 1 - maxCt + i));
-      byte2[i] = UnsignedByte.of(b2.get(b2.size() - 1 - maxCt + i));
-      byte3[i] = UnsignedByte.of(b3.get(b3.size() - 1 - maxCt + i));
-      byte4[i] = UnsignedByte.of(b4.get(b4.size() - 1 - maxCt + i));
-      byteA[i] = UnsignedByte.of(bA.get(bA.size() - 1 - maxCt + i));
-      byteW[i] = UnsignedByte.of(bW.get(bW.size() - 1 - maxCt + i));
-      byteQ[i] = UnsignedByte.of(bQ.get(bQ.size() - 1 - maxCt + i));
+    for (int i = 0; i < ctMax; i++) {
+      byte1[i] = UnsignedByte.of(b1.get(b1.size() - 1 - ctMax + i));
+      byte2[i] = UnsignedByte.of(b2.get(b2.size() - 1 - ctMax + i));
+      byte3[i] = UnsignedByte.of(b3.get(b3.size() - 1 - ctMax + i));
+      byte4[i] = UnsignedByte.of(b4.get(b4.size() - 1 - ctMax + i));
+      byteA[i] = UnsignedByte.of(bA.get(bA.size() - 1 - ctMax + i));
+      byteW[i] = UnsignedByte.of(bW.get(bW.size() - 1 - ctMax + i));
+      byteQ[i] = UnsignedByte.of(bQ.get(bQ.size() - 1 - ctMax + i));
     }
   }
 
@@ -494,10 +495,10 @@ public class MxpData extends ModuleOperation {
     final EWord eSize1 = EWord.of(this.size1);
     final EWord eSize2 = EWord.of(this.size2);
 
-    int maxCt = this.maxCt();
-    int maxCtComplement = 32 - maxCt;
+    int ctMax = this.ctMax();
+    int ctMaxComplement = 32 - ctMax;
 
-    for (int i = 0; i < maxCt; i++) {
+    for (int i = 0; i < ctMax; i++) {
       trace
           .stamp(stamp)
           .cn(Bytes.ofUnsignedLong(this.getContextNumber()))
@@ -534,20 +535,20 @@ public class MxpData extends ModuleOperation {
           .maxOffset2(bigIntegerToBytes(this.getMaxOffset2()))
           .maxOffset(bigIntegerToBytes(this.getMaxOffset()))
           .comp(this.isComp())
-          .acc1(acc1Bytes32.slice(maxCtComplement, 1 + i))
-          .acc2(acc2Bytes32.slice(maxCtComplement, 1 + i))
-          .acc3(acc3Bytes32.slice(maxCtComplement, 1 + i))
-          .acc4(acc4Bytes32.slice(maxCtComplement, 1 + i))
-          .accA(accABytes32.slice(maxCtComplement, 1 + i))
-          .accW(accWBytes32.slice(maxCtComplement, 1 + i))
-          .accQ(accQBytes32.slice(maxCtComplement, 1 + i))
-          .byte1(UnsignedByte.of(acc1Bytes32.get(maxCtComplement + i)))
-          .byte2(UnsignedByte.of(acc2Bytes32.get(maxCtComplement + i)))
-          .byte3(UnsignedByte.of(acc3Bytes32.get(maxCtComplement + i)))
-          .byte4(UnsignedByte.of(acc4Bytes32.get(maxCtComplement + i)))
-          .byteA(UnsignedByte.of(accABytes32.get(maxCtComplement + i)))
-          .byteW(UnsignedByte.of(accWBytes32.get(maxCtComplement + i)))
-          .byteQ(UnsignedByte.of(accQBytes32.get(maxCtComplement + i)))
+          .acc1(acc1Bytes32.slice(ctMaxComplement, 1 + i))
+          .acc2(acc2Bytes32.slice(ctMaxComplement, 1 + i))
+          .acc3(acc3Bytes32.slice(ctMaxComplement, 1 + i))
+          .acc4(acc4Bytes32.slice(ctMaxComplement, 1 + i))
+          .accA(accABytes32.slice(ctMaxComplement, 1 + i))
+          .accW(accWBytes32.slice(ctMaxComplement, 1 + i))
+          .accQ(accQBytes32.slice(ctMaxComplement, 1 + i))
+          .byte1(UnsignedByte.of(acc1Bytes32.get(ctMaxComplement + i)))
+          .byte2(UnsignedByte.of(acc2Bytes32.get(ctMaxComplement + i)))
+          .byte3(UnsignedByte.of(acc3Bytes32.get(ctMaxComplement + i)))
+          .byte4(UnsignedByte.of(acc4Bytes32.get(ctMaxComplement + i)))
+          .byteA(UnsignedByte.of(accABytes32.get(ctMaxComplement + i)))
+          .byteW(UnsignedByte.of(accWBytes32.get(ctMaxComplement + i)))
+          .byteQ(UnsignedByte.of(accQBytes32.get(ctMaxComplement + i)))
           .byteQq(UnsignedByte.of(this.getByteQQ()[i].toInteger()))
           .byteR(UnsignedByte.of(this.getByteR()[i].toInteger()))
           .words(Bytes.ofUnsignedLong(this.getWords()))
