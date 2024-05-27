@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4-test27
+Test pre-release 27 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Calculate line count only once in linea_estimateGas [#13](https://github.com/Consensys/linea-sequencer/pull/13)
+
 ## 0.1.4-test26
 Test pre-release 26 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Improve ZkTracer initialization time [#11](https://github.com/Consensys/linea-sequencer/pull/11)
