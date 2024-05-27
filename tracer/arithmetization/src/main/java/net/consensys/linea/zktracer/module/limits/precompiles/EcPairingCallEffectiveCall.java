@@ -62,21 +62,18 @@ public final class EcPairingCallEffectiveCall implements Module {
     final OpCode opCode = hub.opCode();
     final MessageFrame frame = hub.messageFrame();
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_PAIRING)) {
-          long length = hub.transients().op().callDataSegment().length();
-          if (length % 192 != 0) {
-            return true;
-          }
-          final long pairingCount = length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP;
-
-          return hub.transients().op().gasAllowanceForCall()
-              < PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * pairingCount;
+    if (opCode.isCall()) {
+      final Address target = Words.toAddress(frame.getStackItem(1));
+      if (target.equals(Address.ALTBN128_PAIRING)) {
+        long length = hub.transients().op().callDataSegment().length();
+        if (length % 192 != 0) {
+          return true;
         }
+        final long pairingCount = length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP;
+
+        return hub.transients().op().gasAllowanceForCall()
+            < PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * pairingCount;
       }
-      default -> {}
     }
 
     return false;
@@ -104,18 +101,16 @@ public final class EcPairingCallEffectiveCall implements Module {
     final OpCode opCode = hub.opCode();
     final MessageFrame frame = hub.messageFrame();
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_PAIRING)) {
-          final long length = hub.transients().op().callDataSegment().length();
-          final long nMillerLoop = (length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP);
-          if (nMillerLoop * ECPAIRING_NB_BYTES_PER_MILLER_LOOP != length) {
-            return 0;
-          }
-
-          return PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * nMillerLoop;
+    if (opCode.isCall()) {
+      final Address target = Words.toAddress(frame.getStackItem(1));
+      if (target.equals(Address.ALTBN128_PAIRING)) {
+        final long length = hub.transients().op().callDataSegment().length();
+        final long nMillerLoop = (length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP);
+        if (nMillerLoop * ECPAIRING_NB_BYTES_PER_MILLER_LOOP != length) {
+          return 0;
         }
+
+        return PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * nMillerLoop;
       }
     }
 
@@ -126,37 +121,35 @@ public final class EcPairingCallEffectiveCall implements Module {
   public void tracePreOpcode(MessageFrame frame) {
     final OpCode opCode = hub.opCode();
 
-    switch (opCode) {
-      case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-        final Address target = Words.toAddress(frame.getStackItem(1));
-        if (target.equals(Address.ALTBN128_PAIRING)) {
-          long length = hub.transients().op().callDataSegment().length();
+    if (opCode.isCall()) {
+      final Address target = Words.toAddress(frame.getStackItem(1));
+      if (target.equals(Address.ALTBN128_PAIRING)) {
+        long length = hub.transients().op().callDataSegment().length();
 
-          final long nMillerLoop = (length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP);
-          if (nMillerLoop * ECPAIRING_NB_BYTES_PER_MILLER_LOOP != length) {
-            log.warn("[ECPairing] Argument is not a right size: " + length);
-            return;
-          }
+        if (length % ECPAIRING_NB_BYTES_PER_MILLER_LOOP != 0) {
+          log.warn("[ECPairing] Argument is not a right size: " + length);
+          return;
+        }
 
-          if (hub.transients().op().gasAllowanceForCall()
-              >= PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * nMillerLoop) {
-            final EcPairingLimit lastEcpairingLimit = this.counts.pop();
-            this.counts.push(
-                new EcPairingLimit(
-                    lastEcpairingLimit.nPrecompileCall() + 1,
-                    lastEcpairingLimit.nMillerLoop() + nMillerLoop));
-          }
+        final long nMillerLoop = (length / ECPAIRING_NB_BYTES_PER_MILLER_LOOP);
+
+        if (hub.transients().op().gasAllowanceForCall()
+            >= PRECOMPILE_BASE_GAS_FEE + PRECOMPILE_MILLER_LOOP_GAS_FEE * nMillerLoop) {
+          final EcPairingLimit lastEcpairingLimit = this.counts.pop();
+          this.counts.push(
+              new EcPairingLimit(
+                  lastEcpairingLimit.nPrecompileCall() + 1,
+                  lastEcpairingLimit.nMillerLoop() + nMillerLoop));
         }
       }
-      default -> {}
     }
   }
 
   @Override
   public int lineCount() {
     int r = 0;
-    for (int i = 0; i < this.counts.size(); i++) {
-      r += this.counts.get(i).nPrecompileCall();
+    for (EcPairingLimit count : this.counts) {
+      r += count.nPrecompileCall();
     }
     return r;
   }

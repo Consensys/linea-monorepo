@@ -70,7 +70,7 @@ public class ModexpEffectiveCall implements Module {
   public void tracePreOpcode(MessageFrame frame) {
     final OpCode opCode = hub.opCode();
 
-    if (opCode.isAnyOf(OpCode.CALL, OpCode.STATICCALL, OpCode.DELEGATECALL, OpCode.CALLCODE)) {
+    if (opCode.isCall()) {
       final Address target = Words.toAddress(frame.getStackItem(1));
       if (target.equals(Address.MODEXP)) {
         final Bytes inputData = hub.transients().op().callData();
@@ -150,7 +150,7 @@ public class ModexpEffectiveCall implements Module {
     final OpCode opCode = hub.opCode();
     final MessageFrame frame = hub.messageFrame();
 
-    if (opCode.isAnyOf(OpCode.CALL, OpCode.STATICCALL, OpCode.DELEGATECALL, OpCode.CALLCODE)) {
+    if (opCode.isCall()) {
       final Address target = Words.toAddress(frame.getStackItem(1));
       if (target.equals(Address.MODEXP)) {
         final Bytes inputData = hub.transients().op().callData();

@@ -15,20 +15,24 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
-import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraPrecompileType;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -39,13 +43,18 @@ public class Keccak implements Module {
   private static final int L1_MSG_INDICES_BYTES = 8;
   private static final int L1_TIMESTAMPS_BYTES = 8;
   private static final int PUBKEY_BYTES = 64;
+  private static final int KECCAK_BIT_RATE = 1088;
+  private static final int KECCAK_BYTE_RATE = KECCAK_BIT_RATE / 8; // TODO: find correct name
 
   private final Hub hub;
   private final EcRecoverEffectiveCall ecRec;
   private final L2Block l2Block;
 
-  private final Deque<List<Long>> deployedCodesizes = new ArrayDeque<>();
+  @Getter private final ShakiraData shakiraData;
+
+  private final Deque<List<Long>> deployedCodeSizes = new ArrayDeque<>();
   private final Deque<List<Long>> sha3Sizes = new ArrayDeque<>();
+  private final Deque<List<Long>> create2Sizes = new ArrayDeque<>();
 
   @Override
   public String moduleKey() {
@@ -54,22 +63,20 @@ public class Keccak implements Module {
 
   @Override
   public void enterTransaction() {
-    this.deployedCodesizes.push(new ArrayList<>(5));
-    this.sha3Sizes.push(new ArrayList<>(100));
+    this.deployedCodeSizes.push(new ArrayList<>());
+    this.sha3Sizes.push(new ArrayList<>());
+    this.create2Sizes.push(new ArrayList<>());
   }
 
   @Override
   public void popTransaction() {
-    this.deployedCodesizes.pop();
+    this.deployedCodeSizes.pop();
     this.sha3Sizes.pop();
-  }
-
-  public static int numKeccak(int x) {
-    return (x + 136) / 136;
+    this.create2Sizes.pop();
   }
 
   private static int numKeccak(long x) {
-    final long r = (x + 136) / 136;
+    final long r = (x + KECCAK_BYTE_RATE - 1) / KECCAK_BYTE_RATE;
     Preconditions.checkState(r < Integer.MAX_VALUE, "demented KECCAK");
     return (int) r;
   }
@@ -78,18 +85,40 @@ public class Keccak implements Module {
   public void tracePreOpcode(final MessageFrame frame) {
     final OpCode opCode = this.hub.opCode();
 
-    // Capture calls to SHA3
-    if (opCode == OpCode.SHA3) {
-      if (frame.stackSize() > 1) {
-        final long sha3Size = Words.clampedToLong(frame.getStackItem(1));
-        this.sha3Sizes.peek().add(sha3Size);
+    final PlatformController pch = this.hub.pch();
+
+    if (pch.exceptions().none()) {
+      // Capture calls to SHA3.
+      if (opCode == OpCode.SHA3) {
+        callShakira(frame, 0, 1, this.sha3Sizes);
+      }
+
+      // Capture contract deployment
+      // TODO: compute the gas cost if we are under deployment.
+      if (opCode == OpCode.RETURN && hub.currentFrame().underDeployment()) {
+        callShakira(frame, 0, 1, this.deployedCodeSizes);
+      }
+
+      if (opCode == OpCode.CREATE2 && pch.aborts().none()) {
+        callShakira(frame, 1, 2, this.create2Sizes);
       }
     }
+  }
 
-    // Capture contract deployment
-    if (opCode == OpCode.RETURN && hub.currentFrame().underDeployment() && frame.stackSize() > 1) {
-      final long codeSize = clampedToLong(frame.getStackItem(1));
-      this.deployedCodesizes.peek().add(codeSize);
+  private void callShakira(
+      final MessageFrame frame,
+      final int codeOffsetStackItemOffset,
+      final int codeSizeStackItemOffset,
+      final Deque<List<Long>> codeSizes) {
+    final long codeSize = Words.clampedToLong(frame.getStackItem(codeSizeStackItemOffset));
+    codeSizes.peek().add(codeSize);
+
+    if (codeSize != 0) {
+      final long codeOffset = Words.clampedToLong(frame.getStackItem(codeOffsetStackItemOffset));
+      final Bytes byteCode = frame.shadowReadMemory(codeOffset, codeSize);
+
+      this.shakiraData.call(
+          new ShakiraDataOperation(hub.stamp(), ShakiraPrecompileType.KECCAK, byteCode));
     }
   }
 
@@ -107,7 +136,7 @@ public class Keccak implements Module {
         // accurate? If this is actually the same data then we should not need to
         // prove it twice. If the second time the data is hashed with a few extra
         // bytes this should be accounted for : numKeccak(l) + numKeccak(l + extra)
-        + this.deployedCodesizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
+        + this.deployedCodeSizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
         // From ecRecover precompiles,
         // This accounts for the keccak of the recovered public keys to derive the
         // addresses. This also accounts for the transactions signatures
