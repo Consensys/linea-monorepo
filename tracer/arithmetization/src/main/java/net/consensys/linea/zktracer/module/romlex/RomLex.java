@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2Address;
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreateAddress;
 
@@ -30,10 +31,10 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -105,7 +106,7 @@ public class RomLex implements Module {
   @Override
   public void traceStartTx(WorldView worldView, Transaction tx) {
     // Contract creation with InitCode
-    if (tx.getInit().isPresent() && !tx.getInit().orElseThrow().isEmpty()) {
+    if (tx.getInit().isPresent() && !tx.getInit().get().isEmpty()) {
       final Address calledAddress = Address.contractAddress(tx.getSender(), tx.getNonce());
       final RomChunk chunk =
           new RomChunk(
@@ -121,20 +122,24 @@ public class RomLex implements Module {
         .map(AccountState::getCode)
         .ifPresent(
             code -> {
-              final Address calledAddress = tx.getTo().get();
-              int depNumber = hub.transients().conflation().deploymentInfo().number(calledAddress);
-              boolean depStatus =
-                  hub.transients().conflation().deploymentInfo().isDeploying(calledAddress);
+              if (!code.isEmpty()) {
 
-              final RomChunk chunk =
-                  new RomChunk(
-                      ContractMetadata.make(calledAddress, depNumber, depStatus),
-                      true,
-                      false,
-                      code);
+                final Address calledAddress = tx.getTo().get();
+                int depNumber =
+                    hub.transients().conflation().deploymentInfo().number(calledAddress);
+                boolean depStatus =
+                    hub.transients().conflation().deploymentInfo().isDeploying(calledAddress);
 
-              this.chunks.add(chunk);
-              this.addressRomChunkMap.put(calledAddress, chunk);
+                final RomChunk chunk =
+                    new RomChunk(
+                        ContractMetadata.make(calledAddress, depNumber, depStatus),
+                        true,
+                        false,
+                        code);
+
+                this.chunks.add(chunk);
+                this.addressRomChunkMap.put(calledAddress, chunk);
+              }
             });
   }
 
@@ -142,8 +147,10 @@ public class RomLex implements Module {
   public void tracePreOpcode(MessageFrame frame) {
     switch (this.hub.opCode()) {
       case CREATE -> {
-        this.address = getCreateAddress(frame);
         this.byteCode = this.hub.transients().op().callData();
+        if (!this.byteCode.isEmpty()) {
+          this.address = getCreateAddress(frame);
+        }
       }
       case CREATE2 -> {
         this.byteCode = this.hub.transients().op().callData();
@@ -153,9 +160,14 @@ public class RomLex implements Module {
       }
       case RETURN -> {
         final Bytes code = hub.transients().op().returnData();
+
+        if (code.isEmpty()) {
+          return;
+        }
+
         final boolean depStatus =
             hub.transients().conflation().deploymentInfo().isDeploying(frame.getContractAddress());
-        if (!code.isEmpty() && depStatus) {
+        if (depStatus) {
           int depNumber =
               hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
           final ContractMetadata contractMetadata =
@@ -163,7 +175,7 @@ public class RomLex implements Module {
 
           final RomChunk chunk = new RomChunk(contractMetadata, true, false, code);
           this.chunks.add(chunk);
-          this.addressRomChunkMap.put(frame.getContractAddress(), chunk);
+          this.addressRomChunkMap.put(contractMetadata.address(), chunk);
         }
       }
 
@@ -174,13 +186,21 @@ public class RomLex implements Module {
         final int depNumber =
             hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
 
-        final RomChunk chunk =
-            new RomChunk(
-                ContractMetadata.make(calledAddress, depNumber, depStatus), true, false, byteCode);
         Optional.ofNullable(frame.getWorldUpdater().get(calledAddress))
             .map(AccountState::getCode)
-            .ifPresent(byteCode -> this.chunks.add(chunk));
-        this.addressRomChunkMap.put(calledAddress, chunk);
+            .ifPresent(
+                byteCode -> {
+                  if (!byteCode.isEmpty()) {
+                    final RomChunk chunk =
+                        new RomChunk(
+                            ContractMetadata.make(calledAddress, depNumber, depStatus),
+                            true,
+                            false,
+                            byteCode);
+                    chunks.add(chunk);
+                    this.addressRomChunkMap.put(calledAddress, chunk);
+                  }
+                });
       }
 
       case EXTCODECOPY -> {
@@ -193,12 +213,13 @@ public class RomLex implements Module {
         }
         final int depNumber =
             hub.transients().conflation().deploymentInfo().number(frame.getContractAddress());
+
         Optional.ofNullable(frame.getWorldUpdater().get(calledAddress))
             .map(AccountState::getCode)
             .ifPresent(
                 byteCode -> {
                   if (!byteCode.isEmpty()) {
-                    RomChunk chunk =
+                    final RomChunk chunk =
                         new RomChunk(
                             ContractMetadata.make(calledAddress, depNumber, false),
                             true,
@@ -215,6 +236,9 @@ public class RomLex implements Module {
 
   @Override
   public void tracePostOpcode(MessageFrame frame) {
+    if (byteCode.isEmpty()) {
+      return;
+    }
     switch (hub.opCode()) {
       case CREATE, CREATE2 -> {
         final int depNumber = hub.transients().conflation().deploymentInfo().number(this.address);
@@ -231,18 +255,23 @@ public class RomLex implements Module {
     }
   }
 
+  // This is the tracing for ROMLEX module
   private void traceChunk(
-      final RomChunk chunk, int cfi, int codeFragmentIndexInfinity, Trace trace) {
+      final RomChunk chunk, final int cfi, final int codeFragmentIndexInfinity, Trace trace) {
+    final Hash codeHash =
+        chunk.metadata().underDeployment() ? Hash.EMPTY : Hash.hash(chunk.byteCode());
     trace
         .codeFragmentIndex(cfi)
         .codeFragmentIndexInfty(codeFragmentIndexInfinity)
         .codeSize(chunk.byteCode().size())
         .addressHi(chunk.metadata().address().slice(0, 4).toLong())
-        .addressLo(chunk.metadata().address().slice(4, GlobalConstants.LLARGE))
+        .addressLo(chunk.metadata().address().slice(4, LLARGE))
         .commitToState(chunk.commitToTheState())
         .deploymentNumber(chunk.metadata().deploymentNumber())
         .deploymentStatus(chunk.metadata().underDeployment())
         .readFromState(chunk.readFromTheState())
+        .codeHashHi(codeHash.slice(0, LLARGE))
+        .codeHashLo(codeHash.slice(LLARGE, LLARGE))
         .validateRow();
   }
 

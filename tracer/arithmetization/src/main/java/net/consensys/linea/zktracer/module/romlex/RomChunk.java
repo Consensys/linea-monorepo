@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH32;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
@@ -41,12 +42,9 @@ public final class RomChunk extends ModuleOperation {
   private static final UnsignedByte UB_LLARGE = UnsignedByte.of(LLARGE);
   private static final UnsignedByte UB_LLARGE_MO = UnsignedByte.of(LLARGEMO);
   private static final UnsignedByte UB_EVW_WORD_MO = UnsignedByte.of(WORD_SIZE_MO);
-  private static final int PUSH_1 = 0x60;
-  private static final int PUSH_32 = 0x7f;
-  private static final UnsignedByte INVALID = UnsignedByte.of(0xFE);
-  private static final int JUMPDEST = 0x5b;
+  private static final UnsignedByte INVALID = UnsignedByte.of(EVM_INST_INVALID);
 
-  @EqualsAndHashCode.Include private final ContractMetadata metadata;
+  @Getter @EqualsAndHashCode.Include private final ContractMetadata metadata;
   private final boolean readFromTheState;
   private final boolean commitToTheState;
   private final Bytes byteCode;
@@ -69,7 +67,7 @@ public final class RomChunk extends ModuleOperation {
 
     for (int i = 0; i < chunkRowSize; i++) {
       boolean codeSizeReached = i >= codeSize;
-      int sliceNumber = i / 16;
+      int sliceNumber = i / LLARGE;
 
       // Fill Generic columns
       trace
@@ -171,7 +169,7 @@ public final class RomChunk extends ModuleOperation {
   @Override
   protected int computeLineCount() {
     // WARN this is the line count used by the ROM, not by the ROMLEX
-    final int nPaddingRow = 32;
+    final int nPaddingRow = WORD_SIZE;
     final int codeSize = this.byteCode.size();
     final int nbSlice = (codeSize + (LLARGE - 1)) / LLARGE;
 
