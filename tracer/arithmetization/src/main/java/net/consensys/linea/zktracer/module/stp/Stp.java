@@ -80,7 +80,7 @@ public class Stp implements Module {
         this.wcp.callLT(longToBytes32(chunk.gasActual()), Bytes32.ZERO);
         this.wcp.callLT(longToBytes32(chunk.gasActual()), longToBytes32(chunk.gasPrelim()));
         if (!chunk.oogx()) {
-          this.mod.callDiv(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
+          this.mod.callDIV(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
         }
       }
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
@@ -92,7 +92,7 @@ public class Stp implements Module {
         }
         this.wcp.callLT(longToBytes32(chunk.gasActual()), longToBytes32(chunk.gasPrelim()));
         if (!chunk.oogx()) {
-          this.mod.callDiv(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
+          this.mod.callDIV(longToBytes32(chunk.getGDiff()), longToBytes32(64L));
           this.wcp.callLT(chunk.gas().orElseThrow(), longToBytes32(chunk.get63of64GDiff()));
         }
       }

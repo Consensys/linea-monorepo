@@ -50,6 +50,14 @@ class ShfRtTracerTest {
         .run();
   }
 
+  @Test
+  void TestShfResultFailure() {
+    BytecodeRunner.of(
+            Bytes.fromHexString(
+                "7faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7fa0000000000000000000000000000000000000000000000000000000000000001d"))
+        .run();
+  }
+
   @ParameterizedTest(name = "{0}")
   @MethodSource("provideRandomSarArguments")
   void testRandomSar(final Bytes32[] payload) {

@@ -75,6 +75,11 @@ public class MxpTest {
   final OpCode[] opCodesHalting = new OpCode[] {OpCode.RETURN, OpCode.REVERT};
 
   @Test
+  void testMxpMinimalNonEmptyReturn() {
+    BytecodeRunner.of(Bytes.fromHexString("6101006000f3")).run();
+  }
+
+  @Test
   void testMxpSimple() {
     BytecodeRunner.of(
             Bytes.fromHexString(
@@ -274,6 +279,7 @@ public class MxpTest {
         .run();
   }
 
+  // Support methods
   private Bytes getRandomINITForCreate() {
     final int INSTRUCTION_COUNT_INIT = 256;
     BytecodeCompiler INIT = BytecodeCompiler.newProgram();

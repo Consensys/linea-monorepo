@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.add;
 
+import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -23,6 +24,8 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.opcode.OpCode;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for addition/subtraction. */
@@ -71,5 +74,10 @@ public class Add implements Module {
   @Override
   public int lineCount() {
     return this.chunks.lineCount();
+  }
+
+  public BigInteger callADD(Bytes32 arg1, Bytes32 arg2) {
+    this.chunks.add(new AddOperation(OpCode.ADD, arg1, arg2));
+    return arg1.toUnsignedBigInteger().add(arg2.toUnsignedBigInteger());
   }
 }

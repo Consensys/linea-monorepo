@@ -185,6 +185,16 @@ public class BytecodeCompiler {
   }
 
   /**
+   * Add a {@link OpCode#PUSH1} and a {@link String} argument representing a hex number.
+   *
+   * @param x String argument representing a hex number
+   * @return current instance
+   */
+  public BytecodeCompiler push(final String x) {
+    return this.push(new BigInteger(x, 16));
+  }
+
+  /**
    * Add a {@link OpCode#PUSH1} and int number argument.
    *
    * @param x int number argument
