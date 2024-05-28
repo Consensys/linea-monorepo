@@ -201,9 +201,9 @@ public class Hub implements Module {
   private final Module add = new Add(this);
   private final Module bin = new Bin(this);
   private final Blake2fModexpData blake2fModexpData = new Blake2fModexpData();
+  @Getter private final EcData ecData;
   private final Blockdata blockdata;
   private final Blockhash blockhash = new Blockhash(wcp);
-  private final EcData ecData;
   private final Euc euc;
   private final Ext ext = new Ext(this);
   private final Module mul = new Mul(this);
@@ -336,9 +336,9 @@ public class Hub implements Module {
                 this.add,
                 this.bin,
                 this.blake2fModexpData,
+                this.ecData,
                 this.blockdata,
                 this.blockhash,
-                // this.ecData, // TODO: not yet
                 this.ext,
                 this.euc,
                 this.exp,

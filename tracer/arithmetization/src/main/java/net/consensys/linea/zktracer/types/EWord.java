@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.types;
 
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+
 import java.math.BigInteger;
 
 import org.apache.tuweni.bytes.Bytes;
@@ -115,6 +117,20 @@ public final class EWord extends BaseUInt256Value<EWord> implements Quantity {
    */
   public static EWord ofHexString(final String str) {
     return new EWord(str);
+  }
+
+  /**
+   * From hi and lo BigIntegers to EVM word.
+   *
+   * @param hiBigInt the high half of the EWord
+   * @param loBigInt the low half of the EWord
+   * @return the EVM word
+   */
+  public static EWord of(final BigInteger hiBigInt, final BigInteger loBigInt) {
+    return EWord.of(
+        Bytes.concatenate(
+            Bytes16.leftPad(bigIntegerToBytes(hiBigInt)),
+            Bytes16.leftPad(bigIntegerToBytes(loBigInt))));
   }
 
   @Override
