@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -37,6 +38,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 @Accessors(fluent = true)
 public final class BytecodeRunner {
   private final Bytes byteCode;
+  ToyExecutionEnvironment toyExecutionEnvironment;
 
   /**
    * @param byteCode the byte code to test
@@ -79,12 +81,18 @@ public final class BytecodeRunner {
     final ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
 
-    ToyExecutionEnvironment.builder()
-        .testValidator(x -> {})
-        .toyWorld(toyWorld)
-        .zkTracerValidator(zkTracerValidator)
-        .transaction(tx)
-        .build()
-        .run();
+    toyExecutionEnvironment =
+        ToyExecutionEnvironment.builder()
+            .testValidator(x -> {})
+            .toyWorld(toyWorld)
+            .zkTracerValidator(zkTracerValidator)
+            .transaction(tx)
+            .build();
+
+    toyExecutionEnvironment.run();
+  }
+
+  public Hub getHub() {
+    return toyExecutionEnvironment.getHub();
   }
 }
