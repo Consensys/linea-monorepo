@@ -70,6 +70,7 @@ import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.mxp.Mxp;
+import net.consensys.linea.zktracer.module.oob.Oob;
 import net.consensys.linea.zktracer.module.rlpaddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
@@ -229,6 +230,8 @@ public class Hub implements Module {
   private final Stp stp = new Stp(this, wcp, mod);
   private final L2Block l2Block;
 
+  @Getter private final Oob oob;
+
   private final List<Module> modules;
   /*
    * Those modules are not traced, we just compute the number of calls to those
@@ -255,6 +258,7 @@ public class Hub implements Module {
     this.logData = new LogData(rlpTxrcpt);
     this.logInfo = new LogInfo(rlpTxrcpt);
     this.ecData = new EcData(this, this.wcp, this.ext);
+    this.oob = new Oob(this, (Add) this.add, this.mod, this.wcp);
     this.mmu =
         new Mmu(
             this.euc,
@@ -308,6 +312,7 @@ public class Hub implements Module {
                     this.mod,
                     this.mul,
                     this.mxp,
+                    this.oob,
                     this.exp,
                     this.rlpAddr,
                     this.rlpTxn,
@@ -349,6 +354,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
+                this.oob,
                 this.rlpAddr,
                 this.rlpTxn,
                 this.rlpTxrcpt,
@@ -388,6 +394,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
+                this.oob,
                 this.exp,
                 this.rlpAddr,
                 this.rlpTxn,
@@ -644,7 +651,7 @@ public class Hub implements Module {
       this.mxp.tracePreOpcode(frame);
     }
     if (this.pch.signals().oob()) {
-      // TODO: this.oob.tracePreOpcode(frame);
+      this.oob.tracePreOpcode(frame);
     }
     if (this.pch.signals().stp()) {
       this.stp.tracePreOpcode(frame);

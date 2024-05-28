@@ -113,7 +113,7 @@ public class TestRlpAddress {
   private ToyAccount randCreate(int initCodeSize) {
     byte[] value = bigIntegerToBytes(BigInteger.valueOf(randLong())).toArray();
     return ToyAccount.builder()
-        .balance(Wei.MAX_WEI)
+        .balance(Wei.fromEth(1000))
         .nonce(randLong())
         .address(Address.wrap(Bytes.repeat((byte) 0x01, 20)))
         .code(
@@ -135,7 +135,7 @@ public class TestRlpAddress {
     byte[] value = bigIntegerToBytes(BigInteger.valueOf(randLong())).toArray();
 
     return ToyAccount.builder()
-        .balance(Wei.MAX_WEI)
+        .balance(Wei.fromEth(1000))
         .nonce(randLong())
         .address(Address.wrap(Bytes.repeat((byte) 0x02, 20)))
         .code(

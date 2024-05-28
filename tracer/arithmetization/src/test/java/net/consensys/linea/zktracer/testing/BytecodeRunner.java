@@ -16,12 +16,14 @@
 package net.consensys.linea.zktracer.testing;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import com.google.common.base.Preconditions;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -37,6 +39,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
  */
 @Accessors(fluent = true)
 public final class BytecodeRunner {
+  public static final long DEFAULT_GAS_LIMIT = 25_000_000L;
   private final Bytes byteCode;
   ToyExecutionEnvironment toyExecutionEnvironment;
 
@@ -54,6 +57,10 @@ public final class BytecodeRunner {
   @Setter private Consumer<ZkTracer> zkTracerValidator = zkTracer -> {};
 
   public void run() {
+    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT);
+  }
+
+  public void run(Wei senderBalance, Long gasLimit) {
     Preconditions.checkArgument(byteCode != null, "byteCode cannot be empty");
 
     KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -62,9 +69,11 @@ public final class BytecodeRunner {
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(1)).nonce(5).address(senderAddress).build();
 
+    final Long selectedGasLimit = Optional.of(gasLimit).orElse(DEFAULT_GAS_LIMIT);
+
     final ToyAccount receiverAccount =
         ToyAccount.builder()
-            .balance(Wei.fromEth(1))
+            .balance(senderBalance)
             .nonce(6)
             .address(Address.fromHexString("0x1111111111111111111111111111111111111111"))
             .code(byteCode)
@@ -75,7 +84,7 @@ public final class BytecodeRunner {
             .sender(senderAccount)
             .to(receiverAccount)
             .keyPair(keyPair)
-            .gasLimit(25000000L)
+            .gasLimit(selectedGasLimit)
             .build();
 
     final ToyWorld toyWorld =

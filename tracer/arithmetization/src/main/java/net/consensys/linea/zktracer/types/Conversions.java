@@ -101,7 +101,7 @@ public class Conversions {
   public static int booleanToInt(final boolean input) {
     return input ? 1 : 0;
   }
-  // Also implemented in oob branch (remove it after merge)
+
   public static boolean bigIntegerToBoolean(BigInteger n) {
     if (!n.equals(BigInteger.ONE) && !n.equals(BigInteger.ZERO)) {
       throw new IllegalArgumentException(

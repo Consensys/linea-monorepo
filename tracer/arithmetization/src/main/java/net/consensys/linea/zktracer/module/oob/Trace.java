@@ -30,9 +30,8 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  public static final int ADD = 0x1;
-  public static final int CT_MAX_BLAKE2F_cds = 0x1;
-  public static final int CT_MAX_BLAKE2F_params = 0x1;
+  public static final int CT_MAX_BLAKE2F_CDS = 0x1;
+  public static final int CT_MAX_BLAKE2F_PARAMS = 0x1;
   public static final int CT_MAX_CALL = 0x2;
   public static final int CT_MAX_CDL = 0x0;
   public static final int CT_MAX_CREATE = 0x2;
@@ -44,24 +43,17 @@ public class Trace {
   public static final int CT_MAX_IDENTITY = 0x3;
   public static final int CT_MAX_JUMP = 0x0;
   public static final int CT_MAX_JUMPI = 0x1;
-  public static final int CT_MAX_MODEXP_cds = 0x2;
-  public static final int CT_MAX_MODEXP_extract = 0x3;
-  public static final int CT_MAX_MODEXP_lead = 0x3;
-  public static final int CT_MAX_MODEXP_pricing = 0x5;
-  public static final int CT_MAX_MODEXP_xbs = 0x2;
+  public static final int CT_MAX_MODEXP_CDS = 0x2;
+  public static final int CT_MAX_MODEXP_EXTRACT = 0x3;
+  public static final int CT_MAX_MODEXP_LEAD = 0x3;
+  public static final int CT_MAX_MODEXP_PRICING = 0x5;
+  public static final int CT_MAX_MODEXP_XBS = 0x2;
   public static final int CT_MAX_RDC = 0x2;
   public static final int CT_MAX_RIPEMD = 0x3;
   public static final int CT_MAX_SHA2 = 0x3;
   public static final int CT_MAX_SSTORE = 0x0;
   public static final int CT_MAX_XCALL = 0x0;
-  public static final int DIV = 0x4;
-  public static final int EQ = 0x14;
-  public static final int GT = 0x11;
-  public static final int G_CALLSTIPEND = 0x8fc;
   public static final int G_QUADDIVISOR = 0x3;
-  public static final int ISZERO = 0x15;
-  public static final int LT = 0x10;
-  public static final int MOD = 0x6;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
@@ -124,8 +116,8 @@ public class Trace {
         new ColumnHeader("oob.DATA_6", 32, length),
         new ColumnHeader("oob.DATA_7", 32, length),
         new ColumnHeader("oob.DATA_8", 32, length),
-        new ColumnHeader("oob.IS_BLAKE2F_cds", 1, length),
-        new ColumnHeader("oob.IS_BLAKE2F_params", 1, length),
+        new ColumnHeader("oob.IS_BLAKE2F_CDS", 1, length),
+        new ColumnHeader("oob.IS_BLAKE2F_PARAMS", 1, length),
         new ColumnHeader("oob.IS_CALL", 1, length),
         new ColumnHeader("oob.IS_CDL", 1, length),
         new ColumnHeader("oob.IS_CREATE", 1, length),
@@ -137,11 +129,11 @@ public class Trace {
         new ColumnHeader("oob.IS_IDENTITY", 1, length),
         new ColumnHeader("oob.IS_JUMP", 1, length),
         new ColumnHeader("oob.IS_JUMPI", 1, length),
-        new ColumnHeader("oob.IS_MODEXP_cds", 1, length),
-        new ColumnHeader("oob.IS_MODEXP_extract", 1, length),
-        new ColumnHeader("oob.IS_MODEXP_lead", 1, length),
-        new ColumnHeader("oob.IS_MODEXP_pricing", 1, length),
-        new ColumnHeader("oob.IS_MODEXP_xbs", 1, length),
+        new ColumnHeader("oob.IS_MODEXP_CDS", 1, length),
+        new ColumnHeader("oob.IS_MODEXP_EXTRACT", 1, length),
+        new ColumnHeader("oob.IS_MODEXP_LEAD", 1, length),
+        new ColumnHeader("oob.IS_MODEXP_PRICING", 1, length),
+        new ColumnHeader("oob.IS_MODEXP_XBS", 1, length),
         new ColumnHeader("oob.IS_RDC", 1, length),
         new ColumnHeader("oob.IS_RIPEMD", 1, length),
         new ColumnHeader("oob.IS_SHA2", 1, length),
@@ -380,7 +372,7 @@ public class Trace {
 
   public Trace isBlake2FCds(final Boolean b) {
     if (filled.get(11)) {
-      throw new IllegalStateException("oob.IS_BLAKE2F_cds already set");
+      throw new IllegalStateException("oob.IS_BLAKE2F_CDS already set");
     } else {
       filled.set(11);
     }
@@ -392,7 +384,7 @@ public class Trace {
 
   public Trace isBlake2FParams(final Boolean b) {
     if (filled.get(12)) {
-      throw new IllegalStateException("oob.IS_BLAKE2F_params already set");
+      throw new IllegalStateException("oob.IS_BLAKE2F_PARAMS already set");
     } else {
       filled.set(12);
     }
@@ -536,7 +528,7 @@ public class Trace {
 
   public Trace isModexpCds(final Boolean b) {
     if (filled.get(24)) {
-      throw new IllegalStateException("oob.IS_MODEXP_cds already set");
+      throw new IllegalStateException("oob.IS_MODEXP_CDS already set");
     } else {
       filled.set(24);
     }
@@ -548,7 +540,7 @@ public class Trace {
 
   public Trace isModexpExtract(final Boolean b) {
     if (filled.get(25)) {
-      throw new IllegalStateException("oob.IS_MODEXP_extract already set");
+      throw new IllegalStateException("oob.IS_MODEXP_EXTRACT already set");
     } else {
       filled.set(25);
     }
@@ -560,7 +552,7 @@ public class Trace {
 
   public Trace isModexpLead(final Boolean b) {
     if (filled.get(26)) {
-      throw new IllegalStateException("oob.IS_MODEXP_lead already set");
+      throw new IllegalStateException("oob.IS_MODEXP_LEAD already set");
     } else {
       filled.set(26);
     }
@@ -572,7 +564,7 @@ public class Trace {
 
   public Trace isModexpPricing(final Boolean b) {
     if (filled.get(27)) {
-      throw new IllegalStateException("oob.IS_MODEXP_pricing already set");
+      throw new IllegalStateException("oob.IS_MODEXP_PRICING already set");
     } else {
       filled.set(27);
     }
@@ -584,7 +576,7 @@ public class Trace {
 
   public Trace isModexpXbs(final Boolean b) {
     if (filled.get(28)) {
-      throw new IllegalStateException("oob.IS_MODEXP_xbs already set");
+      throw new IllegalStateException("oob.IS_MODEXP_XBS already set");
     } else {
       filled.set(28);
     }
@@ -844,11 +836,11 @@ public class Trace {
     }
 
     if (!filled.get(11)) {
-      throw new IllegalStateException("oob.IS_BLAKE2F_cds has not been filled");
+      throw new IllegalStateException("oob.IS_BLAKE2F_CDS has not been filled");
     }
 
     if (!filled.get(12)) {
-      throw new IllegalStateException("oob.IS_BLAKE2F_params has not been filled");
+      throw new IllegalStateException("oob.IS_BLAKE2F_PARAMS has not been filled");
     }
 
     if (!filled.get(13)) {
@@ -896,23 +888,23 @@ public class Trace {
     }
 
     if (!filled.get(24)) {
-      throw new IllegalStateException("oob.IS_MODEXP_cds has not been filled");
+      throw new IllegalStateException("oob.IS_MODEXP_CDS has not been filled");
     }
 
     if (!filled.get(25)) {
-      throw new IllegalStateException("oob.IS_MODEXP_extract has not been filled");
+      throw new IllegalStateException("oob.IS_MODEXP_EXTRACT has not been filled");
     }
 
     if (!filled.get(26)) {
-      throw new IllegalStateException("oob.IS_MODEXP_lead has not been filled");
+      throw new IllegalStateException("oob.IS_MODEXP_LEAD has not been filled");
     }
 
     if (!filled.get(27)) {
-      throw new IllegalStateException("oob.IS_MODEXP_pricing has not been filled");
+      throw new IllegalStateException("oob.IS_MODEXP_PRICING has not been filled");
     }
 
     if (!filled.get(28)) {
-      throw new IllegalStateException("oob.IS_MODEXP_xbs has not been filled");
+      throw new IllegalStateException("oob.IS_MODEXP_XBS has not been filled");
     }
 
     if (!filled.get(29)) {

@@ -57,6 +57,9 @@ public class AddressUtils {
         .orElse(Address.contractAddress(tx.getSender(), tx.getNonce()));
   }
 
+  /* Warning: this method uses the nonce as currently found in the state
+  however, CREATE raises the nonce and so this method should only be called
+  pre OpCode and pre transaction for deployment */
   public static Address getCreateAddress(final MessageFrame frame) {
     return Address.extract(getCreateRawAddress(frame));
   }
