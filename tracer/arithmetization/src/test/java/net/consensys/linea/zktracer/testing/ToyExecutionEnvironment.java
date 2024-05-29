@@ -160,7 +160,6 @@ public class ToyExecutionEnvironment {
 
       for (Transaction tx : body.getTransactions()) {
         transactionProcessor.processTransaction(
-            null,
             overridenToyWorld.updater(),
             (ProcessableBlockHeader) header,
             tx,
@@ -198,7 +197,6 @@ public class ToyExecutionEnvironment {
     for (Transaction tx : mockBlockBody.getTransactions()) {
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
-              null,
               toyWorld.updater(),
               (ProcessableBlockHeader) header,
               tx,
