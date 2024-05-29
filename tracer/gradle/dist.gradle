@@ -50,7 +50,7 @@ jar {
   }
 
   from {
-    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ )} )
+    configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ ) && ! (it.name =~ /vertx.*\.jar/ )} )
             .collect {it.isDirectory() ? it : zipTree(it) }
   }
   exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
