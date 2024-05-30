@@ -55,9 +55,9 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
               "Txpool",
               transaction,
               profitabilityConf.txPoolMinMargin(),
-              besuConfiguration.getMinGasPrice(),
               calculateUpfrontGasPrice(transaction),
-              transaction.getGasLimit())
+              transaction.getGasLimit(),
+              besuConfiguration.getMinGasPrice())
           ? Optional.empty()
           : Optional.of("Gas price too low");
     }

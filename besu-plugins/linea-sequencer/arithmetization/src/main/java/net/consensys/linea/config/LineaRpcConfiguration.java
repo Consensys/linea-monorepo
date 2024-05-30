@@ -18,8 +18,17 @@ package net.consensys.linea.config;
 import java.math.BigDecimal;
 
 import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 /** The Linea RPC configuration. */
 @Builder(toBuilder = true)
-public record LineaRpcConfiguration(
-    boolean estimateGasCompatibilityModeEnabled, BigDecimal estimateGasCompatibilityMultiplier) {}
+@Accessors(fluent = true)
+@Getter
+@ToString
+public class LineaRpcConfiguration {
+  @Setter private volatile boolean estimateGasCompatibilityModeEnabled;
+  private BigDecimal estimateGasCompatibilityMultiplier;
+}

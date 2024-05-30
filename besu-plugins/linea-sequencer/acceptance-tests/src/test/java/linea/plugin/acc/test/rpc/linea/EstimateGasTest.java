@@ -45,13 +45,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.web3j.protocol.core.Request;
-import org.web3j.protocol.core.Response;
 import org.web3j.protocol.http.HttpService;
 
 public class EstimateGasTest extends LineaPluginTestBase {
-  protected static final int VERIFICATION_GAS_COST = 1_200_000;
-  protected static final int VERIFICATION_CAPACITY = 90_000;
-  protected static final int GAS_PRICE_RATIO = 15;
+  protected static final int FIXED_GAS_COST_WEI = 0;
+  protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.0;
   protected static final double ESTIMATE_GAS_MIN_MARGIN = 1.0;
   protected static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
@@ -65,9 +63,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
   protected TestCommandLineOptionsBuilder getTestCommandLineOptionsBuilder() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-verification-gas-cost=", String.valueOf(VERIFICATION_GAS_COST))
-        .set("--plugin-linea-verification-capacity=", String.valueOf(VERIFICATION_CAPACITY))
-        .set("--plugin-linea-gas-price-ratio=", String.valueOf(GAS_PRICE_RATIO))
+        .set("--plugin-linea-fixed-gas-cost-wei=", String.valueOf(FIXED_GAS_COST_WEI))
+        .set("--plugin-linea-variable-gas-cost-wei=", String.valueOf(VARIABLE_GAS_COST_WEI))
         .set("--plugin-linea-min-margin=", String.valueOf(MIN_MARGIN))
         .set("--plugin-linea-estimate-gas-min-margin=", String.valueOf(ESTIMATE_GAS_MIN_MARGIN))
         .set("--plugin-linea-max-tx-gas-limit=", String.valueOf(MAX_TRANSACTION_GAS_LIMIT));
@@ -82,9 +79,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
   public void createDefaultConfigurations() {
     profitabilityConf =
         LineaProfitabilityCliOptions.create().toDomainObject().toBuilder()
-            .verificationCapacity(VERIFICATION_CAPACITY)
-            .verificationGasCost(VERIFICATION_GAS_COST)
-            .gasPriceRatio(GAS_PRICE_RATIO)
+            .fixedCostWei(FIXED_GAS_COST_WEI)
+            .variableCostWei(VARIABLE_GAS_COST_WEI)
             .minMargin(MIN_MARGIN)
             .estimateGasMinMargin(ESTIMATE_GAS_MIN_MARGIN)
             .build();
@@ -145,13 +141,12 @@ public class EstimateGasTest extends LineaPluginTestBase {
             .signature(LineaEstimateGas.FAKE_SIGNATURE_FOR_SIZE_CALCULATION)
             .build();
 
-    assertIsProfitable(tx, baseFee, estimatedPriorityFee, estimatedMaxGasPrice, estimatedGasLimit);
+    assertIsProfitable(tx, baseFee, estimatedMaxGasPrice, estimatedGasLimit);
   }
 
   protected void assertIsProfitable(
       final org.hyperledger.besu.ethereum.core.Transaction tx,
       final Wei baseFee,
-      final Wei estimatedPriorityFee,
       final Wei estimatedMaxGasPrice,
       final long estimatedGasLimit) {
 
@@ -159,20 +154,16 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final var profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
 
-    final var profitablePriorityFee =
-        profitabilityCalculator.profitablePriorityFeePerGas(
-            tx, profitabilityConf.txPoolMinMargin(), minGasPrice, estimatedGasLimit);
-
-    assertThat(profitablePriorityFee.greaterThan(minGasPrice)).isTrue();
+    assertThat(estimatedMaxGasPrice.greaterOrEqualThan(minGasPrice)).isTrue();
 
     assertThat(
             profitabilityCalculator.isProfitable(
                 "Test",
                 tx,
-                profitabilityConf.txPoolMinMargin(),
-                minerNode.getMiningParameters().getMinTransactionGasPrice(),
+                profitabilityConf.estimateGasMinMargin(),
                 estimatedMaxGasPrice,
-                estimatedGasLimit))
+                estimatedGasLimit,
+                minGasPrice))
         .isTrue();
   }
 

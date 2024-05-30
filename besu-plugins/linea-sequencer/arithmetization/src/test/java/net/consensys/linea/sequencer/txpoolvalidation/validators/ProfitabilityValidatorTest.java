@@ -47,8 +47,8 @@ public class ProfitabilityValidatorTest {
       Address.fromHexString("0x0000000000000000000000000000000000001000");
   public static final Address RECIPIENT =
       Address.fromHexString("0x0000000000000000000000000000000000001001");
-  private static Wei PROFITABLE_GAS_PRICE = Wei.of(11000000);
-  private static Wei UNPROFITABLE_GAS_PRICE = Wei.of(1000000);
+  private static Wei PROFITABLE_GAS_PRICE = Wei.of(11_000_000);
+  private static Wei UNPROFITABLE_GAS_PRICE = Wei.of(200_000);
   private static final SECPSignature FAKE_SIGNATURE;
 
   static {

@@ -25,68 +25,56 @@ import org.slf4j.spi.LoggingEventBuilder;
 
 @Slf4j
 public class TransactionProfitabilityCalculator {
-
   private final LineaProfitabilityConfiguration profitabilityConf;
-  private final double preComputedValue;
-  private final double priceAdjustment;
 
   public TransactionProfitabilityCalculator(
       final LineaProfitabilityConfiguration profitabilityConf) {
     this.profitabilityConf = profitabilityConf;
-    this.preComputedValue =
-        profitabilityConf.gasPriceRatio() * profitabilityConf.verificationGasCost();
-    this.priceAdjustment = profitabilityConf.gasPriceAdjustment().getAsBigInteger().doubleValue();
   }
 
   public Wei profitablePriorityFeePerGas(
       final Transaction transaction,
       final double minMargin,
-      final Wei minGasPrice,
-      final long gas) {
-    final double compressedTxSize = getCompressedTxSize(transaction);
+      final long gas,
+      final Wei minGasPriceWei) {
+    final int compressedTxSize = getCompressedTxSize(transaction);
+
+    final long variableCostWei =
+        profitabilityConf.extraDataPricingEnabled()
+            ? profitabilityConf.variableCostWei()
+            : minGasPriceWei.toLong();
 
     final var profitAt =
-        (preComputedValue
-                    * compressedTxSize
-                    * minGasPrice.getAsBigInteger().doubleValue()
-                    / (gas * profitabilityConf.verificationCapacity())
-                + priceAdjustment)
-            * minMargin;
+        minMargin * (variableCostWei * compressedTxSize / gas + profitabilityConf.fixedCostWei());
 
-    final var adjustedProfit = Wei.ofNumber(BigDecimal.valueOf(profitAt).toBigInteger());
+    final var profitAtWei = Wei.ofNumber(BigDecimal.valueOf(profitAt).toBigInteger());
 
     log.atDebug()
         .setMessage(
-            "Estimated profitable priorityFeePerGas: {}; estimateGasMinMargin={}, verificationCapacity={}, "
-                + "verificationGasCost={}, gasPriceRatio={}, gasPriceAdjustment={}, gas={}, minGasPrice={}, "
-                + "l1GasPrice={}, txSize={}, compressedTxSize={}")
-        .addArgument(adjustedProfit::toHumanReadableString)
-        .addArgument(profitabilityConf.estimateGasMinMargin())
-        .addArgument(profitabilityConf.verificationCapacity())
-        .addArgument(profitabilityConf.verificationGasCost())
-        .addArgument(profitabilityConf.gasPriceRatio())
-        .addArgument(profitabilityConf.gasPriceAdjustment()::toHumanReadableString)
+            "Estimated profitable priorityFeePerGas: {}; minMargin={}, fixedCostWei={}, "
+                + "variableCostWei={}, gas={}, txSize={}, compressedTxSize={}")
+        .addArgument(profitAtWei::toHumanReadableString)
+        .addArgument(minMargin)
+        .addArgument(profitabilityConf.fixedCostWei())
+        .addArgument(variableCostWei)
         .addArgument(gas)
-        .addArgument(minGasPrice::toHumanReadableString)
-        .addArgument(
-            () -> minGasPrice.multiply(profitabilityConf.gasPriceRatio()).toHumanReadableString())
         .addArgument(transaction::getSize)
         .addArgument(compressedTxSize)
         .log();
 
-    return adjustedProfit;
+    return profitAtWei;
   }
 
   public boolean isProfitable(
       final String context,
       final Transaction transaction,
       final double minMargin,
-      final Wei minGasPrice,
       final Wei effectiveGasPrice,
-      final long gas) {
+      final long gas,
+      final Wei minGasPriceWei) {
 
     final Wei profitablePriorityFee =
-        profitablePriorityFeePerGas(transaction, minMargin, minGasPrice, gas);
+        profitablePriorityFeePerGas(transaction, minMargin, gas, minGasPriceWei);
 
     if (effectiveGasPrice.lessThan(profitablePriorityFee)) {
       log(
@@ -97,7 +85,7 @@ public class TransactionProfitabilityCalculator {
           effectiveGasPrice,
           profitablePriorityFee,
           gas,
-          minGasPrice);
+          minGasPriceWei);
       return false;
     }
 
@@ -109,11 +97,11 @@ public class TransactionProfitabilityCalculator {
         effectiveGasPrice,
         profitablePriorityFee,
         gas,
-        minGasPrice);
+        minGasPriceWei);
     return true;
   }
 
-  private double getCompressedTxSize(final Transaction transaction) {
+  private int getCompressedTxSize(final Transaction transaction) {
     final byte[] bytes = transaction.encoded().toArrayUnsafe();
     return LibCompress.CompressedSize(bytes, bytes.length);
   }
@@ -126,11 +114,12 @@ public class TransactionProfitabilityCalculator {
       final Wei effectiveGasPrice,
       final Wei profitableGasPrice,
       final long gasUsed,
-      final Wei minGasPrice) {
+      final Wei minGasPriceWei) {
+
     leb.setMessage(
             "Context {}. Transaction {} has a margin of {}, minMargin={}, effectiveGasPrice={},"
-                + " profitableGasPrice={}, verificationCapacity={}, verificationGasCost={}, gasPriceRatio={},, gasPriceAdjustment={}"
-                + " gasUsed={}, minGasPrice={}")
+                + " profitableGasPrice={}, fixedCostWei={}, variableCostWei={}, "
+                + " gasUsed={}")
         .addArgument(context)
         .addArgument(transaction::getHash)
         .addArgument(
@@ -140,12 +129,13 @@ public class TransactionProfitabilityCalculator {
         .addArgument(minMargin)
         .addArgument(effectiveGasPrice::toHumanReadableString)
         .addArgument(profitableGasPrice::toHumanReadableString)
-        .addArgument(profitabilityConf.verificationCapacity())
-        .addArgument(profitabilityConf.verificationGasCost())
-        .addArgument(profitabilityConf.gasPriceRatio())
-        .addArgument(profitabilityConf.gasPriceAdjustment()::toHumanReadableString)
+        .addArgument(profitabilityConf.fixedCostWei())
+        .addArgument(
+            () ->
+                profitabilityConf.extraDataPricingEnabled()
+                    ? profitabilityConf.variableCostWei()
+                    : minGasPriceWei.toLong())
         .addArgument(gasUsed)
-        .addArgument(minGasPrice::toHumanReadableString)
         .log();
   }
 }

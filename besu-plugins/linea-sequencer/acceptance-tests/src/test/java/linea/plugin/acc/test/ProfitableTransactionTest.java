@@ -30,18 +30,12 @@ import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 
 public class ProfitableTransactionTest extends LineaPluginTestBase {
-  private static final int VERIFICATION_GAS_COST = 1_200_000;
-  private static final int VERIFICATION_CAPACITY = 90_000;
-  private static final int GAS_PRICE_RATIO = 15;
-  private static final double MIN_MARGIN = 1.0;
+  private static final double MIN_MARGIN = 1.5;
   private static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
 
   @Override
   public List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder()
-        .set("--plugin-linea-verification-gas-cost=", String.valueOf(VERIFICATION_GAS_COST))
-        .set("--plugin-linea-verification-capacity=", String.valueOf(VERIFICATION_CAPACITY))
-        .set("--plugin-linea-gas-price-ratio=", String.valueOf(GAS_PRICE_RATIO))
         .set("--plugin-linea-min-margin=", String.valueOf(MIN_MARGIN))
         .build();
   }
@@ -70,7 +64,7 @@ public class ProfitableTransactionTest extends LineaPluginTestBase {
 
     final var txUnprofitable =
         txManager.sendTransaction(
-            MIN_GAS_PRICE.getAsBigInteger(),
+            MIN_GAS_PRICE.getAsBigInteger().divide(BigInteger.valueOf(100)),
             BigInteger.valueOf(MAX_TX_GAS_LIMIT / 2),
             credentials.getAddress(),
             txData.toString(),

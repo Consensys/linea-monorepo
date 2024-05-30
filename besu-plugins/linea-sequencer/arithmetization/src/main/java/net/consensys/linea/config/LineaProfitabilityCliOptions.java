@@ -19,23 +19,15 @@ import java.math.BigDecimal;
 
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
-import net.consensys.linea.config.converters.WeiConverter;
-import org.hyperledger.besu.datatypes.Wei;
 import picocli.CommandLine;
 
 /** The Linea profitability calculator CLI options. */
 public class LineaProfitabilityCliOptions {
-  public static final String VERIFICATION_GAS_COST = "--plugin-linea-verification-gas-cost";
-  public static final int DEFAULT_VERIFICATION_GAS_COST = 1_200_000;
+  public static final String FIXED_GAS_COST_WEI = "--plugin-linea-fixed-gas-cost-wei";
+  public static final long DEFAULT_FIXED_GAS_COST_WEI = 0;
 
-  public static final String VERIFICATION_CAPACITY = "--plugin-linea-verification-capacity";
-  public static final int DEFAULT_VERIFICATION_CAPACITY = 90_000;
-
-  public static final String GAS_PRICE_RATIO = "--plugin-linea-gas-price-ratio";
-  public static final int DEFAULT_GAS_PRICE_RATIO = 15;
-
-  public static final String GAS_PRICE_ADJUSTMENT = "--plugin-linea-gas-price-adjustment";
-  public static final Wei DEFAULT_GAS_PRICE_ADJUSTMENT = Wei.ZERO;
+  public static final String VARIABLE_GAS_COST_WEI = "--plugin-linea-variable-gas-cost-wei";
+  public static final long DEFAULT_VARIABLE_GAS_COST_WEI = 1_000_000_000;
 
   public static final String MIN_MARGIN = "--plugin-linea-min-margin";
   public static final BigDecimal DEFAULT_MIN_MARGIN = BigDecimal.ONE;
@@ -54,38 +46,25 @@ public class LineaProfitabilityCliOptions {
       "--plugin-linea-tx-pool-profitability-check-p2p-enabled";
   public static final boolean DEFAULT_TX_POOL_ENABLE_CHECK_P2P = false;
 
-  @Positive
-  @CommandLine.Option(
-      names = {VERIFICATION_GAS_COST},
-      hidden = true,
-      paramLabel = "<INTEGER>",
-      description = "L1 verification gas cost (default: ${DEFAULT-VALUE})")
-  private int verificationGasCost = DEFAULT_VERIFICATION_GAS_COST;
+  public static final String EXTRA_DATA_PRICING_ENABLED =
+      "--plugin-linea-extra-data-pricing-enabled";
+  public static final boolean DEFAULT_EXTRA_DATA_PRICING_ENABLED = false;
 
   @Positive
   @CommandLine.Option(
-      names = {VERIFICATION_CAPACITY},
+      names = {FIXED_GAS_COST_WEI},
       hidden = true,
       paramLabel = "<INTEGER>",
-      description = "L1 verification capacity (default: ${DEFAULT-VALUE})")
-  private int verificationCapacity = DEFAULT_VERIFICATION_CAPACITY;
+      description = "Fixed gas cost in Wei (default: ${DEFAULT-VALUE})")
+  private long fixedGasCostWei = DEFAULT_FIXED_GAS_COST_WEI;
 
   @Positive
   @CommandLine.Option(
-      names = {GAS_PRICE_RATIO},
+      names = {VARIABLE_GAS_COST_WEI},
       hidden = true,
       paramLabel = "<INTEGER>",
-      description = "L1/L2 gas price ratio (default: ${DEFAULT-VALUE})")
-  private int gasPriceRatio = DEFAULT_GAS_PRICE_RATIO;
-
-  @CommandLine.Option(
-      names = {GAS_PRICE_ADJUSTMENT},
-      hidden = true,
-      converter = WeiConverter.class,
-      paramLabel = "<WEI>",
-      description =
-          "Amount to add to the calculated profitable gas price (default: ${DEFAULT-VALUE})")
-  private Wei gasPriceAdjustment = DEFAULT_GAS_PRICE_ADJUSTMENT;
+      description = "Variable gas cost in Wei (default: ${DEFAULT-VALUE})")
+  private long variableGasCostWei = DEFAULT_VARIABLE_GAS_COST_WEI;
 
   @Positive
   @CommandLine.Option(
@@ -131,6 +110,15 @@ public class LineaProfitabilityCliOptions {
           "Enable the profitability check for txs received via p2p? (default: ${DEFAULT-VALUE})")
   private boolean txPoolCheckP2pEnabled = DEFAULT_TX_POOL_ENABLE_CHECK_P2P;
 
+  @CommandLine.Option(
+      names = {EXTRA_DATA_PRICING_ENABLED},
+      arity = "0..1",
+      hidden = true,
+      paramLabel = "<BOOLEAN>",
+      description =
+          "Enable setting pricing parameters via extra data field (default: ${DEFAULT-VALUE})")
+  private boolean extraDataPricingEnabled = DEFAULT_EXTRA_DATA_PRICING_ENABLED;
+
   private LineaProfitabilityCliOptions() {}
 
   /**
@@ -151,15 +139,14 @@ public class LineaProfitabilityCliOptions {
   public static LineaProfitabilityCliOptions fromConfig(
       final LineaProfitabilityConfiguration config) {
     final LineaProfitabilityCliOptions options = create();
-    options.verificationGasCost = config.verificationGasCost();
-    options.verificationCapacity = config.verificationCapacity();
-    options.gasPriceRatio = config.gasPriceRatio();
-    options.gasPriceAdjustment = config.gasPriceAdjustment();
+    options.fixedGasCostWei = config.fixedCostWei();
+    options.variableGasCostWei = config.variableCostWei();
     options.minMargin = BigDecimal.valueOf(config.minMargin());
     options.estimageGasMinMargin = BigDecimal.valueOf(config.estimateGasMinMargin());
     options.txPoolMinMargin = BigDecimal.valueOf(config.txPoolMinMargin());
     options.txPoolCheckApiEnabled = config.txPoolCheckApiEnabled();
     options.txPoolCheckP2pEnabled = config.txPoolCheckP2pEnabled();
+    options.extraDataPricingEnabled = config.extraDataPricingEnabled();
     return options;
   }
 
@@ -170,30 +157,28 @@ public class LineaProfitabilityCliOptions {
    */
   public LineaProfitabilityConfiguration toDomainObject() {
     return LineaProfitabilityConfiguration.builder()
-        .verificationGasCost(verificationGasCost)
-        .verificationCapacity(verificationCapacity)
-        .gasPriceRatio(gasPriceRatio)
-        .gasPriceAdjustment(gasPriceAdjustment)
+        .fixedCostWei(fixedGasCostWei)
+        .variableCostWei(variableGasCostWei)
         .minMargin(minMargin.doubleValue())
         .estimateGasMinMargin(estimageGasMinMargin.doubleValue())
         .txPoolMinMargin(txPoolMinMargin.doubleValue())
         .txPoolCheckApiEnabled(txPoolCheckApiEnabled)
         .txPoolCheckP2pEnabled(txPoolCheckP2pEnabled)
+        .extraDataPricingEnabled(extraDataPricingEnabled)
         .build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add(VERIFICATION_GAS_COST, verificationGasCost)
-        .add(VERIFICATION_CAPACITY, verificationCapacity)
-        .add(GAS_PRICE_RATIO, gasPriceRatio)
-        .add(GAS_PRICE_ADJUSTMENT, gasPriceAdjustment)
+        .add(FIXED_GAS_COST_WEI, fixedGasCostWei)
+        .add(VARIABLE_GAS_COST_WEI, variableGasCostWei)
         .add(MIN_MARGIN, minMargin)
         .add(ESTIMATE_GAS_MIN_MARGIN, estimageGasMinMargin)
         .add(TX_POOL_MIN_MARGIN, txPoolMinMargin)
         .add(TX_POOL_ENABLE_CHECK_API, txPoolCheckApiEnabled)
         .add(TX_POOL_ENABLE_CHECK_P2P, txPoolCheckP2pEnabled)
+        .add(EXTRA_DATA_PRICING_ENABLED, extraDataPricingEnabled)
         .toString();
   }
 }

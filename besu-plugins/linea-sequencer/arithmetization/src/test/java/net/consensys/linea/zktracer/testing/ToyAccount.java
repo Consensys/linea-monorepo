@@ -69,6 +69,11 @@ public class ToyAccount implements MutableAccount {
   }
 
   @Override
+  public boolean isStorageEmpty() {
+    return false;
+  }
+
+  @Override
   public Hash getAddressHash() {
     return addressHash.get();
   }

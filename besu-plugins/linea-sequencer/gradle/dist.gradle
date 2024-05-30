@@ -27,16 +27,37 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
+def lineaBesuDistTar = new File(buildDir, rootProject.besuFilename)
+
+tasks.register('copyLocalLineaBesu', Copy) {
+  onlyIf {
+    project.hasProperty('useLocalLineaBesuDir')
+  }
+  def localLineaBesuDir = "${findProperty('useLocalLineaBesuDir')}".replaceFirst('^~', System.getProperty('user.home'))
+  doFirst {
+    if (!file(localLineaBesuDir).exists()) {
+      throw new GradleException("${localLineaBesuDir} not found")
+    }
+  }
+
+  from new File("${localLineaBesuDir}/build/distributions/${rootProject.besuFilename}")
+  into lineaBesuDistTar.parentFile
+}
+
 tasks.register('downloadLatestLineaBesu', Download) {
-  src rootProject.besuUrl
-  dest new File(buildDir, rootProject.besuFilename)
-  onlyIfModified true
+  onlyIf {
+    !project.hasProperty('useLocalLineaBesuDir')
+  }
+    src rootProject.besuUrl
+    dest lineaBesuDistTar
+    onlyIfModified true
 }
 
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
 jar {
   dependsOn downloadLatestLineaBesu
+  dependsOn copyLocalLineaBesu
 
   archiveBaseName = distributionIdentifier
 
@@ -76,8 +97,9 @@ static def getCheckedOutGitCommitHash() {
 tasks.register('distTar', Tar) {
   dependsOn jar
   dependsOn downloadLatestLineaBesu
+  dependsOn copyLocalLineaBesu
 
-  from(tarTree(downloadLatestLineaBesu.dest), {
+  from(tarTree(lineaBesuDistTar), {
     eachFile { path = path.replaceFirst(rootProject.besuIdentifier, '') }
     includeEmptyDirs = false
     exclude "**/LICENSE"

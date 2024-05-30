@@ -16,17 +16,45 @@
 package net.consensys.linea.config;
 
 import lombok.Builder;
-import org.hyperledger.besu.datatypes.Wei;
+import lombok.Getter;
+import lombok.ToString;
+import lombok.experimental.Accessors;
 
 /** The Linea profitability calculator configuration. */
 @Builder(toBuilder = true)
-public record LineaProfitabilityConfiguration(
-    int verificationGasCost,
-    int verificationCapacity,
-    int gasPriceRatio,
-    Wei gasPriceAdjustment,
-    double minMargin,
-    double estimateGasMinMargin,
-    double txPoolMinMargin,
-    boolean txPoolCheckApiEnabled,
-    boolean txPoolCheckP2pEnabled) {}
+@Accessors(fluent = true)
+@Getter
+@ToString
+public class LineaProfitabilityConfiguration {
+  /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
+  private long fixedCostWei;
+  /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
+  private long variableCostWei;
+
+  private double minMargin;
+  private double estimateGasMinMargin;
+  private double txPoolMinMargin;
+  private boolean txPoolCheckApiEnabled;
+  private boolean txPoolCheckP2pEnabled;
+  private boolean extraDataPricingEnabled;
+
+  /**
+   * These 2 parameters must be atomically updated
+   *
+   * @param fixedCostWei fixed cost in Wei
+   * @param variableCostWei variable cost in Wei
+   */
+  public synchronized void updateFixedAndVariableCost(
+      final long fixedCostWei, final long variableCostWei) {
+    this.fixedCostWei = fixedCostWei;
+    this.variableCostWei = variableCostWei;
+  }
+
+  public synchronized long fixedCostWei() {
+    return fixedCostWei;
+  }
+
+  public synchronized long variableCostWei() {
+    return variableCostWei;
+  }
+}

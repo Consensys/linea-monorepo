@@ -67,7 +67,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public void setup() throws Exception {
     minerNode =
         besu.createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions(), Set.of("LINEA"));
+            "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions(), Set.of("LINEA", "MINER"));
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)

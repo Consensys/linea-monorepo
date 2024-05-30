@@ -31,7 +31,6 @@ import org.hyperledger.besu.ethereum.BlockProcessingResult;
 import org.hyperledger.besu.ethereum.chain.Blockchain;
 import org.hyperledger.besu.ethereum.core.BlockBody;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.Deposit;
 import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
@@ -48,8 +47,8 @@ import org.hyperledger.besu.ethereum.privacy.storage.PrivateMetadataUpdater;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.trie.diffbased.bonsai.worldview.BonsaiWorldState;
 import org.hyperledger.besu.ethereum.trie.diffbased.bonsai.worldview.BonsaiWorldStateUpdateAccumulator;
-import org.hyperledger.besu.ethereum.vm.BlockHashLookup;
 import org.hyperledger.besu.ethereum.vm.CachingBlockHashLookup;
+import org.hyperledger.besu.evm.operation.BlockHashOperation;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 @Slf4j
@@ -84,7 +83,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final List<Transaction> transactions,
       final List<BlockHeader> ommers,
       final Optional<List<Withdrawal>> maybeWithdrawals,
-      final Optional<List<Deposit>> maybeDeposits,
       final PrivateMetadataUpdater privateMetadataUpdater) {
     final List<TransactionReceipt> receipts = new ArrayList<>();
     long currentGasUsed = 0;
@@ -105,7 +103,8 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
       final WorldUpdater worldStateUpdater = worldState.updater();
 
-      final BlockHashLookup blockHashLookup = new CachingBlockHashLookup(blockHeader, blockchain);
+      final BlockHashOperation.BlockHashLookup blockHashLookup =
+          new CachingBlockHashLookup(blockHeader, blockchain);
       final Address miningBeneficiary =
           miningBeneficiaryCalculator.calculateBeneficiary(blockHeader);
 
@@ -126,7 +125,6 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       zkTracer.traceStartBlock(blockHeader, blockBody);
       final TransactionProcessingResult result =
           transactionProcessor.processTransaction(
-              blockchain,
               worldStateUpdater,
               blockHeader,
               transaction,

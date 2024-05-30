@@ -31,6 +31,7 @@ repositories {
     content { includeGroupByRegex('com\\.splunk\\..*') }
   }
   mavenCentral()
+  mavenLocal()
 }
 
 configurations.all {

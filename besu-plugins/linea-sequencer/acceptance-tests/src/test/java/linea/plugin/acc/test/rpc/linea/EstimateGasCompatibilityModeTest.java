@@ -40,7 +40,6 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
   protected void assertIsProfitable(
       final Transaction tx,
       final Wei baseFee,
-      final Wei estimatedPriorityFee,
       final Wei estimatedMaxGasPrice,
       final long estimatedGasLimit) {
     final var minGasPrice = minerNode.getMiningParameters().getMinTransactionGasPrice();
@@ -62,6 +61,6 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
   protected void assertMinGasPriceLowerBound(final Wei baseFee, final Wei estimatedMaxGasPrice) {
     // since we are in compatibility mode, we want to check that returned profitable priority fee is
     // the min priority fee per gas * multiplier + base fee
-    assertIsProfitable(null, baseFee, null, estimatedMaxGasPrice, 0);
+    assertIsProfitable(null, baseFee, estimatedMaxGasPrice, 0);
   }
 }
