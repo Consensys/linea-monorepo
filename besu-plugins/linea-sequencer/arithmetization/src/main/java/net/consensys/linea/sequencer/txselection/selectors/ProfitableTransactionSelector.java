@@ -15,7 +15,6 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_RETRY_LIMIT;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_UPFRONT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
@@ -28,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
-import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -41,14 +39,12 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
   @VisibleForTesting protected static Set<Hash> unprofitableCache = new LinkedHashSet<>();
-  @VisibleForTesting protected static Wei prevMinGasPrice = Wei.MAX_WEI;
 
   private final LineaTransactionSelectorConfiguration txSelectorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
   private int unprofitableRetries;
-  private MutableBoolean minGasPriceDecreased;
 
   public ProfitableTransactionSelector(
       final LineaTransactionSelectorConfiguration txSelectorConf,
@@ -64,12 +60,6 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
 
     final Wei minGasPrice = evaluationContext.getMinGasPrice();
-
-    // update prev min gas price only if it is a new block
-    if (minGasPriceDecreased == null) {
-      minGasPriceDecreased = new MutableBoolean(minGasPrice.lessThan(prevMinGasPrice));
-      prevMinGasPrice = minGasPrice;
-    }
 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
@@ -87,33 +77,20 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
       }
 
       if (unprofitableCache.contains(transaction.getHash())) {
-        // only retry unprofitable txs if the min gas price went down
-        if (minGasPriceDecreased.isTrue()) {
-
-          if (unprofitableRetries >= txSelectorConf.unprofitableRetryLimit()) {
-            log.atTrace()
-                .setMessage("Limit of unprofitable tx retries reached: {}/{}")
-                .addArgument(unprofitableRetries)
-                .addArgument(txSelectorConf.unprofitableRetryLimit());
-            return TX_UNPROFITABLE_RETRY_LIMIT;
-          }
-
+        if (unprofitableRetries >= txSelectorConf.unprofitableRetryLimit()) {
           log.atTrace()
-              .setMessage("Retrying unprofitable tx. Retry: {}/{}")
+              .setMessage("Limit of unprofitable tx retries reached: {}/{}")
               .addArgument(unprofitableRetries)
               .addArgument(txSelectorConf.unprofitableRetryLimit());
-          unprofitableCache.remove(transaction.getHash());
-          unprofitableRetries++;
-
-        } else {
-          log.atTrace()
-              .setMessage(
-                  "Current block minGasPrice {} is higher than previous block {}, skipping unprofitable txs retry")
-              .addArgument(minGasPrice::toHumanReadableString)
-              .addArgument(prevMinGasPrice::toHumanReadableString)
-              .log();
-          return TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED;
+          return TX_UNPROFITABLE_RETRY_LIMIT;
         }
+
+        log.atTrace()
+            .setMessage("Retrying unprofitable tx. Retry: {}/{}")
+            .addArgument(unprofitableRetries)
+            .addArgument(txSelectorConf.unprofitableRetryLimit());
+        unprofitableCache.remove(transaction.getHash());
+        unprofitableRetries++;
       }
     }
 

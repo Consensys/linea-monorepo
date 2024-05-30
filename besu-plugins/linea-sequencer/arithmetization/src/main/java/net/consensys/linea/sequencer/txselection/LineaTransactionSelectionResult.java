@@ -26,8 +26,7 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     TX_MODULE_LINE_COUNT_OVERFLOW_CACHED(false, true),
     TX_UNPROFITABLE(false, false),
     TX_UNPROFITABLE_UPFRONT(false, false),
-    TX_UNPROFITABLE_RETRY_LIMIT(false, false),
-    TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED(false, false);
+    TX_UNPROFITABLE_RETRY_LIMIT(false, false);
 
     private final boolean stop;
     private final boolean discard;
@@ -70,6 +69,4 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_UPFRONT);
   public static final TransactionSelectionResult TX_UNPROFITABLE_RETRY_LIMIT =
       new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_RETRY_LIMIT);
-  public static final TransactionSelectionResult TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED =
-      new LineaTransactionSelectionResult(LineaStatus.TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED);
 }

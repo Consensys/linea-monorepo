@@ -15,7 +15,6 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_RETRY_LIMIT;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_UNPROFITABLE_UPFRONT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -259,45 +258,6 @@ public class ProfitableTransactionSelectorTest {
   }
 
   @Test
-  public void shouldNotRetryUnprofitableTxWhenMinGasPriceNotDecreased() {
-    var minGasPriceBlock1 = Wei.of(1_000_000);
-    var mockTransactionProcessingResult1 = mockTransactionProcessingResult(21000);
-    var mockEvaluationContext1 =
-        mockEvaluationContext(false, 10000, Wei.of(1_000_010), minGasPriceBlock1, 210000);
-    // first try of first tx
-    verifyTransactionSelection(
-        transactionSelector,
-        mockEvaluationContext1,
-        mockTransactionProcessingResult1,
-        SELECTED,
-        TX_UNPROFITABLE);
-
-    assertThat(
-            transactionSelector.isUnprofitableTxCached(
-                mockEvaluationContext1.getPendingTransaction().getTransaction().getHash()))
-        .isTrue();
-
-    // simulate another block
-    transactionSelector = newSelectorForNewBlock();
-    // we keep the min gas price the same to avoid retry
-    var minGasPriceBlock2 = minGasPriceBlock1;
-
-    // we should remember of the unprofitable txs for the new block
-    assertThat(
-            transactionSelector.isUnprofitableTxCached(
-                mockEvaluationContext1.getPendingTransaction().getTransaction().getHash()))
-        .isTrue();
-
-    // second try of the first tx
-    verifyTransactionSelection(
-        transactionSelector,
-        mockEvaluationContext1.setMinGasPrice(minGasPriceBlock2),
-        mockTransactionProcessingResult1,
-        TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED,
-        null);
-  }
-
-  @Test
   public void profitableAndUnprofitableTxsMix() {
     var minGasPriceBlock1 = Wei.of(1_000_000);
     var mockTransactionProcessingResult1 = mockTransactionProcessingResult(21000);
@@ -333,7 +293,7 @@ public class ProfitableTransactionSelectorTest {
 
     // simulate another block
     transactionSelector = newSelectorForNewBlock();
-    // we keep the min gas price the same to avoid retry
+    // we keep the min gas price the same
     var minGasPriceBlock2 = minGasPriceBlock1;
 
     // we should remember of the unprofitable txs for the new block
@@ -347,8 +307,8 @@ public class ProfitableTransactionSelectorTest {
         transactionSelector,
         mockEvaluationContext1.setMinGasPrice(minGasPriceBlock2),
         mockTransactionProcessingResult1,
-        TX_UNPROFITABLE_MIN_GAS_PRICE_NOT_DECREASED,
-        null);
+        SELECTED,
+        TX_UNPROFITABLE);
 
     var mockTransactionProcessingResult3 = mockTransactionProcessingResult(21000);
     var mockEvaluationContext3 =
@@ -449,7 +409,6 @@ public class ProfitableTransactionSelectorTest {
     }
 
     void reset() {
-      prevMinGasPrice = Wei.MAX_WEI;
       unprofitableCache.clear();
     }
   }
