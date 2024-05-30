@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4-test28
+Test pre-release 28 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
+* Extra data based pricing [#10](https://github.com/Consensys/linea-sequencer/pull/10)
+* Remove check that minGasPrice need to decrease to retry unprofitable tx [#17](https://github.com/Consensys/linea-sequencer/pull/17)
+
 ## 0.1.4-test27
 Test pre-release 27 from [temp/issue-248/count-stack-only](https://github.com/Consensys/besu-sequencer-plugins/tree/temp/issue-248/count-stack-only)
 * Calculate line count only once in linea_estimateGas [#13](https://github.com/Consensys/linea-sequencer/pull/13)
