@@ -16,11 +16,13 @@
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import static net.consensys.linea.zktracer.module.Util.slice;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 
 import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
-import java.util.Stack;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -45,11 +47,8 @@ public class ModexpEffectiveCall implements Module {
   private final Hub hub;
 
   @Getter private final Blake2fModexpData blake2fModexpData;
-  private final Stack<Integer> counts = new Stack<>();
+  private final Deque<Integer> counts = new ArrayDeque<>();
   private static final BigInteger PROVER_MAX_INPUT_BYTE_SIZE = BigInteger.valueOf(4096 / 8);
-  private static final int EVM_WORD_SIZE = 32;
-
-  private long lastDataCallHubStamp = 0;
 
   @Override
   public String moduleKey() {
@@ -57,8 +56,13 @@ public class ModexpEffectiveCall implements Module {
   }
 
   @Override
-  public void enterTransaction() {
+  public void traceStartConflation(final long blockCount) {
     counts.push(0);
+  }
+
+  @Override
+  public void enterTransaction() {
+    counts.push(counts.getFirst());
   }
 
   @Override
@@ -76,7 +80,7 @@ public class ModexpEffectiveCall implements Module {
         final Bytes inputData = hub.transients().op().callData();
 
         // Get the Base length
-        final BigInteger baseLength = slice(inputData, 0, EVM_WORD_SIZE).toUnsignedBigInteger();
+        final BigInteger baseLength = slice(inputData, 0, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(baseLength)) {
           log.info(
               "Too big argument, base byte length = {} > {}",
@@ -88,8 +92,7 @@ public class ModexpEffectiveCall implements Module {
         }
 
         // Get the Exponent length
-        final BigInteger expLength =
-            slice(inputData, EVM_WORD_SIZE, EVM_WORD_SIZE).toUnsignedBigInteger();
+        final BigInteger expLength = slice(inputData, WORD_SIZE, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(expLength)) {
           log.info(
               "Too big argument, exponent byte length = {} > {}",
@@ -102,7 +105,7 @@ public class ModexpEffectiveCall implements Module {
 
         // Get the Modulo length
         final BigInteger modLength =
-            slice(inputData, 2 * EVM_WORD_SIZE, EVM_WORD_SIZE).toUnsignedBigInteger();
+            slice(inputData, 2 * WORD_SIZE, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(modLength)) {
           log.info(
               "Too big argument, modulo byte length = {} > {}",
@@ -118,28 +121,24 @@ public class ModexpEffectiveCall implements Module {
         final int modLengthInt = modLength.intValueExact();
 
         // Get the Base.
-        final Bytes baseComponent = slice(inputData, 3 * EVM_WORD_SIZE, baseLengthInt);
+        final Bytes baseComponent = slice(inputData, 3 * WORD_SIZE, baseLengthInt);
 
         // Get the Exponent.
         final Bytes expComponent =
-            slice(inputData, 3 * EVM_WORD_SIZE + baseLengthInt, expLength.intValueExact());
+            slice(inputData, 3 * WORD_SIZE + baseLengthInt, expLength.intValueExact());
 
         // Get the Modulus.
         final Bytes modComponent =
             slice(
-                inputData,
-                3 * EVM_WORD_SIZE + baseLengthInt + expLengthInt,
-                modLength.intValueExact());
+                inputData, 3 * WORD_SIZE + baseLengthInt + expLengthInt, modLength.intValueExact());
         final long gasPrice = gasPrice(baseLengthInt, expLengthInt, modLengthInt, expComponent);
 
         if (hub.transients().op().gasAllowanceForCall() >= gasPrice) {
-          this.lastDataCallHubStamp =
-              this.blake2fModexpData.call(
-                  new Blake2fModexpDataOperation(
-                      hub.stamp(),
-                      lastDataCallHubStamp,
-                      new ModexpComponents(baseComponent, expComponent, modComponent),
-                      null));
+          this.blake2fModexpData.call(
+              new Blake2fModexpDataOperation(
+                  hub.stamp(),
+                  new ModexpComponents(baseComponent, expComponent, modComponent),
+                  null));
           this.counts.push(this.counts.pop() + 1);
         }
       }
@@ -156,21 +155,20 @@ public class ModexpEffectiveCall implements Module {
         final Bytes inputData = hub.transients().op().callData();
 
         // Get the Base length
-        final BigInteger baseLength = slice(inputData, 0, EVM_WORD_SIZE).toUnsignedBigInteger();
+        final BigInteger baseLength = slice(inputData, 0, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(baseLength)) {
           return 0;
         }
 
         // Get the Exponent length
-        final BigInteger expLength =
-            slice(inputData, EVM_WORD_SIZE, EVM_WORD_SIZE).toUnsignedBigInteger();
+        final BigInteger expLength = slice(inputData, WORD_SIZE, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(expLength)) {
           return 0;
         }
 
         // Get the Modulo length
         final BigInteger modLength =
-            slice(inputData, 2 * EVM_WORD_SIZE, EVM_WORD_SIZE).toUnsignedBigInteger();
+            slice(inputData, 2 * WORD_SIZE, WORD_SIZE).toUnsignedBigInteger();
         if (isOutOfProverInputBounds(modLength)) {
           return 0;
         }
@@ -181,7 +179,7 @@ public class ModexpEffectiveCall implements Module {
 
         // Get the Exponent.
         final Bytes expComponent =
-            slice(inputData, 3 * EVM_WORD_SIZE + baseLengthInt, expLength.intValueExact());
+            slice(inputData, 3 * WORD_SIZE + baseLengthInt, expLength.intValueExact());
 
         return gasPrice(baseLengthInt, expLengthInt, modLengthInt, expComponent);
       }
@@ -203,7 +201,7 @@ public class ModexpEffectiveCall implements Module {
       return e.isZero() ? 0 : e.toUnsignedBigInteger().bitLength() - 1;
     }
 
-    final Bytes leadingWord = e.slice(0, EVM_WORD_SIZE);
+    final Bytes leadingWord = e.slice(0, WORD_SIZE);
     return 8 * (expLength - 32) + Math.max(leadingWord.bitLength() - 1, 0);
   }
 
@@ -213,7 +211,7 @@ public class ModexpEffectiveCall implements Module {
 
   @Override
   public int lineCount() {
-    return this.counts.stream().mapToInt(x -> x).sum();
+    return this.counts.getFirst();
   }
 
   @Override

@@ -33,6 +33,7 @@ public class Trace {
   public static final int INDEX_MAX_BLAKE_DATA = 0xc;
   public static final int INDEX_MAX_BLAKE_PARAMS = 0x1;
   public static final int INDEX_MAX_BLAKE_RESULT = 0x3;
+  public static final int INDEX_MAX_MODEXP = 0x1f;
   public static final int INDEX_MAX_MODEXP_BASE = 0x1f;
   public static final int INDEX_MAX_MODEXP_EXPONENT = 0x1f;
   public static final int INDEX_MAX_MODEXP_MODULUS = 0x1f;
@@ -41,7 +42,6 @@ public class Trace {
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
 
-  private final MappedByteBuffer deltaByte;
   private final MappedByteBuffer id;
   private final MappedByteBuffer index;
   private final MappedByteBuffer indexMax;
@@ -58,7 +58,6 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("blake2fmodexpdata.DELTA_BYTE", 1, length),
         new ColumnHeader("blake2fmodexpdata.ID", 8, length),
         new ColumnHeader("blake2fmodexpdata.INDEX", 1, length),
         new ColumnHeader("blake2fmodexpdata.INDEX_MAX", 1, length),
@@ -75,20 +74,19 @@ public class Trace {
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
-    this.deltaByte = buffers.get(0);
-    this.id = buffers.get(1);
-    this.index = buffers.get(2);
-    this.indexMax = buffers.get(3);
-    this.isBlakeData = buffers.get(4);
-    this.isBlakeParams = buffers.get(5);
-    this.isBlakeResult = buffers.get(6);
-    this.isModexpBase = buffers.get(7);
-    this.isModexpExponent = buffers.get(8);
-    this.isModexpModulus = buffers.get(9);
-    this.isModexpResult = buffers.get(10);
-    this.limb = buffers.get(11);
-    this.phase = buffers.get(12);
-    this.stamp = buffers.get(13);
+    this.id = buffers.get(0);
+    this.index = buffers.get(1);
+    this.indexMax = buffers.get(2);
+    this.isBlakeData = buffers.get(3);
+    this.isBlakeParams = buffers.get(4);
+    this.isBlakeResult = buffers.get(5);
+    this.isModexpBase = buffers.get(6);
+    this.isModexpExponent = buffers.get(7);
+    this.isModexpModulus = buffers.get(8);
+    this.isModexpResult = buffers.get(9);
+    this.limb = buffers.get(10);
+    this.phase = buffers.get(11);
+    this.stamp = buffers.get(12);
   }
 
   public int size() {
@@ -99,23 +97,11 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace deltaByte(final UnsignedByte b) {
-    if (filled.get(0)) {
-      throw new IllegalStateException("blake2fmodexpdata.DELTA_BYTE already set");
-    } else {
-      filled.set(0);
-    }
-
-    deltaByte.put(b.toByte());
-
-    return this;
-  }
-
   public Trace id(final long b) {
-    if (filled.get(1)) {
+    if (filled.get(0)) {
       throw new IllegalStateException("blake2fmodexpdata.ID already set");
     } else {
-      filled.set(1);
+      filled.set(0);
     }
 
     id.putLong(b);
@@ -124,10 +110,10 @@ public class Trace {
   }
 
   public Trace index(final UnsignedByte b) {
-    if (filled.get(2)) {
+    if (filled.get(1)) {
       throw new IllegalStateException("blake2fmodexpdata.INDEX already set");
     } else {
-      filled.set(2);
+      filled.set(1);
     }
 
     index.put(b.toByte());
@@ -136,10 +122,10 @@ public class Trace {
   }
 
   public Trace indexMax(final UnsignedByte b) {
-    if (filled.get(3)) {
+    if (filled.get(2)) {
       throw new IllegalStateException("blake2fmodexpdata.INDEX_MAX already set");
     } else {
-      filled.set(3);
+      filled.set(2);
     }
 
     indexMax.put(b.toByte());
@@ -148,10 +134,10 @@ public class Trace {
   }
 
   public Trace isBlakeData(final Boolean b) {
-    if (filled.get(4)) {
+    if (filled.get(3)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_DATA already set");
     } else {
-      filled.set(4);
+      filled.set(3);
     }
 
     isBlakeData.put((byte) (b ? 1 : 0));
@@ -160,10 +146,10 @@ public class Trace {
   }
 
   public Trace isBlakeParams(final Boolean b) {
-    if (filled.get(5)) {
+    if (filled.get(4)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_PARAMS already set");
     } else {
-      filled.set(5);
+      filled.set(4);
     }
 
     isBlakeParams.put((byte) (b ? 1 : 0));
@@ -172,10 +158,10 @@ public class Trace {
   }
 
   public Trace isBlakeResult(final Boolean b) {
-    if (filled.get(6)) {
+    if (filled.get(5)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_RESULT already set");
     } else {
-      filled.set(6);
+      filled.set(5);
     }
 
     isBlakeResult.put((byte) (b ? 1 : 0));
@@ -184,10 +170,10 @@ public class Trace {
   }
 
   public Trace isModexpBase(final Boolean b) {
-    if (filled.get(7)) {
+    if (filled.get(6)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_BASE already set");
     } else {
-      filled.set(7);
+      filled.set(6);
     }
 
     isModexpBase.put((byte) (b ? 1 : 0));
@@ -196,10 +182,10 @@ public class Trace {
   }
 
   public Trace isModexpExponent(final Boolean b) {
-    if (filled.get(8)) {
+    if (filled.get(7)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_EXPONENT already set");
     } else {
-      filled.set(8);
+      filled.set(7);
     }
 
     isModexpExponent.put((byte) (b ? 1 : 0));
@@ -208,10 +194,10 @@ public class Trace {
   }
 
   public Trace isModexpModulus(final Boolean b) {
-    if (filled.get(9)) {
+    if (filled.get(8)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_MODULUS already set");
     } else {
-      filled.set(9);
+      filled.set(8);
     }
 
     isModexpModulus.put((byte) (b ? 1 : 0));
@@ -220,10 +206,10 @@ public class Trace {
   }
 
   public Trace isModexpResult(final Boolean b) {
-    if (filled.get(10)) {
+    if (filled.get(9)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_RESULT already set");
     } else {
-      filled.set(10);
+      filled.set(9);
     }
 
     isModexpResult.put((byte) (b ? 1 : 0));
@@ -232,10 +218,10 @@ public class Trace {
   }
 
   public Trace limb(final Bytes b) {
-    if (filled.get(11)) {
+    if (filled.get(10)) {
       throw new IllegalStateException("blake2fmodexpdata.LIMB already set");
     } else {
-      filled.set(11);
+      filled.set(10);
     }
 
     final byte[] bs = b.toArrayUnsafe();
@@ -248,10 +234,10 @@ public class Trace {
   }
 
   public Trace phase(final UnsignedByte b) {
-    if (filled.get(12)) {
+    if (filled.get(11)) {
       throw new IllegalStateException("blake2fmodexpdata.PHASE already set");
     } else {
-      filled.set(12);
+      filled.set(11);
     }
 
     phase.put(b.toByte());
@@ -260,10 +246,10 @@ public class Trace {
   }
 
   public Trace stamp(final UnsignedByte b) {
-    if (filled.get(13)) {
+    if (filled.get(12)) {
       throw new IllegalStateException("blake2fmodexpdata.STAMP already set");
     } else {
-      filled.set(13);
+      filled.set(12);
     }
 
     stamp.put(b.toByte());
@@ -273,58 +259,54 @@ public class Trace {
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("blake2fmodexpdata.DELTA_BYTE has not been filled");
-    }
-
-    if (!filled.get(1)) {
       throw new IllegalStateException("blake2fmodexpdata.ID has not been filled");
     }
 
-    if (!filled.get(2)) {
+    if (!filled.get(1)) {
       throw new IllegalStateException("blake2fmodexpdata.INDEX has not been filled");
     }
 
-    if (!filled.get(3)) {
+    if (!filled.get(2)) {
       throw new IllegalStateException("blake2fmodexpdata.INDEX_MAX has not been filled");
     }
 
-    if (!filled.get(4)) {
+    if (!filled.get(3)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_DATA has not been filled");
     }
 
-    if (!filled.get(5)) {
+    if (!filled.get(4)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_PARAMS has not been filled");
     }
 
-    if (!filled.get(6)) {
+    if (!filled.get(5)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_BLAKE_RESULT has not been filled");
     }
 
-    if (!filled.get(7)) {
+    if (!filled.get(6)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_BASE has not been filled");
     }
 
-    if (!filled.get(8)) {
+    if (!filled.get(7)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_EXPONENT has not been filled");
     }
 
-    if (!filled.get(9)) {
+    if (!filled.get(8)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_MODULUS has not been filled");
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(9)) {
       throw new IllegalStateException("blake2fmodexpdata.IS_MODEXP_RESULT has not been filled");
     }
 
-    if (!filled.get(11)) {
+    if (!filled.get(10)) {
       throw new IllegalStateException("blake2fmodexpdata.LIMB has not been filled");
     }
 
-    if (!filled.get(12)) {
+    if (!filled.get(11)) {
       throw new IllegalStateException("blake2fmodexpdata.PHASE has not been filled");
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(12)) {
       throw new IllegalStateException("blake2fmodexpdata.STAMP has not been filled");
     }
 
@@ -336,58 +318,54 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      deltaByte.position(deltaByte.position() + 1);
-    }
-
-    if (!filled.get(1)) {
       id.position(id.position() + 8);
     }
 
-    if (!filled.get(2)) {
+    if (!filled.get(1)) {
       index.position(index.position() + 1);
     }
 
-    if (!filled.get(3)) {
+    if (!filled.get(2)) {
       indexMax.position(indexMax.position() + 1);
     }
 
-    if (!filled.get(4)) {
+    if (!filled.get(3)) {
       isBlakeData.position(isBlakeData.position() + 1);
     }
 
-    if (!filled.get(5)) {
+    if (!filled.get(4)) {
       isBlakeParams.position(isBlakeParams.position() + 1);
     }
 
-    if (!filled.get(6)) {
+    if (!filled.get(5)) {
       isBlakeResult.position(isBlakeResult.position() + 1);
     }
 
-    if (!filled.get(7)) {
+    if (!filled.get(6)) {
       isModexpBase.position(isModexpBase.position() + 1);
     }
 
-    if (!filled.get(8)) {
+    if (!filled.get(7)) {
       isModexpExponent.position(isModexpExponent.position() + 1);
     }
 
-    if (!filled.get(9)) {
+    if (!filled.get(8)) {
       isModexpModulus.position(isModexpModulus.position() + 1);
     }
 
-    if (!filled.get(10)) {
+    if (!filled.get(9)) {
       isModexpResult.position(isModexpResult.position() + 1);
     }
 
-    if (!filled.get(11)) {
+    if (!filled.get(10)) {
       limb.position(limb.position() + 32);
     }
 
-    if (!filled.get(12)) {
+    if (!filled.get(11)) {
       phase.position(phase.position() + 1);
     }
 
-    if (!filled.get(13)) {
+    if (!filled.get(12)) {
       stamp.position(stamp.position() + 1);
     }
 

@@ -201,7 +201,7 @@ public class Hub implements Module {
   @Getter private final Wcp wcp = new Wcp(this);
   private final Module add = new Add(this);
   private final Module bin = new Bin(this);
-  private final Blake2fModexpData blake2fModexpData = new Blake2fModexpData();
+  private final Blake2fModexpData blake2fModexpData = new Blake2fModexpData(this.wcp);
   @Getter private final EcData ecData;
   private final Blockdata blockdata;
   private final Blockhash blockhash = new Blockhash(wcp);
@@ -340,8 +340,7 @@ public class Hub implements Module {
                 this,
                 this.add,
                 this.bin,
-                // WARNING: Temporarily disabled.
-                //                this.blake2fModexpData,
+                this.blake2fModexpData,
                 this.ecData,
                 this.blockdata,
                 this.blockhash,
@@ -355,7 +354,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
-                // WARNING: Temporarily disabled.
+                // TODO: Temporarily disabled.
                 //                this.oob,
                 this.rlpAddr,
                 this.rlpTxn,
@@ -396,7 +395,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
-                // WARNING: Temporarily disabled.
+                // TODO: Temporarily disabled.
                 //                this.oob,
                 this.exp,
                 this.rlpAddr,
@@ -661,8 +660,6 @@ public class Hub implements Module {
     }
     if (this.pch.signals().exp()) {
       this.exp.tracePreOpcode(frame);
-      this.modexpEffectiveCall.tracePreOpcode(frame);
-      // if (this.pch.exceptions().none() && this.pch.aborts().none())
     }
     if (this.pch.signals().trm()) {
       this.trm.tracePreOpcode(frame);
