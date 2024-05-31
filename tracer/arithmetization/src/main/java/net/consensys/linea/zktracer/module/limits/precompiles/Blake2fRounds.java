@@ -16,8 +16,9 @@
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
-import java.util.Stack;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -44,9 +45,7 @@ public final class Blake2fRounds implements Module {
 
   @Getter private final Blake2fModexpData blake2fModexpData;
 
-  private long lastDataCallHubStamp = 0;
-
-  private final Stack<Integer> counts = new Stack<>();
+  private final Deque<Integer> counts = new ArrayDeque<>();
 
   @Override
   public String moduleKey() {
@@ -54,8 +53,13 @@ public final class Blake2fRounds implements Module {
   }
 
   @Override
-  public void enterTransaction() {
+  public void traceStartConflation(final long blockCount) {
     counts.push(0);
+  }
+
+  @Override
+  public void enterTransaction() {
+    counts.push(counts.getFirst());
   }
 
   @Override
@@ -171,16 +175,11 @@ public final class Blake2fRounds implements Module {
 
             final int rInt = r.toInt();
 
-            final Bytes data = inputData.slice(4, BLAKE2f_INPUT_SIZE - 4);
-
             if (opInfo.gasAllowanceForCall() >= rInt) {
-              this.lastDataCallHubStamp =
-                  this.blake2fModexpData.call(
-                      new Blake2fModexpDataOperation(
-                          hub.stamp(),
-                          lastDataCallHubStamp,
-                          null,
-                          new Blake2fComponents(inputData, data, r, Bytes.of(f))));
+              final Bytes data = inputData.slice(4, BLAKE2f_INPUT_SIZE - 5);
+              this.blake2fModexpData.call(
+                  new Blake2fModexpDataOperation(
+                      hub.stamp(), null, new Blake2fComponents(data, r, Bytes.of(f))));
               this.counts.push(this.counts.pop() + rInt);
             }
           }
@@ -191,11 +190,7 @@ public final class Blake2fRounds implements Module {
 
   @Override
   public int lineCount() {
-    int r = 0;
-    for (Integer count : this.counts) {
-      r += count;
-    }
-    return r;
+    return counts.getFirst();
   }
 
   @Override
