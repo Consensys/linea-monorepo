@@ -29,14 +29,18 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
-public final class AccountFragment implements TraceFragment, PostConflationDefer {
+public final class AccountFragment
+    implements TraceFragment, PostTransactionDefer, PostConflationDefer {
+
   /**
    * {@link AccountFragment} creation requires access to a {@link DeferRegistry} for post-conflation
    * data gathering, which is provided by this factory.
@@ -53,63 +57,31 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
         AccountSnapshot oldState, AccountSnapshot newState, Bytes toTrim) {
       return new AccountFragment(this.defers, oldState, newState, Optional.of(toTrim));
     }
-
-    public AccountFragment make(
-        AccountSnapshot oldState,
-        AccountSnapshot newState,
-        boolean debit,
-        long cost,
-        boolean createAddress) {
-      return new AccountFragment(
-          this.defers, oldState, newState, debit, cost, createAddress, Optional.empty());
-    }
-
-    public AccountFragment makeWithTrm(
-        AccountSnapshot oldState,
-        AccountSnapshot newState,
-        boolean debit,
-        long cost,
-        boolean createAddress,
-        final Bytes addressToTrim) {
-      return new AccountFragment(
-          this.defers, oldState, newState, debit, cost, createAddress, Optional.of(addressToTrim));
-    }
   }
 
   @Getter private final Address who;
   private final AccountSnapshot oldState;
   private final AccountSnapshot newState;
-  private final boolean debit;
-  private final long cost;
-  private final boolean createAddress;
-  @Setter private int deploymentNumberInfnty = 0; // retconned on conflation end
+  @Setter private int deploymentNumberInfinity = 0; // retconned on conflation end
+  private final int deploymentNumber;
+  private final boolean isDeployment;
   @Setter private boolean existsInfinity = false; // retconned on conflation end
+  private int codeFragmentIndex;
+  @Setter private boolean requiresCodeFragmentIndex;
   private final Optional<Bytes> addressToTrim;
-
-  private AccountFragment(
-      final DeferRegistry defers,
-      AccountSnapshot oldState,
-      AccountSnapshot newState,
-      Optional<Bytes> addressToTrim) {
-    this(defers, oldState, newState, false, 0, false, addressToTrim);
-  }
 
   public AccountFragment(
       final DeferRegistry defers,
       AccountSnapshot oldState,
       AccountSnapshot newState,
-      boolean debit,
-      long cost,
-      boolean createAddress,
       Optional<Bytes> addressToTrim) {
     Preconditions.checkArgument(oldState.address().equals(newState.address()));
 
     this.who = oldState.address();
     this.oldState = oldState;
     this.newState = newState;
-    this.debit = debit;
-    this.cost = cost;
-    this.createAddress = createAddress;
+    this.deploymentNumber = newState.deploymentNumber();
+    this.isDeployment = newState.deploymentStatus();
     this.addressToTrim = addressToTrim;
 
     defers.postConflation(this);
@@ -140,6 +112,7 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
         .pAccountCodeHashLoNew(eCodeHashNew.lo())
         .pAccountHasCode(oldState.code().getCodeHash() != Hash.EMPTY)
         .pAccountHasCodeNew(newState.code().getCodeHash() != Hash.EMPTY)
+        .pAccountCodeFragmentIndex(Bytes.of(this.codeFragmentIndex))
         .pAccountExists(
             oldState.nonce() > 0
                 || oldState.code().getCodeHash() != Hash.EMPTY
@@ -148,19 +121,28 @@ public final class AccountFragment implements TraceFragment, PostConflationDefer
             newState.nonce() > 0
                 || newState.code().getCodeHash() != Hash.EMPTY
                 || !newState.balance().isZero())
-        .pAccountWarmth(oldState.warm())
-        .pAccountWarmthNew(newState.warm())
+        .pAccountWarmth(oldState.isWarm())
+        .pAccountWarmthNew(newState.isWarm())
         .pAccountDeploymentNumber(Bytes.ofUnsignedInt(oldState.deploymentNumber()))
         .pAccountDeploymentNumberNew(Bytes.ofUnsignedInt(newState.deploymentNumber()))
-        .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfnty))
+        .pAccountDeploymentNumberInfty(Bytes.ofUnsignedInt(deploymentNumberInfinity))
         .pAccountDeploymentStatus(oldState.deploymentStatus())
         .pAccountDeploymentStatusNew(newState.deploymentStatus())
         .pAccountDeploymentStatusInfty(existsInfinity);
   }
 
   @Override
+  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {}
+
+  @Override
   public void runPostConflation(Hub hub, WorldView world) {
-    this.deploymentNumberInfnty = hub.transients().conflation().deploymentInfo().number(this.who);
+    this.deploymentNumberInfinity = hub.transients().conflation().deploymentInfo().number(this.who);
     this.existsInfinity = world.get(this.who) != null;
+    //    this.codeFragmentIndex =
+    //        this.requiresCodeFragmentIndex
+    //            ? hub.romLex()
+    //                .getCodeFragmentIndexByMetadata(
+    //                    ContractMetadata.make(this.who, this.deploymentNumber, this.isDeployment))
+    //            : 0;
   }
 }

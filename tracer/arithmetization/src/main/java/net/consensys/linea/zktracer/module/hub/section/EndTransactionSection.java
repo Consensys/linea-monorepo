@@ -18,8 +18,8 @@ package net.consensys.linea.zktracer.module.hub.section;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
-public class EndTransaction extends TraceSection {
-  public EndTransaction(Hub hub, TraceFragment... fragments) {
+public class EndTransactionSection extends TraceSection {
+  public EndTransactionSection(Hub hub, TraceFragment... fragments) {
     this.addFragmentsWithoutStack(hub, fragments);
   }
 

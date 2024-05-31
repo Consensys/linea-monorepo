@@ -55,6 +55,6 @@ public class ReturnFromDeployment extends MmuCall {
 
   @Override
   public int targetId() {
-    return this.hub.romLex().getCfiByMetadata(this.contract);
+    return this.hub.romLex().getCodeFragmentIndexByMetadata(this.contract);
   }
 }

@@ -50,21 +50,21 @@ public record SkippedPostTransactionDefer(
     AccountSnapshot newFromAccount =
         AccountSnapshot.fromAccount(
             state.get(fromAddress),
-            true,
+            this.oldFromAccount.isWarm(),
             hub.transients().conflation().deploymentInfo().number(fromAddress),
             false);
 
     AccountSnapshot newToAccount =
         AccountSnapshot.fromAccount(
             state.get(toAddress),
-            true,
+            this.oldToAccount.isWarm(),
             hub.transients().conflation().deploymentInfo().number(toAddress),
             false);
 
     AccountSnapshot newMinerAccount =
         AccountSnapshot.fromAccount(
             state.get(minerAddress),
-            true,
+            this.oldMinerAccount.isWarm(),
             hub.transients().conflation().deploymentInfo().number(minerAddress),
             false);
 
@@ -74,13 +74,11 @@ public record SkippedPostTransactionDefer(
             hub,
             // 3 lines -- account changes
             // From
-            hub.factories().accountFragment().make(oldFromAccount, newFromAccount, false, 0, false),
+            hub.factories().accountFragment().make(oldFromAccount, newFromAccount),
             // To
-            hub.factories().accountFragment().make(oldToAccount, newToAccount, false, 0, false),
+            hub.factories().accountFragment().make(oldToAccount, newToAccount),
             // Miner
-            hub.factories()
-                .accountFragment()
-                .make(oldMinerAccount, newMinerAccount, false, 0, false),
+            hub.factories().accountFragment().make(oldMinerAccount, newMinerAccount),
 
             // 1 line -- transaction data
             TransactionFragment.prepare(

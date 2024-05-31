@@ -74,7 +74,7 @@ public class RomLex implements Module {
     this.chunks.pop();
   }
 
-  public int getCfiByMetadata(final ContractMetadata metadata) {
+  public int getCodeFragmentIndexByMetadata(final ContractMetadata metadata) {
     if (this.sortedChunks.isEmpty()) {
       throw new RuntimeException("Chunks have not been sorted yet");
     }

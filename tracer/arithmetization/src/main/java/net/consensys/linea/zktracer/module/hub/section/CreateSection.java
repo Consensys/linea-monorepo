@@ -171,7 +171,7 @@ public class CreateSection extends TraceSection
                     EWord.of(this.initialGas),
                     EWord.ZERO,
                     false,
-                    oldCreatedSnapshot.warm(),
+                    oldCreatedSnapshot.isWarm(),
                     this.exceptions.outOfGas(),
                     upfrontCost,
                     allButOneSixtyFourth(this.initialGas - upfrontCost),

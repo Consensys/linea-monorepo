@@ -140,7 +140,7 @@ public class RlpTxn implements Module {
     traceValue.requiresEvmExecution = chunk.requireEvmExecution();
     traceValue.codeFragmentIndex =
         chunk.tx().getTo().isEmpty() && chunk.requireEvmExecution()
-            ? this.romLex.getCfiByMetadata(
+            ? this.romLex.getCodeFragmentIndexByMetadata(
                 ContractMetadata.underDeployment(
                     Address.contractAddress(chunk.tx().getSender(), chunk.tx().getNonce()), 1))
             : 0;
