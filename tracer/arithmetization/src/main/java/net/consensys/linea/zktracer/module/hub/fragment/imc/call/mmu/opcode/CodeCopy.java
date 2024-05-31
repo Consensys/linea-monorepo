@@ -46,6 +46,6 @@ public class CodeCopy extends MmuCall {
 
   @Override
   public int sourceId() {
-    return this.hub.romLex().getCfiByMetadata(this.contract);
+    return this.hub.romLex().getCodeFragmentIndexByMetadata(this.contract);
   }
 }

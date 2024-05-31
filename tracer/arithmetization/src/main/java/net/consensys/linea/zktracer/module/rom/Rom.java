@@ -53,11 +53,11 @@ public class Rom implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
 
-    int cfi = 0;
-    final int cfiInfty = this.romLex.sortedChunks().size();
+    int codeFragmentIndex = 0;
+    final int codeFragmentIndexInfinity = this.romLex.sortedChunks().size();
     for (RomChunk chunk : this.romLex.sortedChunks()) {
-      cfi += 1;
-      chunk.trace(trace, cfi, cfiInfty);
+      codeFragmentIndex += 1;
+      chunk.trace(trace, codeFragmentIndex, codeFragmentIndexInfinity);
     }
   }
 }

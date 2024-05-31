@@ -111,6 +111,8 @@ public class TransactionStack implements StackedContainer {
     @Getter private long initialGas;
     @Getter private final StorageInitialValues storage = new StorageInitialValues();
     @Getter @Setter @Builder.Default int endStamp = -1;
+    @Getter @Setter boolean isSenderPreWarmed;
+    @Getter @Setter boolean isReceiverPreWarmed;
     @Getter @Setter boolean requiresEvmExecution;
 
     /**

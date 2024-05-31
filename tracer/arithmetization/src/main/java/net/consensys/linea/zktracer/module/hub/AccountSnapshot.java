@@ -17,32 +17,60 @@ package net.consensys.linea.zktracer.module.hub;
 
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.types.Bytecode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 
-public record AccountSnapshot(
-    Address address,
-    long nonce,
-    Wei balance,
-    boolean warm,
-    Bytecode code,
-    int deploymentNumber,
-    boolean deploymentStatus) {
+@AllArgsConstructor
+@Getter
+@Setter
+@Accessors(fluent = true)
+public class AccountSnapshot {
+  private Address address;
+  private long nonce;
+  private Wei balance;
+  private boolean isWarm;
+  private Bytecode code;
+  private int deploymentNumber;
+  private boolean deploymentStatus;
+
+  public AccountSnapshot decrementBalance(Wei quantity) {
+    Preconditions.checkState(
+        this.balance.greaterOrEqualThan(quantity),
+        "Insufficient balance: %s".formatted(this.balance));
+    this.balance = this.balance.subtract(quantity);
+    return this;
+  }
+
+  public AccountSnapshot incrementBalance(Wei quantity) {
+    this.balance = this.balance.add(quantity);
+    return this;
+  }
+
+  public AccountSnapshot incrementNonce() {
+    this.nonce++;
+    return this;
+  }
+
   public static AccountSnapshot fromAccount(
-      Account account, boolean warm, int deploymentNumber, boolean deploymentStatus) {
-    return fromAccount(Optional.ofNullable(account), warm, deploymentNumber, deploymentStatus);
+      Account account, boolean isWarm, int deploymentNumber, boolean deploymentStatus) {
+    return fromAccount(Optional.ofNullable(account), isWarm, deploymentNumber, deploymentStatus);
   }
 
   public static AccountSnapshot empty(
-      boolean warm, int deploymentNumber, boolean deploymentStatus) {
+      boolean isWarm, int deploymentNumber, boolean deploymentStatus) {
     return new AccountSnapshot(
-        Address.ZERO, 0, Wei.ZERO, warm, Bytecode.EMPTY, deploymentNumber, deploymentStatus);
+        Address.ZERO, 0, Wei.ZERO, isWarm, Bytecode.EMPTY, deploymentNumber, deploymentStatus);
   }
 
   public static AccountSnapshot fromAccount(
-      Optional<Account> account, boolean warm, int deploymentNumber, boolean deploymentStatus) {
+      Optional<Account> account, boolean isWarm, int deploymentNumber, boolean deploymentStatus) {
 
     return account
         .map(
@@ -51,11 +79,11 @@ public record AccountSnapshot(
                     a.getAddress(),
                     a.getNonce(),
                     a.getBalance().copy(),
-                    warm,
+                    isWarm,
                     new Bytecode(a.getCode().copy()),
                     deploymentNumber,
                     deploymentStatus))
-        .orElseGet(() -> AccountSnapshot.empty(warm, deploymentNumber, deploymentStatus));
+        .orElseGet(() -> AccountSnapshot.empty(isWarm, deploymentNumber, deploymentStatus));
   }
 
   public AccountSnapshot debit(Wei quantity) {
@@ -63,7 +91,18 @@ public record AccountSnapshot(
         this.address,
         this.nonce + 1,
         this.balance.subtract(quantity),
-        this.warm,
+        this.isWarm,
+        this.code,
+        this.deploymentNumber,
+        this.deploymentStatus);
+  }
+
+  public AccountSnapshot debit(Wei quantity, boolean isWarm) {
+    return new AccountSnapshot(
+        this.address,
+        this.nonce + 1,
+        this.balance.subtract(quantity),
+        isWarm,
         this.code,
         this.deploymentNumber,
         this.deploymentStatus);
@@ -74,10 +113,23 @@ public record AccountSnapshot(
         this.address,
         this.nonce + 1,
         this.balance.add(value),
-        this.warm,
+        this.isWarm,
         this.code,
         this.deploymentNumber + 1,
         this.deploymentStatus);
+  }
+
+  public AccountSnapshot deploy(Wei value, Bytecode code) {
+    Preconditions.checkState(
+        !this.deploymentStatus, "Deployment status should be false before deploying.");
+    return new AccountSnapshot(
+        this.address,
+        this.nonce + 1,
+        this.balance.add(value),
+        true,
+        code,
+        this.deploymentNumber + 1,
+        true);
   }
 
   public AccountSnapshot credit(Wei value) {
@@ -86,6 +138,17 @@ public record AccountSnapshot(
         this.nonce,
         this.balance.add(value),
         true,
+        this.code,
+        this.deploymentNumber,
+        this.deploymentStatus);
+  }
+
+  public AccountSnapshot credit(Wei value, boolean isWarm) {
+    return new AccountSnapshot(
+        this.address,
+        this.nonce,
+        this.balance.add(value),
+        isWarm,
         this.code,
         this.deploymentNumber,
         this.deploymentStatus);

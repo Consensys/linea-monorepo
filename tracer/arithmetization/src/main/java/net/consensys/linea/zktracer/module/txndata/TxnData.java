@@ -160,7 +160,8 @@ public class TxnData implements Module {
     final long coinbaseLo = coinbase.hi().trimLeadingZeros().toLong();
     final int codeFragmentIndex =
         tx.isDeployment() && tx.requiresEvmExecution()
-            ? this.romLex.getCfiByMetadata(ContractMetadata.underDeployment(tx.to(), 1))
+            ? this.romLex.getCodeFragmentIndexByMetadata(
+                ContractMetadata.underDeployment(tx.to(), 1))
             : 0;
     final boolean copyTxCd = tx.requiresEvmExecution() && tx.callDataSize() != 0;
     final long fromHi = from.hi().slice(12, 4).toLong();

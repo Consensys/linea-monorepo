@@ -52,7 +52,7 @@ public class ExtCodeCopy extends MmuCall {
   @Override
   public int sourceId() {
     try {
-      return this.hub.romLex().getCfiByMetadata(this.contract);
+      return this.hub.romLex().getCodeFragmentIndexByMetadata(this.contract);
     } catch (Exception ignored) {
       // Triggered if the external bytecode is empty, and thus absent from the ROMLex.
       return 0;

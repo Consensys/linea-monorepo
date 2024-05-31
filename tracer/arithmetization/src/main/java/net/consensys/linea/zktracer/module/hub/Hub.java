@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+import static net.consensys.linea.zktracer.types.AddressUtils.precompileAddress;
 
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +52,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.scenario.ScenarioFragmen
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileInvocation;
 import net.consensys.linea.zktracer.module.hub.section.*;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
+import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.limits.L2Block;
@@ -119,6 +122,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Slf4j
 @Accessors(fluent = true)
 public class Hub implements Module {
+
   private static final int TAU = 8;
 
   public static final GasProjector GAS_PROJECTOR = new GasProjector();
@@ -417,45 +421,40 @@ public class Hub implements Module {
    * @param world a view onto the state
    */
   void processStateSkip(WorldView world) {
-    this.state.stamps().stampHubIncrements();
-    boolean isDeployment = this.transients.tx().besuTx().getTo().isEmpty();
+    this.state.stamps().incrementHubStamp();
+    final boolean isDeployment = this.transients.tx().besuTx().getTo().isEmpty();
 
     //
     // 3 sections -- account changes
     //
     // From account information
-    Address fromAddress = this.transients.tx().besuTx().getSender();
-    AccountSnapshot oldFromAccount =
+    final Address fromAddress = this.transients.tx().besuTx().getSender();
+    final AccountSnapshot oldFromAccount =
         AccountSnapshot.fromAccount(
             world.get(fromAddress),
-            false,
+            isPrecompile(fromAddress),
             this.transients.conflation().deploymentInfo().number(fromAddress),
             false);
 
     // To account information
-    Address toAddress = effectiveToAddress(this.transients.tx().besuTx());
+    final Address toAddress = effectiveToAddress(this.transients.tx().besuTx());
     if (isDeployment) {
       this.transients.conflation().deploymentInfo().deploy(toAddress);
     }
-    boolean toIsWarm =
-        (fromAddress == toAddress)
-            || isPrecompile(toAddress); // should never happen – no TX to PC allowed
-    AccountSnapshot oldToAccount =
+    final AccountSnapshot oldToAccount =
         AccountSnapshot.fromAccount(
             world.get(toAddress),
-            toIsWarm,
+            isPrecompile(toAddress),
             this.transients.conflation().deploymentInfo().number(toAddress),
             false);
 
     // Miner account information
-    boolean minerIsWarm =
-        (this.transients.block().minerAddress() == fromAddress)
-            || (this.transients.block().minerAddress() == toAddress)
-            || isPrecompile(this.transients.block().minerAddress());
-    AccountSnapshot oldMinerAccount =
+    final Address minerAddress = this.transients.block().minerAddress();
+
+    final AccountSnapshot oldMinerAccount =
         AccountSnapshot.fromAccount(
-            world.get(this.transients.block().minerAddress()),
-            minerIsWarm,
+            world.get(minerAddress),
+            isPrecompile(minerAddress),
             this.transients
                 .conflation()
                 .deploymentInfo()
@@ -473,7 +472,7 @@ public class Hub implements Module {
   }
 
   /**
-   * Traces the warm-up information of a transaction
+   * Traces the isWarm-up information of a transaction
    *
    * @param world a view onto the state
    */
@@ -485,38 +484,75 @@ public class Hub implements Module {
         .ifPresent(
             preWarmed -> {
               if (!preWarmed.isEmpty()) {
-                this.state.stamps().stampHubIncrements();
+                Set<Address> seenAddresses = new HashSet<>(precompileAddress);
+                this.state.stamps().incrementHubStamp();
 
-                Set<Address> seenAddresses = new HashSet<>();
                 Map<Address, Set<Bytes32>> seenKeys = new HashMap<>();
                 List<TraceFragment> fragments = new ArrayList<>();
 
+                final TransactionStack.MetaTransaction tx = this.transients.tx();
+                final Transaction besuTx = tx.besuTx();
+                final Address senderAddress = besuTx.getSender();
+                final Address receiverAddress = effectiveToAddress(besuTx);
+
                 for (AccessListEntry entry : preWarmed) {
-                  Address address = entry.address();
-                  AccountSnapshot snapshot =
+                  this.state.stamps().incrementHubStamp();
+
+                  final Address address = entry.address();
+                  if (senderAddress.equals(address)) {
+                    tx.isSenderPreWarmed(true);
+                  }
+
+                  if (receiverAddress.equals(address)) {
+                    tx.isReceiverPreWarmed(true);
+                  }
+
+                  final DeploymentInfo deploymentInfo =
+                      this.transients.conflation().deploymentInfo();
+
+                  final int deploymentNumber = deploymentInfo.number(address);
+                  Preconditions.checkArgument(
+                      !deploymentInfo.isDeploying(address),
+                      "Deployment status during TX_INIT phase of any address should always be false");
+
+                  final boolean isAccountWarm = seenAddresses.contains(address);
+                  final AccountSnapshot preWarmingAccountSnapshot =
                       AccountSnapshot.fromAccount(
-                          world.get(address), seenAddresses.contains(address), 0, false);
+                          world.get(address), isAccountWarm, deploymentNumber, false);
+
+                  final AccountSnapshot postWarmingAccountSnapshot =
+                      AccountSnapshot.fromAccount(
+                          world.get(address), true, deploymentNumber, false);
+
                   fragments.add(
-                      this.factories.accountFragment().make(snapshot, snapshot, false, 0, false));
+                      this.factories
+                          .accountFragment()
+                          .makeWithTrm(
+                              preWarmingAccountSnapshot, postWarmingAccountSnapshot, address));
+
                   seenAddresses.add(address);
 
                   List<Bytes32> keys = entry.storageKeys();
-                  for (Bytes32 key_ : keys) {
-                    UInt256 key = UInt256.fromBytes(key_);
-                    EWord value =
+                  for (Bytes32 k : keys) {
+                    this.state.stamps().incrementHubStamp();
+
+                    final UInt256 key = UInt256.fromBytes(k);
+                    final EWord value =
                         Optional.ofNullable(world.get(address))
                             .map(account -> EWord.of(account.getStorageValue(key)))
                             .orElse(EWord.ZERO);
+
                     fragments.add(
                         new StorageFragment(
                             address,
-                            this.transients.conflation().deploymentInfo().number(address),
+                            deploymentInfo.number(address),
                             EWord.of(key),
                             value,
                             value,
                             value,
                             seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
                             true));
+
                     seenKeys.get(address).add(key);
                   }
                 }
@@ -533,71 +569,83 @@ public class Hub implements Module {
    * @param world a view onto the state
    */
   void processStateInit(WorldView world) {
-    this.state.stamps().stampHubIncrements();
-    final boolean isDeployment = this.transients.tx().besuTx().getTo().isEmpty();
-    final Address toAddress = effectiveToAddress(this.transients.tx().besuTx());
-    if (isDeployment) {
-      this.transients.conflation().deploymentInfo().deploy(toAddress);
-    }
+    this.state.stamps().incrementHubStamp();
+    final TransactionStack.MetaTransaction tx = this.transients.tx();
+    final boolean isDeployment = tx.besuTx().getTo().isEmpty();
+    final Address toAddress = effectiveToAddress(tx.besuTx());
+    final DeploymentInfo deploymentInfo = this.transients.conflation().deploymentInfo();
 
-    final Address fromAddress = this.transients.tx().besuTx().getSender();
+    final Address fromAddress = tx.besuTx().getSender();
     final Account fromAccount = world.get(fromAddress);
-    final AccountSnapshot fromSnapshot =
+    final AccountSnapshot preInitFromSnapshot =
         AccountSnapshot.fromAccount(
             fromAccount,
-            true,
-            this.transients.conflation().deploymentInfo().number(fromAddress),
-            this.transients.conflation().deploymentInfo().isDeploying(fromAddress));
-
-    final Account toAccount = world.get(toAddress);
-    final AccountSnapshot toSnapshot =
-        AccountSnapshot.fromAccount(
-            toAccount,
-            true,
-            this.transients.conflation().deploymentInfo().number(toAddress),
-            this.transients.conflation().deploymentInfo().isDeploying(toAddress));
+            tx.isSenderPreWarmed(),
+            deploymentInfo.number(fromAddress),
+            deploymentInfo.isDeploying(fromAddress));
 
     final Wei transactionGasPrice =
         ZkTracer.feeMarket
             .getTransactionPriceCalculator()
             .price(
-                (org.hyperledger.besu.ethereum.core.Transaction) this.transients.tx().besuTx(),
+                (org.hyperledger.besu.ethereum.core.Transaction) tx.besuTx(),
                 Optional.of(this.transients.block().baseFee()));
-    final Wei value = (Wei) this.transients.tx().besuTx().getValue();
-    final AccountSnapshot fromPostDebitSnapshot =
-        fromSnapshot.debit(
-            transactionGasPrice.multiply(this.transients.tx().besuTx().getGasLimit()).add(value));
+    final Wei value = (Wei) tx.besuTx().getValue();
+    final AccountSnapshot postInitFromSnapshot =
+        preInitFromSnapshot.debit(
+            transactionGasPrice.multiply(tx.besuTx().getGasLimit()).add(value), true);
 
     final boolean isSelfCredit = toAddress.equals(fromAddress);
+
+    final Account toAccount = world.get(toAddress);
+
+    final AccountSnapshot preInitToSnapshot =
+        isSelfCredit
+            ? postInitFromSnapshot
+            : AccountSnapshot.fromAccount(
+                toAccount,
+                tx.isReceiverPreWarmed(),
+                deploymentInfo.number(toAddress),
+                deploymentInfo.isDeploying(toAddress));
+
+    if (isDeployment) {
+      deploymentInfo.deploy(toAddress);
+    }
+
+    final Bytecode initBytecode = new Bytecode(tx.besuTx().getInit().orElse(Bytes.EMPTY));
+    final AccountSnapshot postInitToSnapshot =
+        isDeployment
+            ? preInitToSnapshot.deploy(value, initBytecode)
+            : preInitToSnapshot.credit(value, true);
+
     final TransactionFragment txFragment =
         TransactionFragment.prepare(
             this.transients.conflation().number(),
             this.transients.block().minerAddress(),
-            this.transients.tx().besuTx(),
+            tx.besuTx(),
             true,
-            ((org.hyperledger.besu.ethereum.core.Transaction) this.transients.tx().besuTx())
+            ((org.hyperledger.besu.ethereum.core.Transaction) tx.besuTx())
                 .getEffectiveGasPrice(Optional.ofNullable(this.transients().block().baseFee())),
             this.transients.block().baseFee(),
             0 // TODO: find getInitialGas
             );
     this.defers.postTx(txFragment);
 
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        this.factories.accountFragment();
+
     this.addTraceSection(
         new TxInitSection(
             this,
-            this.factories.accountFragment().make(fromSnapshot, fromPostDebitSnapshot),
-            isDeployment
-                ? this.factories.accountFragment().make(toSnapshot, toSnapshot.deploy(value))
-                : (isSelfCredit
-                    ? this.factories
-                        .accountFragment()
-                        .make(fromPostDebitSnapshot, fromPostDebitSnapshot.credit(value))
-                    : this.factories.accountFragment().make(toSnapshot, toSnapshot.credit(value))),
+            accountFragmentFactory.make(preInitFromSnapshot, postInitFromSnapshot),
+            accountFragmentFactory
+                .make(preInitToSnapshot, postInitToSnapshot)
+                .requiresCodeFragmentIndex(true),
             ImcFragment.forTxInit(this),
             ContextFragment.initializeExecutionContext(this),
             txFragment));
 
-    this.transients.tx().state(TxState.TX_EXEC);
+    tx.state(TxState.TX_EXEC);
   }
 
   public CallFrame currentFrame() {
@@ -677,7 +725,8 @@ public class Hub implements Module {
 
   void processStateExec(MessageFrame frame) {
     this.currentFrame().frame(frame);
-    this.state.stamps().stampHubIncrements();
+    this.state.stamps().incrementHubStamp();
+
     this.pch.setup(frame);
     this.state.stamps().stampSubmodules(this.pch());
 
@@ -698,38 +747,52 @@ public class Hub implements Module {
 
   void processStateFinal(WorldView worldView, Transaction tx, boolean isSuccess) {
     this.transients().tx().state(TxState.TX_FINAL);
-    this.state.stamps().stampHubIncrements();
+    this.state.stamps().incrementHubStamp();
 
-    Address fromAddress = this.transients.tx().besuTx().getSender();
-    Account fromAccount = worldView.get(fromAddress);
-    AccountSnapshot fromSnapshot =
+    final Address fromAddress = this.transients.tx().besuTx().getSender();
+    final Account fromAccount = worldView.get(fromAddress);
+    final DeploymentInfo deploymentInfo = this.transients.conflation().deploymentInfo();
+    final AccountSnapshot preFinalFromSnapshot =
         AccountSnapshot.fromAccount(
             fromAccount,
             true,
-            this.transients.conflation().deploymentInfo().number(fromAddress),
-            this.transients.conflation().deploymentInfo().isDeploying(fromAddress));
+            deploymentInfo.number(fromAddress),
+            deploymentInfo.isDeploying(fromAddress));
+
+    // TODO: still no finished
+    final AccountSnapshot postFinalFromSnapshot =
+        AccountSnapshot.fromAccount(
+            fromAccount,
+            true,
+            deploymentInfo.number(fromAddress),
+            deploymentInfo.isDeploying(fromAddress));
 
     Account minerAccount = worldView.get(this.transients.block().minerAddress());
-    AccountSnapshot minerSnapshot =
+    AccountSnapshot preFinalCoinbaseSnapshot =
         AccountSnapshot.fromAccount(
             minerAccount,
             true,
-            this.transients
-                .conflation()
-                .deploymentInfo()
-                .number(this.transients.block().minerAddress()),
-            this.transients
-                .conflation()
-                .deploymentInfo()
-                .isDeploying(this.transients.block().minerAddress()));
+            deploymentInfo.number(this.transients.block().minerAddress()),
+            deploymentInfo.isDeploying(this.transients.block().minerAddress()));
+
+    // TODO: still not finished
+    AccountSnapshot postFinalCoinbaseSnapshot =
+        AccountSnapshot.fromAccount(
+            minerAccount,
+            true,
+            deploymentInfo.number(this.transients.block().minerAddress()),
+            deploymentInfo.isDeploying(this.transients.block().minerAddress()));
+
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        this.factories.accountFragment();
 
     if (isSuccess) {
       // if no revert: 2 account rows (sender, coinbase) + 1 tx row
       this.addTraceSection(
-          new EndTransaction(
+          new EndTransactionSection(
               this,
-              this.factories.accountFragment().make(fromSnapshot, fromSnapshot, false, 0, false),
-              this.factories.accountFragment().make(minerSnapshot, minerSnapshot, false, 0, false),
+              accountFragmentFactory.make(preFinalFromSnapshot, postFinalFromSnapshot),
+              accountFragmentFactory.make(preFinalCoinbaseSnapshot, postFinalCoinbaseSnapshot),
               TransactionFragment.prepare(
                   this.transients.conflation().number(),
                   this.transients.block().minerAddress(),
@@ -747,19 +810,26 @@ public class Hub implements Module {
       // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
       Address toAddress = this.transients.tx().besuTx().getSender();
       Account toAccount = worldView.get(toAddress);
-      AccountSnapshot toSnapshot =
+      AccountSnapshot preFinalToSnapshot =
           AccountSnapshot.fromAccount(
               toAccount,
               true,
-              this.transients.conflation().deploymentInfo().number(toAddress),
-              this.transients.conflation().deploymentInfo().isDeploying(toAddress));
+              deploymentInfo.number(toAddress),
+              deploymentInfo.isDeploying(toAddress));
+
+      // TODO: still not finished
+      AccountSnapshot postFinalToSnapshot =
+          AccountSnapshot.fromAccount(
+              toAccount,
+              true,
+              deploymentInfo.number(toAddress),
+              deploymentInfo.isDeploying(toAddress));
       this.addTraceSection(
-          new EndTransaction(
+          new EndTransactionSection(
               this,
-              this.factories.accountFragment().make(fromSnapshot, fromSnapshot, false, 0, false),
-              this.factories.accountFragment().make(minerSnapshot, minerSnapshot, false, 0, false),
-              this.factories.accountFragment().make(fromSnapshot, fromSnapshot, false, 0, false),
-              this.factories.accountFragment().make(toSnapshot, toSnapshot, false, 0, false)));
+              accountFragmentFactory.make(preFinalFromSnapshot, postFinalFromSnapshot),
+              accountFragmentFactory.make(preFinalToSnapshot, postFinalToSnapshot),
+              accountFragmentFactory.make(preFinalCoinbaseSnapshot, postFinalCoinbaseSnapshot)));
     }
   }
 
@@ -781,7 +851,9 @@ public class Hub implements Module {
 
     this.enterTransaction();
 
-    if (this.transients.tx().shouldSkip(world)) {
+    if (this.transients
+        .tx()
+        .shouldSkip(world)) /* TODO: should use requiresEvmExecution instead of recomputing it */ {
       this.transients.tx().state(TxState.TX_SKIP);
       this.processStateSkip(world);
     } else {
@@ -1234,7 +1306,7 @@ public class Hub implements Module {
             this.currentFrame(),
             this.factories
                 .accountFragment()
-                .makeWithTrm(accountSnapshot, accountSnapshot, false, 0, false, rawTargetAddress));
+                .makeWithTrm(accountSnapshot, accountSnapshot, rawTargetAddress));
 
         this.addTraceSection(accountSection);
       }
@@ -1263,11 +1335,8 @@ public class Hub implements Module {
               this.currentFrame().opCode() == OpCode.EXTCODECOPY
                   ? this.factories
                       .accountFragment()
-                      .makeWithTrm(
-                          accountSnapshot, accountSnapshot, false, 0, false, rawTargetAddress)
-                  : this.factories
-                      .accountFragment()
-                      .make(accountSnapshot, accountSnapshot, false, 0, false));
+                      .makeWithTrm(accountSnapshot, accountSnapshot, rawTargetAddress)
+                  : this.factories.accountFragment().make(accountSnapshot, accountSnapshot));
         } else {
           copySection.addFragment(
               this, this.currentFrame(), ContextFragment.readContextData(callStack));
@@ -1491,9 +1560,7 @@ public class Hub implements Module {
             new JumpSection(
                 this,
                 ContextFragment.readContextData(callStack),
-                this.factories
-                    .accountFragment()
-                    .make(codeAccountSnapshot, codeAccountSnapshot, false, 0, false),
+                this.factories.accountFragment().make(codeAccountSnapshot, codeAccountSnapshot),
                 ImcFragment.forOpcode(this, frame));
 
         this.addTraceSection(jumpSection);

@@ -29,7 +29,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class AddressUtils {
   private static final Bytes CREATE2_PREFIX = Bytes.of(0xff);
-  private static final List<Address> precompileAddress =
+  public static final List<Address> precompileAddress =
       List.of(
           Address.ECREC,
           Address.SHA256,
