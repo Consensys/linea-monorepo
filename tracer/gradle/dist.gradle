@@ -27,17 +27,9 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-tasks.register('downloadLatestLineaBesu', Download) {
-  src rootProject.besuUrl
-  dest new File(buildDir, rootProject.besuFilename)
-  onlyIfModified true
-}
-
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
 jar {
-  dependsOn downloadLatestLineaBesu
-
   archiveBaseName = distributionIdentifier
 
   manifest {
@@ -71,76 +63,4 @@ def calculateVersion() {
 static def getCheckedOutGitCommitHash() {
   def hashLength = 8
   "git rev-parse HEAD".execute().text.take(hashLength)
-}
-
-tasks.register('distTar', Tar) {
-  dependsOn jar
-  dependsOn downloadLatestLineaBesu
-
-  from(tarTree(downloadLatestLineaBesu.dest), {
-    eachFile { path = path.replaceFirst(rootProject.besuIdentifier, '') }
-    includeEmptyDirs = false
-    exclude "**/LICENSE"
-  })
-
-  from(configurations.installedJars) {
-    into "plugins"
-    exclude "**/common*.jar"
-  }
-
-  into besuPluginsIdentifier
-  archiveBaseName = distributionIdentifier
-  compression = Compression.GZIP
-  archiveExtension = 'tar.gz'
-
-  exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register('installDist', Copy) {
-  dependsOn distTar
-
-  from(tarTree(distTar.outputs.getFiles().getSingleFile()), {
-    eachFile { path = path.replaceFirst(besuPluginsIdentifier, distributionIdentifier) }
-    includeEmptyDirs = false
-  })
-  into "$buildDir/distributions/install"
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register('distZip', Zip) {
-  dependsOn installDist
-
-  archiveBaseName = distributionIdentifier
-  from installDist.outputs.getFiles()
-  archiveBaseName
-  setArchiveExtension 'zip'
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register("copyPluginJar") {
-  dependsOn installDist
-
-  doLast {
-    def copyInto = rootProject.besuPluginDir
-    def copyFrom = new File("${project(":arithmetization").buildDir}/libs")
-
-    copy {
-      from copyFrom.toString()
-      into copyInto.toString()
-      include '*.jar'
-    }
-  }
-}
-
-tasks.register('deployPlugins', Copy) {
-  dependsOn jar
-  dependsOn installDist
-
-  from(configurations.installedJars) {
-    into new File(distributionIdentifier, "plugins")
-    exclude "**/common*.jar"
-  }
-
-  into installDist.destinationDir
 }
