@@ -16,7 +16,9 @@
 package net.consensys.linea.zktracer.module.hub.transients;
 
 import static net.consensys.linea.zktracer.module.UtilCalculator.allButOneSixtyFourth;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
+import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -25,6 +27,7 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -178,9 +181,23 @@ public class OperationAncillaries {
   public static MemorySpan returnDataSegment(final MessageFrame frame) {
     switch (OpCode.of(frame.getCurrentOperation().getOpcode())) {
       case RETURN, REVERT -> {
+        // TODO: make sure this isn't triggered when RETURNing from a CREATE(2)
+        //  or when RETURNing from the root context of a deployment transaction.
+        //  Recall that this case leads to the deployment of bytecode and produces
+        //  empty return data in the caller context.
         long offset = Words.clampedToLong(frame.getStackItem(0));
         long length = Words.clampedToLong(frame.getStackItem(1));
         return MemorySpan.fromStartLength(offset, length);
+      }
+      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
+        Address target = Words.toAddress(frame.getStackItem(1));
+        if (isPrecompile(target)) {
+          return MemorySpan.fromStartLength(0, 0);
+        }
+        Preconditions.checkArgument(isPrecompile(target)); // useless (?) sanity check
+        // TODO: this will not work for MODEXP as return data starts at offset
+        //  512 - modulusByteSize
+        return MemorySpan.fromStartLength(0, frame.getReturnData().size());
       }
       default -> throw new IllegalArgumentException(
           "returnDataRequestedSegment called outside of a RETURN/REVERT");
@@ -198,9 +215,9 @@ public class OperationAncillaries {
   }
 
   /**
-   * Return the bytes of the calldata if the current operation is a call, throws otherwise.
+   * Return the bytes of the return data if the current operation is a call, throws otherwise.
    *
-   * @return the calldata content
+   * @return the return data content
    */
   public Bytes returnData() {
     final MemorySpan returnDataSegment = returnDataSegment();
@@ -216,6 +233,7 @@ public class OperationAncillaries {
       return Bytes.EMPTY;
     }
 
+    // TODO: this WON'T work for precompiles, they don't have memory.
     return maybeShadowReadMemory(returnDataSegment, hub.messageFrame());
   }
 

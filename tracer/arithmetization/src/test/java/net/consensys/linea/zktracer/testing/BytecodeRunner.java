@@ -67,13 +67,13 @@ public final class BytecodeRunner {
     Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
 
     final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.fromEth(1)).nonce(5).address(senderAddress).build();
+        ToyAccount.builder().balance(senderBalance).nonce(5).address(senderAddress).build();
 
     final Long selectedGasLimit = Optional.of(gasLimit).orElse(DEFAULT_GAS_LIMIT);
 
     final ToyAccount receiverAccount =
         ToyAccount.builder()
-            .balance(senderBalance)
+            .balance(Wei.fromEth(1))
             .nonce(6)
             .address(Address.fromHexString("0x1111111111111111111111111111111111111111"))
             .code(byteCode)

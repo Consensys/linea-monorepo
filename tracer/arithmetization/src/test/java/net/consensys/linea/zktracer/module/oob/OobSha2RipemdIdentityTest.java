@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import com.google.common.io.BaseEncoding;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.testing.BytecodeRunner;
@@ -61,18 +62,17 @@ public class OobSha2RipemdIdentityTest {
     bytecodeRunner.run();
 
     String referenceComputedHash = sha256(data);
-    String prcComputedHash =
-        bytecodeRunner
-            .getHub()
-            .currentFrame()
-            .frame()
-            .shadowReadMemory(programAndRetInfo.retOffset, programAndRetInfo.retSize)
-            .toString();
-    System.out.println("Test SHA2-256 with random argSize = " + argSize);
-    System.out.println("Inp: 0x" + data);
-    System.out.println("Ref: " + referenceComputedHash);
-    System.out.println("Com: " + prcComputedHash);
-    // assertEquals(referenceComputedHash, prcComputedHash);
+    final Hub hub = bytecodeRunner.getHub();
+    String prcComputedHash = hub.currentFrame().frame().getReturnData().toString();
+
+    // String returnDataSizeMaybe = hub.currentFrame().frame().getStackItem(0).toString();
+    // System.out.println("RETURNDATASIZE after a SHA2 CALL:" + returnDataSizeMaybe);
+    // System.out.println("Test SHA2-256 with random argSize = " + argSize);
+    // System.out.println("Inp: 0x" + data);
+    // System.out.println("Ref: " + referenceComputedHash);
+    // System.out.println("Com: " + prcComputedHash);
+
+    assertEquals(referenceComputedHash, prcComputedHash);
   }
 
   @ParameterizedTest
@@ -85,17 +85,12 @@ public class OobSha2RipemdIdentityTest {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
 
-    String returnedData =
-        bytecodeRunner
-            .getHub()
-            .currentFrame()
-            .frame()
-            .shadowReadMemory(programAndRetInfo.retOffset, programAndRetInfo.retSize)
-            .toString();
-    System.out.println("Test IDENTITY with random argSize = " + argSize);
-    System.out.println("Inp: 0x" + data);
-    System.out.println("Ret: " + returnedData);
-    // assertEquals("0x" + data.toLowerCase(), returnedData);
+    String returnedData = bytecodeRunner.getHub().currentFrame().frame().getReturnData().toString();
+    // System.out.println(returnedData);
+    // System.out.println("Test IDENTITY with random argSize = " + argSize);
+    // System.out.println("Inp: 0x" + data);
+    // System.out.println("Ret: " + returnedData);
+    assertEquals("0x" + data.toLowerCase(), returnedData);
   }
 
   @ParameterizedTest
@@ -110,17 +105,14 @@ public class OobSha2RipemdIdentityTest {
 
     String referenceComputedHash = ripemd160(data);
     String prcComputedHash =
-        bytecodeRunner
-            .getHub()
-            .currentFrame()
-            .frame()
-            .shadowReadMemory(programAndRetInfo.retOffset, programAndRetInfo.retSize)
-            .toString();
-    System.out.println("Test RIPEMD-160 with random argSize = " + argSize);
-    System.out.println("Inp: 0x" + data);
-    System.out.println("Ref: " + referenceComputedHash);
-    System.out.println("Com: " + prcComputedHash);
-    // assertEquals(referenceComputedHash, prcComputedHash);
+        bytecodeRunner.getHub().currentFrame().frame().getReturnData().toString();
+
+    // System.out.println("Test RIPEMD-160 with random argSize = " + argSize);
+    // System.out.println("Inp: 0x" + data);
+    // System.out.println("Ref: " + referenceComputedHash);
+    // System.out.println("Com: " + prcComputedHash);
+
+    assertEquals(referenceComputedHash, prcComputedHash);
   }
 
   // Support methods
@@ -269,7 +261,8 @@ public class OobSha2RipemdIdentityTest {
         . // address
         push("FFFFFFFF")
         . // gas
-        op(OpCode.STATICCALL);
+        op(OpCode.STATICCALL)
+        .op(OpCode.RETURNDATASIZE);
 
     return new ProgramAndRetInfo(program, argSize, argOffset, retSize, retOffset);
   }
