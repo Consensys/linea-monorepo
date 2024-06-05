@@ -55,6 +55,7 @@ import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.MainnetEVMs;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
+import org.hyperledger.besu.evm.precompile.MainnetPrecompiledContracts;
 import org.hyperledger.besu.evm.precompile.PrecompileContractRegistry;
 import org.hyperledger.besu.evm.processor.ContractCreationProcessor;
 import org.hyperledger.besu.evm.processor.MessageCallProcessor;
@@ -216,8 +217,14 @@ public class ToyExecutionEnvironment {
   }
 
   private MainnetTransactionProcessor getMainnetTransactionProcessor() {
+
+    PrecompileContractRegistry precompileContractRegistry = new PrecompileContractRegistry();
+
+    MainnetPrecompiledContracts.populateForIstanbul(
+        precompileContractRegistry, evm.getGasCalculator());
+
     final MessageCallProcessor messageCallProcessor =
-        new MessageCallProcessor(evm, new PrecompileContractRegistry());
+        new MessageCallProcessor(evm, precompileContractRegistry);
 
     final ContractCreationProcessor contractCreationProcessor =
         new ContractCreationProcessor(evm.getGasCalculator(), evm, false, List.of(), 0);
