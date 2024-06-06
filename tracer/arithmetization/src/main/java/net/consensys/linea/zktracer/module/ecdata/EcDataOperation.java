@@ -373,10 +373,10 @@ public class EcDataOperation extends ModuleOperation {
           secp256K1.recoverPublicKeyFromSignature(
               h.toBytes(),
               SECPSignature.create(
-                  r.toBigInteger(),
-                  s.toBigInteger(),
+                  r.toUnsignedBigInteger(),
+                  s.toUnsignedBigInteger(),
                   (byte) (v.toInt() - 27),
-                  SECP256K1N.toBigInteger()));
+                  SECP256K1N.toUnsignedBigInteger()));
       return optionalRecoveredAddress
           .map(e -> EWord.of(Hash.keccak256(e.getEncodedBytes()).slice(32 - 20)))
           .orElse(EWord.ZERO);

@@ -27,7 +27,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 /** Implementation of a {@link Module} for memory expansion. */
 public class Mxp implements Module {
   /** A list of the operations to trace */
-  private final StackedList<MxpData> chunks = new StackedList<>();
+  private final StackedList<MxpOperation> chunks = new StackedList<>();
 
   private Hub hub;
 
@@ -45,7 +45,7 @@ public class Mxp implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) { // This will be renamed to tracePreOp
-    this.chunks.add(new MxpData(frame, hub));
+    this.chunks.add(new MxpOperation(frame, hub));
   }
 
   @Override

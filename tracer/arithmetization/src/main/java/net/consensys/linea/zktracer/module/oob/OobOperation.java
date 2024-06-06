@@ -191,7 +191,7 @@ public class OobOperation extends ModuleOperation {
   private void setOpCodeFlagsAndWghtSumAndIncomingInst(MessageFrame frame) {
     final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     // In the case of CALLs and CREATEs this value will be replaced
-    wghtSum = UnsignedByte.of(opCode.byteValue()).toBigInteger();
+    wghtSum = BigInteger.valueOf(Byte.toUnsignedInt(opCode.byteValue()));
 
     switch (opCode) {
       case JUMP:
