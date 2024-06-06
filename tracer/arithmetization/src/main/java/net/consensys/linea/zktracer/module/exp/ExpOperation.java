@@ -91,7 +91,7 @@ public abstract class ExpOperation extends ModuleOperation {
       pComputationMsb
       */
       // tanzb turns to 1 iff trimAcc is nonzero
-      tanzb = pComputationTrimAcc.slice(0, i + 1).toBigInteger().signum() != 0;
+      tanzb = pComputationTrimAcc.slice(0, i + 1).toUnsignedBigInteger().signum() != 0;
       pComputationTanzbAcc += (short) (tanzb ? 1 : 0);
       // manzb turns to 1 iff msbAcc is nonzero
       manzb = i > maxCt - 8 && pComputationMsb.slice(0, i % 8 + 1) != 0;

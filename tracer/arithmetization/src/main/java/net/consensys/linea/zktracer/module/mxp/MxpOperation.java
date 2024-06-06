@@ -46,7 +46,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Getter
-public class MxpData extends ModuleOperation {
+public class MxpOperation extends ModuleOperation {
   public static final BigInteger TWO_POW_128 = BigInteger.ONE.shiftLeft(128);
   public static final BigInteger TWO_POW_32 = BigInteger.ONE.shiftLeft(32);
 
@@ -90,7 +90,7 @@ public class MxpData extends ModuleOperation {
   private long linCost = 0;
   private final boolean deploys;
 
-  public MxpData(final MessageFrame frame, final Hub hub) {
+  public MxpOperation(final MessageFrame frame, final Hub hub) {
     this.opCodeData = hub.opCodeData();
     this.contextNumber = hub.currentFrame().contextNumber();
     this.typeMxp = opCodeData.billing().type();
@@ -192,16 +192,16 @@ public class MxpData extends ModuleOperation {
   protected void setRoob() {
     roob =
         switch (typeMxp) {
-          case TYPE_2, TYPE_3 -> offset1.toBigInteger().compareTo(TWO_POW_128) >= 0;
-          case TYPE_4 -> size1.toBigInteger().compareTo(TWO_POW_128) >= 0
-              || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !size1.toBigInteger().equals(BigInteger.ZERO));
-          case TYPE_5 -> size1.toBigInteger().compareTo(TWO_POW_128) >= 0
-              || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !size1.toBigInteger().equals(BigInteger.ZERO))
-              || (size2.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  || (offset2.toBigInteger().compareTo(TWO_POW_128) >= 0
-                      && !size2.toBigInteger().equals(BigInteger.ZERO)));
+          case TYPE_2, TYPE_3 -> offset1.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0;
+          case TYPE_4 -> size1.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+              || (offset1.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  && !size1.toUnsignedBigInteger().equals(BigInteger.ZERO));
+          case TYPE_5 -> size1.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+              || (offset1.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  && !size1.toUnsignedBigInteger().equals(BigInteger.ZERO))
+              || (size2.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                  || (offset2.toUnsignedBigInteger().compareTo(TWO_POW_128) >= 0
+                      && !size2.toUnsignedBigInteger().equals(BigInteger.ZERO)));
           default -> false;
         };
   }
@@ -228,19 +228,31 @@ public class MxpData extends ModuleOperation {
   protected void setMaxOffset1and2() {
     if (getMxpExecutionPath() != mxpExecutionPath.TRIVIAL) {
       switch (typeMxp) {
-        case TYPE_2 -> maxOffset1 = offset1.toBigInteger().add(BigInteger.valueOf(31));
-        case TYPE_3 -> maxOffset1 = offset1.toBigInteger();
+        case TYPE_2 -> maxOffset1 = offset1.toUnsignedBigInteger().add(BigInteger.valueOf(31));
+        case TYPE_3 -> maxOffset1 = offset1.toUnsignedBigInteger();
         case TYPE_4 -> {
-          if (!size1.toBigInteger().equals(BigInteger.ZERO)) {
-            maxOffset1 = offset1.toBigInteger().add(size1.toBigInteger()).subtract(BigInteger.ONE);
+          if (!size1.toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+            maxOffset1 =
+                offset1
+                    .toUnsignedBigInteger()
+                    .add(size1.toUnsignedBigInteger())
+                    .subtract(BigInteger.ONE);
           }
         }
         case TYPE_5 -> {
-          if (!size1.toBigInteger().equals(BigInteger.ZERO)) {
-            maxOffset1 = offset1.toBigInteger().add(size1.toBigInteger()).subtract(BigInteger.ONE);
+          if (!size1.toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+            maxOffset1 =
+                offset1
+                    .toUnsignedBigInteger()
+                    .add(size1.toUnsignedBigInteger())
+                    .subtract(BigInteger.ONE);
           }
-          if (!size2.toBigInteger().equals(BigInteger.ZERO)) {
-            maxOffset2 = offset2.toBigInteger().add(size2.toBigInteger()).subtract(BigInteger.ONE);
+          if (!size2.toUnsignedBigInteger().equals(BigInteger.ZERO)) {
+            maxOffset2 =
+                offset2
+                    .toUnsignedBigInteger()
+                    .add(size2.toUnsignedBigInteger())
+                    .subtract(BigInteger.ONE);
           }
         }
       }
@@ -354,9 +366,10 @@ public class MxpData extends ModuleOperation {
         return;
       }
 
-      accW = size1.toBigInteger().add(BigInteger.valueOf(31)).divide(BigInteger.valueOf(32));
+      accW =
+          size1.toUnsignedBigInteger().add(BigInteger.valueOf(31)).divide(BigInteger.valueOf(32));
 
-      BigInteger r = accW.multiply(BigInteger.valueOf(32)).subtract(size1.toBigInteger());
+      BigInteger r = accW.multiply(BigInteger.valueOf(32)).subtract(size1.toUnsignedBigInteger());
 
       // r in [0,31]
       UnsignedByte rByte = UnsignedByte.of(r.toByteArray()[r.toByteArray().length - 1]);
@@ -439,7 +452,7 @@ public class MxpData extends ModuleOperation {
   }
 
   private void setWordsNew(final MessageFrame frame) {
-    if (getMxpExecutionPath() == MxpData.mxpExecutionPath.NON_TRIVIAL && expands) {
+    if (getMxpExecutionPath() == MxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
       switch (getTypeMxp()) {
         case TYPE_1 -> wordsNew = frame.calculateMemoryExpansion(Words.clampedToLong(offset1), 0);
         case TYPE_2 -> wordsNew = frame.calculateMemoryExpansion(Words.clampedToLong(offset1), 32);
@@ -461,7 +474,7 @@ public class MxpData extends ModuleOperation {
   }
 
   private void setCMemNew() {
-    if (getMxpExecutionPath() == MxpData.mxpExecutionPath.NON_TRIVIAL && expands) {
+    if (getMxpExecutionPath() == MxpOperation.mxpExecutionPath.NON_TRIVIAL && expands) {
       cMemNew = memoryCost(wordsNew);
     }
   }
