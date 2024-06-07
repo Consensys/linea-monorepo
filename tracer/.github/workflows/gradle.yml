@@ -58,6 +58,9 @@ jobs:
           java-version: '17'
           distribution: 'adopt'
 
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
       # The asset URL for the latest release can be found with:
       # curl -L -H "Accept: application/vnd.github+json"  \
       #     -H "Authorization: Bearer YOUR_GH_API_TOKEN" \
@@ -65,16 +68,17 @@ jobs:
       #     https://api.github.com/repos/ConsenSys/corset/releases/latest
       # | jq '.assets[] | select(.name|endswith("x86_64-unknown-linux-musl.tar.gz")) | .url'
       - name: Install Corset
-        run: |
-          curl -L \
-          -H "Accept: application/octet-stream" \
-          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          -o corset.tar.gz \
-          https://api.github.com/repos/Consensys/corset/releases/assets/151396061
-          tar xzf corset.tar.gz
-          mv corset $HOME
-          echo $HOME >> $GITHUB_PATH
+        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.11 --locked --force
+#        run: |
+#          curl -L \
+#          -H "Accept: application/octet-stream" \
+#          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#          -H "X-GitHub-Api-Version: 2022-11-28" \
+#          -o corset.tar.gz \
+#          https://api.github.com/repos/Consensys/corset/releases/assets/151396061
+#          tar xzf corset.tar.gz
+#          mv corset $HOME
+#          echo $HOME >> $GITHUB_PATH
 
       - name: Run unit tests
         run: ./gradlew :arithmetization:test
