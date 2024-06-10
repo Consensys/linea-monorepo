@@ -28,12 +28,10 @@ import net.consensys.linea.zktracer.types.EWord;
 
 @Getter
 @RequiredArgsConstructor
-public class CallOobParameters implements OobParameters {
+public class XCallOobParameters implements OobParameters {
   private final EWord value;
-  private final BigInteger balance;
-  private final BigInteger callStackDepth;
   @Setter boolean valueIsNonzero;
-  @Setter boolean abortingCondition;
+  @Setter boolean valueIsZero;
 
   public BigInteger valueHi() {
     return value.hiBigInt();
@@ -48,11 +46,11 @@ public class CallOobParameters implements OobParameters {
     return trace
         .data1(bigIntegerToBytes(valueHi()))
         .data2(bigIntegerToBytes(valueLo()))
-        .data3(bigIntegerToBytes(balance))
+        .data3(ZERO)
         .data4(ZERO)
         .data5(ZERO)
-        .data6(bigIntegerToBytes(callStackDepth))
+        .data6(ZERO)
         .data7(booleanToBytes(valueIsNonzero))
-        .data8(booleanToBytes(abortingCondition));
+        .data8(booleanToBytes(valueIsZero));
   }
 }

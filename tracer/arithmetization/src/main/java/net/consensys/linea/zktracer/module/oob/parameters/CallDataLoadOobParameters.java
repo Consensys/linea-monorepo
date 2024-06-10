@@ -16,13 +16,22 @@
 package net.consensys.linea.zktracer.module.oob.parameters;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.consensys.linea.zktracer.module.oob.Trace;
 import net.consensys.linea.zktracer.types.EWord;
 
-public record CallDataLoadOobParameters(EWord offset, BigInteger cds) implements OobParameters {
+@Getter
+@RequiredArgsConstructor
+public class CallDataLoadOobParameters implements OobParameters {
+  private final EWord offset;
+  private final BigInteger cds;
+  @Setter boolean cdlOutOfBounds;
 
   public BigInteger offsetHi() {
     return offset.hiBigInt();
@@ -41,7 +50,7 @@ public record CallDataLoadOobParameters(EWord offset, BigInteger cds) implements
         .data4(ZERO)
         .data5(bigIntegerToBytes(cds))
         .data6(ZERO)
-        .data7(ZERO) // TODO: temporary value; to fill when oob update is complete
-        .data8(ZERO); // TODO: temporary value; to fill when oob update is complete
+        .data7(booleanToBytes(cdlOutOfBounds))
+        .data8(ZERO);
   }
 }

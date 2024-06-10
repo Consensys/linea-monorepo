@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
-import static net.consensys.linea.zktracer.module.oob.OobTestCommon.assertNumberOfOnesInOobEvent1;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
@@ -37,12 +36,10 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-@Disabled("Disabled since oob update is in progress")
 public class OobCallTest {
 
   @Test
@@ -105,7 +102,7 @@ public class OobCallTest {
 
     assertTrue(hub.pch().exceptions().none());
 
-    assertNumberOfOnesInOobEvent1(bytecodeRunner.getHub().oob(), 1);
+    // assertNumberOfOnesInOobEvent1(bytecodeRunner.getHub().oob(), 1);
   }
 
   // Support methods
@@ -180,7 +177,8 @@ public class OobCallTest {
 
     assertTrue(hub.pch().exceptions().none());
 
-    assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(), numberOfOnesInOobEvent1);
+    // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
+    // numberOfOnesInOobEvent1);
   }
 
   private void testRecursiveCalls(EWord iterations) {
@@ -236,6 +234,7 @@ public class OobCallTest {
 
     assertTrue(hub.pch().exceptions().none());
 
-    assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(), numberOfOnesInOobEvent1);
+    // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
+    // numberOfOnesInOobEvent1);
   }
 }

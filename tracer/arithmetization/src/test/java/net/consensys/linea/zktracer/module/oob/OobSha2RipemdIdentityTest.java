@@ -41,9 +41,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class OobSha2RipemdIdentityTest {
   Random random = new Random(1L);
   static final int[] argSizes =
-      new int[] {1, 10, 20, 31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 1000, 2000};
-
-  // Add back 0
+      new int[] {0, 1, 10, 20, 31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 1000, 2000};
 
   // https://coderpad.io/blog/development/writing-a-parameterized-test-in-junit-with-examples/
   // https://stackoverflow.com/questions/76124016/pass-externally-defined-variable-to-junit-valuesource-annotation-in-a-paramete

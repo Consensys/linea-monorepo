@@ -60,6 +60,10 @@ public final class BytecodeRunner {
     this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT);
   }
 
+  public void run(Wei senderBalance) {
+    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT);
+  }
+
   public void run(Wei senderBalance, Long gasLimit) {
     Preconditions.checkArgument(byteCode != null, "byteCode cannot be empty");
 

@@ -96,6 +96,7 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrameType;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.runtime.stack.StackContext;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
+import net.consensys.linea.zktracer.types.AddressUtils;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.Precompile;
@@ -358,8 +359,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
-                // TODO: Temporarily disabled.
-                //                this.oob,
+                this.oob,
                 this.rlpAddr,
                 this.rlpTxn,
                 this.rlpTxrcpt,
@@ -399,8 +399,7 @@ public class Hub implements Module {
                 this.mod,
                 this.mul,
                 this.mxp,
-                // TODO: Temporarily disabled.
-                //                this.oob,
+                this.oob,
                 this.exp,
                 this.rlpAddr,
                 this.rlpTxn,
@@ -1410,8 +1409,8 @@ public class Hub implements Module {
         }
       }
       case CREATE -> {
-        Address myAddress = this.currentFrame().address();
-        Account myAccount = frame.getWorldUpdater().get(myAddress);
+        final Address myAddress = this.currentFrame().address();
+        final Account myAccount = frame.getWorldUpdater().get(myAddress);
         AccountSnapshot myAccountSnapshot =
             AccountSnapshot.fromAccount(
                 myAccount,
@@ -1419,8 +1418,8 @@ public class Hub implements Module {
                 this.transients.conflation().deploymentInfo().number(myAddress),
                 this.transients.conflation().deploymentInfo().isDeploying(myAddress));
 
-        Address createdAddress = this.currentFrame().address();
-        Account createdAccount = frame.getWorldUpdater().get(createdAddress);
+        final Address createdAddress = AddressUtils.getCreateAddress(frame);
+        final Account createdAccount = frame.getWorldUpdater().get(createdAddress);
         AccountSnapshot createdAccountSnapshot =
             AccountSnapshot.fromAccount(
                 createdAccount,
