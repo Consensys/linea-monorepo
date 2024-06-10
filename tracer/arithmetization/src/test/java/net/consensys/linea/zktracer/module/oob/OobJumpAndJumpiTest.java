@@ -15,13 +15,11 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
-import static net.consensys.linea.zktracer.module.oob.OobTestCommon.assertOobEvents;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,12 +34,10 @@ import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(EvmExtension.class)
-@Disabled("Disabled since oob update is in progress")
 public class OobJumpAndJumpiTest {
 
   public static final BigInteger TWO_POW_128_MINUS_ONE =
@@ -73,10 +69,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {false, false, false};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -105,10 +97,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {false, false, false};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -136,10 +124,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {false, false, false};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -167,10 +151,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, true};
-    boolean[] oobEvent2 = new boolean[] {false, false, false};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -217,10 +197,6 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[N_JUMPS];
-    boolean[] oobEvent2 = new boolean[N_JUMPS];
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -271,10 +247,6 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[N_JUMPS];
-    boolean[] oobEvent2 = new boolean[N_JUMPS];
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -303,10 +275,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {true, true, true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -335,10 +303,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {true, true, true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -366,10 +330,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, false};
-    boolean[] oobEvent2 = new boolean[] {true, true, true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -398,10 +358,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertTrue(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false, false, true};
-    boolean[] oobEvent2 = new boolean[] {true, true, true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -421,10 +377,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false};
-    boolean[] oobEvent2 = new boolean[] {false};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -445,10 +397,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false};
-    boolean[] oobEvent2 = new boolean[] {true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -469,10 +417,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false};
-    boolean[] oobEvent2 = new boolean[] {true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -493,10 +437,6 @@ public class OobJumpAndJumpiTest {
     Hub hub = bytecodeRunner.getHub();
 
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[] {false};
-    boolean[] oobEvent2 = new boolean[] {true};
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -548,11 +488,6 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[N_JUMPIS];
-    boolean[] oobEvent2 = new boolean[N_JUMPIS];
-    Arrays.fill(oobEvent2, true);
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   @Test
@@ -608,11 +543,6 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
     assertFalse(hub.pch().exceptions().jumpFault());
-
-    boolean[] oobEvent1 = new boolean[N_JUMPIS];
-    boolean[] oobEvent2 = new boolean[N_JUMPIS];
-    Arrays.fill(oobEvent2, true);
-    assertOobEvents(bytecodeRunner.getHub().oob(), oobEvent1, oobEvent2);
   }
 
   // Support methods

@@ -16,34 +16,45 @@
 package net.consensys.linea.zktracer.module.oob.parameters;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.consensys.linea.zktracer.module.oob.Trace;
 import net.consensys.linea.zktracer.types.EWord;
 
-public record CreateOobParameters(
-    EWord val, BigInteger bal, BigInteger nonce, boolean hasCode, BigInteger csd)
-    implements OobParameters {
+@Getter
+@RequiredArgsConstructor
+public class CreateOobParameters implements OobParameters {
+  private final EWord value;
+  private final BigInteger balance;
+  private final BigInteger nonce;
+  private final boolean hasCode;
+  private final BigInteger callStackDepth;
+  @Setter boolean abortingCondition;
+  @Setter boolean failureCondition;
 
-  public BigInteger valHi() {
-    return val.hiBigInt();
+  public BigInteger valueHi() {
+    return value.hiBigInt();
   }
 
-  public BigInteger valLo() {
-    return val.loBigInt();
+  public BigInteger valueLo() {
+    return value.loBigInt();
   }
 
   @Override
   public Trace trace(Trace trace) {
     return trace
-        .data1(bigIntegerToBytes(valHi()))
-        .data2(bigIntegerToBytes(valLo()))
-        .data3(bigIntegerToBytes(bal))
+        .data1(bigIntegerToBytes(valueHi()))
+        .data2(bigIntegerToBytes(valueLo()))
+        .data3(bigIntegerToBytes(balance))
         .data4(bigIntegerToBytes(nonce))
-        .data5((hasCode ? ONE : ZERO))
-        .data6(bigIntegerToBytes(csd))
-        .data7(ZERO) // TODO: temporary value; to fill when oob update is complete
-        .data8(ZERO); // TODO: temporary value; to fill when oob update is complete
+        .data5(booleanToBytes(hasCode))
+        .data6(bigIntegerToBytes(callStackDepth))
+        .data7(booleanToBytes(abortingCondition))
+        .data8(booleanToBytes(failureCondition));
   }
 }

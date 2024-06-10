@@ -16,15 +16,23 @@
 package net.consensys.linea.zktracer.module.oob.parameters;
 
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.consensys.linea.zktracer.module.oob.Trace;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 
-public record ReturnDataCopyOobParameters(EWord offset, EWord size, BigInteger rds)
-    implements OobParameters {
+@Getter
+@RequiredArgsConstructor
+public class ReturnDataCopyOobParameters implements OobParameters {
+  private final EWord offset;
+  private final EWord size;
+  private final BigInteger rds;
+  @Setter private boolean rdcx;
 
   public BigInteger offsetHi() {
     return offset.hiBigInt();
@@ -48,10 +56,10 @@ public record ReturnDataCopyOobParameters(EWord offset, EWord size, BigInteger r
         .data1(bigIntegerToBytes(offsetHi()))
         .data2(bigIntegerToBytes(offsetLo()))
         .data3(bigIntegerToBytes(sizeHi()))
-        .data4(Bytes.wrap(sizeLo().toByteArray()))
+        .data4(bigIntegerToBytes(sizeLo()))
         .data5(bigIntegerToBytes(rds))
         .data6(ZERO)
-        .data7(ZERO) // TODO: temporary value; to fill when oob update is complete
-        .data8(ZERO); // TODO: temporary value; to fill when oob update is complete
+        .data7(booleanToBytes(rdcx))
+        .data8(ZERO);
   }
 }
