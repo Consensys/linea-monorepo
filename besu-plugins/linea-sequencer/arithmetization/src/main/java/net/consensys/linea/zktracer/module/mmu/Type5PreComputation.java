@@ -146,8 +146,9 @@ class Type5PreComputation implements MmuPreComputation {
         case 2 -> microData.sourceLimbOffset(acc3.add(1));
         case 1 -> microData.sourceLimbOffset(acc3.add(2));
         case 0 -> microData.sourceLimbOffset(EWord.ZERO);
-        default -> throw new IllegalStateException(
-            "Unexpected value: %s".formatted(microData.remainingReads()));
+        default ->
+            throw new IllegalStateException(
+                "Unexpected value: %s".formatted(microData.remainingReads()));
       }
     } else {
       if (!microData.isLastRead()) {
@@ -210,8 +211,9 @@ class Type5PreComputation implements MmuPreComputation {
           }
         }
       }
-      default -> throw new IllegalStateException(
-          "Unexpected value: %s".formatted(microData.remainingReads()));
+      default ->
+          throw new IllegalStateException(
+              "Unexpected value: %s".formatted(microData.remainingReads()));
     }
   }
 

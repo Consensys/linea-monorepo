@@ -28,6 +28,7 @@ import lombok.experimental.Accessors;
 public class LineaProfitabilityConfiguration {
   /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long fixedCostWei;
+
   /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long variableCostWei;
 

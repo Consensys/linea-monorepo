@@ -66,8 +66,8 @@ public final class Rip160Blocks implements Module {
           long dataByteLength = 0;
           switch (opCode) {
             case CALL, CALLCODE -> dataByteLength = Words.clampedToLong(frame.getStackItem(4));
-            case DELEGATECALL, STATICCALL -> dataByteLength =
-                Words.clampedToLong(frame.getStackItem(3));
+            case DELEGATECALL, STATICCALL ->
+                dataByteLength = Words.clampedToLong(frame.getStackItem(3));
           }
 
           if (dataByteLength == 0) {

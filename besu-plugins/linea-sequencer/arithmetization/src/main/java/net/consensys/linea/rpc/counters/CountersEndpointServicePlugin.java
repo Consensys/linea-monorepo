@@ -32,6 +32,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
+
   /**
    * Register the RPC service.
    *

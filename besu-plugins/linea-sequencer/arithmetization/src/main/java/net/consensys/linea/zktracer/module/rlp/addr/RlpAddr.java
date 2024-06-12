@@ -145,9 +145,8 @@ public class RlpAddr implements Module {
         case 2 -> trace.limb(chunk.salt().orElseThrow().slice(0, LLARGE)).nBytes(BYTES_LLARGE);
         case 3 -> trace.limb(chunk.salt().orElseThrow().slice(LLARGE, LLARGE)).nBytes(BYTES_LLARGE);
         case 4 -> trace.limb(chunk.keccak().orElseThrow().slice(0, LLARGE)).nBytes(BYTES_LLARGE);
-        case 5 -> trace
-            .limb(chunk.keccak().orElseThrow().slice(LLARGE, LLARGE))
-            .nBytes(BYTES_LLARGE);
+        case 5 ->
+            trace.limb(chunk.keccak().orElseThrow().slice(LLARGE, LLARGE)).nBytes(BYTES_LLARGE);
       }
 
       // Columns unused for Recipe2
@@ -230,36 +229,41 @@ public class RlpAddr implements Module {
 
       switch (ct) {
         case 0, 1, 2, 3 -> trace.lc(false).limb(Bytes.EMPTY).nBytes(Bytes.EMPTY).index(Bytes.EMPTY);
-        case 4 -> trace
-            .lc(true)
-            .limb(
-                rightPadTo(
-                    bigIntegerToBytes(
-                        BigInteger.valueOf(LIST_SHORT)
-                            .add(BigInteger.valueOf(21))
-                            .add(BigInteger.valueOf(size_rlp_nonce))),
-                    LLARGE))
-            .nBytes(Bytes.of(1))
-            .index(Bytes.EMPTY);
-        case 5 -> trace
-            .lc(true)
-            .limb(
-                rightPadTo(
-                    Bytes.concatenate(
-                        bigIntegerToBytes(BigInteger.valueOf(148)), chunk.address().slice(0, 4)),
-                    LLARGE))
-            .nBytes(Bytes.of(5))
-            .index(Bytes.of(1));
-        case 6 -> trace
-            .lc(true)
-            .limb(chunk.address().slice(4, LLARGE))
-            .nBytes(Bytes.of(16))
-            .index(Bytes.of(2));
-        case 7 -> trace
-            .lc(true)
-            .limb(rightPadTo(rlpNonce, LLARGE))
-            .nBytes(Bytes.of(size_rlp_nonce))
-            .index(Bytes.of(3));
+        case 4 ->
+            trace
+                .lc(true)
+                .limb(
+                    rightPadTo(
+                        bigIntegerToBytes(
+                            BigInteger.valueOf(LIST_SHORT)
+                                .add(BigInteger.valueOf(21))
+                                .add(BigInteger.valueOf(size_rlp_nonce))),
+                        LLARGE))
+                .nBytes(Bytes.of(1))
+                .index(Bytes.EMPTY);
+        case 5 ->
+            trace
+                .lc(true)
+                .limb(
+                    rightPadTo(
+                        Bytes.concatenate(
+                            bigIntegerToBytes(BigInteger.valueOf(148)),
+                            chunk.address().slice(0, 4)),
+                        LLARGE))
+                .nBytes(Bytes.of(5))
+                .index(Bytes.of(1));
+        case 6 ->
+            trace
+                .lc(true)
+                .limb(chunk.address().slice(4, LLARGE))
+                .nBytes(Bytes.of(16))
+                .index(Bytes.of(2));
+        case 7 ->
+            trace
+                .lc(true)
+                .limb(rightPadTo(rlpNonce, LLARGE))
+                .nBytes(Bytes.of(size_rlp_nonce))
+                .index(Bytes.of(3));
       }
 
       // Column not used fo recipe 1:

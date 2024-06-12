@@ -236,18 +236,20 @@ public class TxnData implements Module {
             );
     List<Integer> suffix =
         switch (tx.type()) {
-          case FRONTIER, ACCESS_LIST -> List.of(
-              0, // ct = 4
-              0, // ct = 5
-              0, // ct = 6
-              0 // ct = 7
-              );
-          case EIP1559 -> List.of(
-              LT, // ct = 4
-              LT, // ct = 5
-              LT, // ct = 6
-              0 // ct = 7
-              );
+          case FRONTIER, ACCESS_LIST ->
+              List.of(
+                  0, // ct = 4
+                  0, // ct = 5
+                  0, // ct = 6
+                  0 // ct = 7
+                  );
+          case EIP1559 ->
+              List.of(
+                  LT, // ct = 4
+                  LT, // ct = 5
+                  LT, // ct = 6
+                  0 // ct = 7
+                  );
           default -> throw new RuntimeException("transaction type not supported");
         };
     return Stream.concat(common.stream(), suffix.stream()).toList();
@@ -296,30 +298,33 @@ public class TxnData implements Module {
 
     List<Bytes16> suffixTwos =
         switch (tx.type()) {
-          case FRONTIER, ACCESS_LIST -> List.of(
-              Bytes16.ZERO, // ct = 4
-              Bytes16.ZERO, // ct = 5
-              Bytes16.ZERO, // ct = 6
-              Bytes16.ZERO // ct =7
-              );
-          case EIP1559 -> List.of(
-              Bytes16.leftPad(
-                  bigIntegerToBytes(block.getBaseFee().orElseThrow().getAsBigInteger())), // ct = 4
-              Bytes16.leftPad(
-                  bigIntegerToBytes(
-                      tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger())), // ct = 5
-              Bytes16.leftPad(
-                  bigIntegerToBytes(
-                      block
-                          .getBaseFee()
-                          .orElseThrow()
-                          .getAsBigInteger()
-                          .add(
-                              tx.maxPriorityFeePerGas()
-                                  .orElseThrow()
-                                  .getAsBigInteger()))), // ct = 6
-              Bytes16.ZERO // ct = 7
-              );
+          case FRONTIER, ACCESS_LIST ->
+              List.of(
+                  Bytes16.ZERO, // ct = 4
+                  Bytes16.ZERO, // ct = 5
+                  Bytes16.ZERO, // ct = 6
+                  Bytes16.ZERO // ct =7
+                  );
+          case EIP1559 ->
+              List.of(
+                  Bytes16.leftPad(
+                      bigIntegerToBytes(
+                          block.getBaseFee().orElseThrow().getAsBigInteger())), // ct = 4
+                  Bytes16.leftPad(
+                      bigIntegerToBytes(
+                          tx.maxPriorityFeePerGas().orElseThrow().getAsBigInteger())), // ct = 5
+                  Bytes16.leftPad(
+                      bigIntegerToBytes(
+                          block
+                              .getBaseFee()
+                              .orElseThrow()
+                              .getAsBigInteger()
+                              .add(
+                                  tx.maxPriorityFeePerGas()
+                                      .orElseThrow()
+                                      .getAsBigInteger()))), // ct = 6
+                  Bytes16.ZERO // ct = 7
+                  );
           default -> throw new IllegalStateException("transaction type not supported:" + tx.type());
         };
 
@@ -370,20 +375,23 @@ public class TxnData implements Module {
     List<Integer> phaseDependentSuffix;
 
     switch (tx.type()) {
-      case FRONTIER -> phaseDependentSuffix =
-          List.of(
-              TYPE_0_RLP_TXN_PHASE_NUMBER_6 // ct = 6
-              );
-      case ACCESS_LIST -> phaseDependentSuffix =
-          List.of(
-              TYPE_1_RLP_TXN_PHASE_NUMBER_6, // ct = 6
-              TYPE_1_RLP_TXN_PHASE_NUMBER_7 // ct = 7
-              );
-      case EIP1559 -> phaseDependentSuffix =
-          List.of(
-              TYPE_2_RLP_TXN_PHASE_NUMBER_6, // ct = 6
-              TYPE_2_RLP_TXN_PHASE_NUMBER_7 // ct = 7
-              );
+      case FRONTIER ->
+          phaseDependentSuffix =
+              List.of(
+                  TYPE_0_RLP_TXN_PHASE_NUMBER_6 // ct = 6
+                  );
+      case ACCESS_LIST ->
+          phaseDependentSuffix =
+              List.of(
+                  TYPE_1_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+                  TYPE_1_RLP_TXN_PHASE_NUMBER_7 // ct = 7
+                  );
+      case EIP1559 ->
+          phaseDependentSuffix =
+              List.of(
+                  TYPE_2_RLP_TXN_PHASE_NUMBER_6, // ct = 6
+                  TYPE_2_RLP_TXN_PHASE_NUMBER_7 // ct = 7
+                  );
       default -> throw new IllegalStateException("transaction type not supported:" + tx.type());
     }
     return phaseDependentSuffix;

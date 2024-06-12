@@ -416,9 +416,10 @@ class Type4PreComputation implements MmuPreComputation {
 
         microData.sourceContext(0);
       }
-      default -> throw new UnsupportedOperationException(
-          "OpCode.%s is not supported for MMU type 4 pre-processing and/or processing"
-              .formatted(microData.opCode()));
+      default ->
+          throw new UnsupportedOperationException(
+              "OpCode.%s is not supported for MMU type 4 pre-processing and/or processing"
+                  .formatted(microData.opCode()));
     }
   }
 
@@ -475,8 +476,9 @@ class Type4PreComputation implements MmuPreComputation {
       }
       case CALLDATACOPY -> callStack.caller().callDataRange().length();
       case RETURNDATACOPY -> topCallFrame.returnDataRange().length();
-      default -> throw new IllegalArgumentException(
-          "OpCode.%s not supported for type 4 reference size calculation.".formatted(opCode));
+      default ->
+          throw new IllegalArgumentException(
+              "OpCode.%s not supported for type 4 reference size calculation.".formatted(opCode));
     }
 
     return 0;
@@ -553,9 +555,10 @@ class Type4PreComputation implements MmuPreComputation {
       case CODECOPY, EXTCODECOPY -> 0;
       case CALLDATACOPY -> callStack.caller().callDataRange().absolute().toInt();
       case RETURNDATACOPY -> callStack.current().returnDataRange().absolute().toInt();
-      default -> throw new IllegalArgumentException(
-          "OpCode.%s not supported for type 4 reference offset calculation"
-              .formatted(microData.opCode()));
+      default ->
+          throw new IllegalArgumentException(
+              "OpCode.%s not supported for type 4 reference offset calculation"
+                  .formatted(microData.opCode()));
     };
   }
 

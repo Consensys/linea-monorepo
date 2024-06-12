@@ -49,6 +49,32 @@ dependencyManagement {
   }
 
   dependencies {
+    // Besu dependencies
+    dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
+      entry "besu-datatypes"
+      entry "evm"
+      entry "plugin-api"
+    }
+
+    dependency 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
+    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1'
+    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.16.1'
+
+    dependency 'com.google.auto.service:auto-service:1.1.1'
+
+    dependency 'com.google.guava:guava:33.0.0-jre'
+
+    dependency 'commons-io:commons-io:2.15.1'
+
+    dependency 'com.slack.api:slack-api-client:1.32.1'
+
+    dependency 'com.splunk.logging:splunk-library-javalogging:1.11.8'
+
+    dependencySet(group: 'info.picocli', version: '4.7.5') {
+      entry 'picocli'
+      entry 'picocli-codegen'
+    }
+
     dependencySet(group: 'io.tmio', version: '2.4.2') {
       entry 'tuweni-bytes'
       entry 'tuweni-net'
@@ -56,73 +82,45 @@ dependencyManagement {
       entry 'tuweni-units'
     }
 
-    dependencySet(group: 'org.bouncycastle', version: '1.75') {
+    dependency 'io.vertx:vertx-core:4.5.8'
+
+    dependency 'junit:junit:4.13.2'
+
+    dependency 'net.java.dev.jna:jna:5.14.0'
+
+    dependency 'org.assertj:assertj-core:3.25.1'
+
+    dependency 'org.awaitility:awaitility:4.2.0'
+
+    dependency 'org.apache.commons:commons-lang3:3.14.0'
+
+    dependencySet(group: 'org.bouncycastle', version: '1.77') {
       entry 'bcpkix-jdk18on'
       entry 'bcprov-jdk18on'
       entry 'jcajce'
     }
 
-    dependency 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
-    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.2'
-    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.15.2'
+    dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 
-    dependency 'commons-io:commons-io:2.11.0'
-    dependency 'org.apache.commons:commons-lang3:3.13.0'
-    dependency 'com.google.guava:guava:32.1.2-jre'
-
-    // Besu dependencies
-
-    dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
-      entry "besu-datatypes"
-      entry "evm"
-      entry "plugin-api"
-    }
-
-    // Logging dependencies
-    dependency 'org.slf4j:slf4j-api:2.0.7'
-    dependencySet(group: 'ch.qos.logback', version: '1.4.9') {
-      entry 'logback-core'
-      entry 'logback-classic'
-    }
-
-    // auto service
-    dependency 'com.google.auto.service:auto-service:1.0.1'
-
-    dependencySet(group: 'info.picocli', version: '4.7.1') {
-      entry 'picocli'
-      entry 'picocli-codegen'
-    }
-
-    dependencySet(group: 'org.web3j', version: '4.9.7') {
-      entry 'abi'
-      entry 'besu'
-      entry 'core'
-      entry 'crypto'
-    }
-
-    dependency 'junit:junit:4.13.2'
-    dependency 'org.junit.vintage:junit-vintage-engine:5.10.2'
     dependencySet(group: 'org.junit.jupiter', version: '5.10.2') {
       entry 'junit-jupiter-api'
       entry 'junit-jupiter-engine'
       entry 'junit-jupiter-params'
     }
-    dependencySet(group: 'org.mockito', version: '5.1.1') {
+    dependency 'org.junit.vintage:junit-vintage-engine:5.10.2'
+
+    dependencySet(group: 'org.mockito', version: '5.8.0') {
       entry 'mockito-core'
       entry 'mockito-junit-jupiter'
     }
 
-    dependency 'org.assertj:assertj-core:3.24.2'
-    dependency 'org.awaitility:awaitility:4.2.0'
+    dependency 'org.slf4j:slf4j-api:2.0.10'
 
-    dependency 'com.splunk.logging:splunk-library-javalogging:1.11.5'
-
-    dependency 'io.vertx:vertx-core:4.5.4'
-
-    dependency 'com.slack.api:slack-api-client:1.32.1'
-
-    dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-
-    dependency 'net.java.dev.jna:jna:5.12.1'
+    dependencySet(group: 'org.web3j', version: '4.12.0') {
+      entry 'abi'
+      entry 'besu'
+      entry 'core'
+      entry 'crypto'
+    }
   }
 }

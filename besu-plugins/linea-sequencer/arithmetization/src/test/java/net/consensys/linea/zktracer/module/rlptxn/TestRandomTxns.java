@@ -72,66 +72,72 @@ class TestRandomTxns {
     int txType = rnd.nextInt(0, 6);
 
     return switch (txType) {
-      case 0 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.FRONTIER)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randBigInt(true)))
-          .payload(randData(false))
-          .build();
+      case 0 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.FRONTIER)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randBigInt(true)))
+              .payload(randData(false))
+              .build();
 
-      case 1 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.FRONTIER)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randBigInt(true)))
-          .to(receiverAccount)
-          .payload(randData(false))
-          .build();
+      case 1 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.FRONTIER)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randBigInt(true)))
+              .to(receiverAccount)
+              .payload(randData(false))
+              .build();
 
-      case 2 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.ACCESS_LIST)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randLong()))
-          .payload(randData(false))
-          .accessList(randAccessList())
-          .build();
+      case 2 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.ACCESS_LIST)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randLong()))
+              .payload(randData(false))
+              .accessList(randAccessList())
+              .build();
 
-      case 3 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.ACCESS_LIST)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randLong()))
-          .to(receiverAccount)
-          .payload(randData(false))
-          .accessList(randAccessList())
-          .build();
+      case 3 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.ACCESS_LIST)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randLong()))
+              .to(receiverAccount)
+              .payload(randData(false))
+              .accessList(randAccessList())
+              .build();
 
-      case 4 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.EIP1559)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randLong()))
-          .payload(randData(false))
-          .accessList(randAccessList())
-          .build();
+      case 4 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.EIP1559)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randLong()))
+              .payload(randData(false))
+              .accessList(randAccessList())
+              .build();
 
-      case 5 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.EIP1559)
-          .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
-          .value(Wei.of(randLong()))
-          .to(receiverAccount)
-          .payload(randData(false))
-          .accessList(randAccessList())
-          .build();
+      case 5 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.EIP1559)
+              .gasLimit(rnd.nextLong(21000, 0xfffffffffffffL))
+              .value(Wei.of(randLong()))
+              .to(receiverAccount)
+              .payload(randData(false))
+              .accessList(randAccessList())
+              .build();
 
       default -> throw new IllegalStateException("Unexpected value: " + txType);
     };

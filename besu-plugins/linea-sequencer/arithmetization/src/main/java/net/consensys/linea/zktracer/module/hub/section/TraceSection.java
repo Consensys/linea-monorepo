@@ -59,6 +59,7 @@ public abstract class TraceSection {
 
   /** Count the stack lines */
   @Getter private int stackRowsCounter;
+
   /** Count the non-stack lines */
   private int nonStackRowsCounter;
 

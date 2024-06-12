@@ -55,6 +55,7 @@ public class EcDataOperation extends ModuleOperation {
 
   private final int ecType;
   private final int nRows;
+
   /** -1 if no switch off (i.e. preliminary checks passed) */
   private int hurdleSwitchOffRow;
 

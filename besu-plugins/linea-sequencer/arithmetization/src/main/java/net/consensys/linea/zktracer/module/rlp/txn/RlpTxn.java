@@ -194,8 +194,8 @@ public class RlpTxn implements Module {
         // the innerRlp method already concatenate with the first byte "transaction  type"
         traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
       }
-      default -> throw new IllegalStateException(
-          "Transaction Type not supported: " + traceValue.txType);
+      default ->
+          throw new IllegalStateException("Transaction Type not supported: " + traceValue.txType);
     }
 
     // Phase 0 : Global RLP prefix
@@ -1054,6 +1054,7 @@ public class RlpTxn implements Module {
     traceValue.phaseEnd = phaseEnd;
     traceRow(traceValue, trace);
   }
+
   // Define the Tracer
   private void traceRow(RlpTxnColumnsValue traceValue, Trace builder) {
     // Decrements RLP_BYTESIZE

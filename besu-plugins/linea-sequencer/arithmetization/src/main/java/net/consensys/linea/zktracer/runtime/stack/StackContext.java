@@ -32,6 +32,7 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 public final class StackContext {
   /** The opcode that triggered the stack operations. */
   OpCode opCode;
+
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
   @Getter final List<StackLine> lines = new ArrayList<>(4);
 

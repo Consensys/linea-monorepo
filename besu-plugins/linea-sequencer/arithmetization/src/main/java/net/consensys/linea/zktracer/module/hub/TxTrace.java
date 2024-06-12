@@ -29,6 +29,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class TxTrace {
   /** The {@link TraceSection} of which this transaction trace is made of */
   @Getter private final List<TraceSection> trace = new ArrayList<>();
+
   /** A cache for the line count of this transaction */
   private int cachedLineCount = 0;
 

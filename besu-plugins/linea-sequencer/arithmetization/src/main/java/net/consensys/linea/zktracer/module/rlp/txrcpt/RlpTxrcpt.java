@@ -386,33 +386,33 @@ public class RlpTxrcpt implements Module {
             traceRow(traceValue, trace);
           }
           case 1 -> // Case with data is made of one byte
-          rlpInt(
-              3,
-              phase,
-              logList.get(i).getData().toUnsignedBigInteger().longValueExact(),
-              true,
-              true,
-              true,
-              false,
-              true,
-              true,
-              indexLocalEndTopic,
-              traceValue,
-              trace);
+              rlpInt(
+                  3,
+                  phase,
+                  logList.get(i).getData().toUnsignedBigInteger().longValueExact(),
+                  true,
+                  true,
+                  true,
+                  false,
+                  true,
+                  true,
+                  indexLocalEndTopic,
+                  traceValue,
+                  trace);
 
           default -> // Default case, data is made of >= 2 bytes
-          rlpByteString(
-              phase,
-              logList.get(i).getData().size(),
-              false,
-              true,
-              true,
-              true,
-              false,
-              true,
-              indexLocalEndTopic,
-              traceValue,
-              trace);
+              rlpByteString(
+                  phase,
+                  logList.get(i).getData().size(),
+                  false,
+                  true,
+                  true,
+                  true,
+                  false,
+                  true,
+                  indexLocalEndTopic,
+                  traceValue,
+                  trace);
         }
 
         // Tracing the Data
@@ -581,8 +581,9 @@ public class RlpTxrcpt implements Module {
         traceValue.input1 = Bytes.minimalBytes(1);
         traceValue.input3 = inputBytes;
       }
-      default -> throw new IllegalArgumentException(
-          "should be called only to write Input1 or Input3, not Input" + inputToWrite);
+      default ->
+          throw new IllegalArgumentException(
+              "should be called only to write Input1 or Input3, not Input" + inputToWrite);
     }
     if (writeInput2) {
       traceValue.input2 = Bytes.minimalBytes(valueInput2);

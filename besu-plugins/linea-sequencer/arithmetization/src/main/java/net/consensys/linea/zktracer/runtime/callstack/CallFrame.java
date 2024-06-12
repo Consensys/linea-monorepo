@@ -41,16 +41,22 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Accessors(fluent = true)
 public class CallFrame {
   public static final CallFrame EMPTY = new CallFrame(Address.ZERO);
+
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
+
   /** the context number of the frame, i.e. the hub stamp at its creation */
   @Getter private final int contextNumber;
+
   /** the depth of this CallFrame within its call hierarchy. */
   @Getter private int depth;
+
   /** */
   @Getter private int accountDeploymentNumber;
+
   /** */
   @Getter private int codeDeploymentNumber;
+
   /** */
   @Getter private boolean underDeployment;
 
@@ -58,15 +64,19 @@ public class CallFrame {
 
   /** the position of this {@link CallFrame} parent in the {@link CallStack}. */
   @Getter private int parentFrame;
+
   /** all the {@link CallFrame} that have been called by this frame. */
   @Getter private final List<Integer> childFrames = new ArrayList<>();
 
   /** the {@link Address} of the account executing this {@link CallFrame}. */
   @Getter private final Address address;
+
   /** A memoized {@link EWord} conversion of `address` */
   private EWord eAddress = null;
+
   /** the {@link Address} of the code executed in this {@link CallFrame}. */
   @Getter private Address codeAddress = Address.ZERO;
+
   /** A memoized {@link EWord} conversion of `codeAddress` */
   private EWord eCodeAddress = null;
 
@@ -83,17 +93,22 @@ public class CallFrame {
 
   /** the ether amount given to this frame. */
   @Getter private Wei value = Wei.fromHexString("0xbadf00d"); // Marker for debugging
+
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
 
   /** the call data given to this frame. */
   @Getter private Bytes callData = Bytes.EMPTY;
+
   /** the call data span in the parent memory. */
   @Getter private final MemorySpan callDataPointer;
+
   /** the data returned by the latest callee. */
   @Getter @Setter private Bytes returnData = Bytes.EMPTY;
+
   /** returnData position within the latest callee memory space. */
   @Getter @Setter private MemorySpan returnDataPointer = new MemorySpan(0, 0);
+
   /** where this frame is expected to write its returnData within its parent's memory space. */
   @Getter private final MemorySpan returnDataTarget;
 

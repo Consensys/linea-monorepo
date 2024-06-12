@@ -49,26 +49,37 @@ public final class TransactionSnapshot extends ModuleOperation {
 
   /** Value moved by the transaction */
   private final BigInteger value;
+
   /** Sender address */
   private final Address from;
+
   /** Receiver or contract deployment address */
   private final Address to;
+
   /** Sender nonce */
   private final long nonce;
+
   /** Number of addresses to pre-warm */
   private final int prewarmedAddressesCount;
+
   /** Number of storage slots to pre-warm */
   private final int prewarmedStorageKeysCount;
+
   /** Whether this transaction is a smart contract deployment */
   private final boolean isDeployment;
+
   /** Whether this transaction triggers the EVM */
   private final boolean requiresEvmExecution;
+
   /** The transaction {@link TransactionType} */
   private final TransactionType type;
+
   /** CodeFragmentIndex, given by the {@link net.consensys.linea.zktracer.module.romLex.RomLex} */
   private final int codeIdBeforeLex;
+
   /** The sender balance when it sent the transaction */
   private final BigInteger initialSenderBalance;
+
   /** The payload of the transaction, calldata or initcode */
   private final Bytes payload;
 
@@ -167,9 +178,10 @@ public final class TransactionSnapshot extends ModuleOperation {
   private static BigInteger computeEffectiveGasPrice(Optional<Wei> baseFee, Transaction tx) {
     return switch (tx.getType()) {
       case FRONTIER, ACCESS_LIST -> tx.getGasPrice().get().getAsBigInteger();
-      case EIP1559 -> TransactionPriceCalculator.eip1559()
-          .price((org.hyperledger.besu.ethereum.core.Transaction) tx, baseFee)
-          .getAsBigInteger();
+      case EIP1559 ->
+          TransactionPriceCalculator.eip1559()
+              .price((org.hyperledger.besu.ethereum.core.Transaction) tx, baseFee)
+              .getAsBigInteger();
       default -> throw new RuntimeException("transaction type not supported");
     };
   }

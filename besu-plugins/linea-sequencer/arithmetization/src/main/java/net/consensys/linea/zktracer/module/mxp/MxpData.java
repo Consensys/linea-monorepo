@@ -189,15 +189,17 @@ public class MxpData extends ModuleOperation {
     roob =
         switch (typeMxp) {
           case TYPE_2, TYPE_3 -> offset1.toBigInteger().compareTo(TWO_POW_128) >= 0;
-          case TYPE_4 -> size1.toBigInteger().compareTo(TWO_POW_128) >= 0
-              || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !size1.toBigInteger().equals(BigInteger.ZERO));
-          case TYPE_5 -> size1.toBigInteger().compareTo(TWO_POW_128) >= 0
-              || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  && !size1.toBigInteger().equals(BigInteger.ZERO))
-              || (size2.toBigInteger().compareTo(TWO_POW_128) >= 0
-                  || (offset2.toBigInteger().compareTo(TWO_POW_128) >= 0
-                      && !size2.toBigInteger().equals(BigInteger.ZERO)));
+          case TYPE_4 ->
+              size1.toBigInteger().compareTo(TWO_POW_128) >= 0
+                  || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
+                      && !size1.toBigInteger().equals(BigInteger.ZERO));
+          case TYPE_5 ->
+              size1.toBigInteger().compareTo(TWO_POW_128) >= 0
+                  || (offset1.toBigInteger().compareTo(TWO_POW_128) >= 0
+                      && !size1.toBigInteger().equals(BigInteger.ZERO))
+                  || (size2.toBigInteger().compareTo(TWO_POW_128) >= 0
+                      || (offset2.toBigInteger().compareTo(TWO_POW_128) >= 0
+                          && !size2.toBigInteger().equals(BigInteger.ZERO)));
           default -> false;
         };
   }
@@ -432,9 +434,10 @@ public class MxpData extends ModuleOperation {
         case TYPE_1 -> wordsNew = frame.calculateMemoryExpansion(Words.clampedToLong(offset1), 0);
         case TYPE_2 -> wordsNew = frame.calculateMemoryExpansion(Words.clampedToLong(offset1), 32);
         case TYPE_3 -> wordsNew = frame.calculateMemoryExpansion(Words.clampedToLong(offset1), 1);
-        case TYPE_4 -> wordsNew =
-            frame.calculateMemoryExpansion(
-                Words.clampedToLong(offset1), Words.clampedToLong(size1));
+        case TYPE_4 ->
+            wordsNew =
+                frame.calculateMemoryExpansion(
+                    Words.clampedToLong(offset1), Words.clampedToLong(size1));
         case TYPE_5 -> {
           long wordsNew1 =
               frame.calculateMemoryExpansion(

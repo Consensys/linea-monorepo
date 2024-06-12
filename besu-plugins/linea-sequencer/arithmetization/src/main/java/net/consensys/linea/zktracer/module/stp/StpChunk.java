@@ -153,30 +153,33 @@ public final class StpChunk extends ModuleOperation {
           .arg1Hi(Bytes.EMPTY);
 
       switch (ct) {
-        case 0 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 1 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
-            .arg2Lo(Bytes.ofUnsignedLong(this.gasPrelim()))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.of(this.oogx() ? 1 : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 2 -> trace
-            .arg1Lo(Bytes.ofUnsignedLong(getGDiff()))
-            .arg2Lo(Bytes.of(64))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(Bytes.ofUnsignedLong(getGDiffOver64()))
-            .wcpFlag(false)
-            .modFlag(true)
-            .validateRow();
+        case 0 ->
+            trace
+                .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
+                .arg2Lo(Bytes.EMPTY)
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
+                .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
+                .wcpFlag(true)
+                .modFlag(false)
+                .validateRow();
+        case 1 ->
+            trace
+                .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
+                .arg2Lo(Bytes.ofUnsignedLong(this.gasPrelim()))
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
+                .resLo(Bytes.of(this.oogx() ? 1 : 0))
+                .wcpFlag(true)
+                .modFlag(false)
+                .validateRow();
+        case 2 ->
+            trace
+                .arg1Lo(Bytes.ofUnsignedLong(getGDiff()))
+                .arg2Lo(Bytes.of(64))
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
+                .resLo(Bytes.ofUnsignedLong(getGDiffOver64()))
+                .wcpFlag(false)
+                .modFlag(true)
+                .validateRow();
         default -> throw new IllegalArgumentException("counter too big, should be <=" + ctMax);
       }
     }
@@ -223,60 +226,65 @@ public final class StpChunk extends ModuleOperation {
           .gasStipend(Bytes.ofUnsignedLong(gasStipend));
 
       switch (ct) {
-        case 0 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
-        case 1 -> trace
-            .arg1Hi(this.value().slice(0, 16))
-            .arg1Lo(this.value().slice(16, 16))
-            .arg2Lo(Bytes.EMPTY)
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.ISZERO.byteValue()))
-            .resLo(Bytes.of(this.value().isZero() ? 1 : 0))
-            .wcpFlag(callCanTransferValue(this.opCode()))
-            .modFlag(false)
-            .validateRow();
-        case 2 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
-            .arg2Lo(Bytes.ofUnsignedLong(this.gasPrelim()))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(Bytes.of(this.oogx() ? 1 : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
+        case 0 ->
+            trace
+                .arg1Hi(Bytes.EMPTY)
+                .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
+                .arg2Lo(Bytes.EMPTY)
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
+                .resLo(Bytes.EMPTY) // we REQUIRE that the currently available gas is nonnegative
+                .wcpFlag(true)
+                .modFlag(false)
+                .validateRow();
+        case 1 ->
+            trace
+                .arg1Hi(this.value().slice(0, 16))
+                .arg1Lo(this.value().slice(16, 16))
+                .arg2Lo(Bytes.EMPTY)
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.ISZERO.byteValue()))
+                .resLo(Bytes.of(this.value().isZero() ? 1 : 0))
+                .wcpFlag(callCanTransferValue(this.opCode()))
+                .modFlag(false)
+                .validateRow();
+        case 2 ->
+            trace
+                .arg1Hi(Bytes.EMPTY)
+                .arg1Lo(Bytes.ofUnsignedLong(this.gasActual()))
+                .arg2Lo(Bytes.ofUnsignedLong(this.gasPrelim()))
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
+                .resLo(Bytes.of(this.oogx() ? 1 : 0))
+                .wcpFlag(true)
+                .modFlag(false)
+                .validateRow();
           // the following rows are only filled in if no out of gas exception
-        case 3 -> trace
-            .arg1Hi(Bytes.EMPTY)
-            .arg1Lo(Bytes.ofUnsignedLong(getGDiff()))
-            .arg2Lo(Bytes.of(64))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
-            .resLo(Bytes.ofUnsignedLong(getGDiffOver64()))
-            .wcpFlag(false)
-            .modFlag(true)
-            .validateRow();
-        case 4 -> trace
-            .arg1Hi(this.gas().orElseThrow().slice(0, 16))
-            .arg1Lo(this.gas().orElseThrow().slice(16, 16))
-            .arg2Lo(Bytes.ofUnsignedLong(getGDiff() - getGDiffOver64()))
-            .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
-            .resLo(
-                Bytes.of(
-                    this.gas()
-                                .orElseThrow()
-                                .toUnsignedBigInteger()
-                                .compareTo(BigInteger.valueOf(get63of64GDiff()))
-                            < 0
-                        ? 1
-                        : 0))
-            .wcpFlag(true)
-            .modFlag(false)
-            .validateRow();
+        case 3 ->
+            trace
+                .arg1Hi(Bytes.EMPTY)
+                .arg1Lo(Bytes.ofUnsignedLong(getGDiff()))
+                .arg2Lo(Bytes.of(64))
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.DIV.byteValue()))
+                .resLo(Bytes.ofUnsignedLong(getGDiffOver64()))
+                .wcpFlag(false)
+                .modFlag(true)
+                .validateRow();
+        case 4 ->
+            trace
+                .arg1Hi(this.gas().orElseThrow().slice(0, 16))
+                .arg1Lo(this.gas().orElseThrow().slice(16, 16))
+                .arg2Lo(Bytes.ofUnsignedLong(getGDiff() - getGDiffOver64()))
+                .exogenousModuleInstruction(UnsignedByte.of(OpCode.LT.byteValue()))
+                .resLo(
+                    Bytes.of(
+                        this.gas()
+                                    .orElseThrow()
+                                    .toUnsignedBigInteger()
+                                    .compareTo(BigInteger.valueOf(get63of64GDiff()))
+                                < 0
+                            ? 1
+                            : 0))
+                .wcpFlag(true)
+                .modFlag(false)
+                .validateRow();
         default -> throw new IllegalArgumentException("counter too big, should be <=" + ctMax);
       }
     }

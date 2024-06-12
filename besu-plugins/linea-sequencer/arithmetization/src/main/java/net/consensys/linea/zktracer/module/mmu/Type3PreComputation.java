@@ -97,9 +97,10 @@ class Type3PreComputation implements MmuPreComputation {
         microData.exoIsRom(true);
         microData.exoIsHash(true);
       }
-      default -> throw new UnsupportedOperationException(
-          "OpCode.%s is not supported for MMU type 3 pre-processing."
-              .formatted(microData.opCode()));
+      default ->
+          throw new UnsupportedOperationException(
+              "OpCode.%s is not supported for MMU type 3 pre-processing."
+                  .formatted(microData.opCode()));
     }
 
     return microData;

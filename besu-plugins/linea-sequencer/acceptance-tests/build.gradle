@@ -17,8 +17,8 @@ import java.time.LocalTime
 
 plugins {
   id 'common-plugins'
-  id 'org.web3j' version '4.9.2'
-  id 'org.web3j.solidity' version '0.3.5'
+  id 'org.web3j' version '4.12.0'
+  id 'org.web3j.solidity' version '0.5.0'
 }
 
 apply from: rootProject.file("gradle/java.gradle")
@@ -35,7 +35,11 @@ web3j {
 solidity {
   resolvePackages = false
   optimizeRuns = 1
+  // TODO: remove the forced version, when DEV network is upgraded to support latest forks
+  version '0.8.19'
 }
+
+processTestResources.dependsOn(':acceptance-tests:generateTestContractWrappers')
 
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'

@@ -957,26 +957,29 @@ public class Hub implements Module {
 
     switch (this.opCodeData().instructionFamily()) {
       case ADD,
-          MOD,
-          MUL,
-          SHF,
-          BIN,
-          WCP,
-          EXT,
-          BATCH,
-          MACHINE_STATE,
-          PUSH_POP,
-          DUP,
-          SWAP,
-          HALT,
-          INVALID -> this.addTraceSection(new StackOnlySection(this));
+              MOD,
+              MUL,
+              SHF,
+              BIN,
+              WCP,
+              EXT,
+              BATCH,
+              MACHINE_STATE,
+              PUSH_POP,
+              DUP,
+              SWAP,
+              HALT,
+              INVALID ->
+          this.addTraceSection(new StackOnlySection(this));
       case KEC -> {
         this.addTraceSection(
             new KeccakSection(this, this.currentFrame(), new MiscFragment(this, frame)));
       }
-      case CONTEXT, LOG -> this.addTraceSection(
-          new ContextLogSection(
-              this, new ContextFragment(this.callStack, this.currentFrame(), updateReturnData)));
+      case CONTEXT, LOG ->
+          this.addTraceSection(
+              new ContextLogSection(
+                  this,
+                  new ContextFragment(this.callStack, this.currentFrame(), updateReturnData)));
       case ACCOUNT -> {
         TraceSection accountSection = new AccountSection(this);
         if (this.opCodeData().stackSettings().flag1()) {
@@ -1034,17 +1037,18 @@ public class Hub implements Module {
         }
         this.addTraceSection(copySection);
       }
-      case TRANSACTION -> this.addTraceSection(
-          new TransactionSection(
-              this,
-              TransactionFragment.prepare(
-                  this.conflation.number(),
-                  frame.getMiningBeneficiary(),
-                  this.tx.transaction(),
-                  true,
-                  frame.getGasPrice(),
-                  frame.getBlockValues().getBaseFee().orElse(Wei.ZERO),
-                  this.tx.initialGas())));
+      case TRANSACTION ->
+          this.addTraceSection(
+              new TransactionSection(
+                  this,
+                  TransactionFragment.prepare(
+                      this.conflation.number(),
+                      frame.getMiningBeneficiary(),
+                      this.tx.transaction(),
+                      true,
+                      frame.getGasPrice(),
+                      frame.getBlockValues().getBaseFee().orElse(Wei.ZERO),
+                      this.tx.initialGas())));
       case STACK_RAM -> {
         switch (this.currentFrame().opCode()) {
           case CALLDATALOAD -> {

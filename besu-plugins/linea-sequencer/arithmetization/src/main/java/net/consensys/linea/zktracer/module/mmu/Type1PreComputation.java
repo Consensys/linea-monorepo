@@ -84,8 +84,9 @@ class Type1PreComputation implements MmuPreComputation {
           microData.microOp(MmuTrace.FullStackToRam);
         }
       }
-      default -> throw new IllegalArgumentException(
-          "Opcode %s is not supported for type 1 pre-computation".formatted(opCode));
+      default ->
+          throw new IllegalArgumentException(
+              "Opcode %s is not supported for type 1 pre-computation".formatted(opCode));
     }
 
     return microData;

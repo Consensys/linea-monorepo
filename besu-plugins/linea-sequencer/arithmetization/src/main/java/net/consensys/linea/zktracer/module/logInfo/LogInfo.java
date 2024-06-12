@@ -219,8 +219,8 @@ public class LogInfo implements Module {
               .dataLo(topic4.slice(16, 16).toUnsignedBigInteger())
               .validateRow();
         }
-        default -> throw new IllegalArgumentException(
-            "ct = " + ct + " greater than ctMax =" + ctMax);
+        default ->
+            throw new IllegalArgumentException("ct = " + ct + " greater than ctMax =" + ctMax);
       }
     }
   }

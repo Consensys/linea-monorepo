@@ -105,32 +105,35 @@ public class RandomTxrcptTests {
     int txType = rnd.nextInt(0, 3);
     final List<AccessListEntry> accessList = new ArrayList<>();
     return switch (txType) {
-      case 0 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.FRONTIER)
-          .gasLimit(10_000_000L)
-          .value(Wei.of(BigInteger.valueOf(2_500)))
-          .payload(Bytes.EMPTY)
-          .build();
-      case 1 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.ACCESS_LIST)
-          .gasLimit(10_000_000L)
-          .value(Wei.of(BigInteger.valueOf(2_500)))
-          .payload(Bytes.EMPTY)
-          .accessList(accessList)
-          .build();
+      case 0 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.FRONTIER)
+              .gasLimit(10_000_000L)
+              .value(Wei.of(BigInteger.valueOf(2_500)))
+              .payload(Bytes.EMPTY)
+              .build();
+      case 1 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.ACCESS_LIST)
+              .gasLimit(10_000_000L)
+              .value(Wei.of(BigInteger.valueOf(2_500)))
+              .payload(Bytes.EMPTY)
+              .accessList(accessList)
+              .build();
 
-      case 2 -> ToyTransaction.builder()
-          .sender(senderAccount)
-          .keyPair(keyPair)
-          .transactionType(TransactionType.EIP1559)
-          .gasLimit(10_000_000L)
-          .value(Wei.of(BigInteger.valueOf(2_500)))
-          .payload(Bytes.EMPTY)
-          .build();
+      case 2 ->
+          ToyTransaction.builder()
+              .sender(senderAccount)
+              .keyPair(keyPair)
+              .transactionType(TransactionType.EIP1559)
+              .gasLimit(10_000_000L)
+              .value(Wei.of(BigInteger.valueOf(2_500)))
+              .payload(Bytes.EMPTY)
+              .build();
       default -> throw new IllegalStateException("Unexpected value: " + txType);
     };
   }

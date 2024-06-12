@@ -35,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 public class StackedList<E extends ModuleOperation> implements List<E>, StackedContainer {
 
   private final LinkedList<CountedList<E>> lists = new LinkedList<>();
+
   /** The cached number of elements in this container */
   private int totalSize;
 
@@ -239,8 +240,10 @@ public class StackedList<E extends ModuleOperation> implements List<E>, StackedC
   private static class StackedListIterator<F extends ModuleOperation>
       implements Iterator<F>, ListIterator<F> {
     private final StackedList<F> sl;
+
     /** Position of the iterator in the list of lists */
     private int head = 0;
+
     /** Position of the iterator within the current list, i.e. this.sl.lists[head] */
     private int offset = -1;
 

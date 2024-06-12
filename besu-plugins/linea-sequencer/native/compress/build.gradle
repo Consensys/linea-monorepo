@@ -50,12 +50,12 @@ compileJava{
 }
 
 dependencies {
-  implementation 'net.java.dev.jna:jna'
   implementation 'io.tmio:tuweni-bytes'
+  implementation 'net.java.dev.jna:jna'
 
+  testImplementation 'org.assertj:assertj-core'
   testImplementation 'org.junit.jupiter:junit-jupiter-api'
   testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-  testImplementation 'org.assertj:assertj-core'
   testImplementation 'org.mockito:mockito-core'
 }
 

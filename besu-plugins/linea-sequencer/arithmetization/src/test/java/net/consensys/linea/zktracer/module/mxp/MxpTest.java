@@ -475,34 +475,38 @@ public class MxpTest {
       case MLOAD -> appendOpCodeCall(List.of(offset1), opCode, program);
       case MSTORE, MSTORE8 -> appendOpCodeCall(List.of(value, offset1), opCode, program);
       case LOG0,
-          SHA3,
-          RETURN,
-          REVERT -> // RETURN and REVERT are selected only when isHalting is true
-      appendOpCodeCall(List.of(size1, offset1), opCode, program);
-      case LOG1 -> appendOpCodeCall(
-          Stream.concat(getRandomUpTo32BytesBigIntegers(1).stream(), Stream.of(size1, offset1))
-              .collect(Collectors.toList()),
-          opCode,
-          program);
-      case LOG2 -> appendOpCodeCall(
-          Stream.concat(getRandomUpTo32BytesBigIntegers(2).stream(), Stream.of(size1, offset1))
-              .collect(Collectors.toList()),
-          opCode,
-          program);
-      case LOG3 -> appendOpCodeCall(
-          Stream.concat(getRandomUpTo32BytesBigIntegers(3).stream(), Stream.of(size1, offset1))
-              .collect(Collectors.toList()),
-          opCode,
-          program);
-      case LOG4 -> appendOpCodeCall(
-          Stream.concat(getRandomUpTo32BytesBigIntegers(4).stream(), Stream.of(size1, offset1))
-              .collect(Collectors.toList()),
-          opCode,
-          program);
-      case CODECOPY, CALLDATACOPY -> appendOpCodeCall(
-          List.of(size1, offset2, offset1), opCode, program);
-      case EXTCODECOPY -> appendOpCodeCall(
-          List.of(size1, offset2, offset1, EWord.of(address)), opCode, program);
+              SHA3,
+              RETURN,
+              REVERT -> // RETURN and REVERT are selected only when isHalting is true
+          appendOpCodeCall(List.of(size1, offset1), opCode, program);
+      case LOG1 ->
+          appendOpCodeCall(
+              Stream.concat(getRandomUpTo32BytesBigIntegers(1).stream(), Stream.of(size1, offset1))
+                  .collect(Collectors.toList()),
+              opCode,
+              program);
+      case LOG2 ->
+          appendOpCodeCall(
+              Stream.concat(getRandomUpTo32BytesBigIntegers(2).stream(), Stream.of(size1, offset1))
+                  .collect(Collectors.toList()),
+              opCode,
+              program);
+      case LOG3 ->
+          appendOpCodeCall(
+              Stream.concat(getRandomUpTo32BytesBigIntegers(3).stream(), Stream.of(size1, offset1))
+                  .collect(Collectors.toList()),
+              opCode,
+              program);
+      case LOG4 ->
+          appendOpCodeCall(
+              Stream.concat(getRandomUpTo32BytesBigIntegers(4).stream(), Stream.of(size1, offset1))
+                  .collect(Collectors.toList()),
+              opCode,
+              program);
+      case CODECOPY, CALLDATACOPY ->
+          appendOpCodeCall(List.of(size1, offset2, offset1), opCode, program);
+      case EXTCODECOPY ->
+          appendOpCodeCall(List.of(size1, offset2, offset1, EWord.of(address)), opCode, program);
       case CREATE, CREATE2 -> {
         if (opCode == OpCode.CREATE) {
           // CREATE
