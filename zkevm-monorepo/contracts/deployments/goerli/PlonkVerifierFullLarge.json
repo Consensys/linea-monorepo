@@ -1,5 +1,0 @@
-{
-  "address": "0xA23e7cb9bc9eF2A072E35cE36439735ef1b20113",
-  "abi": "[{\"type\":\"function\",\"name\":\"Verify\",\"constant\":true,\"stateMutability\":\"view\",\"payable\":false,\"inputs\":[{\"type\":\"bytes\",\"name\":\"proof\"},{\"type\":\"uint256[]\",\"name\":\"public_inputs\"}],\"outputs\":[{\"type\":\"bool\",\"name\":\"success\"}]}]",
-  "transactionHash": "0x9f64c8b5dd0b2db52821ff7cf7dd43b5490abf613a9e634ef168892ebc8c6acd"
-}

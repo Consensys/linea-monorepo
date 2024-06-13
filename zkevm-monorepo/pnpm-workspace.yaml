@@ -1,7 +1,0 @@
-packages:
-  - 'contracts/**'
-  - 'e2e/**'
-  - 'sdk/**'
-  - 'operations/**'
-  - '!bridge-ui/**'
-  - '!operations/src/synctx/**'
