@@ -16,6 +16,7 @@
 package net.consensys.linea.blockcapture;
 
 import java.util.List;
+import java.util.Set;
 
 import com.google.gson.Gson;
 import net.consensys.linea.blockcapture.reapers.Reaper;
@@ -39,6 +40,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
    * The {@link Reaper} will collect all the data that will need to be mimicked to replay the block.
    */
   private final Reaper reaper = new Reaper();
+
   /**
    * This keeps a pointer to the initial state (i.e. ) to be used at the end of tracing to store the
    * minimal required information to replay the conflation.
@@ -78,6 +80,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       Bytes output,
       List<Log> logs,
       long gasUsed,
+      Set<Address> selfDestructs,
       long timeNs) {
     this.reaper.exitTransaction(status);
   }

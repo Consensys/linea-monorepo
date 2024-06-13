@@ -35,10 +35,13 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class BlockSnapshot {
   /** Sequential ID of this block within a conflation */
   int id;
+
   /** A list of {@link TransactionSnapshot} contained in this block */
   private final StackedList<TransactionSnapshot> txs = new StackedList<>();
+
   /** The base fee of this block */
   private final Optional<Wei> baseFee;
+
   /** The coinbase of this block */
   private final Address coinbaseAddress;
 

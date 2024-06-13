@@ -28,6 +28,7 @@ public final class Bytecode {
 
   /** The bytecode. */
   private final Bytes bytecode;
+
   /** The bytecode hash; is null by default and computed & memoized on the fly when required. */
   private Hash hash;
 

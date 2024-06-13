@@ -130,6 +130,7 @@ public class Hub implements Module {
 
   /** accumulate the trace information for the Hub */
   @Getter private final State state = new State();
+
   /** contain the factories for trace segments that need complex initialization */
   @Getter private final Factories factories;
 

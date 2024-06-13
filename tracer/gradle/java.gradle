@@ -15,13 +15,13 @@
 
 apply plugin: 'java-library'
 
-if (!JavaVersion.current().java11Compatible) {
-  throw new GradleException("Java 17 or later is required.\n" +
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
+  throw new GradleException("Java 21 or later is required to build Besu.\n" +
     "  Detected version ${JavaVersion.current()}")
 }
 
-sourceCompatibility = 17
-targetCompatibility = 17
+sourceCompatibility = 21
+targetCompatibility = 21
 
 tasks.withType(JavaCompile) {
   options.compilerArgs += [

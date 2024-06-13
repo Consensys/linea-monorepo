@@ -1065,6 +1065,7 @@ public class RlpTxn implements Module {
     traceValue.phaseEnd = phaseEnd;
     traceRow(traceValue, trace);
   }
+
   // Define the Tracer
   private void traceRow(RlpTxnColumnsValue traceValue, Trace builder) {
     // Decrements RLP_BYTESIZE

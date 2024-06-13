@@ -36,8 +36,10 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 @Accessors(fluent = true)
 public final class StackContext {
   @Getter @Setter MemorySegmentSnapshot memorySegmentSnapshot;
+
   /** The opcode that triggered the stack operations. */
   OpCode opCode;
+
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
   @Getter final List<StackLine> lines = new ArrayList<>(4);
 

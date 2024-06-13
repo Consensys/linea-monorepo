@@ -82,6 +82,7 @@ public enum GasConstants {
   private static class Constants {
     /** Base price for a LOGx call. */
     private static final int LOG = 375;
+
     /** Additional price per topic for a LOGx call. */
     private static final int LOG_TOPIC = 375;
   }

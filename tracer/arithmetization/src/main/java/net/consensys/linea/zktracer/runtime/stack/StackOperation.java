@@ -31,15 +31,19 @@ import org.apache.tuweni.bytes.Bytes;
 @Accessors(fluent = true)
 public final class StackOperation {
   private static final Bytes MARKER = Bytes.fromHexString("0xDEADBEEF");
+
   /**
    * The relative height of the element with regard to the stack height just before executing the
    * linked EVM instruction.
    */
   @Getter private final int height;
+
   /** The value having been popped from/pushed on the stack. */
   @Getter @Setter private Bytes value;
+
   /** whether this action is a push or a pop. */
   @Getter private final Action action;
+
   /**
    * The stamp of this operation relative to the stack stamp before executing the linked EVM
    * instruction.

@@ -62,6 +62,7 @@ public class TxnData implements Module {
   }
 
   public final List<BlockSnapshot> blocks = new ArrayList<>();
+
   /** accumulate the gas used since the beginning of the current block */
   public final Deque<Integer> cumulatedGasUsed = new ArrayDeque<>();
 

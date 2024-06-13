@@ -28,10 +28,13 @@ import net.consensys.linea.zktracer.module.hub.TransactionStack;
 @Accessors(fluent = true)
 public class Transients {
   private final Hub hub;
+
   /** stores conflation-lived information */
   final Conflation conflation = new Conflation();
+
   /** stores block-lived information */
   final Block block = new Block();
+
   /** provides operation-related information */
   final OperationAncillaries op;
 
