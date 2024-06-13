@@ -84,6 +84,7 @@ jobs:
         run: ./gradlew :arithmetization:test
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
+          CORSET_FLAGS: fields,expand,expand,expand
 
       - name: Upload test report
         if: always()
