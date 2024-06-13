@@ -35,13 +35,13 @@ tasks.named("checkstyleTest", Checkstyle) {
 
 apply plugin: 'com.diffplug.spotless'
 spotless {
-  version "6.16.0"
+  version "6.25.0"
   java {
     // This path needs to be relative to each project
     target 'src/**/*.java'
     targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
     removeUnusedImports()
-    googleJavaFormat('1.15.0')
+    googleJavaFormat('1.17.0')
     importOrder '\\#', 'java', 'javax', ''
     trimTrailingWhitespace()
     endWithNewline()

@@ -27,10 +27,13 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @Accessors(fluent = true)
 public class PlatformController {
   private final Hub hub;
+
   /** What other modules should be triggered for the current operation */
   @Getter private final Signals signals;
+
   /** The exceptions raised during the execution of the current operation */
   @Getter private final Exceptions exceptions;
+
   /** The aborting conditions raised during the execution of the current operation */
   @Getter private final AbortingConditions aborts;
 

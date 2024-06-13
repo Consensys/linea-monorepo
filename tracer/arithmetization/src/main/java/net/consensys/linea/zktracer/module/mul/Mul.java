@@ -32,6 +32,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @RequiredArgsConstructor
 public class Mul implements Module {
   private final Hub hub;
+
   /** A set of the operations to trace */
   private final StackedSet<MulOperation> operations = new StackedSet<>();
 

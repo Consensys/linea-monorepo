@@ -78,24 +78,34 @@ public final class TransactionSnapshot extends ModuleOperation {
 
   /** Value moved by the transaction */
   private final BigInteger value;
+
   /** Sender address */
   private final Address from;
+
   /** Receiver or contract deployment address */
   private final Address to;
+
   /** Sender nonce */
   private final long nonce;
+
   /** Number of addresses to pre-warm */
   private final int prewarmedAddressesCount;
+
   /** Number of storage slots to pre-warm */
   private final int prewarmedStorageKeysCount;
+
   /** Whether this transaction is a smart contract deployment */
   private final boolean isDeployment;
+
   /** Whether this transaction triggers the EVM */
   private final boolean requiresEvmExecution;
+
   /** The transaction {@link TransactionType} */
   private final TransactionType type;
+
   /** The sender balance when it sent the transaction */
   private final BigInteger initialSenderBalance;
+
   /** The payload of the transaction, calldata or initcode */
   private final Bytes payload;
 

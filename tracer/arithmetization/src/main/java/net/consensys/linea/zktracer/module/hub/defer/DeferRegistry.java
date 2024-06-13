@@ -32,12 +32,16 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 public class DeferRegistry {
   /** A list of actions deferred until the end of the current conflation execution */
   private final List<PostConflationDefer> conflationDefers = new ArrayList<>();
+
   /** A list of actions deferred until the end of the current transaction */
   private final List<PostTransactionDefer> txDefers = new ArrayList<>();
+
   /** A list of actions deferred until the end of the current opcode execution */
   private final List<PostExecDefer> postExecDefers = new ArrayList<>();
+
   /** A list of actions deferred until the end of the current opcode execution */
   private final List<ReEnterContextDefer> reEntryDefers = new ArrayList<>();
+
   /** A list of actions deferred until the end of the current opcode execution */
   private final List<Pair<Integer, NextContextDefer>> contextReentry = new ArrayList<>();
 

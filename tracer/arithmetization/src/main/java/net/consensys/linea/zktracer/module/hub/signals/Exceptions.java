@@ -142,6 +142,7 @@ public final class Exceptions {
   public boolean stackException() {
     return this.stackUnderflow() || this.stackOverflow();
   }
+
   /**
    * @return true if no stack exception has been raised
    */

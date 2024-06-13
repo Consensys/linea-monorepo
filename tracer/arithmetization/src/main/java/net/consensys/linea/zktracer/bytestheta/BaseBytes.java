@@ -29,6 +29,7 @@ import org.apache.tuweni.bytes.MutableBytes32;
 public class BaseBytes implements HighLowBytes {
   /** The size in bytes of the high and low sections of the 256-bit block. */
   private static final int LOW_HIGH_SIZE = 16;
+
   /**
    * The mutable `Bytes32` object that stores the 256-bit block of data. Equals and hashCode must
    * only be computed on the numeric value wrapped by this class, so that sets of operations

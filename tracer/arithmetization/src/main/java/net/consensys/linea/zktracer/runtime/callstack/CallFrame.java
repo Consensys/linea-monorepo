@@ -45,14 +45,19 @@ public class CallFrame {
 
   /** the position of this {@link CallFrame} in the {@link CallStack}. */
   @Getter private int id;
+
   /** the context number of the frame, i.e. the hub stamp at its creation */
   @Getter private final int contextNumber;
+
   /** the depth of this CallFrame within its call hierarchy. */
   @Getter private int depth;
+
   /** */
   @Getter private int accountDeploymentNumber;
+
   /** */
   @Getter private int codeDeploymentNumber;
+
   /** */
   @Getter private boolean underDeployment;
 
@@ -60,15 +65,19 @@ public class CallFrame {
 
   /** the ID of this {@link CallFrame} parent in the {@link CallStack}. */
   @Getter private int parentFrame;
+
   /** all the {@link CallFrame} that have been called by this frame. */
   @Getter private final List<Integer> childFrames = new ArrayList<>();
 
   /** the {@link Address} of the account executing this {@link CallFrame}. */
   @Getter private final Address address;
+
   /** A memoized {@link EWord} conversion of `address` */
   private EWord eAddress = null;
+
   /** the {@link Address} of the code executed in this {@link CallFrame}. */
   @Getter private Address codeAddress = Address.ZERO;
+
   /** A memoized {@link EWord} conversion of `codeAddress` */
   private EWord eCodeAddress = null;
 
@@ -77,6 +86,7 @@ public class CallFrame {
 
   /** the {@link Bytecode} executing within this frame. */
   @Getter private Bytecode code = Bytecode.EMPTY;
+
   /** the CFI of this frame bytecode if applicable */
   @Getter private int codeFragmentIndex = -1;
 
@@ -87,6 +97,7 @@ public class CallFrame {
 
   /** the ether amount given to this frame. */
   @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging
+
   /** the gas given to this frame. */
   @Getter private long gasEndowment;
 
@@ -95,13 +106,16 @@ public class CallFrame {
 
   /** the data returned by the latest callee. */
   @Getter @Setter private Bytes latestReturnData = Bytes.EMPTY;
+
   /** returnData position within the latest callee memory space. */
   @Getter @Setter private MemorySpan latestReturnDataSource = new MemorySpan(0, 0);
 
   /** the return data provided by this frame */
   @Getter @Setter private Bytes returnData = Bytes.EMPTY;
+
   /** where this frame store its return data in its own RAM */
   @Getter @Setter private MemorySpan returnDataSource;
+
   /** where this frame is expected to write its returnData within its parent's memory space. */
   @Getter private MemorySpan requestedReturnDataTarget = MemorySpan.empty();
 
@@ -113,6 +127,7 @@ public class CallFrame {
 
   /** this frame {@link Stack}. */
   @Getter private final Stack stack = new Stack();
+
   /** the latched context of this callframe stack. */
   @Getter @Setter private StackContext pending;
 

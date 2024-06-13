@@ -39,6 +39,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Wcp implements Module {
   private final StackedSet<WcpOperation> operations = new StackedSet<>();
+
   /** count the number of rows that could be added after the sequencer counts the number of line */
   public final Deque<Integer> additionalRows = new ArrayDeque<>();
 
