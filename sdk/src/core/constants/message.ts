@@ -1,3 +1,0 @@
-export const MESSAGE_UNKNOWN_STATUS = 0;
-export const MESSAGE_ANCHORED_STATUS = 1;
-export const MESSAGE_CLAIMED_STATUS = 2;

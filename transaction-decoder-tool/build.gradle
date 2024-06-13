@@ -1,9 +1,0 @@
-plugins {
-  id 'net.consensys.zkevm.kotlin-library-conventions'
-}
-
-dependencies {
-  implementation "tech.pegasys.teku.internal:infrastructure-events:${versions.teku}"
-  implementation "tech.pegasys.teku.internal:executionclient:${versions.teku}"
-  implementation project(path: ':coordinator:app')
-}
