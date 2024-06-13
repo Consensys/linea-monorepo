@@ -1,0 +1,8 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-conventions'
+  id 'java-library'
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}

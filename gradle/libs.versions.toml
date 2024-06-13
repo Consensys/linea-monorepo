@@ -1,0 +1,7 @@
+[plugins]
+docker = { id = "com.avast.gradle.docker-compose", version = "0.17.6" }
+web3j = { id = "org.web3j", version = "4.11.0" }
+
+[versions]
+vertx = "4.5.0"
+ktlint = "0.47.0"

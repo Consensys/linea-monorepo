@@ -1,0 +1,70 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-application-conventions'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+dependencies {
+  implementation project(':traces-api-facade:conflation')
+  implementation project(':traces-api-facade:core')
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:metrics:micrometer')
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:vertx-helper')
+
+  implementation "com.github.ben-manes.caffeine:caffeine:${versions.caffeine}"
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-health-check"
+  implementation "io.vertx:vertx-lang-kotlin"
+  implementation "io.vertx:vertx-config"
+  implementation "io.vertx:vertx-micrometer-metrics"
+  implementation "info.picocli:picocli:${versions.picoli}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${versions.hoplite}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${versions.hoplite}"
+  implementation "io.micrometer:micrometer-registry-prometheus:${versions.micrometer}"
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${versions.jackson}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${versions.jackson}"
+  api("io.netty:netty-transport-native-epoll:${versions.netty}:linux-x86_64") {
+    because "It enables native transport for Linux."
+    // Note that its version should match netty version used in Vertx
+  }
+  api("io.netty:netty-transport-native-kqueue:${versions.netty}:osx-x86_64") {
+    because "It enables native transport for Mac OSX."
+    // Note that its version should match netty version used in Vertx
+  }
+
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "io.rest-assured:rest-assured:${versions.test.restassured}"
+  testImplementation "io.rest-assured:json-schema-validator:${versions.test.restassured}"
+}
+
+application {
+    mainClass = 'net.consensys.linea.traces.app.TracesAppMain'
+}
+
+jar {
+  manifest {
+    attributes(
+      'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
+      'Main-Class': 'net.consensys.linea.traces.app.TracesAppMain',
+      'Multi-Release': 'true'
+    )
+  }
+}
+
+run {
+  workingDir = rootProject.projectDir
+  jvmArgs = [
+    "-Dvertx.configurationFile=config/traces-api/vertx.json",
+    "-Dlog4j2.configurationFile=config/traces-api/log4j2-dev.xml"
+  ] + System.properties.entrySet()
+    .findAll { it.key.startsWith("config") }
+    .collect { "-D${it.key}=${it.value}" }
+  args = ["config/traces-api/traces-app-docker.config.toml", "config/traces-api/traces-app-local-dev.config.overrides.toml"]
+}
+
+test {
+  systemProperty "vertx.configurationFile", "vertx-options.json"
+}
