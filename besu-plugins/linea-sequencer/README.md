@@ -1,4 +1,4 @@
-# Besu Plugins relating to tracer and sequencer functionality
+# Besu Plugins related to tracer and sequencer functionality
 
 A Linea tracing implementation for [Hyperledger Besu](https://github.com/hyperledger/besu) based on
 an [existing implementation in Go](https://github.com/Consensys/zk-evm/).
@@ -38,7 +38,7 @@ Linux/MacOs
 Windows
 * Requirement [Docker Desktop WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/)
 
-On release native libs are build for all the supported platforms,
+On release native libs are built for all the supported platforms,
 if you want to test this process locally run `./gradlew -PreleaseNativeLibs jar`,
 jar is generated in `arithmetization/build/libs`.
 
@@ -115,7 +115,7 @@ ______________________________________________________________________
 NOTE
 
 > Please be aware if the reference test code generation tasks `blockchainReferenceTests` and
-> `generalStateReferenceTests` do not generate any java code, than probably you are missing the Ethereum tests
+> `generalStateReferenceTests` do not generate any java code, then probably you are missing the Ethereum tests"
 > submodule which you can clone via `git submodule update --init --recursive`.
 
 ______________________________________________________________________
