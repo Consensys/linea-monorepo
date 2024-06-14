@@ -17,8 +17,10 @@ package net.consensys.linea.sequencer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -118,9 +120,11 @@ public class TracerAggregator implements OperationTracer {
       Bytes output,
       List<Log> logs,
       long gasUsed,
+      Set<Address> selfDestructs,
       long timeNs) {
     for (OperationTracer tracer : tracers) {
-      tracer.traceEndTransaction(worldView, tx, status, output, logs, gasUsed, timeNs);
+      tracer.traceEndTransaction(
+          worldView, tx, status, output, logs, gasUsed, selfDestructs, timeNs);
     }
   }
 

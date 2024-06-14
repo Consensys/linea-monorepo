@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.types.Utils;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -176,6 +178,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       Bytes output,
       List<Log> logs,
       long gasUsed,
+      Set<Address> selfDestructs,
       long timeNs) {
     this.hub.traceEndTx(worldView, tx, status, output, logs, gasUsed);
   }

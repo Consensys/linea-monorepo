@@ -16,6 +16,7 @@
 package net.consensys.linea.blockcapture;
 
 import java.util.List;
+import java.util.Set;
 
 import com.google.gson.Gson;
 import net.consensys.linea.blockcapture.reapers.Reaper;
@@ -79,6 +80,7 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       Bytes output,
       List<Log> logs,
       long gasUsed,
+      Set<Address> selfDestructs,
       long timeNs) {
     this.reaper.exitTransaction(status);
   }
