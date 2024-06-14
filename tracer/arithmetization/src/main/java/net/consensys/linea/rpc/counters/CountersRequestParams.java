@@ -20,34 +20,14 @@ import java.security.InvalidParameterException;
 import net.consensys.linea.zktracer.ZkTracer;
 
 /** Holds needed parameters for sending an execution trace generation request. */
-@SuppressWarnings("unused")
-public record CountersRequestParams(long blockNumber, String runtimeVersion) {
-  private static final int EXPECTED_PARAMS_SIZE = 2;
-
-  /**
-   * Parses a list of params to a {@link CountersRequestParams} object.
-   *
-   * @param params an array of parameters.
-   * @return a parsed {@link CountersRequestParams} object..
-   */
-  public static CountersRequestParams createTraceParams(final Object[] params) {
-    // validate params size
-    if (params.length != EXPECTED_PARAMS_SIZE) {
-      throw new InvalidParameterException(
-          String.format("Expected %d parameters but got %d", EXPECTED_PARAMS_SIZE, params.length));
-    }
-
-    long blockNumber = Long.parseLong(params[0].toString());
-    String version = params[1].toString();
-
-    if (!version.equals(getTracerRuntime())) {
+public record CountersRequestParams(long blockNumber, String expectedTracesEngineVersion) {
+  public void validateTracerVersion() {
+    if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
       throw new InvalidParameterException(
           String.format(
               "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s",
-              getTracerRuntime(), version));
+              getTracerRuntime(), expectedTracesEngineVersion));
     }
-
-    return new CountersRequestParams(blockNumber, version);
   }
 
   private static String getTracerRuntime() {

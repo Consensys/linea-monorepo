@@ -16,11 +16,13 @@
 package net.consensys.linea.zktracer.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import lombok.Getter;
+import lombok.SneakyThrows;
 
 /** A wrapper class handling Jackson's {@link ObjectMapper} configuration. */
 public class JsonConverter {
@@ -39,9 +41,9 @@ public class JsonConverter {
    *
    * @param object the object to be serialized
    * @return a JSON string representing the object's data
-   * @throws JsonProcessingException n case of a serialization failure
    */
-  public String toJson(Object object) throws JsonProcessingException {
+  @SneakyThrows(JsonProcessingException.class)
+  public String toJson(Object object) {
     if (prettyPrintEnabled) {
       return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(object);
     }
@@ -56,10 +58,23 @@ public class JsonConverter {
    * @param clazz class type of the type for deserialization
    * @param <T> the deserialization type
    * @return an instance of the deserialized type
-   * @throws JsonProcessingException in case of a deserialization failure
    */
-  public <T> T fromJson(String jsonString, Class<T> clazz) throws JsonProcessingException {
+  @SneakyThrows(JsonProcessingException.class)
+  public <T> T fromJson(String jsonString, Class<T> clazz) {
     return objectMapper.readValue(jsonString, clazz);
+  }
+
+  /**
+   * Deserializes a JSON string to a specified type.
+   *
+   * @param jsonString JSON string to be deserialized
+   * @param clazz class type of the type for deserialization
+   * @param <T> the deserialization type
+   * @return an instance of the deserialized type
+   */
+  @SneakyThrows(JsonProcessingException.class)
+  public <T> T fromJson(String jsonString) {
+    return objectMapper.readValue(jsonString, new TypeReference<>() {});
   }
 
   /**

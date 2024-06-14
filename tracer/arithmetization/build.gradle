@@ -58,7 +58,6 @@ dependencies {
   implementation 'io.tmio:tuweni-bytes'
   implementation 'io.tmio:tuweni-units'
   implementation 'io.tmio:tuweni-toml'
-
   implementation 'org.bouncycastle:bcprov-jdk18on'
   implementation 'org.hibernate.validator:hibernate-validator'
 
