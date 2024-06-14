@@ -26,7 +26,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  *
  * <p>The CountersEndpointServicePlugin registers an RPC endpoint named
  * 'getTracesCountersByBlockNumberV0' under the 'rollup' namespace. When this endpoint is called,
- * returns trace counters based on the provided request parameters. See {@link GenerateCountersV0}
+ * returns trace counters based on the provided request parameters. See {@link GenerateCountersV2}
  */
 @AutoService(BesuPlugin.class)
 public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
@@ -54,7 +54,7 @@ public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlu
   @Override
   public void beforeExternalServices() {
     super.beforeExternalServices();
-    GenerateCountersV0 method = new GenerateCountersV0(besuContext);
+    GenerateCountersV2 method = new GenerateCountersV2(besuContext);
     createAndRegister(method, rpcEndpointService);
   }
 
@@ -65,7 +65,7 @@ public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlu
    * @param rpcEndpointService the RpcEndpointService to be registered.
    */
   private void createAndRegister(
-      final GenerateCountersV0 method, final RpcEndpointService rpcEndpointService) {
+      final GenerateCountersV2 method, final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
   }

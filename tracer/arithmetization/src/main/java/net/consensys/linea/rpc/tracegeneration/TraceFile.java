@@ -20,4 +20,4 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /** FileTrace represents an execution trace. */
 public record TraceFile(
     @JsonProperty("tracesEngineVersion") String tracesEngineVersion,
-    @JsonProperty("traceFileName") String traceFileName) {}
+    @JsonProperty("conflatedTracesFileName") String conflatedTracesFileName) {}
