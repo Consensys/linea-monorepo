@@ -50,6 +50,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./arithmetization/build/libs/besu-sequencer-plugins-${{ steps.get_version.outputs.VERSION }}.jar
-          asset_name: besu-sequencer-plugins-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_path: ./sequencer/build/libs/linea-sequencer${{ steps.get_version.outputs.VERSION }}.jar
+          asset_name: linea-sequencer-${{ steps.get_version.outputs.VERSION }}.jar
           asset_content_type: application/octet-stream

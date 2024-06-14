@@ -15,19 +15,6 @@
 
 package org.hyperledger.besu.tests.acceptance.dsl;
 
-import static org.hyperledger.besu.datatypes.Hash.fromHexString;
-
-import java.math.BigInteger;
-
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.BlockHeaderFunctions;
-import org.hyperledger.besu.ethereum.core.Difficulty;
-import org.hyperledger.besu.evm.log.LogsBloomFilter;
-import org.web3j.protocol.core.methods.response.EthBlock.Block;
-
 /** Helper functions for creating and manipulating blocks and block headers. */
 public class BlockUtils {
 
@@ -38,35 +25,35 @@ public class BlockUtils {
    * @param blockHeaderFunctions functions for calculating parts of a {@link BlockHeader}
    * @return a block header of type {@link BlockHeader}
    */
-  public static BlockHeader createBlockHeader(
-      final Block block, final BlockHeaderFunctions blockHeaderFunctions) {
-    final Hash mixHash =
-        block.getMixHash() == null
-            ? Hash.fromHexStringLenient("0x0")
-            : fromHexString(block.getMixHash());
-
-    return new BlockHeader(
-        fromHexString(block.getParentHash()),
-        fromHexString(block.getSha3Uncles()),
-        Address.fromHexString(block.getMiner()),
-        fromHexString(block.getStateRoot()),
-        fromHexString(block.getTransactionsRoot()),
-        fromHexString(block.getReceiptsRoot()),
-        LogsBloomFilter.fromHexString(block.getLogsBloom()),
-        Difficulty.fromHexString(block.getDifficultyRaw()),
-        block.getNumber().longValue(),
-        block.getGasLimit().longValue(),
-        block.getGasUsed().longValue(),
-        block.getTimestamp().longValue(),
-        Bytes.fromHexString(block.getExtraData()),
-        null,
-        mixHash,
-        new BigInteger(block.getNonceRaw().substring(2), 16).longValue(),
-        null,
-        0L,
-        null,
-        null,
-        null,
-        blockHeaderFunctions);
-  }
+  //  public static BlockHeader createBlockHeader(
+  //      final Block block, final BlockHeaderFunctions blockHeaderFunctions) {
+  //    final Hash mixHash =
+  //        block.getMixHash() == null
+  //            ? Hash.fromHexStringLenient("0x0")
+  //            : fromHexString(block.getMixHash());
+  //
+  //    return new BlockHeader(
+  //        fromHexString(block.getParentHash()),
+  //        fromHexString(block.getSha3Uncles()),
+  //        Address.fromHexString(block.getMiner()),
+  //        fromHexString(block.getStateRoot()),
+  //        fromHexString(block.getTransactionsRoot()),
+  //        fromHexString(block.getReceiptsRoot()),
+  //        LogsBloomFilter.fromHexString(block.getLogsBloom()),
+  //        Difficulty.fromHexString(block.getDifficultyRaw()),
+  //        block.getNumber().longValue(),
+  //        block.getGasLimit().longValue(),
+  //        block.getGasUsed().longValue(),
+  //        block.getTimestamp().longValue(),
+  //        Bytes.fromHexString(block.getExtraData()),
+  //        null,
+  //        mixHash,
+  //        new BigInteger(block.getNonceRaw().substring(2), 16).longValue(),
+  //        null,
+  //        0L,
+  //        null,
+  //        null,
+  //        null,
+  //        blockHeaderFunctions);
+  //  }
 }

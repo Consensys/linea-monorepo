@@ -1,4 +1,4 @@
-module github.com/consensys/besu-sequencer-plugins
+module github.com/consensys/linea-sequencer
 
 go 1.20
 

@@ -39,33 +39,6 @@ jacoco {
   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
   */
 test {
-  minHeapSize = "4g"
-  maxHeapSize = "8g"
-  jvmArgs = [
-    '-XX:-UseGCOverheadLimit',
-    // Mockito and jackson-databind do some strange reflection during tests.
-    // This suppresses an illegal access warning.
-    '--add-opens',
-    'java.base/java.util=ALL-UNNAMED',
-    '--add-opens',
-    'java.base/java.util.concurrent=ALL-UNNAMED'
-  ]
-  Set toImport = [
-    'root.log.level',
-    'evm.log.level'
-  ]
-  for (String name : toImport) {
-    if (System.getProperty(name) != null) {
-      systemProperty name, System.getProperty(name)
-    }
-  }
-
-  useJUnitPlatform()
-}
-
-//tasks.test.dependsOn(buildZkevmBin)
-
-tasks.register('unitTests', Test) {
   description = 'Runs unit tests.'
 
   minHeapSize = "4g"
@@ -73,11 +46,5 @@ tasks.register('unitTests', Test) {
 
   useJUnitPlatform {
     excludeTags("AcceptanceTest")
-    exclude('**/**ReferenceTest*')
   }
-}
-
-test {
-  exclude('**/**ReferenceTest*')
-  exclude '**/net/consensys/linea/zktracer/**'
 }

@@ -16,7 +16,9 @@
 repositories {
   maven {
     url "https://artifacts.consensys.net/public/linea-besu/maven/"
-    content { includeGroupByRegex('io\\.consensys\\..*') }
+    content {
+      includeGroupByRegex('io\\.consensys\\..*')
+    }
   }
   maven {
     url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
@@ -24,7 +26,15 @@ repositories {
   }
   maven {
     url 'https://artifacts.consensys.net/public/maven/maven/'
-    content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
+    content {
+      includeGroupByRegex('tech\\.pegasys(\\..*)?')
+    }
+  }
+  maven {
+    url "https://artifacts.consensys.net/public/linea-arithmetization/maven/"
+    content {
+      includeGroupByRegex('net\\.consensys\\.linea\\..*?')
+    }
   }
   maven {
     url 'https://splunk.jfrog.io/splunk/ext-releases-local'
@@ -49,11 +59,17 @@ dependencyManagement {
   }
 
   dependencies {
+    dependencySet(group: "net.consensys.linea.zktracer", version: "${arithmetizationVersion}") {
+      entry "arithmetization"
+    }
+
+
     // Besu dependencies
     dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
       entry "besu-datatypes"
       entry "evm"
       entry "plugin-api"
+      entry "internal"
     }
 
     dependency 'com.fasterxml.jackson.core:jackson-databind:2.16.1'

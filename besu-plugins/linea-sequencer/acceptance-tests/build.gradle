@@ -24,7 +24,6 @@ plugins {
 apply from: rootProject.file("gradle/java.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
-apply from: rootProject.file("gradle/corset.gradle")
 apply from: rootProject.file("gradle/tests.gradle")
 apply from: rootProject.file("gradle/lint.gradle")
 
@@ -45,7 +44,7 @@ tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
 
   dependsOn(project(":native:compress").compileJava)
-  dependsOn(project(":arithmetization").copyPluginJar)
+  dependsOn(project(":sequencer").copyPluginJar)
 
   inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
 
@@ -59,9 +58,13 @@ tasks.register('acceptanceTests', Test) {
 }
 
 dependencies {
-  testImplementation project(":arithmetization")
+  testImplementation 'net.consensys.linea.zktracer:arithmetization'
   testImplementation project(":native:compress")
+  testImplementation project(":sequencer")
   testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
+  testImplementation "${besuArtifactGroup}.internal:api:${besuVersion}"
+  testImplementation "${besuArtifactGroup}:plugin-api"
+  testImplementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
   testImplementation "${besuArtifactGroup}:besu-datatypes:$besuVersion"
   testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion"
   testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion:test-support"

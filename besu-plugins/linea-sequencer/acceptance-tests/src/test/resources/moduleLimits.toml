@@ -14,6 +14,7 @@ BIN                 = 262144
 BIN_RT              = 262144
 EC_DATA             = 4096
 EUC                 = 16384 # can probably be lower
+EXP                 = 32760
 EXT                 = 32768
 HUB                 = 2097152
 INSTRUCTION_DECODER = 512 # Ugly hack, TODO: @franklin
@@ -43,7 +44,7 @@ RLP_TXN             = 262144
 RLP_TXRCPT          = 262144
 TXN_DATA            = 262144
 STP                 = 262144
-
+OOB                 = 262144
 #
 # Block-specific limits
 #
@@ -51,6 +52,9 @@ BLOCK_TX       = 200 # max number of tx in an L2 block
 BLOCK_L2L1LOGS = 16
 BLOCK_KECCAK   = 8192
 BLOCK_L1SIZE   = 1000000
+
+BLOCKDATA = 13
+BLOCKHASH = 1
 
 #
 # Precompiles limits

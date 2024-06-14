@@ -22,7 +22,7 @@ publishing {
   repositories {
     maven {
       name = "cloudsmith"
-      url = "https://api-g.cloudsmith.io/maven/consensys/linea-besu-plugin/"
+      url = "https://api.cloudsmith.io/maven/consensys/linea-besu-plugin/"
       credentials {
         username = cloudsmithUser
         password = cloudsmithKey
@@ -52,9 +52,9 @@ publishing {
           }
         }
         scm {
-          connection = 'scm:git:git://github.com/ConsenSys/linea-besu-plugin.git'
-          developerConnection = 'https://github.com/ConsenSys/linea-besu-plugin.git'
-          url = 'https://github.com/ConsenSys/linea-besu-plugin'
+          connection = 'scm:git:git://github.com/ConsenSys/linea-sequencer.git'
+          developerConnection = 'https://github.com/ConsenSys/linea-sequencer.git'
+          url = 'https://github.com/ConsenSys/linea-sequencer'
         }
       }
     }

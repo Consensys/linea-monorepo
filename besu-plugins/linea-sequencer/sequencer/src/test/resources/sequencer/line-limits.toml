@@ -1,0 +1,80 @@
+[traces-limits]
+#
+# Arithmetization module limits
+#
+ADD                 = 524286
+BIN                 = 262128
+BIN_RT              = 262144
+EC_DATA             = 4084
+EXP                 = 32760
+EXT                 = 32760
+HUB                 = 2097150
+INSTRUCTION_DECODER = 512 # Ugly hack, TODO: @franklin
+MMIO                = 1048576
+MMU                 = 524288
+MMU_ID              = 256
+MOD                 = 131064
+MUL                 = 65527
+MXP                 = 524284
+PHONEY_RLP          = 65536 # can probably get lower
+PUB_HASH            = 32768
+PUB_HASH_INFO       = 8192
+OLD_PUB_HASH        = 32768
+OLD_PUB_HASH_INFO   = 8192
+PUB_LOG             = 16384
+PUB_LOG_INFO        = 49152
+RLP                 = 504
+ROM                 = 13000000 # need to be validated if there are changes in how Besu counts the ROM.
+ROM_LEX             = 3145728
+SHF                 = 65520
+SHF_RT              = 4096
+TX_RLP              = 110000
+WCP                 = 262128
+LOG_DATA            = 16384
+LOG_INFO            = 16384
+RLP_ADDR            = 504
+OOB                 = 262144
+BLOCKDATA = 13
+BLOCKHASH = 1
+
+#
+# These do not exist yet
+#
+RLP_TXRCPT          = 2621440
+TXN_DATA            = 2621440
+STP                 = 2621440
+TRM                 = 1000000
+EUC                 = 1000000
+
+#
+# Block-specific limits
+#
+BLOCK_TX       = 200 # max number of tx in an L2 block
+BLOCK_L1SIZE   = 108592
+BLOCK_L2L1LOGS = 16
+BLOCK_KECCAK   = 8192
+
+#
+# Precompiles limits
+#
+PRECOMPILE_ECRECOVER = 100
+PRECOMPILE_ECRECOVER_EFFECTIVE_CALL = 1000000
+PRECOMPILE_SHA2      = 100
+PRECOMPILE_SHA2_BLOCKS = 1000000
+PRECOMPILE_SHA2_EFFECTIVE_CALL = 1000000
+PRECOMPILE_RIPEMD    = 100 # keep 100 because we don't have better limit for now
+PRECOMPILE_RIPEMD_EFFECTIVE_CALL = 1000000
+PRECOMPILE_RIPEMD_BLOCKS = 1000000
+PRECOMPILE_IDENTITY  = 10000 # we should not need this limit
+PRECOMPILE_MODEXP    = 1000 # should be decreased to 4
+PRECOMPILE_MODEXP_EFFECTIVE_CALL = 1000
+PRECOMPILE_ECADD     = 1000 # should be 16384
+PRECOMPILE_ECADD_EFFECTIVE_CALL     = 1000000
+PRECOMPILE_ECMUL     = 100 # should be 32
+PRECOMPILE_ECMUL_EFFECTIVE_CALL     = 1000000
+PRECOMPILE_ECPAIRING = 100 # should be 16 #another limit is missing, is it ECPAIRING WEIGHTED?
+PRECOMPILE_ECPAIRING_EFFECTIVE_CALL = 1000000
+PRECOMPILE_ECPAIRING_MILLER_LOOP = 1000000
+PRECOMPILE_BLAKE2F   = 512
+PRECOMPILE_BLAKE2F_ROUNDS = 1000000
+PRECOMPILE_ECPAIRING_WEIGHTED = 1000000 #should it be 64? today it's 1_000_000 to nerver trigger it.
