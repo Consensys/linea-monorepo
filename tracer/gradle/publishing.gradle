@@ -64,8 +64,8 @@ publishing {
 tasks.register('cloudsmithUpload') {
   doLast {
     exec {
-      executable project.file("scripts/cloudsmith-upload.sh")
-      args rootProject.version, distTar.archiveFile.get(), distZip.archiveFile.get()
+      executable rootProject.file("scripts/cloudsmith-upload.sh")
+      args rootProject.version, project.layout.buildDirectory.get()
     }
   }
 }
