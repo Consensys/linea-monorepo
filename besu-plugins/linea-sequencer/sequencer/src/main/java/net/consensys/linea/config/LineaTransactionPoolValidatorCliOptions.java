@@ -32,7 +32,7 @@ public class LineaTransactionPoolValidatorCliOptions {
 
   public static final String TX_POOL_ENABLE_SIMULATION_CHECK_API =
       "--plugin-linea-tx-pool-simulation-check-api-enabled";
-  public static final boolean DEFAULT_TX_POOL_ENABLE_SIMULATION_CHECK_API = true;
+  public static final boolean DEFAULT_TX_POOL_ENABLE_SIMULATION_CHECK_API = false;
 
   public static final String TX_POOL_ENABLE_SIMULATION_CHECK_P2P =
       "--plugin-linea-tx-pool-simulation-check-p2p-enabled";
