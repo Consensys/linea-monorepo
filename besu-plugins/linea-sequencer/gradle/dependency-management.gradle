@@ -72,6 +72,11 @@ dependencyManagement {
       entry "internal"
     }
 
+    dependencySet(group: 'ch.qos.logback', version: '1.5.6') {
+      entry 'logback-core'
+      entry 'logback-classic'
+    }
+
     dependency 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
     dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1'
     dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.16.1'
@@ -106,9 +111,15 @@ dependencyManagement {
 
     dependency 'org.assertj:assertj-core:3.25.1'
 
-    dependency 'org.awaitility:awaitility:4.2.0'
-
     dependency 'org.apache.commons:commons-lang3:3.14.0'
+
+    dependencySet(group: 'org.apache.logging.log4j', version: '2.23.1') {
+      entry 'log4j-api'
+      entry 'log4j-core'
+      entry 'log4j-slf4j2-impl'
+    }
+
+    dependency 'org.awaitility:awaitility:4.2.0'
 
     dependencySet(group: 'org.bouncycastle', version: '1.77') {
       entry 'bcpkix-jdk18on'

@@ -25,54 +25,39 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt32;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.datatypes.rpc.JsonRpcResponseType;
-import org.hyperledger.besu.plugin.data.AddedBlockContext;
-import org.hyperledger.besu.plugin.data.BlockHeader;
-import org.hyperledger.besu.plugin.services.BesuEvents;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 @Slf4j
-public class LineaExtraDataHandler implements BesuEvents.BlockAddedListener {
+public class LineaExtraDataHandler {
   private final RpcEndpointService rpcEndpointService;
-  private final ExtraDataParser[] extraDataParsers;
+  private final ExtraDataConsumer[] extraDataConsumers;
 
   public LineaExtraDataHandler(
       final RpcEndpointService rpcEndpointService,
-      final BlockchainService blockchainService,
       final LineaProfitabilityConfiguration profitabilityConf) {
     this.rpcEndpointService = rpcEndpointService;
-    extraDataParsers = new ExtraDataParser[] {new Version1Parser(profitabilityConf)};
-    onStartup(blockchainService);
+    this.extraDataConsumers = new ExtraDataConsumer[] {new Version1Consumer(profitabilityConf)};
   }
 
-  private void onStartup(final BlockchainService blockchainService) {
-    consumeExtraData(blockchainService.getChainHeadHeader());
-  }
-
-  @Override
-  public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    consumeExtraData(addedBlockContext.getBlockHeader());
-  }
-
-  private void consumeExtraData(final BlockHeader blockHeader) {
-    final var rawExtraData = blockHeader.getExtraData();
+  public void handle(final Bytes rawExtraData) throws LineaExtraDataException {
 
     if (!Bytes.EMPTY.equals(rawExtraData)) {
-      for (final ExtraDataParser extraDataParser : extraDataParsers) {
-        if (extraDataParser.canParse(rawExtraData)) {
+      for (final ExtraDataConsumer extraDataConsumer : extraDataConsumers) {
+        if (extraDataConsumer.canConsume(rawExtraData)) {
+          // strip first byte since it is the version already used to select the actual consumer
           final var extraData = rawExtraData.slice(1);
-          extraDataParser.parse(extraData);
+          extraDataConsumer.accept(extraData);
           return;
         }
       }
-      log.warn("unsupported extra data field {}", rawExtraData.toHexString());
+      throw new LineaExtraDataException(
+          LineaExtraDataException.ErrorType.INVALID_ARGUMENT,
+          "Unsupported extra data field " + rawExtraData.toHexString());
     }
   }
 
-  private interface ExtraDataParser {
-    boolean canParse(Bytes extraData);
-
-    void parse(Bytes extraData);
+  private interface ExtraDataConsumer extends Consumer<Bytes> {
+    boolean canConsume(Bytes extraData);
 
     static Long toLong(final Bytes fieldBytes) {
       return UInt32.fromBytes(fieldBytes).toLong();
@@ -80,34 +65,34 @@ public class LineaExtraDataHandler implements BesuEvents.BlockAddedListener {
   }
 
   @SuppressWarnings("rawtypes")
-  private class Version1Parser implements ExtraDataParser {
+  private class Version1Consumer implements ExtraDataConsumer {
     private static final int WEI_IN_KWEI = 1_000;
     private final LineaProfitabilityConfiguration profitabilityConf;
     private final FieldConsumer[] fieldsSequence;
     private final MutableLong currFixedCostKWei = new MutableLong();
     private final MutableLong currVariableCostKWei = new MutableLong();
 
-    public Version1Parser(final LineaProfitabilityConfiguration profitabilityConf) {
+    public Version1Consumer(final LineaProfitabilityConfiguration profitabilityConf) {
       this.profitabilityConf = profitabilityConf;
 
       final FieldConsumer fixedGasCostField =
           new FieldConsumer<>(
-              "fixedGasCost", 4, ExtraDataParser::toLong, currFixedCostKWei::setValue);
+              "fixedGasCost", 4, ExtraDataConsumer::toLong, currFixedCostKWei::setValue);
       final FieldConsumer variableGasCostField =
           new FieldConsumer<>(
-              "variableGasCost", 4, ExtraDataParser::toLong, currVariableCostKWei::setValue);
+              "variableGasCost", 4, ExtraDataConsumer::toLong, currVariableCostKWei::setValue);
       final FieldConsumer minGasPriceField =
-          new FieldConsumer<>("minGasPrice", 4, ExtraDataParser::toLong, this::updateMinGasPrice);
+          new FieldConsumer<>("minGasPrice", 4, ExtraDataConsumer::toLong, this::updateMinGasPrice);
 
       this.fieldsSequence =
           new FieldConsumer[] {fixedGasCostField, variableGasCostField, minGasPriceField};
     }
 
-    public boolean canParse(final Bytes rawExtraData) {
+    public boolean canConsume(final Bytes rawExtraData) {
       return rawExtraData.get(0) == (byte) 1;
     }
 
-    public synchronized void parse(final Bytes extraData) {
+    public synchronized void accept(final Bytes extraData) {
       log.info("Parsing extra data version 1: {}", extraData.toHexString());
       int startIndex = 0;
       for (final FieldConsumer fieldConsumer : fieldsSequence) {
@@ -126,7 +111,9 @@ public class LineaExtraDataHandler implements BesuEvents.BlockAddedListener {
           rpcEndpointService.call(
               "miner_setMinGasPrice", new Object[] {minGasPriceWei.toShortHexString()});
       if (!resp.getType().equals(JsonRpcResponseType.SUCCESS)) {
-        log.error("setMinGasPrice failed: {}", resp);
+        throw new LineaExtraDataException(
+            LineaExtraDataException.ErrorType.FAILED_CALLING_SET_MIN_GAS_PRICE,
+            "Internal setMinGasPrice method failed: " + resp);
       }
     }
   }

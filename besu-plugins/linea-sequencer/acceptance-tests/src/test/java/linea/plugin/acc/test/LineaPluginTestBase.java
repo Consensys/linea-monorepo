@@ -20,16 +20,24 @@ import static org.assertj.core.api.Assertions.*;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.apache.tuweni.units.bigints.UInt32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.eth.transactions.ImmutableTransactionPoolConfiguration;
@@ -38,6 +46,10 @@ import org.hyperledger.besu.tests.acceptance.dsl.AcceptanceTestBase;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.hyperledger.besu.tests.acceptance.dsl.condition.txpool.TxPoolConditions;
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode;
+import org.hyperledger.besu.tests.acceptance.dsl.node.RunnableNode;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeConfigurationBuilder;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.NodeConfigurationFactory;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory.CliqueOptions;
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.txpool.TxPoolTransactions;
 import org.junit.jupiter.api.AfterEach;
@@ -66,7 +78,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   @BeforeEach
   public void setup() throws Exception {
     minerNode =
-        besu.createCliqueNodeWithExtraCliOptionsAndRpcApis(
+        createCliqueNodeWithExtraCliOptionsAndRpcApis(
             "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions(), Set.of("LINEA", "MINER"));
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
@@ -84,6 +96,58 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public void stop() {
     cluster.stop();
     cluster.close();
+  }
+
+  protected Optional<Bytes32> maybeCustomGenesisExtraData() {
+    return Optional.empty();
+  }
+
+  private BesuNode createCliqueNodeWithExtraCliOptionsAndRpcApis(
+      final String name,
+      final CliqueOptions cliqueOptions,
+      final List<String> extraCliOptions,
+      final Set<String> extraRpcApis)
+      throws IOException {
+    final NodeConfigurationFactory node = new NodeConfigurationFactory();
+
+    final var nodeConfBuilder =
+        new BesuNodeConfigurationBuilder()
+            .name(name)
+            .miningEnabled()
+            .jsonRpcConfiguration(node.createJsonRpcWithCliqueEnabledConfig(extraRpcApis))
+            .webSocketConfiguration(node.createWebSocketEnabledConfig())
+            .inProcessRpcConfiguration(node.createInProcessRpcConfiguration(extraRpcApis))
+            .devMode(false)
+            .jsonRpcTxPool()
+            .genesisConfigProvider(
+                validators -> Optional.of(provideGenesisConfig(validators, cliqueOptions)))
+            .extraCLIOptions(extraCliOptions);
+
+    return besu.create(nodeConfBuilder.build());
+  }
+
+  private String provideGenesisConfig(
+      final Collection<? extends RunnableNode> validators, final CliqueOptions cliqueOptions) {
+    final var genesis =
+        GenesisConfigurationFactory.createCliqueGenesisConfig(validators, cliqueOptions).get();
+
+    return maybeCustomGenesisExtraData()
+        .map(ed -> setGenesisCustomExtraData(genesis, ed))
+        .orElse(genesis);
+  }
+
+  private String setGenesisCustomExtraData(final String genesis, final Bytes32 customExtraData) {
+    final var om = new ObjectMapper();
+    final ObjectNode root;
+    try {
+      root = (ObjectNode) om.readTree(genesis);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
+    final var existingExtraData = Bytes.fromHexString(root.get("extraData").asText());
+    final var updatedExtraData = Bytes.concatenate(customExtraData, existingExtraData.slice(32));
+    root.put("extraData", updatedExtraData.toHexString());
+    return root.toPrettyString();
   }
 
   protected void sendTransactionsWithGivenLengthPayload(
@@ -224,5 +288,15 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             RandomStringUtils.randomAlphabetic(num),
             BigInteger.ZERO)
         .getTransactionHash();
+  }
+
+  protected Bytes32 createExtraDataPricingField(
+      final long fixedCostKWei, final long variableCostKWei, final long minGasPriceKWei) {
+    final UInt32 fixed = UInt32.valueOf(BigInteger.valueOf(fixedCostKWei));
+    final UInt32 variable = UInt32.valueOf(BigInteger.valueOf(variableCostKWei));
+    final UInt32 min = UInt32.valueOf(BigInteger.valueOf(minGasPriceKWei));
+
+    return Bytes32.rightPad(
+        Bytes.concatenate(Bytes.of((byte) 1), fixed.toBytes(), variable.toBytes(), min.toBytes()));
   }
 }

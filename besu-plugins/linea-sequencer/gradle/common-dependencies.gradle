@@ -16,6 +16,10 @@
 dependencies {
   api 'org.slf4j:slf4j-api'
 
+  implementation 'org.apache.logging.log4j:log4j-api'
+  implementation 'org.apache.logging.log4j:log4j-core'
+  implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
+
   implementation 'commons-io:commons-io'
   implementation 'com.slack.api:slack-api-client'
 

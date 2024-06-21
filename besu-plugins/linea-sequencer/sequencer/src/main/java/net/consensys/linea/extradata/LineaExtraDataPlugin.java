@@ -67,9 +67,34 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
   public void start() {
     super.start();
     if (profitabilityConfiguration.extraDataPricingEnabled()) {
+      final var extraDataHandler =
+          new LineaExtraDataHandler(rpcEndpointService, profitabilityConfiguration);
+      final var chainHeadHeader = blockchainService.getChainHeadHeader();
+      final var initialExtraData = chainHeadHeader.getExtraData();
+      try {
+        extraDataHandler.handle(initialExtraData);
+      } catch (final Exception e) {
+        log.warn(
+            "Failed setting initial pricing conf from extra data field ({}) of the chain head block {}({})",
+            initialExtraData,
+            chainHeadHeader.getNumber(),
+            chainHeadHeader.getBlockHash());
+      }
       besuEventsService.addBlockAddedListener(
-          new LineaExtraDataHandler(
-              rpcEndpointService, blockchainService, profitabilityConfiguration));
+          addedBlockContext -> {
+            final var importedBlockHeader = addedBlockContext.getBlockHeader();
+            final var latestExtraData = importedBlockHeader.getExtraData();
+
+            try {
+              extraDataHandler.handle(latestExtraData);
+            } catch (final Exception e) {
+              log.warn(
+                  "Failed setting pricing conf from extra data field ({}) of latest imported block {}({})",
+                  latestExtraData,
+                  importedBlockHeader.getNumber(),
+                  importedBlockHeader.getBlockHash());
+            }
+          });
     }
   }
 }

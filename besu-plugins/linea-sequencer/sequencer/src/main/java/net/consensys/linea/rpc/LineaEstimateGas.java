@@ -100,7 +100,7 @@ public class LineaEstimateGas {
   }
 
   public void init(
-      LineaRpcConfiguration rpcConfiguration,
+      final LineaRpcConfiguration rpcConfiguration,
       final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
       final LineaProfitabilityConfiguration profitabilityConf,
       final Map<String, Integer> limitsMap,

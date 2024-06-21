@@ -22,9 +22,7 @@ import java.util.List;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.apache.tuweni.units.bigints.UInt32;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
@@ -62,7 +60,7 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     final var extraData =
         createExtraDataPricingField(
             0, MIN_GAS_PRICE.toLong() / WEI_IN_KWEI, doubleMinGasPrice.toLong() / WEI_IN_KWEI);
-    final var reqSetExtraData = new ExtraDataPricingTest.MinerSetExtraDataRequest(extraData);
+    final var reqSetExtraData = new MinerSetExtraDataRequest(extraData);
     final var respSetExtraData = reqSetExtraData.execute(minerNode.nodeRequests());
 
     assertThat(respSetExtraData).isTrue();
@@ -99,9 +97,9 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     // when this first tx is mined the above extra data pricing will have effect on following txs
     final TransferTransaction profitableTx =
         accountTransactions.createTransfer(sender, recipient, 1);
-    final var protitableTx = minerNode.execute(profitableTx);
+    final var profitableTxHash = minerNode.execute(profitableTx);
 
-    minerNode.verify(eth.expectSuccessfulTransactionReceipt(protitableTx.toHexString()));
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(profitableTxHash.toHexString()));
 
     // this tx will be evaluated with the previously set extra data pricing to be unprofitable
     final RawTransaction unprofitableTx =
@@ -148,15 +146,5 @@ public class ExtraDataPricingTest extends LineaPluginTestBase {
     }
 
     static class MinerSetExtraDataResponse extends org.web3j.protocol.core.Response<Boolean> {}
-  }
-
-  private Bytes32 createExtraDataPricingField(
-      final long fixedCostKWei, final long variableCostKWei, final long minGasPriceKWei) {
-    final UInt32 fixed = UInt32.valueOf(BigInteger.valueOf(fixedCostKWei));
-    final UInt32 variable = UInt32.valueOf(BigInteger.valueOf(variableCostKWei));
-    final UInt32 min = UInt32.valueOf(BigInteger.valueOf(minGasPriceKWei));
-
-    return Bytes32.rightPad(
-        Bytes.concatenate(Bytes.of((byte) 1), fixed.toBytes(), variable.toBytes(), min.toBytes()));
   }
 }

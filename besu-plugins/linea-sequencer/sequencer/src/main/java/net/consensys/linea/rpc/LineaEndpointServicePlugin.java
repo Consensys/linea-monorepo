@@ -20,6 +20,7 @@ import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.extradata.LineaExtraDataHandler;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -36,6 +37,7 @@ public class LineaEndpointServicePlugin extends AbstractLineaRequiredPlugin {
   private TransactionSimulationService transactionSimulationService;
   private BlockchainService blockchainService;
   private LineaEstimateGas lineaEstimateGasMethod;
+  private LineaSetExtraData lineaSetExtraDataMethod;
 
   /**
    * Register the RPC service.
@@ -83,6 +85,12 @@ public class LineaEndpointServicePlugin extends AbstractLineaRequiredPlugin {
         lineaEstimateGasMethod.getNamespace(),
         lineaEstimateGasMethod.getName(),
         lineaEstimateGasMethod::execute);
+
+    lineaSetExtraDataMethod = new LineaSetExtraData(rpcEndpointService);
+    rpcEndpointService.registerRPCEndpoint(
+        lineaSetExtraDataMethod.getNamespace(),
+        lineaSetExtraDataMethod.getName(),
+        lineaSetExtraDataMethod::execute);
   }
 
   @Override
@@ -94,5 +102,7 @@ public class LineaEndpointServicePlugin extends AbstractLineaRequiredPlugin {
         profitabilityConfiguration,
         createLimitModules(tracerConfiguration),
         l1L2BridgeConfiguration);
+    lineaSetExtraDataMethod.init(
+        new LineaExtraDataHandler(rpcEndpointService, profitabilityConfiguration));
   }
 }
