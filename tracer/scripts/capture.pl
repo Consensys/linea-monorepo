@@ -48,7 +48,7 @@ say "Writing replay to `$filename`";
 
 my $payload = "{
    \\\"jsonrpc\\\":\\\"2.0\\\",
-   \\\"method\\\":\\\"rollup_captureConflation\\\",
+   \\\"method\\\":\\\"linea_captureConflation\\\",
    \\\"params\\\":[\\\"$start\\\", \\\"$end\\\"], \\\"id\\\":\\\"1\\\"
 }";
 

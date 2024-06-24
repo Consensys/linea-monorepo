@@ -48,7 +48,7 @@ public class GenerateConflatedTracesV2 {
   private TraceService traceService;
 
   public String getNamespace() {
-    return "rollup";
+    return "linea";
   }
 
   public String getName() {
@@ -96,7 +96,7 @@ public class GenerateConflatedTracesV2 {
           tracer);
       log.info("[TRACING] trace for {}-{} computed in {}", fromBlock, toBlock, sw);
       sw.reset().start();
-      final String path = writeTraceToFile(tracer, params.expectedTracesEngineVersion());
+      final String path = writeTraceToFile(tracer, params);
       log.info("[TRACING] trace for {}-{} serialized to {} in {}", path, toBlock, fromBlock, sw);
       return new TraceFile(params.expectedTracesEngineVersion(), path);
     } catch (Exception ex) {
@@ -129,13 +129,14 @@ public class GenerateConflatedTracesV2 {
                     "Unable to find trace service. Please ensure TraceService is registered."));
   }
 
-  private String writeTraceToFile(final ZkTracer tracer, final String traceRuntimeVersion) {
-    final Path fileName = generateOutputFileName(traceRuntimeVersion);
+  private String writeTraceToFile(
+      final ZkTracer tracer, final TraceRequestParams traceRequestParams) {
+    final Path fileName = generateOutputFileName(traceRequestParams);
     tracer.writeToFile(fileName);
     return fileName.toAbsolutePath().toString();
   }
 
-  private Path generateOutputFileName(final String tracesEngineVersion) {
+  private Path generateOutputFileName(final TraceRequestParams traceRequestParams) {
     if (!Files.isDirectory(tracesPath) && !tracesPath.toFile().mkdirs()) {
       throw new RuntimeException(
           String.format(
@@ -146,8 +147,11 @@ public class GenerateConflatedTracesV2 {
     return tracesPath.resolve(
         Paths.get(
             String.format(
-                "%.10s-%s.traces.%s",
-                System.currentTimeMillis(), tracesEngineVersion, getFileFormat())));
+                "%s-%s.conflated.%s.%s",
+                traceRequestParams.startBlockNumber(),
+                traceRequestParams.endBlockNumber(),
+                traceRequestParams.expectedTracesEngineVersion(),
+                getFileFormat())));
   }
 
   private String getFileFormat() {

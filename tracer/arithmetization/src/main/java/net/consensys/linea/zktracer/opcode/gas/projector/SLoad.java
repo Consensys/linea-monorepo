@@ -35,7 +35,7 @@ public final class SLoad extends GasProjection {
     if (key == null) {
       return 0;
     } else {
-      if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {
+      if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
         return GasConstants.G_WARM_ACCESS.cost();
       } else {
         return GasConstants.G_COLD_S_LOAD.cost();

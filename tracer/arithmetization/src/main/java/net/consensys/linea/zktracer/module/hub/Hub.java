@@ -1387,7 +1387,7 @@ public class Hub implements Module {
                             .getOriginalValueOrUpdate(address, key, valNext),
                         EWord.of(frame.getTransientStorageValue(address, key)),
                         valNext,
-                        frame.isStorageWarm(address, key),
+                        frame.getWarmedUpStorage().contains(address, key),
                         true)));
           }
           case SLOAD -> {
@@ -1403,7 +1403,7 @@ public class Hub implements Module {
                         this.transients.tx().storage().getOriginalValueOrUpdate(address, key),
                         valCurrent,
                         valCurrent,
-                        frame.isStorageWarm(address, key),
+                        frame.getWarmedUpStorage().contains(address, key),
                         true)));
           }
           default -> throw new IllegalStateException("invalid operation in family STORAGE");

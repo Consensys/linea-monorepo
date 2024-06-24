@@ -44,7 +44,7 @@ public final class SStore extends GasProjection {
 
   @Override
   public long storageWarmth() {
-    if (frame.isStorageWarm(frame.getRecipientAddress(), key)) {
+    if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
       return 0L;
     } else {
       return GasConstants.G_COLD_S_LOAD.cost();
