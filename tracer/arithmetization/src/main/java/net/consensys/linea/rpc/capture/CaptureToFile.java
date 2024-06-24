@@ -38,7 +38,7 @@ public class CaptureToFile {
   }
 
   public String getNamespace() {
-    return "rollup";
+    return "linea";
   }
 
   public String getName() {

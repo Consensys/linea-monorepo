@@ -44,7 +44,7 @@ public class GenerateCountersV2 {
   private TraceService traceService;
 
   public String getNamespace() {
-    return "rollup";
+    return "linea";
   }
 
   public String getName() {
