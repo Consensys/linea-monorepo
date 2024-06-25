@@ -38,16 +38,16 @@ dependencies {
   compileOnly 'com.google.auto.service:auto-service'
   compileOnly 'com.google.auto.service:auto-service-annotations'
 
-  implementation "${besuArtifactGroup}:evm"
-  implementation "${besuArtifactGroup}:plugin-api"
-  implementation "${besuArtifactGroup}:besu-datatypes"
-  implementation "${besuArtifactGroup}.internal:api:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
-  implementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
+  compileOnly "${besuArtifactGroup}:evm"
+  compileOnly "${besuArtifactGroup}:plugin-api"
+  compileOnly "${besuArtifactGroup}:besu-datatypes"
+  compileOnly "${besuArtifactGroup}.internal:api:${besuVersion}"
+  compileOnly "${besuArtifactGroup}.internal:core:${besuVersion}"
+  compileOnly "${besuArtifactGroup}.internal:rlp:${besuVersion}"
+  compileOnly "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
   implementation project(":native:compress")
 
-  implementation 'info.picocli:picocli'
+  compileOnly 'info.picocli:picocli'
 
   compileOnly 'io.vertx:vertx-core'
 

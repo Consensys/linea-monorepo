@@ -70,12 +70,12 @@ jar {
     )
   }
 
-/*  from {
+ from {
     configurations.runtimeClasspath.filter( {! (it.name =~ /log4j.*\.jar/ )} )
             .collect {it.isDirectory() ? it : zipTree(it) }
   }
   exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)*/
+  duplicatesStrategy(DuplicatesStrategy.EXCLUDE)
 }
 
 // Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
