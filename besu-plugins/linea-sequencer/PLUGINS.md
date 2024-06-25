@@ -93,7 +93,8 @@ The validators are in the package `net.consensys.linea.sequencer.txpoolvalidatio
 ### Linea Estimate Gas
 #### `linea_estimateGas`
 
-This endpoint simulates a transaction, including line count limit validation, and returns the estimated gas used ( as the standard `eth_estimateGas`) plus the estimated gas price to be used when submitting the tx. 
+This endpoint simulates a transaction, including line count limit validation, and returns the estimated gas used 
+(as the standard `eth_estimateGas` with `strict=true`) plus the estimated gas price to be used when submitting the tx. 
 
 #### Parameters
 same as `eth_estimateGas`
