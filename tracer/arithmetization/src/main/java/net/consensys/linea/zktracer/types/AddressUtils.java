@@ -95,7 +95,7 @@ public class AddressUtils {
   }
 
   public static Address getDeploymentAddress(final MessageFrame frame) {
-    OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final OpCode opcode = OpCode.of(frame.getCurrentOperation().getOpcode());
     if (!opcode.equals(OpCode.CREATE2) && !opcode.equals(OpCode.CREATE)) {
       throw new IllegalArgumentException("Must be called only for CREATE/CREATE2 opcode");
     }
