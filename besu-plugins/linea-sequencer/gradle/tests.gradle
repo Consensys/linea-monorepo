@@ -20,29 +20,8 @@ jacoco {
   toolVersion = '0.8.12'
 }
 
-/*
-  * Pass some system properties provided on the gradle command line to test executions for
-  * convenience.
-  *
-  * The properties passed are:
-  * - 'test.ethereum.include': allows to run a single Ethereum reference tests. For instance,
-  *   running a single general state test can be done with:
-  *    ./gradlew :ethereum:tech.pegasys.ethsigner.ethereum.vm:test -Dtest.single=GeneralStateTest -Dtest.ethereum.include=callcodecallcallcode_101-Frontier
-  *   The meaning being that will be run only the tests for which the value passed as "include"
-  *   (which can be a java pattern) matches parts of the test name. Knowing that tests names for
-  *   reference tests are of the form:
-  *     <name>(-<milestone>([<variant>])?)?
-  *   where <name> is the test name as defined in the json file (usually the name of the json file
-  *   as well), <milestone> is the Ethereum milestone tested (not all test use it) and <variant>
-  *   is only use in some general state tests where for the same json file and same milestone,
-  *   multiple variant of that test are run. The variant is a simple number.
-  * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
-  */
 test {
   description = 'Runs unit tests.'
-
-  minHeapSize = "4g"
-  maxHeapSize = "8g"
 
   useJUnitPlatform {
     excludeTags("AcceptanceTest")
