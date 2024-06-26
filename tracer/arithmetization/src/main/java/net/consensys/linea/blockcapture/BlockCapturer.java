@@ -22,6 +22,7 @@ import com.google.gson.Gson;
 import net.consensys.linea.blockcapture.reapers.Reaper;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
@@ -128,6 +129,21 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
       case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
         if (frame.stackSize() > 1) {
           final Address target = Words.toAddress(frame.getStackItem(1));
+          this.reaper.touchAddress(target);
+        }
+      }
+
+      case BALANCE -> {
+        if (frame.stackSize() > 0) {
+          final Address target = Words.toAddress(frame.getStackItem(0));
+          this.reaper.touchAddress(target);
+        }
+      }
+
+        // Failure condition if created address already exists
+      case CREATE, CREATE2 -> {
+        if (frame.stackSize() > 0) {
+          final Address target = AddressUtils.getDeploymentAddress(frame);
           this.reaper.touchAddress(target);
         }
       }
