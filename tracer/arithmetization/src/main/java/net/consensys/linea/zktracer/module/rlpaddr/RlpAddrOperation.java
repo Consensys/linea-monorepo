@@ -32,7 +32,7 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
-public final class RlpAddrChunk extends ModuleOperation {
+public final class RlpAddrOperation extends ModuleOperation {
   private final Bytes32 rawHash;
   private final OpCode opCode;
   private final Optional<BigInteger> nonce;
@@ -41,12 +41,13 @@ public final class RlpAddrChunk extends ModuleOperation {
   private final Optional<Bytes32> keccak;
 
   // CREATE operation
-  public RlpAddrChunk(Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
+  public RlpAddrOperation(Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
     this(rawDepAddress, opCode, Optional.of(nonce), address, Optional.empty(), Optional.empty());
   }
 
   // CREATE2 operation
-  public RlpAddrChunk(Bytes32 rawHash, OpCode opCode, Address address, Bytes32 salt, Bytes32 kec) {
+  public RlpAddrOperation(
+      Bytes32 rawHash, OpCode opCode, Address address, Bytes32 salt, Bytes32 kec) {
     this(rawHash, opCode, Optional.empty(), address, Optional.of(salt), Optional.of(kec));
   }
 

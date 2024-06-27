@@ -58,12 +58,13 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @RequiredArgsConstructor
 public class RlpAddr implements Module {
   private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(GlobalConstants.CREATE2_SHIFT);
-  private static final Bytes INT_SHORT = Bytes.ofUnsignedShort(RLP_PREFIX_INT_SHORT);
+  private static final Bytes INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
+  final int recipe1NbRows = MAX_CT_CREATE + 1;
 
   private final Hub hub;
   private final Trm trm;
-  private final StackedList<RlpAddrChunk> chunkList = new StackedList<>();
+  private final StackedList<RlpAddrOperation> chunkList = new StackedList<>();
 
   @Override
   public String moduleKey() {
@@ -86,8 +87,9 @@ public class RlpAddr implements Module {
       final Address senderAddress = tx.getSender();
       final long nonce = tx.getNonce();
       final Bytes32 rawTo = getCreateRawAddress(senderAddress, nonce);
-      RlpAddrChunk chunk =
-          new RlpAddrChunk(rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
+      RlpAddrOperation chunk =
+          new RlpAddrOperation(
+              rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
       this.chunkList.add(chunk);
       this.trm.callTrimming(rawTo);
     }
@@ -100,8 +102,8 @@ public class RlpAddr implements Module {
       case CREATE -> {
         final Address currentAddress = frame.getRecipientAddress();
         final Bytes32 rawCreateAddress = getCreateRawAddress(frame);
-        RlpAddrChunk chunk =
-            new RlpAddrChunk(
+        RlpAddrOperation chunk =
+            new RlpAddrOperation(
                 rawCreateAddress,
                 OpCode.CREATE,
                 longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
@@ -121,15 +123,15 @@ public class RlpAddr implements Module {
 
         final Bytes32 rawCreate2Address = getCreate2RawAddress(sender, salt, hash);
 
-        RlpAddrChunk chunk =
-            new RlpAddrChunk(rawCreate2Address, OpCode.CREATE2, sender, salt, hash);
+        RlpAddrOperation chunk =
+            new RlpAddrOperation(rawCreate2Address, OpCode.CREATE2, sender, salt, hash);
         this.chunkList.add(chunk);
         this.trm.callTrimming(rawCreate2Address);
       }
     }
   }
 
-  private void traceCreate2(int stamp, RlpAddrChunk chunk, Trace trace) {
+  private void traceCreate2(int stamp, RlpAddrOperation chunk, Trace trace) {
     final Bytes rawAddressHi = chunk.rawHash().slice(0, LLARGE);
     final long depAddressHi = rawAddressHi.slice(12, 4).toLong();
     final Bytes depAddressLo = chunk.rawHash().slice(LLARGE, LLARGE);
@@ -182,22 +184,11 @@ public class RlpAddr implements Module {
       }
 
       // Columns unused for Recipe2
-      trace
-          .nonce(Bytes.EMPTY)
-          .byte1(UnsignedByte.ZERO)
-          .acc(Bytes.EMPTY)
-          .accBytesize(UnsignedByte.ZERO)
-          .power(Bytes.EMPTY)
-          .bit1(false)
-          .bitAcc(UnsignedByte.ZERO)
-          .tinyNonZeroNonce(false);
-
-      trace.validateRow();
+      trace.fillAndValidateRow();
     }
   }
 
-  private void traceCreate(int stamp, RlpAddrChunk chunk, Trace trace) {
-    final int recipe1NbRows = MAX_CT_CREATE + 1;
+  private void traceCreate(int stamp, RlpAddrOperation chunk, Trace trace) {
     final BigInteger nonce = chunk.nonce().orElseThrow();
 
     Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), recipe1NbRows);
@@ -309,16 +300,11 @@ public class RlpAddr implements Module {
       }
 
       // Column not used fo recipe 1:
-      trace
-          .saltHi(Bytes.EMPTY)
-          .saltLo(Bytes.EMPTY)
-          .kecHi(Bytes.EMPTY)
-          .kecLo(Bytes.EMPTY)
-          .validateRow();
+      trace.fillAndValidateRow();
     }
   }
 
-  private void traceChunks(RlpAddrChunk chunk, int stamp, Trace trace) {
+  private void traceChunks(RlpAddrOperation chunk, int stamp, Trace trace) {
     if (chunk.opCode().equals(OpCode.CREATE)) {
       traceCreate(stamp, chunk, trace);
     } else {
