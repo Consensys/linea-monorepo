@@ -314,7 +314,7 @@ public class ModexpData implements MmuInstruction {
   private void lastMicroInstruction(MmuData mmuData) {
     final int lastMicroInstruction =
         lastLimbSingleSource ? MMIO_INST_RAM_TO_LIMB_ONE_SOURCE : MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
-    final long sourceLimbOffset = middleFirstSourceLimbOffset + initialTotalNonTrivial;
+    final long sourceLimbOffset = middleFirstSourceLimbOffset + initialTotalNonTrivial - 2;
 
     mmuData.mmuToMmioInstruction(
         MmuToMmioInstruction.builder()
@@ -322,7 +322,7 @@ public class ModexpData implements MmuInstruction {
             .size(lastLimbByteSize)
             .sourceLimbOffset(sourceLimbOffset)
             .sourceByteOffset(middleSourceByteOffset)
-            .targetLimbOffset(initialTotalLeftZeroes + initialTotalNonTrivial)
+            .targetLimbOffset(initialTotalLeftZeroes + initialTotalNonTrivial - 1)
             .build());
   }
 }

@@ -77,4 +77,9 @@ public class ReplayTests {
   void fatMxp() {
     replay("2492975-2492977.json.gz");
   }
+
+  @Test
+  void failingMmuModexp() {
+    replay("5995162.json.gz");
+  }
 }
