@@ -58,7 +58,7 @@ public class Trace {
   public static final int TOTAL_SIZE_ECADD_RESULT = 0x40;
   public static final int TOTAL_SIZE_ECMUL_DATA = 0x60;
   public static final int TOTAL_SIZE_ECMUL_RESULT = 0x40;
-  public static final int TOTAL_SIZE_ECPAIRING_DATA_MIN = 0xc4;
+  public static final int TOTAL_SIZE_ECPAIRING_DATA_MIN = 0xc0;
   public static final int TOTAL_SIZE_ECPAIRING_RESULT = 0x20;
   public static final int TOTAL_SIZE_ECRECOVER_DATA = 0x80;
   public static final int TOTAL_SIZE_ECRECOVER_RESULT = 0x20;
