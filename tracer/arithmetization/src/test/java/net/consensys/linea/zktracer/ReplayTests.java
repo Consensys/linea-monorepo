@@ -80,6 +80,11 @@ public class ReplayTests {
     replay("2492975-2492977.json.gz");
   }
 
+    @Test
+    void leoFailingRange() {
+        replay("5389571-5389577.json.gz");
+    }
+
   @Test
   void failingMmuModexp() {
     replay("5995162.json.gz");
