@@ -231,7 +231,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
   }
 
-  @Override
   public void traceEndTransaction(
       WorldView worldView,
       Transaction tx,

@@ -597,4 +597,28 @@ public class MxpTest {
       default -> OpCode.MSIZE; // We never enter the default case since we skip MxpType.NONE
     };
   }
+
+  @Test
+  void testSeveralKeccaks() {
+    BytecodeRunner.of(
+            BytecodeCompiler.newProgram()
+                .push(0)
+                .push(0)
+                .op(OpCode.SHA3)
+                .op(OpCode.POP)
+                .push(64)
+                .push(13)
+                .op(OpCode.SHA3)
+                .op(OpCode.POP)
+                .push(11)
+                .push(75)
+                .op(OpCode.SHA3)
+                .op(OpCode.POP)
+                .push(32)
+                .push(32)
+                .op(OpCode.SHA3)
+                .op(OpCode.POP)
+                .compile())
+        .run();
+  }
 }
