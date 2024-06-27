@@ -22,6 +22,8 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
+
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
@@ -35,6 +37,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +47,7 @@ public class ProfitableTransactionSelectorTest {
   private static final int VARIABLE_GAS_COST_WEI = 1_000_000;
   private static final double MIN_MARGIN = 1.5;
   private static final int UNPROFITABLE_CACHE_SIZE = 2;
+  private static final Wei BASE_FEE = Wei.of(7);
   private static final int UNPROFITABLE_RETRY_LIMIT = 1;
   private final LineaTransactionSelectorConfiguration txSelectorConf =
       LineaTransactionSelectorCliOptions.create().toDomainObject().toBuilder()
@@ -65,7 +69,10 @@ public class ProfitableTransactionSelectorTest {
   }
 
   private TestableProfitableTransactionSelector newSelectorForNewBlock() {
-    return new TestableProfitableTransactionSelector(txSelectorConf, profitabilityConf);
+    final var blockchainService = mock(BlockchainService.class);
+    when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(BASE_FEE));
+    return new TestableProfitableTransactionSelector(
+        blockchainService, txSelectorConf, profitabilityConf);
   }
 
   @Test
@@ -399,9 +406,10 @@ public class ProfitableTransactionSelectorTest {
   private static class TestableProfitableTransactionSelector extends ProfitableTransactionSelector {
 
     TestableProfitableTransactionSelector(
+        final BlockchainService blockchainService,
         final LineaTransactionSelectorConfiguration txSelectorConf,
         final LineaProfitabilityConfiguration profitabilityConf) {
-      super(txSelectorConf, profitabilityConf);
+      super(blockchainService, txSelectorConf, profitabilityConf);
     }
 
     boolean isUnprofitableTxCached(final Hash txHash) {

@@ -161,6 +161,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
                 "Test",
                 tx,
                 profitabilityConf.estimateGasMinMargin(),
+                baseFee,
                 estimatedMaxGasPrice,
                 estimatedGasLimit,
                 minGasPrice))

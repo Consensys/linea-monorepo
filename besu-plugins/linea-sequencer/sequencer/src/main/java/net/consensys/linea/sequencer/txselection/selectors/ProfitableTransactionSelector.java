@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
@@ -43,16 +44,22 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
   private final LineaTransactionSelectorConfiguration txSelectorConf;
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
+  private final Wei baseFee;
 
   private int unprofitableRetries;
 
   public ProfitableTransactionSelector(
+      final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConf,
       final LineaProfitabilityConfiguration profitabilityConf) {
     this.txSelectorConf = txSelectorConf;
     this.profitabilityConf = profitabilityConf;
     this.transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConf);
+    this.baseFee =
+        blockchainService
+            .getNextBlockBaseFee()
+            .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
   }
 
   @Override
@@ -70,6 +77,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           "PreProcessing",
           transaction,
           profitabilityConf.minMargin(),
+          baseFee,
           evaluationContext.getTransactionGasPrice(),
           gasLimit,
           minGasPrice)) {
@@ -110,6 +118,7 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           "PostProcessing",
           transaction,
           profitabilityConf.minMargin(),
+          baseFee,
           evaluationContext.getTransactionGasPrice(),
           gasUsed,
           evaluationContext.getMinGasPrice())) {

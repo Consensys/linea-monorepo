@@ -51,11 +51,17 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
         && (isLocal && profitabilityConf.txPoolCheckApiEnabled()
             || !isLocal && profitabilityConf.txPoolCheckP2pEnabled())) {
 
+      final Wei baseFee =
+          blockchainService
+              .getNextBlockBaseFee()
+              .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
+
       return profitabilityCalculator.isProfitable(
               "Txpool",
               transaction,
               profitabilityConf.txPoolMinMargin(),
-              calculateUpfrontGasPrice(transaction),
+              baseFee,
+              calculateUpfrontGasPrice(transaction, baseFee),
               transaction.getGasLimit(),
               besuConfiguration.getMinGasPrice())
           ? Optional.empty()
@@ -65,11 +71,7 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
     return Optional.empty();
   }
 
-  private Wei calculateUpfrontGasPrice(final Transaction transaction) {
-    final Wei baseFee =
-        blockchainService
-            .getNextBlockBaseFee()
-            .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
+  private Wei calculateUpfrontGasPrice(final Transaction transaction, final Wei baseFee) {
 
     return transaction
         .getMaxFeePerGas()

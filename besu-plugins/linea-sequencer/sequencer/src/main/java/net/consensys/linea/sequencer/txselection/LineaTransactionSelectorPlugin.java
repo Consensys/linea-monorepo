@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 
 /**
@@ -36,6 +37,7 @@ import org.hyperledger.besu.plugin.services.TransactionSelectionService;
 public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
   private TransactionSelectionService transactionSelectionService;
+  private BlockchainService blockchainService;
 
   @Override
   public Optional<String> getName() {
@@ -51,6 +53,14 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
                 () ->
                     new RuntimeException(
                         "Failed to obtain TransactionSelectionService from the BesuContext."));
+
+    blockchainService =
+        context
+            .getService(BlockchainService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain BlockchainService from the BesuContext."));
   }
 
   @Override
@@ -58,6 +68,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     super.beforeExternalServices();
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
+            blockchainService,
             transactionSelectorConfiguration,
             l1L2BridgeConfiguration,
             profitabilityConfiguration,

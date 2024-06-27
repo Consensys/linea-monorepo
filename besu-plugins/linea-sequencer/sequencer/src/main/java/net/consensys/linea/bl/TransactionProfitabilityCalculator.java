@@ -69,21 +69,25 @@ public class TransactionProfitabilityCalculator {
       final String context,
       final Transaction transaction,
       final double minMargin,
-      final Wei effectiveGasPrice,
+      final Wei baseFee,
+      final Wei payingGasPrice,
       final long gas,
       final Wei minGasPriceWei) {
 
     final Wei profitablePriorityFee =
         profitablePriorityFeePerGas(transaction, minMargin, gas, minGasPriceWei);
+    final Wei profitableGasPrice = baseFee.add(profitablePriorityFee);
 
-    if (effectiveGasPrice.lessThan(profitablePriorityFee)) {
+    if (payingGasPrice.lessThan(profitableGasPrice)) {
       log(
           log.atDebug(),
           context,
           transaction,
           minMargin,
-          effectiveGasPrice,
+          payingGasPrice,
+          baseFee,
           profitablePriorityFee,
+          profitableGasPrice,
           gas,
           minGasPriceWei);
       return false;
@@ -94,8 +98,10 @@ public class TransactionProfitabilityCalculator {
         context,
         transaction,
         minMargin,
-        effectiveGasPrice,
+        payingGasPrice,
+        baseFee,
         profitablePriorityFee,
+        profitableGasPrice,
         gas,
         minGasPriceWei);
     return true;
@@ -111,25 +117,29 @@ public class TransactionProfitabilityCalculator {
       final String context,
       final Transaction transaction,
       final double minMargin,
-      final Wei effectiveGasPrice,
+      final Wei payingGasPrice,
+      final Wei baseFee,
+      final Wei profitablePriorityFee,
       final Wei profitableGasPrice,
       final long gasUsed,
       final Wei minGasPriceWei) {
 
     leb.setMessage(
-            "Context {}. Transaction {} has a margin of {}, minMargin={}, effectiveGasPrice={},"
-                + " profitableGasPrice={}, fixedCostWei={}, variableCostWei={}, "
+            "Context {}. Transaction {} has a margin of {}, minMargin={}, payingGasPrice={},"
+                + " profitableGasPrice={}, baseFee={}, profitablePriorityFee={}, fixedCostWei={}, variableCostWei={}, "
                 + " gasUsed={}")
         .addArgument(context)
         .addArgument(transaction::getHash)
         .addArgument(
             () ->
-                effectiveGasPrice.toBigInteger().doubleValue()
-                    / profitableGasPrice.toBigInteger().doubleValue())
+                payingGasPrice.toBigInteger().doubleValue()
+                    / profitablePriorityFee.toBigInteger().doubleValue())
         .addArgument(minMargin)
-        .addArgument(effectiveGasPrice::toHumanReadableString)
+        .addArgument(payingGasPrice::toHumanReadableString)
         .addArgument(profitableGasPrice::toHumanReadableString)
-        .addArgument(profitabilityConf.fixedCostWei())
+        .addArgument(baseFee::toHumanReadableString)
+        .addArgument(profitablePriorityFee::toHumanReadableString)
+        .addArgument(profitabilityConf::fixedCostWei)
         .addArgument(
             () ->
                 profitabilityConf.extraDataPricingEnabled()

@@ -25,6 +25,7 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -37,6 +38,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   private final List<PluginTransactionSelector> selectors;
 
   public LineaTransactionSelector(
+      final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
@@ -44,6 +46,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final Map<String, Integer> limitsMap) {
     this.selectors =
         createTransactionSelectors(
+            blockchainService,
             txSelectorConfiguration,
             l1L2BridgeConfiguration,
             profitabilityConfiguration,
@@ -54,12 +57,14 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   /**
    * Creates a list of selectors based on Linea configuration.
    *
+   * @param blockchainService
    * @param txSelectorConfiguration The configuration to use.
    * @param profitabilityConfiguration
    * @param limitsMap The limits map.
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
+      final BlockchainService blockchainService,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
@@ -73,7 +78,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     return List.of(
         new MaxBlockCallDataTransactionSelector(txSelectorConfiguration.maxBlockCallDataSize()),
         new MaxBlockGasTransactionSelector(txSelectorConfiguration.maxGasPerBlock()),
-        new ProfitableTransactionSelector(txSelectorConfiguration, profitabilityConfiguration),
+        new ProfitableTransactionSelector(
+            blockchainService, txSelectorConfiguration, profitabilityConfiguration),
         traceLineLimitTransactionSelector);
   }
 
