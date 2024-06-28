@@ -54,7 +54,7 @@ import org.hyperledger.besu.evm.internal.Words;
  */
 public class ImcFragment implements TraceFragment {
   /** the list of modules to trigger withing this fragment. */
-  private final List<TraceSubFragment> moduleCalls = new ArrayList<>();
+  private final List<TraceSubFragment> moduleCalls = new ArrayList<>(5);
 
   private final Hub hub;
 
