@@ -51,6 +51,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.ScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileInvocation;
 import net.consensys.linea.zktracer.module.hub.section.*;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
@@ -666,7 +667,7 @@ public class Hub implements Module {
   }
 
   void triggerModules(MessageFrame frame) {
-    if (this.pch.exceptions().none() && this.pch.aborts().none()) {
+    if (Exceptions.none(this.pch.exceptions()) && this.pch.aborts().none()) {
       for (Module precompileLimit : this.precompileLimitModules) {
         precompileLimit.tracePreOpcode(frame);
       }
@@ -739,7 +740,7 @@ public class Hub implements Module {
 
     this.handleStack(frame);
     this.triggerModules(frame);
-    if (this.pch().exceptions().any() || this.currentFrame().opCode() == OpCode.REVERT) {
+    if (Exceptions.any(this.pch().exceptions()) || this.currentFrame().opCode() == OpCode.REVERT) {
       this.callStack.revert(this.state.stamps().hub());
     }
 
@@ -815,7 +816,7 @@ public class Hub implements Module {
       // Trace the exceptions of a transaction that could not even start
       // TODO: integrate with PCH
       // if (this.exceptions == null) {
-      // this.exceptions = Exceptions.fromOutOfGas();
+      // this.exceptions = Exceptions.OUT_OF_GAS;
       // }
       // otherwise 4 account rows (sender, coinbase, sender, recipient) + 1 tx row
       Address toAddress = this.transients.tx().besuTx().getSender();
@@ -922,7 +923,7 @@ public class Hub implements Module {
       if (line.needsResult()) {
         Bytes result = Bytes.EMPTY;
         // Only pop from the stack if no exceptions have been encountered
-        if (this.pch.exceptions().none()) {
+        if (Exceptions.none(this.pch.exceptions())) {
           result = frame.getStackItem(0).copy();
         }
 
@@ -934,7 +935,7 @@ public class Hub implements Module {
       }
     }
 
-    if (this.pch.exceptions().none()) {
+    if (Exceptions.none(this.pch.exceptions())) {
       for (TraceSection.TraceLine line : section.lines()) {
         if (line.specific() instanceof StackFragment stackFragment) {
           stackFragment.feedHashedValue(frame);
@@ -1121,33 +1122,33 @@ public class Hub implements Module {
 
     switch (this.opCodeData().instructionFamily()) {
       case ADD -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.add.tracePostOpcode(frame);
         }
       }
       case MOD -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.mod.tracePostOpcode(frame);
         }
       }
       case MUL -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.mul.tracePostOpcode(frame);
         }
       }
       case EXT -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.ext.tracePostOpcode(frame);
         }
       }
       case WCP -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.wcp.tracePostOpcode(frame);
         }
       }
       case BIN -> {}
       case SHF -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.shf.tracePostOpcode(frame);
         }
       }
@@ -1162,7 +1163,7 @@ public class Hub implements Module {
         }
       }
       case STACK_RAM -> {
-        if (this.pch.exceptions().noStackException()) {
+        if (Exceptions.noStackException(this.pch.exceptions())) {
           this.mxp.tracePostOpcode(frame);
         }
       }
@@ -1253,12 +1254,12 @@ public class Hub implements Module {
           case RETURN -> {
             Bytes returnData = Bytes.EMPTY;
             // Trying to read memory with absurd arguments will throw an exception
-            if (pch.exceptions().none()) {
+            if (Exceptions.none(pch.exceptions())) {
               returnData = this.transients.op().returnData();
             }
             this.currentFrame().returnDataSource(transients.op().returnDataSegment());
             this.currentFrame().returnData(returnData);
-            if (!this.pch.exceptions().any() && !this.currentFrame().underDeployment()) {
+            if (!Exceptions.any(this.pch.exceptions()) && !this.currentFrame().underDeployment()) {
               parentFrame.latestReturnData(returnData);
             } else {
               parentFrame.latestReturnData(Bytes.EMPTY);
@@ -1269,7 +1270,7 @@ public class Hub implements Module {
             final Bytes returnData = this.transients.op().returnData();
             this.currentFrame().returnDataSource(transients.op().returnDataSegment());
             this.currentFrame().returnData(returnData);
-            if (!this.pch.exceptions().any()) {
+            if (!Exceptions.any(this.pch.exceptions())) {
               parentFrame.latestReturnData(returnData);
             } else {
               parentFrame.latestReturnData(Bytes.EMPTY);
@@ -1469,24 +1470,24 @@ public class Hub implements Module {
 
         Optional<Precompile> targetPrecompile = Precompile.maybeOf(calledAddress);
 
-        if (this.pch().exceptions().any()) {
+        if (Exceptions.any(this.pch().exceptions())) {
           //
           // THERE IS AN EXCEPTION
           //
-          if (this.pch().exceptions().staticFault()) {
+          if (Exceptions.staticFault(this.pch().exceptions())) {
             this.addTraceSection(
                 new FailedCallSection(
                     this,
                     ScenarioFragment.forCall(this, hasCode),
                     ImcFragment.forCall(this, myAccount, calledAccount),
                     ContextFragment.readContextData(callStack)));
-          } else if (this.pch().exceptions().outOfMemoryExpansion()) {
+          } else if (Exceptions.outOfMemoryExpansion(this.pch().exceptions())) {
             this.addTraceSection(
                 new FailedCallSection(
                     this,
                     ScenarioFragment.forCall(this, hasCode),
                     ImcFragment.forCall(this, myAccount, calledAccount)));
-          } else if (this.pch().exceptions().outOfGas()) {
+          } else if (Exceptions.outOfGas(this.pch().exceptions())) {
             this.addTraceSection(
                 new FailedCallSection(
                     this,
@@ -1578,7 +1579,7 @@ public class Hub implements Module {
     }
 
     // In all cases, add a context fragment if an exception occurred
-    if (this.pch().exceptions().any()) {
+    if (Exceptions.any(this.pch().exceptions())) {
       this.currentTraceSection()
           .addFragment(
               this, this.currentFrame(), ContextFragment.executionEmptyReturnData(callStack));

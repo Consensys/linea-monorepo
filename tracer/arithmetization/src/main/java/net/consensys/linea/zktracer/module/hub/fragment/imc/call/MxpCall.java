@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc.call;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
@@ -46,7 +47,7 @@ public record MxpCall(
     EWord size2 = EWord.ZERO;
 
     return new MxpCall(
-        hub.pch().exceptions().outOfMemoryExpansion(),
+        Exceptions.outOfMemoryExpansion(hub.pch().exceptions()),
         hub.currentFrame().opCodeData().value(),
         opCode == OpCode.RETURN && hub.currentFrame().underDeployment(),
         hub.currentFrame().frame().memoryWordSize(),

@@ -38,8 +38,8 @@ import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
@@ -238,7 +238,7 @@ public class ToyExecutionEnvironment {
             false,
             Optional.of(this.chainId),
             Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559),
-            Exceptions.MAX_CODE_SIZE),
+            GlobalConstants.MAX_CODE_SIZE),
         contractCreationProcessor,
         messageCallProcessor,
         true,

@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
@@ -87,7 +88,7 @@ public class Keccak implements Module {
 
     final PlatformController pch = this.hub.pch();
 
-    if (pch.exceptions().none()) {
+    if (Exceptions.none(pch.exceptions())) {
       // Capture calls to SHA3.
       if (opCode == OpCode.SHA3) {
         callShakira(frame, 0, 1, this.sha3Sizes);

@@ -25,18 +25,19 @@ import java.math.BigInteger;
  */
 public class GlobalConstants {
   public static final int BLOCKHASH_MAX_HISTORY = 0x100;
+  public static final int CREATE2_SHIFT = 0xff;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
-      new BigInteger("16434357337474432580558001204043214908");
+      new BigInteger("262949717399590921288928019264691438528");
   public static final BigInteger EMPTY_KECCAK_LO =
-      new BigInteger("19024806816994025362060938983270537799");
-  public static final int EMPTY_RIPEMD_HI = 0x9c1185a;
+      new BigInteger("304396909071904405792975023732328604784");
+  public static final long EMPTY_RIPEMD_HI = 0x9c1185a5L;
   public static final BigInteger EMPTY_RIPEMD_LO =
-      new BigInteger("16442052386882578548602430796343695571");
+      new BigInteger("263072838190121256777638892741499129137");
   public static final BigInteger EMPTY_SHA2_HI =
-      new BigInteger("18915786244935348617899154533661473682");
+      new BigInteger("302652579918965577886386472538583578916");
   public static final BigInteger EMPTY_SHA2_LO =
-      new BigInteger("3296542996298665609207448061432114053");
+      new BigInteger("52744687940778649747319168982913824853");
   public static final int EVM_INST_ADD = 0x1;
   public static final int EVM_INST_ADDMOD = 0x8;
   public static final int EVM_INST_ADDRESS = 0x30;
@@ -58,7 +59,6 @@ public class GlobalConstants {
   public static final int EVM_INST_COINBASE = 0x41;
   public static final int EVM_INST_CREATE = 0xf0;
   public static final int EVM_INST_CREATE2 = 0xf5;
-  public static final int CREATE2_SHIFT = 0xff;
   public static final int EVM_INST_DELEGATECALL = 0xf4;
   public static final int EVM_INST_DIFFICULTY = 0x44;
   public static final int EVM_INST_DIV = 0x4;
@@ -240,6 +240,7 @@ public class GlobalConstants {
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;
   public static final int LLARGEPO = 0x11;
+  public static final int MAX_CODE_SIZE = 0x6000;
   public static final int MAX_REFUND_QUOTIENT = 0x5;
   public static final int MISC_WEIGHT_EXP = 0x1;
   public static final int MISC_WEIGHT_MMU = 0x2;

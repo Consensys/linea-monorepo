@@ -34,7 +34,7 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
 
 @Accessors(fluent = true)
-/** A TraceSection gather the trace lines linked to a single operation */
+/* A TraceSection gather the trace lines linked to a single operation */
 public abstract class TraceSection {
   @Getter private int stackHeight = 0;
   @Getter private int stackHeightNew = 0;
@@ -251,7 +251,7 @@ public abstract class TraceSection {
                 hub,
                 f.stack().snapshot(),
                 new StackLine().asStackOperations(),
-                hub.pch().exceptions().snapshot(),
+                hub.pch().exceptions(),
                 hub.pch().aborts().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.underDeployment()));
@@ -263,7 +263,7 @@ public abstract class TraceSection {
                 hub,
                 f.stack().snapshot(),
                 line.asStackOperations(),
-                hub.pch().exceptions().snapshot(),
+                hub.pch().exceptions(),
                 hub.pch().aborts().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.underDeployment()));

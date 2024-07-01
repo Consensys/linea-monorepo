@@ -50,7 +50,7 @@ public class CreateSection extends TraceSection
   private final OpCode opCode;
   private final long initialGas;
   private final AbortingConditions aborts;
-  private final Exceptions exceptions;
+  private final short exceptions;
   private final FailureConditions failures;
   private final ScenarioFragment scenarioFragment;
 
@@ -80,7 +80,7 @@ public class CreateSection extends TraceSection
     this.emptyInitCode = hub.transients().op().callDataSegment().isEmpty();
     this.initialGas = hub.messageFrame().getRemainingGas();
     this.aborts = hub.pch().aborts().snapshot();
-    this.exceptions = hub.pch().exceptions().snapshot();
+    this.exceptions = hub.pch().exceptions();
     this.failures = hub.pch().failures().snapshot();
 
     this.oldCreatorSnapshot = oldCreatorSnapshot;
@@ -172,25 +172,25 @@ public class CreateSection extends TraceSection
                     EWord.ZERO,
                     false,
                     oldCreatedSnapshot.isWarm(),
-                    this.exceptions.outOfGas(),
+                    Exceptions.outOfGas(this.exceptions),
                     upfrontCost,
                     allButOneSixtyFourth(this.initialGas - upfrontCost),
                     0));
 
     this.scenarioFragment.runPostTx(hub, state, tx, isSuccessful);
     this.addFragmentsWithoutStack(hub, scenarioFragment);
-    if (this.exceptions.staticFault()) {
+    if (Exceptions.staticFault(this.exceptions)) {
       this.addFragmentsWithoutStack(
           hub,
           ImcFragment.empty(hub),
           ContextFragment.readContextData(hub.callStack()),
           ContextFragment.executionEmptyReturnData(hub.callStack()));
-    } else if (this.exceptions.outOfMemoryExpansion()) {
+    } else if (Exceptions.outOfMemoryExpansion(this.exceptions)) {
       this.addFragmentsWithoutStack(
           hub,
           ImcFragment.empty(hub).callMxp(MxpCall.build(hub)),
           ContextFragment.executionEmptyReturnData(hub.callStack()));
-    } else if (this.exceptions.outOfGas()) {
+    } else if (Exceptions.outOfGas(this.exceptions)) {
       this.addFragmentsWithoutStack(
           hub, commonImcFragment, ContextFragment.executionEmptyReturnData(hub.callStack()));
     } else if (this.aborts.any()) {

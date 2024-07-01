@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.testing.BytecodeRunner;
@@ -68,7 +69,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -96,7 +97,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -123,7 +124,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertTrue(hub.pch().exceptions().jumpFault());
+    assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -150,7 +151,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertTrue(hub.pch().exceptions().jumpFault());
+    assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -196,7 +197,7 @@ public class OobJumpAndJumpiTest {
     bytecodeRunner.run();
 
     Hub hub = bytecodeRunner.getHub();
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -246,7 +247,7 @@ public class OobJumpAndJumpiTest {
     bytecodeRunner.run();
 
     Hub hub = bytecodeRunner.getHub();
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -274,7 +275,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -302,7 +303,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -329,7 +330,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertTrue(hub.pch().exceptions().jumpFault());
+    assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -357,7 +358,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertTrue(hub.pch().exceptions().jumpFault());
+    assertTrue(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -376,7 +377,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -396,7 +397,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -416,7 +417,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -436,7 +437,7 @@ public class OobJumpAndJumpiTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -487,7 +488,7 @@ public class OobJumpAndJumpiTest {
     bytecodeRunner.run();
 
     Hub hub = bytecodeRunner.getHub();
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   @Test
@@ -542,7 +543,7 @@ public class OobJumpAndJumpiTest {
     bytecodeRunner.run();
 
     Hub hub = bytecodeRunner.getHub();
-    assertFalse(hub.pch().exceptions().jumpFault());
+    assertFalse(Exceptions.jumpFault(hub.pch().exceptions()));
   }
 
   // Support methods

@@ -45,7 +45,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public final class StackFragment implements TraceFragment {
   private final Stack stack;
   @Getter private final List<StackOperation> stackOps;
-  private final Exceptions exceptions;
+  private final short exceptions;
   @Setter private DeploymentExceptions contextExceptions;
   private final long staticGas;
   private EWord hashInfoKeccak = EWord.ZERO;
@@ -57,7 +57,7 @@ public final class StackFragment implements TraceFragment {
       final Hub hub,
       Stack stack,
       List<StackOperation> stackOps,
-      Exceptions exceptions,
+      short exceptions,
       AbortingConditions aborts,
       DeploymentExceptions contextExceptions,
       GasProjection gp,
@@ -69,9 +69,9 @@ public final class StackFragment implements TraceFragment {
     this.opCode = stack.getCurrentOpcodeData().mnemonic();
     this.hashInfoFlag =
         switch (this.opCode) {
-          case SHA3 -> exceptions.none() && gp.messageSize() > 0;
-          case RETURN -> exceptions.none() && gp.messageSize() > 0 && isDeploying;
-          case CREATE2 -> exceptions.none()
+          case SHA3 -> Exceptions.none(exceptions) && gp.messageSize() > 0;
+          case RETURN -> Exceptions.none(exceptions) && gp.messageSize() > 0 && isDeploying;
+          case CREATE2 -> Exceptions.none(exceptions)
               && contextExceptions.none()
               && aborts.none()
               && gp.messageSize() > 0;
@@ -79,7 +79,7 @@ public final class StackFragment implements TraceFragment {
         };
     this.hashInfoSize = this.hashInfoFlag ? gp.messageSize() : 0;
     this.staticGas = gp.staticGas();
-    if (this.opCode == OpCode.RETURN && exceptions.none()) {
+    if (this.opCode == OpCode.RETURN && Exceptions.none(exceptions)) {
       this.hashInfoKeccak =
           EWord.of(org.hyperledger.besu.crypto.Hash.keccak256(hub.transients().op().returnData()));
     }
@@ -89,7 +89,7 @@ public final class StackFragment implements TraceFragment {
       final Hub hub,
       final Stack stack,
       final List<StackOperation> stackOperations,
-      final Exceptions exceptions,
+      final short exceptions,
       final AbortingConditions aborts,
       final GasProjection gp,
       boolean isDeploying) {
@@ -199,15 +199,15 @@ public final class StackFragment implements TraceFragment {
         .pStackDecFlag3(this.stack.getCurrentOpcodeData().stackSettings().flag3())
         .pStackDecFlag4(this.stack.getCurrentOpcodeData().stackSettings().flag4())
         // Exception flag
-        .pStackOpcx(exceptions.invalidOpcode())
-        .pStackSux(exceptions.stackUnderflow())
-        .pStackSox(exceptions.stackOverflow())
-        .pStackOogx(exceptions.outOfGas())
-        .pStackMxpx(exceptions.outOfMemoryExpansion())
-        .pStackRdcx(exceptions.returnDataCopyFault())
-        .pStackJumpx(exceptions.jumpFault())
-        .pStackStaticx(exceptions.staticFault())
-        .pStackSstorex(exceptions.outOfSStore())
+        .pStackOpcx(Exceptions.invalidOpcode(exceptions))
+        .pStackSux(Exceptions.stackUnderflow(exceptions))
+        .pStackSox(Exceptions.stackOverflow(exceptions))
+        .pStackOogx(Exceptions.outOfGas(exceptions))
+        .pStackMxpx(Exceptions.outOfMemoryExpansion(exceptions))
+        .pStackRdcx(Exceptions.returnDataCopyFault(exceptions))
+        .pStackJumpx(Exceptions.jumpFault(exceptions))
+        .pStackStaticx(Exceptions.staticFault(exceptions))
+        .pStackSstorex(Exceptions.outOfSStore(exceptions))
         .pStackIcpx(contextExceptions.invalidCodePrefix())
         .pStackMaxcsx(contextExceptions.codeSizeOverflow())
         // Opcode families

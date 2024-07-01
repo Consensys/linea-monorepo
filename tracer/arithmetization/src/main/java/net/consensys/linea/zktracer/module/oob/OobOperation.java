@@ -58,6 +58,7 @@ import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.oob.parameters.Blake2fCallDataSizeParameters;
 import net.consensys.linea.zktracer.module.oob.parameters.Blake2fParamsParameters;
@@ -209,8 +210,8 @@ public class OobOperation extends ModuleOperation {
         break;
       case CALL, CALLCODE, DELEGATECALL, STATICCALL:
         if (opCode == OpCode.CALL
-            && !hub.pch().exceptions().stackUnderflow()
-            && hub.pch().exceptions().any()) {
+            && !Exceptions.stackUnderflow(hub.pch().exceptions())
+            && Exceptions.any(hub.pch().exceptions())) {
           isXCall = true;
           wghtSum = BigInteger.valueOf(0xCC);
         } else {
