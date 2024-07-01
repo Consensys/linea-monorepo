@@ -38,6 +38,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.Dep
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.ExceptionalCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.Jump;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.SStore;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.types.EWord;
@@ -121,7 +122,7 @@ public class ImcFragment implements TraceFragment {
     if (hub.pch().signals().oob()) {
       switch (hub.opCode()) {
         case CALL, STATICCALL, DELEGATECALL, CALLCODE -> {
-          if (hub.opCode().equals(OpCode.CALL) && hub.pch().exceptions().any()) {
+          if (hub.opCode().equals(OpCode.CALL) && Exceptions.any(hub.pch().exceptions())) {
             r.callOob(new ExceptionalCall(EWord.of(hub.messageFrame().getStackItem(2))));
           } else {
             r.callOob(
@@ -155,7 +156,7 @@ public class ImcFragment implements TraceFragment {
               calledAccount
                   .map(a -> hub.messageFrame().isAddressWarm(a.getAddress()))
                   .orElse(false),
-              hub.pch().exceptions().outOfGas(),
+              Exceptions.outOfGas(hub.pch().exceptions()),
               upfrontCost,
               Math.max(
                   Words.unsignedMin(
@@ -179,7 +180,7 @@ public class ImcFragment implements TraceFragment {
       r.callExp(new ExpCallForExpPricing(EWord.of(hub.messageFrame().getStackItem(1))));
     }
 
-    if (hub.pch().signals().exp() && !hub.pch().exceptions().stackException()) {
+    if (hub.pch().signals().exp() && !Exceptions.stackException(hub.pch().exceptions())) {
       hub.exp().tracePreOpcode(frame);
     }
 

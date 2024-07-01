@@ -60,7 +60,7 @@ public final class AbortingConditions {
     this.balanceTooLow =
         switch (hub.currentFrame().opCode()) {
           case CALL, CALLCODE -> {
-            if (hub.pch().exceptions().none()) {
+            if (Exceptions.none(hub.pch().exceptions())) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();
@@ -72,7 +72,7 @@ public final class AbortingConditions {
             }
           }
           case CREATE, CREATE2 -> {
-            if (hub.pch().exceptions().none()) {
+            if (Exceptions.none(hub.pch().exceptions())) {
               final Address myAddress = hub.currentFrame().address();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();

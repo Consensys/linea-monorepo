@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.util.List;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.testing.EvmExtension;
 import net.consensys.linea.zktracer.testing.ToyAccount;
@@ -100,7 +101,7 @@ public class OobCallTest {
 
     Hub hub = bytecodeRunner.getHub();
 
-    assertTrue(hub.pch().exceptions().none());
+    assertTrue(Exceptions.none(hub.pch().exceptions()));
 
     // assertNumberOfOnesInOobEvent1(bytecodeRunner.getHub().oob(), 1);
   }
@@ -175,7 +176,7 @@ public class OobCallTest {
 
     Hub hub = toyExecutionEnvironment.getHub();
 
-    assertTrue(hub.pch().exceptions().none());
+    assertTrue(Exceptions.none(hub.pch().exceptions()));
 
     // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
     // numberOfOnesInOobEvent1);
@@ -232,7 +233,7 @@ public class OobCallTest {
 
     Hub hub = toyExecutionEnvironment.getHub();
 
-    assertTrue(hub.pch().exceptions().none());
+    assertTrue(Exceptions.none(hub.pch().exceptions()));
 
     // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
     // numberOfOnesInOobEvent1);

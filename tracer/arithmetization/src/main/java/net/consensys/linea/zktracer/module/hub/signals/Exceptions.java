@@ -16,10 +16,8 @@
 package net.consensys.linea.zktracer.module.hub.signals;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -29,169 +27,91 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
-/** Encode the exceptions that may be triggered byt the execution of an instruction. */
-@Getter
-@RequiredArgsConstructor
-@Accessors(fluent = true)
-public final class Exceptions {
-  public static final int MAX_CODE_SIZE = 24576;
+/** Encode the exceptions that may be triggered by the execution of an instruction. */
+public class Exceptions {
+  private Exceptions() {}
 
-  private final Hub hub;
+  public static final short NONE = 0; // no exceptions occurred
+  private static final short INVALID_OPCODE = 1; // unknown opcode
+  private static final short STACK_UNDERFLOW = 2; // stack underflow
+  private static final short STACK_OVERFLOW = 4; // stack overflow
+  private static final short OUT_OF_MEMORY_EXPANSION = 8; // tried to use memory too far away
+  private static final short OUT_OF_GAS = 16; // not enough gas for instruction
+  private static final short RETURN_DATA_COPY_FAULT = 32; // trying to read past the RETURNDATA end
+  private static final short JUMP_FAULT = 64; // jumping to an invalid destination
+  private static final short STATIC_FAULT =
+      128; // trying to execute non-static instruction in a static context
+  private static final short OUT_OF_SSTORE = 256; // not enough gas to execute an SSTORE
+  private static final short INVALID_CODE_PREFIX = 512;
+  private static final short CODE_SIZE_OVERFLOW = 2048;
 
-  private boolean invalidOpcode;
-  private boolean stackUnderflow;
-  private boolean stackOverflow;
-  private boolean outOfMemoryExpansion;
-  private boolean outOfGas;
-  private boolean returnDataCopyFault;
-  private boolean jumpFault;
-  private boolean staticFault;
-  private boolean outOfSStore;
-  private boolean invalidCodePrefix;
-  private boolean codeSizeOverflow;
-
-  /**
-   * @param invalidOpcode unknown opcode
-   * @param stackUnderflow stack underflow
-   * @param stackOverflow stack overflow
-   * @param outOfMemoryExpansion tried to use memory too far away
-   * @param outOfGas not enough gas for instruction
-   * @param returnDataCopyFault trying to read pas the RETURNDATA end
-   * @param jumpFault jumping to an invalid destination
-   * @param staticFault trying to execute a non-static instruction in a static context
-   * @param outOfSStore not enough gas to execute an SSTORE
-   */
-  public Exceptions(
-      boolean invalidOpcode,
-      boolean stackUnderflow,
-      boolean stackOverflow,
-      boolean outOfMemoryExpansion,
-      boolean outOfGas,
-      boolean returnDataCopyFault,
-      boolean jumpFault,
-      boolean staticFault,
-      boolean outOfSStore,
-      boolean invalidCodePrefix,
-      boolean codeSizeOverflow) {
-    this.hub = null;
-    this.invalidOpcode = invalidOpcode;
-    this.stackUnderflow = stackUnderflow;
-    this.stackOverflow = stackOverflow;
-    this.outOfMemoryExpansion = outOfMemoryExpansion;
-    this.outOfGas = outOfGas;
-    this.returnDataCopyFault = returnDataCopyFault;
-    this.jumpFault = jumpFault;
-    this.staticFault = staticFault;
-    this.outOfSStore = outOfSStore;
-    this.invalidCodePrefix = invalidCodePrefix;
-    this.codeSizeOverflow = codeSizeOverflow;
-  }
-
-  @Override
-  public String toString() {
-    if (this.invalidOpcode) {
-      return "Invalid opcode";
-    }
-    if (this.stackUnderflow) {
-      return "Stack underflow";
-    }
-    if (this.stackOverflow) {
-      return "Stack overflow";
-    }
-    if (this.outOfMemoryExpansion) {
-      return "Out of MXP";
-    }
-    if (this.outOfGas) {
-      return "Out of gas";
-    }
-    if (this.returnDataCopyFault) {
-      return "RDC fault";
-    }
-    if (this.jumpFault) {
-      return "JMP fault";
-    }
-    if (this.staticFault) {
-      return "Static fault";
-    }
-    if (this.outOfSStore) {
-      return "Out of SSTORE";
-    }
-    if (this.invalidCodePrefix) {
-      return "Invalid code prefix";
-    }
-    if (this.codeSizeOverflow) {
-      return "Code size overflow";
-    }
-    return "No exception";
-  }
-
-  public void reset() {
-    this.invalidOpcode = false;
-    this.stackUnderflow = false;
-    this.stackOverflow = false;
-    this.outOfMemoryExpansion = false;
-    this.outOfGas = false;
-    this.returnDataCopyFault = false;
-    this.jumpFault = false;
-    this.staticFault = false;
-    this.outOfSStore = false;
-    this.invalidCodePrefix = false;
-    this.codeSizeOverflow = false;
-  }
-
-  public boolean stackException() {
-    return this.stackUnderflow() || this.stackOverflow();
+  public static boolean stackException(final short bitmask) {
+    return stackOverflow(bitmask) || stackUnderflow(bitmask);
   }
 
   /**
    * @return true if no stack exception has been raised
    */
-  public boolean noStackException() {
-    return !this.stackException();
-  }
-
-  /**
-   * Creates a snapshot (a copy) of the given Exceptions object.
-   *
-   * @return a new Exceptions
-   */
-  public Exceptions snapshot() {
-    return new Exceptions(
-        invalidOpcode,
-        stackUnderflow,
-        stackOverflow,
-        outOfMemoryExpansion,
-        outOfGas,
-        returnDataCopyFault,
-        jumpFault,
-        staticFault,
-        outOfSStore,
-        invalidCodePrefix,
-        codeSizeOverflow);
+  public static boolean noStackException(final short bitmask) {
+    return !stackException(bitmask);
   }
 
   /**
    * @return true if any exception flag has been raised
    */
-  public boolean any() {
-    return this.invalidOpcode
-        || this.stackUnderflow
-        || this.stackOverflow
-        || this.outOfMemoryExpansion
-        || this.outOfGas
-        || this.returnDataCopyFault
-        || this.jumpFault
-        || this.staticFault
-        || this.outOfSStore
-        || this.invalidCodePrefix
-        || this.codeSizeOverflow;
+  public static boolean any(final short bitmask) {
+    return !none(bitmask);
   }
 
   /**
    * @return true if no exception flag has been raised
    */
-  public boolean none() {
-    return !this.any();
+  public static boolean none(final short bitmask) {
+    return bitmask == NONE;
+  }
+
+  public static boolean invalidOpcode(final short bitmask) {
+    return (bitmask & INVALID_OPCODE) != 0;
+  }
+
+  public static boolean stackUnderflow(final short bitmask) {
+    return (bitmask & STACK_UNDERFLOW) != 0;
+  }
+
+  public static boolean stackOverflow(final short bitmask) {
+    return (bitmask & STACK_OVERFLOW) != 0;
+  }
+
+  public static boolean outOfMemoryExpansion(final short bitmask) {
+    return (bitmask & OUT_OF_MEMORY_EXPANSION) != 0;
+  }
+
+  public static boolean outOfGas(final short bitmask) {
+    return (bitmask & OUT_OF_GAS) != 0;
+  }
+
+  public static boolean returnDataCopyFault(final short bitmask) {
+    return (bitmask & RETURN_DATA_COPY_FAULT) != 0;
+  }
+
+  public static boolean jumpFault(final short bitmask) {
+    return (bitmask & JUMP_FAULT) != 0;
+  }
+
+  public static boolean staticFault(final short bitmask) {
+    return (bitmask & STATIC_FAULT) != 0;
+  }
+
+  public static boolean outOfSStore(final short bitmask) {
+    return (bitmask & OUT_OF_SSTORE) != 0;
+  }
+
+  public static boolean invalidCodePrefix(final short bitmask) {
+    return (bitmask & INVALID_CODE_PREFIX) != 0;
+  }
+
+  public static boolean codeSizeOverflow(final short bitmask) {
+    return (bitmask & CODE_SIZE_OVERFLOW) != 0;
   }
 
   private static boolean isInvalidOpcode(final OpCode opCode) {
@@ -287,48 +207,33 @@ public final class Exceptions {
     return deployedCode.size() > MAX_CODE_SIZE;
   }
 
-  public static Exceptions fromOutOfGas() {
-    return new Exceptions(
-        false, false, false, false, true, false, false, false, false, false, false);
-  }
-
   /**
-   * Compute all the first exception that may have happened in the current frame. Wlthout multiple
+   * Return the first exception that may have happened in the current frame. Although multiple
    * exceptions may be triggered, the one minimizing the quantity of trace lines is generated.
    *
    * @param frame the context from which to compute the putative exceptions
    */
-  public void prepare(final MessageFrame frame, GasProjector gp) {
+  public static short fromFrame(final Hub hub, final MessageFrame frame) {
     OpCode opCode = hub.opCode();
     OpCodeData opCodeData = hub.opCodeData();
 
-    this.reset();
-
-    this.invalidOpcode = isInvalidOpcode(opCode);
-    if (this.invalidOpcode) {
-      return;
+    if (isInvalidOpcode(opCode)) {
+      return INVALID_OPCODE;
+    }
+    if (isStackUnderflow(frame, opCodeData)) {
+      return STACK_UNDERFLOW;
+    }
+    if (isStackOverflow(frame, opCodeData)) {
+      return STACK_OVERFLOW;
+    }
+    if (isStaticFault(frame, opCodeData)) {
+      return STATIC_FAULT;
+    }
+    if (isCodeSizeOverflow(frame)) {
+      return CODE_SIZE_OVERFLOW;
     }
 
-    this.stackUnderflow = isStackUnderflow(frame, opCodeData);
-    if (this.stackUnderflow) {
-      return;
-    }
-
-    this.stackOverflow = isStackOverflow(frame, opCodeData);
-    if (this.stackOverflow) {
-      return;
-    }
-
-    this.staticFault = isStaticFault(frame, opCodeData);
-    if (this.staticFault) {
-      return;
-    }
-
-    this.codeSizeOverflow = isCodeSizeOverflow(frame);
-    if (this.codeSizeOverflow) {
-      return;
-    }
-
+    final GasProjector gp = Hub.GAS_PROJECTOR;
     switch (opCode) {
       case CALLDATACOPY,
           CODECOPY,
@@ -351,63 +256,56 @@ public final class Exceptions {
           MLOAD,
           MSTORE,
           MSTORE8 -> {
-        this.outOfMemoryExpansion = isMemoryExpansionFault(frame, opCode, gp);
-        if (this.outOfMemoryExpansion) {
-          return;
+        if (isMemoryExpansionFault(frame, opCode, gp)) {
+          return OUT_OF_MEMORY_EXPANSION;
         }
-
-        this.outOfGas = isOutOfGas(frame, opCode, gp);
-        if (this.outOfGas) {
-          return;
+        if (isOutOfGas(frame, opCode, gp)) {
+          return OUT_OF_GAS;
         }
       }
+
       case RETURNDATACOPY -> {
-        this.returnDataCopyFault = isReturnDataCopyFault(frame, opCode);
-        if (this.returnDataCopyFault) {
-          return;
+        if (isReturnDataCopyFault(frame, opCode)) {
+          return RETURN_DATA_COPY_FAULT;
         }
-
-        this.outOfMemoryExpansion = isMemoryExpansionFault(frame, opCode, gp);
-        if (this.outOfMemoryExpansion) {
-          return;
+        if (isMemoryExpansionFault(frame, opCode, gp)) {
+          return OUT_OF_MEMORY_EXPANSION;
         }
-
-        this.outOfGas = isOutOfGas(frame, opCode, gp);
-        if (this.outOfGas) {
-          return;
+        if (isOutOfGas(frame, opCode, gp)) {
+          return OUT_OF_GAS;
         }
       }
+
       case STOP -> {}
+
       case JUMP, JUMPI -> {
-        this.outOfGas = isOutOfGas(frame, opCode, gp);
-        if (this.outOfGas) {
-          return;
+        if (isOutOfGas(frame, opCode, gp)) {
+          return OUT_OF_GAS;
         }
-
-        this.jumpFault = isJumpFault(frame, opCode);
-        if (this.jumpFault) {
-          return;
+        if (isJumpFault(frame, opCode)) {
+          return JUMP_FAULT;
         }
       }
+
       case SSTORE -> {
-        this.outOfSStore = isOutOfSStore(frame, opCode);
-        if (this.outOfSStore) {
-          return;
+        if (isOutOfSStore(frame, opCode)) {
+          return OUT_OF_SSTORE;
         }
-
-        this.outOfGas = isOutOfGas(frame, opCode, gp);
-        if (this.outOfGas) {
-          return;
+        if (isOutOfGas(frame, opCode, gp)) {
+          return OUT_OF_GAS;
         }
       }
+
       default -> {
-        this.outOfGas = isOutOfGas(frame, opCode, gp);
-        if (this.outOfGas) {
-          return;
+        if (isOutOfGas(frame, opCode, gp)) {
+          return OUT_OF_GAS;
         }
       }
     }
 
-    this.invalidCodePrefix = isInvalidCodePrefix(frame);
+    if (isInvalidCodePrefix(frame)) {
+      return INVALID_CODE_PREFIX;
+    }
+    return NONE;
   }
 }

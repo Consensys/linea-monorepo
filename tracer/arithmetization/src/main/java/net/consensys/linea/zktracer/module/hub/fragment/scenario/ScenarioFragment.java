@@ -23,6 +23,7 @@ import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileInvocation;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import net.consensys.linea.zktracer.types.Precompile;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -92,10 +93,10 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
             targetHasCode,
             hub.currentFrame().id(),
             hub.callStack().futureId(),
-            hub.pch().exceptions().any(),
+            Exceptions.any(hub.pch().exceptions()),
             hub.pch().aborts().any(),
             hub.pch().failures().any(),
-            hub.pch().exceptions().invalidCodePrefix());
+            Exceptions.invalidCodePrefix(hub.pch().exceptions()));
     hub.defers().postTx(r);
     return r;
   }
@@ -107,10 +108,10 @@ public class ScenarioFragment implements TraceFragment, PostTransactionDefer {
         targetHasCode,
         hub.currentFrame().id(),
         hub.callStack().futureId(),
-        hub.pch().exceptions().any(),
+        Exceptions.any(hub.pch().exceptions()),
         hub.pch().aborts().any(),
         hub.pch().failures().any(),
-        hub.pch().exceptions().invalidCodePrefix());
+        Exceptions.invalidCodePrefix(hub.pch().exceptions()));
   }
 
   public static ScenarioFragment forSmartContractCallSection(

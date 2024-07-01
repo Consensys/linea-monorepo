@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -26,18 +27,16 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
  * @param codeSizeOverflow trying to deploy a contract larger than 24KB
  */
 public record DeploymentExceptions(boolean invalidCodePrefix, boolean codeSizeOverflow) {
-  private static final byte EIP_3541_MARKER = (byte) 0xEF;
-  private static final int MAX_CODE_SIZE = 24576;
-
   private static boolean isInvalidCodePrefix(MessageFrame frame) {
     final Bytes deployedCode = frame.getOutputData();
-    return !deployedCode.isEmpty() && (deployedCode.get(0) == EIP_3541_MARKER);
+    return !deployedCode.isEmpty()
+        && (deployedCode.get(0) == (byte) GlobalConstants.EIP_3541_MARKER);
   }
 
   private static boolean isCodeSizeOverflow(MessageFrame frame) {
     final Bytes deployedCode = frame.getOutputData();
 
-    return deployedCode.size() > MAX_CODE_SIZE;
+    return deployedCode.size() > GlobalConstants.MAX_CODE_SIZE;
   }
 
   public static DeploymentExceptions empty() {

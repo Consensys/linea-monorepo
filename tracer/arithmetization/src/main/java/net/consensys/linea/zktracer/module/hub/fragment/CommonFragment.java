@@ -38,7 +38,7 @@ public final class CommonFragment implements TraceFragment {
   private final TxState txState;
   private final int stamp;
   private final InstructionFamily instructionFamily;
-  private final Exceptions exceptions;
+  private final short exceptions;
   private final int callFrameId;
   @Getter private final int contextNumber;
   @Setter private int newContextNumber;
@@ -63,7 +63,7 @@ public final class CommonFragment implements TraceFragment {
   public static CommonFragment fromHub(
       final Hub hub, final CallFrame frame, boolean tliCounter, int nonStackRowsCounter) {
     long refund = 0;
-    if (hub.pch().exceptions().noStackException()) {
+    if (Exceptions.noStackException(hub.pch().exceptions())) {
       refund = Hub.GAS_PROJECTOR.of(frame.frame(), hub.opCode()).refund();
     }
 
@@ -74,7 +74,7 @@ public final class CommonFragment implements TraceFragment {
         .txState(hub.transients().tx().state())
         .stamp(hub.stamp())
         .instructionFamily(hub.opCodeData().instructionFamily())
-        .exceptions(hub.pch().exceptions().snapshot())
+        .exceptions(hub.pch().exceptions())
         .callFrameId(frame.id())
         .contextNumber(frame.contextNumber())
         .newContextNumber(frame.contextNumber())
@@ -136,8 +136,8 @@ public final class CommonFragment implements TraceFragment {
                         || instructionFamily == InstructionFamily.CREATE
                         || instructionFamily == InstructionFamily.HALT
                         || instructionFamily == InstructionFamily.INVALID)
-                    || exceptions.any()))
-        .exceptionAhoy(exceptions.any())
+                    || Exceptions.any(exceptions)))
+        .exceptionAhoy(Exceptions.any(exceptions))
 
         // Context data
         .contextNumber(Bytes.ofUnsignedInt(contextNumber))

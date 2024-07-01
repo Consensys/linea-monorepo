@@ -376,8 +376,7 @@ public class MmuCall implements TraceSubFragment {
         return new MmuCall(MMU_INST_MSTORE)
             .targetId(precompileContextNumber)
             .targetOffset(EWord.ZERO)
-            .limb1(
-                isSha ? bigIntegerToBytes(EMPTY_SHA2_HI) : Bytes.ofUnsignedShort(EMPTY_RIPEMD_HI))
+            .limb1(isSha ? bigIntegerToBytes(EMPTY_SHA2_HI) : Bytes.ofUnsignedLong(EMPTY_RIPEMD_HI))
             .limb2(isSha ? bigIntegerToBytes(EMPTY_SHA2_LO) : bigIntegerToBytes(EMPTY_RIPEMD_LO));
       } else {
         return new MmuCall(MMU_INST_EXO_TO_RAM_TRANSPLANTS)
