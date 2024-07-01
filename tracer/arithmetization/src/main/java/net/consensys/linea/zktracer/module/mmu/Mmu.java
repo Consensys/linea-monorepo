@@ -23,13 +23,13 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
@@ -47,15 +47,15 @@ public class Mmu implements Module {
       final Wcp wcp,
       final RomLex romLex,
       final RlpTxn rlpTxn,
-      final RlpTxrcpt rlpTxrcpt,
+      final RlpTxnRcpt rlpTxnRcpt,
       final EcData ecData,
-      final Blake2fModexpData blake2fModexpData,
+      final BlakeModexpData blakeModexpData,
       //  TODO: SHAKIRA module
       final CallStack callStack) {
     this.euc = euc;
     this.wcp = wcp;
     this.exoSumDecoder =
-        new ExoSumDecoder(callStack, romLex, rlpTxn, rlpTxrcpt, ecData, blake2fModexpData);
+        new ExoSumDecoder(callStack, romLex, rlpTxn, rlpTxnRcpt, ecData, blakeModexpData);
   }
 
   @Override

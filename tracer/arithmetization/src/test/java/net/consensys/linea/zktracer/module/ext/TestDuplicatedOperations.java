@@ -46,7 +46,7 @@ public class TestDuplicatedOperations {
                 .compile())
         .zkTracerValidator(
             zkTracer -> {
-              assertThat(zkTracer.getModulesLineCount().get("EXT")).isEqualTo(9);
+              assertThat(zkTracer.getModulesLineCount().get("EXT")).isEqualTo(8);
             })
         .run();
   }

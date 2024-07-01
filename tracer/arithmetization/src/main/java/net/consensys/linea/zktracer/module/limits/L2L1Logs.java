@@ -27,7 +27,7 @@ public class L2L1Logs implements Module {
 
   @Override
   public String moduleKey() {
-    return "BLOCK_L2L1LOGS";
+    return "BLOCK_L2_L1_LOGS";
   }
 
   @Override

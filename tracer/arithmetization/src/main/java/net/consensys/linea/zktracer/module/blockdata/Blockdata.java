@@ -50,7 +50,7 @@ public class Blockdata implements Module {
 
   @Override
   public String moduleKey() {
-    return "BLOCKDATA";
+    return "BLOCK_DATA";
   }
 
   @Override

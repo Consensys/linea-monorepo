@@ -22,22 +22,22 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptChunk;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.log.Log;
 
 public class LogData implements Module {
-  private final RlpTxrcpt rlpTxrcpt;
+  private final RlpTxnRcpt rlpTxnRcpt;
 
-  public LogData(RlpTxrcpt rlpTxrcpt) {
-    this.rlpTxrcpt = rlpTxrcpt;
+  public LogData(RlpTxnRcpt rlpTxnRcpt) {
+    this.rlpTxnRcpt = rlpTxnRcpt;
   }
 
   @Override
   public String moduleKey() {
-    return "PUB_LOG";
+    return "LOG_DATA";
   }
 
   @Override
@@ -49,7 +49,7 @@ public class LogData implements Module {
   @Override
   public int lineCount() {
     int rowSize = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxrcpt.getChunkList()) {
+    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.getChunkList()) {
       rowSize += txRowSize(tx);
     }
     return rowSize;
@@ -81,12 +81,12 @@ public class LogData implements Module {
     final Trace trace = new Trace(buffers);
 
     int absLogNumMax = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxrcpt.chunkList) {
+    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
       absLogNumMax += tx.logs().size();
     }
 
     int absLogNum = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxrcpt.chunkList) {
+    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
       if (!tx.logs().isEmpty()) {
         for (Log log : tx.logs()) {
           absLogNum += 1;

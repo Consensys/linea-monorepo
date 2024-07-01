@@ -18,11 +18,11 @@ package net.consensys.linea.zktracer.module.mmu;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
@@ -34,9 +34,9 @@ public class ExoSumDecoder {
   private final CallStack callStack;
   private final RomLex romLex;
   private final RlpTxn rlpTxn;
-  private final RlpTxrcpt rlpTxrcpt;
+  private final RlpTxnRcpt rlpTxnRcpt;
   private final EcData ecData;
-  private final Blake2fModexpData blake2fModexpData;
+  private final BlakeModexpData blakeModexpData;
 
   private boolean exoIsRom;
   private boolean exoIsBlake2fModexp;
@@ -64,7 +64,7 @@ public class ExoSumDecoder {
     }
 
     if (exoIsLog) {
-      return this.rlpTxrcpt.getLogDataByAbsLogNumber(exoId);
+      return this.rlpTxnRcpt.getLogDataByAbsLogNumber(exoId);
     }
 
     if (exoIsEcData) {
@@ -78,7 +78,7 @@ public class ExoSumDecoder {
     }
 
     if (exoIsBlake2fModexp) {
-      return this.blake2fModexpData.getInputDataByIdAndPhase(exoId, hubToMmuValues.phase());
+      return this.blakeModexpData.getInputDataByIdAndPhase(exoId, hubToMmuValues.phase());
     }
 
     if (exoIsKeccak) {

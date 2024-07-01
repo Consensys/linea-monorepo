@@ -38,7 +38,7 @@ import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.Blockdata;
 import net.consensys.linea.zktracer.module.blockhash.Blockhash;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
@@ -61,11 +61,11 @@ import net.consensys.linea.zktracer.module.limits.L2L1Logs;
 import net.consensys.linea.zktracer.module.limits.precompiles.Blake2fRounds;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcMulEffectiveCall;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingCallEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingMillerLoop;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
-import net.consensys.linea.zktracer.module.limits.precompiles.RipeMd160Blocks;
+import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
 import net.consensys.linea.zktracer.module.logdata.LogData;
 import net.consensys.linea.zktracer.module.loginfo.LogInfo;
@@ -77,7 +77,7 @@ import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.oob.Oob;
 import net.consensys.linea.zktracer.module.rlpaddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.rom.Rom;
 import net.consensys.linea.zktracer.module.romlex.RomLex;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
@@ -208,7 +208,7 @@ public class Hub implements Module {
   @Getter private final Wcp wcp = new Wcp(this);
   private final Module add = new Add(this);
   private final Module bin = new Bin(this);
-  private final Blake2fModexpData blake2fModexpData = new Blake2fModexpData(this.wcp);
+  private final BlakeModexpData blakeModexpData = new BlakeModexpData(this.wcp);
   @Getter private final EcData ecData;
   private final Blockdata blockdata;
   private final Blockhash blockhash = new Blockhash(wcp);
@@ -223,7 +223,7 @@ public class Hub implements Module {
 
   @Getter private final Exp exp;
   @Getter private final Mmu mmu;
-  private final RlpTxrcpt rlpTxrcpt;
+  private final RlpTxnRcpt rlpTxnRcpt;
   private final LogInfo logInfo;
   private final LogData logData;
   private final Trm trm = new Trm();
@@ -263,9 +263,9 @@ public class Hub implements Module {
     this.euc = new Euc(this.wcp);
     this.txnData = new TxnData(this, this.romLex, this.wcp, this.euc);
     this.blockdata = new Blockdata(this.wcp, this.txnData, this.rlpTxn);
-    this.rlpTxrcpt = new RlpTxrcpt(txnData);
-    this.logData = new LogData(rlpTxrcpt);
-    this.logInfo = new LogInfo(rlpTxrcpt);
+    this.rlpTxnRcpt = new RlpTxnRcpt(txnData);
+    this.logData = new LogData(rlpTxnRcpt);
+    this.logInfo = new LogInfo(rlpTxnRcpt);
     this.ecData = new EcData(this, this.wcp, this.ext);
     this.oob = new Oob(this, (Add) this.add, this.mod, this.wcp);
     this.mmu =
@@ -274,28 +274,28 @@ public class Hub implements Module {
             this.wcp,
             this.romLex,
             this.rlpTxn,
-            this.rlpTxrcpt,
+            this.rlpTxnRcpt,
             this.ecData,
-            this.blake2fModexpData,
+            this.blakeModexpData,
             this.callStack);
     this.mmio = new Mmio(this.mmu);
 
     final EcRecoverEffectiveCall ecRec = new EcRecoverEffectiveCall(this);
-    this.modexpEffectiveCall = new ModexpEffectiveCall(this, this.blake2fModexpData);
-    final EcPairingCallEffectiveCall ecPairingCall = new EcPairingCallEffectiveCall(this);
+    this.modexpEffectiveCall = new ModexpEffectiveCall(this, this.blakeModexpData);
+    final EcPairingEffectiveCall ecPairingCall = new EcPairingEffectiveCall(this);
     final L2Block l2Block = new L2Block(l2l1ContractAddress, LogTopic.of(l2l1Topic));
 
     this.precompileLimitModules =
         List.of(
             new Sha256Blocks(this, shakiraData),
             ecRec,
-            new RipeMd160Blocks(this, shakiraData),
+            new RipemdBlocks(this, shakiraData),
             this.modexpEffectiveCall,
             new EcAddEffectiveCall(this),
             new EcMulEffectiveCall(this),
             ecPairingCall,
             new EcPairingMillerLoop(ecPairingCall),
-            new Blake2fRounds(this, this.blake2fModexpData),
+            new Blake2fRounds(this, this.blakeModexpData),
             // Block level limits
             l2Block,
             new Keccak(this, ecRec, l2Block, shakiraData),
@@ -308,7 +308,7 @@ public class Hub implements Module {
                 Stream.of(
                     this.add,
                     this.bin,
-                    this.blake2fModexpData,
+                    this.blakeModexpData,
                     this.blockdata,
                     this.blockhash,
                     this.ecData,
@@ -333,7 +333,7 @@ public class Hub implements Module {
                     this.trm,
                     this.wcp, /* WARN: must be called BEFORE txnData */
                     this.txnData,
-                    this.rlpTxrcpt /* WARN: must be called AFTER txnData */),
+                    this.rlpTxnRcpt /* WARN: must be called AFTER txnData */),
                 this.precompileLimitModules.stream())
             .toList();
   }
@@ -349,7 +349,7 @@ public class Hub implements Module {
                 this,
                 this.add,
                 this.bin,
-                this.blake2fModexpData,
+                this.blakeModexpData,
                 this.ecData,
                 this.blockdata,
                 this.blockhash,
@@ -366,7 +366,7 @@ public class Hub implements Module {
                 this.oob,
                 this.rlpAddr,
                 this.rlpTxn,
-                this.rlpTxrcpt,
+                this.rlpTxnRcpt,
                 this.rom,
                 this.romLex,
                 this.shakiraData,
@@ -407,7 +407,7 @@ public class Hub implements Module {
                 this.exp,
                 this.rlpAddr,
                 this.rlpTxn,
-                this.rlpTxrcpt,
+                this.rlpTxnRcpt,
                 this.rom,
                 this.shf,
                 this.trm,

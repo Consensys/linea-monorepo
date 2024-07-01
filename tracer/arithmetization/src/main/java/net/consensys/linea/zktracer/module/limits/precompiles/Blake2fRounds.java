@@ -24,9 +24,9 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fComponents;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpDataOperation;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeComponents;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.precompiles.Blake2fMetadata;
 import net.consensys.linea.zktracer.module.hub.precompiles.PrecompileMetadata;
@@ -43,13 +43,13 @@ public final class Blake2fRounds implements Module {
   private static final int BLAKE2f_INPUT_SIZE = 213;
   private final Hub hub;
 
-  @Getter private final Blake2fModexpData blake2fModexpData;
+  @Getter private final BlakeModexpData blakeModexpData;
 
   private final Deque<Integer> counts = new ArrayDeque<>();
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_BLAKE2F_ROUNDS";
+    return "PRECOMPILE_BLAKE_ROUNDS";
   }
 
   @Override
@@ -177,9 +177,9 @@ public final class Blake2fRounds implements Module {
 
             if (opInfo.gasAllowanceForCall() >= rInt) {
               final Bytes data = inputData.slice(4, BLAKE2f_INPUT_SIZE - 5);
-              this.blake2fModexpData.call(
-                  new Blake2fModexpDataOperation(
-                      hub.stamp(), null, new Blake2fComponents(data, r, Bytes.of(f))));
+              this.blakeModexpData.call(
+                  new BlakeModexpDataOperation(
+                      hub.stamp(), null, new BlakeComponents(data, r, Bytes.of(f))));
               this.counts.push(this.counts.pop() + rInt);
             }
           }

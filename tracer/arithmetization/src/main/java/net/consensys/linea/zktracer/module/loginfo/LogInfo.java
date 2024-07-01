@@ -20,7 +20,7 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcpt;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptChunk;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -28,17 +28,17 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.log.Log;
 
 public class LogInfo implements Module {
-  private final RlpTxrcpt rlpTxrcpt;
+  private final RlpTxnRcpt rlpTxnRcpt;
 
-  public LogInfo(RlpTxrcpt rlpTxrcpt) {
-    this.rlpTxrcpt = rlpTxrcpt;
+  public LogInfo(RlpTxnRcpt rlpTxnRcpt) {
+    this.rlpTxnRcpt = rlpTxnRcpt;
   }
 
   private static final int LOG0 = 0xa0; // TODO why I don't get it from the .lisp ?
 
   @Override
   public String moduleKey() {
-    return "PUB_LOG_INFO";
+    return "LOG_INFO";
   }
 
   @Override
@@ -50,7 +50,7 @@ public class LogInfo implements Module {
   @Override
   public int lineCount() {
     int rowSize = 0;
-    for (RlpTxrcptChunk chunk : this.rlpTxrcpt.getChunkList()) {
+    for (RlpTxrcptChunk chunk : this.rlpTxnRcpt.getChunkList()) {
       rowSize += txRowSize(chunk);
     }
     return rowSize;
@@ -66,13 +66,13 @@ public class LogInfo implements Module {
     final Trace trace = new Trace(buffers);
 
     int absLogNumMax = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxrcpt.chunkList) {
+    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
       absLogNumMax += tx.logs().size();
     }
 
     int absTxNum = 0;
     int absLogNum = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxrcpt.chunkList) {
+    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
       absTxNum += 1;
       if (tx.logs().isEmpty()) {
         traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace);
@@ -100,7 +100,7 @@ public class LogInfo implements Module {
   public void traceTxWoLog(
       final int absTxNum, final int absLogNum, final int absLogNumMax, Trace trace) {
     trace
-        .absTxnNumMax(this.rlpTxrcpt.chunkList.size())
+        .absTxnNumMax(this.rlpTxnRcpt.chunkList.size())
         .absTxnNum(absTxNum)
         .txnEmitsLogs(false)
         .absLogNumMax(absLogNumMax)
@@ -140,7 +140,7 @@ public class LogInfo implements Module {
     final Bytes32 topic4 = nbTopic >= 4 ? log.getTopics().get(3) : Bytes32.ZERO;
     for (int ct = 0; ct < ctMax + 1; ct++) {
       trace
-          .absTxnNumMax(this.rlpTxrcpt.chunkList.size())
+          .absTxnNumMax(this.rlpTxnRcpt.chunkList.size())
           .absTxnNum(absTxNum)
           .txnEmitsLogs(true)
           .absLogNumMax(absLogNumMax)

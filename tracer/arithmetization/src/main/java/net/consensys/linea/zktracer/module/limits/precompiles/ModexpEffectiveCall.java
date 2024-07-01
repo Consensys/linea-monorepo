@@ -30,8 +30,8 @@ import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpData;
-import net.consensys.linea.zktracer.module.blake2fmodexpdata.Blake2fModexpDataOperation;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
+import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.ModexpComponents;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -46,7 +46,7 @@ import org.hyperledger.besu.evm.internal.Words;
 public class ModexpEffectiveCall implements Module {
   private final Hub hub;
 
-  @Getter private final Blake2fModexpData blake2fModexpData;
+  @Getter private final BlakeModexpData blakeModexpData;
   private final Deque<Integer> counts = new ArrayDeque<>();
   private static final BigInteger PROVER_MAX_INPUT_BYTE_SIZE = BigInteger.valueOf(4096 / 8);
 
@@ -134,8 +134,8 @@ public class ModexpEffectiveCall implements Module {
         final long gasPrice = gasPrice(baseLengthInt, expLengthInt, modLengthInt, expComponent);
 
         if (hub.transients().op().gasAllowanceForCall() >= gasPrice) {
-          this.blake2fModexpData.call(
-              new Blake2fModexpDataOperation(
+          this.blakeModexpData.call(
+              new BlakeModexpDataOperation(
                   hub.stamp(),
                   new ModexpComponents(baseComponent, expComponent, modComponent),
                   null));

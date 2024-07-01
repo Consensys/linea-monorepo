@@ -36,7 +36,7 @@ import org.hyperledger.besu.evm.internal.Words;
 
 @Slf4j
 @RequiredArgsConstructor
-public final class EcPairingCallEffectiveCall implements Module {
+public final class EcPairingEffectiveCall implements Module {
   private final Hub hub;
   @Getter private final Stack<EcPairingLimit> counts = new Stack<>();
   private static final int PRECOMPILE_BASE_GAS_FEE = 45_000; // cf EIP-1108
