@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.module.hub.precompiles;
 import lombok.Builder;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.limits.precompiles.Blake2fRounds;
+import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcMulEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingEffectiveCall;
@@ -97,7 +97,7 @@ public record PrecompileInvocation(
           case EC_ADD -> hub.transients().op().gasAllowanceForCall() < 150;
           case EC_MUL -> hub.transients().op().gasAllowanceForCall() < 6000;
           case EC_PAIRING -> EcPairingEffectiveCall.isHubFailure(hub);
-          case BLAKE2F -> Blake2fRounds.isHubFailure(hub);
+          case BLAKE2F -> BlakeRounds.isHubFailure(hub);
         };
 
     final boolean ramFailure =
@@ -109,7 +109,7 @@ public record PrecompileInvocation(
               case EC_ADD -> EcAddEffectiveCall.isRamFailure(hub);
               case EC_MUL -> EcMulEffectiveCall.isRamFailure(hub);
               case EC_PAIRING -> EcPairingEffectiveCall.isRamFailure(hub);
-              case BLAKE2F -> Blake2fRounds.isRamFailure(hub);
+              case BLAKE2F -> BlakeRounds.isRamFailure(hub);
             };
 
     final long opCodeGas = Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).total();
@@ -138,7 +138,7 @@ public record PrecompileInvocation(
               case EC_ADD -> EcAddEffectiveCall.gasCost();
               case EC_MUL -> EcMulEffectiveCall.gasCost();
               case EC_PAIRING -> EcPairingEffectiveCall.gasCost(hub);
-              case BLAKE2F -> Blake2fRounds.gasCost(hub);
+              case BLAKE2F -> BlakeRounds.gasCost(hub);
             };
 
     final long returnGas =
@@ -156,7 +156,7 @@ public record PrecompileInvocation(
           case EC_ADD -> null;
           case EC_MUL -> null;
           case EC_PAIRING -> null;
-          case BLAKE2F -> Blake2fRounds.metadata(hub);
+          case BLAKE2F -> BlakeRounds.metadata(hub);
         };
 
     return PrecompileInvocation.builder()

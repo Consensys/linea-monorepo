@@ -22,6 +22,7 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeComponents;
@@ -39,13 +40,14 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
-public final class Blake2fRounds implements Module {
+@Accessors(fluent = true)
+public final class BlakeRounds implements Module {
   private static final int BLAKE2f_INPUT_SIZE = 213;
   private final Hub hub;
 
   @Getter private final BlakeModexpData blakeModexpData;
 
-  private final Deque<Integer> counts = new ArrayDeque<>();
+  @Getter private final Deque<BlakeLimit> counts = new ArrayDeque<>();
 
   @Override
   public String moduleKey() {
@@ -54,7 +56,7 @@ public final class Blake2fRounds implements Module {
 
   @Override
   public void traceStartConflation(final long blockCount) {
-    counts.push(0);
+    counts.push(new BlakeLimit(0, 0));
   }
 
   @Override
@@ -180,7 +182,12 @@ public final class Blake2fRounds implements Module {
               this.blakeModexpData.call(
                   new BlakeModexpDataOperation(
                       hub.stamp(), null, new BlakeComponents(data, r, Bytes.of(f))));
-              this.counts.push(this.counts.pop() + rInt);
+
+              final BlakeLimit currentLimit = this.counts.pop();
+              this.counts.push(
+                  new BlakeLimit(
+                      currentLimit.numberOfRounds() + rInt,
+                      currentLimit.numberOfEffectiveCalls() + 1));
             }
           }
         }
@@ -190,7 +197,12 @@ public final class Blake2fRounds implements Module {
 
   @Override
   public int lineCount() {
-    return counts.getFirst();
+    final long totalR = counts.stream().mapToLong(BlakeLimit::numberOfRounds).sum();
+    if (totalR > Integer.MAX_VALUE) {
+      throw new RuntimeException("Ludicrous BlakeLimit calls");
+    }
+
+    return (int) totalR;
   }
 
   @Override

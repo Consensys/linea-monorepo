@@ -15,20 +15,20 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
 @RequiredArgsConstructor
-public final class EcPairingMillerLoop implements Module {
-  private final EcPairingEffectiveCall ecpairingCall;
+public final class BlakeEffectiveCall implements Module {
+  @Getter private final BlakeRounds blakeRounds;
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECPAIRING_MILLER_LOOPS";
+    return "PRECOMPILE_BLAKE_EFFECTIVE_CALLS";
   }
 
   @Override
@@ -39,26 +39,15 @@ public final class EcPairingMillerLoop implements Module {
 
   @Override
   public int lineCount() {
-    long r = 0;
-
-    for (EcPairingLimit count : this.ecpairingCall.counts()) {
-      r += count.numberOfMillerLoops();
+    int r = 0;
+    for (BlakeLimit count : this.blakeRounds.counts()) {
+      r += count.numberOfEffectiveCalls();
     }
-
-    if (r > Integer.MAX_VALUE) {
-      throw new RuntimeException("Ludicrous EcPairing calls");
-    }
-
-    return (int) r;
+    return r;
   }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    throw new UnsupportedOperationException("should never be called");
-  }
-
-  @Override
-  public void commit(List<MappedByteBuffer> buffers) {
     throw new UnsupportedOperationException("should never be called");
   }
 }

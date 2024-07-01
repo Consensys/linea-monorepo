@@ -52,7 +52,7 @@ public class ModexpEffectiveCall implements Module {
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_MODEXP_EFFECTIVE_CALL";
+    return "PRECOMPILE_MODEXP_EFFECTIVE_CALLS";
   }
 
   @Override

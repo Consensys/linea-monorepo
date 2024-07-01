@@ -40,7 +40,7 @@ public final class EcAddEffectiveCall implements Module {
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECADD_EFFECTIVE_CALL";
+    return "PRECOMPILE_ECADD_EFFECTIVE_CALLS";
   }
 
   private static final int PRECOMPILE_GAS_FEE = 150; // cf EIP-1108
