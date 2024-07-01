@@ -40,7 +40,7 @@ public final class EcRecoverEffectiveCall implements Module {
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECRECOVER_EFFECTIVE_CALL";
+    return "PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS";
   }
 
   private static final int ECRECOVER_GAS_FEE = 3000;

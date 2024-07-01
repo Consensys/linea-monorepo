@@ -15,4 +15,4 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-record EcPairingLimit(int numberOfPrecompileCalls, long numberOfMillerLoops) {}
+record BlakeLimit(int numberOfRounds, int numberOfEffectiveCalls) {}

@@ -40,7 +40,7 @@ public final class EcMulEffectiveCall implements Module {
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECMUL_EFFECTIVE_CALL";
+    return "PRECOMPILE_ECMUL_EFFECTIVE_CALLS";
   }
 
   private static final int PRECOMPILE_GAS_FEE = 6000; // cf EIP-1108

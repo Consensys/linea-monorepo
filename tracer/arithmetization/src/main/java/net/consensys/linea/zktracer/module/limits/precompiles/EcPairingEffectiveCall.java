@@ -24,6 +24,7 @@ import java.util.Stack;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
@@ -36,6 +37,7 @@ import org.hyperledger.besu.evm.internal.Words;
 
 @Slf4j
 @RequiredArgsConstructor
+@Accessors(fluent = true)
 public final class EcPairingEffectiveCall implements Module {
   private final Hub hub;
   @Getter private final Stack<EcPairingLimit> counts = new Stack<>();
@@ -45,7 +47,7 @@ public final class EcPairingEffectiveCall implements Module {
 
   @Override
   public String moduleKey() {
-    return "PRECOMPILE_ECPAIRING_EFFECTIVE_CALL";
+    return "PRECOMPILE_ECPAIRING_EFFECTIVE_CALLS";
   }
 
   @Override
@@ -138,8 +140,8 @@ public final class EcPairingEffectiveCall implements Module {
           final EcPairingLimit lastEcpairingLimit = this.counts.pop();
           this.counts.push(
               new EcPairingLimit(
-                  lastEcpairingLimit.nPrecompileCall() + 1,
-                  lastEcpairingLimit.nMillerLoop() + nMillerLoop));
+                  lastEcpairingLimit.numberOfPrecompileCalls() + 1,
+                  lastEcpairingLimit.numberOfMillerLoops() + nMillerLoop));
         }
       }
     }
@@ -149,18 +151,18 @@ public final class EcPairingEffectiveCall implements Module {
   public int lineCount() {
     int r = 0;
     for (EcPairingLimit count : this.counts) {
-      r += count.nPrecompileCall();
+      r += count.numberOfPrecompileCalls();
     }
     return r;
   }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    throw new IllegalStateException("should never be called");
+    throw new UnsupportedOperationException("should never be called");
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
-    throw new IllegalStateException("should never be called");
+    throw new UnsupportedOperationException("should never be called");
   }
 }
