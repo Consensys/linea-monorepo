@@ -38,7 +38,7 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
-public final class RipeMd160Blocks implements Module {
+public final class RipemdBlocks implements Module {
   private static final int PRECOMPILE_BASE_GAS_FEE = 600;
   private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 120;
   private static final int RIPEMD160_BLOCKSIZE = 64 * 8;

@@ -38,15 +38,15 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
-public class Blake2fModexpData implements Module {
+public class BlakeModexpData implements Module {
   private final Wcp wcp;
-  private StackedSet<Blake2fModexpDataOperation> operations = new StackedSet<>();
-  private List<Blake2fModexpDataOperation> sortedOperations = new ArrayList<>();
+  private StackedSet<BlakeModexpDataOperation> operations = new StackedSet<>();
+  private List<BlakeModexpDataOperation> sortedOperations = new ArrayList<>();
   private int numberOfOperationsAtStartTx = 0;
 
   @Override
   public String moduleKey() {
-    return "BLAKE2f_MODEXP_DATA";
+    return "BLAKE_MODEXP_DATA";
   }
 
   @Override
@@ -62,9 +62,9 @@ public class Blake2fModexpData implements Module {
       Bytes output,
       List<Log> logs,
       long gasUsed) {
-    final List<Blake2fModexpDataOperation> newOperations =
+    final List<BlakeModexpDataOperation> newOperations =
         new ArrayList<>(this.operations.sets.getLast())
-            .stream().sorted(Comparator.comparingLong(Blake2fModexpDataOperation::id)).toList();
+            .stream().sorted(Comparator.comparingLong(BlakeModexpDataOperation::id)).toList();
 
     this.sortedOperations.addAll(newOperations);
     final int numberOfOperationsAtEndTx = sortedOperations.size();
@@ -95,7 +95,7 @@ public class Blake2fModexpData implements Module {
     return Trace.headers(this.lineCount());
   }
 
-  public void call(final Blake2fModexpDataOperation operation) {
+  public void call(final BlakeModexpDataOperation operation) {
     this.operations.add(operation);
   }
 
@@ -103,14 +103,14 @@ public class Blake2fModexpData implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (Blake2fModexpDataOperation o : this.sortedOperations) {
+    for (BlakeModexpDataOperation o : this.sortedOperations) {
       stamp++;
       o.trace(trace, stamp);
     }
   }
 
   public Bytes getInputDataByIdAndPhase(final int id, final int phase) {
-    final Blake2fModexpDataOperation op = getOperationById(id);
+    final BlakeModexpDataOperation op = getOperationById(id);
     return switch (phase) {
       case PHASE_MODEXP_BASE -> op.modexpComponents.get().base();
       case PHASE_MODEXP_EXPONENT -> op.modexpComponents.get().exp();
@@ -122,8 +122,8 @@ public class Blake2fModexpData implements Module {
     };
   }
 
-  private Blake2fModexpDataOperation getOperationById(final int id) {
-    for (Blake2fModexpDataOperation operation : this.operations) {
+  private BlakeModexpDataOperation getOperationById(final int id) {
+    for (BlakeModexpDataOperation operation : this.operations) {
       if (id == operation.id) {
         return operation;
       }

@@ -26,7 +26,7 @@ import org.apache.tuweni.bytes.Bytes;
 public record ShfRt() implements Module {
   @Override
   public String moduleKey() {
-    return "shfRT";
+    return "SHF_REFERENCE_TABLE";
   }
 
   @Override

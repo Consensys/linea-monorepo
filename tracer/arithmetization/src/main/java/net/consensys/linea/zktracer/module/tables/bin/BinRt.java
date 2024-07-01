@@ -27,7 +27,7 @@ import org.apache.tuweni.bytes.Bytes;
 public class BinRt implements Module {
   @Override
   public String moduleKey() {
-    return "binRT";
+    return "BIN_REFERENCE_TABLE";
   }
 
   @Override

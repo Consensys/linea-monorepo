@@ -17,4 +17,4 @@ package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
 import org.apache.tuweni.bytes.Bytes;
 
-public record Blake2fComponents(Bytes data, Bytes r, Bytes f) {}
+public record BlakeComponents(Bytes data, Bytes r, Bytes f) {}

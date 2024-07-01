@@ -47,7 +47,7 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogsBloomFilter;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class RlpTxrcpt implements Module {
+public class RlpTxnRcpt implements Module {
   private final TxnData txnData;
   private static final Bytes BYTES_RLP_INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
@@ -55,13 +55,13 @@ public class RlpTxrcpt implements Module {
   private int absLogNum = 0;
   @Getter public StackedList<RlpTxrcptChunk> chunkList = new StackedList<>();
 
-  public RlpTxrcpt(TxnData txnData) {
+  public RlpTxnRcpt(TxnData txnData) {
     this.txnData = txnData;
   }
 
   @Override
   public String moduleKey() {
-    return "RLP_TXRCPT";
+    return "RLP_TXN_RCPT";
   }
 
   @Override

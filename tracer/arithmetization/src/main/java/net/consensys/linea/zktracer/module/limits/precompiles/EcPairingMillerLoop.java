@@ -22,9 +22,9 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
 public final class EcPairingMillerLoop implements Module {
-  private final EcPairingCallEffectiveCall ecpairingCall;
+  private final EcPairingEffectiveCall ecpairingCall;
 
-  public EcPairingMillerLoop(EcPairingCallEffectiveCall ecpairingCall) {
+  public EcPairingMillerLoop(EcPairingEffectiveCall ecpairingCall) {
     this.ecpairingCall = ecpairingCall;
   }
 

@@ -88,7 +88,7 @@ public class RlpTxn implements Module {
 
   @Override
   public String moduleKey() {
-    return "TX_RLP";
+    return "RLP_TXN";
   }
 
   public static final Bytes BYTES_PREFIX_SHORT_INT = Bytes.of(RLP_PREFIX_INT_SHORT);

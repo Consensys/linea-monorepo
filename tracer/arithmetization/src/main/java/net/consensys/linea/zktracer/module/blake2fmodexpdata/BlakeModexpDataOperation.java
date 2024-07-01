@@ -45,7 +45,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.Hash;
 
 @Accessors(fluent = true)
-public class Blake2fModexpDataOperation extends ModuleOperation {
+public class BlakeModexpDataOperation extends ModuleOperation {
   private static final int MODEXP_COMPONENT_BYTE_SIZE = LLARGE * (INDEX_MAX_MODEXP + 1);
   private static final int MODEXP_COMPONENTS_LINE_COUNT =
       (INDEX_MAX_MODEXP_BASE + 1)
@@ -58,13 +58,13 @@ public class Blake2fModexpDataOperation extends ModuleOperation {
   @Getter public final long id;
 
   public final Optional<ModexpComponents> modexpComponents;
-  public final Optional<Blake2fComponents> blake2fComponents;
+  public final Optional<BlakeComponents> blake2fComponents;
 
-  public Blake2fModexpDataOperation(
-      long hubStamp, ModexpComponents modexpComponents, Blake2fComponents blake2fComponents) {
+  public BlakeModexpDataOperation(
+      long hubStamp, ModexpComponents modexpComponents, BlakeComponents blakeComponents) {
     this.id = hubStamp + 1;
     this.modexpComponents = Optional.ofNullable(modexpComponents);
-    this.blake2fComponents = Optional.ofNullable(blake2fComponents);
+    this.blake2fComponents = Optional.ofNullable(blakeComponents);
   }
 
   @Override

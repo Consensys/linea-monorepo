@@ -141,7 +141,7 @@ public final class InstructionDecoder implements Module {
 
   @Override
   public String moduleKey() {
-    return "instruction-decoder";
+    return "INSTRUCTION_DECODER";
   }
 
   @Override
