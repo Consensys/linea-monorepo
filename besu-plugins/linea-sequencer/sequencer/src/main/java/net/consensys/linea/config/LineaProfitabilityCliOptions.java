@@ -81,7 +81,7 @@ public class LineaProfitabilityCliOptions {
       paramLabel = "<FLOAT>",
       description =
           "Recommend a specific gas price when using linea_estimateGas (default: ${DEFAULT-VALUE})")
-  private BigDecimal estimageGasMinMargin = DEFAULT_ESTIMATE_GAS_MIN_MARGIN;
+  private BigDecimal estimateGasMinMargin = DEFAULT_ESTIMATE_GAS_MIN_MARGIN;
 
   @Positive
   @CommandLine.Option(
@@ -142,7 +142,7 @@ public class LineaProfitabilityCliOptions {
     options.fixedGasCostWei = config.fixedCostWei();
     options.variableGasCostWei = config.variableCostWei();
     options.minMargin = BigDecimal.valueOf(config.minMargin());
-    options.estimageGasMinMargin = BigDecimal.valueOf(config.estimateGasMinMargin());
+    options.estimateGasMinMargin = BigDecimal.valueOf(config.estimateGasMinMargin());
     options.txPoolMinMargin = BigDecimal.valueOf(config.txPoolMinMargin());
     options.txPoolCheckApiEnabled = config.txPoolCheckApiEnabled();
     options.txPoolCheckP2pEnabled = config.txPoolCheckP2pEnabled();
@@ -160,7 +160,7 @@ public class LineaProfitabilityCliOptions {
         .fixedCostWei(fixedGasCostWei)
         .variableCostWei(variableGasCostWei)
         .minMargin(minMargin.doubleValue())
-        .estimateGasMinMargin(estimageGasMinMargin.doubleValue())
+        .estimateGasMinMargin(estimateGasMinMargin.doubleValue())
         .txPoolMinMargin(txPoolMinMargin.doubleValue())
         .txPoolCheckApiEnabled(txPoolCheckApiEnabled)
         .txPoolCheckP2pEnabled(txPoolCheckP2pEnabled)
@@ -174,7 +174,7 @@ public class LineaProfitabilityCliOptions {
         .add(FIXED_GAS_COST_WEI, fixedGasCostWei)
         .add(VARIABLE_GAS_COST_WEI, variableGasCostWei)
         .add(MIN_MARGIN, minMargin)
-        .add(ESTIMATE_GAS_MIN_MARGIN, estimageGasMinMargin)
+        .add(ESTIMATE_GAS_MIN_MARGIN, estimateGasMinMargin)
         .add(TX_POOL_MIN_MARGIN, txPoolMinMargin)
         .add(TX_POOL_ENABLE_CHECK_API, txPoolCheckApiEnabled)
         .add(TX_POOL_ENABLE_CHECK_P2P, txPoolCheckP2pEnabled)

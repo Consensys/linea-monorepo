@@ -54,9 +54,9 @@ public class TransactionCallDataSizeLimitTest extends LineaPluginTestBase {
         List.of(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY, Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY);
 
     final Web3j web3j = minerNode.nodeRequests().eth();
-    final List<Integer> numCaractersInStringList = List.of(150, 200, 400);
+    final List<Integer> numCharactersInStringList = List.of(150, 200, 400);
 
-    numCaractersInStringList.forEach(
+    numCharactersInStringList.forEach(
         num -> sendTransactionsWithGivenLengthPayload(simpleStorage, accounts, web3j, num));
   }
 
