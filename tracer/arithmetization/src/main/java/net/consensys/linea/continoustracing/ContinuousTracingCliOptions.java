@@ -23,6 +23,9 @@ public class ContinuousTracingCliOptions {
   public static final String CONTINUOUS_TRACING_ZK_EVM_BIN =
       "--plugin-linea-continuous-tracing-zk-evm-bin";
 
+  public static final String CONTINUOUS_TRACING_TRACES_DIR =
+      "--plugin-linea-continuous-tracing-traces-dir";
+
   @CommandLine.Option(
       names = {CONTINUOUS_TRACING_ENABLED},
       hidden = true,
@@ -37,6 +40,13 @@ public class ContinuousTracingCliOptions {
       description = "Path to the ZkEvm binary")
   private String zkEvmBin = null;
 
+  @CommandLine.Option(
+      names = {CONTINUOUS_TRACING_TRACES_DIR},
+      hidden = true,
+      paramLabel = "<PATH>",
+      description = "Path to where traces will be written")
+  private String tracesDir = null;
+
   private ContinuousTracingCliOptions() {}
 
   public static ContinuousTracingCliOptions create() {
@@ -44,7 +54,7 @@ public class ContinuousTracingCliOptions {
   }
 
   public ContinuousTracingConfiguration toDomainObject() {
-    return new ContinuousTracingConfiguration(continuousTracingEnabled, zkEvmBin);
+    return new ContinuousTracingConfiguration(continuousTracingEnabled, zkEvmBin, tracesDir);
   }
 
   @Override
@@ -52,6 +62,7 @@ public class ContinuousTracingCliOptions {
     return MoreObjects.toStringHelper(this)
         .add(CONTINUOUS_TRACING_ENABLED, continuousTracingEnabled)
         .add(CONTINUOUS_TRACING_ZK_EVM_BIN, zkEvmBin)
+        .add(CONTINUOUS_TRACING_TRACES_DIR, tracesDir)
         .toString();
   }
 }

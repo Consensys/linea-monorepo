@@ -20,6 +20,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.continoustracing.exception.InvalidBlockTraceException;
 import net.consensys.linea.continoustracing.exception.InvalidTraceHandlerException;
@@ -32,10 +33,10 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 
 @Slf4j
+@RequiredArgsConstructor
 public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAddedListener {
   private final ContinuousTracer continuousTracer;
   private final TraceFailureHandler traceFailureHandler;
-  private final String zkEvmBin;
 
   static final int BLOCK_PARALLELISM = 5;
   final ThreadPoolExecutor pool =
@@ -47,15 +48,6 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
           new ArrayBlockingQueue<>(BLOCK_PARALLELISM),
           new ThreadPoolExecutor.CallerRunsPolicy());
 
-  public ContinuousTracingBlockAddedListener(
-      final ContinuousTracer continuousTracer,
-      final TraceFailureHandler traceFailureHandler,
-      final String zkEvmBin) {
-    this.continuousTracer = continuousTracer;
-    this.traceFailureHandler = traceFailureHandler;
-    this.zkEvmBin = zkEvmBin;
-  }
-
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
     pool.submit(
@@ -66,7 +58,7 @@ public class ContinuousTracingBlockAddedListener implements BesuEvents.BlockAdde
 
           try {
             final CorsetValidator.Result traceResult =
-                continuousTracer.verifyTraceOfBlock(blockHash, zkEvmBin, new ZkTracer());
+                continuousTracer.verifyTraceOfBlock(blockHash, new ZkTracer());
             Files.delete(traceResult.traceFile().toPath());
 
             if (!traceResult.isValid()) {
