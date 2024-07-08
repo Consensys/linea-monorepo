@@ -12,7 +12,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.continoustracing;
+package net.consensys.linea.continoustracing.exception;
 
-public record ContinuousTracingConfiguration(
-    boolean continuousTracing, String zkEvmBin, String tracesDir) {}
+public class TraceOutputException extends RuntimeException {
+  public TraceOutputException(final String message) {
+    super(
+        "Trace output directory does not exist and cannot be created.\nError message: " + message);
+  }
+}

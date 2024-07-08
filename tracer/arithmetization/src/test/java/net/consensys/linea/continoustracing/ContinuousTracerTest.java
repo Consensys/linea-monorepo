@@ -33,6 +33,7 @@ import org.hyperledger.besu.plugin.services.TraceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,14 +44,20 @@ public class ContinuousTracerTest {
       Hash.fromHexString("0x0000000000000000000000000000000000000000000000000000000000000042");
 
   private ContinuousTracer continuousTracer;
+  private ContinuousTracingConfiguration continuousTracingConfiguration;
 
   @Mock TraceService traceServiceMock;
   @Mock CorsetValidator corsetValidatorMock;
   @Mock ZkTracer zkTracerMock;
 
+  @TempDir Path tracesOutputPath;
+
   @BeforeEach
   void setUp() {
-    continuousTracer = new ContinuousTracer(traceServiceMock, corsetValidatorMock);
+    continuousTracingConfiguration =
+        new ContinuousTracingConfiguration(true, "testZkEvmBin", tracesOutputPath.toString());
+    continuousTracer =
+        new ContinuousTracer(traceServiceMock, corsetValidatorMock, continuousTracingConfiguration);
   }
 
   @Test
@@ -67,10 +74,8 @@ public class ContinuousTracerTest {
             new CorsetValidator.Result(
                 true, Path.of("testTraceFile").toFile(), "testCorsetOutput"));
 
-    when(zkTracerMock.writeToTmpFile()).thenReturn(Path.of(""));
-
     final CorsetValidator.Result validationResult =
-        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, "testZkEvmBin", zkTracerMock);
+        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, zkTracerMock);
     assertThat(validationResult.isValid()).isTrue();
   }
 
@@ -83,15 +88,13 @@ public class ContinuousTracerTest {
     when(traceServiceMock.traceBlock(ArgumentMatchers.any(), ArgumentMatchers.any()))
         .thenReturn(blockTraceResult);
 
-    when(zkTracerMock.writeToTmpFile()).thenReturn(Path.of(""));
-
     when(corsetValidatorMock.validate(ArgumentMatchers.any(), matches("testZkEvmBin")))
         .thenReturn(
             new CorsetValidator.Result(
                 false, Path.of("testTraceFile").toFile(), "testCorsetOutput"));
 
     final CorsetValidator.Result validationResult =
-        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, "testZkEvmBin", zkTracerMock);
+        continuousTracer.verifyTraceOfBlock(BLOCK_HASH, zkTracerMock);
     assertThat(validationResult.isValid()).isFalse();
   }
 
@@ -105,6 +108,6 @@ public class ContinuousTracerTest {
 
     assertThrows(
         InvalidBlockTraceException.class,
-        () -> continuousTracer.verifyTraceOfBlock(BLOCK_HASH, "testZkEvmBin", new ZkTracer()));
+        () -> continuousTracer.verifyTraceOfBlock(BLOCK_HASH, new ZkTracer()));
   }
 }
