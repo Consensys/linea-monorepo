@@ -22,9 +22,11 @@ import static org.mockito.Mockito.when;
 import java.nio.file.Path;
 import java.util.List;
 
-import net.consensys.linea.continoustracing.exception.InvalidBlockTraceException;
-import net.consensys.linea.continoustracing.exception.TraceVerificationException;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.plugins.continoustracing.ContinuousTracer;
+import net.consensys.linea.plugins.continoustracing.ContinuousTracingConfiguration;
+import net.consensys.linea.plugins.exception.InvalidBlockTraceException;
+import net.consensys.linea.plugins.exception.TraceVerificationException;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.data.BlockTraceResult;
