@@ -35,7 +35,7 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.Pin55;
 import net.consensys.linea.zktracer.module.hub.Hub;
