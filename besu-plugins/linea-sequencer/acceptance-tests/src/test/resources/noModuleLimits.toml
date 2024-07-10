@@ -2,7 +2,7 @@
 # This file specifies prover limit by each EVM module
 # WARN: The prover/arithmetization team has the owneship of this.
 # Changing this values may compromise the system.
-# issue: https://github.com/ConsenSys/zkevm-monorepo/issues/525
+# issue: https://github.com/Consensys/zkevm-monorepo/issues/525
 ##
 
 [traces-limits]

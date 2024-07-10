@@ -2,7 +2,7 @@
 
 A set of Linea plugins for the sequencer and RPC nodes.
 
-## Quickstart - Running [Linea Besu](https://github.com/ConsenSys/linea-besu) with plugins
+## Quickstart - Running [Linea Besu](https://github.com/Consensys/linea-besu) with plugins
 
 - compile linea-plugins `gradlew installDist`
 - copy jar file to besu runtime plugins/ directory (where you will run besu from, not where you're building besu)
