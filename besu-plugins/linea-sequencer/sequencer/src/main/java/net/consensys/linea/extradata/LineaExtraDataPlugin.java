@@ -78,7 +78,8 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
             "Failed setting initial pricing conf from extra data field ({}) of the chain head block {}({})",
             initialExtraData,
             chainHeadHeader.getNumber(),
-            chainHeadHeader.getBlockHash());
+            chainHeadHeader.getBlockHash(),
+            e);
       }
       besuEventsService.addBlockAddedListener(
           addedBlockContext -> {
@@ -92,7 +93,8 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
                   "Failed setting pricing conf from extra data field ({}) of latest imported block {}({})",
                   latestExtraData,
                   importedBlockHeader.getNumber(),
-                  importedBlockHeader.getBlockHash());
+                  importedBlockHeader.getBlockHash(),
+                  e);
             }
           });
     }
