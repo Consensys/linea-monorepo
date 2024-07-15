@@ -89,4 +89,9 @@ public class ReplayTests {
   void failRlpAddress() {
     replay("5995097.json.gz");
   }
+
+  @Test
+  void rlprcptManyTopicsWoLogData() {
+    replay("6569423.json.gz");
+  }
 }
