@@ -23,6 +23,10 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
+/**
+ * Validator that checks if the sender or the recipient are accepted. By default, precompiles are
+ * not valid recipient.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class AllowedAddressValidator implements PluginTransactionPoolValidator {

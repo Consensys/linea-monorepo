@@ -35,7 +35,7 @@ import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidatorFactory;
 
-/** Represents a factory for creating transaction validators. */
+/** Represents a factory for creating transaction pool validators. */
 public class LineaTransactionPoolValidatorFactory implements PluginTransactionPoolValidatorFactory {
 
   private final BesuConfiguration besuConfiguration;
@@ -66,6 +66,12 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
   }
 
+  /**
+   * Creates a new transaction pool validator, that simply calls in sequence all the actual
+   * validators, in a fail-fast mode.
+   *
+   * @return the new transaction pool validator
+   */
   @Override
   public PluginTransactionPoolValidator createTransactionValidator() {
     final var validators =

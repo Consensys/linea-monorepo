@@ -22,6 +22,10 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
+/**
+ * Validator that checks if the gas limit is below the configured max amount. This means that max
+ * gas limit of a transaction could be less than the block gas limit.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class GasLimitValidator implements PluginTransactionPoolValidator {

@@ -37,6 +37,15 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
+/**
+ * This class implements TransactionSelector and provides a specific implementation for evaluating
+ * if the transaction is profitable, according to the current config and the min margin defined for
+ * this context. Profitability check is done upfront using the gas limit, to avoid processing the
+ * transaction at all, and if it passes it is done after the processing this time using the actual
+ * gas used by the transaction. This selector keeps a cache of the unprofitable transactions to
+ * avoid reprocessing all of them everytime, and only allows for a configurable limited number of
+ * unprofitable transaction to be retried on every new block creation.
+ */
 @Slf4j
 public class ProfitableTransactionSelector implements PluginTransactionSelector {
   @VisibleForTesting protected static Set<Hash> unprofitableCache = new LinkedHashSet<>();
@@ -62,6 +71,19 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
             .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
   }
 
+  /**
+   * Evaluates a transaction before processing. Checks if it is profitable using its gas limit. If
+   * the transaction was found to be unprofitable during a previous block creation process, it is
+   * retried, since the gas price market could now make it profitable, but only a configurable
+   * amount of these transactions is retried each time, to avoid that they could potentially consume
+   * all the time allocated to block creation.
+   *
+   * @param evaluationContext The current selection context.
+   * @return TX_UNPROFITABLE_UPFRONT if the transaction is not profitable upfront,
+   *     TX_UNPROFITABLE_RETRY_LIMIT if the transaction was already found to be unprofitable, and
+   *     there are no more slot to retry past unprofitable transactions during this block creation
+   *     process, otherwise SELECTED.
+   */
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext) {
@@ -105,6 +127,15 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     return SELECTED;
   }
 
+  /**
+   * Evaluates a transaction post-processing. Checks if it is profitable according to its gas used.
+   * If unprofitable, the transaction is added to the unprofitable cache, to be retried in the
+   * future, since gas price market fluctuations can make it profitable again.
+   *
+   * @param evaluationContext The current selection context.
+   * @return TX_UNPROFITABLE if the transaction is not profitable after execution, otherwise
+   *     SELECTED.
+   */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
@@ -129,6 +160,13 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     return SELECTED;
   }
 
+  /**
+   * If the transaction has been selected for block inclusion, then we remove it from the
+   * unprofitable cache.
+   *
+   * @param evaluationContext The current selection context
+   * @param processingResult The result of processing the selected transaction.
+   */
   @Override
   public void onTransactionSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
@@ -136,6 +174,13 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     unprofitableCache.remove(evaluationContext.getPendingTransaction().getTransaction().getHash());
   }
 
+  /**
+   * If the transaction has not been selected and has been discarded from the transaction pool, then
+   * we remove it from the unprofitable cache.
+   *
+   * @param evaluationContext The current selection context
+   * @param transactionSelectionResult The transaction selection result
+   */
   @Override
   public void onTransactionNotSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,

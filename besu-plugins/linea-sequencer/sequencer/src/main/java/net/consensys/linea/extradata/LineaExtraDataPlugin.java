@@ -63,6 +63,11 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
                         "Failed to obtain BlockchainService from the BesuContext."));
   }
 
+  /**
+   * Starts this plugin and in case the extra data pricing is enabled, as first thing it tries to
+   * extract extra data pricing configuration from the chain head, then it starts listening for new
+   * imported block, in order to update the extra data pricing on every incoming block.
+   */
   @Override
   public void start() {
     super.start();

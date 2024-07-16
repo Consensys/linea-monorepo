@@ -27,6 +27,12 @@ import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
+/**
+ * This class implements TransactionSelector and provides a specific implementation for evaluating
+ * if the cumulative gas used by the block, including the current pending transaction, is below the
+ * user configured max amount, if not the transaction is not selected. This means that the user can
+ * configure a max gas per block that is below the limit defined by the protocol.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class MaxBlockGasTransactionSelector implements PluginTransactionSelector {
@@ -34,6 +40,16 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
   private final long maxGasPerBlock;
   private long cumulativeBlockGasUsed;
 
+  /**
+   * Evaluates a transaction post-processing. Checks if adding the gas used of the transaction, to
+   * the cumulative gas used of the block till now, is below the configured max gas used per block
+   * specified by the operator of the node.
+   *
+   * @param evaluationContext The current selection context.
+   * @return TX_TOO_LARGE_FOR_REMAINING_USER_GAS if adding this transaction pushes the gas used by
+   *     the block over the limit, TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS if the gas used by this
+   *     transaction alone is greater than the max gas used per block limit, otherwise SELECTED.
+   */
   @Override
   public TransactionSelectionResult evaluateTransactionPostProcessing(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,
@@ -77,6 +93,13 @@ public class MaxBlockGasTransactionSelector implements PluginTransactionSelector
     }
   }
 
+  /**
+   * If the transaction has been selected, then we add its gas used to the current gas used of the
+   * block.
+   *
+   * @param evaluationContext The current selection context
+   * @param processingResult The result of processing the selected transaction.
+   */
   @Override
   public void onTransactionSelected(
       final TransactionEvaluationContext<? extends PendingTransaction> evaluationContext,

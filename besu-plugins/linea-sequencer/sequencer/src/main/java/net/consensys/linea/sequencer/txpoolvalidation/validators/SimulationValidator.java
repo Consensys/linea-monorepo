@@ -33,6 +33,10 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
+/**
+ * Validator that checks if transaction simulation completes successfully, including line counting.
+ * This check can be enabled/disabled independently for transactions received via API or P2P.
+ */
 @Slf4j
 public class SimulationValidator implements PluginTransactionPoolValidator {
   private final BlockchainService blockchainService;

@@ -33,6 +33,16 @@ import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 
+/**
+ * This abstract class is used as superclass for all the plugins that share one or more
+ * configuration options.
+ *
+ * <p>Configuration options that are exclusive of a single plugin, are not required to be added
+ * here, but they could stay in the class that implement a plugin, but in case that configuration
+ * becomes to be used by multiple plugins, then to avoid code duplications and possible different
+ * management of the options, it is better to move the configuration here so all plugins will
+ * automatically see it.
+ */
 @Slf4j
 public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   private static final String CLI_OPTIONS_PREFIX = "linea";
@@ -42,9 +52,9 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
   private static LineaTransactionPoolValidatorCliOptions transactionPoolValidatorCliOptions;
   private static LineaL1L2BridgeCliOptions l1L2BridgeCliOptions;
   private static LineaRpcCliOptions rpcCliOptions;
+  private static LineaTracerCliOptions tracerCliOptions;
   private static LineaProfitabilityCliOptions profitabilityCliOptions;
   protected static LineaTransactionSelectorConfiguration transactionSelectorConfiguration;
-  protected static LineaTracerCliOptions tracerCliOptions;
   protected static LineaTransactionPoolValidatorConfiguration transactionPoolValidatorConfiguration;
   protected static LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
   protected static LineaRpcConfiguration rpcConfiguration;

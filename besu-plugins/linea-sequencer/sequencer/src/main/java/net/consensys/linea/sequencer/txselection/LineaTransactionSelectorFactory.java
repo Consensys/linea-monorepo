@@ -26,7 +26,10 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelectorFactory;
 
-/** Represents a factory for creating transaction selectors. */
+/**
+ * Represents a factory for creating transaction selectors. Note that a new instance of the
+ * transaction selector is created everytime a new block creation time is started.
+ */
 public class LineaTransactionSelectorFactory implements PluginTransactionSelectorFactory {
   private final BlockchainService blockchainService;
   private final LineaTransactionSelectorConfiguration txSelectorConfiguration;

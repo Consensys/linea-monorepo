@@ -26,6 +26,11 @@ import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
+/**
+ * Validator that checks if the upfront gas price, that the transaction is willing to pay, is
+ * profitable. This check does not apply to transaction with priority and can be enabled/disabled
+ * independently for transactions received via API or P2P.
+ */
 @Slf4j
 public class ProfitabilityValidator implements PluginTransactionPoolValidator {
   final BesuConfiguration besuConfiguration;

@@ -22,6 +22,7 @@ import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.services.txvalidator.PluginTransactionPoolValidator;
 
+/** Validator that checks if the calldata is below the configured max size. */
 @Slf4j
 @RequiredArgsConstructor
 public class CalldataValidator implements PluginTransactionPoolValidator {
