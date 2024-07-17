@@ -89,8 +89,8 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("blockdata.BASEFEE", 8, length),
-        new ColumnHeader("blockdata.BLOCK_GAS_LIMIT", 8, length),
+        new ColumnHeader("blockdata.BASEFEE", 6, length),
+        new ColumnHeader("blockdata.BLOCK_GAS_LIMIT", 6, length),
         new ColumnHeader("blockdata.BYTE_HI_0", 1, length),
         new ColumnHeader("blockdata.BYTE_HI_1", 1, length),
         new ColumnHeader("blockdata.BYTE_HI_10", 1, length),
@@ -123,15 +123,15 @@ public class Trace {
         new ColumnHeader("blockdata.BYTE_LO_7", 1, length),
         new ColumnHeader("blockdata.BYTE_LO_8", 1, length),
         new ColumnHeader("blockdata.BYTE_LO_9", 1, length),
-        new ColumnHeader("blockdata.COINBASE_HI", 8, length),
-        new ColumnHeader("blockdata.COINBASE_LO", 32, length),
-        new ColumnHeader("blockdata.CT", 2, length),
-        new ColumnHeader("blockdata.DATA_HI", 32, length),
-        new ColumnHeader("blockdata.DATA_LO", 32, length),
-        new ColumnHeader("blockdata.FIRST_BLOCK_NUMBER", 8, length),
+        new ColumnHeader("blockdata.COINBASE_HI", 4, length),
+        new ColumnHeader("blockdata.COINBASE_LO", 16, length),
+        new ColumnHeader("blockdata.CT", 1, length),
+        new ColumnHeader("blockdata.DATA_HI", 16, length),
+        new ColumnHeader("blockdata.DATA_LO", 16, length),
+        new ColumnHeader("blockdata.FIRST_BLOCK_NUMBER", 6, length),
         new ColumnHeader("blockdata.INST", 1, length),
-        new ColumnHeader("blockdata.REL_BLOCK", 2, length),
-        new ColumnHeader("blockdata.REL_TX_NUM_MAX", 2, length),
+        new ColumnHeader("blockdata.REL_BLOCK", 1, length),
+        new ColumnHeader("blockdata.REL_TX_NUM_MAX", 1, length),
         new ColumnHeader("blockdata.WCP_FLAG", 1, length));
   }
 
@@ -197,7 +197,15 @@ public class Trace {
       filled.set(0);
     }
 
-    basefee.putLong(b);
+    if (b >= 281474976710656L) {
+      throw new IllegalArgumentException("basefee has invalid value (" + b + ")");
+    }
+    basefee.put((byte) (b >> 40));
+    basefee.put((byte) (b >> 32));
+    basefee.put((byte) (b >> 24));
+    basefee.put((byte) (b >> 16));
+    basefee.put((byte) (b >> 8));
+    basefee.put((byte) b);
 
     return this;
   }
@@ -209,7 +217,15 @@ public class Trace {
       filled.set(1);
     }
 
-    blockGasLimit.putLong(b);
+    if (b >= 281474976710656L) {
+      throw new IllegalArgumentException("blockGasLimit has invalid value (" + b + ")");
+    }
+    blockGasLimit.put((byte) (b >> 40));
+    blockGasLimit.put((byte) (b >> 32));
+    blockGasLimit.put((byte) (b >> 24));
+    blockGasLimit.put((byte) (b >> 16));
+    blockGasLimit.put((byte) (b >> 8));
+    blockGasLimit.put((byte) b);
 
     return this;
   }
@@ -605,7 +621,13 @@ public class Trace {
       filled.set(34);
     }
 
-    coinbaseHi.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("coinbaseHi has invalid value (" + b + ")");
+    }
+    coinbaseHi.put((byte) (b >> 24));
+    coinbaseHi.put((byte) (b >> 16));
+    coinbaseHi.put((byte) (b >> 8));
+    coinbaseHi.put((byte) b);
 
     return this;
   }
@@ -617,23 +639,36 @@ public class Trace {
       filled.set(35);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "coinbaseLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       coinbaseLo.put((byte) 0);
     }
-    coinbaseLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      coinbaseLo.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace ct(final short b) {
+  public Trace ct(final long b) {
     if (filled.get(36)) {
       throw new IllegalStateException("blockdata.CT already set");
     } else {
       filled.set(36);
     }
 
-    ct.putShort(b);
+    if (b >= 16L) {
+      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+    }
+    ct.put((byte) b);
 
     return this;
   }
@@ -645,11 +680,20 @@ public class Trace {
       filled.set(37);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("dataHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       dataHi.put((byte) 0);
     }
-    dataHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      dataHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -661,11 +705,20 @@ public class Trace {
       filled.set(38);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("dataLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       dataLo.put((byte) 0);
     }
-    dataLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      dataLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -677,7 +730,15 @@ public class Trace {
       filled.set(39);
     }
 
-    firstBlockNumber.putLong(b);
+    if (b >= 281474976710656L) {
+      throw new IllegalArgumentException("firstBlockNumber has invalid value (" + b + ")");
+    }
+    firstBlockNumber.put((byte) (b >> 40));
+    firstBlockNumber.put((byte) (b >> 32));
+    firstBlockNumber.put((byte) (b >> 24));
+    firstBlockNumber.put((byte) (b >> 16));
+    firstBlockNumber.put((byte) (b >> 8));
+    firstBlockNumber.put((byte) b);
 
     return this;
   }
@@ -694,26 +755,32 @@ public class Trace {
     return this;
   }
 
-  public Trace relBlock(final short b) {
+  public Trace relBlock(final long b) {
     if (filled.get(41)) {
       throw new IllegalStateException("blockdata.REL_BLOCK already set");
     } else {
       filled.set(41);
     }
 
-    relBlock.putShort(b);
+    if (b >= 256L) {
+      throw new IllegalArgumentException("relBlock has invalid value (" + b + ")");
+    }
+    relBlock.put((byte) b);
 
     return this;
   }
 
-  public Trace relTxNumMax(final short b) {
+  public Trace relTxNumMax(final long b) {
     if (filled.get(42)) {
       throw new IllegalStateException("blockdata.REL_TX_NUM_MAX already set");
     } else {
       filled.set(42);
     }
 
-    relTxNumMax.putShort(b);
+    if (b >= 256L) {
+      throw new IllegalArgumentException("relTxNumMax has invalid value (" + b + ")");
+    }
+    relTxNumMax.put((byte) b);
 
     return this;
   }
@@ -915,11 +982,11 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      basefee.position(basefee.position() + 8);
+      basefee.position(basefee.position() + 6);
     }
 
     if (!filled.get(1)) {
-      blockGasLimit.position(blockGasLimit.position() + 8);
+      blockGasLimit.position(blockGasLimit.position() + 6);
     }
 
     if (!filled.get(2)) {
@@ -1051,27 +1118,27 @@ public class Trace {
     }
 
     if (!filled.get(34)) {
-      coinbaseHi.position(coinbaseHi.position() + 8);
+      coinbaseHi.position(coinbaseHi.position() + 4);
     }
 
     if (!filled.get(35)) {
-      coinbaseLo.position(coinbaseLo.position() + 32);
+      coinbaseLo.position(coinbaseLo.position() + 16);
     }
 
     if (!filled.get(36)) {
-      ct.position(ct.position() + 2);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(37)) {
-      dataHi.position(dataHi.position() + 32);
+      dataHi.position(dataHi.position() + 16);
     }
 
     if (!filled.get(38)) {
-      dataLo.position(dataLo.position() + 32);
+      dataLo.position(dataLo.position() + 16);
     }
 
     if (!filled.get(39)) {
-      firstBlockNumber.position(firstBlockNumber.position() + 8);
+      firstBlockNumber.position(firstBlockNumber.position() + 6);
     }
 
     if (!filled.get(40)) {
@@ -1079,11 +1146,11 @@ public class Trace {
     }
 
     if (!filled.get(41)) {
-      relBlock.position(relBlock.position() + 2);
+      relBlock.position(relBlock.position() + 1);
     }
 
     if (!filled.get(42)) {
-      relTxNumMax.position(relTxNumMax.position() + 2);
+      relTxNumMax.position(relTxNumMax.position() + 1);
     }
 
     if (!filled.get(43)) {

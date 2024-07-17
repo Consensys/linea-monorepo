@@ -58,7 +58,7 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("blake2fmodexpdata.ID", 8, length),
+        new ColumnHeader("blake2fmodexpdata.ID", 6, length),
         new ColumnHeader("blake2fmodexpdata.INDEX", 1, length),
         new ColumnHeader("blake2fmodexpdata.INDEX_MAX", 1, length),
         new ColumnHeader("blake2fmodexpdata.IS_BLAKE_DATA", 1, length),
@@ -68,7 +68,7 @@ public class Trace {
         new ColumnHeader("blake2fmodexpdata.IS_MODEXP_EXPONENT", 1, length),
         new ColumnHeader("blake2fmodexpdata.IS_MODEXP_MODULUS", 1, length),
         new ColumnHeader("blake2fmodexpdata.IS_MODEXP_RESULT", 1, length),
-        new ColumnHeader("blake2fmodexpdata.LIMB", 32, length),
+        new ColumnHeader("blake2fmodexpdata.LIMB", 16, length),
         new ColumnHeader("blake2fmodexpdata.PHASE", 1, length),
         new ColumnHeader("blake2fmodexpdata.STAMP", 1, length));
   }
@@ -104,7 +104,15 @@ public class Trace {
       filled.set(0);
     }
 
-    id.putLong(b);
+    if (b >= 281474976710656L) {
+      throw new IllegalArgumentException("id has invalid value (" + b + ")");
+    }
+    id.put((byte) (b >> 40));
+    id.put((byte) (b >> 32));
+    id.put((byte) (b >> 24));
+    id.put((byte) (b >> 16));
+    id.put((byte) (b >> 8));
+    id.put((byte) b);
 
     return this;
   }
@@ -224,11 +232,20 @@ public class Trace {
       filled.set(10);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       limb.put((byte) 0);
     }
-    limb.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      limb.put(bs.get(j));
+    }
 
     return this;
   }
@@ -318,7 +335,7 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      id.position(id.position() + 8);
+      id.position(id.position() + 6);
     }
 
     if (!filled.get(1)) {
@@ -358,7 +375,7 @@ public class Trace {
     }
 
     if (!filled.get(10)) {
-      limb.position(limb.position() + 32);
+      limb.position(limb.position() + 16);
     }
 
     if (!filled.get(11)) {

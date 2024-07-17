@@ -49,17 +49,17 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("euc.CEIL", 32, length),
-        new ColumnHeader("euc.CT", 2, length),
-        new ColumnHeader("euc.CT_MAX", 2, length),
-        new ColumnHeader("euc.DIVIDEND", 32, length),
-        new ColumnHeader("euc.DIVISOR", 32, length),
+        new ColumnHeader("euc.CEIL", 8, length),
+        new ColumnHeader("euc.CT", 1, length),
+        new ColumnHeader("euc.CT_MAX", 1, length),
+        new ColumnHeader("euc.DIVIDEND", 8, length),
+        new ColumnHeader("euc.DIVISOR", 8, length),
         new ColumnHeader("euc.DIVISOR_BYTE", 1, length),
         new ColumnHeader("euc.DONE", 1, length),
         new ColumnHeader("euc.IOMF", 1, length),
-        new ColumnHeader("euc.QUOTIENT", 32, length),
+        new ColumnHeader("euc.QUOTIENT", 8, length),
         new ColumnHeader("euc.QUOTIENT_BYTE", 1, length),
-        new ColumnHeader("euc.REMAINDER", 32, length),
+        new ColumnHeader("euc.REMAINDER", 8, length),
         new ColumnHeader("euc.REMAINDER_BYTE", 1, length));
   }
 
@@ -93,35 +93,50 @@ public class Trace {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException("ceil has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
       ceil.put((byte) 0);
     }
-    ceil.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      ceil.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace ct(final short b) {
+  public Trace ct(final long b) {
     if (filled.get(1)) {
       throw new IllegalStateException("euc.CT already set");
     } else {
       filled.set(1);
     }
 
-    ct.putShort(b);
+    if (b >= 256L) {
+      throw new IllegalArgumentException("ct has invalid value (" + b + ")");
+    }
+    ct.put((byte) b);
 
     return this;
   }
 
-  public Trace ctMax(final short b) {
+  public Trace ctMax(final long b) {
     if (filled.get(2)) {
       throw new IllegalStateException("euc.CT_MAX already set");
     } else {
       filled.set(2);
     }
 
-    ctMax.putShort(b);
+    if (b >= 256L) {
+      throw new IllegalArgumentException("ctMax has invalid value (" + b + ")");
+    }
+    ctMax.put((byte) b);
 
     return this;
   }
@@ -133,11 +148,20 @@ public class Trace {
       filled.set(3);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException("dividend has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
       dividend.put((byte) 0);
     }
-    dividend.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      dividend.put(bs.get(j));
+    }
 
     return this;
   }
@@ -149,11 +173,20 @@ public class Trace {
       filled.set(4);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException("divisor has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
       divisor.put((byte) 0);
     }
-    divisor.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      divisor.put(bs.get(j));
+    }
 
     return this;
   }
@@ -201,11 +234,20 @@ public class Trace {
       filled.set(8);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException("quotient has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
       quotient.put((byte) 0);
     }
-    quotient.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      quotient.put(bs.get(j));
+    }
 
     return this;
   }
@@ -229,11 +271,21 @@ public class Trace {
       filled.set(10);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 64) {
+      throw new IllegalArgumentException(
+          "remainder has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 8; i++) {
       remainder.put((byte) 0);
     }
-    remainder.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      remainder.put(bs.get(j));
+    }
 
     return this;
   }
@@ -307,23 +359,23 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      ceil.position(ceil.position() + 32);
+      ceil.position(ceil.position() + 8);
     }
 
     if (!filled.get(1)) {
-      ct.position(ct.position() + 2);
+      ct.position(ct.position() + 1);
     }
 
     if (!filled.get(2)) {
-      ctMax.position(ctMax.position() + 2);
+      ctMax.position(ctMax.position() + 1);
     }
 
     if (!filled.get(3)) {
-      dividend.position(dividend.position() + 32);
+      dividend.position(dividend.position() + 8);
     }
 
     if (!filled.get(4)) {
-      divisor.position(divisor.position() + 32);
+      divisor.position(divisor.position() + 8);
     }
 
     if (!filled.get(5)) {
@@ -339,7 +391,7 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      quotient.position(quotient.position() + 32);
+      quotient.position(quotient.position() + 8);
     }
 
     if (!filled.get(9)) {
@@ -347,7 +399,7 @@ public class Trace {
     }
 
     if (!filled.get(10)) {
-      remainder.position(remainder.position() + 32);
+      remainder.position(remainder.position() + 8);
     }
 
     if (!filled.get(11)) {

@@ -22,8 +22,8 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_MODEXPLOG;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEPO;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_MODEXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_MODEXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_MODEXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_MODEXP_LOG;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
@@ -102,7 +102,7 @@ public class ModexpLogOperation extends ExpOperation {
     pMacroData3 = Bytes.of(this.cdsCutoff);
     pMacroData4 = Bytes.of(this.ebsCutoff);
     pMacroData5 = bigIntegerToBytes(this.leadLog);
-    initArrays(MAX_CT_PRPRC_MODEXP_LOG + 1);
+    initArrays(CT_MAX_PRPRC_MODEXP_LOG + 1);
 
     // Preprocessing
     final BigInteger trimLimb =
@@ -183,7 +183,7 @@ public class ModexpLogOperation extends ExpOperation {
     }
 
     // Fill trimAcc
-    final short maxCt = (short) MAX_CT_CMPTN_MODEXP_LOG;
+    final short maxCt = (short) CT_MAX_CMPTN_MODEXP_LOG;
     for (short i = 0; i < maxCt + 1; i++) {
       final boolean pltBit = i >= pComputationPltJmp;
       final byte rawByte = pComputationRawAcc.get(i);

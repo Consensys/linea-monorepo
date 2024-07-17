@@ -60,29 +60,29 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("rom.ACC", 32, length),
-        new ColumnHeader("rom.CODE_FRAGMENT_INDEX", 8, length),
-        new ColumnHeader("rom.CODE_FRAGMENT_INDEX_INFTY", 8, length),
-        new ColumnHeader("rom.CODE_SIZE", 8, length),
+        new ColumnHeader("rom.ACC", 16, length),
+        new ColumnHeader("rom.CODE_FRAGMENT_INDEX", 4, length),
+        new ColumnHeader("rom.CODE_FRAGMENT_INDEX_INFTY", 4, length),
+        new ColumnHeader("rom.CODE_SIZE", 4, length),
         new ColumnHeader("rom.CODESIZE_REACHED", 1, length),
         new ColumnHeader("rom.COUNTER", 1, length),
         new ColumnHeader("rom.COUNTER_MAX", 1, length),
         new ColumnHeader("rom.COUNTER_PUSH", 1, length),
-        new ColumnHeader("rom.INDEX", 8, length),
+        new ColumnHeader("rom.INDEX", 4, length),
         new ColumnHeader("rom.IS_JUMPDEST", 1, length),
         new ColumnHeader("rom.IS_PUSH", 1, length),
         new ColumnHeader("rom.IS_PUSH_DATA", 1, length),
-        new ColumnHeader("rom.LIMB", 32, length),
+        new ColumnHeader("rom.LIMB", 16, length),
         new ColumnHeader("rom.nBYTES", 1, length),
         new ColumnHeader("rom.nBYTES_ACC", 1, length),
         new ColumnHeader("rom.OPCODE", 1, length),
         new ColumnHeader("rom.PADDED_BYTECODE_BYTE", 1, length),
-        new ColumnHeader("rom.PROGRAM_COUNTER", 8, length),
+        new ColumnHeader("rom.PROGRAM_COUNTER", 4, length),
         new ColumnHeader("rom.PUSH_FUNNEL_BIT", 1, length),
         new ColumnHeader("rom.PUSH_PARAMETER", 1, length),
-        new ColumnHeader("rom.PUSH_VALUE_ACC", 32, length),
-        new ColumnHeader("rom.PUSH_VALUE_HI", 32, length),
-        new ColumnHeader("rom.PUSH_VALUE_LO", 32, length));
+        new ColumnHeader("rom.PUSH_VALUE_ACC", 16, length),
+        new ColumnHeader("rom.PUSH_VALUE_HI", 16, length),
+        new ColumnHeader("rom.PUSH_VALUE_LO", 16, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -126,11 +126,20 @@ public class Trace {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc.put((byte) 0);
     }
-    acc.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc.put(bs.get(j));
+    }
 
     return this;
   }
@@ -142,7 +151,13 @@ public class Trace {
       filled.set(2);
     }
 
-    codeFragmentIndex.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("codeFragmentIndex has invalid value (" + b + ")");
+    }
+    codeFragmentIndex.put((byte) (b >> 24));
+    codeFragmentIndex.put((byte) (b >> 16));
+    codeFragmentIndex.put((byte) (b >> 8));
+    codeFragmentIndex.put((byte) b);
 
     return this;
   }
@@ -154,7 +169,13 @@ public class Trace {
       filled.set(3);
     }
 
-    codeFragmentIndexInfty.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("codeFragmentIndexInfty has invalid value (" + b + ")");
+    }
+    codeFragmentIndexInfty.put((byte) (b >> 24));
+    codeFragmentIndexInfty.put((byte) (b >> 16));
+    codeFragmentIndexInfty.put((byte) (b >> 8));
+    codeFragmentIndexInfty.put((byte) b);
 
     return this;
   }
@@ -166,7 +187,13 @@ public class Trace {
       filled.set(4);
     }
 
-    codeSize.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("codeSize has invalid value (" + b + ")");
+    }
+    codeSize.put((byte) (b >> 24));
+    codeSize.put((byte) (b >> 16));
+    codeSize.put((byte) (b >> 8));
+    codeSize.put((byte) b);
 
     return this;
   }
@@ -226,7 +253,13 @@ public class Trace {
       filled.set(8);
     }
 
-    index.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("index has invalid value (" + b + ")");
+    }
+    index.put((byte) (b >> 24));
+    index.put((byte) (b >> 16));
+    index.put((byte) (b >> 8));
+    index.put((byte) b);
 
     return this;
   }
@@ -274,11 +307,20 @@ public class Trace {
       filled.set(12);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       limb.put((byte) 0);
     }
-    limb.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      limb.put(bs.get(j));
+    }
 
     return this;
   }
@@ -338,7 +380,13 @@ public class Trace {
       filled.set(15);
     }
 
-    programCounter.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("programCounter has invalid value (" + b + ")");
+    }
+    programCounter.put((byte) (b >> 24));
+    programCounter.put((byte) (b >> 16));
+    programCounter.put((byte) (b >> 8));
+    programCounter.put((byte) b);
 
     return this;
   }
@@ -374,11 +422,21 @@ public class Trace {
       filled.set(18);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "pushValueAcc has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       pushValueAcc.put((byte) 0);
     }
-    pushValueAcc.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      pushValueAcc.put(bs.get(j));
+    }
 
     return this;
   }
@@ -390,11 +448,21 @@ public class Trace {
       filled.set(19);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "pushValueHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       pushValueHi.put((byte) 0);
     }
-    pushValueHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      pushValueHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -406,11 +474,21 @@ public class Trace {
       filled.set(20);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "pushValueLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       pushValueLo.put((byte) 0);
     }
-    pushValueLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      pushValueLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -516,19 +594,19 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      acc.position(acc.position() + 32);
+      acc.position(acc.position() + 16);
     }
 
     if (!filled.get(2)) {
-      codeFragmentIndex.position(codeFragmentIndex.position() + 8);
+      codeFragmentIndex.position(codeFragmentIndex.position() + 4);
     }
 
     if (!filled.get(3)) {
-      codeFragmentIndexInfty.position(codeFragmentIndexInfty.position() + 8);
+      codeFragmentIndexInfty.position(codeFragmentIndexInfty.position() + 4);
     }
 
     if (!filled.get(4)) {
-      codeSize.position(codeSize.position() + 8);
+      codeSize.position(codeSize.position() + 4);
     }
 
     if (!filled.get(1)) {
@@ -548,7 +626,7 @@ public class Trace {
     }
 
     if (!filled.get(8)) {
-      index.position(index.position() + 8);
+      index.position(index.position() + 4);
     }
 
     if (!filled.get(9)) {
@@ -564,7 +642,7 @@ public class Trace {
     }
 
     if (!filled.get(12)) {
-      limb.position(limb.position() + 32);
+      limb.position(limb.position() + 16);
     }
 
     if (!filled.get(21)) {
@@ -584,7 +662,7 @@ public class Trace {
     }
 
     if (!filled.get(15)) {
-      programCounter.position(programCounter.position() + 8);
+      programCounter.position(programCounter.position() + 4);
     }
 
     if (!filled.get(16)) {
@@ -596,15 +674,15 @@ public class Trace {
     }
 
     if (!filled.get(18)) {
-      pushValueAcc.position(pushValueAcc.position() + 32);
+      pushValueAcc.position(pushValueAcc.position() + 16);
     }
 
     if (!filled.get(19)) {
-      pushValueHi.position(pushValueHi.position() + 32);
+      pushValueHi.position(pushValueHi.position() + 16);
     }
 
     if (!filled.get(20)) {
-      pushValueLo.position(pushValueLo.position() + 32);
+      pushValueLo.position(pushValueLo.position() + 16);
     }
 
     filled.clear();

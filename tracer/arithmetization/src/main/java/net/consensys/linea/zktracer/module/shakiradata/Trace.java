@@ -56,24 +56,24 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("shakiradata.ID", 8, length),
-        new ColumnHeader("shakiradata.INDEX", 8, length),
-        new ColumnHeader("shakiradata.INDEX_MAX", 8, length),
+        new ColumnHeader("shakiradata.ID", 4, length),
+        new ColumnHeader("shakiradata.INDEX", 4, length),
+        new ColumnHeader("shakiradata.INDEX_MAX", 4, length),
         new ColumnHeader("shakiradata.IS_KECCAK_DATA", 1, length),
         new ColumnHeader("shakiradata.IS_KECCAK_RESULT", 1, length),
         new ColumnHeader("shakiradata.IS_RIPEMD_DATA", 1, length),
         new ColumnHeader("shakiradata.IS_RIPEMD_RESULT", 1, length),
         new ColumnHeader("shakiradata.IS_SHA2_DATA", 1, length),
         new ColumnHeader("shakiradata.IS_SHA2_RESULT", 1, length),
-        new ColumnHeader("shakiradata.LIMB", 32, length),
-        new ColumnHeader("shakiradata.nBYTES", 2, length),
-        new ColumnHeader("shakiradata.nBYTES_ACC", 8, length),
+        new ColumnHeader("shakiradata.LIMB", 16, length),
+        new ColumnHeader("shakiradata.nBYTES", 1, length),
+        new ColumnHeader("shakiradata.nBYTES_ACC", 4, length),
         new ColumnHeader("shakiradata.PHASE", 1, length),
-        new ColumnHeader("shakiradata.RIPSHA_STAMP", 8, length),
+        new ColumnHeader("shakiradata.RIPSHA_STAMP", 4, length),
         new ColumnHeader("shakiradata.SELECTOR_KECCAK_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_RIPEMD_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_SHA2_RES_HI", 1, length),
-        new ColumnHeader("shakiradata.TOTAL_SIZE", 8, length));
+        new ColumnHeader("shakiradata.TOTAL_SIZE", 4, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -112,7 +112,13 @@ public class Trace {
       filled.set(0);
     }
 
-    id.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("id has invalid value (" + b + ")");
+    }
+    id.put((byte) (b >> 24));
+    id.put((byte) (b >> 16));
+    id.put((byte) (b >> 8));
+    id.put((byte) b);
 
     return this;
   }
@@ -124,7 +130,13 @@ public class Trace {
       filled.set(1);
     }
 
-    index.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("index has invalid value (" + b + ")");
+    }
+    index.put((byte) (b >> 24));
+    index.put((byte) (b >> 16));
+    index.put((byte) (b >> 8));
+    index.put((byte) b);
 
     return this;
   }
@@ -136,7 +148,13 @@ public class Trace {
       filled.set(2);
     }
 
-    indexMax.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("indexMax has invalid value (" + b + ")");
+    }
+    indexMax.put((byte) (b >> 24));
+    indexMax.put((byte) (b >> 16));
+    indexMax.put((byte) (b >> 8));
+    indexMax.put((byte) b);
 
     return this;
   }
@@ -220,23 +238,35 @@ public class Trace {
       filled.set(9);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       limb.put((byte) 0);
     }
-    limb.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      limb.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace nBytes(final short b) {
+  public Trace nBytes(final long b) {
     if (filled.get(16)) {
       throw new IllegalStateException("shakiradata.nBYTES already set");
     } else {
       filled.set(16);
     }
 
-    nBytes.putShort(b);
+    if (b >= 256L) {
+      throw new IllegalArgumentException("nBytes has invalid value (" + b + ")");
+    }
+    nBytes.put((byte) b);
 
     return this;
   }
@@ -248,7 +278,13 @@ public class Trace {
       filled.set(17);
     }
 
-    nBytesAcc.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("nBytesAcc has invalid value (" + b + ")");
+    }
+    nBytesAcc.put((byte) (b >> 24));
+    nBytesAcc.put((byte) (b >> 16));
+    nBytesAcc.put((byte) (b >> 8));
+    nBytesAcc.put((byte) b);
 
     return this;
   }
@@ -272,7 +308,13 @@ public class Trace {
       filled.set(11);
     }
 
-    ripshaStamp.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("ripshaStamp has invalid value (" + b + ")");
+    }
+    ripshaStamp.put((byte) (b >> 24));
+    ripshaStamp.put((byte) (b >> 16));
+    ripshaStamp.put((byte) (b >> 8));
+    ripshaStamp.put((byte) b);
 
     return this;
   }
@@ -320,7 +362,13 @@ public class Trace {
       filled.set(15);
     }
 
-    totalSize.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("totalSize has invalid value (" + b + ")");
+    }
+    totalSize.put((byte) (b >> 24));
+    totalSize.put((byte) (b >> 16));
+    totalSize.put((byte) (b >> 8));
+    totalSize.put((byte) b);
 
     return this;
   }
@@ -406,15 +454,15 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      id.position(id.position() + 8);
+      id.position(id.position() + 4);
     }
 
     if (!filled.get(1)) {
-      index.position(index.position() + 8);
+      index.position(index.position() + 4);
     }
 
     if (!filled.get(2)) {
-      indexMax.position(indexMax.position() + 8);
+      indexMax.position(indexMax.position() + 4);
     }
 
     if (!filled.get(3)) {
@@ -442,15 +490,15 @@ public class Trace {
     }
 
     if (!filled.get(9)) {
-      limb.position(limb.position() + 32);
+      limb.position(limb.position() + 16);
     }
 
     if (!filled.get(16)) {
-      nBytes.position(nBytes.position() + 2);
+      nBytes.position(nBytes.position() + 1);
     }
 
     if (!filled.get(17)) {
-      nBytesAcc.position(nBytesAcc.position() + 8);
+      nBytesAcc.position(nBytesAcc.position() + 4);
     }
 
     if (!filled.get(10)) {
@@ -458,7 +506,7 @@ public class Trace {
     }
 
     if (!filled.get(11)) {
-      ripshaStamp.position(ripshaStamp.position() + 8);
+      ripshaStamp.position(ripshaStamp.position() + 4);
     }
 
     if (!filled.get(12)) {
@@ -474,7 +522,7 @@ public class Trace {
     }
 
     if (!filled.get(15)) {
-      totalSize.position(totalSize.position() + 8);
+      totalSize.position(totalSize.position() + 4);
     }
 
     filled.clear();

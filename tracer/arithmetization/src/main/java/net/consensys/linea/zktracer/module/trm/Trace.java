@@ -50,19 +50,19 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("trm.ACC_HI", 32, length),
-        new ColumnHeader("trm.ACC_LO", 32, length),
-        new ColumnHeader("trm.ACC_T", 8, length),
+        new ColumnHeader("trm.ACC_HI", 16, length),
+        new ColumnHeader("trm.ACC_LO", 16, length),
+        new ColumnHeader("trm.ACC_T", 4, length),
         new ColumnHeader("trm.BYTE_HI", 1, length),
         new ColumnHeader("trm.BYTE_LO", 1, length),
         new ColumnHeader("trm.CT", 1, length),
         new ColumnHeader("trm.IS_PRECOMPILE", 1, length),
         new ColumnHeader("trm.ONE", 1, length),
         new ColumnHeader("trm.PBIT", 1, length),
-        new ColumnHeader("trm.RAW_ADDRESS_HI", 32, length),
-        new ColumnHeader("trm.RAW_ADDRESS_LO", 32, length),
-        new ColumnHeader("trm.STAMP", 4, length),
-        new ColumnHeader("trm.TRM_ADDRESS_HI", 8, length));
+        new ColumnHeader("trm.RAW_ADDRESS_HI", 16, length),
+        new ColumnHeader("trm.RAW_ADDRESS_LO", 16, length),
+        new ColumnHeader("trm.STAMP", 3, length),
+        new ColumnHeader("trm.TRM_ADDRESS_HI", 4, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -96,11 +96,20 @@ public class Trace {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("accHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       accHi.put((byte) 0);
     }
-    accHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      accHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -112,11 +121,20 @@ public class Trace {
       filled.set(1);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("accLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       accLo.put((byte) 0);
     }
-    accLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      accLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -128,7 +146,13 @@ public class Trace {
       filled.set(2);
     }
 
-    accT.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("accT has invalid value (" + b + ")");
+    }
+    accT.put((byte) (b >> 24));
+    accT.put((byte) (b >> 16));
+    accT.put((byte) (b >> 8));
+    accT.put((byte) b);
 
     return this;
   }
@@ -212,11 +236,21 @@ public class Trace {
       filled.set(9);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "rawAddressHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       rawAddressHi.put((byte) 0);
     }
-    rawAddressHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      rawAddressHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -228,23 +262,38 @@ public class Trace {
       filled.set(10);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "rawAddressLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       rawAddressLo.put((byte) 0);
     }
-    rawAddressLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      rawAddressLo.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace stamp(final int b) {
+  public Trace stamp(final long b) {
     if (filled.get(11)) {
       throw new IllegalStateException("trm.STAMP already set");
     } else {
       filled.set(11);
     }
 
-    stamp.putInt(b);
+    if (b >= 16777216L) {
+      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+    }
+    stamp.put((byte) (b >> 16));
+    stamp.put((byte) (b >> 8));
+    stamp.put((byte) b);
 
     return this;
   }
@@ -256,7 +305,13 @@ public class Trace {
       filled.set(12);
     }
 
-    trmAddressHi.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("trmAddressHi has invalid value (" + b + ")");
+    }
+    trmAddressHi.put((byte) (b >> 24));
+    trmAddressHi.put((byte) (b >> 16));
+    trmAddressHi.put((byte) (b >> 8));
+    trmAddressHi.put((byte) b);
 
     return this;
   }
@@ -322,15 +377,15 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      accHi.position(accHi.position() + 32);
+      accHi.position(accHi.position() + 16);
     }
 
     if (!filled.get(1)) {
-      accLo.position(accLo.position() + 32);
+      accLo.position(accLo.position() + 16);
     }
 
     if (!filled.get(2)) {
-      accT.position(accT.position() + 8);
+      accT.position(accT.position() + 4);
     }
 
     if (!filled.get(3)) {
@@ -358,19 +413,19 @@ public class Trace {
     }
 
     if (!filled.get(9)) {
-      rawAddressHi.position(rawAddressHi.position() + 32);
+      rawAddressHi.position(rawAddressHi.position() + 16);
     }
 
     if (!filled.get(10)) {
-      rawAddressLo.position(rawAddressLo.position() + 32);
+      rawAddressLo.position(rawAddressLo.position() + 16);
     }
 
     if (!filled.get(11)) {
-      stamp.position(stamp.position() + 4);
+      stamp.position(stamp.position() + 3);
     }
 
     if (!filled.get(12)) {
-      trmAddressHi.position(trmAddressHi.position() + 8);
+      trmAddressHi.position(trmAddressHi.position() + 4);
     }
 
     filled.clear();
