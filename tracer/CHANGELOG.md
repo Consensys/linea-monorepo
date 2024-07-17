@@ -1,10 +1,23 @@
 # Changelog
 
+## 0.2.0-rc1
+* feat: add PRECOMPILE_ECPAIRING_G2_MEMBERSHIP_CALLS in spillings.toml and did some renaming ([#819](https://github.com/Consensys/linea-arithmetization/pull/819))
+* feat: optimise trace generation (except hub) ([#838](https://github.com/Consensys/linea-arithmetization/pull/838))
+
+## 0.1.5-rc6
+* Migrating of `TRACES_DIR` env var to 
+`plugin-linea-conflated-trace-generation-traces-output-path` CLI option that can be included in the toml config files.
+The path specified in `plugin-linea-conflated-trace-generation-traces-output-path` will be created automatically if it does not exist.
+This time this has nothing to do with the `ContinuousTracingPlugin` [#830](https://github.com/Consensys/linea-arithmetization/pull/830).
+
+## 0.1.5-rc5
+* Migrating of `TRACES_DIR` env var to `plugin-linea-continuous-tracing-traces-dir` CLI option that can be included in the 
+toml config files. The path specified in `plugin-linea-continuous-tracing-traces-dir` will be created automatically 
+  if it does not exist [#825](https://github.com/Consensys/linea-arithmetization/pull/825).
+
 ## 0.1.4-test21
-Test pre-release 21 from [temp/issue-248/count-stack-only](https://github.
-com/Consensys/linea-arithmetization/tree/temp/issue-248/count-stack-only)
-* fix: capture SSTORE-touched storage slots for correct gas computations [#606](https://github.
-  com/Consensys/linea-arithmetization/pull/606)
+Test pre-release 21 from [temp/issue-248/count-stack-only](https://github.com/Consensys/linea-arithmetization/tree/temp/issue-248/count-stack-only)
+* fix: capture SSTORE-touched storage slots for correct gas computations [#606](https://github.com/Consensys/linea-arithmetization/pull/606)
 * build: make the build script portable, explicit dependency on Go & GCC, test libcompress build [#621](https://github.com/Consensys/linea-arithmetization/pull/621)
 * Update after the refactor of transaction selection service [#626](https://github.com/Consensys/linea-arithmetization/pull/626)
 * Use the right classloader to load the native library [#628](https://github.com/Consensys/linea-arithmetization/pull/628)
