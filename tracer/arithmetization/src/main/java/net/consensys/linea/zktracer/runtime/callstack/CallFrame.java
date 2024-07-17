@@ -61,7 +61,7 @@ public class CallFrame {
   /** */
   @Getter private boolean underDeployment;
 
-  @Getter @Setter private TraceSection needsUnlatchingAtReEntry = null;
+  @Getter @Setter private TraceSection sectionToUnlatch = null;
 
   /** the ID of this {@link CallFrame} parent in the {@link CallStack}. */
   @Getter private int parentFrame;

@@ -43,7 +43,7 @@ public class CurveOperations {
 
   public static BigInteger extractParameter(final Bytes input) {
     if (input.isEmpty()) {
-      throw new IllegalArgumentException("EC_DATA input can not be empty");
+      throw new IllegalArgumentException("EC_DATA input cannot be empty");
     }
     return new BigInteger(1, input.toArray());
   }
@@ -70,14 +70,8 @@ public class CurveOperations {
     final Fq2 pX = Fq2.create(pXRe, pXIm);
     final Fq2 pY = Fq2.create(pYRe, pYIm);
 
-    if (!pX.isValid() || !pY.isValid()) {
-      return false;
-    }
-
     final AltBn128Fq2Point p2 = new AltBn128Fq2Point(pX, pY);
-    final AltBn128Fq2Point pPowQ = p2.multiply(Q);
-
-    return pPowQ.isInfinity();
+    return p2.isOnCurve() && p2.isInGroup();
   }
 
   public static boolean ecRecoverSuccessful(final Bytes input) {
