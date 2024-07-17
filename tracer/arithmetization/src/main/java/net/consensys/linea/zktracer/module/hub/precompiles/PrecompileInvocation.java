@@ -21,7 +21,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcMulEffectiveCall;
-import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingEffectiveCall;
+import net.consensys.linea.zktracer.module.limits.precompiles.EcPairingFinalExponentiations;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
@@ -96,7 +96,7 @@ public record PrecompileInvocation(
           case MODEXP -> false;
           case EC_ADD -> hub.transients().op().gasAllowanceForCall() < 150;
           case EC_MUL -> hub.transients().op().gasAllowanceForCall() < 6000;
-          case EC_PAIRING -> EcPairingEffectiveCall.isHubFailure(hub);
+          case EC_PAIRING -> EcPairingFinalExponentiations.isHubFailure(hub);
           case BLAKE2F -> BlakeRounds.isHubFailure(hub);
         };
 
@@ -108,7 +108,7 @@ public record PrecompileInvocation(
                   > hub.transients().op().gasAllowanceForCall();
               case EC_ADD -> EcAddEffectiveCall.isRamFailure(hub);
               case EC_MUL -> EcMulEffectiveCall.isRamFailure(hub);
-              case EC_PAIRING -> EcPairingEffectiveCall.isRamFailure(hub);
+              case EC_PAIRING -> EcPairingFinalExponentiations.isRamFailure(hub);
               case BLAKE2F -> BlakeRounds.isRamFailure(hub);
             };
 
@@ -137,7 +137,7 @@ public record PrecompileInvocation(
               case MODEXP -> ModexpEffectiveCall.gasCost(hub);
               case EC_ADD -> EcAddEffectiveCall.gasCost();
               case EC_MUL -> EcMulEffectiveCall.gasCost();
-              case EC_PAIRING -> EcPairingEffectiveCall.gasCost(hub);
+              case EC_PAIRING -> EcPairingFinalExponentiations.gasCost(hub);
               case BLAKE2F -> BlakeRounds.gasCost(hub);
             };
 

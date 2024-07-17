@@ -23,8 +23,8 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.module.Module;
 
 @RequiredArgsConstructor
-public final class EcPairingMillerLoop implements Module {
-  private final EcPairingEffectiveCall ecpairingCall;
+public final class EcPairingMillerLoops implements Module {
+  private final EcPairingFinalExponentiations ecpairingCall;
 
   @Override
   public String moduleKey() {
@@ -41,7 +41,7 @@ public final class EcPairingMillerLoop implements Module {
   public int lineCount() {
     long r = 0;
 
-    for (EcPairingLimit count : this.ecpairingCall.counts()) {
+    for (EcPairingTallier count : this.ecpairingCall.counts()) {
       r += count.numberOfMillerLoops();
     }
 
