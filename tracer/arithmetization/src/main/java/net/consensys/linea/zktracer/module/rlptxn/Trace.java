@@ -97,31 +97,31 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("rlptxn.ABS_TX_NUM", 4, length),
-        new ColumnHeader("rlptxn.ABS_TX_NUM_INFINY", 4, length),
-        new ColumnHeader("rlptxn.ACC_1", 32, length),
-        new ColumnHeader("rlptxn.ACC_2", 32, length),
-        new ColumnHeader("rlptxn.ACC_BYTESIZE", 2, length),
-        new ColumnHeader("rlptxn.ACCESS_TUPLE_BYTESIZE", 4, length),
-        new ColumnHeader("rlptxn.ADDR_HI", 8, length),
-        new ColumnHeader("rlptxn.ADDR_LO", 32, length),
+        new ColumnHeader("rlptxn.ABS_TX_NUM", 2, length),
+        new ColumnHeader("rlptxn.ABS_TX_NUM_INFINY", 2, length),
+        new ColumnHeader("rlptxn.ACC_1", 16, length),
+        new ColumnHeader("rlptxn.ACC_2", 16, length),
+        new ColumnHeader("rlptxn.ACC_BYTESIZE", 1, length),
+        new ColumnHeader("rlptxn.ACCESS_TUPLE_BYTESIZE", 3, length),
+        new ColumnHeader("rlptxn.ADDR_HI", 4, length),
+        new ColumnHeader("rlptxn.ADDR_LO", 16, length),
         new ColumnHeader("rlptxn.BIT", 1, length),
         new ColumnHeader("rlptxn.BIT_ACC", 1, length),
         new ColumnHeader("rlptxn.BYTE_1", 1, length),
         new ColumnHeader("rlptxn.BYTE_2", 1, length),
-        new ColumnHeader("rlptxn.CODE_FRAGMENT_INDEX", 8, length),
-        new ColumnHeader("rlptxn.COUNTER", 2, length),
-        new ColumnHeader("rlptxn.DATA_GAS_COST", 8, length),
-        new ColumnHeader("rlptxn.DATA_HI", 32, length),
-        new ColumnHeader("rlptxn.DATA_LO", 32, length),
+        new ColumnHeader("rlptxn.CODE_FRAGMENT_INDEX", 4, length),
+        new ColumnHeader("rlptxn.COUNTER", 1, length),
+        new ColumnHeader("rlptxn.DATA_GAS_COST", 4, length),
+        new ColumnHeader("rlptxn.DATA_HI", 16, length),
+        new ColumnHeader("rlptxn.DATA_LO", 16, length),
         new ColumnHeader("rlptxn.DEPTH_1", 1, length),
         new ColumnHeader("rlptxn.DEPTH_2", 1, length),
         new ColumnHeader("rlptxn.DONE", 1, length),
-        new ColumnHeader("rlptxn.INDEX_DATA", 8, length),
-        new ColumnHeader("rlptxn.INDEX_LT", 8, length),
-        new ColumnHeader("rlptxn.INDEX_LX", 8, length),
-        new ColumnHeader("rlptxn.INPUT_1", 32, length),
-        new ColumnHeader("rlptxn.INPUT_2", 32, length),
+        new ColumnHeader("rlptxn.INDEX_DATA", 4, length),
+        new ColumnHeader("rlptxn.INDEX_LT", 4, length),
+        new ColumnHeader("rlptxn.INDEX_LX", 4, length),
+        new ColumnHeader("rlptxn.INPUT_1", 16, length),
+        new ColumnHeader("rlptxn.INPUT_2", 16, length),
         new ColumnHeader("rlptxn.IS_PHASE_ACCESS_LIST", 1, length),
         new ColumnHeader("rlptxn.IS_PHASE_BETA", 1, length),
         new ColumnHeader("rlptxn.IS_PHASE_CHAIN_ID", 1, length),
@@ -139,24 +139,24 @@ public class Trace {
         new ColumnHeader("rlptxn.IS_PHASE_Y", 1, length),
         new ColumnHeader("rlptxn.IS_PREFIX", 1, length),
         new ColumnHeader("rlptxn.LC_CORRECTION", 1, length),
-        new ColumnHeader("rlptxn.LIMB", 32, length),
+        new ColumnHeader("rlptxn.LIMB", 16, length),
         new ColumnHeader("rlptxn.LIMB_CONSTRUCTED", 1, length),
         new ColumnHeader("rlptxn.LT", 1, length),
         new ColumnHeader("rlptxn.LX", 1, length),
-        new ColumnHeader("rlptxn.nADDR", 4, length),
-        new ColumnHeader("rlptxn.nBYTES", 2, length),
-        new ColumnHeader("rlptxn.nKEYS", 4, length),
-        new ColumnHeader("rlptxn.nKEYS_PER_ADDR", 4, length),
-        new ColumnHeader("rlptxn.nSTEP", 2, length),
-        new ColumnHeader("rlptxn.PHASE", 2, length),
+        new ColumnHeader("rlptxn.nADDR", 2, length),
+        new ColumnHeader("rlptxn.nBYTES", 1, length),
+        new ColumnHeader("rlptxn.nKEYS", 2, length),
+        new ColumnHeader("rlptxn.nKEYS_PER_ADDR", 2, length),
+        new ColumnHeader("rlptxn.nSTEP", 1, length),
+        new ColumnHeader("rlptxn.PHASE", 1, length),
         new ColumnHeader("rlptxn.PHASE_END", 1, length),
-        new ColumnHeader("rlptxn.PHASE_SIZE", 8, length),
-        new ColumnHeader("rlptxn.POWER", 32, length),
+        new ColumnHeader("rlptxn.PHASE_SIZE", 4, length),
+        new ColumnHeader("rlptxn.POWER", 16, length),
         new ColumnHeader("rlptxn.REQUIRES_EVM_EXECUTION", 1, length),
-        new ColumnHeader("rlptxn.RLP_LT_BYTESIZE", 4, length),
-        new ColumnHeader("rlptxn.RLP_LX_BYTESIZE", 4, length),
+        new ColumnHeader("rlptxn.RLP_LT_BYTESIZE", 3, length),
+        new ColumnHeader("rlptxn.RLP_LX_BYTESIZE", 3, length),
         new ColumnHeader("rlptxn.TO_HASH_BY_PROVER", 1, length),
-        new ColumnHeader("rlptxn.TYPE", 2, length));
+        new ColumnHeader("rlptxn.TYPE", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
@@ -230,26 +230,34 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace absTxNum(final int b) {
+  public Trace absTxNum(final long b) {
     if (filled.get(0)) {
       throw new IllegalStateException("rlptxn.ABS_TX_NUM already set");
     } else {
       filled.set(0);
     }
 
-    absTxNum.putInt(b);
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("absTxNum has invalid value (" + b + ")");
+    }
+    absTxNum.put((byte) (b >> 8));
+    absTxNum.put((byte) b);
 
     return this;
   }
 
-  public Trace absTxNumInfiny(final int b) {
+  public Trace absTxNumInfiny(final long b) {
     if (filled.get(1)) {
       throw new IllegalStateException("rlptxn.ABS_TX_NUM_INFINY already set");
     } else {
       filled.set(1);
     }
 
-    absTxNumInfiny.putInt(b);
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("absTxNumInfiny has invalid value (" + b + ")");
+    }
+    absTxNumInfiny.put((byte) (b >> 8));
+    absTxNumInfiny.put((byte) b);
 
     return this;
   }
@@ -261,11 +269,20 @@ public class Trace {
       filled.set(3);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc1 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc1.put((byte) 0);
     }
-    acc1.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc1.put(bs.get(j));
+    }
 
     return this;
   }
@@ -277,35 +294,52 @@ public class Trace {
       filled.set(4);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc2 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc2.put((byte) 0);
     }
-    acc2.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc2.put(bs.get(j));
+    }
 
     return this;
   }
 
-  public Trace accBytesize(final short b) {
+  public Trace accBytesize(final long b) {
     if (filled.get(5)) {
       throw new IllegalStateException("rlptxn.ACC_BYTESIZE already set");
     } else {
       filled.set(5);
     }
 
-    accBytesize.putShort(b);
+    if (b >= 32L) {
+      throw new IllegalArgumentException("accBytesize has invalid value (" + b + ")");
+    }
+    accBytesize.put((byte) b);
 
     return this;
   }
 
-  public Trace accessTupleBytesize(final int b) {
+  public Trace accessTupleBytesize(final long b) {
     if (filled.get(2)) {
       throw new IllegalStateException("rlptxn.ACCESS_TUPLE_BYTESIZE already set");
     } else {
       filled.set(2);
     }
 
-    accessTupleBytesize.putInt(b);
+    if (b >= 16777216L) {
+      throw new IllegalArgumentException("accessTupleBytesize has invalid value (" + b + ")");
+    }
+    accessTupleBytesize.put((byte) (b >> 16));
+    accessTupleBytesize.put((byte) (b >> 8));
+    accessTupleBytesize.put((byte) b);
 
     return this;
   }
@@ -317,7 +351,13 @@ public class Trace {
       filled.set(6);
     }
 
-    addrHi.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("addrHi has invalid value (" + b + ")");
+    }
+    addrHi.put((byte) (b >> 24));
+    addrHi.put((byte) (b >> 16));
+    addrHi.put((byte) (b >> 8));
+    addrHi.put((byte) b);
 
     return this;
   }
@@ -329,11 +369,20 @@ public class Trace {
       filled.set(7);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("addrLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       addrLo.put((byte) 0);
     }
-    addrLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      addrLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -393,19 +442,28 @@ public class Trace {
       filled.set(12);
     }
 
-    codeFragmentIndex.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("codeFragmentIndex has invalid value (" + b + ")");
+    }
+    codeFragmentIndex.put((byte) (b >> 24));
+    codeFragmentIndex.put((byte) (b >> 16));
+    codeFragmentIndex.put((byte) (b >> 8));
+    codeFragmentIndex.put((byte) b);
 
     return this;
   }
 
-  public Trace counter(final short b) {
+  public Trace counter(final long b) {
     if (filled.get(13)) {
       throw new IllegalStateException("rlptxn.COUNTER already set");
     } else {
       filled.set(13);
     }
 
-    counter.putShort(b);
+    if (b >= 32L) {
+      throw new IllegalArgumentException("counter has invalid value (" + b + ")");
+    }
+    counter.put((byte) b);
 
     return this;
   }
@@ -417,7 +475,13 @@ public class Trace {
       filled.set(14);
     }
 
-    dataGasCost.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("dataGasCost has invalid value (" + b + ")");
+    }
+    dataGasCost.put((byte) (b >> 24));
+    dataGasCost.put((byte) (b >> 16));
+    dataGasCost.put((byte) (b >> 8));
+    dataGasCost.put((byte) b);
 
     return this;
   }
@@ -429,11 +493,20 @@ public class Trace {
       filled.set(15);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("dataHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       dataHi.put((byte) 0);
     }
-    dataHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      dataHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -445,11 +518,20 @@ public class Trace {
       filled.set(16);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("dataLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       dataLo.put((byte) 0);
     }
-    dataLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      dataLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -497,7 +579,13 @@ public class Trace {
       filled.set(20);
     }
 
-    indexData.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("indexData has invalid value (" + b + ")");
+    }
+    indexData.put((byte) (b >> 24));
+    indexData.put((byte) (b >> 16));
+    indexData.put((byte) (b >> 8));
+    indexData.put((byte) b);
 
     return this;
   }
@@ -509,7 +597,13 @@ public class Trace {
       filled.set(21);
     }
 
-    indexLt.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("indexLt has invalid value (" + b + ")");
+    }
+    indexLt.put((byte) (b >> 24));
+    indexLt.put((byte) (b >> 16));
+    indexLt.put((byte) (b >> 8));
+    indexLt.put((byte) b);
 
     return this;
   }
@@ -521,7 +615,13 @@ public class Trace {
       filled.set(22);
     }
 
-    indexLx.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("indexLx has invalid value (" + b + ")");
+    }
+    indexLx.put((byte) (b >> 24));
+    indexLx.put((byte) (b >> 16));
+    indexLx.put((byte) (b >> 8));
+    indexLx.put((byte) b);
 
     return this;
   }
@@ -533,11 +633,20 @@ public class Trace {
       filled.set(23);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("input1 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       input1.put((byte) 0);
     }
-    input1.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      input1.put(bs.get(j));
+    }
 
     return this;
   }
@@ -549,11 +658,20 @@ public class Trace {
       filled.set(24);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("input2 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       input2.put((byte) 0);
     }
-    input2.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      input2.put(bs.get(j));
+    }
 
     return this;
   }
@@ -769,11 +887,20 @@ public class Trace {
       filled.set(42);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("limb has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       limb.put((byte) 0);
     }
-    limb.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      limb.put(bs.get(j));
+    }
 
     return this;
   }
@@ -814,74 +941,95 @@ public class Trace {
     return this;
   }
 
-  public Trace nAddr(final int b) {
+  public Trace nAddr(final long b) {
     if (filled.get(55)) {
       throw new IllegalStateException("rlptxn.nADDR already set");
     } else {
       filled.set(55);
     }
 
-    nAddr.putInt(b);
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("nAddr has invalid value (" + b + ")");
+    }
+    nAddr.put((byte) (b >> 8));
+    nAddr.put((byte) b);
 
     return this;
   }
 
-  public Trace nBytes(final short b) {
+  public Trace nBytes(final long b) {
     if (filled.get(56)) {
       throw new IllegalStateException("rlptxn.nBYTES already set");
     } else {
       filled.set(56);
     }
 
-    nBytes.putShort(b);
+    if (b >= 32L) {
+      throw new IllegalArgumentException("nBytes has invalid value (" + b + ")");
+    }
+    nBytes.put((byte) b);
 
     return this;
   }
 
-  public Trace nKeys(final int b) {
+  public Trace nKeys(final long b) {
     if (filled.get(57)) {
       throw new IllegalStateException("rlptxn.nKEYS already set");
     } else {
       filled.set(57);
     }
 
-    nKeys.putInt(b);
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("nKeys has invalid value (" + b + ")");
+    }
+    nKeys.put((byte) (b >> 8));
+    nKeys.put((byte) b);
 
     return this;
   }
 
-  public Trace nKeysPerAddr(final int b) {
+  public Trace nKeysPerAddr(final long b) {
     if (filled.get(58)) {
       throw new IllegalStateException("rlptxn.nKEYS_PER_ADDR already set");
     } else {
       filled.set(58);
     }
 
-    nKeysPerAddr.putInt(b);
+    if (b >= 65536L) {
+      throw new IllegalArgumentException("nKeysPerAddr has invalid value (" + b + ")");
+    }
+    nKeysPerAddr.put((byte) (b >> 8));
+    nKeysPerAddr.put((byte) b);
 
     return this;
   }
 
-  public Trace nStep(final short b) {
+  public Trace nStep(final long b) {
     if (filled.get(59)) {
       throw new IllegalStateException("rlptxn.nSTEP already set");
     } else {
       filled.set(59);
     }
 
-    nStep.putShort(b);
+    if (b >= 32L) {
+      throw new IllegalArgumentException("nStep has invalid value (" + b + ")");
+    }
+    nStep.put((byte) b);
 
     return this;
   }
 
-  public Trace phase(final short b) {
+  public Trace phase(final long b) {
     if (filled.get(46)) {
       throw new IllegalStateException("rlptxn.PHASE already set");
     } else {
       filled.set(46);
     }
 
-    phase.putShort(b);
+    if (b >= 32L) {
+      throw new IllegalArgumentException("phase has invalid value (" + b + ")");
+    }
+    phase.put((byte) b);
 
     return this;
   }
@@ -905,7 +1053,13 @@ public class Trace {
       filled.set(48);
     }
 
-    phaseSize.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("phaseSize has invalid value (" + b + ")");
+    }
+    phaseSize.put((byte) (b >> 24));
+    phaseSize.put((byte) (b >> 16));
+    phaseSize.put((byte) (b >> 8));
+    phaseSize.put((byte) b);
 
     return this;
   }
@@ -917,11 +1071,20 @@ public class Trace {
       filled.set(49);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("power has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       power.put((byte) 0);
     }
-    power.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      power.put(bs.get(j));
+    }
 
     return this;
   }
@@ -938,26 +1101,36 @@ public class Trace {
     return this;
   }
 
-  public Trace rlpLtBytesize(final int b) {
+  public Trace rlpLtBytesize(final long b) {
     if (filled.get(51)) {
       throw new IllegalStateException("rlptxn.RLP_LT_BYTESIZE already set");
     } else {
       filled.set(51);
     }
 
-    rlpLtBytesize.putInt(b);
+    if (b >= 16777216L) {
+      throw new IllegalArgumentException("rlpLtBytesize has invalid value (" + b + ")");
+    }
+    rlpLtBytesize.put((byte) (b >> 16));
+    rlpLtBytesize.put((byte) (b >> 8));
+    rlpLtBytesize.put((byte) b);
 
     return this;
   }
 
-  public Trace rlpLxBytesize(final int b) {
+  public Trace rlpLxBytesize(final long b) {
     if (filled.get(52)) {
       throw new IllegalStateException("rlptxn.RLP_LX_BYTESIZE already set");
     } else {
       filled.set(52);
     }
 
-    rlpLxBytesize.putInt(b);
+    if (b >= 16777216L) {
+      throw new IllegalArgumentException("rlpLxBytesize has invalid value (" + b + ")");
+    }
+    rlpLxBytesize.put((byte) (b >> 16));
+    rlpLxBytesize.put((byte) (b >> 8));
+    rlpLxBytesize.put((byte) b);
 
     return this;
   }
@@ -974,14 +1147,17 @@ public class Trace {
     return this;
   }
 
-  public Trace type(final short b) {
+  public Trace type(final long b) {
     if (filled.get(54)) {
       throw new IllegalStateException("rlptxn.TYPE already set");
     } else {
       filled.set(54);
     }
 
-    type.putShort(b);
+    if (b >= 8L) {
+      throw new IllegalArgumentException("type has invalid value (" + b + ")");
+    }
+    type.put((byte) b);
 
     return this;
   }
@@ -1236,35 +1412,35 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      absTxNum.position(absTxNum.position() + 4);
+      absTxNum.position(absTxNum.position() + 2);
     }
 
     if (!filled.get(1)) {
-      absTxNumInfiny.position(absTxNumInfiny.position() + 4);
+      absTxNumInfiny.position(absTxNumInfiny.position() + 2);
     }
 
     if (!filled.get(3)) {
-      acc1.position(acc1.position() + 32);
+      acc1.position(acc1.position() + 16);
     }
 
     if (!filled.get(4)) {
-      acc2.position(acc2.position() + 32);
+      acc2.position(acc2.position() + 16);
     }
 
     if (!filled.get(5)) {
-      accBytesize.position(accBytesize.position() + 2);
+      accBytesize.position(accBytesize.position() + 1);
     }
 
     if (!filled.get(2)) {
-      accessTupleBytesize.position(accessTupleBytesize.position() + 4);
+      accessTupleBytesize.position(accessTupleBytesize.position() + 3);
     }
 
     if (!filled.get(6)) {
-      addrHi.position(addrHi.position() + 8);
+      addrHi.position(addrHi.position() + 4);
     }
 
     if (!filled.get(7)) {
-      addrLo.position(addrLo.position() + 32);
+      addrLo.position(addrLo.position() + 16);
     }
 
     if (!filled.get(8)) {
@@ -1284,23 +1460,23 @@ public class Trace {
     }
 
     if (!filled.get(12)) {
-      codeFragmentIndex.position(codeFragmentIndex.position() + 8);
+      codeFragmentIndex.position(codeFragmentIndex.position() + 4);
     }
 
     if (!filled.get(13)) {
-      counter.position(counter.position() + 2);
+      counter.position(counter.position() + 1);
     }
 
     if (!filled.get(14)) {
-      dataGasCost.position(dataGasCost.position() + 8);
+      dataGasCost.position(dataGasCost.position() + 4);
     }
 
     if (!filled.get(15)) {
-      dataHi.position(dataHi.position() + 32);
+      dataHi.position(dataHi.position() + 16);
     }
 
     if (!filled.get(16)) {
-      dataLo.position(dataLo.position() + 32);
+      dataLo.position(dataLo.position() + 16);
     }
 
     if (!filled.get(17)) {
@@ -1316,23 +1492,23 @@ public class Trace {
     }
 
     if (!filled.get(20)) {
-      indexData.position(indexData.position() + 8);
+      indexData.position(indexData.position() + 4);
     }
 
     if (!filled.get(21)) {
-      indexLt.position(indexLt.position() + 8);
+      indexLt.position(indexLt.position() + 4);
     }
 
     if (!filled.get(22)) {
-      indexLx.position(indexLx.position() + 8);
+      indexLx.position(indexLx.position() + 4);
     }
 
     if (!filled.get(23)) {
-      input1.position(input1.position() + 32);
+      input1.position(input1.position() + 16);
     }
 
     if (!filled.get(24)) {
-      input2.position(input2.position() + 32);
+      input2.position(input2.position() + 16);
     }
 
     if (!filled.get(25)) {
@@ -1404,7 +1580,7 @@ public class Trace {
     }
 
     if (!filled.get(42)) {
-      limb.position(limb.position() + 32);
+      limb.position(limb.position() + 16);
     }
 
     if (!filled.get(43)) {
@@ -1420,27 +1596,27 @@ public class Trace {
     }
 
     if (!filled.get(55)) {
-      nAddr.position(nAddr.position() + 4);
+      nAddr.position(nAddr.position() + 2);
     }
 
     if (!filled.get(56)) {
-      nBytes.position(nBytes.position() + 2);
+      nBytes.position(nBytes.position() + 1);
     }
 
     if (!filled.get(57)) {
-      nKeys.position(nKeys.position() + 4);
+      nKeys.position(nKeys.position() + 2);
     }
 
     if (!filled.get(58)) {
-      nKeysPerAddr.position(nKeysPerAddr.position() + 4);
+      nKeysPerAddr.position(nKeysPerAddr.position() + 2);
     }
 
     if (!filled.get(59)) {
-      nStep.position(nStep.position() + 2);
+      nStep.position(nStep.position() + 1);
     }
 
     if (!filled.get(46)) {
-      phase.position(phase.position() + 2);
+      phase.position(phase.position() + 1);
     }
 
     if (!filled.get(47)) {
@@ -1448,11 +1624,11 @@ public class Trace {
     }
 
     if (!filled.get(48)) {
-      phaseSize.position(phaseSize.position() + 8);
+      phaseSize.position(phaseSize.position() + 4);
     }
 
     if (!filled.get(49)) {
-      power.position(power.position() + 32);
+      power.position(power.position() + 16);
     }
 
     if (!filled.get(50)) {
@@ -1460,11 +1636,11 @@ public class Trace {
     }
 
     if (!filled.get(51)) {
-      rlpLtBytesize.position(rlpLtBytesize.position() + 4);
+      rlpLtBytesize.position(rlpLtBytesize.position() + 3);
     }
 
     if (!filled.get(52)) {
-      rlpLxBytesize.position(rlpLxBytesize.position() + 4);
+      rlpLxBytesize.position(rlpLxBytesize.position() + 3);
     }
 
     if (!filled.get(53)) {
@@ -1472,7 +1648,7 @@ public class Trace {
     }
 
     if (!filled.get(54)) {
-      type.position(type.position() + 2);
+      type.position(type.position() + 1);
     }
 
     filled.clear();

@@ -15,10 +15,10 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_EXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_MODEXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_EXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_MODEXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_EXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_MODEXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_EXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_MODEXP_LOG;
 
 import lombok.Getter;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -64,12 +64,12 @@ public abstract class ExpOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    // We assume MAX_CT_MACRO_EXP_LOG = MAX_CT_MACRO_MODEXP_LOG = 0;
+    // We assume CT_MAX_MACRO_EXP_LOG = CT_MAX_MACRO_MODEXP_LOG = 0;
     if (this.isExpLog()) {
-      return MAX_CT_CMPTN_EXP_LOG + MAX_CT_PRPRC_EXP_LOG + 3;
+      return CT_MAX_CMPTN_EXP_LOG + CT_MAX_PRPRC_EXP_LOG + 3;
     }
 
-    return MAX_CT_CMPTN_MODEXP_LOG + MAX_CT_PRPRC_MODEXP_LOG + 3;
+    return CT_MAX_CMPTN_MODEXP_LOG + CT_MAX_PRPRC_MODEXP_LOG + 3;
   }
 
   public abstract void preCompute();
@@ -79,7 +79,7 @@ public abstract class ExpOperation extends ModuleOperation {
     short pComputationTanzbAcc = 0; // Paired with Tanzb
     boolean manzb;
     short pComputationManzbAcc = 0; // Paired with Manzb
-    short maxCt = (short) (isExpLog() ? MAX_CT_CMPTN_EXP_LOG : MAX_CT_CMPTN_MODEXP_LOG);
+    short maxCt = (short) (isExpLog() ? CT_MAX_CMPTN_EXP_LOG : CT_MAX_CMPTN_MODEXP_LOG);
 
     for (short i = 0; i < maxCt + 1; i++) {
       /*
@@ -122,7 +122,7 @@ public abstract class ExpOperation extends ModuleOperation {
   }
 
   final void traceMacro(int stamp, Trace trace) {
-    // We assume MAX_CT_MACRO_EXP_LOG = MAX_CT_MACRO_MODEXP_LOG = 0;
+    // We assume CT_MAX_MACRO_EXP_LOG = CT_MAX_MACRO_MODEXP_LOG = 0;
     trace
         .macro(true)
         .stamp(stamp)
@@ -140,7 +140,7 @@ public abstract class ExpOperation extends ModuleOperation {
   }
 
   final void tracePreprocessing(int stamp, Trace trace) {
-    short maxCt = (short) (isExpLog() ? MAX_CT_PRPRC_EXP_LOG : MAX_CT_PRPRC_MODEXP_LOG);
+    short maxCt = (short) (isExpLog() ? CT_MAX_PRPRC_EXP_LOG : CT_MAX_PRPRC_MODEXP_LOG);
     for (short i = 0; i < maxCt + 1; i++) {
       trace
           .prprc(true)

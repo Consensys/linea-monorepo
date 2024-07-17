@@ -74,16 +74,16 @@ public class Trace {
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("bin.ACC_1", 32, length),
-        new ColumnHeader("bin.ACC_2", 32, length),
-        new ColumnHeader("bin.ACC_3", 32, length),
-        new ColumnHeader("bin.ACC_4", 32, length),
-        new ColumnHeader("bin.ACC_5", 32, length),
-        new ColumnHeader("bin.ACC_6", 32, length),
-        new ColumnHeader("bin.ARGUMENT_1_HI", 32, length),
-        new ColumnHeader("bin.ARGUMENT_1_LO", 32, length),
-        new ColumnHeader("bin.ARGUMENT_2_HI", 32, length),
-        new ColumnHeader("bin.ARGUMENT_2_LO", 32, length),
+        new ColumnHeader("bin.ACC_1", 16, length),
+        new ColumnHeader("bin.ACC_2", 16, length),
+        new ColumnHeader("bin.ACC_3", 16, length),
+        new ColumnHeader("bin.ACC_4", 16, length),
+        new ColumnHeader("bin.ACC_5", 16, length),
+        new ColumnHeader("bin.ACC_6", 16, length),
+        new ColumnHeader("bin.ARGUMENT_1_HI", 16, length),
+        new ColumnHeader("bin.ARGUMENT_1_LO", 16, length),
+        new ColumnHeader("bin.ARGUMENT_2_HI", 16, length),
+        new ColumnHeader("bin.ARGUMENT_2_LO", 16, length),
         new ColumnHeader("bin.BIT_1", 1, length),
         new ColumnHeader("bin.BIT_B_4", 1, length),
         new ColumnHeader("bin.BITS", 1, length),
@@ -105,10 +105,10 @@ public class Trace {
         new ColumnHeader("bin.LOW_4", 1, length),
         new ColumnHeader("bin.NEG", 1, length),
         new ColumnHeader("bin.PIVOT", 1, length),
-        new ColumnHeader("bin.RESULT_HI", 32, length),
-        new ColumnHeader("bin.RESULT_LO", 32, length),
+        new ColumnHeader("bin.RESULT_HI", 16, length),
+        new ColumnHeader("bin.RESULT_LO", 16, length),
         new ColumnHeader("bin.SMALL", 1, length),
-        new ColumnHeader("bin.STAMP", 8, length),
+        new ColumnHeader("bin.STAMP", 4, length),
         new ColumnHeader("bin.XXX_BYTE_HI", 1, length),
         new ColumnHeader("bin.XXX_BYTE_LO", 1, length));
   }
@@ -168,11 +168,20 @@ public class Trace {
       filled.set(0);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc1 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc1.put((byte) 0);
     }
-    acc1.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc1.put(bs.get(j));
+    }
 
     return this;
   }
@@ -184,11 +193,20 @@ public class Trace {
       filled.set(1);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc2 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc2.put((byte) 0);
     }
-    acc2.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc2.put(bs.get(j));
+    }
 
     return this;
   }
@@ -200,11 +218,20 @@ public class Trace {
       filled.set(2);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc3 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc3.put((byte) 0);
     }
-    acc3.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc3.put(bs.get(j));
+    }
 
     return this;
   }
@@ -216,11 +243,20 @@ public class Trace {
       filled.set(3);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc4 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc4.put((byte) 0);
     }
-    acc4.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc4.put(bs.get(j));
+    }
 
     return this;
   }
@@ -232,11 +268,20 @@ public class Trace {
       filled.set(4);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc5 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc5.put((byte) 0);
     }
-    acc5.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc5.put(bs.get(j));
+    }
 
     return this;
   }
@@ -248,11 +293,20 @@ public class Trace {
       filled.set(5);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("acc6 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       acc6.put((byte) 0);
     }
-    acc6.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      acc6.put(bs.get(j));
+    }
 
     return this;
   }
@@ -264,11 +318,21 @@ public class Trace {
       filled.set(6);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "argument1Hi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       argument1Hi.put((byte) 0);
     }
-    argument1Hi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      argument1Hi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -280,11 +344,21 @@ public class Trace {
       filled.set(7);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "argument1Lo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       argument1Lo.put((byte) 0);
     }
-    argument1Lo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      argument1Lo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -296,11 +370,21 @@ public class Trace {
       filled.set(8);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "argument2Hi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       argument2Hi.put((byte) 0);
     }
-    argument2Hi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      argument2Hi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -312,11 +396,21 @@ public class Trace {
       filled.set(9);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "argument2Lo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       argument2Lo.put((byte) 0);
     }
-    argument2Lo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      argument2Lo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -580,11 +674,20 @@ public class Trace {
       filled.set(31);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("resultHi has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       resultHi.put((byte) 0);
     }
-    resultHi.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      resultHi.put(bs.get(j));
+    }
 
     return this;
   }
@@ -596,11 +699,20 @@ public class Trace {
       filled.set(32);
     }
 
-    final byte[] bs = b.toArrayUnsafe();
-    for (int i = bs.length; i < 32; i++) {
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("resultLo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
       resultLo.put((byte) 0);
     }
-    resultLo.put(b.toArrayUnsafe());
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      resultLo.put(bs.get(j));
+    }
 
     return this;
   }
@@ -624,7 +736,13 @@ public class Trace {
       filled.set(34);
     }
 
-    stamp.putLong(b);
+    if (b >= 4294967296L) {
+      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+    }
+    stamp.put((byte) (b >> 24));
+    stamp.put((byte) (b >> 16));
+    stamp.put((byte) (b >> 8));
+    stamp.put((byte) b);
 
     return this;
   }
@@ -810,43 +928,43 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      acc1.position(acc1.position() + 32);
+      acc1.position(acc1.position() + 16);
     }
 
     if (!filled.get(1)) {
-      acc2.position(acc2.position() + 32);
+      acc2.position(acc2.position() + 16);
     }
 
     if (!filled.get(2)) {
-      acc3.position(acc3.position() + 32);
+      acc3.position(acc3.position() + 16);
     }
 
     if (!filled.get(3)) {
-      acc4.position(acc4.position() + 32);
+      acc4.position(acc4.position() + 16);
     }
 
     if (!filled.get(4)) {
-      acc5.position(acc5.position() + 32);
+      acc5.position(acc5.position() + 16);
     }
 
     if (!filled.get(5)) {
-      acc6.position(acc6.position() + 32);
+      acc6.position(acc6.position() + 16);
     }
 
     if (!filled.get(6)) {
-      argument1Hi.position(argument1Hi.position() + 32);
+      argument1Hi.position(argument1Hi.position() + 16);
     }
 
     if (!filled.get(7)) {
-      argument1Lo.position(argument1Lo.position() + 32);
+      argument1Lo.position(argument1Lo.position() + 16);
     }
 
     if (!filled.get(8)) {
-      argument2Hi.position(argument2Hi.position() + 32);
+      argument2Hi.position(argument2Hi.position() + 16);
     }
 
     if (!filled.get(9)) {
-      argument2Lo.position(argument2Lo.position() + 32);
+      argument2Lo.position(argument2Lo.position() + 16);
     }
 
     if (!filled.get(11)) {
@@ -934,11 +1052,11 @@ public class Trace {
     }
 
     if (!filled.get(31)) {
-      resultHi.position(resultHi.position() + 32);
+      resultHi.position(resultHi.position() + 16);
     }
 
     if (!filled.get(32)) {
-      resultLo.position(resultLo.position() + 32);
+      resultLo.position(resultLo.position() + 16);
     }
 
     if (!filled.get(33)) {
@@ -946,7 +1064,7 @@ public class Trace {
     }
 
     if (!filled.get(34)) {
-      stamp.position(stamp.position() + 8);
+      stamp.position(stamp.position() + 4);
     }
 
     if (!filled.get(35)) {

@@ -15,10 +15,10 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_EXPLOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.ISZERO;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_CMPTN_EXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.MAX_CT_PRPRC_EXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_EXP_LOG;
+import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_EXP_LOG;
 import static net.consensys.linea.zktracer.opcode.gas.GasConstants.G_EXP_BYTE;
 
 import lombok.EqualsAndHashCode;
@@ -55,7 +55,7 @@ public class ExpLogOperation extends ExpOperation {
     pMacroData1 = this.exponent.hi();
     pMacroData2 = this.exponent.lo();
     pMacroData5 = Bytes.ofUnsignedLong(this.dynCost);
-    initArrays(MAX_CT_PRPRC_EXP_LOG + 1);
+    initArrays(CT_MAX_PRPRC_EXP_LOG + 1);
 
     // Preprocessing
     // First row
@@ -64,7 +64,7 @@ public class ExpLogOperation extends ExpOperation {
     pPreprocessingWcpArg1Lo[0] = this.exponent.hi();
     pPreprocessingWcpArg2Hi[0] = Bytes.EMPTY;
     pPreprocessingWcpArg2Lo[0] = Bytes.EMPTY;
-    pPreprocessingWcpInst[0] = UnsignedByte.of(ISZERO);
+    pPreprocessingWcpInst[0] = UnsignedByte.of(EVM_INST_ISZERO);
     final boolean expnHiIsZero = wcp.callISZERO(this.exponent.hi());
     ;
     pPreprocessingWcpRes[0] = expnHiIsZero;
@@ -77,7 +77,7 @@ public class ExpLogOperation extends ExpOperation {
     }
 
     // Fill trimAcc
-    short maxCt = (short) MAX_CT_CMPTN_EXP_LOG;
+    short maxCt = (short) CT_MAX_CMPTN_EXP_LOG;
     for (short i = 0; i < maxCt + 1; i++) {
       boolean pltBit = i >= pComputationPltJmp;
       byte rawByte = pComputationRawAcc.get(i);
