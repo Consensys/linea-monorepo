@@ -101,7 +101,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotSelectWhenOverLimits() {
-    lineCountLimits.put("ADD", 1);
+    lineCountLimits.put("EXT", 5);
     final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
     transactionSelector.resetCache();
 
@@ -121,7 +121,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotReprocessedWhenOverLimits() {
-    lineCountLimits.put("ADD", 1);
+    lineCountLimits.put("EXT", 5);
     var transactionSelector = newSelectorForNewBlock(lineCountLimits);
     transactionSelector.resetCache();
 
@@ -158,7 +158,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldEvictWhenCacheIsFull() {
-    lineCountLimits.put("ADD", 1);
+    lineCountLimits.put("EXT", 5);
     final var transactionSelector = newSelectorForNewBlock(lineCountLimits);
     transactionSelector.resetCache();
 

@@ -148,7 +148,7 @@ public class SimulationValidatorTest {
 
   @Test
   public void moduleLineCountOverflowTransactionIsInvalid() {
-    lineCountLimits.put("ADD", 1);
+    lineCountLimits.put("EXT", 5);
     final var simulationValidator = createSimulationValidator(lineCountLimits, true, false);
     final org.hyperledger.besu.ethereum.core.Transaction transaction =
         org.hyperledger.besu.ethereum.core.Transaction.builder()
@@ -161,6 +161,6 @@ public class SimulationValidatorTest {
             .signature(FAKE_SIGNATURE)
             .build();
     assertThat(simulationValidator.validateTransaction(transaction, true, false))
-        .contains("Transaction line count for module ADD=2 is above the limit 1");
+        .contains("Transaction line count for module EXT=7 is above the limit 5");
   }
 }
