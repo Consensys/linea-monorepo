@@ -20,8 +20,6 @@ import static net.consensys.linea.BlockchainReferenceTestTools.generateTestParam
 
 import java.util.stream.Stream;
 
-import net.consensys.linea.EvmExtension;
-
 import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +31,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** The blockchain test operation testing framework entry point. */
 @Tag("BlockchainReferenceTest")
-@ExtendWith(EvmExtension.class)
 public class %%TESTS_NAME%% {
 
   private static final String[] TEST_CONFIG_FILE_DIR_PATH = new String[] {%%TESTS_FILE%%};
