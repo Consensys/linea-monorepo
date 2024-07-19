@@ -41,6 +41,8 @@ public class TxTrace implements PostTransactionDefer {
   @Getter private long leftoverGas = -1;
   @Getter private long gasRefundFinalCounter = 0; // TODO:
 
+  private static final int PARALLELIZATION_THRESHOLD = 10_000;
+
   public int size() {
     return this.trace.size();
   }
@@ -72,16 +74,22 @@ public class TxTrace implements PostTransactionDefer {
   }
 
   public long refundedGas() {
-    if (this.refundedGas == -1) {
-      this.refundedGas = 0;
-      for (TraceSection section : this.trace) {
-        if (!section.hasReverted()) {
-          this.refundedGas += section.refundDelta();
+    if (this.trace.size() >= PARALLELIZATION_THRESHOLD) {
+      return this.trace.parallelStream()
+          .filter(section -> !section.hasReverted())
+          .mapToLong(TraceSection::refundDelta)
+          .sum();
+    } else {
+      if (this.refundedGas == -1) {
+        this.refundedGas = 0;
+        for (TraceSection section : this.trace) {
+          if (!section.hasReverted()) {
+            this.refundedGas += section.refundDelta();
+          }
         }
       }
+      return this.refundedGas;
     }
-
-    return this.refundedGas;
   }
 
   @Override
