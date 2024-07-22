@@ -38,6 +38,7 @@ public class LineaProfitabilityConfiguration {
   private boolean txPoolCheckApiEnabled;
   private boolean txPoolCheckP2pEnabled;
   private boolean extraDataPricingEnabled;
+  private boolean extraDataSetMinGasPriceEnabled;
 
   /**
    * These 2 parameters must be atomically updated

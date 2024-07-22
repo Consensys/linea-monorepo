@@ -39,8 +39,8 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.utils.Numeric;
 
 public class ExtraDataPricingTest extends LineaPluginTestBase {
-  private static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
-  private static final int WEI_IN_KWEI = 1000;
+  protected static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
+  protected static final int WEI_IN_KWEI = 1000;
 
   @Override
   public List<String> getTestCliOptions() {

@@ -10,14 +10,16 @@ It is applied, with different configuration to:
 
 #### CLI Options
 
-| Command Line Argument                                    | Default Value |
-|----------------------------------------------------------|---------------|
-| `--plugin-linea-fixed-gas-cost-wei`                      | 0             |
-| `--plugin-linea-variable-gas-cost-wei`                   | 1_000_000_000 |
-| `--plugin-linea-extra-data-pricing-enabled`              | false         |
-| `--plugin-linea-min-margin`                              | 1.0           |
-| `--plugin-linea-estimate-gas-min-margin`                 | 1.0           |
-| `--plugin-linea-tx-pool-min-margin`                      | 0.5           |
+| Command Line Argument                                 | Default Value |
+|-------------------------------------------------------|---------------|
+| `--plugin-linea-fixed-gas-cost-wei`                   | 0             |
+| `--plugin-linea-variable-gas-cost-wei`                | 1_000_000_000 |
+| `--plugin-linea-extra-data-pricing-enabled`           | false         |
+| `--plugin-linea-min-margin`                           | 1.0           |
+| `--plugin-linea-estimate-gas-min-margin`              | 1.0           |
+| `--plugin-linea-tx-pool-min-margin`                   | 0.5           |
+| `--plugin-linea-extra-data-set-min-gas-price-enabled` | true          |
+
 
 ### Module line count validator
 The Module line count validator is a shared component, that is used to check if a tx exceeds any of the configured line count limits.

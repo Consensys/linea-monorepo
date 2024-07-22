@@ -138,14 +138,18 @@ public class LineaExtraDataHandler {
     }
 
     void updateMinGasPrice(final Long minGasPriceKWei) {
-      final var minGasPriceWei = Wei.of(minGasPriceKWei).multiply(WEI_IN_KWEI);
-      final var resp =
-          rpcEndpointService.call(
-              "miner_setMinGasPrice", new Object[] {minGasPriceWei.toShortHexString()});
-      if (!resp.getType().equals(JsonRpcResponseType.SUCCESS)) {
-        throw new LineaExtraDataException(
-            LineaExtraDataException.ErrorType.FAILED_CALLING_SET_MIN_GAS_PRICE,
-            "Internal setMinGasPrice method failed: " + resp);
+      if (profitabilityConf.extraDataSetMinGasPriceEnabled()) {
+        final var minGasPriceWei = Wei.of(minGasPriceKWei).multiply(WEI_IN_KWEI);
+        final var resp =
+            rpcEndpointService.call(
+                "miner_setMinGasPrice", new Object[] {minGasPriceWei.toShortHexString()});
+        if (!resp.getType().equals(JsonRpcResponseType.SUCCESS)) {
+          throw new LineaExtraDataException(
+              LineaExtraDataException.ErrorType.FAILED_CALLING_SET_MIN_GAS_PRICE,
+              "Internal setMinGasPrice method failed: " + resp);
+        }
+      } else {
+        log.trace("Setting minGasPrice from extraData is disabled by conf");
       }
     }
   }
