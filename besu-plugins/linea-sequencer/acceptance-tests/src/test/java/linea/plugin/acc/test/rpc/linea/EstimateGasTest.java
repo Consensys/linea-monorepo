@@ -51,7 +51,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
   protected static final int FIXED_GAS_COST_WEI = 0;
   protected static final int VARIABLE_GAS_COST_WEI = 1_000_000_000;
   protected static final double MIN_MARGIN = 1.0;
-  protected static final double ESTIMATE_GAS_MIN_MARGIN = 1.0;
+  protected static final double ESTIMATE_GAS_MIN_MARGIN = 1.1;
   protected static final Wei MIN_GAS_PRICE = Wei.of(1_000_000_000);
   protected static final int MAX_TRANSACTION_GAS_LIMIT = 30_000_000;
   protected LineaProfitabilityConfiguration profitabilityConf;
@@ -154,34 +154,16 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final var profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
 
-    assertThat(estimatedMaxGasPrice.greaterOrEqualThan(minGasPrice)).isTrue();
-
     assertThat(
             profitabilityCalculator.isProfitable(
                 "Test",
                 tx,
-                profitabilityConf.estimateGasMinMargin(),
+                profitabilityConf.minMargin(),
                 baseFee,
                 estimatedMaxGasPrice,
                 estimatedGasLimit,
                 minGasPrice))
         .isTrue();
-  }
-
-  @Test
-  public void lineaEstimateGasPriorityFeeMinGasPriceLowerBound() {
-    final Account sender = accounts.getSecondaryBenefactor();
-
-    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0");
-
-    final var reqLinea = new LineaEstimateGasRequest(callParams);
-    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
-
-    final var baseFee = Wei.fromHexString(respLinea.baseFeePerGas());
-    final var estimatedPriorityFee = Wei.fromHexString(respLinea.priorityFeePerGas());
-    final var estimatedMaxGasPrice = baseFee.add(estimatedPriorityFee);
-
-    assertMinGasPriceLowerBound(baseFee, estimatedMaxGasPrice);
   }
 
   @Test

@@ -22,6 +22,8 @@ import java.util.List;
 
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
+import org.junit.jupiter.api.Test;
 
 public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
   private static final BigDecimal PRICE_MULTIPLIER = BigDecimal.valueOf(1.2);
@@ -62,5 +64,21 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
     // since we are in compatibility mode, we want to check that returned profitable priority fee is
     // the min priority fee per gas * multiplier + base fee
     assertIsProfitable(null, baseFee, estimatedMaxGasPrice, 0);
+  }
+
+  @Test
+  public void lineaEstimateGasPriorityFeeMinGasPriceLowerBound() {
+    final Account sender = accounts.getSecondaryBenefactor();
+
+    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0");
+
+    final var reqLinea = new LineaEstimateGasRequest(callParams);
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+
+    final var baseFee = Wei.fromHexString(respLinea.baseFeePerGas());
+    final var estimatedPriorityFee = Wei.fromHexString(respLinea.priorityFeePerGas());
+    final var estimatedMaxGasPrice = baseFee.add(estimatedPriorityFee);
+
+    assertMinGasPriceLowerBound(baseFee, estimatedMaxGasPrice);
   }
 }

@@ -189,18 +189,7 @@ public class LineaEstimateGas {
         txProfitabilityCalculator.profitablePriorityFeePerGas(
             transaction, profitabilityConf.estimateGasMinMargin(), estimatedGasUsed, minGasPrice);
 
-    if (profitablePriorityFee.greaterOrEqualThan(priorityFeeLowerBound)) {
-      return profitablePriorityFee;
-    }
-
-    log.atDebug()
-        .setMessage(
-            "[{}] Estimated priority fee {} is lower that the lower bound {}, returning the latter")
-        .addArgument(LOG_SEQUENCE::get)
-        .addArgument(profitablePriorityFee::toHumanReadableString)
-        .addArgument(priorityFeeLowerBound::toHumanReadableString)
-        .log();
-    return priorityFeeLowerBound;
+    return profitablePriorityFee;
   }
 
   private Long estimateGasUsed(
