@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0-rc2
+* feat: improve ZkTracer initialization time by doing only once Opcodes and spillings loading from disk resources ([#720](https://github.com/Consensys/linea-arithmetization/pull/720))
+* perf: parallelize refundedGas for big transactions ([#793](https://github.com/Consensys/linea-arithmetization/pull/793))
+
 ## 0.2.0-rc1
 * feat: add PRECOMPILE_ECPAIRING_G2_MEMBERSHIP_CALLS in spillings.toml and did some renaming ([#819](https://github.com/Consensys/linea-arithmetization/pull/819))
 * feat: optimise trace generation (except hub) ([#838](https://github.com/Consensys/linea-arithmetization/pull/838))
