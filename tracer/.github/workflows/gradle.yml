@@ -68,7 +68,7 @@ jobs:
       #     https://api.github.com/repos/ConsenSys/corset/releases/latest
       # | jq '.assets[] | select(.name|endswith("x86_64-unknown-linux-musl.tar.gz")) | .url'
       - name: Install Corset
-        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.11 --locked --force
+        run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.13 --locked --force
 #        run: |
 #          curl -L \
 #          -H "Accept: application/octet-stream" \
