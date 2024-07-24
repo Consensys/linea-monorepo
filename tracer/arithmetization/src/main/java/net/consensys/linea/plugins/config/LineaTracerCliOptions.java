@@ -33,6 +33,7 @@ public class LineaTracerCliOptions {
   private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
 
   @CommandLine.Option(
+      required = true,
       names = {CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH},
       hidden = true,
       paramLabel = "<PATH>",
