@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0-rc3
+* fix: make --plugin-linea-conflated-trace-generation-traces-output-path option required to avoid faulty registration of the trace generation RPC endpoint ([#858](https://github.com/Consensys/linea-arithmetization/pull/858))
+* feat: separate shared and private CLI options ([#856](https://github.com/Consensys/linea-arithmetization/pull/856))
+
 ## 0.2.0-rc2
 * feat: improve ZkTracer initialization time by doing only once Opcodes and spillings loading from disk resources ([#720](https://github.com/Consensys/linea-arithmetization/pull/720))
 * perf: parallelize refundedGas for big transactions ([#793](https://github.com/Consensys/linea-arithmetization/pull/793))
