@@ -21,12 +21,14 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 
-/** In this class we put CLI options that are shared with other plugins not defined here */
+/**
+ * In this class we put CLI options that are private to plugins in this repo.
+ *
+ * <p>For the moment is just a placeholder since there are no private options
+ */
 @Slf4j
-public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
+public abstract class AbstractLineaPrivateOptionsPlugin extends AbstractLineaSharedOptionsPlugin {
   private static final String CLI_OPTIONS_PREFIX = "linea";
   private static boolean cliOptionsRegistered = false;
   private static boolean configured = false;
@@ -37,43 +39,35 @@ public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
 
   @Override
   public synchronized void register(final BesuContext context) {
+    super.register(context);
     if (!cliOptionsRegistered) {
-      final PicoCLIOptions cmdlineOptions =
-          context
-              .getService(PicoCLIOptions.class)
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Failed to obtain PicoCLI options from the BesuContext"));
-      tracerCliOptions = LineaTracerCliOptions.create();
-      l1L2BridgeCliOptions = LineaL1L2BridgeCliOptions.create();
-
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, tracerCliOptions);
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, l1L2BridgeCliOptions);
+      //      final PicoCLIOptions cmdlineOptions =
+      //          context
+      //              .getService(PicoCLIOptions.class)
+      //              .orElseThrow(
+      //                  () ->
+      //                      new IllegalStateException(
+      //                          "Failed to obtain PicoCLI options from the BesuContext"));
       cliOptionsRegistered = true;
     }
   }
 
   @Override
   public void beforeExternalServices() {
+    super.beforeExternalServices();
     if (!configured) {
-      tracerConfiguration = tracerCliOptions.toDomainObject();
-      l1L2BridgeConfiguration = l1L2BridgeCliOptions.toDomainObject();
       configured = true;
     }
-
-    log.debug("Configured plugin {} with tracer configuration: {}", getName(), tracerConfiguration);
-    log.debug(
-        "Configured plugin {} with L1 L2 bridge configuration: {}",
-        getName(),
-        l1L2BridgeCliOptions);
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    super.start();
+  }
 
   @Override
   public void stop() {
+    super.stop();
     cliOptionsRegistered = false;
     configured = false;
   }
