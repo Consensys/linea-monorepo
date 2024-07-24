@@ -23,7 +23,7 @@ import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
+import net.consensys.linea.plugins.AbstractLineaPrivateOptionsPlugin;
 import net.consensys.linea.plugins.config.LineaTracerCliOptions;
 import net.consensys.linea.plugins.exception.TraceOutputException;
 import org.hyperledger.besu.plugin.BesuContext;
@@ -38,7 +38,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  */
 @AutoService(BesuPlugin.class)
 @Slf4j
-public class TracesEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
+public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlugin {
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
 
