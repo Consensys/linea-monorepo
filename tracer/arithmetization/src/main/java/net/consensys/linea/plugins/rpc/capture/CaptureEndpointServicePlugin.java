@@ -15,11 +15,13 @@
 
 package net.consensys.linea.plugins.rpc.capture;
 
+import java.util.Map;
 import java.util.Optional;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.AbstractLineaRequiredPlugin;
+import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -61,6 +63,11 @@ public class CaptureEndpointServicePlugin extends AbstractLineaRequiredPlugin {
       final CaptureToFile method, final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
+  }
+
+  @Override
+  public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
+    return Map.of();
   }
 
   /** Start the RPC service. This method loads the OpCodes. */

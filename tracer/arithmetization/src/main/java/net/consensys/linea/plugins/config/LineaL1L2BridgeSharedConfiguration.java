@@ -16,7 +16,21 @@
 package net.consensys.linea.plugins.config;
 
 import lombok.Builder;
+import net.consensys.linea.plugins.LineaOptionsConfiguration;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 
-/** The Linea tracer configuration. */
+/** The Linea L1 L2 bridge configuration. */
 @Builder(toBuilder = true)
-public record LineaTracerConfiguration(String moduleLimitsFilePath, String tracesOutputPath) {}
+public record LineaL1L2BridgeSharedConfiguration(Address contract, Bytes topic)
+    implements LineaOptionsConfiguration {
+  public static final LineaL1L2BridgeSharedConfiguration EMPTY =
+      LineaL1L2BridgeSharedConfiguration.builder()
+          .contract(Address.ZERO)
+          .topic(Bytes.EMPTY)
+          .build();
+
+  public boolean isEmpty() {
+    return this.contract.equals(Address.ZERO) || this.topic.isEmpty();
+  }
+}

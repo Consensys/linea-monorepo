@@ -16,6 +16,7 @@
 package net.consensys.linea.plugins.config;
 
 import com.google.common.base.MoreObjects;
+import net.consensys.linea.plugins.LineaCliOptions;
 import net.consensys.linea.plugins.config.converters.AddressConverter;
 import net.consensys.linea.plugins.config.converters.BytesConverter;
 import org.apache.tuweni.bytes.Bytes;
@@ -23,7 +24,9 @@ import org.hyperledger.besu.datatypes.Address;
 import picocli.CommandLine;
 
 /** The Linea L1 L2 Bridge CLI options. */
-public class LineaL1L2BridgeCliOptions {
+public class LineaL1L2BridgeSharedCliOptions implements LineaCliOptions {
+  public static final String CONFIG_KEY = "l1-l2-bridge-shared-config";
+
   private static final String L1L2_BRIDGE_CONTRACT = "--plugin-linea-l1l2-bridge-contract";
   private static final String L1L2_BRIDGE_TOPIC = "--plugin-linea-l1l2-bridge-topic";
 
@@ -41,15 +44,15 @@ public class LineaL1L2BridgeCliOptions {
       description = "The log topic of the L1 L2 bridge (default: ${DEFAULT-VALUE})")
   private Bytes l1l2BridgeTopic = Bytes.EMPTY;
 
-  private LineaL1L2BridgeCliOptions() {}
+  private LineaL1L2BridgeSharedCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  public static LineaL1L2BridgeCliOptions create() {
-    return new LineaL1L2BridgeCliOptions();
+  public static LineaL1L2BridgeSharedCliOptions create() {
+    return new LineaL1L2BridgeSharedCliOptions();
   }
 
   /**
@@ -58,8 +61,9 @@ public class LineaL1L2BridgeCliOptions {
    * @param config the config
    * @return the Linea cli options
    */
-  public static LineaL1L2BridgeCliOptions fromConfig(final LineaL1L2BridgeConfiguration config) {
-    final LineaL1L2BridgeCliOptions options = create();
+  public static LineaL1L2BridgeSharedCliOptions fromConfig(
+      final LineaL1L2BridgeSharedConfiguration config) {
+    final LineaL1L2BridgeSharedCliOptions options = create();
     options.l1l2BridgeContract = config.contract();
     options.l1l2BridgeTopic = config.topic();
     return options;
@@ -70,8 +74,9 @@ public class LineaL1L2BridgeCliOptions {
    *
    * @return the Linea factory configuration
    */
-  public LineaL1L2BridgeConfiguration toDomainObject() {
-    return LineaL1L2BridgeConfiguration.builder()
+  @Override
+  public LineaL1L2BridgeSharedConfiguration toDomainObject() {
+    return LineaL1L2BridgeSharedConfiguration.builder()
         .contract(l1l2BridgeContract)
         .topic(l1l2BridgeTopic)
         .build();
