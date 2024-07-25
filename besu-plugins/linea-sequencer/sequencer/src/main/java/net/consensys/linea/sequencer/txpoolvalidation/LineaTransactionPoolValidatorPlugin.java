@@ -96,7 +96,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
     super.beforeExternalServices();
     try (Stream<String> lines =
         Files.lines(
-            Path.of(new File(transactionPoolValidatorConfiguration.denyListPath()).toURI()))) {
+            Path.of(new File(transactionPoolValidatorConfiguration().denyListPath()).toURI()))) {
       final Set<Address> deniedAddresses =
           lines.map(l -> Address.fromHexString(l.trim())).collect(Collectors.toUnmodifiableSet());
 
@@ -105,11 +105,11 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
               besuConfiguration,
               blockchainService,
               transactionSimulationService,
-              transactionPoolValidatorConfiguration,
-              profitabilityConfiguration,
+              transactionPoolValidatorConfiguration(),
+              profitabilityConfiguration(),
               deniedAddresses,
-              createLimitModules(tracerConfiguration),
-              l1L2BridgeConfiguration));
+              createLimitModules(tracerConfiguration()),
+              l1L2BridgeSharedConfiguration()));
 
     } catch (Exception e) {
       throw new RuntimeException(e);

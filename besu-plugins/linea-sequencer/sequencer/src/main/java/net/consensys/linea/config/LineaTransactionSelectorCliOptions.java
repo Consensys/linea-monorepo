@@ -17,10 +17,13 @@ package net.consensys.linea.config;
 
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
+import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
 /** The Linea Transaction Selector CLI options. */
-public class LineaTransactionSelectorCliOptions {
+public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
+  public static final String CONFIG_KEY = "transaction-selector-config";
+
   public static final String MAX_BLOCK_CALLDATA_SIZE = "--plugin-linea-max-block-calldata-size";
   public static final int DEFAULT_MAX_BLOCK_CALLDATA_SIZE = 70_000;
   public static final String OVER_LINE_COUNT_LIMIT_CACHE_SIZE =
@@ -112,6 +115,7 @@ public class LineaTransactionSelectorCliOptions {
    *
    * @return the Linea factory configuration
    */
+  @Override
   public LineaTransactionSelectorConfiguration toDomainObject() {
     return LineaTransactionSelectorConfiguration.builder()
         .maxBlockCallDataSize(maxBlockCallDataSize)

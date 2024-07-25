@@ -29,10 +29,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaRpcConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.TracerAggregator;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
@@ -86,7 +86,7 @@ public class LineaEstimateGas {
   private LineaTransactionPoolValidatorConfiguration txValidatorConf;
   private LineaProfitabilityConfiguration profitabilityConf;
   private TransactionProfitabilityCalculator txProfitabilityCalculator;
-  private LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
+  private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
 
   private ModuleLineCountValidator moduleLineCountValidator;
 
@@ -104,7 +104,7 @@ public class LineaEstimateGas {
       final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
       final LineaProfitabilityConfiguration profitabilityConf,
       final Map<String, Integer> limitsMap,
-      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;

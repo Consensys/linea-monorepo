@@ -29,9 +29,9 @@ import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import org.apache.tuweni.bytes.Bytes;
@@ -61,8 +61,8 @@ public class SimulationValidatorTest {
       Address.fromHexString("0x0000000000000000000000000000000000001000");
   public static final Address RECIPIENT =
       Address.fromHexString("0x0000000000000000000000000000000000001001");
-  private static Wei BASE_FEE = Wei.of(7);
-  private static Wei PROFITABLE_GAS_PRICE = Wei.of(11000000);
+  private static final Wei BASE_FEE = Wei.of(7);
+  private static final Wei PROFITABLE_GAS_PRICE = Wei.of(11000000);
   private static final SECPSignature FAKE_SIGNATURE;
   private static final Address BRIDGE_CONTRACT =
       Address.fromHexString("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec");
@@ -124,7 +124,7 @@ public class SimulationValidatorTest {
             .txPoolSimulationCheckP2pEnabled(enableForP2p)
             .build(),
         lineCountLimits,
-        LineaL1L2BridgeConfiguration.builder()
+        LineaL1L2BridgeSharedConfiguration.builder()
             .contract(BRIDGE_CONTRACT)
             .topic(BRIDGE_LOG_TOPIC)
             .build());

@@ -71,9 +71,9 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
   @Override
   public void start() {
     super.start();
-    if (profitabilityConfiguration.extraDataPricingEnabled()) {
+    if (profitabilityConfiguration().extraDataPricingEnabled()) {
       final var extraDataHandler =
-          new LineaExtraDataHandler(rpcEndpointService, profitabilityConfiguration);
+          new LineaExtraDataHandler(rpcEndpointService, profitabilityConfiguration());
       final var chainHeadHeader = blockchainService.getChainHeadHeader();
       final var initialExtraData = chainHeadHeader.getExtraData();
       try {

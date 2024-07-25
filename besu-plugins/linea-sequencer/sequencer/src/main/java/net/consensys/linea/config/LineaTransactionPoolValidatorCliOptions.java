@@ -16,10 +16,12 @@
 package net.consensys.linea.config;
 
 import com.google.common.base.MoreObjects;
+import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
 /** The Linea CLI options. */
-public class LineaTransactionPoolValidatorCliOptions {
+public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions {
+  public static final String CONFIG_KEY = "transaction-pool-validator-config";
 
   public static final String DENY_LIST_PATH = "--plugin-linea-deny-list-path";
   public static final String DEFAULT_DENY_LIST_PATH = "lineaDenyList.txt";
@@ -117,6 +119,7 @@ public class LineaTransactionPoolValidatorCliOptions {
    *
    * @return the Linea factory configuration
    */
+  @Override
   public LineaTransactionPoolValidatorConfiguration toDomainObject() {
     return new LineaTransactionPoolValidatorConfiguration(
         denyListPath,

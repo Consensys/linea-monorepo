@@ -18,10 +18,13 @@ package net.consensys.linea.config;
 import java.math.BigDecimal;
 
 import com.google.common.base.MoreObjects;
+import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
 /** The Linea RPC CLI options. */
-public class LineaRpcCliOptions {
+public class LineaRpcCliOptions implements LineaCliOptions {
+  public static final String CONFIG_KEY = "rpc-config";
+
   private static final String ESTIMATE_GAS_COMPATIBILITY_MODE_ENABLED =
       "--plugin-linea-estimate-gas-compatibility-mode-enabled";
   private static final boolean DEFAULT_ESTIMATE_GAS_COMPATIBILITY_MODE_ENABLED = false;
@@ -75,6 +78,7 @@ public class LineaRpcCliOptions {
    *
    * @return the Linea factory configuration
    */
+  @Override
   public LineaRpcConfiguration toDomainObject() {
     return LineaRpcConfiguration.builder()
         .estimateGasCompatibilityModeEnabled(estimateGasCompatibilityModeEnabled)

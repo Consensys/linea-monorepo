@@ -20,9 +20,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.AllowedAddressValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.CalldataValidator;
 import net.consensys.linea.sequencer.txpoolvalidation.validators.GasLimitValidator;
@@ -45,7 +45,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final LineaProfitabilityConfiguration profitabilityConf;
   private final Set<Address> denied;
   private final Map<String, Integer> moduleLineLimitsMap;
-  private final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
+  private final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
@@ -55,7 +55,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final LineaProfitabilityConfiguration profitabilityConf,
       final Set<Address> deniedAddresses,
       final Map<String, Integer> moduleLineLimitsMap,
-      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration) {
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.transactionSimulationService = transactionSimulationService;

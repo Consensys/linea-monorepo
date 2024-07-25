@@ -16,6 +16,7 @@
 package net.consensys.linea.config;
 
 import lombok.Builder;
+import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /**
  * The Linea transaction pool validation configuration.
@@ -30,4 +31,5 @@ public record LineaTransactionPoolValidatorConfiguration(
     int maxTxGasLimit,
     int maxTxCalldataSize,
     boolean txPoolSimulationCheckApiEnabled,
-    boolean txPoolSimulationCheckP2pEnabled) {}
+    boolean txPoolSimulationCheckP2pEnabled)
+    implements LineaOptionsConfiguration {}

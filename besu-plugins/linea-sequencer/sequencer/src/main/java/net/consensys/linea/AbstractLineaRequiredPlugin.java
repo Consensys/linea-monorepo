@@ -20,7 +20,7 @@ import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 
 @Slf4j
-public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedOptionsPlugin {
+public abstract class AbstractLineaRequiredPlugin extends AbstractLineaPrivateOptionsPlugin {
 
   /**
    * Linea plugins extending this class will halt startup of Besu in case of exception during

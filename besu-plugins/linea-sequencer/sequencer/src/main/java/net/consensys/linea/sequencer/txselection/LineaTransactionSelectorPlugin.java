@@ -69,10 +69,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             blockchainService,
-            transactionSelectorConfiguration,
-            l1L2BridgeConfiguration,
-            profitabilityConfiguration,
-            tracerConfiguration,
-            createLimitModules(tracerConfiguration)));
+            transactionSelectorConfiguration(),
+            l1L2BridgeSharedConfiguration(),
+            profitabilityConfiguration(),
+            tracerConfiguration(),
+            createLimitModules(tracerConfiguration())));
   }
 }

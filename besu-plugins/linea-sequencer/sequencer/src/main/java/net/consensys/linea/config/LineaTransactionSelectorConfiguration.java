@@ -16,6 +16,7 @@
 package net.consensys.linea.config;
 
 import lombok.Builder;
+import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea transaction selectors configuration. */
 @Builder(toBuilder = true)
@@ -24,4 +25,5 @@ public record LineaTransactionSelectorConfiguration(
     int overLinesLimitCacheSize,
     long maxGasPerBlock,
     int unprofitableCacheSize,
-    int unprofitableRetryLimit) {}
+    int unprofitableRetryLimit)
+    implements LineaOptionsConfiguration {}

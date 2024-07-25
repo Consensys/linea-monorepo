@@ -19,10 +19,13 @@ import java.math.BigDecimal;
 
 import com.google.common.base.MoreObjects;
 import jakarta.validation.constraints.Positive;
+import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
 /** The Linea profitability calculator CLI options. */
-public class LineaProfitabilityCliOptions {
+public class LineaProfitabilityCliOptions implements LineaCliOptions {
+  public static final String CONFIG_KEY = "profitability-config";
+
   public static final String FIXED_GAS_COST_WEI = "--plugin-linea-fixed-gas-cost-wei";
   public static final long DEFAULT_FIXED_GAS_COST_WEI = 0;
 
@@ -169,6 +172,7 @@ public class LineaProfitabilityCliOptions {
    *
    * @return the Linea factory configuration
    */
+  @Override
   public LineaProfitabilityConfiguration toDomainObject() {
     return LineaProfitabilityConfiguration.builder()
         .fixedCostWei(fixedGasCostWei)

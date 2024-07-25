@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.config.LineaL1L2BridgeConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -65,7 +65,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   public TraceLineLimitTransactionSelector(
       final Map<String, Integer> moduleLimits,
       final LineaTransactionSelectorConfiguration txSelectorConfiguration,
-      final LineaL1L2BridgeConfiguration l1L2BridgeConfiguration,
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaTracerConfiguration tracerConfiguration) {
     if (l1L2BridgeConfiguration.isEmpty()) {
       log.error("L1L2 bridge settings have not been defined.");
@@ -216,7 +216,7 @@ public class TraceLineLimitTransactionSelector implements PluginTransactionSelec
   }
 
   private class ZkTracerWithLog extends ZkTracer {
-    public ZkTracerWithLog(final LineaL1L2BridgeConfiguration bridgeConfiguration) {
+    public ZkTracerWithLog(final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
       super(bridgeConfiguration);
     }
 

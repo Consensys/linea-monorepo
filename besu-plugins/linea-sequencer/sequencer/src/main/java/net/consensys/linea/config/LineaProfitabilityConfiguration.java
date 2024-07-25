@@ -19,13 +19,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea profitability calculator configuration. */
 @Builder(toBuilder = true)
 @Accessors(fluent = true)
 @Getter
 @ToString
-public class LineaProfitabilityConfiguration {
+public class LineaProfitabilityConfiguration implements LineaOptionsConfiguration {
   /** It is safe to keep this as long, since it will store value <= max_int * 1000 */
   private long fixedCostWei;
 

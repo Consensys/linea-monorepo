@@ -51,14 +51,9 @@ tasks.register('acceptanceTests', Test) {
   useJUnitPlatform {
     includeTags("AcceptanceTest")
   }
-
-  doFirst {
-    systemProperty("besu.plugins.dir", rootProject.besuPluginDir)
-  }
 }
 
 dependencies {
-  testImplementation 'net.consensys.linea.zktracer:arithmetization'
   testImplementation project(":native:compress")
   testImplementation project(":sequencer")
   testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"

@@ -22,13 +22,14 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea RPC configuration. */
 @Builder(toBuilder = true)
 @Accessors(fluent = true)
 @Getter
 @ToString
-public class LineaRpcConfiguration {
+public class LineaRpcConfiguration implements LineaOptionsConfiguration {
   @Setter private volatile boolean estimateGasCompatibilityModeEnabled;
   private BigDecimal estimateGasCompatibilityMultiplier;
 }
