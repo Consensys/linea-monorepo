@@ -12,25 +12,18 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.plugins.config;
+package net.consensys.linea.plugins.rpc.tracegeneration;
 
 import com.google.common.base.MoreObjects;
+import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
-public class LineaTracerCliOptions {
+class TracesEndpointCliOptions implements LineaCliOptions {
 
-  public static final String MODULE_LIMIT_FILE_PATH = "--plugin-linea-module-limit-file-path";
-  public static final String DEFAULT_MODULE_LIMIT_FILE_PATH = "moduleLimitFile.toml";
-  public static final String CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH =
+  static final String CONFIG_KEY = "traces-endpoint-config";
+
+  static final String CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH =
       "--plugin-linea-conflated-trace-generation-traces-output-path";
-
-  @CommandLine.Option(
-      names = {MODULE_LIMIT_FILE_PATH},
-      hidden = true,
-      paramLabel = "<STRING>",
-      description =
-          "Path to the toml file containing the module limits (default: ${DEFAULT-VALUE})")
-  private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
 
   @CommandLine.Option(
       required = true,
@@ -40,15 +33,15 @@ public class LineaTracerCliOptions {
       description = "Path to where traces will be written")
   private String tracesOutputPath = null;
 
-  private LineaTracerCliOptions() {}
+  private TracesEndpointCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  public static LineaTracerCliOptions create() {
-    return new LineaTracerCliOptions();
+  static TracesEndpointCliOptions create() {
+    return new TracesEndpointCliOptions();
   }
 
   /**
@@ -57,9 +50,8 @@ public class LineaTracerCliOptions {
    * @param config the config
    * @return the Linea cli options
    */
-  public static LineaTracerCliOptions fromConfig(final LineaTracerConfiguration config) {
-    final LineaTracerCliOptions options = create();
-    options.moduleLimitFilePath = config.moduleLimitsFilePath();
+  static TracesEndpointCliOptions fromConfig(final TracesEndpointConfiguration config) {
+    final TracesEndpointCliOptions options = create();
     options.tracesOutputPath = config.tracesOutputPath();
     return options;
   }
@@ -69,17 +61,14 @@ public class LineaTracerCliOptions {
    *
    * @return the Linea factory configuration
    */
-  public LineaTracerConfiguration toDomainObject() {
-    return LineaTracerConfiguration.builder()
-        .tracesOutputPath(tracesOutputPath)
-        .moduleLimitsFilePath(moduleLimitFilePath)
-        .build();
+  @Override
+  public TracesEndpointConfiguration toDomainObject() {
+    return TracesEndpointConfiguration.builder().tracesOutputPath(tracesOutputPath).build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add(MODULE_LIMIT_FILE_PATH, moduleLimitFilePath)
         .add(CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH, tracesOutputPath)
         .toString();
   }

@@ -15,66 +15,32 @@
 
 package net.consensys.linea.plugins;
 
+import java.util.Map;
+
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.plugins.config.LineaL1L2BridgeCliOptions;
-import net.consensys.linea.plugins.config.LineaL1L2BridgeConfiguration;
-import net.consensys.linea.plugins.config.LineaTracerCliOptions;
-import net.consensys.linea.plugins.config.LineaTracerConfiguration;
-import org.hyperledger.besu.plugin.BesuContext;
-import org.hyperledger.besu.plugin.BesuPlugin;
-import org.hyperledger.besu.plugin.services.PicoCLIOptions;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedCliOptions;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 
 /** In this class we put CLI options that are shared with other plugins not defined here */
 @Slf4j
-public abstract class AbstractLineaSharedOptionsPlugin implements BesuPlugin {
-  private static final String CLI_OPTIONS_PREFIX = "linea";
-  private static boolean cliOptionsRegistered = false;
-  private static boolean configured = false;
-  private static LineaTracerCliOptions tracerCliOptions;
-  private static LineaL1L2BridgeCliOptions l1L2BridgeCliOptions;
-  protected static LineaTracerConfiguration tracerConfiguration;
-  protected static LineaL1L2BridgeConfiguration l1L2BridgeConfiguration;
+public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOptionsPlugin {
 
   @Override
-  public synchronized void register(final BesuContext context) {
-    if (!cliOptionsRegistered) {
-      final PicoCLIOptions cmdlineOptions =
-          context
-              .getService(PicoCLIOptions.class)
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Failed to obtain PicoCLI options from the BesuContext"));
-      tracerCliOptions = LineaTracerCliOptions.create();
-      l1L2BridgeCliOptions = LineaL1L2BridgeCliOptions.create();
+  public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
+    final LineaL1L2BridgeSharedCliOptions l1L2BridgeCliOptions =
+        LineaL1L2BridgeSharedCliOptions.create();
 
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, tracerCliOptions);
-      cmdlineOptions.addPicoCLIOptions(CLI_OPTIONS_PREFIX, l1L2BridgeCliOptions);
-      cliOptionsRegistered = true;
-    }
+    return Map.of(
+        LineaL1L2BridgeSharedCliOptions.CONFIG_KEY, l1L2BridgeCliOptions.asPluginConfig());
+  }
+
+  public LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration() {
+    return (LineaL1L2BridgeSharedConfiguration)
+        getConfigurationByKey(LineaL1L2BridgeSharedCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
-  public void beforeExternalServices() {
-    if (!configured) {
-      tracerConfiguration = tracerCliOptions.toDomainObject();
-      l1L2BridgeConfiguration = l1L2BridgeCliOptions.toDomainObject();
-      configured = true;
-    }
-
-    log.debug("Configured plugin {} with tracer configuration: {}", getName(), tracerConfiguration);
-    log.debug(
-        "Configured plugin {} with L1 L2 bridge configuration: {}",
-        getName(),
-        l1L2BridgeCliOptions);
-  }
-
-  @Override
-  public void start() {}
-
-  @Override
-  public void stop() {
-    cliOptionsRegistered = false;
-    configured = false;
+  public void start() {
+    super.start();
   }
 }

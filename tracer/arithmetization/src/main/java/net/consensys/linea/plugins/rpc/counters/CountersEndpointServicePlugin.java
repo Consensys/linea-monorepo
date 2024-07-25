@@ -16,7 +16,7 @@
 package net.consensys.linea.plugins.rpc.counters;
 
 import com.google.auto.service.AutoService;
-import net.consensys.linea.plugins.AbstractLineaPrivateOptionsPlugin;
+import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -29,7 +29,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  * returns trace counters based on the provided request parameters. See {@link GenerateCountersV2}
  */
 @AutoService(BesuPlugin.class)
-public class CountersEndpointServicePlugin extends AbstractLineaPrivateOptionsPlugin {
+public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
 
