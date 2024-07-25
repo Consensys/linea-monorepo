@@ -29,6 +29,8 @@ public class LineaOptionsPluginConfiguration {
   @Getter private LineaOptionsConfiguration optionsConfig;
 
   public void initOptionsConfig() {
-    optionsConfig = optionsConfigSupplier.get();
+    if (optionsConfig == null) {
+      optionsConfig = optionsConfigSupplier.get();
+    }
   }
 }
