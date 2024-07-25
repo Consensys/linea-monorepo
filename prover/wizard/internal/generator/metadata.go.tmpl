@@ -1,0 +1,106 @@
+package wizard
+
+{{- if eq true .IsNoResultQuery }}
+import (
+	"strconv"
+
+	"github.com/consensys/gnark/frontend"
+)
+{{- else if eq true .IsQueryWithResult }}
+import (
+	"strconv"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"fmt"
+)
+{{- else }}
+import "strconv"
+{{- end}}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) WithTags(tags ...string) *{{ .TypeName }} {
+	{{ .RcvrName }}.metadata.tags = append({{ .RcvrName }}.metadata.tags, tags...)
+	return {{ .RcvrName }}
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) WithName(name string) *{{ .TypeName }} {
+	{{ .RcvrName }}.metadata.name = name
+	return {{ .RcvrName }}
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) WithDoc(doc string) *{{ .TypeName }} {
+	{{ .RcvrName }}.metadata.doc = doc
+	return {{ .RcvrName }}
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) Tags() []string {
+	return {{ .RcvrName }}.metadata.tags
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) ListTags() []string {
+	return {{ .RcvrName }}.metadata.listTags()
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) String() string {
+	return {{.RcvrName}}.metadata.scope.getFullScope() + "/" + {{ .RcvrName }}.metadata.nameOrDefault({{ .RcvrName }}) + "/" + strconv.Itoa(int({{ .RcvrName }}.metadata.id))
+}
+
+func ({{ .RcvrName }} *{{ .TypeName }}) Explain() string {
+	return {{ .RcvrName }}.metadata.explain({{ .RcvrName }})
+}
+
+{{- if eq false .SkipID }}
+func ({{ .RcvrName }} *{{ .TypeName }}) id() id {
+	return {{ .RcvrName }}.metadata.id
+}
+{{- end }}
+
+{{- if eq true .IsNoResultQuery }}
+// ComputeResult does not return any result for [{{ .TypeName }}] because Global
+// constraints do not return results as they are purely constraints that must
+// be satisfied.
+func ({{ .RcvrName }} {{ .TypeName }}) ComputeResult(run Runtime) QueryResult {
+	return &QueryResNone{}
+}
+
+// ComputeResult does not return any result for [{{ .TypeName }}] because Global
+// constraints do not return results.
+func ({{ .RcvrName }} {{ .TypeName }}) ComputeResultGnark(_ frontend.API, run GnarkRuntime) QueryResultGnark {
+	return &QueryResNoneGnark{}
+}
+{{- end}}
+
+{{- if eq true .IsQueryWithResult }}
+func ({{ .RcvrName }} {{ .TypeName }}) Check(run Runtime) error {
+	var (
+		v          = {{ .RcvrName }}.ComputeResult(run).(*QueryResFE).R
+		qr2, okQr2 = run.tryGetQueryRes(&{{ .RcvrName }})
+		v2         = qr2.(*QueryResFE).R
+	)
+
+	if !okQr2 {
+		return fmt.Errorf("error verifying position opening: the result if missing from the proof")
+	}
+
+	if v != v2 {
+		return fmt.Errorf("error verifying position opening: the result %v does not match the correct value: %v", v2.String(), v.String())
+	}
+
+	return nil
+}
+
+func ({{ .RcvrName }} {{ .TypeName }}) CheckGnark(api frontend.API, run GnarkRuntime) {
+
+	var (
+		v          = {{ .RcvrName }}.ComputeResultGnark(api, run).(*QueryResFEGnark).R
+		qr2, okQr2 = run.tryGetQueryRes(&{{ .RcvrName }})
+		v2         = qr2.(*QueryResFEGnark).R
+	)
+
+	if !okQr2 {
+		utils.Panic("error verifying position opening: missing result from the proof")
+	}
+
+	api.AssertIsEqual(v, v2)
+}
+{{- end }}
