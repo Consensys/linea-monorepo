@@ -35,12 +35,14 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.evm.worldstate.AuthorizedCodeService;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
   private ToyWorld parent;
   @Getter private List<ToyAccount> accounts;
   private Map<Address, ToyAccount> addressAccountMap;
+  private AuthorizedCodeService authorizedCodeService;
 
   private ToyWorld() {
     this(null, new ArrayList<>());
@@ -55,6 +57,7 @@ public class ToyWorld implements WorldUpdater {
     this.parent = parent;
     this.accounts = accounts;
     this.addressAccountMap = new HashMap<>();
+    this.authorizedCodeService = new AuthorizedCodeService();
   }
 
   public static ToyWorld empty() {
@@ -91,12 +94,12 @@ public class ToyWorld implements WorldUpdater {
   @Override
   public Account get(final Address address) {
     if (addressAccountMap.containsKey(address)) {
-      return addressAccountMap.get(address);
+      return authorizedCodeService.processAccount(this, addressAccountMap.get(address), address);
     } else if (parent != null) {
-      return parent.get(address);
+      return authorizedCodeService.processAccount(this, parent.get(address), address);
+    } else {
+      return authorizedCodeService.processAccount(this, null, address);
     }
-
-    return null;
   }
 
   @Override
@@ -123,18 +126,29 @@ public class ToyWorld implements WorldUpdater {
     accounts.add(account);
     addressAccountMap.put(address, account);
 
-    return account;
+    return authorizedCodeService.processMutableAccount(this, account, address);
   }
 
   @Override
   public MutableAccount getAccount(final Address address) {
     if (addressAccountMap.containsKey(address)) {
-      return addressAccountMap.get(address);
+      return authorizedCodeService.processMutableAccount(
+          this, addressAccountMap.get(address), address);
     } else if (parent != null) {
-      return parent.getAccount(address);
+      Account parentAccount = parent.getAccount(address);
+      if (parentAccount == null) {
+        return authorizedCodeService.processMutableAccount(this, null, address);
+      } else {
+        return createAccount(
+            parentAccount,
+            parentAccount.getAddress(),
+            parentAccount.getNonce(),
+            parentAccount.getBalance(),
+            parentAccount.getCode());
+      }
+    } else {
+      return authorizedCodeService.processMutableAccount(this, null, address);
     }
-
-    return null;
   }
 
   @Override
@@ -170,6 +184,11 @@ public class ToyWorld implements WorldUpdater {
   @Override
   public Optional<WorldUpdater> parentUpdater() {
     return Optional.empty();
+  }
+
+  @Override
+  public void setAuthorizedCodeService(final AuthorizedCodeService authorizedCodeService) {
+    this.authorizedCodeService = authorizedCodeService;
   }
 
   public static class ToyWorldBuilder {
