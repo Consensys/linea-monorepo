@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-rc5
+* fix(ecData): ugly hack to discard unsuccessful EcRecover call ([#891](https://github.com/Consensys/linea-arithmetization/pull/891))
+
 ## 0.2.0-rc4
 * fix: init config object only once ([#873](https://github.com/Consensys/linea-arithmetization/pull/873))
 * feat: improve design of shared and private CLI options ([#864](https://github.com/Consensys/linea-arithmetization/pull/864))
