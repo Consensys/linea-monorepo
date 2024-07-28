@@ -99,4 +99,9 @@ public class ReplayTests {
   void rlprcptManyTopicsWoLogData() {
     replay("6569423.json.gz");
   }
+
+  @Test
+  void multipleFailingCallToEcrecover() {
+    replay("5000544.json.gz");
+  }
 }

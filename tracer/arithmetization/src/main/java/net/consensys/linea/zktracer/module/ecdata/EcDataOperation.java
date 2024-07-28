@@ -112,6 +112,8 @@ public class EcDataOperation extends ModuleOperation {
   private final List<Bytes> extResLo;
   private final List<OpCode> extInst;
 
+  // TODO: this bit should be useless we should have only successful EcData Operations, will be
+  // fixed in PR #748
   @Getter private boolean successBit;
   private boolean circuitSelectorEcrecover;
   private boolean circuitSelectorEcadd;
@@ -734,7 +736,9 @@ public class EcDataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return nRowsData + nRowsResult;
+    // TODO: temporary hack, we should have only successful EcData Operations, will be fixed in PR
+    // #748
+    return successBit ? nRowsData + nRowsResult : 0;
   }
 
   private Pair<Boolean, Boolean> callToC1Membership(int k, EWord pX, EWord pY) {

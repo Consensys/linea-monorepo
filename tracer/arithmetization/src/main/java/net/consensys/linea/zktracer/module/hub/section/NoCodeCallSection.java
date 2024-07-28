@@ -76,8 +76,8 @@ public class NoCodeCallSection extends TraceSection
     this.addStack(hub);
 
     hub.defers().postExec(this);
-    hub.defers().postTx(this);
     hub.defers().reEntry(this);
+    hub.defers().postTx(this);
   }
 
   @Override
@@ -142,10 +142,22 @@ public class NoCodeCallSection extends TraceSection
           hub,
           ScenarioFragment.forPrecompileEpilogue(
               hub, precompileInvocation.get(), callerCallFrame.id(), calledCallFrameId));
-      for (TraceFragment f :
-          this.maybePrecompileLines.orElseThrow(
-              () -> new IllegalStateException("missing precompile lines"))) {
-        this.addFragment(hub, callerCallFrame, f);
+
+      // for (TraceFragment f :
+      //    this.maybePrecompileLines.orElseThrow(
+      //        () ->
+      //            new IllegalStateException(
+      //                "missing precompile lines for %s".formatted(callerCallFrame.opCode())))) {
+      //  this.addFragment(hub, callerCallFrame, f);
+      // }
+
+      // TODO: temporary hack, we should have only successful EcData Operations, will be fixed in PR
+      // #748
+      // This class is going to die in this PR
+      if (this.maybePrecompileLines.isPresent()) {
+        for (TraceFragment f : this.maybePrecompileLines.get()) {
+          this.addFragment(hub, callerCallFrame, f);
+        }
       }
     } else {
       if (callerCallFrame.hasReverted()) {
