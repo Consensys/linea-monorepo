@@ -1,80 +1,57 @@
 # Linea zkEVM
-This is a monorepo for Linea, the Consensys zkEVM network.
 
-- Homepage: https://linea.build/
-- Docs: https://docs.linea.build/
-- Mirror.xyz: https://linea.mirror.xyz/
-- Support: https://support.linea.build
-- Twitter: https://twitter.com/LineaBuild
+This repository hosts the monorepo for Linea, the Consensys zkEVM network. It serves developers by making the Linea tech stack open source under the [Apache 2.0 license](LICENSE.md).
+
+## What is Linea?
+
+[Linea](https://linea.build) is a developer-ready layer 2 network scaling Ethereum. It's secured with a zero-knowledge rollup, built on lattice-based cryptography, and powered by [Consensys](https://consensys.io).
 
 
-## Getting Started
+## Get started
 
-### Requirements:
-- Node.js v18
-- Docker v24
-- Docker Compose version v2.19+
-- Make v3.81+
-- Pnpm >=v9.0.6 (https://pnpm.io/installation)
+If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
 
-### Running Stack Locally
+## Looking for the Linea code?
 
-#### Install Node Dependencies
-```
-make npm-install
-```
+Linea's stack is made up of multiple repositories, these include:
 
-#### Start Stack Locally & Run E2E Tests
+- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network 
+- [linea-besu](https://github.com/Consensys/linea-besu): Fork of Besu to implement the Linea-Besu client
+- [linea-sequencer](https://github.com/Consensys/linea-sequencer): A set of Linea-Besu plugins for the sequencer and RPC nodes
+- [linea-arithmetization](https://github.com/Consensys/linea-arithmetization): Linea-Besu plugins to implement the constraints for the circuits used to construct the zero-knowledge proofs
+- [linea-constraints](https://github.com/Consensys/linea-constraints): Constraints applied to the arithmetization, and ultimately to the circuits.
+- [linea-specification](https://github.com/Consensys/linea-specification): Home of the zk-EVM specification
 
-```
-make fresh-start-all
+Linea abstracts away the complexity of this technical architecture to allow developers to:
 
-cd e2e
-pnpm run test:e2e:local
-```
+- [Bridge tokens](https://docs.linea.build/developers/guides/bridge)
+- [Deploy a contract](https://docs.linea.build/developers/quickstart/deploy-smart-contract)
+- [Run a node](https://docs.linea.build/developers/guides/run-a-node)
 
-To stop that stack run:
-```
-make clean-enviroment
-```
+... and more.
 
-While running the end2end tests, you should observe files being generated in `tmp/local/` directory.
-```
-├── local
-│  ├── prover
-│  │  ├── request
-│  │  │  └── 4-4-etv0.2.0-stv1.2.0-getZkProof.json
-│  │  ├── requests-done
-│  │  │  ├── 1-1-etv0.2.0-stv1.2.0-getZkProof.json.success
-│  │  │  ├── 2-2-etv0.2.0-stv1.2.0-getZkProof.json.success
-│  │  │  └── 3-3-etv0.2.0-stv1.2.0-getZkProof.json.success
-│  │  └── response
-│  │      ├── 1-1-etv0.2.0-stv1.2.0-getZkProof.json.0.2.0.json
-│  │      ├── 2-2-etv0.2.0-stv1.2.0-getZkProof.json.0.2.0.json
-│  │      └── 3-3-etv0.2.0-stv1.2.0-getZkProof.json.0.2.0.json
-│  └── traces
-│      ├── conflated
-│      │  ├── 1-1.conflated.v0.2.0.json.gz
-│      │  ├── 2-2.conflated.v0.2.0.json.gz
-│      │  ├── 3-3.conflated.v0.2.0.json.gz
-│      │  └── 4-4.conflated.v0.2.0.json.gz
-│      ├── raw
-│      │  ├── 1-0x2e1a3f506c0d5f11310301a86f608d840d3db0e28c545eaf9e9c9812e2b795e0.v0.2.0.json.gz
-│      │  ├── 2-0x3e5b3bd8e21a94488bf93776480271d3fef8033152effd4e19fe6519dea53379.v0.2.0.json.gz
-│      │  ├── 3-0xa5046c13502a619a7a3f091b397234dc020f6cbda1942d247d1003d4c73899b6.v0.2.0.json.gz
-│      │  ├── 4-0xe9203ede2114bf9c291692c4bd2dcc7207973c267ed411d65568d1138b3ecfcc.v0.2.0.json.gz
-│      │  ├── 5-0x2c8ec07d4222bed8285be3de83f0fccc989134c49826baed5340bf7aa8e3ce8f.v0.2.0.json.gz
-│      │  └── 6-0x3c7b7ee369d5fe02a6865415a2d0ef4ec385812351723e35a3b54d972f9f4ceb.v0.2.0.json.gz
-│      └── raw-non-canonical
-```
+## How to contribute
 
-#### Troubleshooting
-- Docker: Sometimes restarting the stack several times may lead to network/state issues. The following commands may help. **Note:** Please be aware that this will permanently remove all docker images, containers and **docker volumes** and any data saved it them.
+Contributions of any kind are welcome!
 
-```
-make clean-environment
-docker system prune --volumes
-```
+1. [Create an issue](https://github.com/Consensys/linea-monorepo.git/issues)
+> If the proposed update is non-trivial, also tag us for discussion.
+2. Submit the update as a pull request from your [fork of this repo]({https://github.com/Consensys/linea-monorepo.git/fork), and tag us for review. 
+> Include the issue number in the pull request description and (optionally) in the branch name.
 
-## Tuning in conflation
-For local testing and development conflation deadline is set to 6s `conflation-deadline=PT6S` in `config/coordinator/coordinator-docker.config.toml` file. Hence, only 2 blocks conflation.  If you want bigger conflations, increase the deadline accordingly.
+Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-monorepo.git/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+Before contributing, ensure you're familiar with:
+
+- Our [contribution guide](docs/contribute.md)
+- Our [code of conduct](docs/code-of-conduct.md)
+- The [Besu contribution guide](https://wiki.hyperledger.org/display/BESU/Coding+Conventions), for Besu:Linea related contributions
+
+
+### Useful links
+
+[Linea docs](https://docs.linea.build)
+[Linea blog](https://linea.mirror.xyz)
+[Support](https://support.linea.build)
+[Discord](https://discord.gg/linea)
+[Twitter](https://twitter.com/LineaBuild)

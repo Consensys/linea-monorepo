@@ -1,12 +1,19 @@
-# Contributing.md
+# Contributing
 
 ## Introduction
 
-Thank you for your interest in contributing to Linea's zkevm-monorepo. This document provides guidelines and instructions on how to contribute effectively. We use trunk-based development, and our main languages are Kotlin, Golang, Solidity, and TypeScript. Our releases are done using GitOps, ArgoCD, Helm, and Kubernetes.
+Thank you for your interest in contributing to Linea's zk-EVM monorepo. This document provides guidelines and instructions on how to contribute effectively. We use trunk-based development, and our main languages are Kotlin, Golang, Solidity, and TypeScript. Our releases are done using GitOps, ArgoCD, Helm, and Kubernetes.
 
-## Submitting a Contribution
+## Submit a Contribution
 
-### Creating an issue
+## Prerequisites
+
+Before contributing, please ensure you're familiar with:
+
+- Our [development guidelines](development-guidelines.md) on how to write code, tests, and documentation.
+- Our [code of conduct](code-of-conduct.md).
+
+### Create an issue
 
 * Check beforehand that the issue you want to raise isn't present (even with other keywords) to avoid creating duplicates,
 * Use an issue template. Using the correct one will aid other contributors in responding to your issue. Use `Feature request`, `Bug report` or `Operational Task`, depending on the context.
@@ -19,15 +26,15 @@ Thank you for your interest in contributing to Linea's zkevm-monorepo. This docu
 * Leave issues in `Backlog`, prioritization in further columns are performed as part of sprint preparation.
 * Issues should be closed only by the original author of the ticket after making sure it's fully completed and can be closed.
 
-### Responding to an Issue
+### Respond to an issue
 
 * When tackling an issue, comment on it letting others know you are working on it to avoid duplicate work.
 * When you have resolved something on your own at any future time, comment on the issue letting people know before closing it.
 * Include references to other PRs or issues (or any accessible materials), example: "ref: #1234". It is useful to identify that related work has been addressed somewhere else.
 
-### Development Process
+### Development process
 
-We follow a [trunk-based](https://trunkbaseddevelopment.com/) development process. This means all developers work on a single branch, 'main', and features are developed in short-lived feature branches. Issues are your mandate, ensure you have an up-to-date issue when working on a feature or bug fix by editing the description and status. Once you start working on an issue, you become the owner of it, you are responsible to make it progress through the different steps and pass any blockers. Please escalate any problem you cannot overcome to the leadership. Proper testing and documentation are always part of the expected outcome.
+We follow a [trunk-based](https://trunkbaseddevelopment.com/) development process. This means all developers work on a single branch, 'main', and features are developed in short-lived feature branches. Issues are your mandate, ensure you have an up-to-date issue when working on a feature or bug fix by editing the description and status. Once you start working on an issue, you become the owner of it, you are responsible to make it progress through the different steps and pass any blockers. Please escalate any problem you cannot overcome to the Linea team. Proper testing and documentation are always part of the definition of done.
 
 1. **Create a New Branch**: For each new feature or bug fix, create a new branch. Branches should be named descriptively, following the pattern `type/issue#-short-description`, e.g., `feature/123-add-login-button` or `bugfix/456-fix-login-error`.
 
@@ -46,9 +53,6 @@ We follow a [trunk-based](https://trunkbaseddevelopment.com/) development proces
 1. **CI**: Ensure all elements in the CI are passing in a reliable fashion, don't retry to fix a flaky test. Ensure quality gates (tests, coverage, static analysis, and security analysis) are passing.
 
 
-## Development Guidelines
-Please check our [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) for more information on how to write code, tests, and documentation.
-
 ## Code Reviews
 
 Once you submit a pull request, it will be reviewed by the maintainers. They may ask for changes or improvements. Please be patient and responsive to their feedback.
@@ -66,7 +70,7 @@ The Release Manager is responsible for the technical soundness of each release. 
 * Controlling that proper monitoring has been done by engineers when releasing.
 * Make sure the release notes are accurate and up to date. [Release Notes](https://github.com/Consensys/zkevm-monorepo/wiki/Linea-Releases).
 * Be the first contact point for operations/SRE if something happens on the cluster.
-* Make summaries of what's being released and their statuses on slack #linea-testnet and #linea-mainnet
+<!-- * Make summaries of what's being released and their statuses on slack #linea-testnet and #linea-mainnet -->
 * Do a proper handover to the next release manager.
 
 ### Release types
@@ -80,7 +84,7 @@ The Release Manager is responsible for the technical soundness of each release. 
 Configuration changes that are part of the [Ops Runbook](https://www.notion.so/consensys/Linea-Runbooks-55e170e0db8f4d71add01c2ef1611cb6) are not considered releases. This includes for example changing the # of provers or updating price thresholds. These configurations changes can be performed at any time.
 
 ### Standard deployment timeline
-* The engineer shares with the release manager their PRs, before each monday mid-day, ideally before Friday of the previous week. Details are being added to the [Release Notes](https://github.com/Consensys/zkevm-monorepo/wiki/Linea-Releases).
+* Internal Consensys engineers share their PRs with the release manager before each Monday mid-day, ideally before Friday of the previous week. Details are added to the [Release Notes](https://github.com/Consensys/zkevm-monorepo/wiki/Linea-Releases).
 * The release manager greenlights the release, proposes a day and time for deploying the release to the engineer. The release manager ensure communication has been shared with internal stakeholders (SRE) as well as external stakeholders when relevant (community/partners).
 * The deployment on testnet is performed between Monday and Wednesday before 15:00 local Software Engineer time. With the help of DevOps and SRE teams.
 * The deployment on mainnet is performed following the exact same process as testnet, after sufficient time to be confident the release can be promoted to mainnet.
