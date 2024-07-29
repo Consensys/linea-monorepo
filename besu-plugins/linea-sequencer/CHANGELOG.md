@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0-rc5.1
+* bump linea-arithmetization version to 0.2.0-rc5 [#55](https://github.com/Consensys/linea-sequencer/pull/55)
+
 ## 0.2.0-rc4.1
 * feat: bump linea-arithmetization version to 0.2.0-rc4 [#47](https://github.com/Consensys/linea-sequencer/pull/47)
 * Option to disable setting minGasPrice via extra data [#50](https://github.com/Consensys/linea-sequencer/pull/50)
