@@ -1,6 +1,6 @@
 # Linea zkEVM
 
-This repository hosts the monorepo for Linea, the Consensys zkEVM network. It serves developers by making the Linea tech stack open source under the [Apache 2.0 license](LICENSE.md).
+This repository hosts the monorepo for Linea, the Consensys zkEVM network. It serves developers by making the Linea tech stack open source under the [Apache 2.0 license](LICENSE).
 
 ## What is Linea?
 
