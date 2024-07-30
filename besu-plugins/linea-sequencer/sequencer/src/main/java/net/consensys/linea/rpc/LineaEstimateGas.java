@@ -346,7 +346,7 @@ public class LineaEstimateGas {
   }
 
   private void validateParameters(final JsonCallParameter callParameters) {
-    if (callParameters.getGasPrice() != null && isBaseFeeMarket(callParameters)) {
+    if (callParameters.getGasPrice() != null && isBaseFeeTransaction(callParameters)) {
       throw new InvalidJsonRpcParameters(
           "gasPrice cannot be used with maxFeePerGas or maxPriorityFeePerGas or maxFeePerBlobGas");
     }
@@ -358,7 +358,7 @@ public class LineaEstimateGas {
     }
   }
 
-  private boolean isBaseFeeMarket(final JsonCallParameter callParameters) {
+  private boolean isBaseFeeTransaction(final JsonCallParameter callParameters) {
     return (callParameters.getMaxFeePerGas().isPresent()
         || callParameters.getMaxPriorityFeePerGas().isPresent()
         || callParameters.getMaxFeePerBlobGas().isPresent());
@@ -396,11 +396,17 @@ public class LineaEstimateGas {
             .value(callParameters.getValue() == null ? Wei.ZERO : callParameters.getValue())
             .signature(FAKE_SIGNATURE_FOR_SIZE_CALCULATION);
 
-    if (!isBaseFeeMarket(callParameters) && callParameters.getGasPrice() == null) {
-      txBuilder.gasPrice(blockchainService.getNextBlockBaseFee().orElse(Wei.ZERO));
+    if (isBaseFeeTransaction(callParameters)) {
+      callParameters.getMaxFeePerGas().ifPresent(txBuilder::maxFeePerGas);
+      callParameters.getMaxPriorityFeePerGas().ifPresent(txBuilder::maxPriorityFeePerGas);
+      callParameters.getMaxFeePerBlobGas().ifPresent(txBuilder::maxFeePerBlobGas);
+    } else {
+      txBuilder.gasPrice(
+          callParameters.getGasPrice() != null
+              ? callParameters.getGasPrice()
+              : blockchainService.getNextBlockBaseFee().orElse(Wei.ZERO));
     }
-    callParameters.getMaxFeePerGas().ifPresent(txBuilder::maxFeePerGas);
-    callParameters.getMaxPriorityFeePerGas().ifPresent(txBuilder::maxPriorityFeePerGas);
+
     callParameters.getAccessList().ifPresent(txBuilder::accessList);
 
     return txBuilder.build();

@@ -52,7 +52,8 @@ public class EstimateGasModuleLimitOverflowTest extends LineaPluginTestBase {
             simpleStorage.getContractAddress(),
             null,
             payload.toHexString(),
-            "0");
+            "0",
+            null);
 
     final var reqLinea = new EstimateGasTest.BadLineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());

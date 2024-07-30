@@ -70,10 +70,10 @@ public class EstimateGasCompatibilityModeTest extends EstimateGasTest {
   public void lineaEstimateGasPriorityFeeMinGasPriceLowerBound() {
     final Account sender = accounts.getSecondaryBenefactor();
 
-    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0");
+    final CallParams callParams = new CallParams(sender.getAddress(), null, "", "", "0", null);
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
-    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests()).getResult();
 
     final var baseFee = Wei.fromHexString(respLinea.baseFeePerGas());
     final var estimatedPriorityFee = Wei.fromHexString(respLinea.priorityFeePerGas());

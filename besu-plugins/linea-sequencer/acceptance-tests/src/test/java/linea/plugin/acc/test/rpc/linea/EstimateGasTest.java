@@ -93,13 +93,33 @@ public class EstimateGasTest extends LineaPluginTestBase {
 
     final CallParams callParams =
         new CallParams(
-            sender.getAddress(), sender.getAddress(), null, Bytes.EMPTY.toHexString(), "0");
+            sender.getAddress(), sender.getAddress(), null, Bytes.EMPTY.toHexString(), "0", null);
 
     final var reqEth = new RawEstimateGasRequest(callParams);
     final var reqLinea = new LineaEstimateGasRequest(callParams);
     final var respEth = reqEth.execute(minerNode.nodeRequests());
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
-    assertThat(respEth).isEqualTo(respLinea.gasLimit());
+    assertThat(respEth).isEqualTo(respLinea.getResult().gasLimit());
+  }
+
+  @Test
+  public void passingGasPriceFieldWorks() {
+
+    final Account sender = accounts.getSecondaryBenefactor();
+
+    final CallParams callParams =
+        new CallParams(
+            sender.getAddress(),
+            sender.getAddress(),
+            null,
+            Bytes.EMPTY.toHexString(),
+            "0",
+            "0x1234");
+
+    final var reqLinea = new LineaEstimateGasRequest(callParams);
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    assertThat(respLinea.hasError()).isFalse();
+    assertThat(respLinea.getResult()).isNotNull();
   }
 
   @Test
@@ -119,10 +139,11 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var payload = Bytes.wrap(txData.toString().getBytes(StandardCharsets.UTF_8));
 
     final CallParams callParams =
-        new CallParams(sender.getAddress(), sender.getAddress(), null, payload.toHexString(), "0");
+        new CallParams(
+            sender.getAddress(), sender.getAddress(), null, payload.toHexString(), "0", null);
 
     final var reqLinea = new LineaEstimateGasRequest(callParams);
-    final var respLinea = reqLinea.execute(minerNode.nodeRequests());
+    final var respLinea = reqLinea.execute(minerNode.nodeRequests()).getResult();
 
     final var estimatedGasLimit = UInt64.fromHexString(respLinea.gasLimit()).toLong();
     final var baseFee = Wei.fromHexString(respLinea.baseFeePerGas());
@@ -170,7 +191,7 @@ public class EstimateGasTest extends LineaPluginTestBase {
   public void invalidParametersLineaEstimateGasRequestReturnErrorResponse() {
     final Account sender = accounts.getSecondaryBenefactor();
     final CallParams callParams =
-        new CallParams(sender.getAddress(), null, "", "", String.valueOf(Integer.MAX_VALUE));
+        new CallParams(sender.getAddress(), null, "", "", String.valueOf(Integer.MAX_VALUE), null);
     final var reqLinea = new BadLineaEstimateGasRequest(callParams);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.getCode()).isEqualTo(RpcErrorType.INVALID_PARAMS.getCode());
@@ -183,7 +204,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final Account sender = accounts.getSecondaryBenefactor();
     final var reqLinea =
         new BadLineaEstimateGasRequest(
-            new CallParams(sender.getAddress(), simpleStorage.getContractAddress(), "", "", "0"));
+            new CallParams(
+                sender.getAddress(), simpleStorage.getContractAddress(), "", "", "0", null));
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.getCode()).isEqualTo(-32000);
     assertThat(respLinea.getMessage()).isEqualTo("Execution reverted");
@@ -196,7 +218,12 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var reqLinea =
         new BadLineaEstimateGasRequest(
             new CallParams(
-                sender.getAddress(), null, "", Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY, "0"));
+                sender.getAddress(),
+                null,
+                "",
+                Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY,
+                "0",
+                null));
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.getCode()).isEqualTo(-32000);
     assertThat(respLinea.getMessage()).isEqualTo("Failed transaction, reason: INVALID_OPERATION");
@@ -228,7 +255,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
     assertThat(estimatedMaxGasPrice).isEqualTo(minGasPrice);
   }
 
-  static class LineaEstimateGasRequest implements Transaction<LineaEstimateGasRequest.Response> {
+  static class LineaEstimateGasRequest
+      implements Transaction<LineaEstimateGasRequest.LineaEstimateGasResponse> {
     private final CallParams callParams;
 
     public LineaEstimateGasRequest(final CallParams callParams) {
@@ -236,15 +264,14 @@ public class EstimateGasTest extends LineaPluginTestBase {
     }
 
     @Override
-    public LineaEstimateGasRequest.Response execute(final NodeRequests nodeRequests) {
+    public LineaEstimateGasResponse execute(final NodeRequests nodeRequests) {
       try {
         return new Request<>(
                 "linea_estimateGas",
                 List.of(callParams),
                 nodeRequests.getWeb3jService(),
                 LineaEstimateGasResponse.class)
-            .send()
-            .getResult();
+            .send();
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -308,5 +335,6 @@ public class EstimateGasTest extends LineaPluginTestBase {
     static class RawEstimateGasResponse extends org.web3j.protocol.core.Response<String> {}
   }
 
-  record CallParams(String from, String to, String value, String data, String gas) {}
+  record CallParams(
+      String from, String to, String value, String data, String gas, String gasPrice) {}
 }
