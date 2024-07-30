@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-rc1
+* feat: upgrade besu version to 24.7-develop-f812936 ([#880](https://github.com/Consensys/linea-arithmetization/pull/880))
+
 ## 0.2.0-rc5
 * fix(ecData): ugly hack to discard unsuccessful EcRecover call ([#891](https://github.com/Consensys/linea-arithmetization/pull/891))
 
