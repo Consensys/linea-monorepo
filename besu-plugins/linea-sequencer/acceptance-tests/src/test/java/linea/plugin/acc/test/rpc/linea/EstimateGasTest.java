@@ -308,5 +308,5 @@ public class EstimateGasTest extends LineaPluginTestBase {
     static class RawEstimateGasResponse extends org.web3j.protocol.core.Response<String> {}
   }
 
-  record CallParams(String from, String to, String value, String data, String gasLimit) {}
+  record CallParams(String from, String to, String value, String data, String gas) {}
 }

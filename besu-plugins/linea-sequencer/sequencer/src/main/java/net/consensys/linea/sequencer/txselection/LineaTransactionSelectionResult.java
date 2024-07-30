@@ -18,22 +18,24 @@ import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 
 public class LineaTransactionSelectionResult extends TransactionSelectionResult {
   private enum LineaStatus implements TransactionSelectionResult.Status {
-    BLOCK_CALLDATA_OVERFLOW(false, false),
-    BLOCK_MODULE_LINE_COUNT_FULL(true, false),
-    TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS(false, true),
-    TX_TOO_LARGE_FOR_REMAINING_USER_GAS(false, false),
-    TX_MODULE_LINE_COUNT_OVERFLOW(false, true),
-    TX_MODULE_LINE_COUNT_OVERFLOW_CACHED(false, true),
-    TX_UNPROFITABLE(false, false),
-    TX_UNPROFITABLE_UPFRONT(false, false),
-    TX_UNPROFITABLE_RETRY_LIMIT(false, false);
+    BLOCK_CALLDATA_OVERFLOW(false, false, false),
+    BLOCK_MODULE_LINE_COUNT_FULL(true, false, false),
+    TX_GAS_EXCEEDS_USER_MAX_BLOCK_GAS(false, true, true),
+    TX_TOO_LARGE_FOR_REMAINING_USER_GAS(false, false, false),
+    TX_MODULE_LINE_COUNT_OVERFLOW(false, true, true),
+    TX_MODULE_LINE_COUNT_OVERFLOW_CACHED(false, true, true),
+    TX_UNPROFITABLE(false, false, true),
+    TX_UNPROFITABLE_UPFRONT(false, false, true),
+    TX_UNPROFITABLE_RETRY_LIMIT(false, false, false);
 
     private final boolean stop;
     private final boolean discard;
+    private final boolean penalize;
 
-    LineaStatus(boolean stop, boolean discard) {
+    LineaStatus(boolean stop, boolean discard, boolean penalize) {
       this.stop = stop;
       this.discard = discard;
+      this.penalize = penalize;
     }
 
     @Override
@@ -44,6 +46,11 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     @Override
     public boolean discard() {
       return discard;
+    }
+
+    @Override
+    public boolean penalize() {
+      return penalize;
     }
   }
 
