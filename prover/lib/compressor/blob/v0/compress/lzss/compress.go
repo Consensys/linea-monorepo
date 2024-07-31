@@ -3,9 +3,10 @@ package lzss
 import (
 	"bytes"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss/internal/suffixarray"
 	"math/bits"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss/internal/suffixarray"
 
 	"github.com/icza/bitio"
 )

@@ -4,11 +4,11 @@ import (
 	hint "github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
-	cInternal "github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
+	cInternal "github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 )
 
 // Decompress decompresses c into d using dict as the dictionary

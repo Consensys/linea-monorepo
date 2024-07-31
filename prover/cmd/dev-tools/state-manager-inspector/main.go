@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/cmd/dev-tools/state-manager-inspector/cmd"
+	"github.com/consensys/linea-monorepo/prover/cmd/dev-tools/state-manager-inspector/cmd"
 	"github.com/sirupsen/logrus"
 )
 

@@ -6,12 +6,13 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"

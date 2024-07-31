@@ -1,10 +1,10 @@
 package execution
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Craft prover's functional inputs

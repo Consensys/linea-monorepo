@@ -1,10 +1,11 @@
 package execution
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
-	"testing"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 )
 
 func TestPIConsistency(t *testing.T) {

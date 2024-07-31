@@ -3,15 +3,16 @@ package keccak
 import (
 	"bytes"
 	"errors"
-	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"golang.org/x/crypto/sha3"
 	"hash"
 	"math/big"
 	"slices"
+
+	"github.com/consensys/gnark/constraint/solver"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"golang.org/x/crypto/sha3"
 )
 
 // The strict hasher abstraction bridges the keccak computation in the circuit assignment and proving phases.

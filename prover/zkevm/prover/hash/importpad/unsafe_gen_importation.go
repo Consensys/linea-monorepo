@@ -3,8 +3,8 @@ package importpad
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 // It prints the importation columns, it is not safe to be used directly for test.

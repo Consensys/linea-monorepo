@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits"
 )
 
 type builder struct {

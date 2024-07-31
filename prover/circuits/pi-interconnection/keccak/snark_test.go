@@ -2,19 +2,20 @@ package keccak
 
 import (
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"math/big"
 	"slices"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 

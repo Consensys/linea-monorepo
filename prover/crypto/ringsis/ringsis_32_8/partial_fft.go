@@ -3,7 +3,7 @@
 package ringsis_32_8
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 var partialFFT = []func(a, twiddles []field.Element){

@@ -1,7 +1,7 @@
 package aggregation
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 )
 
 // Request collects all the fields used to perform an aggregation request.

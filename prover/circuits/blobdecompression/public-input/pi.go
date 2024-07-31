@@ -2,13 +2,14 @@ package public_input
 
 import (
 	"fmt"
+	"math/big"
+	"math/bits"
+
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"math/big"
-	"math/bits"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 )
 
 func interpolateLagrangeBls12381(field *emulated.Field[emulated.BLS12381Fr], unitCircleEvaluations []*emulated.Element[emulated.BLS12381Fr], evaluationPoint *emulated.Element[emulated.BLS12381Fr]) (evaluation *emulated.Element[emulated.BLS12381Fr], err error) {

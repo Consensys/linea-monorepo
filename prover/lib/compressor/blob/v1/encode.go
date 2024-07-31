@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )

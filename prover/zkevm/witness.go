@@ -1,7 +1,7 @@
 package zkevm
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 )
 
 // Witness is a collection of prover inputs used to derive an assignment to the

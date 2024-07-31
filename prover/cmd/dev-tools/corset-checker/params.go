@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config"
 )
 
 var (

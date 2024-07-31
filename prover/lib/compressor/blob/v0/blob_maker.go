@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/std/compress"

@@ -3,7 +3,7 @@ package simplify
 import (
 	"testing"
 
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 )
 

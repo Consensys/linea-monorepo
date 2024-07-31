@@ -3,7 +3,7 @@ package parallel_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 func TestParChunky(t *testing.T) {

@@ -5,9 +5,9 @@ package accumulator_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/stretchr/testify/require"
 )
 

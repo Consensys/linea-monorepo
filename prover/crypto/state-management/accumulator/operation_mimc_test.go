@@ -5,7 +5,7 @@ package accumulator_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/accumulator"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // ColID is a [Column]'s unique string identifier.
@@ -85,13 +85,13 @@ type Column interface {
 	// computed.
 	GetColID() ColID
 	// Returns true if the column is registered. This is trivial by design
-	// (because [github.com/consensys/zkevm-monorepo/protocol/column.Natural] column objects are built by the function that registers
+	// (because [github.com/consensys/linea-monorepo/protocol/column.Natural] column objects are built by the function that registers
 	// it). The goal of this function is to assert this fact. Precisely, it will
 	// check if a corresponding entry in the store exists. If it does not, it
 	// panics.
 	MustExists()
 	// GetColAssignment retrieves the assignment of the receiver column from a
-	// [github.com/consensys/zkevm-monorepo/protocol/wizard.ProverRuntime]. It panics if the column has not been assigned yet. It is
+	// [github.com/consensys/linea-monorepo/protocol/wizard.ProverRuntime]. It panics if the column has not been assigned yet. It is
 	// the preferred way to extract the assignment of the column and should be
 	// preferred over calling [Runtime.GetColumn] as the latter
 	// will not accept columns that are not of the [column.Natural] type.
@@ -111,9 +111,9 @@ type Column interface {
 	// column is tagged as committed.
 	GetColAssignmentGnarkAt(run GnarkRuntime, pos int) frontend.Variable
 	// IsComposite states whether a column is constructed by deriving one or
-	// more columns. For instance [github.com/consensys/zkevm-monorepo/protocol/column.Natural] is not a composite column as
+	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
 	// it directly refers to a set of values provided to the Wizard by the user
-	// or by an intermediate compiler step. And [github.com/consensys/zkevm-monorepo/protocol/column.Shift] is a composite
+	// or by an intermediate compiler step. And [github.com/consensys/linea-monorepo/protocol/column.Shift] is a composite
 	// column as it is derived from an underlying column (which may or may not
 	// be a composite column itself)
 	IsComposite() bool
@@ -121,7 +121,7 @@ type Column interface {
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]
 // can be used to build arithmetic expressions involving the column and
-// they can then be used to specify a [github.com/consensys/zkevm-monorepo/prover/protocol/query.GlobalConstraint] for instance.
+// they can then be used to specify a [github.com/consensys/linea-monorepo/prover/protocol/query.GlobalConstraint] for instance.
 //
 // @alex: this is super verbose and cumbersome. It would be great if we could make
 // this conversion implicit. An idea to improve this, would be to update the
@@ -140,7 +140,7 @@ func MustBeInRound(h Column, round int) {
 	}
 }
 
-// AssertNotComposite asserts that the handle is [column.Natural] or a verifier-col (see [github.com/consensys/zkevm-monorepo/protocol/column/verifiercol]). It is a convenience
+// AssertNotComposite asserts that the handle is [column.Natural] or a verifier-col (see [github.com/consensys/linea-monorepo/protocol/column/verifiercol]). It is a convenience
 // function to write sanity-checks as a defensive programming technique, and it
 // is useful for writing a compiler.
 func AssertNotComposite(h Column) {

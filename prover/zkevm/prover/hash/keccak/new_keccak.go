@@ -3,18 +3,18 @@
 package keccak
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
-	gen_acc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/base_conversion.go"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing/dedicated/spaghettifier"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion.go"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/packing"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/packing/dedicated/spaghettifier"
 )
 
 const (

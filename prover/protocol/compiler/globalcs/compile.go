@@ -3,7 +3,7 @@ package globalcs
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 const (

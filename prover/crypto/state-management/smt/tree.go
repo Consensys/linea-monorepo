@@ -3,10 +3,10 @@ package smt
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Config specifies the parameters of the tree (choice of hash function, depth).

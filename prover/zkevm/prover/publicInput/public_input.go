@@ -1,6 +1,6 @@
 package publicInput
 
-import fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+import fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.

@@ -1,11 +1,12 @@
 package mock
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 )
 

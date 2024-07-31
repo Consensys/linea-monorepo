@@ -3,9 +3,9 @@ package smt_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 

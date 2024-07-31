@@ -4,7 +4,7 @@ import (
 	"math/bits"
 	"unsafe"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // bytesAsBlockPtrUnsafe unsafely cast a slice into an array. The caller is

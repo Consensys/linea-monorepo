@@ -1,11 +1,12 @@
 package v1
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFPIConsistency(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"unsafe"
 
-	blob_v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 //go:generate go build -tags nocorset -ldflags "-s -w" -buildmode=c-shared -o libcompressor.so libcompressor.go

@@ -1,6 +1,6 @@
 package symbolic
 
-import "github.com/consensys/zkevm-monorepo/prover/maths/field"
+import "github.com/consensys/linea-monorepo/prover/maths/field"
 
 /*
 IsMul returns true if an expression is a mul at the top-level

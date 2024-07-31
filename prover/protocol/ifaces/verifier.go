@@ -2,11 +2,11 @@ package ifaces
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 )
 
-// Runtime is implemented by the [github.com/consensys/zkevm-monorepo/protocol/wizard.ProverRuntime] and
+// Runtime is implemented by the [github.com/consensys/linea-monorepo/protocol/wizard.ProverRuntime] and
 // [wizard.VerifierRuntime]. The interface exists to prevent circular
 // dependencies internally.
 type Runtime interface {
@@ -22,7 +22,7 @@ type Runtime interface {
 	GetParams(id QueryID) QueryParams
 }
 
-// Interface implemented by the [github.com/consensys/zkevm-monorepo/protocol/wizard.WizardVerifierCircuit]. The interface
+// Interface implemented by the [github.com/consensys/linea-monorepo/protocol/wizard.WizardVerifierCircuit]. The interface
 // exists to prevent circular dependencies internally.
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit

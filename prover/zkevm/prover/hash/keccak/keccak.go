@@ -5,15 +5,15 @@ package keccak
 import (
 	"runtime"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/acc_module"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/datatransfer"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/dedicated"
-	g "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/datatransfer/acc_module"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/datatransfer/datatransfer"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/datatransfer/dedicated"
+	g "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 )
 
 // A trace provider represents a module capable sending data to the keccak

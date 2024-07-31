@@ -1,7 +1,7 @@
 package publicInput
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 type ExecutionDataCollectorVectors struct {

@@ -3,9 +3,9 @@ package common
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mock"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
 
 type TestCase struct {

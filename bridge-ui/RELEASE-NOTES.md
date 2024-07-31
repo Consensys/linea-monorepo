@@ -7,9 +7,6 @@
 Description:
 - Fix ETH and USDC history fetching issue
 
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3328)
-
 [Changes][v0.6.5]
 
 <a name="v0.6.4"></a>
@@ -20,9 +17,6 @@ Technical implementation:
 
 Description:
 - Add claim message as a recipient feature
-
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3132)
 
 [Changes][v0.6.4]
 
@@ -36,9 +30,6 @@ Description:
 - Update shortcuts doc url
 - Update shortcuts description
 
-Technical implementation:
-- [PR](https://github.com/Consensys/zkevm-monorepo/pull/3220)
-
 [Changes][v0.6.3]
 
 <a name="v0.6.2"></a>
@@ -51,10 +42,6 @@ Description:
 - Update link for third party bridges on the landing page to https://linea.build/apps?types=bridge
 - Enable shortcuts for easy bridging from L1 -> Linea
 
-Technical implementation:
-- [PR for third party bridges](https://github.com/Consensys/zkevm-monorepo/pull/3116)
-- [PR to enable shortcuts](https://github.com/Consensys/zkevm-monorepo/pull/2883)
-
 [Changes][v0.6.2]
 
 <a name="v0.6.1"></a>
@@ -65,9 +52,6 @@ Technical implementation:
 
 Description:
 - Fix ERC20 abi approve function return types to support USDT
-
-Technical implementation:
-[PR](https://github.com/Consensys/zkevm-monorepo/pull/2932)
 
 [Changes][v0.6.1]
 
@@ -80,9 +64,6 @@ Technical implementation:
 Description:
 - Add support for Linea Sepolia testnet
 - Remove support for Linea Goerli testnet
-
-Technical implementation:
-[PR](https://github.com/Consensys/zkevm-monorepo/pull/2735)
 
 [Changes][v0.6.0]
 

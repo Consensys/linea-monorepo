@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	stmCommon "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mock"
-	stmgr "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	stmCommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
+	stmgr "github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 	"github.com/stretchr/testify/assert"
 )
 

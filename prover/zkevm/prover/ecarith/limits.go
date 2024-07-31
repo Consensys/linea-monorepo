@@ -1,6 +1,6 @@
 package ecarith
 
-import "github.com/consensys/zkevm-monorepo/prover/utils"
+import "github.com/consensys/linea-monorepo/prover/utils"
 
 // Limits defines the upper limits on the size of the circuit and the number of
 // gnark circuits. The total number of allowed EC_MUL precompile calls is

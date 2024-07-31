@@ -1,10 +1,10 @@
 package zkevm
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // type alias to denote a wizard-compilation suite. This is used when calling

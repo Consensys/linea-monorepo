@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestHexDecodeStringSuccess(t *testing.T) {

@@ -1,8 +1,8 @@
 package arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization/define"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization/define"
 )
 
 // Settings specifies the parameters for the arithmetization part of the zk-EVM.

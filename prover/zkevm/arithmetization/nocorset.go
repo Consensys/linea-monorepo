@@ -3,7 +3,7 @@
 package arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 // This function and this tags exists so it is possible to test the entirety

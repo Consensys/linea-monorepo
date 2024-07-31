@@ -1,6 +1,6 @@
 package define
 
-import "github.com/consensys/zkevm-monorepo/prover/config"
+import "github.com/consensys/linea-monorepo/prover/config"
 
 // Settings specifies the parameters for the arithmetization part of the
 // zk-EVM.

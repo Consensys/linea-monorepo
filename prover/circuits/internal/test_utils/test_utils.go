@@ -6,16 +6,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/constraints"
 	"math/big"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/constraints"
 )
 
 func printAsHexHint(_ *big.Int, ins, outs []*big.Int) error {

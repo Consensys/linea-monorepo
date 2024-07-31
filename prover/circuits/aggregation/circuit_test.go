@@ -1,13 +1,14 @@
 package aggregation
 
 import (
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPublicInput(t *testing.T) {

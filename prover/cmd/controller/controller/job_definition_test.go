@@ -3,7 +3,7 @@ package controller
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/stretchr/testify/assert"
 )
 

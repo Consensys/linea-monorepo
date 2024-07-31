@@ -7,7 +7,7 @@ import (
 	"math/rand"
 
 	"github.com/consensys/gnark/std/math/emulated/emparams"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 )
 
 func main() {
