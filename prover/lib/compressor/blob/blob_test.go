@@ -1,10 +1,11 @@
 package blob_test
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetVersion(t *testing.T) {

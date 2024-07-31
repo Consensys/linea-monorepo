@@ -8,8 +8,8 @@ import (
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 func GetVersion(blob []byte) uint16 {
@@ -40,7 +40,7 @@ func GetRepoRootPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	const repoName = "zkevm-monorepo"
+	const repoName = "linea-monorepo"
 	i := strings.LastIndex(wd, repoName)
 	if i == -1 {
 		return "", errors.New("could not find repo root")

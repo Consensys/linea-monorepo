@@ -3,7 +3,7 @@ package define
 import (
 	_ "embed"
 
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 func ZkEVMDefine(build *Builder) {

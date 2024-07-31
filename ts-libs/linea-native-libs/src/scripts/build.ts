@@ -23,7 +23,7 @@ async function downloadAndParseJson(url: string, headers: Record<string, string>
 }
 
 async function getReleaseAssetUrl(authToken: string, nativeLibReleaseTag: string): Promise<string> {
-  const urlStr = "https://api.github.com/repos/ConsenSys/zkevm-monorepo/releases";
+  const urlStr = "https://api.github.com/repos/ConsenSys/linea-monorepo/releases";
 
   const json = await downloadAndParseJson(urlStr, { Authorization: `token ${authToken}` });
   const release = json.find((release: any) => release.tag_name === nativeLibReleaseTag);
@@ -38,7 +38,7 @@ async function getReleaseAssetUrl(authToken: string, nativeLibReleaseTag: string
   }
 
   const asset = release.assets.find((asset: any) => asset.name.includes(nativeLibReleaseTag));
-  return `https://${authToken}:@api.github.com/repos/Consensys/zkevm-monorepo/releases/assets/${asset.id}`;
+  return `https://${authToken}:@api.github.com/repos/Consensys/linea-monorepo/releases/assets/${asset.id}`;
 }
 
 async function downloadFileUsingCurl(authToken: string, url: string, outputFilePath: string): Promise<string> {

@@ -1,6 +1,6 @@
 package execution
 
-import "github.com/consensys/zkevm-monorepo/prover/utils"
+import "github.com/consensys/linea-monorepo/prover/utils"
 
 func (j *Response) ComputeProofInput() {
 

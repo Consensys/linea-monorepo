@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"

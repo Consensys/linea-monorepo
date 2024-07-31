@@ -1,13 +1,14 @@
 package keccak
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAssign(t *testing.T) {

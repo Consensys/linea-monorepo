@@ -1,11 +1,12 @@
 package publicInput
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 func TestExecutionDataCollector(t *testing.T) {

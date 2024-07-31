@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Full bytes32 is a wrapper around bytes32 used to specifically represent

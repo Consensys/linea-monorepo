@@ -3,11 +3,11 @@ package acc_module
 import (
 	"testing"
 
-	permTrace "github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/datatransfer"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	permTrace "github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/datatransfer/datatransfer"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/stretchr/testify/assert"
 )
 

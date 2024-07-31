@@ -1,6 +1,6 @@
 package generic
 
-import "github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+import "github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
 // Definition of the tx-rlp module
 var RLP_TXN = GenericByteModuleDefinition{

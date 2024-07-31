@@ -9,8 +9,8 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Assignment collects all the arguments that are necessary to produce a circuit

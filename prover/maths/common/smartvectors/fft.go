@@ -1,8 +1,8 @@
 package smartvectors
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Compute the FFT of a vector

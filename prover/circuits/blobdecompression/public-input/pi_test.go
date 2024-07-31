@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,7 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"

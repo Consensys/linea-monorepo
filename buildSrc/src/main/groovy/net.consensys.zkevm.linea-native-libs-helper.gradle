@@ -31,7 +31,7 @@ static def getReleaseAsset(
   String releaseTagName,
   String githubAccessToken
 ) {
-  def urlStr = 'https://api.github.com/repos/ConsenSys/zkevm-monorepo/releases'
+  def urlStr = 'https://api.github.com/repos/ConsenSys/linea-monorepo/releases'
   def json = downloadAndParseJson(urlStr, ['Authorization': "token ${githubAccessToken}"])
   def release = json.find { it.tag_name == releaseTagName }
   if (release == null) {

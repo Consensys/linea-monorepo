@@ -1,10 +1,11 @@
 package public_input
 
 import (
-	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"golang.org/x/crypto/sha3"
 	"hash"
+
+	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 // Aggregation collects all the field that are used to construct the public

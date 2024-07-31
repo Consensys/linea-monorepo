@@ -3,7 +3,7 @@ package column_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/stretchr/testify/assert"
 )
 

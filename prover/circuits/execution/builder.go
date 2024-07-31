@@ -5,9 +5,9 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 type builder struct {

@@ -27,8 +27,8 @@ import (
 
 	"github.com/consensys/gnark/constraint"
 	gnarkio "github.com/consensys/gnark/io"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Setup contains the proving and verifying keys of a circuit, as well as the constraint system.

@@ -8,13 +8,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/lookup"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 
