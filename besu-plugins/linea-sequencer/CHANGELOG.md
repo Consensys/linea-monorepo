@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0-rc1.1
+* bump linea-arithmetization version to 0.3.0-rc1 [#54](https://github.com/Consensys/linea-sequencer/pull/54)
+* bump Linea-Besu version to 24.7-develop-f812936 (delivery-27) [#54](https://github.com/Consensys/linea-sequencer/pull/54)
+* Fix linea_estimateGas when called with gasPrice set [#58](https://github.com/Consensys/linea-sequencer/pull/58)
+
 ## 0.2.0-rc5.1
 * bump linea-arithmetization version to 0.2.0-rc5 [#55](https://github.com/Consensys/linea-sequencer/pull/55)
 
