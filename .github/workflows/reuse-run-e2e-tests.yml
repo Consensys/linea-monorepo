@@ -1,0 +1,175 @@
+name: Reusable run e2e tests
+on:
+  workflow_dispatch:
+    inputs:
+      commit_tag:
+        description: 'The commit tag to use'
+        required: true
+        type: string
+      untested_tag_suffix:
+        description: 'The untested tag suffix to use'
+        required: true
+        type: string
+      tracing-engine:
+        description: Variable option for running tests against [besu] or [geth] stack
+        required: true
+        type: string
+      e2e-tests-with-ssh:
+        description: Run end to end tests with ability to ssh into environment
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-logs-dump:
+        description: Dump logs after running end to end tests
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-containers-list:
+        description: List containers before starting end to end tests
+        required: false
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: true
+        type: string
+      untested_tag_suffix:
+        required: true
+        type: string
+      tracing-engine:
+        description: Variable option for running tests against [besu] or [geth] stack
+        required: true
+        type: string
+      e2e-tests-with-ssh:
+        description: Run end to end tests with ability to ssh into environment
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-logs-dump:
+        description: Dump logs after running end to end tests
+        required: false
+        type: boolean
+        default: false
+      e2e-tests-containers-list:
+        description: List containers before starting end to end tests
+        required: false
+        type: boolean
+        default: true
+    outputs:
+      tests_outcome:
+        value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+jobs:
+  run-e2e-tests:
+    env:
+      COORDINATOR_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      POSTMAN_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      PROVER_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      TRACES_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+    outputs:
+      tests_outcome: ${{ steps.run_e2e_tests.outcome }}
+    runs-on: ubuntu-22.04-16core
+    steps:
+      - name: Setup upterm session
+        if: ${{ inputs.e2e-tests-with-ssh }}
+        uses: lhotari/action-upterm@v1
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          pnpm-install-options: '--frozen-lockfile --prefer-offline'
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Setup Shomei directories
+        run: |
+          mkdir -p ../tmp/zkbesu-shomei/plugins/
+          mkdir -p ../tmp/local/shomei/
+          mkdir -p ../tmp/local/shomei-frontend/
+      - name: Restore cached images
+        id: restore-cached-images
+        uses: actions/cache/restore@v4.0.2
+        with:
+          path: ~/docker-images
+          key: cached-images
+          restore-keys: |
+            cached-
+      - name: Pull all images with retry
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make pull-all-images
+      - name: Spin up fresh environment with geth tracing with retry
+        if: ${{ inputs.tracing-engine == 'geth' }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-all
+          on_retry_command: |
+            make clean-environment
+      - name: Spin up fresh environment with besu tracing with retry
+        if: ${{ inputs.tracing-engine == 'besu' }}
+        uses: nick-fields/retry@v2
+        with:
+          max_attempts: 10
+          retry_on: error
+          retry_wait_seconds: 30
+          timeout_minutes: 10
+          command: |
+            make start-all-traces-v2
+          on_retry_command: |
+            make clean-environment
+      - name: List docker containers/images
+        if: ${{ always() && inputs.e2e-tests-containers-list }}
+        continue-on-error: true
+        run: |
+          docker ps -la && docker images
+          docker container ls -a
+      - name: Run e2e tests
+        id: run_e2e_tests
+        run: |
+          pnpm run -F e2e test:e2e:local
+      - name: Show e2e tests result
+        if: always()
+        run: |
+          echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
+      - name: Dump logs
+        if: ${{ failure() && inputs.e2e-tests-logs-dump }}
+        run: |
+          mkdir -p docker_logs
+          docker ps -a >> docker_logs/docker_ps.txt
+          docker logs prover --since 1h &>> docker_logs/prover.txt
+          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt
+          docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
+          docker logs shomei --since 1h &>> docker_logs/shomei.txt
+          docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
+          docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt
+          docker logs postman --since 1h &>> docker_logs/postman.txt
+          docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
+          docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt
+      - name: Archive debug logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() && inputs.e2e-tests-logs-dump }}
+        with:
+          name: end-2-end-debug-logs
+          if-no-files-found: error
+          path: |
+            docker_logs/**/*

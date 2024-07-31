@@ -1,0 +1,138 @@
+name: Prover testing CI
+
+on:
+  workflow_call:
+    secrets:
+      SLACK_WEBHOOK_CI_PROVER_FAIL:
+        required: true
+      SLACK_WEBHOOK_CI_PROVER_SUCCESS:
+        required: true
+
+env:
+  GOPROXY: "https://proxy.golang.org"
+
+jobs:
+  staticcheck:
+    runs-on: ubuntu-latest
+    name: Prover static check
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.22.x
+    - name: checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: gofmt
+      working-directory: prover
+      run: if [[ -n $(gofmt -l .) ]]; then echo "please run gofmt"; exit 1; fi
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+          working-directory: prover
+          args: --timeout=5m
+    - name: generated files should not be modified
+      working-directory: prover
+      run: |
+        go generate ./...
+        git update-index --assume-unchanged go.mod
+        git update-index --assume-unchanged go.sum
+        if [[ -n $(git status --porcelain) ]]; then echo "git repo is dirty after running go generate -- please don't modify generated files"; echo $(git diff);echo $(git status --porcelain); exit 1; fi
+
+  test:
+    strategy:
+      matrix:
+        go-version: [1.22.x]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    name: Prover testing
+    needs:
+      - staticcheck
+    steps:
+    - name: install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: checkout code
+      uses: actions/checkout@v4
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Test compressor
+      working-directory: prover/lib/compressor/blob
+      run: |
+        go test -tags=nocorset ./...
+    - name: Test
+      working-directory: prover
+      run: |
+        go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
+    - name: Test (32 bits & race)
+      working-directory: prover
+      if: (matrix.os == 'ubuntu-latest') && (matrix.go-version == '1.20.x')
+      run: |
+          go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
+
+  slack-workflow-status-failed:
+    if: failure()
+    name: Prover notify slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow failed
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "FAIL",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_FAIL }}
+
+  slack-workflow-status-success:
+    if: success()
+    name: Prover notify slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow succeeded
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "SUCCESS",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_SUCCESS }}
+

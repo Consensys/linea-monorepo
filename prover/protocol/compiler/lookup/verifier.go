@@ -1,0 +1,58 @@
+package lookup
+
+import (
+	"fmt"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+)
+
+// finalEvaluationCheck implements the [wizard.VerifierAction] interface. It
+// represents the consistency check between SigmaT and the SigmaS[i]. This
+// corresponds in the check #1 in the doc, where the verifier ensures that
+// summing the ending values of the SigmaS[i]s yields the same result as the
+// ending value of SigmaT.
+//
+// The current implementation is for packed Zs
+type finalEvaluationCheck struct {
+	// Name is a string repr of the verifier action. It is used to format errors
+	// so that we can easily know which verifier action is at fault during the
+	// verification is at fault.
+	Name string
+	// ZOpenings lists all the openings of all the zCtx
+	ZOpenings []query.LocalOpening
+}
+
+// Run implements the [wizard.VerifierAction]
+func (f *finalEvaluationCheck) Run(run *wizard.VerifierRuntime) error {
+
+	// zSum stores the sum of the ending values of the zs as queried
+	// in the protocol via the local opening queries.
+	zSum := field.Zero()
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zSum.Add(&zSum, &temp)
+	}
+
+	if zSum != field.Zero() {
+		return fmt.Errorf("log-derivate lookup, the final evaluation check failed")
+	}
+
+	return nil
+}
+
+// RunGnark implements the [wizard.VerifierAction]
+func (f *finalEvaluationCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+
+	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried
+	// in the protocol via the
+	zSum := frontend.Variable(field.Zero())
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zSum = api.Add(zSum, temp)
+	}
+
+	api.AssertIsEqual(zSum, 0)
+}

@@ -1,0 +1,98 @@
+name: Docker build and publish
+
+on:
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: true
+        type: string
+      last_commit_tag:
+        required: true
+        type: string
+      common_ancestor_tag:
+        required: true
+        type: string
+      develop_tag:
+        required: true
+        type: string
+      untested_tag_suffix:
+        required: true
+        type: string
+      coordinator_changed:
+        required: true
+        type: string
+      postman_changed:
+        required: true
+        type: string
+      prover_changed:
+        required: true
+        type: string
+      traces_api_facade_changed:
+        required: true
+        type: string
+      coordinator_image_tagged:
+        required: true
+        type: string
+      prover_image_tagged:
+        required: true
+        type: string
+      postman_image_tagged:
+        required: true
+        type: string
+      traces_api_facade_image_tagged:
+        required: true
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+jobs:
+  coordinator:
+    uses: ./.github/workflows/coordinator-build-and-publish.yml
+    if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      last_commit_tag: ${{ inputs.last_commit_tag }}
+      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
+      image_name: consensys/linea-coordinator
+    secrets: inherit
+
+  prover:
+    uses: ./.github/workflows/prover-build-and-publish.yml
+    if: ${{ always() && (inputs.prover_changed == 'true' || inputs.prover_image_tagged != 'true') }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      last_commit_tag: ${{ inputs.last_commit_tag }}
+      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
+      image_name: consensys/linea-prover
+    secrets: inherit
+
+  postman:
+    uses: ./.github/workflows/postman-build-and-publish.yml
+    if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      last_commit_tag: ${{ inputs.last_commit_tag }}
+      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
+      image_name: consensys/linea-postman
+    secrets: inherit
+
+  traces-api-facade:
+    uses: ./.github/workflows/traces-api-facade-build-and-publish.yml
+    if: ${{ always() && (inputs.traces_api_facade_changed == 'true' || inputs.traces_api_facade_image_tagged != 'true') }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+      last_commit_tag: ${{ inputs.last_commit_tag }}
+      common_ancestor_tag: ${{ inputs.common_ancestor_tag }}
+      develop_tag: ${{ inputs.develop_tag }}
+      untested_tag_suffix: ${{ inputs.untested_tag_suffix }}
+      image_name: consensys/linea-traces-api-facade
+    secrets: inherit

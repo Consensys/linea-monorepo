@@ -1,0 +1,64 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.linea-native-libs-helper'
+  alias(libs.plugins.jreleaser)
+  id 'java-test-fixtures'
+}
+
+description = 'Java JNA wrapper for Linea Blob Compressor Library implemented in GO Lang'
+apply from: rootProject.file("gradle/publishing.gradle")
+
+dependencies {
+  implementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  testImplementation project(":jvm-libs:kotlin-extensions")
+  testImplementation project(":jvm-libs:blob-shnarf-calculator")
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}
+
+test {
+  // we cannot have more 1 compressor per JVM, hence we disable parallel execution
+  // because multiple threads would cause issues with the native library
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  maxParallelForks = 1
+}
+
+def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get().absolutePath
+
+task downloadNativeLibs {
+  doLast {
+    fetchLib("blob-libs-v0.1.0", "blob_compressor", libsZipDownloadOutputDir)
+    fetchLib("blob-libs-v1.0.1", "blob_compressor", libsZipDownloadOutputDir)
+  }
+}
+
+//  GITHUB_TOKEN=ghp_XXX ./gradlew jvm-libs:blob-compressor:downloadNativeLib -PreleaseTag=blob-libs-v0.1.0 -PlibName=blob_compressor
+tasks.register('downloadNativeLib') {
+  def releaseTag
+  def libName
+
+  doLast {
+    if (project.hasProperty("releaseTag")) {
+      releaseTag = project.releaseTag
+    } else {
+      throw new GradleException("releaseTag is required")
+    }
+    if (project.hasProperty("libName")) {
+      libName = project.libName
+    } else {
+      throw new GradleException("libName is required")
+    }
+
+    fetchLib(
+      releaseTag,
+      libName,
+      libsZipDownloadOutputDir
+    )
+  }
+}
+
+compileKotlin {
+  dependsOn tasks.downloadNativeLibs
+}

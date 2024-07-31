@@ -1,0 +1,40 @@
+{
+  "id": 2,
+  "name": "generic call",
+  "context": {
+    "chainId": 1337,
+    "url": "http://localhost:8545",
+    "nbOfExecutions": 1
+  },
+  "calls": [
+    {
+      "nbOfExecution": 1,
+      "scenario": {
+        "scenarioType": "ContractCall",
+        "wallet": "source",
+        "contract": {
+          "contractCallType": "CallExistingContract",
+          "contractAddress": "0x4911fa6BD69776Fb2EEF742b7d5e2fd292975ec3",
+          "methodAndParameters": {
+            "type": "GenericCall",
+            "numberOfTimes": 1,
+            "methodName": "testAddmod",
+            "price": 120000,
+            "parameters": [
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "150"
+              },
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "31"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

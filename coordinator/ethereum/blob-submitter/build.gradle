@@ -1,0 +1,82 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+  id 'net.consensys.zkevm.linea-contracts-helper'
+}
+
+dependencies {
+  implementation(project(':coordinator:core'))
+  implementation(project(":coordinator:clients:smart-contract-client"))
+  implementation(project(':coordinator:ethereum:common'))
+  implementation(project(':coordinator:ethereum:gas-pricing'))
+  implementation(project(':coordinator:ethereum:test-utils'))
+  implementation(project(":coordinator:persistence:blob"))
+  implementation(project(":coordinator:persistence:db"))
+  implementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
+  implementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
+  implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
+  implementation("io.vertx:vertx-core")
+  implementation("org.web3j:core:${libs.versions.web3j.get()}") {
+    exclude group: "org.slf4j", module: "slf4j-nop"
+  }
+  implementation project(":jvm-libs:teku-execution-client")
+
+  testImplementation(project(":coordinator:persistence:aggregation"))
+  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(testFixtures(project(":coordinator:ethereum:gas-pricing")))
+  testImplementation(testFixtures(project(":coordinator:core")))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation("io.vertx:vertx-junit5")
+  testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
+  testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
+  testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
+  testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
+  testImplementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.20.0")
+}
+
+test {
+  useJUnitPlatform()
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+task integrationTest(type: Test) {
+  test ->
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackComposeUp")
+    dependsOn(compileContracts)
+
+    testLogging {
+      events TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STARTED,
+        TestLogEvent.PASSED
+      exceptionFormat TestExceptionFormat.FULL
+      showCauses true
+      showExceptions true
+      showStackTraces true
+      // set showStandardStreams if you need to see test logs
+      showStandardStreams false
+    }
+}
+
+

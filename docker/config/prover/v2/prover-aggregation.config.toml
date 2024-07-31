@@ -1,0 +1,7 @@
+dev_mode = true
+version = "v2.0.0"
+exec_proof_dir = "/data/prover-execution/v2/responses"
+decompress_proof_dir = "/data/prover-compression/v2/responses"
+
+[bn254_circuit]
+verifier_id = 0

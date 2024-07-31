@@ -1,0 +1,31 @@
+environment = "integration-development"
+version = "3.0.0"
+assets_dir = "/opt/linea/prover/prover-assets"
+log_level = 4                                  # TODO @gbotrel will be refactored with new logger. 
+
+[controller]
+retry_delays = [0, 1]
+
+[execution]
+prover_mode = "dev"
+features = { with_keccak = true, with_ecdsa = false }
+requests_root_dir = "/data/prover-execution/v3"
+
+[blob_decompression]
+prover_mode = "dev"
+requests_root_dir = "/data/prover-compression/v3"
+
+[aggregation]
+prover_mode = "dev"
+num_proofs = [10]
+allowed_inputs = [
+    "execution-dummy",
+    "blob-decompression-dummy",
+    "blob-decompression-v0",
+]
+verifier_id = 0
+requests_root_dir = "/data/prover-aggregation/v3"
+
+[layer2]
+message_service_contract = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
+chain_id = 1337

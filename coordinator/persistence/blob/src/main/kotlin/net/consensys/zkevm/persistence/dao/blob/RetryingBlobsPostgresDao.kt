@@ -1,0 +1,61 @@
+package net.consensys.zkevm.persistence.dao.blob
+
+import kotlinx.datetime.Instant
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
+import net.consensys.zkevm.domain.BlobRecord
+import net.consensys.zkevm.domain.BlobStatus
+import net.consensys.zkevm.persistence.db.PersistenceRetryer
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+class RetryingBlobsPostgresDao(
+  private val delegate: BlobsPostgresDao,
+  private val persistenceRetryer: PersistenceRetryer
+) : BlobsDao {
+  override fun saveNewBlob(blobRecord: BlobRecord): SafeFuture<Unit> {
+    return persistenceRetryer.retryQuery({ delegate.saveNewBlob(blobRecord) })
+  }
+
+  override fun getConsecutiveBlobsFromBlockNumber(
+    startingBlockNumberInclusive: ULong,
+    endBlockCreatedBefore: Instant
+  ): SafeFuture<List<BlobRecord>> {
+    return persistenceRetryer.retryQuery({
+      delegate.getConsecutiveBlobsFromBlockNumber(
+        startingBlockNumberInclusive,
+        endBlockCreatedBefore
+      )
+    })
+  }
+
+  override fun findBlobByStartBlockNumber(startBlockNumber: ULong): SafeFuture<BlobRecord?> {
+    return persistenceRetryer.retryQuery({ delegate.findBlobByStartBlockNumber(startBlockNumber) })
+  }
+
+  override fun findBlobByEndBlockNumber(endBlockNumber: ULong): SafeFuture<BlobRecord?> {
+    return persistenceRetryer.retryQuery({ delegate.findBlobByEndBlockNumber(endBlockNumber) })
+  }
+
+  override fun updateBlob(
+    startingBlockNumber: ULong,
+    endBlockNumber: ULong,
+    blobStatus: BlobStatus,
+    blobCompressionProof: BlobCompressionProof
+  ): SafeFuture<Int> {
+    return persistenceRetryer.retryQuery({
+      delegate.updateBlob(
+        startingBlockNumber,
+        endBlockNumber,
+        blobStatus,
+        blobCompressionProof
+      )
+    })
+  }
+
+  override fun deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive: ULong): SafeFuture<Int> {
+    return persistenceRetryer.retryQuery({ delegate.deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive) })
+  }
+
+  override fun deleteBlobsAfterBlockNumber(startingBlockNumberInclusive: ULong): SafeFuture<Int> {
+    return persistenceRetryer.retryQuery({ delegate.deleteBlobsAfterBlockNumber(startingBlockNumberInclusive) })
+  }
+}

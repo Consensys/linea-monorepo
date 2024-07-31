@@ -1,0 +1,18 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+}
+
+dependencies {
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:web3j-extensions')
+  implementation project(':jvm-libs:core:domain-models')
+  implementation(project(":coordinator:core"))
+  implementation(project(":coordinator:ethereum:gas-pricing"))
+
+  testImplementation("io.vertx:vertx-junit5")
+}
+
+test {
+  useJUnitPlatform()
+}

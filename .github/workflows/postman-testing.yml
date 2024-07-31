@@ -1,0 +1,32 @@
+name: postman-and-SDK-testing
+
+on:
+  workflow_call:
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-22.04
+    name: Postman & SDK tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Setup nodejs environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Run tests and generate coverage report
+        env:
+          GITHUB_API_ACCESS_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
+          NATIVE_LIBS_RELEASE_TAG: blob-libs-v1.0.1
+        run: |
+          pnpm run -F ./ts-libs/linea-native-libs build;
+          pnpm run -F ./sdk build;
+          pnpm run -F ./sdk test;

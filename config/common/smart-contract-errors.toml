@@ -1,0 +1,46 @@
+##
+# Smart contract error codes from:
+# https://www.notion.so/consensys/Smart-Contracts-Error-Code-Registry-bb4bd68f8ddf4b0ba90000d1136e42ef
+##
+
+[smart-contract-errors]
+# L1 Linea Rollup
+"0f06cd15" = "DataAlreadySubmitted"
+"c01eab56" = "EmptySubmissionData"
+"abefa5e8" = "DataStartingBlockDoesNotMatch"
+"5548c6b3" = "DataParentHasEmptyShnarf"
+"36459fa0" = "L1RollingHashDoesNotExistOnL1"
+"cbbd7953" = "FirstBlockGreaterThanFinalBlock"
+"a386ed70" = "FirstBlockLessThanOrEqualToLastFinalizedBlock"
+"70614405" = "FinalBlockNumberLessThanOrEqualToLastFinalizedBlock"
+"2898482a" = "FinalBlockStateEqualsZeroHash"
+"bf81c6e0" = "FinalizationInTheFuture"
+"0c256592" = "MissingMessageNumberForRollingHash"
+"5228f4c8" = "MissingRollingHashForMessageNumber"
+"729eebce" = "FirstByteIsNotZero"
+"6426c6c5" = "BytesLengthNotMultipleOf32"
+"68dcad5f" = "PointEvaluationResponseInvalid"
+"f75db381" = "PrecompileReturnDataLengthWrong"
+"a71194af" = "PointEvaluationFailed"
+"2f22b98a" = "LastFinalizedShnarfWrong"
+"7dc2487d" = "SnarkHashIsZeroHash"
+"bc5aad11" = "FinalizationStateIncorrect"
+"b1504a5f" = "BlobSubmissionDataIsMissing"
+"c0e41e1d" = "EmptyBlobDataAtIndex"
+"fb4cd6ef" = "FinalBlockDoesNotMatchShnarfFinalBlock"
+"2526F108 " = "ShnarfAndFinalBlockNumberLengthsMismatched"
+"d3664fb3" = "FinalShnarfWrong"
+"4e686675" = "L2MerkleRootDoesNotExist"
+"e5d14425" = "L2MerkleRootAlreadyAnchored"
+"0c91d776" = "BytesLengthNotMultipleOfTwo"
+"ead4c30e" = "StartingRootHashDoesNotMatch"
+"7907d79b" = "ProofIsEmpty"
+"69ed70ab" = "InvalidProofType"
+"09bde339" = "InvalidProof"
+"db246dde" = "IsPaused"
+"b015579f" = "IsNotPaused"
+"3b174434" = "MessageHashesListLengthHigherThanOneHundred"
+# L2 Message Service
+"d39e75f9" = "L1MessageNumberSynchronizationWrong"
+"7557a60a" = "L1RollingHashSynchronizationWrong"
+"36a4bb94" = "FinalRollingHashIsZero"

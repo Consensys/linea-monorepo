@@ -1,0 +1,161 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+import java.time.Duration
+import java.time.Instant
+
+plugins {
+  alias(libs.plugins.spotless)
+  alias(libs.plugins.docker)
+}
+
+task compileAll
+
+allprojects {
+  repositories { mavenCentral() }
+
+  apply plugin: 'java' // do not add kotlin plugin here, it will add unnecessary Kotlin runtime dependencies
+  apply plugin: 'jacoco'
+
+  tasks.withType(KotlinCompile).configureEach {
+    compileAll.dependsOn it
+    compilerOptions {
+      allWarningsAsErrors = true
+    }
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+    compileAll.dependsOn it
+    options.encoding = 'UTF-8'
+    options.deprecation = true
+    options.compilerArgs.addAll([
+      '-parameters',
+      '-Xlint:cast',
+      '-Xlint:overloads',
+      '-Xlint:divzero',
+      '-Xlint:finally',
+      '-Xlint:static',
+      '-Xlint:deprecation',
+      '-Werror'
+    ])
+
+    if (!project.path.contains("testing-tools")) {
+      // testing tools have 100+ errors because of this
+      // skipping them for now
+      options.compilerArgs.addAll(['-Xlint:rawtypes'])
+    }
+  }
+
+  jacoco {
+    toolVersion = '0.8.11'
+    if (project.tasks.findByName('integrationTest')) {
+      applyTo integrationTest
+    }
+    if (project.tasks.findByName('acceptanceTest')) {
+      applyTo acceptanceTest
+    }
+  }
+
+  jacocoTestReport {
+    dependsOn test
+  }
+
+  tasks.withType(Test).configureEach {
+    testLogging {
+      events = [
+        //TestLogEvent.STARTED,
+        //TestLogEvent.PASSED,
+        TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR
+      ]
+      exceptionFormat TestExceptionFormat.FULL
+      showCauses true
+      showExceptions true
+      showStackTraces true
+      // set showStandardStreams if you need to see test logs
+      showStandardStreams false
+    }
+    systemProperty("L1_RPC_URL", "http://localhost:8445")
+    systemProperty("L2_RPC_URL", "http://localhost:8545")
+    systemProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")
+    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")
+
+    systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
+    systemProperties["junit.jupiter.execution.parallel.enabled"] = true
+    systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
+    systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
+    maxParallelForks = Math.max(Runtime.runtime.availableProcessors(), 9)
+  }
+
+  afterEvaluate { subproject ->
+    if (hasJavaOrKotlinPlugins(subproject)) {
+      subproject.apply plugin: 'com.diffplug.spotless'
+
+      subproject.spotless {
+        if (hasKotlinPlugin(subproject)) {
+          kotlin {
+            // by default the target is every '.kt' and '.kts` file in the java sourcesets
+            //ktfmt()
+            ktlint(libs.versions.ktlint.get().toString()).setEditorConfigPath("$rootDir/.editorconfig")
+          }
+        }
+      }
+    }
+  }
+}
+
+task jacocoRootReport(type: JacocoReport) {
+  additionalSourceDirs.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  sourceDirectories.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  classDirectories.from files(subprojects.sourceSets.main.output)
+
+  executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'])
+  reports {
+    xml.required = true
+    // xml.enabled = true FIXME: deprecated, breaking latest versions of gradle.
+    csv.required = true
+    html.destination file("build/reports/jacocoHtml")
+  }
+  onlyIf = { true }
+}
+
+dockerCompose {
+  localStack {
+    startedServices = [
+      "postgres",
+      "sequencer",
+      "l1-node-genesis-generator",
+      "l1-el-node",
+      "l1-cl-node",
+      "l2-node",
+      // For debug
+      // "l1-blockscout",
+      // "l2-blockscout"
+    ]
+    composeAdditionalArgs = ["--profile", "l1", "--profile", "l2"]
+    useComposeFiles = ["${project.rootDir.path}/docker/compose.yml"]
+    waitForHealthyStateTimeout = Duration.ofMinutes(3)
+    waitForTcpPorts = false
+    removeOrphans = true
+    // this is to avoid recreating the containers
+    // specially l1-node-genesis-generator which corrupts the state if run more than once
+    // without cleaning the volumes
+    noRecreate = true
+    projectName = "docker"
+    environment.put("L1_GENESIS_TIME", "${Instant.now().plusSeconds(3).getEpochSecond()}")
+  }
+}
+
+static Boolean hasKotlinPlugin(Project proj) {
+  return proj.plugins.hasPlugin("org.jetbrains.kotlin.jvm")
+}
+
+static Boolean hasJavaPlugin(Project proj) {
+  return (proj.plugins.hasPlugin("java") || proj.plugins.hasPlugin("java-library"))
+}
+
+static Boolean hasJavaOrKotlinPlugins(Project proj) {
+  return (hasKotlinPlugin(proj) || hasJavaPlugin(proj))
+}

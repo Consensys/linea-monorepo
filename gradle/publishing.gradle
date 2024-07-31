@@ -1,0 +1,111 @@
+apply plugin: 'maven-publish'
+apply plugin: 'org.jreleaser' //, version: "1.13.1"
+
+java {
+  // necessary for maven publishing
+  withJavadocJar()
+  withSourcesJar()
+}
+
+def stagingDeployDir = rootProject.layout.buildDirectory.dir("staging-deploy")
+  .get().asFile.absolutePath.toString()
+
+def _artifactId = project.hasProperty('artifactId') ? project.artifactId : project.name
+
+publishing {
+  publications {
+    maven(MavenPublication) {
+      from components.java
+
+      groupId = project.group
+      artifactId = _artifactId
+      version = project.version
+
+      pom {
+        name = "Linea - ${_artifactId}"
+        description = project.description
+        url = 'https://linea.build/'
+
+        licenses {
+          license {
+            name = 'The Apache License, Version 2.0'
+            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+          }
+        }
+
+        scm {
+          url = 'https://github.com/Consensys/zkevm-monorepo'
+          connection = 'scm:git://github.com/Consensys/zkevm-monorepo.git'
+          developerConnection = 'scm:git:ssh://github.com:Consensys/zkevm-monorepo.git'
+        }
+
+        developers {
+          developer {
+            id = 'linea-team'
+            name = 'Linea team'
+            email = 'linea-automations@consensys.net'
+          }
+        }
+      }
+    }
+  }
+
+  repositories {
+    maven {
+      url = stagingDeployDir
+    }
+  }
+}
+
+task createJreleaserOutputDir {
+  doLast {
+    // workaround for JRleaser poor support for multi-module projects
+    // see issue https://github.com/jreleaser/jreleaser/discussions/1237
+    project.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs()
+    rootProject.layout.buildDirectory.dir("jreleaser").get().asFile.mkdirs()
+  }
+}
+
+jreleaserRelease.dependsOn(createJreleaserOutputDir)
+
+
+// JReleaser configuration
+// https://jreleaser.org/guide/latest/reference/release/github.html
+// JRelease DSL does not have access to project properties, so we need to define them here
+def _releaseName = "Maven package: $project.group:$_artifactId:${project.version}"
+def _tagName = "maven-${_artifactId}-v${project.version}"
+
+jreleaser {
+  gitRootSearch = true
+  release {
+    github {
+      releaseName = _releaseName
+      tagName = _tagName
+      overwrite = true
+      files = false
+      artifacts = false
+      changelog {
+        enabled = false
+      }
+      commitAuthor {
+        name = 'Linea automations'
+        email = 'linea-automations@consensys.net'
+      }
+    }
+  }
+  signing {
+    active = 'ALWAYS'
+    armored = true
+  }
+  deploy {
+    maven {
+      mavenCentral {
+        sonatype {
+          active = 'ALWAYS'
+          url = 'https://central.sonatype.com/api/v1/publisher'
+          stagingRepository(stagingDeployDir)
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-library-conventions'
+    id 'java-test-fixtures'
+}
+
+dependencies {
+  implementation project(':coordinator:core')
+  implementation project(':coordinator:clients:smart-contract-client')
+  api project(':coordinator:clients:prover-client:serialization')
+  implementation project(':coordinator:utilities')
+  implementation project(':jvm-libs:metrics:micrometer')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':coordinator:ethereum:models-helper')
+
+  implementation "io.vertx:vertx-core"
+
+  // Block dependencies
+  implementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}"
+
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
+
+  testImplementation project(':jvm-libs:testing-teku-helper')
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
+  testImplementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}:test-fixtures"
+
+  testFixturesImplementation(testFixtures(project(":coordinator:persistence:db")))
+}

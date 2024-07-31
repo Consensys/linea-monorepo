@@ -1,0 +1,40 @@
+{
+  "id": 2,
+  "name": "generic call",
+  "context": {
+    "chainId": 59141,
+    "url": "https://rpc.sepolia.linea.build",
+    "nbOfExecutions": 1
+  },
+  "calls": [
+    {
+      "nbOfExecution": 1,
+      "scenario": {
+        "scenarioType": "ContractCall",
+        "wallet": "source",
+        "contract": {
+          "contractCallType": "CallExistingContract",
+          "contractAddress": "0xda53ebacc58e0f7fb559687869d5d852a467dae9",
+          "methodAndParameters": {
+            "type": "GenericCall",
+            "numberOfTimes": 1,
+            "methodName": "testAddmod",
+            "price": 150000,
+            "parameters": [
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "150"
+              },
+              {
+                "solidityType": "Uint256",
+                "type": "SimpleParameter",
+                "value": "31"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
