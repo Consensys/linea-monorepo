@@ -1,0 +1,43 @@
+logging: "INFO"
+log-destination: "CONSOLE"
+network: "/data/l1-node-config/network-config.yml"
+data-storage-mode: "ARCHIVE"
+initial-state: "/data/l1-node-config/genesis.ssz"
+
+p2p-enabled: true
+p2p-subscribe-all-subnets-enabled: false
+p2p-peer-lower-bound: 1
+p2p-advertised-ip: "10.10.10.202"
+p2p-port: 9000
+p2p-discovery-site-local-addresses-enabled: true
+
+rest-api-enabled: true
+rest-api-docs-enabled: true
+rest-api-interface: "0.0.0.0"
+rest-api-port: 4000
+rest-api-host-allowlist: ["*"]
+
+data-storage-non-canonical-blocks-enabled: true
+ee-jwt-secret-file: "/config/jwtsecret.txt"
+ee-endpoint: "http://10.10.10.201:8551"
+
+metrics-enabled: true
+metrics-interface: "0.0.0.0"
+metrics-host-allowlist: ['*']
+metrics-categories: ["BEACON","PROCESS","LIBP2P","JVM","NETWORK","PROCESS"]
+metrics-port: 8008
+
+validator-keys: "/config/keys/teku-keys:/config/keys/teku-secrets"
+validators-proposer-default-fee-recipient: "0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b"
+validators-graffiti: "teku"
+validators-keystore-locking-enabled: false
+
+beacon-liveness-tracking-enabled: true
+ignore-weak-subjectivity-period-enabled: true
+Xlog-wire-cipher-enabled: true
+Xlog-wire-mux-enabled: true
+Xlog-wire-gossip-enabled: true
+
+p2p-private-key-file: /config/keys/teku.key
+Xstartup-target-peer-count: 0
+Xstartup-timeout-seconds: 0

@@ -1,0 +1,127 @@
+name: Release Blob Compressor binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. v1.2.3)'
+        required: true
+        default: 'v0.0.0'
+      draft-release:
+        description: 'Draft Release'
+        required: false
+        default: false
+        type: boolean
+      pre-release:
+        description: 'Pre Release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.x
+
+      - name: Build the linux artefacts
+        env:
+          CGO_ENABLED: 1
+          GOOS: "linux"
+          VERSION: ${{ github.event.inputs.version }}
+          SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
+          TARGET_SHNARF: "shnarf_calculator"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          TARGET_COMPRESSOR: "blob_compressor"
+        run: |
+          cd prover
+          mkdir target
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_x86_64.so ${SRC_SHNARF}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_COMPRESSOR}
+
+      - name: Cache built binaries
+        uses: actions/upload-artifact@master
+        with:
+          name: linux-artefacts
+          path: ./prover/target
+
+  build-mac-os:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.x
+      - name: Build the MacOS artefacts
+        env:
+          CGO_ENABLED: 1
+          GOOS: "darwin"
+          VERSION: ${{ github.event.inputs.version }}
+          SRC_SHNARF: "./lib/shnarf_calculator/shnarf_calculator.go"
+          TARGET_SHNARF: "shnarf_calculator"
+          SRC_COMPRESSOR: "./lib/compressor/libcompressor.go"
+          TARGET_COMPRESSOR: "blob_compressor"
+        run: |
+          cd prover
+          mkdir target
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_darwin_x86_64.dylib ${SRC_SHNARF}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_darwin_arm64.dylib ${SRC_SHNARF}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_darwin_x86_64.dylib ${SRC_COMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_COMPRESSOR}
+
+      - name: Cache built binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-artefacts
+          path: ./prover/target
+
+  release_artefacts:
+    name: Release artefacts
+    needs: [ build-linux, build-mac-os]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Load cached binaries
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: List artifacts
+        run: |
+          ls -la ./
+      - name: Zip the release files
+        run: |
+          zip -r linea-blob-libs-${{ github.event.inputs.version }}.zip .
+      - name: Get current date
+        id: current_date
+        run: echo "::set-output name=date::$(date --utc +'%Y-%m-%dT%H:%M:%SZ')"
+        shell: bash
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: blob-libs-${{ github.event.inputs.version }}
+          release_name: Blob libs ${{ github.event.inputs.version }}
+          draft: ${{ github.event.inputs.draft-release }}
+          prerelease: ${{ github.event.inputs.pre-release }}
+          body: |
+            Go lang blob binaries ${{ github.event.inputs.version }}
+            commit: ${{ github.sha }}
+            date: ${{ steps.current_date.outputs.date }}
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./linea-blob-libs-${{ github.event.inputs.version }}.zip
+          asset_name: linea-blob-libs-${{ github.event.inputs.version }}.zip
+          asset_content_type: application/zip

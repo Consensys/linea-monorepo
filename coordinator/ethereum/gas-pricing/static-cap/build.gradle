@@ -1,0 +1,52 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'net.consensys.zkevm.linea-contracts-helper'
+}
+
+dependencies {
+  implementation(project(":coordinator:core"))
+  implementation(project(":coordinator:ethereum:gas-pricing"))
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:web3j-extensions')
+  implementation project(':jvm-libs:json-rpc')
+
+  testImplementation("io.vertx:vertx-junit5")
+  testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
+
+  testImplementation project(':coordinator:clients:smart-contract-client')
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    java {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+task integrationTest(type: Test) {
+  test ->
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    dependsOn(":localStackComposeUp")
+    dependsOn(compileContracts)
+}
+
+
+
+test {
+  useJUnitPlatform()
+}

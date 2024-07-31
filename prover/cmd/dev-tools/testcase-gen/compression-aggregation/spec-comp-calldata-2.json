@@ -1,0 +1,11 @@
+{
+    "blobSubmissionSpec": {
+        "startFromL2Block": 82,
+        "numConflation": 5,
+        "blockPerConflation": 12,
+        "compressedDataSize": 103000,
+        "parentShnarf": "0x6d2b3535e06f4778e03c8439145dd9b8e4ae312953b9ccc154ef73b8a00c26c1",
+        "parentZkStateRootHash": "0xf0f26782f7afb93f926cacb145f55530714f20b1356725e3971dc99e0ef8b591",
+        "parentDataHash": "0x82694a9670032c50548d42dbf6f0d9d09febc4f2454796997ec9a4edc7f87106"
+    }
+}

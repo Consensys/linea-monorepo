@@ -1,0 +1,157 @@
+name: main
+
+on:
+  push:
+
+jobs:
+  store-image-name-and-tags:
+    uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
+
+  filter-commit-changes:
+    runs-on: ubuntu-latest
+    name: Filter commit changes
+    outputs:
+      coordinator: ${{ steps.filter.outputs.coordinator }}
+      postman: ${{ steps.filter.outputs.postman }}
+      prover: ${{ steps.filter.outputs.prover }}
+      traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
+      no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            coordinator:
+              - 'coordinator/**'
+              - 'testdata/**'
+              - 'buildSrc/**'
+              - 'jvm-libs/**'
+              - 'prover/lib/compressor/**'
+              - 'gradle/**'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
+              - '.github/workflows/coordinator-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'config/common/traces-limits-v1.toml'
+              - 'config/common/traces-limits-v2.toml'
+              - 'config/coordinator/**'
+              - 'e2e/**'
+              - 'contracts/abi/**'
+              - 'contracts/contracts/**'
+              - 'docker/compose.yml'
+              - 'docker/compose-local-dev.overrides.yml'
+              - 'docker/compose-local-dev-traces-v2.overrides.yml'
+            postman:
+              - 'sdk/**'
+              - '.github/workflows/postman-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+            prover:
+              - 'prover/**'
+              - '.github/workflows/prover-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'constraints'
+            traces-api-facade:
+              - 'traces-api-facade/**'
+              - 'jvm-libs/**'
+              - 'config/common/traces-limits-v1.toml'
+              - '.github/workflows/traces-api-facade-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'buildSrc/**'
+              - 'gradle/**'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
+
+  check-and-tag-images:
+    needs: [ store-image-name-and-tags, filter-commit-changes ]
+    uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store-image-name-and-tags.outputs.common_ancestor_tag }}
+      develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+    secrets: inherit
+
+  docker-build:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    uses: ./.github/workflows/build-and-publish.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      last_commit_tag: ${{ needs.store-image-name-and-tags.outputs.last_commit_tag }}
+      common_ancestor_tag: ${{ needs.store-image-name-and-tags.outputs.common_ancestor_tag }}
+      develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
+      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
+      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
+    secrets: inherit
+
+  testing:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    if: ${{ always() && needs.filter-commit-changes.outputs.no-changes == 'false' }}
+    uses: ./.github/workflows/testing.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
+      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+    secrets: inherit
+
+  run-e2e-tests-geth-tracing:
+    needs: [ store-image-name-and-tags, docker-build ]
+    if: ${{ always() && needs.docker-build.result == 'success' }}
+    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
+      tracing-engine: 'geth'
+      e2e-tests-logs-dump: true
+    secrets: inherit
+
+  run-e2e-tests:
+    needs: [ store-image-name-and-tags, docker-build ]
+    if: ${{ always() && needs.docker-build.result == 'success' }}
+    uses: ./.github/workflows/reuse-run-e2e-tests.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
+      tracing-engine: 'besu'
+      e2e-tests-logs-dump: true
+    secrets: inherit
+
+  tag-after-run-tests-success:
+    needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing ]
+    if: ${{ always() && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
+    uses: ./.github/workflows/reuse-tag-without-untested-suffix.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
+      untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
+      image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
+    secrets: inherit

@@ -1,0 +1,22 @@
+{
+  "id": 1,
+  "name": "money transfer",
+  "context": {
+    "chainId": 1337,
+    "url": "http://localhost:8545",
+    "nbOfExecutions": 1
+    //"source": 0x1d80c1698946ee65b6A6B78F468B47f6bd4516f0
+  },
+  "calls": [
+    //round robin money transfer
+    {
+      "nbOfExecution": 1,
+      "scenario": {
+        "scenarioType": "RoundRobinMoneyTransfer",
+        "wallet": "new",
+        "nbTransfers": 2,
+        "nbWallets": 2
+      }
+    }
+  ]
+}

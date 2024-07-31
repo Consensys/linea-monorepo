@@ -1,0 +1,17 @@
+[zk-traces]
+eth-api="http://127.0.0.1:8745"
+
+[dynamic-gas-price-service]
+geth-gas-price-update-recipients=[
+  "http://127.0.0.1:8845"
+]
+
+[l2]
+rpc-endpoint="http://127.0.0.1:8745"
+blocks-to-finalization=0
+
+[traces.counters-v2]
+endpoints=["http://127.0.0.1:8745"]
+
+[traces.conflation-v2]
+endpoints=["http://127.0.0.1:8745"]

@@ -1,0 +1,8 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation project(":jvm-libs:teku-execution-client")
+  implementation project(':jvm-libs:web3j-extensions')
+}

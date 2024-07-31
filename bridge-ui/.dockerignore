@@ -1,0 +1,13 @@
+*
+!src
+!package.json
+!package-lock.json
+!node_modules
+!public
+!next.config.js
+!tsconfig.json
+!postcss.config.js
+!tailwind.config.js
+!.next
+!.env.production
+!.env

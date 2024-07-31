@@ -1,0 +1,20 @@
+# Can override any of this propeties in CLI as follows:
+# -Dconfig.override.sequencer.engine-api=http://127.0.0.1:8650
+
+#[sequencer]
+#version="0.0.1"
+#engine-api="http://traces-node:8550"
+#eth-api="http://traces-node:8545"
+
+[zk-traces]
+eth-api="http://traces-node:8545"
+new-block-polling-interval="PT0S"
+
+# Config of Traces API Facade endpoint
+[traces]
+endpoints=["http://traces-api:8080/"]
+[traces.file-manager]
+polling-interval="PT0S"
+
+[l1]
+disabled=true

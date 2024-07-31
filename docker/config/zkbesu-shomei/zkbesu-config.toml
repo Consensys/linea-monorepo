@@ -1,0 +1,36 @@
+data-path="/opt/besu/data"
+host-whitelist=["*"]
+sync-mode="FULL"
+p2p-port=30303
+
+min-gas-price=0
+
+# engine
+engine-host-allowlist=["*"]
+engine-rpc-port=8550
+
+# rpc
+rpc-http-enabled=true
+rpc-http-host="0.0.0.0"
+rpc-http-port=8545
+rpc-http-cors-origins=["*"]
+rpc-http-api=["ADMIN","DEBUG","NET","ETH","WEB3","PLUGINS","MINER","SHOMEI"]
+rpc-http-max-active-connections=200
+
+# ws
+rpc-ws-enabled=true
+rpc-ws-host="0.0.0.0"
+rpc-ws-port=8546
+rpc-ws-api=["ADMIN","TXPOOL","WEB3","ETH","NET","PERM"]
+rpc-ws-max-active-connections=200
+
+# graphql
+graphql-http-enabled=false
+
+# metrics
+metrics-enabled=true
+metrics-host="0.0.0.0"
+metrics-port=9545
+
+# database
+data-storage-format="BONSAI"

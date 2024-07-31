@@ -1,0 +1,21 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation project(":jvm-libs:kotlin-extensions")
+  implementation project(':jvm-libs:web3j-extensions')
+  api 'build.linea:l1-rollup-contract-client:0.0.1'
+  api 'build.linea:l2-message-service-contract-client:0.0.1'
+
+  api ("org.web3j:core:${libs.versions.web3j.get()}") {
+    exclude group: 'org.slf4j', module: 'slf4j-nop'
+  }
+  implementation "io.vertx:vertx-core"
+  implementation project(path: ':coordinator:core')
+  implementation project(path: ':coordinator:ethereum:common')
+  testImplementation project(':coordinator:ethereum:gas-pricing') {
+    description = "Necessary because of LineaRollupAsyncFriendlyTest, can be removed after"
+  }
+  testImplementation "io.vertx:vertx-junit5"
+}

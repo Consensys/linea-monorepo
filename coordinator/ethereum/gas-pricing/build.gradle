@@ -1,0 +1,17 @@
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'java-test-fixtures'
+}
+
+dependencies {
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':jvm-libs:web3j-extensions')
+
+  testFixturesImplementation "tech.pegasys.teku.internal:async:${libs.versions.teku.get()}"
+  testFixturesImplementation project(":coordinator:core")
+}
+
+test {
+  useJUnitPlatform()
+}

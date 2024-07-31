@@ -1,0 +1,203 @@
+import groovy.json.JsonSlurper
+
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.time.Duration
+import java.time.Instant
+
+static def downloadAndParseJson(
+  String url,
+  Map<String, String> headers = [:]
+) {
+  HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection()
+  connection.requestMethod = 'GET'
+  connection.setRequestProperty('Accept', 'application/json')
+  headers.each { key, value ->
+    connection.setRequestProperty(key, value)
+  }
+  connection.connect()
+  if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+    def jsonResponse = connection.inputStream.text
+    def jsonSlurper = new JsonSlurper()
+    return jsonSlurper.parseText(jsonResponse)
+  } else {
+    throw new GradleException("Failed load JSON from $url HTTP error code: ${connection.responseCode}")
+  }
+}
+
+
+static def getReleaseAsset(
+  String releaseTagName,
+  String githubAccessToken
+) {
+  def urlStr = 'https://api.github.com/repos/ConsenSys/zkevm-monorepo/releases'
+  def json = downloadAndParseJson(urlStr, ['Authorization': "token ${githubAccessToken}"])
+  def release = json.find { it.tag_name == releaseTagName }
+  if (release == null) {
+    def releases = json.collect { it.tag_name }
+    throw new GradleException("Release ${releaseTagName} not found! releases: ${releases}")
+  }
+  if (release.assets.size() == 0) {
+    throw new GradleException("Release ${releaseTagName} has no assets!")
+  }
+  def asset = release.assets.find { it.name.contains(releaseTagName) }
+  //println(JsonOutput.prettyPrint(JsonOutput.toJson(asset)))
+  asset
+}
+
+void downloadFileUsingWget(
+  String url,
+  String githubAccessToken,
+  String outputFilePath
+) {
+  println("Downloading ${url.replace(githubAccessToken, "*****")} into ${outputFilePath}")
+  def command = "curl -L -H 'Accept:application/octet-stream' -u ${githubAccessToken}: -o ${outputFilePath} ${url}"
+//  println("# " + command)
+
+  def execResult = exec {
+    commandLine 'bash', '-c', command
+  }
+
+  if (execResult.exitValue != 0) {
+    execResult.rethrowFailure()
+  }
+}
+
+ext.architectureResourceDirMapping = [
+  "darwin_arm64" : "darwin-aarch64",
+  "darwin_x86_64": "darwin-x86-64",
+  "linux_arm64"  : "linux-aarch64",
+  "linux_amd64"  : "linux-x86-64",
+  "linux_x86_64" : "linux-x86-64"
+]
+
+private String downloadReleaseAsset(
+  String releaseTag,
+  String outputDir,
+  String githubAccessToken
+) {
+  def releaseAssetJsonInfo = getReleaseAsset(releaseTag.toString(), githubAccessToken)
+  def fileName = releaseTag + ".zip"
+  def outputFilePath = Path.of(outputDir).resolve(fileName)
+
+  if (Files.exists(outputFilePath)) {
+    println("Skipping download, file already exists at ${outputFilePath}")
+    return outputFilePath.toString()
+  } else if (!Files.exists(outputFilePath.getParent())) {
+    try {
+      Files.createDirectory(outputFilePath.getParent())
+    } catch (FileAlreadyExistsException e) {
+      // ignore, other task might have created the directory in the meantime
+    }
+  }
+
+  downloadFileUsingWget(releaseAssetJsonInfo.url.toString(), githubAccessToken, outputFilePath.toString())
+
+  return outputFilePath.toString()
+}
+
+def getBinaryResourceFolder(
+  String libFile
+) {
+  def destResource = architectureResourceDirMapping.find {
+    libFile.contains(it.key.toString())
+  }
+  if (destResource == null) {
+    throw new GradleException("No architecture found for ${libFile}")
+  }
+
+  return destResource.value.toString()
+}
+
+def getBinaryResourceFileName(
+  String libFile,
+  String libName
+) {
+  def versionPattern = ~/v\d+\.\d+\.\d+/
+  def matcher = versionPattern.matcher(libFile)
+  def version = null
+  if (matcher.find()) {
+    version = matcher.group(0)
+  }
+  def dstBinaryName = "lib${libName}_jna_${version}.${libFile.split("\\.").last()}"
+  return dstBinaryName
+}
+
+def lazyUnzipWithRetry(
+  Path zipFile,
+  Path outputDir = zipFile.parent.resolve(zipFile.getFileName().toString().replaceFirst("\\.zip", "")).toString(),
+  Duration timeout
+) {
+  if (outputDir.toFile().exists()) {
+    println("Skipping unzip, directory already exists at ${outputDir.toString()}")
+  }
+  def unziped = false
+  def startTime = Instant.now()
+  def error = null
+  while (!unziped && Duration.between(startTime, Instant.now()).compareTo(timeout) < 0) {
+    try {
+      error = null
+      copy {
+        from zipTree(zipFile)
+        into outputDir
+      }
+      unziped = true
+    } catch (Exception e) {
+      error = e
+      // wait for a second before retrying
+      // another process might be using the file
+      Thread.sleep(1000)
+    }
+  }
+
+  if (error != null) {
+    throw new GradleException("Failed to unzip ${zipFile} to ${outputDir}", error)
+  }
+}
+
+def downloadReleaseAndExtractToResources(
+  String releaseTag,
+  String libName,
+  String outputDir,
+  String githubAccessToken
+) {
+  def outputUnzipDir = Path.of(outputDir).resolve(releaseTag)
+  def outputFile = downloadReleaseAsset(releaseTag, outputDir, githubAccessToken)
+  lazyUnzipWithRetry(Path.of(outputFile), outputUnzipDir, Duration.ofSeconds(60))
+
+  fileTree(outputUnzipDir.toFile())
+    .filter { it.name.contains(libName) && (it.name.endsWith(".so") || it.name.endsWith(".dylib")) }
+    .each { File file ->
+      def javaResourcesLibDir = getBinaryResourceFolder(file.name)
+      def destResourceFileName = getBinaryResourceFileName(file.name, libName)
+      def destResourcesPath = Path.of(project.layout.projectDirectory
+        .file("src/main/resources/${javaResourcesLibDir}").asFile.absolutePath)
+      def destFilePath = destResourcesPath.resolve(destResourceFileName)
+
+      if (destFilePath.toFile().exists()) {
+        println("Skipping: ${file} already found at ${destResourcesPath}/${destResourceFileName}")
+      } else {
+        println("Copying ${file} to ${destResourcesPath}/${destResourceFileName}")
+      }
+      copy {
+        from file
+        into destResourcesPath
+        rename {
+          destResourceFileName
+        }
+      }
+    }
+}
+
+ext.fetchLib = {
+  String releaseTag,
+  String libName,
+  String outputDir,
+  String githubAccessToken = System.getenv("GITHUB_TOKEN")
+    ->
+    if (githubAccessToken == null) {
+      throw new GradleException("GITHUB_TOKEN is required")
+    }
+    downloadReleaseAndExtractToResources(releaseTag, libName, outputDir, githubAccessToken)
+}

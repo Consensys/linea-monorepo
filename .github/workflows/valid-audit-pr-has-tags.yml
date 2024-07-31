@@ -1,0 +1,26 @@
+name: Check For Audit Tags On PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'audit/**'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Check audit tag
+      run: |
+        TAG_NAME=$(git tag --points-at ${{ github.event.pull_request.head.sha }})
+        if [[ ! $TAG_NAME =~ ^contract-audit-.*-.*$ ]]; then
+          echo "Error: The latest commit must be tagged with a tag that matches the format 'contract-audit-${firm}-${date}'"
+          exit 1
+        fi

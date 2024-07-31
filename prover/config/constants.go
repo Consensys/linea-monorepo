@@ -1,0 +1,20 @@
+package config
+
+const (
+	VerifyingKeyFileName     = "verifying_key.bin"
+	CircuitFileName          = "circuit.bin"
+	VerifierContractFileName = "Verifier.sol"
+	ManifestFileName         = "manifest.json"
+	DictionaryFileName       = "compressor_dict.bin"
+
+	RequestsFromSubDir = "requests"
+	RequestsToSubDir   = "responses"
+	RequestsDoneSubDir = "requests-done"
+
+	InProgressSufix = "inprogress"
+	FailSuffix      = "code"
+	SuccessSuffix   = "success"
+
+	// Extension to add in order to defer the job to the large prover
+	LargeSuffix = "large"
+)

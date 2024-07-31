@@ -1,0 +1,54 @@
+genesis-file="/data/l1-node-config/genesis.json"
+logging="INFO"
+data-path="/opt/besu/data"
+data-storage-format="FOREST"
+sync-mode="FULL"
+host-whitelist=["*"]
+network-id=31648428
+
+target-gas-limit=30000000
+min-gas-price=1000000
+tx-pool-min-gas-price=0
+max-peers=10
+
+# engine
+engine-rpc-enabled=true
+engine-jwt-secret="/config/jwtsecret.txt"
+engine-host-allowlist=["*"]
+engine-rpc-port=8551
+
+# rpc
+rpc-http-enabled=true
+rpc-http-host="0.0.0.0"
+rpc-http-port=8545
+rpc-http-api=["ADMIN","CLIQUE","ETH","NET","DEBUG","TXPOOL","ENGINE","TRACE","WEB3"]
+rpc-http-cors-origins=["*"]
+rpc-http-max-active-connections=20000
+rpc-max-logs-range=0
+
+# ws
+rpc-ws-enabled=true
+rpc-ws-host="0.0.0.0"
+rpc-ws-port=8546
+rpc-ws-api=["ADMIN","CLIQUE","ETH","NET","DEBUG","TXPOOL","ENGINE","TRACE","WEB3"]
+rpc-ws-max-active-connections=200
+
+# p2p
+p2p-enabled=true
+p2p-host="10.10.10.201"
+p2p-port=30303
+
+# graphql
+graphql-http-enabled=false
+
+# metrics
+metrics-enabled=true
+metrics-host="0.0.0.0"
+metrics-port=9001
+
+Xsynchronizer-fast-sync-full-validation-rate=0.000001
+
+node-private-key-file="/config/keys/besu.key"
+
+# beahvior
+revert-reason-enabled=true

@@ -1,0 +1,59 @@
+package wizard_test
+
+import (
+	"testing"
+
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	SIZE int = 4
+)
+
+func TestCompiler(t *testing.T) {
+
+	// Creates names
+	var (
+		P    ifaces.ColID   = "P"
+		U    ifaces.QueryID = "U"
+		COIN coin.Name      = "R"
+	)
+
+	define := func(build *wizard.Builder) {
+		// Commit to P
+		// Sample a random alpha
+		// Evaluates P in alpha (evaluation point not yet specified)
+		P := build.RegisterCommit(P, SIZE) // Overshadows P with something not of the same type
+		build.RegisterRandomCoin(COIN, coin.Field)
+		build.UnivariateEval(U, P)
+	}
+
+	compiled := wizard.Compile(define, dummy.Compile)
+
+	require.Equal(t, 2, compiled.Coins.NumRounds())
+	require.Equal(t, 2, compiled.Columns.NumRounds())
+	require.Equal(t, 2, compiled.QueriesParams.NumRounds())
+	require.Equal(t, 2, compiled.QueriesNoParams.NumRounds())
+	require.Equal(t, 2, compiled.NumRounds())
+
+	compiled.Columns.MustBeInRound(P, 0)
+	compiled.Coins.MustBeInRound(1, COIN)
+	compiled.QueriesParams.MustBeInRound(1, U)
+
+	prover := func(run *wizard.ProverRuntime) {
+		p := smartvectors.ForTest(1, 2, 3, 3)
+		run.AssignColumn(P, p)
+		u := run.GetRandomCoinField(COIN)
+		y := smartvectors.Interpolate(p, u)
+		run.AssignUnivariate(U, u, y)
+	}
+
+	proof := wizard.Prove(compiled, prover)
+	err := wizard.Verify(compiled, proof)
+	require.NoError(t, err)
+}

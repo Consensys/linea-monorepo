@@ -1,0 +1,29 @@
+{
+    "compilerOptions": {
+        "target": "es2021",
+        "module": "commonjs",
+        "declaration": true,
+        "rootDir": "./src",
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "strictNullChecks": true,
+        "resolveJsonModule": true,
+        "noImplicitThis": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "strictPropertyInitialization": false,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+    },
+    "include": [
+        "src/common/**/*.ts",
+        "src/common/**/*.d.ts",
+        "src/common/**/*.js",
+        "src/ethTransfer/**/*.ts",
+        "src/ethTransfer/**/*.d.ts",
+        "src/ethTransfer/**/*.js"
+    ]
+}

@@ -1,0 +1,103 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-application-conventions'
+  id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+configurations.configureEach {
+  exclude group: "org.rocksdb", module: "rocksdbjni"
+  exclude group: "it.unimi.dsi", module: "fastutil"
+  exclude group: "org.hyperledger.besu", module: "bls12-381"
+  exclude group: "org.hyperledger.besu", module: "secp256r1"
+}
+
+dependencies {
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:http-rest')
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:web3j-extensions')
+  implementation project(':jvm-libs:core:metrics')
+  implementation project(':jvm-libs:metrics:micrometer')
+  implementation project(':jvm-libs:core:domain-models')
+  implementation project(':coordinator:utilities')
+  implementation project(':coordinator:core')
+  implementation project(':coordinator:clients:shomei-client')
+  implementation project(':coordinator:clients:traces-generator-api-client')
+  implementation project(':coordinator:clients:type2-state-manager-client')
+  implementation project(':coordinator:clients:prover-client:file-based-client')
+  implementation project(':coordinator:clients:smart-contract-client')
+  implementation project(':coordinator:ethereum:finalization-monitor')
+  implementation project(':coordinator:ethereum:common')
+  implementation project(':coordinator:ethereum:models-helper')
+  implementation project(':coordinator:ethereum:blob-submitter')
+  implementation project(':coordinator:ethereum:message-anchoring')
+  implementation project(':coordinator:clients:web3signer-client')
+  implementation project(':coordinator:persistence:db')
+  implementation project(':coordinator:persistence:blob')
+  implementation project(':coordinator:persistence:aggregation')
+  implementation project(':coordinator:persistence:batch')
+  implementation project(':coordinator:persistence:feehistory')
+  implementation project(":jvm-libs:teku-execution-client")
+  implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
+
+  implementation project(':coordinator:ethereum:gas-pricing:static-cap')
+  implementation project(':coordinator:ethereum:gas-pricing:dynamic-cap')
+  implementation project(':coordinator:ethereum:gas-pricing')
+
+  implementation "info.picocli:picocli:${libs.versions.picoli.get()}"
+  implementation "io.vertx:vertx-web-client"
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
+  api("io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64") {
+    because "It enables native transport for Linux."
+    // Note that its version should match netty version used in Vertx
+  }
+  api("io.netty:netty-transport-native-kqueue:${libs.versions.netty.get()}:osx-x86_64") {
+    because "It enables native transport for Mac OSX."
+    // Note that its version should match netty version used in Vertx
+  }
+
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
+  testImplementation "org.apache.logging.log4j:log4j-slf4j2-impl:${libs.versions.log4j.get()}"
+  testImplementation project(':coordinator:ethereum:test-utils')
+  testImplementation "io.vertx:vertx-junit5"
+}
+
+application {
+  mainClass = 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain'
+}
+
+jar {
+  archiveBaseName = 'coordiantor'
+  manifest {
+    attributes(
+      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'net.consensys.zkevm.coordinator.app.CoordinatorAppMain',
+      'Multi-Release': 'true'
+    )
+  }
+}
+
+shadowJar {
+  exclude("**/Log4j2Plugins.dat")
+}
+
+distributions {
+  main {
+    distributionBaseName = 'coordinator'
+  }
+}
+
+run {
+  workingDir = rootProject.projectDir
+  jvmArgs = [
+    "-Dvertx.configurationFile=config/coordinator/vertx-options.json",
+    "-Dlog4j2.configurationFile=config/coordinator/log4j2-dev.xml"
+  ] + System.properties.entrySet()
+    .findAll { it.key.startsWith("config") }
+    .collect { "-D${it.key}=${it.value}" }
+  args = ["--traces-limits", "config/common/traces-limits-v1.toml", "--smart-contract-errors", "config/common/smart-contract-errors.toml", "--gas-price-cap-time-of-day-multipliers", "config/common/gas-price-cap-time-of-day-multipliers.toml", "config/coordinator/coordinator-docker.config.toml", "config/coordinator/coordinator-local-dev.config.overrides.toml"]
+}

@@ -1,0 +1,20 @@
+{
+  "id": 1,
+  "name": "money transfer",
+  "context": {
+    "chainId": 59141,
+    "url": "https://rpc.sepolia.linea.build",
+    "nbOfExecutions": 10
+  },
+  "calls": [
+    {
+      "nbOfExecution": 1,
+      "scenario": {
+        "scenarioType": "SelfTransactionWithPayload",
+        "wallet": "source",
+        "nbTransfers": 1,
+        "payload": "custom payload"
+      }
+    }
+  ]
+}

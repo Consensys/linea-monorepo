@@ -1,0 +1,17 @@
+node_modules
+.env*
+coverage
+coverage.json
+typechain
+typechain-types
+cache
+build
+.openzeppelin
+abi
+Makefile
+README.md
+scripts/operational
+test/V2 Scenarios
+contracts/test-contracts/IntegrationTestTrueVerifier.sol
+mirror_linea_contracts*.sh
+.exclude_copy_list
