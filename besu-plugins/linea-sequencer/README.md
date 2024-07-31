@@ -1,98 +1,63 @@
 # Besu Plugins related to tracer and sequencer functionality
 
-A set of Linea plugins for the sequencer and RPC nodes.
+This repository hosts the implementation of the sequencer, the component of the Linea stack responsible for ordering transactions and building blocks, as well as executing them. It provides a set of [Hyperledger Besu](https://github.com/hyperledger/besu):Linea plugins. 
 
-## Quickstart - Running [Linea Besu](https://github.com/Consensys/linea-besu) with plugins
+It serves developers by making the Linea tech stack open source under 
+the [Apache 2.0 license](LICENSE).
 
-- compile linea-plugins `gradlew installDist`
-- copy jar file to besu runtime plugins/ directory (where you will run besu from, not where you're building besu)
-- add `LINEA` to besu config to enable the plugin RPC methods
-  - rpc-http-api=\["ADMIN","ETH","NET","WEB3","LINEA"\]
-- start besu (command line or from IDE) and you should see plugins registered at startup
-- call the RPC endpoint eg:
+## What is Linea?
 
-```shell
-  curl --location --request POST 'http://localhost:8545' --data-raw '{
-    "jsonrpc": "2.0",
-    "method": "linea_estimateGas",
-    "params": [
-      "from": "0x73b2e0E54510239E22cC936F0b4a6dE1acf0AbdE",
-      "to": "0xBb977B2EE8a111D788B3477D242078d0B837E72b",
-      "value": "0x123"
-    ],
-    "id": 1
-  }'
-```
+[Linea](https://linea.build) is a developer-ready layer 2 network scaling Ethereum. It's secured with a zero-knowledge rollup, built on lattice-based cryptography, and powered by [Consensys](https://consensys.io).
 
-## Development Setup
+## Get started
 
-### Install Java 21
+If you already have an understanding of the tech stack, use our [Quickstart](docs/quickstart.md) guide.
 
-### Native Lib Prerequisites
+### Looking for Plugins?
 
-Linux/MacOs
-* Install the relevant CGo compiler for your platform
-* Install the Go toolchain
+Discover [existing plugins](docs/plugins.md) and understand the [plugin release process](docs/plugin-release.md). 
 
-Windows
-* Requirement [Docker Desktop WSL 2 backend on Windows](https://docs.docker.com/desktop/wsl/)
+## Looking for the Linea code?
 
-On release native libs are built for all the supported platforms,
-if you want to test this process locally run `./gradlew -PreleaseNativeLibs jar`,
-jar is generated in `sequencer/build/libs`.
+Linea's stack is made up of multiple repositories, these include:
+- This repo, [linea-sequencer](https://github.com/Consensys/linea-sequencer): A set of Linea-Besu plugins for the sequencer and RPC nodes
+- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network 
+- [linea-besu](https://github.com/Consensys/linea-besu): Fork of Besu to implement the Linea-Besu client
+- [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
+- [linea-constraints](https://github.com/Consensys/linea-constraints): Implementation of the constraint system from the specification
+- [linea-specification](https://github.com/Consensys/linea-specification): Specification of the constraint system defining Linea's zk-EVM
 
-### Run tests
+Linea abstracts away the complexity of this technical architecture to allow developers to:
 
-```shell
-# Run all tests
-./gradlew clean test
+- [Bridge tokens](https://docs.linea.build/developers/guides/bridge)
+- [Deploy a contract](https://docs.linea.build/developers/quickstart/deploy-smart-contract)
+- [Run a node](https://docs.linea.build/developers/guides/run-a-node)
 
-# Run only acceptance tests
-./gradlew clean acceptanceTests
-```
+... and more.
 
-## IntelliJ IDEA Setup
+## How to contribute
 
-### Enable Annotation Processing
+Contributions of any kind are welcome!
 
-- Go to `Settings | Build, Execution, Deployment | Compiler | Annotation Processors` and tick the following
-  checkbox:
+1. [Create an issue](https://github.com/Consensys/linea-sequencer/issues).
+> If the proposed update is non-trivial, also tag us for discussion.
+2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-sequencer/fork), and tag us for review. 
+> Include the issue number in the pull request description and (optionally) in the branch name.
 
-  ![idea_enable_annotation_processing_setting.png](images/idea_enable_annotation_processing_setting.png)
+Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-sequencer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
-______________________________________________________________________
+Before contributing, ensure you're familiar with:
 
-NOTE
+- Our [Linea contribution guide](https://github.com/Consensys/linea-monorepo/blob/main/docs/contribute.md)
+- Our [Linea code of conduct](https://github.com/Consensys/linea-monorepo/blob/main/docs/code-of-conduct.md)
+- The [Besu contribution guide](https://github.com/Consensys/linea-monorepo/blob/main/https://wiki.hyperledger.org/display/BESU/Coding+Conventions), for Besu:Linea related contributions
+- Our [Security policy](https://github.com/Consensys/linea-monorepo/blob/main/docs/security.md)
 
-> This setting is required to avoid IDE compilation errors because of the [Lombok](https://projectlombok.org/features/)
-> library used for code generation of boilerplate Java code such as:
->
-> - Getters/Setters (via [`@Getter/@Setter`](https://projectlombok.org/features/GetterSetter))
-> - Class log instances (via [`@Slf4j`](https://projectlombok.org/features/log))
-> - Builder classes (via [`@Builder`](https://projectlombok.org/features/Builder))
-> - Constructors (
->   via [`@NoArgsConstructor/@RequiredArgsConstructor/@AllArgsConstructor`](https://projectlombok.org/features/constructor))
-> - etc.
->
-> Learn more about how Java annotation processing
-> works [here](https://www.baeldung.com/java-annotation-processing-builder).
 
-______________________________________________________________________
+### Useful links
 
-### Install Optional Plugins
-
-- Install [Spotless Gradle](https://plugins.jetbrains.com/plugin/18321-spotless-gradle) plugin to re-format through
-  the IDE according to spotless configuration.
-
-## Plugins
-
-Plugins are documented [here](PLUGINS.md).
-
-## Release Process
-Here are the steps for releasing a new version of the plugins:
-  1. Create a tag with the release version number in the format vX.Y.Z (e.g., v0.2.0 creates a release version 0.2.0).
-  2. Push the tag to the repository.
-  3. GitHub Actions will automatically create a draft release for the release tag.
-  4. Once the release workflow completes, update the release notes, uncheck "Draft", and publish the release.
-
-Note: Release tags (of the form v*) are protected and can only be pushed by organization and/or repository owners.
+- [Linea docs](https://docs.linea.build)
+- [Linea blog](https://linea.mirror.xyz)
+- [Support](https://support.linea.build)
+- [Discord](https://discord.gg/linea)
+- [Twitter](https://twitter.com/LineaBuild)

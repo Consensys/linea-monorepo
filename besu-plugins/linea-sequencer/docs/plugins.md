@@ -1,14 +1,15 @@
 # Linea plugins
 
 ## Shared components
+
 ### Profitability calculator
 The profitability calculator is a shared component, that is used to check if a tx is profitable.
-It is applied, with different configuration to:
+It's applied, with different configuration to:
 1. `linea_estimateGas` endpoint
 2. Tx validation for the txpool (if tx profitability check is enabled)
 3. Tx selection during block creation
 
-#### CLI Options
+#### CLI options
 
 | Command Line Argument                                 | Default Value |
 |-------------------------------------------------------|---------------|
@@ -28,7 +29,7 @@ It is used in:
 2. Tx validation for the txpool (if tx simulation is enabled)
 3. Tx selection during block creation
 
-#### CLI Options
+#### CLI options
 
 | Command Line Argument                                 | Default Value        |
 |-------------------------------------------------------|----------------------|
@@ -36,7 +37,8 @@ It is used in:
 | `--plugin-linea-over-line-count-limit-cache-size`     | 10_000               |
 
 
-### L1 L2 Bridge
+### L1<>L2 bridge
+
 These values are just passed to the ZkTracer
 
 #### CLI Options
@@ -49,14 +51,14 @@ These values are just passed to the ZkTracer
 
 ## Sequencer
 
-### Transaction Selection - LineaTransactionSelectorPlugin
+### Transaction selection - LineaTransactionSelectorPlugin
 This plugin extends the standard transaction selection protocols employed by Besu for block creation. 
 It leverages the `TransactionSelectionService` to manage and customize the process of transaction selection. 
 This includes setting limits such as `TraceLineLimit`, `maxBlockGas`, and `maxCallData`, and check the profitability
 of a transaction.
 The selectors are in the package `net.consensys.linea.sequencer.txselection.selectors`.
 
-#### CLI Options
+#### CLI options
 
 | Command Line Argument                                  | Default Value        |
 |--------------------------------------------------------|----------------------|
@@ -68,7 +70,7 @@ The selectors are in the package `net.consensys.linea.sequencer.txselection.sele
 | `--plugin-linea-unprofitable-retry-limit`              | 10                   |
 
 
-### Transaction Validation - LineaTransactionValidatorPlugin
+### Transaction validation - LineaTransactionValidatorPlugin
 
 This plugin extends the default transaction validation rules for adding transactions to the
 transaction pool. It leverages the `PluginTransactionValidatorService` to manage and customize the
@@ -77,7 +79,7 @@ This includes setting limits such as `TraceLineLimit`, `maxTxGasLimit`, and `max
 of a transaction.
 The validators are in the package `net.consensys.linea.sequencer.txpoolvalidation.validators`.
 
-#### CLI Options
+#### CLI options
 
 | Command Line Argument                                    | Default Value     |
 |----------------------------------------------------------|-------------------|
@@ -90,7 +92,7 @@ The validators are in the package `net.consensys.linea.sequencer.txpoolvalidatio
 | `--plugin-linea-tx-pool-profitability-check-p2p-enabled` | false             |
 
 
-## RPC Methods
+## RPC methods
 
 ### Linea Estimate Gas
 #### `linea_estimateGas`
