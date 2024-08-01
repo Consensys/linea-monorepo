@@ -1,47 +1,51 @@
 package keccak
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
-func MakeTestCaseKeccak(t *testing.T, c []makeTestCase) (
+// makes Define and Prove function for testing [NewCustomizedKeccak]
+func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
 	prover wizard.ProverStep,
 ) {
-	mod := &keccakHash{}
-	maxNumKeccakF := 12
-	gdms := make([]generic.GenDataModule, len(c))
+	mod := &CustomizedkeccakHash{}
+	maxNumKeccakF := 16
+	size := utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.NbOfLanesPerBlock())
 
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
-		for i := range gdms {
-			gdms[i] = testdata.CreateGenDataModule(comp, c[i].Name, c[i].Size)
-		}
+		createCol := common.CreateColFn(comp, "Test_Customized_Keccak", size)
 
-		inp := KeccakInput{
-			Settings: &Settings{
-				MaxNumKeccakf: maxNumKeccakF,
+		inp := CustomizedKeccakInputs{
+			LaneInfo: LaneInfo{
+				Lanes:                createCol("Lanes"),
+				IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
+				IsLaneActive:         createCol("IsLaneActive"),
 			},
-			Providers: gdms,
+
+			MaxNumKeccakF: maxNumKeccakF,
+			Provider:      providers,
 		}
-		mod = NewKeccak(comp, inp)
+		mod = NewCustomizedKeccak(comp, inp)
 	}
 
 	prover = func(run *wizard.ProverRuntime) {
-		for i := range gdms {
-			testdata.GenerateAndAssignGenDataModule(run, &gdms[i], c[i].HashNum, c[i].ToHash)
-		}
+
+		AssignLaneInfo(run, &mod.Inputs.LaneInfo, mod.Inputs.Provider)
 		mod.Run(run)
 
 		// check the hash result
-		permTrace := GenerateTrace(mod.Provider.ScanStreams(run))
+		permTrace := GenerateTrace(mod.Inputs.Provider)
 		hi := mod.HashHi.GetColAssignment(run).IntoRegVecSaveAlloc()
 		lo := mod.HashLo.GetColAssignment(run).IntoRegVecSaveAlloc()
 		for i, expectedHash := range permTrace.HashOutPut {
@@ -61,38 +65,20 @@ func MakeTestCaseKeccak(t *testing.T, c []makeTestCase) (
 	return define, prover
 }
 
-func TestKeccak(t *testing.T) {
-	definer, prover := MakeTestCaseKeccak(t, testCases)
+func TestCustomizedKeccak(t *testing.T) {
+	var providers [][]byte
+	// generate 20 random slices of bytes
+	for i := 0; i < 1; i++ {
+		length := (i + 1) * generic.KeccakUsecase.BlockSizeBytes()
+		// generate random bytes
+		slice := make([]byte, length)
+		rand.Read(slice)
+		providers = append(providers, slice)
+	}
+
+	definer, prover := MakeTestCaseCustomizedKeccak(t, providers)
 	comp := wizard.Compile(definer, dummy.Compile)
 
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
-}
-
-type makeTestCase struct {
-	Name    string
-	Size    int
-	HashNum []int
-	ToHash  []int
-}
-
-var testCases = []makeTestCase{
-	{
-		Name:    "GenDataModule1",
-		Size:    8,
-		HashNum: []int{1, 1, 1, 1, 2},
-		ToHash:  []int{1, 0, 1, 0, 1},
-	},
-	{
-		Name:    "GenDataModule2",
-		Size:    16,
-		HashNum: []int{1, 1, 1, 1, 1, 1, 2, 3, 3, 3},
-		ToHash:  []int{1, 0, 1, 0, 1, 1, 1, 1, 0, 0},
-	},
-	{
-		Name:    "GenDataModule3",
-		Size:    32,
-		HashNum: []int{1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 4, 4, 4, 4, 4},
-		ToHash:  []int{1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1},
-	},
 }

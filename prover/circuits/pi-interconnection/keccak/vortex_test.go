@@ -19,18 +19,19 @@ import (
 
 func TestHash(t *testing.T) {
 	const maxNbKeccakF = 400
-	var m module
+	var m *module
 	t.Log("compiling")
 	compiled := wizard.Compile(func(b *wizard.Builder) {
-		m.DefineCustomizedKeccak(b.CompiledIOP, maxNbKeccakF)
-
-		lane := b.Columns.GetHandle("Lane")
-		hashHi := b.Columns.GetHandle("Hash_Hi")
-		b.InsertCommit(0, "ExpectedLane", lane.Size())
-		b.InsertCommit(0, "ExpectedIsActive", lane.Size())
-		b.InsertCommit(0, "ExpectedIsFirstLane", lane.Size())
-		b.InsertCommit(0, "ExpectedHashHi", hashHi.Size())
-		b.InsertCommit(0, "ExpectedHashLo", hashHi.Size())
+		m = NewCustomizedKeccak(b.CompiledIOP, maxNbKeccakF)
+		var (
+			laneSize   = m.keccak.Inputs.LaneInfo.Lanes.Size()
+			hashHiSize = m.keccak.HashHi.Size()
+		)
+		b.InsertCommit(0, "ExpectedLane", laneSize)
+		b.InsertCommit(0, "ExpectedIsActive", laneSize)
+		b.InsertCommit(0, "ExpectedIsFirstLane", laneSize)
+		b.InsertCommit(0, "ExpectedHashHi", hashHiSize)
+		b.InsertCommit(0, "ExpectedHashLo", hashHiSize)
 
 		assertEqual := func(u, v ifaces.ColID) {
 			b.GlobalConstraint(ifaces.QueryID(u+"="+"v"), ifaces.ColumnAsVariable(b.Columns.GetHandle(u)).Sub(ifaces.ColumnAsVariable(b.Columns.GetHandle(v))))
@@ -39,8 +40,8 @@ func TestHash(t *testing.T) {
 		assertEqual("Lane", "ExpectedLane")
 		assertEqual("IsLaneActive", "ExpectedIsActive")
 		assertEqual("IsFirstLaneOfNewHash", "ExpectedIsFirstLane")
-		assertEqual("Hash_Hi", "ExpectedHashHi")
-		assertEqual("Hash_Lo", "ExpectedHashLo")
+		assertEqual("HASH_OUTPUT_Hash_Hi", "ExpectedHashHi")
+		assertEqual("HASH_OUTPUT_Hash_Lo", "ExpectedHashLo")
 
 	}, dummy.Compile)
 	t.Log("proving")
@@ -49,14 +50,13 @@ func TestHash(t *testing.T) {
 		if i != 3 {
 			continue
 		}
-		m.SliceProviders = c.in
 		proof := wizard.Prove(compiled, func(r *wizard.ProverRuntime) {
-			m.AssignCustomizedKeccak(r)
+			m.AssignCustomizedKeccak(r, c.in)
 
 			lanes, isLaneActive, isFirstLaneOfHash, hashHi, hashLo := AssignColumns(c.in, utils.NextPowerOfTwo(maxNbKeccakF*lanesPerBlock))
 
 			// pad hashHiLo to the right length; TODO length is nextPowerOfTwo(maxNbKeccakF); move to assign?
-			hashPaddingLen := m.DataTransfer.HashOutput.MaxNumRows - len(hashHi)
+			hashPaddingLen := m.keccak.HashHi.Size() - len(hashHi)
 			hashHi = append(hashHi, make([]field.Element, hashPaddingLen)...)
 			hashLo = append(hashLo, make([]field.Element, hashPaddingLen)...)
 
@@ -92,7 +92,7 @@ func TestPureGoAssign(t *testing.T) {
 
 			for j := range c.lanes {
 				var b [8]byte
-				binary.LittleEndian.PutUint64(b[:], lanes[j])
+				binary.BigEndian.PutUint64(b[:], lanes[j])
 				assert.Equal(t, hex.EncodeToString(c.lanes[j][:]), hex.EncodeToString(b[:]))
 				assert.Equal(t, c.isFirstLaneOfHash[j], isFirstLane[j])
 				assert.Equal(t, c.isLaneActive[j], active[j])
@@ -107,4 +107,39 @@ func toVectorUint64(in []uint64) smartvectors.SmartVector {
 		e[i].SetUint64(in[i])
 	}
 	return smartvectors.NewRegular(e)
+}
+
+// AssignColumns to be used in the interconnection circuit assign function
+func AssignColumns(in [][]byte, nbLanes int) (lanes []uint64, isLaneActive, isFirstLaneOfHash []int, hashHi, hashLo []field.Element) {
+	hashHi = make([]field.Element, len(in))
+	hashLo = make([]field.Element, len(in))
+	lanes = make([]uint64, nbLanes)
+	isFirstLaneOfHash = make([]int, nbLanes)
+	isLaneActive = make([]int, nbLanes)
+
+	laneI := 0
+	for i := range in {
+		isFirstLaneOfHash[laneI] = 1
+		// pad and turn into lanes
+		nbBlocks := 1 + len(in[i])/136
+		for j := 0; j < nbBlocks; j++ {
+			var block [136]byte
+			copy(block[:], in[i][j*136:])
+			if j == nbBlocks-1 {
+				block[len(in[i])-j*136] = 1 // dst
+				block[135] |= 0x80          // end marker
+			}
+			for k := 0; k < 17; k++ {
+				isLaneActive[laneI] = 1
+				lanes[laneI] = binary.BigEndian.Uint64(block[k*8 : k*8+8])
+				laneI++
+			}
+		}
+		hash := utils.KeccakHash(in[i])
+		hashHi[i].SetBytes(hash[:16])
+		hashLo[i].SetBytes(hash[16:])
+
+	}
+
+	return
 }

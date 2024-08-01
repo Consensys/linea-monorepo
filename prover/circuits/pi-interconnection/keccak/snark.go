@@ -3,7 +3,6 @@ package keccak
 import (
 	"errors"
 	"math/big"
-	"slices"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
@@ -58,7 +57,6 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 		var currLaneBytes [8]frontend.Variable
 		for j := 0; j < 4; j++ {
 			copy(currLaneBytes[:], bytess[i][8*j:8*j+8])
-			slices.Reverse(currLaneBytes[:])
 			unpaddedLanes[4*i+j] = compress.ReadNum(h.api, currLaneBytes[:], radix)
 		}
 		copy(hintIn[i*32+1:i*32+33], bytess[i][:])
@@ -105,8 +103,8 @@ func (h *Hasher) Finalize(c *wizard.WizardVerifierCircuit) error {
 	expectedLanes := c.GetColumn("Lane")
 	expectedActive := c.GetColumn("IsLaneActive")
 	expectedNewLane := c.GetColumn("IsFirstLaneOfNewHash")
-	expectedHashHi := c.GetColumn("Hash_Hi")
-	expectedHashLo := c.GetColumn("Hash_Lo")
+	expectedHashHi := c.GetColumn("HASH_OUTPUT_Hash_Hi")
+	expectedHashLo := c.GetColumn("HASH_OUTPUT_Hash_Lo")
 	if len(lanes) > len(expectedLanes) || len(isLaneActive) > len(expectedActive) || len(isFirstLaneOfNewHash) > len(expectedNewLane) {
 		return errors.New("snark lanes not fitting in wizard lanes")
 	}
@@ -224,8 +222,8 @@ func keccakHint(_ *big.Int, ins, outs []*big.Int) error {
 
 const (
 	lanesPerBlock        = 17
-	dstLane       uint64 = 0x1
-	lastLane      uint64 = 0x8000000000000000
+	dstLane       uint64 = 0x100000000000000
+	lastLane      uint64 = 0x80
 )
 
 // pad takes a slice of 8-byte lanes and pads then into 17-lane blocks as per the Keccak standard
@@ -320,7 +318,7 @@ type HashWizardVerifierSubCircuit struct {
 func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *wizard.CompiledIOP)) *HashWizardVerifierSubCircuit {
 	var c HashWizardVerifierSubCircuit
 	c.compiled = wizard.Compile(func(b *wizard.Builder) {
-		c.m.DefineCustomizedKeccak(b.CompiledIOP, maxNbKeccakF)
+		c.m = *NewCustomizedKeccak(b.CompiledIOP, maxNbKeccakF)
 	}, compilationOpts...).BootstrapFiatShamir(
 		wizard.VersionMetadata{
 			Title:   "prover-interconnection/keccak-strict-hasher",
@@ -332,9 +330,8 @@ func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *
 }
 
 func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
-	c.m.SliceProviders = ins
 	return wizard.Prove(c.compiled, func(r *wizard.ProverRuntime) {
-		c.m.AssignCustomizedKeccak(r)
+		c.m.AssignCustomizedKeccak(r, ins)
 	})
 }
 
