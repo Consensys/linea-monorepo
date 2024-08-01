@@ -90,11 +90,11 @@ var (
 	}
 )
 
-// FullZkEvm compiles the full prover zk-evm. It memoizes the results and
+// FullZkEvm compiles the full prover zkEVM. It memoizes the results and
 // returns it for all the subsequent calls. That is, it should not be called
 // twice with different configuration parameters as it will always return the
 // instance compiled with the parameters it received the first time. This
-// behaviour is motivated by the fact that the compilation process takes time
+// behavior is motivated by the fact that the compilation process takes time
 // and we don't want to spend the compilation time twice, plus in practice we
 // won't need to call it with different configuration parameters.
 func FullZkEvm(feat *config.Features, tl *config.TracesLimits) *ZkEvm {

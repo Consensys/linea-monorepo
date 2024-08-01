@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization/define"
 )
 
-// Settings specifies the parameters for the arithmetization part of the zk-EVM.
+// Settings specifies the parameters for the arithmetization part of the zkEVM.
 type Settings = define.Settings
 
 // Arithmetization exposes all the methods relevant for the user to interact

@@ -432,7 +432,7 @@ func assertCorrectStatusTransition(old, new Status) {
 	case old == Ignored && new != Ignored:
 		forbiddenTransition = true
 	// You can't change the status of the public inputs because that would
-	// change the statement of the zk-EVM.
+	// change the statement of the zkEVM.
 	case old == PublicInput && new != PublicInput:
 		forbiddenTransition = true
 	// It's a special status and cannot be changed.
