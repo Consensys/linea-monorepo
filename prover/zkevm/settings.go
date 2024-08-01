@@ -11,7 +11,7 @@ import (
 // compile and provides internal parameters for the wizard package.
 type compilationSuite = []func(*wizard.CompiledIOP)
 
-// List the options set to initialize the zk-EVM
+// List the options set to initialize the zkEVM
 type Settings struct {
 	Keccak       keccak.Settings
 	Statemanager statemanager.SettingsLegacy

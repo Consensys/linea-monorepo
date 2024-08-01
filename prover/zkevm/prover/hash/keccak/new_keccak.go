@@ -1,5 +1,5 @@
 // The keccak package specifies all the mechanism through which the zkevm
-// keccaks are proven and extracted from the arithmetization of the zk-EVM.
+// keccaks are proven and extracted from the arithmetization of the zkEVM.
 package keccak
 
 import (

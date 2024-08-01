@@ -69,7 +69,7 @@ func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 	return wizard.Verify(z.WizardIOP, proof)
 }
 
-// The define function of the zk-EVM define module. This function is unexported
+// The define function of the zkEVM define module. This function is unexported
 // and should not be exported. The user should instead use the "Compile"
 // function. This function is meant to be passed as a closure to the
 // wizard.Compile function. Thus, this is an internal.

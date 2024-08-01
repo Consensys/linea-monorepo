@@ -1,5 +1,5 @@
 // The keccak package specifies all the mechanism through which the zkevm
-// keccaks are proven and extracted from the arithmetization of the zk-EVM.
+// keccaks are proven and extracted from the arithmetization of the zkEVM.
 package keccak
 
 import (
@@ -23,7 +23,7 @@ type TraceProvider interface {
 	AppendTraces(run *wizard.ProverRuntime, traces *keccak.PermTraces, genTrace *g.GenTrace)
 }
 
-// Module provides the Keccak component of the zk-EVM
+// Module provides the Keccak component of the zkEVM
 type Module struct {
 	Settings     *Settings
 	Keccakf      keccakf.Module
