@@ -139,7 +139,7 @@ public class GeneralStateReferenceTestTools {
   public static void executeTest(final GeneralStateTestCaseEipSpec spec) {
     final BlockHeader blockHeader = spec.getBlockHeader();
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
-    final Transaction transaction = spec.getTransaction();
+    final Transaction transaction = spec.getTransaction(0);
     final BlockBody blockBody = new BlockBody(List.of(transaction), new ArrayList<>());
 
     // Sometimes the tests ask us assemble an invalid transaction.  If we have
