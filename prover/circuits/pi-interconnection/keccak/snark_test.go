@@ -2,10 +2,10 @@ package keccak
 
 import (
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"math/big"
-	"slices"
 	"testing"
+
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
@@ -30,7 +30,6 @@ func TestCreateCols(t *testing.T) {
 					in[j][k][l] = c.in[j][32*k+l]
 				}
 			}
-			slices.Reverse(c.hash[j][:])
 			hash[j][0] = c.hash[j][:16]
 			hash[j][1] = c.hash[j][16:]
 		}
@@ -59,7 +58,6 @@ func TestCreateCols(t *testing.T) {
 		}
 
 		for j := range c.lanes {
-			slices.Reverse(c.lanes[j][:])
 			assignment.Lanes[j] = c.lanes[j][:]
 		}
 		for j := range assignment.InLength {
@@ -140,8 +138,6 @@ func (c *testCreateColsCircuit) Define(api frontend.API) error {
 		} else {
 			computedHash = hsh.Sum(c.InLength[i], c.In[i]...)
 		}
-
-		slices.Reverse(computedHash[:])
 		hi := compress.ReadNum(api, computedHash[:16], radix)
 		lo := compress.ReadNum(api, computedHash[16:], radix)
 

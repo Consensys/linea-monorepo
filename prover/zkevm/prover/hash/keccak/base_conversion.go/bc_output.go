@@ -90,7 +90,7 @@ func (h *hashBaseConversion) csDecompose(comp *wizard.CompiledIOP) {
 
 	// recomposition of limbsHi into HashHi
 	res := sym.NewConstant(0)
-	for k := range h.limbsHi {
+	for k := len(h.limbsHi) - 1; k >= 0; k-- {
 		res = sym.Add(
 			sym.Mul(POWER4, res),
 			h.limbsHi[k])
@@ -102,7 +102,7 @@ func (h *hashBaseConversion) csDecompose(comp *wizard.CompiledIOP) {
 
 	// recomposition of limbsLo into HashLo
 	res = sym.NewConstant(0)
-	for k := range h.limbsLo {
+	for k := len(h.limbsHi) - 1; k >= 0; k-- {
 		res = sym.Add(
 			sym.Mul(POWER4, res),
 			h.limbsLo[k])
@@ -158,7 +158,7 @@ func (h *hashBaseConversion) Run(
 	// since this is output of the module, it should be big-Endian
 	res := vector.Repeat(field.Zero(), size)
 	t := make([]field.Element, size)
-	for j := range limbsHi {
+	for j := len(limbsHi) - 1; j >= 0; j-- {
 		vector.ScalarMul(t, res, field.NewElement(POWER4))
 		vector.Add(res, t, limbsHi[j].Slice())
 	}
@@ -166,7 +166,7 @@ func (h *hashBaseConversion) Run(
 	hashHi.PadAndAssign(run, field.Zero())
 
 	res = vector.Repeat(field.Zero(), size)
-	for j := range limbsLo {
+	for j := len(limbsHi) - 1; j >= 0; j-- {
 		vector.ScalarMul(t, res, field.NewElement(POWER4))
 		vector.Add(res, t, limbsLo[j].Slice())
 	}
