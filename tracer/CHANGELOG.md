@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0-rc2
+* feat: Update Linea-Besu to 24.7-develop-c0029e6 ([#905](https://github.com/Consensys/linea-tracer/pull/905))
+
 ## 0.3.0-rc1
 * feat: upgrade besu version to 24.7-develop-f812936 ([#880](https://github.com/Consensys/linea-arithmetization/pull/880))
 
