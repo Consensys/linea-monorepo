@@ -27,7 +27,7 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-def lineaBesuDistTar = new File(buildDir, rootProject.besuFilename)
+def lineaBesuDistTar = new File(new File(buildDir, "tmp"), rootProject.besuFilename)
 
 tasks.register('copyLocalLineaBesu', Copy) {
   onlyIf {

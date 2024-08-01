@@ -24,8 +24,8 @@ import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt32;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.datatypes.rpc.JsonRpcResponseType;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
+import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
 
 /**
  * Handles the Linea extra data custom extension.
@@ -143,7 +143,7 @@ public class LineaExtraDataHandler {
         final var resp =
             rpcEndpointService.call(
                 "miner_setMinGasPrice", new Object[] {minGasPriceWei.toShortHexString()});
-        if (!resp.getType().equals(JsonRpcResponseType.SUCCESS)) {
+        if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
           throw new LineaExtraDataException(
               LineaExtraDataException.ErrorType.FAILED_CALLING_SET_MIN_GAS_PRICE,
               "Internal setMinGasPrice method failed: " + resp);

@@ -70,6 +70,9 @@ dependencies {
   testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
   testImplementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
   testImplementation "${besuArtifactGroup}.internal:core:${besuVersion}"
+
+  // workaround for bug https://github.com/dnsjava/dnsjava/issues/329, remove when upgraded upstream
+  testImplementation 'dnsjava:dnsjava:3.6.1'
 }
 
 configurations {

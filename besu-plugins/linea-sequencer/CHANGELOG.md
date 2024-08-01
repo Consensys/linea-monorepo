@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0-rc2.1
+* bump linea-arithmetization version to 0.3.0-rc2 [#62](https://github.com/Consensys/linea-sequencer/pull/62)
+* bump Linea-Besu version to 24.7-develop-c0029e6 (delivery-28) [#62](https://github.com/Consensys/linea-sequencer/pull/62)
+
 ## 0.3.0-rc1.1
 * bump linea-arithmetization version to 0.3.0-rc1 [#54](https://github.com/Consensys/linea-sequencer/pull/54)
 * bump Linea-Besu version to 24.7-develop-f812936 (delivery-27) [#54](https://github.com/Consensys/linea-sequencer/pull/54)

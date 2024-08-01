@@ -25,12 +25,12 @@ import net.consensys.linea.extradata.LineaExtraDataException;
 import net.consensys.linea.extradata.LineaExtraDataHandler;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.rpc.JsonRpcResponseType;
-import org.hyperledger.besu.datatypes.rpc.RpcMethodError;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
+import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
+import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
 
 @Slf4j
 public class LineaSetExtraData {
@@ -78,7 +78,7 @@ public class LineaSetExtraData {
   private void updateStandardExtraData(final Bytes32 extraData) {
     final var resp =
         rpcEndpointService.call("miner_setExtraData", new Object[] {extraData.toHexString()});
-    if (!resp.getType().equals(JsonRpcResponseType.SUCCESS)) {
+    if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
       throw new LineaExtraDataException(
           FAILED_CALLING_SET_EXTRA_DATA, "Internal setExtraData method failed: " + resp);
     }

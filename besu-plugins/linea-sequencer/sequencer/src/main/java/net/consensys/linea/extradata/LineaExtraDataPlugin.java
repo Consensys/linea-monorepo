@@ -31,7 +31,7 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
 @AutoService(BesuPlugin.class)
 public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
   public static final String NAME = "linea";
-  private BesuEvents besuEventsService;
+  private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
   private BlockchainService blockchainService;
 
@@ -42,11 +42,7 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
 
   @Override
   public void doRegister(final BesuContext context) {
-    besuEventsService =
-        context
-            .getService(BesuEvents.class)
-            .orElseThrow(
-                () -> new RuntimeException("Failed to obtain BesuEvents from the BesuContext."));
+    besuContext = context;
     rpcEndpointService =
         context
             .getService(RpcEndpointService.class)
@@ -86,6 +82,13 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
             chainHeadHeader.getBlockHash(),
             e);
       }
+
+      final var besuEventsService =
+          besuContext
+              .getService(BesuEvents.class)
+              .orElseThrow(
+                  () -> new RuntimeException("Failed to obtain BesuEvents from the BesuContext."));
+
       besuEventsService.addBlockAddedListener(
           addedBlockContext -> {
             final var importedBlockHeader = addedBlockContext.getBlockHeader();
