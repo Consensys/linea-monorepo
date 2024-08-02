@@ -9,7 +9,7 @@ import (
 
 // Multiple polynomials, one point
 type QueryUnivariateEval struct {
-	Pols     []Column
+	Pol      Column
 	X        Accessor
 	metadata *metadata
 	*subQuery
@@ -17,12 +17,11 @@ type QueryUnivariateEval struct {
 
 // NewQueryUnivariateEval Constructor for univariate evaluation queries
 // The list of polynomial must be deduplicated.
-func (api *API) NewQueryUnivariateEval(pols []Column, x Accessor) *QueryUnivariateEval {
+func (api *API) NewQueryUnivariateEval(pol Column, x Accessor) *QueryUnivariateEval {
 	var (
-		round  = x.Round()
-		_, err = utils.AllReturnEqual(Column.Size, pols)
-		res    = &QueryUnivariateEval{
-			Pols:     pols,
+		round = x.Round()
+		res   = &QueryUnivariateEval{
+			Pol:      pol,
 			X:        x,
 			metadata: api.newMetadata(),
 			subQuery: &subQuery{
@@ -30,10 +29,6 @@ func (api *API) NewQueryUnivariateEval(pols []Column, x Accessor) *QueryUnivaria
 			},
 		}
 	)
-
-	if err != nil {
-		utils.Panic("all columns should have the same size: %v", err)
-	}
 
 	api.queries.addToRound(round, res)
 	return res
@@ -43,16 +38,13 @@ func (api *API) NewQueryUnivariateEval(pols []Column, x Accessor) *QueryUnivaria
 func (r QueryUnivariateEval) ComputeResult(run Runtime) QueryResult {
 
 	var (
-		pols = make([]smartvectors.SmartVector, len(r.Pols))
-		x    = r.X.GetVal(run)
+		pol = r.Pol.GetAssignment(run)
+		x   = r.X.GetVal(run)
+		y   = smartvectors.Interpolate(pol, x)
 	)
 
-	for i := range r.Pols {
-		pols[i] = r.Pols[i].GetAssignment(run)
-	}
-
-	return &QueryResFESlice{
-		R: smartvectors.BatchInterpolate(pols, x),
+	return &QueryResFE{
+		R: y,
 	}
 }
 
@@ -60,16 +52,49 @@ func (r QueryUnivariateEval) ComputeResult(run Runtime) QueryResult {
 func (r QueryUnivariateEval) ComputeResultGnark(api frontend.API, run GnarkRuntime) QueryResultGnark {
 
 	var (
-		ys = make([]frontend.Variable, len(r.Pols))
-		x  = r.X.GetValGnark(api, run)
+		pol = r.Pol.GetAssignmentGnark(api, run)
+		x   = r.X.GetValGnark(api, run)
+		y   = fastpoly.InterpolateGnark(api, pol, x)
 	)
 
-	for i := range r.Pols {
-		pol := r.Pols[i].GetAssignmentGnark(api, run)
-		ys[i] = fastpoly.InterpolateGnark(api, pol, x)
+	return &QueryResFEGnark{
+		R: y,
+	}
+}
+
+// BatchComputeUnivariateEval is a batching utility for QueryUnivariateEval
+// which allows computing the result of many queries at the same point at the
+// same time. This is more efficient than evaluating each query separately.
+//
+// The call will also register the result of the query. All qs should be using
+// the same accessor otherwise the call will panic.
+func BatchComputeUnivariateEval(run *RuntimeProver, qs []QueryUnivariateEval) []QueryResult {
+
+	xString := qs[0].X.String()
+	for i := range qs {
+		if qs[i].X.String() != xString {
+			utils.Panic("expects all the queries to have the same X point")
+		}
 	}
 
-	return &QueryResFESliceGnark{
-		R: ys,
+	var (
+		pols = make([]smartvectors.SmartVector, len(qs))
+		x    = qs[0].X.GetVal(run)
+		res  = make([]QueryResult, len(qs))
+	)
+
+	for i := range qs {
+		pols[i] = qs[i].Pol.GetAssignment(run)
 	}
+
+	ys := smartvectors.BatchInterpolate(pols, x)
+
+	for i := range qs {
+		res[i] = &QueryResFE{
+			R: ys[i],
+		}
+		run.queryRes.InsertNew(qs[i].id(), res[i])
+	}
+
+	return res
 }

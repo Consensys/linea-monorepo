@@ -54,18 +54,3 @@ type QueryResFEGnark struct{ R frontend.Variable }
 func (q *QueryResFEGnark) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 	fs.Update(q.R)
 }
-
-// QueryResFE represents the result of a query that returns a single field
-// element.
-type QueryResFESlice struct{ R []field.Element }
-
-func (q *QueryResFESlice) UpdateFS(fs *fiatshamir.State) {
-	fs.UpdateVec(q.R)
-}
-
-// QueryResFEGnark is as [QueryResFE] but in a gnark circuit
-type QueryResFESliceGnark struct{ R []frontend.Variable }
-
-func (q *QueryResFESliceGnark) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	fs.UpdateVec(q.R)
-}
