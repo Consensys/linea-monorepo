@@ -30,4 +30,25 @@ interface IPauseManager {
    * @dev Thrown when a specific pause type is not paused and expected to be.
    */
   error IsNotPaused(uint256 pauseType);
+
+  /**
+   * @notice Pauses functionality by specific type.
+   * @dev Requires PAUSE_MANAGER_ROLE.
+   * @param _pauseType The pause type value.
+   */
+  function pauseByType(uint8 _pauseType) external;
+
+  /**
+   * @notice Unpauses functionality by specific type.
+   * @dev Requires PAUSE_MANAGER_ROLE.
+   * @param _pauseType The pause type value.
+   */
+  function unPauseByType(uint8 _pauseType) external;
+
+  /**
+   * @notice Check if a pause type is enabled.
+   * @param _pauseType The pause type value.
+   * @return boolean True if the pause type if enabled, false otherwise.
+   */
+  function isPaused(uint8 _pauseType) external view returns (bool);
 }
