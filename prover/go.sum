@@ -96,8 +96,8 @@ github.com/consensys/bavard v0.1.13 h1:oLhMLOFGTLdlda/kma4VOJazblc7IM5y5QPd2A/Yj
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
 github.com/consensys/compress v0.2.5 h1:gJr1hKzbOD36JFsF1AN8lfXz1yevnJi1YolffY19Ntk=
 github.com/consensys/compress v0.2.5/go.mod h1:pyM+ZXiNUh7/0+AUjUf9RKUM6vSH7T/fsn5LLS0j1Tk=
-github.com/consensys/gnark v0.10.1-0.20240718124136-c2da0b070eb1 h1:LuDtVXQehXDX+QL+ZtNChCsoiUTsRPEwRpUuamKnDH0=
-github.com/consensys/gnark v0.10.1-0.20240718124136-c2da0b070eb1/go.mod h1:S+QS+G9ZclYU8cukF+fi8+CoWIXy/HUcmcIkc8gj4Q8=
+github.com/consensys/gnark v0.10.1-0.20240731142023-d8ccab5994e0 h1:+Afd4fRFvF67A9kf+TurbJ/638xkkQG1r0ymO8wADZY=
+github.com/consensys/gnark v0.10.1-0.20240731142023-d8ccab5994e0/go.mod h1:S+QS+G9ZclYU8cukF+fi8+CoWIXy/HUcmcIkc8gj4Q8=
 github.com/consensys/gnark-crypto v0.13.0 h1:VPULb/v6bbYELAPTDFINEVaMTTybV5GLxDdcjnS+4oc=
 github.com/consensys/gnark-crypto v0.13.0/go.mod h1:wKqwsieaKPThcFkHe0d0zMsbHEUWFmZcG7KBCse210o=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=

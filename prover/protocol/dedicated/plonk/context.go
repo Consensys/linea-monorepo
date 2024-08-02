@@ -1,7 +1,6 @@
 package plonk
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -237,16 +236,12 @@ func (ctx compilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
 // contrary case.
 func (ctx compilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
 
-	fmt.Println("called GetPlonkProverAction")
-
 	if ctx.HasCommitment() {
-		fmt.Println("Has commitment")
 		return initialBBSProverAction{
 			compilationCtx:  ctx,
 			proverStateLock: &sync.Mutex{},
 		}
 	}
 
-	fmt.Println("Has no commitment")
 	return noCommitProverAction(ctx)
 }
