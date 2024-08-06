@@ -1,41 +1,39 @@
-// The keccak package specifies all the mechanism through which the zkevm
-// keccaks are proven and extracted from the arithmetization of the zkEVM.
+// The keccak package implements the utilities for proving the hash over a single provider.
+// The provider of type [generic.GenericByteModule] encodes the inputs and outputs of hash (related to the same module).
+// The inputs and outputs are respectively embedded inside [generic.GenDataModule], and [generic.GenInfoModule].
 package keccak
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
-	gen_acc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing"
 )
 
 const (
 	numLanesPerBlock = 17
 )
 
-// KeccakInput stores the inputs for [NewKeccak]
-type KeccakInput struct {
-	Settings  *Settings
-	Providers []generic.GenDataModule
+// KeccakSingleProviderInput stores the inputs for [NewKeccakSingleProvider]
+type KeccakSingleProviderInput struct {
+	MaxNumKeccakF int
+	Provider      generic.GenericByteModule
 }
 
-// keccakHash stores the hash result and [wizard.ProverAction] of the submodules.
-type keccakHash struct {
-	Inputs         *KeccakInput
+// KeccakSingleProvider stores the hash result and [wizard.ProverAction] of the submodules.
+type KeccakSingleProvider struct {
+	Inputs         *KeccakSingleProviderInput
 	HashHi, HashLo ifaces.Column
-	MaxNumKeccakF  int
+	// indicates the active part of HashHi/HashLo
+	IsActive      ifaces.Column
+	MaxNumKeccakF int
 
 	// prover actions for  internal modules
-	pa_acc                   wizard.ProverAction
 	pa_importPad, pa_packing wizard.ProverAction
-	pa_cKeccak               *CustomizedkeccakHash
-
-	// the result of genericAccumulator
-	Provider generic.GenDataModule
+	pa_cKeccak               *KeccakOverBlocks
 }
 
 // NewCustomizedKeccak implements the utilities for proving keccak hash
@@ -45,24 +43,16 @@ type keccakHash struct {
 // -  Padding module to insure the correct padding of the streams.
 // -  packing module to insure the correct packing of padded-stream into blocks.
 // - customizedKeccak to insures the correct hash computation over the given blocks.
-func NewKeccak(comp *wizard.CompiledIOP, inp KeccakInput) *keccakHash {
+func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderInput) *KeccakSingleProvider {
 	var (
-		maxNumKeccakF = inp.Settings.MaxNumKeccakf
+		maxNumKeccakF = inp.MaxNumKeccakF
 		size          = utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.BlockSizeBytes())
-
-		inpAcc = gen_acc.GenericAccumulatorInputs{
-			MaxNumKeccakF: maxNumKeccakF,
-			Providers:     inp.Providers,
-		}
-
-		// unify the data from different providers in a single provider
-		acc = gen_acc.NewGenericAccumulator(comp, inpAcc)
 
 		// apply import and pad
 		inpImportPadd = importpad.ImportAndPadInputs{
 			Name: "KECCAK",
 			Src: generic.GenericByteModule{
-				Data: acc.Provider,
+				Data: inp.Provider.Data,
 			},
 			PaddingStrategy: generic.KeccakUsecase,
 		}
@@ -84,7 +74,7 @@ func NewKeccak(comp *wizard.CompiledIOP, inp KeccakInput) *keccakHash {
 		packing = packing.NewPack(comp, inpPck)
 
 		// apply customized keccak over the blocks
-		cKeccakInp = CustomizedKeccakInputs{
+		cKeccakInp = KeccakOverBlockInputs{
 			LaneInfo: LaneInfo{
 				Lanes:                packing.Repacked.Lanes,
 				IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
@@ -93,36 +83,45 @@ func NewKeccak(comp *wizard.CompiledIOP, inp KeccakInput) *keccakHash {
 
 			MaxNumKeccakF: maxNumKeccakF,
 		}
-		cKeccak = NewCustomizedKeccak(comp, cKeccakInp)
+		cKeccak = NewKeccakOverBlocks(comp, cKeccakInp)
+	)
+
+	projection.InsertProjection(comp, "KECCAK_RES_HI",
+		[]ifaces.Column{cKeccak.HashHi},
+		[]ifaces.Column{inp.Provider.Info.HashHi},
+		cKeccak.IsActive,
+		inp.Provider.Info.IsHashHi,
+	)
+	projection.InsertProjection(comp, "KECCAK_RES_LO",
+		[]ifaces.Column{cKeccak.HashLo},
+		[]ifaces.Column{inp.Provider.Info.HashLo},
+		cKeccak.IsActive,
+		inp.Provider.Info.IsHashLo,
 	)
 
 	// set the module
-	m := &keccakHash{
+	m := &KeccakSingleProvider{
 		Inputs:        &inp,
 		MaxNumKeccakF: maxNumKeccakF,
 		HashHi:        cKeccak.HashHi,
 		HashLo:        cKeccak.HashLo,
-		pa_acc:        acc,
+		IsActive:      cKeccak.IsActive,
 		pa_importPad:  imported,
 		pa_packing:    packing,
 		pa_cKeccak:    cKeccak,
-
-		Provider: acc.Provider,
 	}
 
 	return m
 }
 
 // It implements [wizard.ProverAction] for keccak.
-func (m *keccakHash) Run(run *wizard.ProverRuntime) {
+func (m *KeccakSingleProvider) Run(run *wizard.ProverRuntime) {
 
-	// assign the genericAccumulator module
-	m.pa_acc.Run(run)
 	// assign ImportAndPad module
 	m.pa_importPad.Run(run)
 	// assign packing module
 	m.pa_packing.Run(run)
-	providerBytes := m.Provider.ScanStreams(run)
+	providerBytes := m.Inputs.Provider.Data.ScanStreams(run)
 	m.pa_cKeccak.Inputs.Provider = providerBytes
 	m.pa_cKeccak.Run(run)
 }
@@ -133,12 +132,4 @@ func isBlock(col ifaces.Column) []ifaces.Column {
 		isBlock = append(isBlock, col)
 	}
 	return isBlock
-}
-
-// it generates [keccak.PermTraces] from the given stream.
-func GenerateTrace(streams [][]byte) (t keccak.PermTraces) {
-	for _, stream := range streams {
-		keccak.Hash(stream, &t)
-	}
-	return t
 }

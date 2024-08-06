@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing/dedicated/spaghettifier"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 const (

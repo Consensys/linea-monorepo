@@ -5,13 +5,13 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	projection "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -22,13 +22,14 @@ const (
 
 type GenericAccumulatorInputs struct {
 	MaxNumKeccakF int
-	Providers     []generic.GenDataModule
+	ProvidersData []generic.GenDataModule
+	ProvidersInfo []generic.GenInfoModule
 }
 
-// The sub-module GenericAccumulator filters the data from different [generic.GenDataModule],
+// The sub-module GenericDataAccumulator filters the data from different [generic.GenDataModule],
 //
 //	and stitch them together to build a single module.
-type GenericAccumulator struct {
+type GenericDataAccumulator struct {
 	Inputs *GenericAccumulatorInputs
 	// stitching of modules together
 	Provider generic.GenDataModule
@@ -44,44 +45,30 @@ type GenericAccumulator struct {
 }
 
 // It declares the new columns and the constraints among them
-func NewGenericAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorInputs) *GenericAccumulator {
+func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorInputs) *GenericDataAccumulator {
 
-	d := &GenericAccumulator{
+	d := &GenericDataAccumulator{
 		size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF * blockSize),
 		Inputs: &inp,
 	}
 	// declare the new columns per gbm
-	d.declareColumns(comp, len(inp.Providers))
+	d.declareColumns(comp, len(inp.ProvidersData))
 
-	// constraints over sFilters
-	//
-	// 1. they are binary
-	//
-	// 2. they do'nt overlap isActive =  \sum sFilters
-	//
-	// 3. sFilter[i] starts immediately after sFilters[i-1].
-	isActive := symbolic.NewConstant(0)
-	for i := range d.sFilters {
-		comp.InsertGlobal(0, ifaces.QueryIDf("sFilter_IsBinary_%v", i),
-			symbolic.Mul(d.sFilters[i], symbolic.Sub(1, d.sFilters[i])))
-		isActive = symbolic.Add(d.sFilters[i], isActive)
+	// sFilter[i] starts immediately after sFilters[i-1].
+	s := sym.NewConstant(0)
+	for i := 0; i < len(d.sFilters); i++ {
+		commonconstraints.MustBeActivationColumns(comp, d.sFilters[i], sym.Sub(1, s))
+		s = sym.Add(s, d.sFilters[i])
 	}
-	comp.InsertGlobal(0, ifaces.QueryIDf("sFilters_NoOverlap"), symbolic.Sub(d.IsActive, isActive))
 
-	// for constraint 3; over (1-\sum_{j<i} sFilters[j])*isActive we need that,
-	// sFilters[i] have the form (oneThenZeros) namely, it start from ones followed by zeroes.
-	s := symbolic.NewConstant(0)
-	for i := range d.sFilters {
-		// over (1-s)*isActive, sFilter[i] is oneThenZero
-		// sFilter[i] is oneThenZero is equivalent with b (in the following) is binary
-		b := symbolic.Sub(d.sFilters[i], column.Shift(d.sFilters[i], 1)) // should be binary
-		comp.InsertGlobal(0, ifaces.QueryIDf("IsOne_ThenZero_%v", i),
-			symbolic.Mul(symbolic.Sub(1, s), d.IsActive, symbolic.Mul(symbolic.Sub(1, b), b)))
-		s = symbolic.Add(s, d.sFilters[i])
-	}
+	comp.InsertGlobal(0, ifaces.QueryIDf("ADDs_UP_TO_IS_ACTIVE_DATA"),
+		sym.Sub(s, d.IsActive))
+
+	// by the constraints over sFilter, and the following, we have that isActive is an Activation column.
+	commonconstraints.MustBeBinary(comp, d.IsActive)
 
 	// projection among providers and stitched module
-	for i, gbm := range d.Inputs.Providers {
+	for i, gbm := range d.Inputs.ProvidersData {
 
 		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
 			[]ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
@@ -91,20 +78,11 @@ func NewGenericAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorInput
 		)
 	}
 
-	// constraints over isActive
-	// 1. it is binary
-	// 2. it is zero followed by ones// constraints over isActive
-	comp.InsertGlobal(0, ifaces.QueryIDf("IsActive_IsBinary_DataTrace"),
-		symbolic.Mul(d.IsActive, symbolic.Sub(1, isActive)))
-
-	col := symbolic.Sub(column.Shift(d.IsActive, 1), d.IsActive) // should be binary
-	comp.InsertGlobal(0, ifaces.QueryIDf("IsOneThenZero_DataTrace"),
-		symbolic.Mul(col, symbolic.Sub(1, col)))
 	return d
 }
 
 // It declares the columns specific to the DataModule
-func (d *GenericAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
+func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
 	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.size)
 
 	d.sFilters = make([]ifaces.Column, nbProviders)
@@ -121,9 +99,9 @@ func (d *GenericAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProvider
 }
 
 // It assigns the columns specific to the submodule.
-func (d *GenericAccumulator) Run(run *wizard.ProverRuntime) {
+func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	// fetch the gbm witnesses
-	providers := d.Inputs.Providers
+	providers := d.Inputs.ProvidersData
 	asb := make([]assignmentBuilder, len(providers))
 	for i := range providers {
 		asb[i].HashNum = providers[i].HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -135,7 +113,6 @@ func (d *GenericAccumulator) Run(run *wizard.ProverRuntime) {
 
 	sFilters := make([][]field.Element, len(providers))
 	for i := range providers {
-		// remember that gt is the providers assignment removing the padded part
 		filter := asb[i].TO_HASH
 
 		// populate sFilters
@@ -156,14 +133,14 @@ func (d *GenericAccumulator) Run(run *wizard.ProverRuntime) {
 
 	//assign sFilters
 	for i := range providers {
-		run.AssignColumn(d.sFilters[i].GetColID(), smartvectors.LeftZeroPadded(sFilters[i], d.size))
+		run.AssignColumn(d.sFilters[i].GetColID(), smartvectors.RightZeroPadded(sFilters[i], d.size))
 	}
 
 	// populate and assign isActive
 	isActive := vector.Repeat(field.One(), len(sFilters[0]))
-	run.AssignColumn(d.IsActive.GetColID(), smartvectors.LeftZeroPadded(isActive, d.size))
+	run.AssignColumn(d.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, d.size))
 
-	// populate sModule
+	// populate Provider
 	var sHashNum, sLimb, sNBytes, sIndex []field.Element
 	for i := range providers {
 		filter := asb[i].TO_HASH
@@ -182,10 +159,10 @@ func (d *GenericAccumulator) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.LeftZeroPadded(sHashNum, d.size))
-	run.AssignColumn(d.Provider.Limb.GetColID(), smartvectors.LeftZeroPadded(sLimb, d.size))
-	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.LeftZeroPadded(sNBytes, d.size))
-	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.LeftZeroPadded(sIndex, d.size))
+	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.RightZeroPadded(sHashNum, d.size))
+	run.AssignColumn(d.Provider.Limb.GetColID(), smartvectors.RightZeroPadded(sLimb, d.size))
+	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.RightZeroPadded(sNBytes, d.size))
+	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.RightZeroPadded(sIndex, d.size))
 
 }
 

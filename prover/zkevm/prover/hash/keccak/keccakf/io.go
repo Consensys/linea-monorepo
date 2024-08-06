@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 )
 
 const (
@@ -32,12 +33,13 @@ type InputOutput struct {
 	//Sum of IsBlockBaseB and IsFirstBlock
 	IsBlcok ifaces.Column
 
-	// shifted version of (the effective part of) isFirstBlock.
 	IsHashOutPut ifaces.Column
 
 	PiChiIota piChiIota
 
 	HashOutputSlicesBaseB [numLanesInHashOutPut][numSlices]ifaces.Column
+	// active part of HashOutputSlicesBaseB
+	IsActive ifaces.Column
 }
 
 /*
@@ -108,7 +110,7 @@ func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, round, maxNumKeccakF 
 // It declares the columns specific to the submodule.
 func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
 	size := numRows(maxNumKeccakF)
-	io.IsHashOutPut = comp.InsertCommit(round, deriveName("IS_FIRST_BLOCK_SHIFTED"), size)
+	io.IsHashOutPut = comp.InsertCommit(round, deriveName("IS_HASH_OUTPUT"), size)
 
 	io.IsFirstBlock = comp.InsertCommit(round, deriveName("IS_FIRST_BLOCK"), size)
 	io.IsBlockBaseB = comp.InsertCommit(round, deriveName("IS_BLOCK_BaseB"), size)
@@ -124,6 +126,8 @@ func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, round, max
 				ifaces.ColIDf("HashOutPut_SlicesBaseB_%v_%v", j, k), hashOutputSize)
 		}
 	}
+
+	io.IsActive = comp.InsertCommit(round, ifaces.ColIDf("HASH_IS_ACTIVE"), hashOutputSize)
 }
 
 // Constraints over the blocks of the message;
@@ -304,4 +308,14 @@ func (io *InputOutput) assignHashOutPut(run *wizard.ProverRuntime) {
 			run.AssignColumn(io.HashOutputSlicesBaseB[j][k].GetColID(), smartvectors.RightZeroPadded(hashOutput, sizeHashOutput))
 		}
 	}
+
+	isActive := common.NewVectorBuilder(io.IsActive)
+	//populate is active
+	for i := range isHashOutput {
+		if isHashOutput[i].IsOne() {
+			isActive.PushInt(1)
+
+		}
+	}
+	isActive.PadAndAssign(run)
 }

@@ -50,14 +50,6 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 	}
 }
 
-func (gd *GnarkData) cols() []ifaces.Column {
-	return []ifaces.Column{
-		gd.IdPerm,
-		gd.GnarkIndexPerm,
-		gd.DataPerm,
-	}
-}
-
 func (ac *Antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 	return &unalignedGnarkDataSource{
 		IsActive:   ac.IsActive,

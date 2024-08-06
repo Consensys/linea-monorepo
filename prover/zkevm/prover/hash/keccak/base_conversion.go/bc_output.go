@@ -17,6 +17,7 @@ type HashBaseConversionInput struct {
 	// they are in baseB-LE.
 	LimbsHiB      []ifaces.Column
 	LimbsLoB      []ifaces.Column
+	IsActive      ifaces.Column
 	MaxNumKeccakF int
 	Lookup        lookUpTables
 }
@@ -25,6 +26,8 @@ type hashBaseConversion struct {
 	Inputs *HashBaseConversionInput
 	// hash limbs in uint-BE
 	limbsHi, limbsLo []ifaces.Column
+	// it indicates the active part of HashHi/HashLo
+	IsActive ifaces.Column
 	// the hash result in BE
 	HashLo, HashHi ifaces.Column
 	size           int
@@ -35,8 +38,9 @@ type hashBaseConversion struct {
 func NewHashBaseConversion(comp *wizard.CompiledIOP, inp HashBaseConversionInput) *hashBaseConversion {
 
 	h := &hashBaseConversion{
-		Inputs: &inp,
-		size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF),
+		Inputs:   &inp,
+		size:     utils.NextPowerOfTwo(inp.MaxNumKeccakF),
+		IsActive: inp.IsActive,
 	}
 	// declare the columns
 	h.DeclareColumns(comp)

@@ -15,8 +15,8 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/acc_module"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -39,17 +39,17 @@ func TestAntichamber(t *testing.T) {
 		NbInputInstance:    5,
 		NbCircuitInstances: 1,
 	}
-	var rlpTxn generic.GenericByteModule
-	gbmSize := 256
+	var rlpTxn generic.GenDataModule
+
 	// to cover edge-cases, leaves some rows empty
-	witSize := gbmSize - gbmSize/15
+	c := testCaseAntiChamber
 	// random value for testing edge cases
 	nbRowsPerTxInTxnData := 3
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
 			comp := b.CompiledIOP
 			// declare rlp_txn module
-			rlpTxn = acc_module.CommitGBM(comp, 0, generic.RLP_TXN, gbmSize)
+			rlpTxn = testdata.CreateGenDataModule(comp, "TXN_RLP", 32)
 
 			// declar txn_data module
 			txSrc = commitTxnData(comp, limits, nbRowsPerTxInTxnData)
@@ -65,20 +65,16 @@ func TestAntichamber(t *testing.T) {
 				IsRes:       ct.GetCommit(b, "EC_DATA_IS_RES"),
 			}
 
-			ac = NewAntichamber(b.CompiledIOP, limits, ecSrc, txSrc, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			ac = NewAntichamber(b.CompiledIOP, limits, ecSrc, txSrc, rlpTxn, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
 		},
 		dummy.Compile,
 	)
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
 
-			// assign random but valid data to rlp_txn module
-			acc_module.AssignGBMfromTable(run, &rlpTxn, witSize, limits.MaxNbTx)
-
-			// get the hash result from the keccak trace for rlp_txn
-			gt := generic.GenTrace{}
-			trace := keccak.PermTraces{}
-			rlpTxn.AppendTraces(run, &gt, &trace)
+			// assign data to rlp_txn module
+			testdata.GenerateAndAssignGenDataModule(run, &rlpTxn, c.HashNum, c.ToHash, true)
+			trace := keccak.GenerateTrace(rlpTxn.ScanStreams(run))
 
 			// assign txn_data module from pk
 			txSrc.assignTxnDataFromPK(run, ac, trace.HashOutPut, nbRowsPerTxInTxnData)
@@ -86,7 +82,7 @@ func TestAntichamber(t *testing.T) {
 			ct.Assign(run,
 				"EC_DATA_CS_ECRECOVER", "EC_DATA_ID", "EC_DATA_LIMB", "EC_DATA_SUCCESS_BIT", "EC_DATA_INDEX", "EC_DATA_IS_DATA", "EC_DATA_IS_RES",
 			)
-			ac.Assign(run, ecSrc, txSrc, dummyTxSignatureGetter)
+			ac.Assign(run, ecSrc, txSrc, rlpTxn, dummyTxSignatureGetter)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {
@@ -158,4 +154,9 @@ func generateDeterministicSignature(txHash []byte) (pk *ecdsa.PublicKey, r, s, v
 		}
 	}
 	return nil, nil, nil, nil, fmt.Errorf("failed to generate a valid signature")
+}
+
+var testCaseAntiChamber = makeTestCase{
+	HashNum: []int{1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2},
+	ToHash:  []int{1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1},
 }

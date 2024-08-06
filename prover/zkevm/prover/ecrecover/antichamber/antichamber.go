@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecrecover"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 const (
@@ -58,6 +59,9 @@ type Antichamber struct {
 	// size of AntiChamber
 	size int
 	*Limits
+
+	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
+	Providers []generic.GenericByteModule
 }
 
 type GnarkData struct {
@@ -77,7 +81,7 @@ func (l *Limits) sizeAntichamber() int {
 	return utils.NextPowerOfTwo(l.MaxNbEcRecover*nbRowsPerEcRec + l.MaxNbTx*nbRowsPerTxSign)
 }
 
-func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSource, txSource *txnData, plonkOptions []plonk.Option) *Antichamber {
+func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSource, txSource *txnData, rlpTxn generic.GenDataModule, plonkOptions []plonk.Option) *Antichamber {
 	if limits.MaxNbEcRecover+limits.MaxNbTx != limits.NbInputInstance*limits.NbCircuitInstances {
 		utils.Panic("the number of supported instances %v should be %v + %v", limits.NbInputInstance*limits.NbCircuitInstances, limits.MaxNbEcRecover, limits.MaxNbTx)
 	}
@@ -97,7 +101,7 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 	}
 
 	// declare submodules
-	res.txSignature = newTxSignatures(comp, size)
+	res.txSignature = newTxSignatures(comp, rlpTxn, size)
 	res.EcRecover = newEcRecover(comp, limits, ecSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
 	res.Addresses = newAddress(comp, size, res.EcRecover, res, txSource)
@@ -125,6 +129,9 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 	// ecrecover
 	res.EcRecover.csConstrainAuxProjectionMaskConsistency(comp, res.Source, res.IsFetching)
 
+	// assign keccak providers
+	res.Providers = append([]generic.GenericByteModule{res.Addresses.provider}, res.txSignature.provider)
+
 	return res
 }
 
@@ -138,11 +145,11 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 //
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
-func (ac *Antichamber) Assign(run *wizard.ProverRuntime, ecSrc *ecDataSource, txSource *txnData, txGet TxSignatureGetter) {
+func (ac *Antichamber) Assign(run *wizard.ProverRuntime, ecSrc *ecDataSource, txSource *txnData, rlpTxn generic.GenDataModule, txGet TxSignatureGetter) {
 	nbActualEcRecover := ecSrc.nbActualInstances(run)
 	ac.assignAntichamber(run, nbActualEcRecover)
 	ac.EcRecover.Assign(run, ecSrc)
-	ac.txSignature.assignTxSignature(run, nbActualEcRecover, ac.size)
+	ac.txSignature.assignTxSignature(run, rlpTxn, nbActualEcRecover, ac.size)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
 	ac.AlignedGnarkData.Assign(run)

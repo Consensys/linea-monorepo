@@ -6,15 +6,14 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/acc_module"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAddress(t *testing.T) {
-
-	m := keccak.Module{}
+	c := testCases
 	limits := &Limits{
 		MaxNbEcRecover: 1,
 		MaxNbTx:        4,
@@ -24,7 +23,8 @@ func TestAddress(t *testing.T) {
 	var uaGnark *UnalignedGnarkData
 	var ecRec *EcRecover
 	var td *txnData
-	gbmGnark := generic.GenericByteModule{}
+	gbmGnark := generic.GenDataModule{}
+	m := &keccak.KeccakSingleProvider{}
 
 	size := limits.sizeAntichamber()
 
@@ -37,16 +37,17 @@ func TestAddress(t *testing.T) {
 		comp := b.CompiledIOP
 
 		// generate a gbm and use it to represent gnark-columns
-		gbmGnark = acc_module.CommitGBM(comp, 0, generic.SHAKIRA, size)
+		gbmGnark = testdata.CreateGenDataModule(comp, "UnGNARK", size)
 		ac = &Antichamber{
 			Limits: limits,
-			ID:     gbmGnark.Data.HashNum,
+			ID:     gbmGnark.HashNum,
 		}
 		uaGnark = &UnalignedGnarkData{
-			GnarkData:           gbmGnark.Data.Limb,
-			GnarkPublicKeyIndex: gbmGnark.Data.Index,
-			IsPublicKey:         gbmGnark.Data.TO_HASH,
+			GnarkData:           gbmGnark.Limb,
+			GnarkPublicKeyIndex: gbmGnark.Index,
+			IsPublicKey:         gbmGnark.TO_HASH,
 		}
+		ac.UnalignedGnarkData = uaGnark
 
 		// commit to txnData and ecRecover
 		td, ecRec = commitEcRecTxnData(comp, sizeTxnData, size, ac)
@@ -54,17 +55,18 @@ func TestAddress(t *testing.T) {
 		// native columns and  constraints
 		addr = newAddress(comp, size, ecRec, ac, td)
 
-		// prepare the provider for keccak
-		provider := addr.GetProvider(comp, ac, uaGnark)
-
 		// define keccak (columns and constraints)
-		m.Define(comp, []generic.GenericByteModule{provider}, nbKeccakF)
+		keccakInp := keccak.KeccakSingleProviderInput{
+			Provider:      addr.provider,
+			MaxNumKeccakF: nbKeccakF,
+		}
+		m = keccak.NewKeccakSingleProvider(comp, keccakInp)
+
 	}, dummy.Compile)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
 
-		// assign GnarkColumns via gbmGnark
-		acc_module.AssignGBMfromTable(run, &gbmGnark, size, limits.MaxNbEcRecover+limits.MaxNbTx, false)
+		testdata.GenerateAndAssignGenDataModule(run, &gbmGnark, c.HashNum, c.ToHash, false)
 		// it assign mock data to EcRec and txn_data
 		AssignEcRecTxnData(run, gbmGnark, limits.MaxNbEcRecover, limits.MaxNbTx, sizeTxnData, size, td, ecRec, ac)
 
@@ -72,7 +74,17 @@ func TestAddress(t *testing.T) {
 		addr.assignAddress(run, limits.MaxNbEcRecover, size, ac, ecRec, uaGnark, td)
 
 		// assign keccak columns via provider that is embedded in the receiver
-		m.AssignKeccak(run)
+		m.Run(run)
 	})
 	assert.NoError(t, wizard.Verify(compiled, proof))
+}
+
+type makeTestCase struct {
+	HashNum []int
+	ToHash  []int
+}
+
+var testCases = makeTestCase{
+	HashNum: []int{1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5},
+	ToHash:  []int{1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0},
 }
