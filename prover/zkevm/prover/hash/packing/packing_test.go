@@ -29,7 +29,7 @@ func makeTestCasePackingModule(uc generic.HashingUsecase) (
 	)
 
 	imported := Importation{}
-	pck := &packing{}
+	pck := &Packing{}
 
 	define = func(build *wizard.Builder) {
 		comp := build.CompiledIOP
@@ -50,7 +50,7 @@ func makeTestCasePackingModule(uc generic.HashingUsecase) (
 		// assign the importation columns
 		assignImportationColumns(run, &imported, numHash, blockSize, size)
 
-		// assign all the packing module.
+		// assign all the Packing module.
 		pck.Run(run)
 	}
 	return define, prover

@@ -8,7 +8,9 @@ import (
 	"testing"
 )
 
-func TestExecutionDataCollector(t *testing.T) {
+// TestAssignmentExecutionDataCollector tests whether the execution data collector
+// defines its constraints and assigns its columns without any errors.
+func TestAssignmentExecutionDataCollector(t *testing.T) {
 	ctBlockData := utilities.InitializeCsv("testdata/blockdata_mock.csv", t)
 	ctTxnData := utilities.InitializeCsv("testdata/txndata_mock.csv", t)
 	ctRlpTxn := utilities.InitializeCsv("testdata/rlp_txn_mock.csv", t)
@@ -64,9 +66,9 @@ func TestExecutionDataCollector(t *testing.T) {
 		// constrain the fetcher
 		fetch.DefineRlpTxnFetcher(b.CompiledIOP, &rlpTxnFetcher, "RLP_TXN_FETCHER_FROM_ARITH", rt)
 
-		limbColSize := GetSummarySize(&btm, bdc, txd, rt)
-		edc = NewLimbSummary(b.CompiledIOP, "LIMB_SUMMARY", limbColSize)
-		DefineLimbSummary(b.CompiledIOP, &edc, "LIMB_SUMMARY", timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
+		limbColSize := GetSummarySize(txd, rt)
+		edc = NewExecutionDataCollector(b.CompiledIOP, "EXECUTION_DATA_COLLECTOR", limbColSize)
+		DefineExecutionDataCollector(b.CompiledIOP, &edc, "EXECUTION_DATA_COLLECTOR", timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -102,7 +104,7 @@ func TestExecutionDataCollector(t *testing.T) {
 		fetch.AssignBlockTxnMetadata(run, btm, txd)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txd)
 		fetch.AssignRlpTxnFetcher(run, &rlpTxnFetcher, rt)
-		AssignLimbSummary(run, edc, timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
+		AssignExecutionDataCollector(run, edc, timestampFetcher, btm, txnDataFetcher, rlpTxnFetcher)
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

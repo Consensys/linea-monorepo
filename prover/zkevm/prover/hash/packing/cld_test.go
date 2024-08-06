@@ -56,7 +56,7 @@ func makeTestCaseCLDModule(uc generic.HashingUsecase) (
 		// assign the importation columns
 		assignImportationColumns(run, &imported, numHash, blockSize, size)
 
-		// assign all the packing module.
+		// assign all the Packing module.
 		ctx.assignCleanLimbs(run)
 		decomposed.Assign(run)
 	}

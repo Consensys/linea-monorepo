@@ -146,61 +146,91 @@ const (
 	powBlockHash    = "1"                                  // 16 bytes when loading BlockHash, 2^(128-16*8)
 	powSenderAddrHi = "79228162514264337593543950336"      // 4 bytes when loading SENDER ADDR HI, 2^(128-4*8)
 	powSenderAddrLo = "1"                                  // 16 bytes bytes when loading SenderAddrLo, 2^(128-16*8)
+
+	hashNum = 1 // the constant hashNum value needed as an input for padding and packing
 )
 
+// The ExecutionDataCollector contains columns that encode the computation and fetching of appropriate data
+// from several arithmetization fetchers.
 type ExecutionDataCollector struct {
+	// BlockId ranges from 1 to the maximal number of blocks,
+	// AbsTxID is the absolute transaction ID, which is unique among all blocks in the conflation
+	// and also starts from 1.
+	// AbsTxIDMax is the ID of the last transaction in the conflated batch.
 	BlockID, AbsTxID, AbsTxIDMax ifaces.Column
-	Limb, NoBytes                ifaces.Column
-	UnalignedLimb, AlignedPow    ifaces.Column
-	TotalNoTxBlock               ifaces.Column
-
-	IsActive                                                                       ifaces.Column
+	// The Limb data and the number of bytes in the limb.
+	Limb, NoBytes ifaces.Column
+	// UnalignedLimb contains the raw data from the corresponding arithmetization fetcher.
+	// AlignedPow is the power that is used to multiply UnalignedLimb in order to obtain the Limb.
+	// which is done to ensure consistent formatting.
+	UnalignedLimb, AlignedPow ifaces.Column
+	// the total number of transactions inside the current block.
+	TotalNoTxBlock ifaces.Column
+	// indicator column, specifying when the module contains useful data
+	IsActive ifaces.Column
+	// indicator columns that light up as 1 when the corresponding value type is being loaded
 	IsNoTx, IsTimestamp, IsBlockHashHi, IsBlockHashLo, IsAddrHi, IsAddrLo, IsTxRLP ifaces.Column
+	// counter column, increases by 1 for every new active row. Not needed inside this module, but required
+	// for invoking the padding and packing modules.
+	Ct ifaces.Column
+	// HashNum is a constant column only needed for invoking the padding and packing modules.
+	HashNum ifaces.Column
+	// The FirstAbsTxID/LastAbsTxIDBlock contain the first/last absolute transactions ID inside the current block.
+	FirstAbsTxIDBlock, LastAbsTxIDBlock ifaces.Column
+	// lights up as 1 on the row that contains the last RLP limb of the current transaction.
+	EndOfRlpSegment ifaces.Column
 
+	// Selector columns
+	// SelectorBlockDiff[i]=1 if (edc.BlockId[i] = edc.BlockId[i+1]), used to enforce constancies when
+	// inside a block segment
 	SelectorBlockDiff        ifaces.Column
 	ComputeSelectorBlockDiff wizard.ProverAction
 
+	// SelectorLastTxBlock[i]=1 if (edc.AbsTxID[i]=edc.LastAbsTxIDBlock[i]), used to enforce constraints
+	// to transition to the next block.
 	SelectorLastTxBlock        ifaces.Column
 	ComputeSelectorLastTxBlock wizard.ProverAction
 
-	FirstAbsTxIDBlock, LastAbsTxIDBlock ifaces.Column
-
+	// SelectorEndOfAllTx[i]=1 if (edc.AbsTxID[i]=edc.AbsTxIDMax[i]), used to transition to the inactive
+	// part of the module.
 	SelectorEndOfAllTx        ifaces.Column
 	ComputeSelectorEndOfAllTx wizard.ProverAction
-
-	EndOfRlpSegment ifaces.Column
-
+	// SelectorAbsTxIDDiff[i]=1 if (edc.AbsTxID[i]=edc.AbsTxID[i+1]), used to enforce constant constraints inside a transaction segment.
 	SelectorAbsTxIDDiff        ifaces.Column
 	ComputeSelectorAbsTxIDDiff wizard.ProverAction
 }
 
-func NewLimbSummary(comp *wizard.CompiledIOP, name string, size int) ExecutionDataCollector {
+// NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
+func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) ExecutionDataCollector {
 	res := ExecutionDataCollector{
 		BlockID:           util.CreateCol(name, "BLOCK_ID", size, comp),
 		AbsTxID:           util.CreateCol(name, "ABS_TX_ID", size, comp),
 		AbsTxIDMax:        util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
 		FirstAbsTxIDBlock: util.CreateCol(name, "FIRST_ABS_TX_ID_BLOCK", size, comp),
 		LastAbsTxIDBlock:  util.CreateCol(name, "LAST_ABS_TX_ID_BLOCK", size, comp),
-
-		Limb:            util.CreateCol(name, "LIMB", size, comp),
-		NoBytes:         util.CreateCol(name, "NO_BYTES", size, comp),
-		UnalignedLimb:   util.CreateCol(name, "UNALIGNED_LIMB", size, comp),
-		AlignedPow:      util.CreateCol(name, "ALIGNED_POW", size, comp),
-		TotalNoTxBlock:  util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
-		IsActive:        util.CreateCol(name, "IS_ACTIVE", size, comp),
-		IsNoTx:          util.CreateCol(name, "IS_NO_TX", size, comp),
-		IsBlockHashHi:   util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
-		IsBlockHashLo:   util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
-		IsTimestamp:     util.CreateCol(name, "IS_TIMESTAMP", size, comp),
-		IsTxRLP:         util.CreateCol(name, "IS_TX_RLP", size, comp),
-		IsAddrHi:        util.CreateCol(name, "IS_ADDR_HI", size, comp),
-		IsAddrLo:        util.CreateCol(name, "IS_ADDR_LO", size, comp),
-		EndOfRlpSegment: util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
+		Limb:              util.CreateCol(name, "LIMB", size, comp),
+		NoBytes:           util.CreateCol(name, "NO_BYTES", size, comp),
+		UnalignedLimb:     util.CreateCol(name, "UNALIGNED_LIMB", size, comp),
+		AlignedPow:        util.CreateCol(name, "ALIGNED_POW", size, comp),
+		TotalNoTxBlock:    util.CreateCol(name, "TOTAL_NO_TX_BLOCK", size, comp),
+		IsActive:          util.CreateCol(name, "IS_ACTIVE", size, comp),
+		IsNoTx:            util.CreateCol(name, "IS_NO_TX", size, comp),
+		IsBlockHashHi:     util.CreateCol(name, "IS_BLOCK_HASH_HI", size, comp),
+		IsBlockHashLo:     util.CreateCol(name, "IS_BLOCK_HASH_LO", size, comp),
+		IsTimestamp:       util.CreateCol(name, "IS_TIMESTAMP", size, comp),
+		IsTxRLP:           util.CreateCol(name, "IS_TX_RLP", size, comp),
+		IsAddrHi:          util.CreateCol(name, "IS_ADDR_HI", size, comp),
+		IsAddrLo:          util.CreateCol(name, "IS_ADDR_LO", size, comp),
+		Ct:                util.CreateCol(name, "CT", size, comp),
+		HashNum:           util.CreateCol(name, "HASH_NUM", size, comp),
+		EndOfRlpSegment:   util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
 	}
 	return res
 }
 
-func GetSummarySize(btm *fetch.BlockTxnMetadata, bdc *fetch.BlockDataCols, td *fetch.TxnData, rt *fetch.RlpTxn) int {
+// GetSummarySize estimates a necessary upper bound on the ExecutionDataCollector columns
+// we currently ignore the following modules btm *fetch.BlockTxnMetadata, bdc *fetch.BlockDataCols,
+func GetSummarySize(td *fetch.TxnData, rt *fetch.RlpTxn) int {
 	// number of transactions, block timestamp, blockhash + for every transaction, sender address + transaction RLP limbs
 	size := td.Ct.Size()
 	if size < rt.Limb.Size() {
@@ -209,9 +239,11 @@ func GetSummarySize(btm *fetch.BlockTxnMetadata, bdc *fetch.BlockDataCols, td *f
 	return size
 }
 
+// DefineBlockIdCounterConstraints enforces that the BlockID starts from 1. BlockID can either increase by 1 or stay the same.
+// Finally, BlockID is more finely constrained to only increase when edc.IsActive = 1, edc.SelectorLastTxBlock = 1,
+// edc.EndOfRlpSegment = 1 and edc.SelectorEndOfAllTx = 0.
 func DefineBlockIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
-	// Counter constraints
-	// First, the counter starts from 0
+	// BlockID starts from 1
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_COUNTER_START_LOCAL_CONSTRAINT", name, edc.BlockID.GetColID()),
 		sym.Mul(
 			edc.IsActive,
@@ -257,9 +289,11 @@ func DefineBlockIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDat
 	)
 }
 
+// DefineAbsTxIdCounterConstraints concerns AbsTxId, which starts from 1 and subsequently, can either stay the same or increase by 1.
+// AbsTxId will increase when edc.IsActive = 1 and edc.EndOfRlpSegment = 1 and edc.SelectorEndOfAllTx = 0.
+// AbsTxId remains the same when edc.IsActive = 0 and edc.EndOfRlpSegment = 0 and edc.SelectorEndOfAllTx = 0.
 func DefineAbsTxIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
-	// Counter constraints
-	// First, the counter starts from 1
+	// Counter constraints: first, the AbsTxID counter starts from 1
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_COUNTER_START_LOCAL_CONSTRAINT", name, edc.AbsTxID.GetColID()),
 		sym.Mul(
 			edc.IsActive,
@@ -322,8 +356,39 @@ func DefineAbsTxIdCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDat
 	)
 }
 
+// DefineCtCounterConstraints constrains that edc.Ct starts from 0, and then remains the same or increases by 1.
+func DefineCtCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	// First, the counter starts from 0.
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_COUNTER_START_LOCAL_CONSTRAINT", name, edc.Ct.GetColID()),
+		ifaces.ColumnAsVariable(edc.Ct),
+	)
+	// Secondly, the counter increases by 1 every time.
+	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "COUNTER_GLOBAL"),
+		sym.Mul(
+			edc.IsActive,
+			sym.Sub(edc.Ct,
+				column.Shift(edc.Ct, -1),
+				1,
+			),
+		),
+	)
+}
+
+// DefineHashNumConstraints requires that edc.HashNum is constantly equal to hashNum, currently hardcoded to 1.
+func DefineHashNumConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "HASH_NUM_GLOBAL"),
+		sym.Mul(
+			edc.IsActive,
+			sym.Sub(edc.HashNum,
+				hashNum,
+			),
+		),
+	)
+}
+
+// DefineIndicatorOrder constrains the order of load operations.
 func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
-	// start with IsNoTx = 1
+	// the module starts with IsNoTx[0] = 1
 	comp.InsertLocal(0,
 		ifaces.QueryIDf("%s_START_WITH_IS_NO_TX", name),
 		sym.Sub(
@@ -333,6 +398,8 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// IsNbTx -> isTimestamp
+	// From IsNbTx[i]=1, we can only transition to isTimestamp[i+1]=1 on the next row.
+	// Conversely, we have that isTimestamp[i+1]=1 implies that IsNbTx[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_NB_TX_TO_IS_TIMESTAMP", name),
 		sym.Sub(
@@ -342,6 +409,8 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// isTimestamp -> isBlockHashHi
+	// From IsTimestamp[i]=1, we can only transition to IsBlockHashHi[i+1]=1 on the next row.
+	// Conversely, we have that IsBlockHashHi[i+1]=1 implies that IsTimestamp[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_NB_TX_TO_IS_BLOCKHASH_HI", name),
 		sym.Sub(
@@ -351,6 +420,8 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// isBlockHashHi->isBlockHashLo
+	// From isBlockHashHi[i]=1, we can only transition to isBlockHashLo[i+1]=1 on the next row.
+	// Conversely, we have that isBlockHashLo[i+1]=1 implies that isBlockHashHi[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_BLOCKHASH_HI_TO_BLOCKHASH_LO", name),
 		sym.Sub(
@@ -359,7 +430,10 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 		),
 	)
 
-	// isBlockHashLO->IsAddr
+	// isBlockHashLO->IsAddrHi
+	// From IsBlockHashLo[i]=1, we can only transition to IsAddrHi[i+1]=1 on the next row.
+	// The converse direction does not necessarily hold,
+	// we do NOT have that IsAddrHi[i+1]=1 implies that IsBlockHashLo[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_BLOCKHASH_LO_TO_IS_ADDR_HI", name),
 		sym.Mul(
@@ -372,6 +446,8 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// IsAddrHi -> IsAddrLo
+	// From IsAddrHi[i]=1, we can only transition to IsAddrLo[i+1]=1 on the next row.
+	// Conversely, we have that IsAddrLo[i+1]=1 implies that IsAddrHi[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_ADDR_HI_TO_IS_ADDR_LO", name),
 		sym.Sub(
@@ -381,6 +457,9 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// IsAddrLo -> IsTxRLP
+	// From IsAddrLo[i]=1, we can only transition to IsTxRLP[i+1]=1 on the next row.
+	// The converse direction does not necessarily hold,
+	// we do NOT have that IsTxRLP[i+1]=1 implies that IsAddrLo[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_ADDR_LO_TO_IS_TX_RLP", name),
 		sym.Mul(
@@ -393,6 +472,8 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 	)
 
 	// IsTxRLP -> IsTxRLP while inside the transaction RLP segment
+	// If IsTxRLP[i]=1 and EndOfRlpSegment[i]=0, we can transition to IsTxRLP[i+1]=1 on the next row.
+	// we do NOT have that IsTxRLP[i+1]=1 implies that IsTxRLP[i]=1.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_REMAINS_1_INSIDE_RLP_SEGMENT", name),
 		sym.Mul(
@@ -402,11 +483,14 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 			edc.IsTxRLP, // if IsTxRLP is 1 then on the next row IsTxRLP will be 1 if we are inside the block
 			sym.Sub(
 				1,
-				column.Shift(edc.IsTxRLP, 1),
+				column.Shift(edc.IsTxRLP, 1), // IsTxRLP=1 on the next row
 			),
 		),
 	)
 
+	// IsTxRLP -> IsNoTx, moving to the next block.
+	// If IsTxRLP[i]=1 and SelectorLastTxBlock[i]=1 and EndOfRlpSegment[i]=1 and SelectorEndOfAllTx[i]=0,
+	// we can transition to IsNoTx[i+1]=1 on the next row.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_TO_NEXT_BLOCK", name),
 		sym.Mul(
@@ -425,6 +509,9 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 		),
 	)
 
+	// IsTxRLP -> IS_ADDR_HI, moving to the next transaction segment, and load the next sender address.
+	// If IsTxRLP[i]=1 and SelectorLastTxBlock[i]=0 and EndOfRlpSegment[i]=1,
+	// we can transition to IsAddrHi[i+1]=1 on the next row.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_TO_IS_ADDR_HI_GLOBAL_CONSTRAINT", name),
 		sym.Mul(
@@ -442,7 +529,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 		),
 	)
 
-	// direct transition to inactive part when there are no overflow bytes
+	// from IsTxRLP=1, we can directly transition to the inactive part.
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_IS_TX_RLP_DIRECTLY_TO_IS_INACTIVE_GLOBAL_CONSTRAINT", name),
 		sym.Mul(
@@ -452,9 +539,66 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 			column.Shift(edc.IsActive, 1), // all the above forces isActive to be 0 on the next position
 		),
 	)
-
 }
 
+// DefineIndicatorConverseOrder constrains the converse order of load operations.
+// These constraints might not be needed in order for the module to be secure.
+func DefineIndicatorConverseOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	// IsNoTx[i+1]=1 -> IsTxRLP[i]=1
+	// The converse has additional conditions and is treated above.
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_CONVERSE_IS_TX_RLP_TO_IS_NO_TX_NEXT_BLOCK", name),
+		sym.Mul(
+			column.Shift(edc.IsNoTx, 1),
+			sym.Sub(
+				edc.IsTxRLP,
+				column.Shift(edc.IsNoTx, 1),
+			),
+		),
+	)
+
+	// IsTxRLP[i+1]=1 -> (IsTxRLP[i]=1 or IsAddrLo[i]=1)
+	// The converse has additional conditions and is treated above.
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_CONVERSE_IS_TX_RLP/IS_ADDR_LO_TO_IS_TX_RLP", name),
+		sym.Mul(
+			column.Shift(edc.IsTxRLP, 1),
+			sym.Sub(
+				column.Shift(edc.IsTxRLP, 1),
+				edc.IsTxRLP,
+				edc.IsAddrLo,
+			),
+		),
+	)
+
+	// IsAddrHi[i+1]=1 -> (IsTxRLP[i]=1 or IsBlockHashLo[i]=1)
+	// The converse has additional conditions and is treated above.
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_CONVERSE_IS_ADDR_HI/IS_TX_RLP_TO_IS_BLOCKHASH_LO", name),
+		sym.Mul(
+			column.Shift(edc.IsAddrHi, 1),
+			sym.Sub(
+				column.Shift(edc.IsAddrHi, 1),
+				edc.IsTxRLP,
+				edc.IsBlockHashLo,
+			),
+		),
+	)
+	// isActive[i+1]=0 and isActive[i]=1 ->IsTxRLP[i]=1
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_CONVERSE_IS_ACTIVE_TO_IS_TX_RLP", name),
+		sym.Mul(
+			sym.Sub(1, edc.IsActive),
+			column.Shift(edc.IsActive, -1),
+			sym.Sub(
+				1,
+				column.Shift(edc.IsTxRLP, -1),
+			),
+		),
+	)
+}
+
+// DefineIndicatorExclusion enforces that indicators for different load operations cannot light up simultaneously.
 func DefineIndicatorExclusion(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	// IsNoTx + IsBlockHashHi + IsBlockHashLo + IsTimestamp + IsTxRLP + IsAddr = 1
 	comp.InsertGlobal(0,
@@ -472,9 +616,9 @@ func DefineIndicatorExclusion(comp *wizard.CompiledIOP, edc *ExecutionDataCollec
 			),
 		),
 	)
-
 }
 
+// DefineAlignmentPowers enforces the correct aligment exponent values for each value/row type.
 func DefineAlignmentPowers(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	// Value of the alignment exponent, isNoTx
 	comp.InsertGlobal(0,
@@ -547,8 +691,13 @@ func DefineAlignmentPowers(comp *wizard.CompiledIOP, edc *ExecutionDataCollector
 			),
 		),
 	)
+
+	// We skip a constraint for the value of the alignment exponent when IS_TX_RLP=1
+	// the unaligned limb does not matter in that case.
 }
 
+// DefineNumberOfBytesConstraints defines the number of bytes loaded for each operation type.
+// The RLP bytes are checked separately, in the ProjectionQueries function.
 func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	// noOfBytes isNoTx
 	comp.InsertGlobal(0,
@@ -621,10 +770,12 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 		),
 	)
 
-	// noOfBytes limbs in the RLP transaction data
-	// this must be checked with a projection query
+	// We must also enforce noOfBytes limbs in the RLP transaction data,
+	// and this will be checked with a projection query in the ProjectionQueries function.
 }
 
+// ProjectionQueries computes projection queries to each arithmetization fetcher:
+// fetch.TimestampFetcher, fetch.BlockTxnMetadata, fetch.TxnDataFetcher and fetch.RlpTxnFetcher.
 func ProjectionQueries(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
@@ -633,14 +784,16 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
 
+	// Prepare the projection query to the BlockData fetcher
+	// compute the fetcher table, directly tied to the arithmetization.
 	metadataTable := []ifaces.Column{
 		metadata.BlockID,
 		metadata.TotalNoTxnBlock,
 		metadata.FirstAbsTxId,
 		metadata.LastAbsTxId,
 	}
-
-	lsMetadataTable := []ifaces.Column{
+	// compute the ExecutionDataCollector table.
+	edcMetadataTable := []ifaces.Column{
 		edc.BlockID,
 		edc.TotalNoTxBlock,
 		edc.FirstAbsTxIDBlock,
@@ -649,38 +802,46 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 
 	projection.InsertProjection(comp,
 		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
-		lsMetadataTable,
+		edcMetadataTable,
 		metadataTable,
-		edc.IsNoTx,
+		edc.IsNoTx, // We filter on rows where the blockdata is loaded.
 		metadata.FilterFetched,
 	)
 
-	// !!! need to add segment constancies, since I am only using isNoTx in BLOCK_METADATA_PROJECTION
+	// Because we filtered on edc.IsNoTx=1, we also ensure that FirstAbsTxIDBlock and LastAbsTxIDBlock
+	// remain constant in the DefineConstantConstraints function.
+	// we do not need to also check the constancy of TotalNoTxBlock, as it is only used when IsNoTx=1
 
+	// Prepare the projection query to the BlockData fetcher, but concerning timestamps
+	// compute the fetcher table, directly tied to the arithmetization.
 	timestampTable := []ifaces.Column{
 		timestamps.RelBlock,
 		timestamps.Data,
 	}
 
-	lsTimestamps := []ifaces.Column{
+	// compute the ExecutionDataCollector table.
+	edcTimestamps := []ifaces.Column{
 		edc.BlockID,
 		edc.UnalignedLimb,
 	}
 
 	projection.InsertProjection(comp,
 		ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
-		lsTimestamps,
+		edcTimestamps,
 		timestampTable,
-		edc.IsTimestamp,
+		edc.IsTimestamp, // filter on IsTimestamp=1
 		timestamps.FilterFetched,
 	)
 
+	// Prepare a projection query to the TxnData fetcher, to check the Hi part of the sender address.
+	// compute the fetcher table, directly tied to the arithmetization.
 	txnDataTableHi := []ifaces.Column{
 		txnData.RelBlock,
 		txnData.AbsTxNum,
-		txnData.FromHi,
+		txnData.FromHi, // checks that the Hi part of the sender address is fetched correctly.
 	}
-	lsTxnSenderAddressTableHi := []ifaces.Column{
+	// compute the ExecutionDataCollector table.
+	edcTxnSenderAddressTableHi := []ifaces.Column{
 		edc.BlockID,
 		edc.AbsTxID,
 		edc.UnalignedLimb,
@@ -688,18 +849,21 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 
 	projection.InsertProjection(comp,
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_HI_PROJECTION", name),
-		lsTxnSenderAddressTableHi,
+		edcTxnSenderAddressTableHi,
 		txnDataTableHi,
-		edc.IsAddrHi,
+		edc.IsAddrHi, // filter on IsAddrHi=1
 		txnData.FilterFetched,
 	)
 
+	// Prepare the projection query to the TxnData fetcher, to check the Lo part of the sender address.
+	// compute the fetcher table, directly tied to the arithmetization.
 	txnDataTableLo := []ifaces.Column{
 		txnData.RelBlock,
 		txnData.AbsTxNum,
 		txnData.FromLo,
 	}
-	lsTxnSenderAddressTableLo := []ifaces.Column{
+	// compute the ExecutionDataCollector table.
+	edcTxnSenderAddressTableLo := []ifaces.Column{
 		edc.BlockID,
 		edc.AbsTxID,
 		edc.UnalignedLimb,
@@ -707,12 +871,15 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 
 	projection.InsertProjection(comp,
 		ifaces.QueryIDf("%s_SENDER_ADDRESS_LO_PROJECTION", name),
-		lsTxnSenderAddressTableLo,
+		edcTxnSenderAddressTableLo,
 		txnDataTableLo,
-		edc.IsAddrLo,
+		edc.IsAddrLo, // filter on IsAddrLo=1
 		txnData.FilterFetched,
 	)
 
+	// Prepare the projection query to the RlpTxn fetcher, to check:
+	// AbsTxNum, AbsTxNumMax, Limb, NBytes and EndOfRlpSegment.
+	// first compute the fetcher table, directly tied to the arithmetization.
 	rlpDataTable := []ifaces.Column{
 		rlp.AbsTxNum,
 		rlp.AbsTxNumMax,
@@ -720,23 +887,27 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		rlp.NBytes,
 		rlp.EndOfRlpSegment,
 	}
-	lsRlpDataTable := []ifaces.Column{
-		edc.AbsTxID,
-		edc.AbsTxIDMax,
-		edc.UnalignedLimb,
-		edc.NoBytes,
+	// compute the ExecutionDataCollector table.
+	edcRlpDataTable := []ifaces.Column{
+		edc.AbsTxID,         // Check correctness of the AbsTxID.
+		edc.AbsTxIDMax,      // The fact that it is constant is enforced in DefineConstantConstraints.
+		edc.UnalignedLimb,   // Check correctness of the limbs.
+		edc.NoBytes,         // Check correctness of the number of bytes.
 		edc.EndOfRlpSegment, // This constrains EndOfRlpSegment on edc.IsTx.RLP = 1, but we still need to constrain it elsewhere
+		// EndOfRlpSegment is also constrained in DefineSelectorConstraints, which requires that EndOfRlpSegment=0 when AbsTxID is constant.
+		// EndOfRlpSegment is also constrained in DefineZeroizationConstraints, with respect to IsActive.
 	}
 
 	projection.InsertProjection(comp,
 		ifaces.QueryIDf("%s_RLP_LIMB_DATA_PROJECTION", name),
-		lsRlpDataTable,
+		edcRlpDataTable,
 		rlpDataTable,
-		edc.IsTxRLP,
+		edc.IsTxRLP, // filter on IsTxRLP=1
 		rlp.FilterFetched,
 	)
 }
 
+// EnforceZeroOnInactiveFilter is a generic helper function that enforces that targetCol is 0 when filterExpr = 0.
 func EnforceZeroOnInactiveFilter(comp *wizard.CompiledIOP, filterExpr *sym.Expression, targetCol ifaces.Column, name, subname string) {
 	comp.InsertGlobal(
 		0,
@@ -751,7 +922,9 @@ func EnforceZeroOnInactiveFilter(comp *wizard.CompiledIOP, filterExpr *sym.Expre
 	)
 }
 
+// DefineSelectorConstraints constrains the selectors, but also the EndOfRlpSegment column.
 func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	// We first compute the prover actions
 	edc.SelectorLastTxBlock, edc.ComputeSelectorLastTxBlock = dedicated.IsZero(
 		comp,
 		sym.Sub(
@@ -785,6 +958,7 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 	)
 
 	// edc.EndOfRlpSegment is partially constrained in the projection queries, on areas where edc.IsTxRLP = 1
+	// it is also constrained in DefineZeroizationConstraints.
 	// here we require that when edc.IsTxRLP = 0, we have EndOfRlpSegment = 0
 	comp.InsertGlobal(
 		0,
@@ -798,6 +972,9 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 		),
 	)
 
+	// Recall that edc.EndOfRlpSegment is partially constrained in the projection queries, on areas where edc.IsTxRLP = 1
+	// it is also constrained in DefineZeroizationConstraints.
+	// Here we ask that whenever the AbsTxID is constant, EndOfRlpSegment cannot light up (we are inside the same transaction segment).
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("%s_END_OF_RLP_SEGMENT_IS_0_WHENEVER_TX_ID_IS_CONSTANT", name),
@@ -809,17 +986,21 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 
 }
 
+// DefineCounterConstraints enforces counter constraints for BlockId, AbsTxId and Ct.
 func DefineCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	DefineBlockIdCounterConstraints(comp, edc, name)
 	DefineAbsTxIdCounterConstraints(comp, edc, name)
+	DefineCtCounterConstraints(comp, edc, name)
 }
 
+// DefineZeroizationConstraints enforces that multiple columns are zero when the IsActive filter is zero.
 func DefineZeroizationConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	// enforce zero fields when isActive is not set to 1
 	var emptyWhenInactive = [...]ifaces.Column{
 		edc.BlockID,
 		edc.AbsTxID,
 		edc.AbsTxIDMax,
+		edc.Ct,
 		edc.TotalNoTxBlock,
 		edc.IsNoTx,
 		edc.IsBlockHashHi,
@@ -835,6 +1016,7 @@ func DefineZeroizationConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 		edc.NoBytes,
 		edc.UnalignedLimb,
 		edc.AlignedPow,
+		// exclude edc.HashNum, as it is a fully constant column
 	}
 
 	for _, col := range emptyWhenInactive {
@@ -842,6 +1024,8 @@ func DefineZeroizationConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 		EnforceZeroOnInactiveFilter(comp, ifaces.ColumnAsVariable(edc.IsActive), col, name, "IS_ACTIVE")
 	}
 }
+
+// DefineIndicatorsMustBeBinary enforces that various indicator columns are binary.
 func DefineIndicatorsMustBeBinary(comp *wizard.CompiledIOP, edc *ExecutionDataCollector) {
 	util.MustBeBinary(comp, edc.IsActive)
 	util.MustBeBinary(comp, edc.IsNoTx)
@@ -853,10 +1037,11 @@ func DefineIndicatorsMustBeBinary(comp *wizard.CompiledIOP, edc *ExecutionDataCo
 	util.MustBeBinary(comp, edc.IsTxRLP)
 }
 
+// DefineConstantConstraints requires that FirstAbsTxIDBlock/LastAbsTxIDBlock remain constant inside the block.
+// And that AbsTxIDMax is constant on the active part of the module.
 func DefineConstantConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	// in order for SelectorLastTxBlock to be constrained properly, the values of FirstAbsTxIDBlock and LastAbsTxIDBlock
 	// must be constant for the entire segment defined by the block (otherwise SelectorLastTxBlock is meaningless).
-
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_%v_CONSTANT_FIRST_ABS_TX_ID_BLOCK_INSIDE_THE_BLOCK_SEGMENT", name, edc.FirstAbsTxIDBlock.GetColID()),
 		sym.Mul(
@@ -881,7 +1066,6 @@ func DefineConstantConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 	// we do not contrain that FirstAbsTxIDBlock/LastAbsTxIDBlock increases only by 1, this is
 	// constrained in the corresponding fetcher and enforced by the projection query (in conjunction
 	// with the constancy property)
-
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_%v_CONSTANT_ABS_TX_ID_MAX", name, edc.AbsTxIDMax.GetColID()),
 		sym.Mul(
@@ -894,26 +1078,25 @@ func DefineConstantConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 	)
 }
 
-func DefineLimbSummary(comp *wizard.CompiledIOP,
-	edc *ExecutionDataCollector,
-	name string,
-	timestamps fetch.TimestampFetcher,
-	metadata fetch.BlockTxnMetadata,
-	txnData fetch.TxnDataFetcher,
-	rlp fetch.RlpTxnFetcher) {
+// DefineLimbAlignmentConstraints constrains that Limb=UnalignedLimb*AlignedPow.
+func DefineLimbAlignmentConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	// unaligned limb --- aligned limb constraints
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_UNALIGNED_LIMB_AND_ALIGNED_LIMB_CONSTRAINT", name),
+		sym.Sub(
+			edc.Limb,
+			sym.Mul(
+				edc.UnalignedLimb,
+				edc.AlignedPow,
+			),
+		),
+	)
+}
 
-	DefineSelectorConstraints(comp, edc, name)
-	DefineIndicatorExclusion(comp, edc, name)
-	DefineAlignmentPowers(comp, edc, name)
-	DefineIndicatorOrder(comp, edc, name)
-	DefineIndicatorsMustBeBinary(comp, edc)
-	DefineNumberOfBytesConstraints(comp, edc, name)
-	DefineZeroizationConstraints(comp, edc, name)
-	DefineConstantConstraints(comp, edc, name)
-
-	// isActive constraints
-	// require that isActive is binary
-
+// DefineIsActiveConstraints requires that IsActive has the proper shape, never transitioning from 0 to 1.
+// the fact that IsActive is binary is enforced in DefineIndicatorsMustBeBinary.
+func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	// we require that isActive is binary in DefineIndicatorsMustBeBinary
 	// require that the isActive filter only contains 1s followed by 0s
 	comp.InsertGlobal(
 		0,
@@ -926,30 +1109,64 @@ func DefineLimbSummary(comp *wizard.CompiledIOP,
 			),
 		),
 	)
+}
 
-	// unaligned limb --- aligned limb constraints
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%s_UNALIGNED_LIMB_AND_ALIGNED_LIMB_CONSTRAINT", name),
-		sym.Sub(
-			edc.Limb,
-			sym.Mul(
-				edc.UnalignedLimb,
-				edc.AlignedPow,
-			),
-		),
-	)
+// DefineExecutionDataCollector is the main function that defines the constraints of the ExecutionDataCollector.
+func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
+	edc *ExecutionDataCollector,
+	name string,
+	timestamps fetch.TimestampFetcher,
+	metadata fetch.BlockTxnMetadata,
+	txnData fetch.TxnDataFetcher,
+	rlp fetch.RlpTxnFetcher) {
+	// selector constraints cover the prover actions which use dedicated.IsZero, but also
+	// constrain the EndOfRlpSegment column.
+	// these prover actions must be defined first, or dependent constraints will fail.
+	DefineSelectorConstraints(comp, edc, name)
 
+	// Indicator constraints, which concern the indicators: isActive,
+	// but also IsNoTx, IsTimestamp, IsBlockHashHi, IsBlockHashLo,
+	// IsAddrHi, IsAddrLo and IsTxRLP.
+	DefineIndicatorExclusion(comp, edc, name)
+	DefineIndicatorOrder(comp, edc, name)
+	DefineIndicatorConverseOrder(comp, edc, name)
+	DefineIndicatorsMustBeBinary(comp, edc)
+	DefineIsActiveConstraints(comp, edc, name)
+
+	// constraints that concern the limbs, unaligned limbs, the alignment powers
+	// and the number of bytes
+	DefineAlignmentPowers(comp, edc, name)
+	DefineLimbAlignmentConstraints(comp, edc, name)
+	DefineNumberOfBytesConstraints(comp, edc, name)
+
+	// zeroization constraints when the isActive filter is set to 0
+	DefineZeroizationConstraints(comp, edc, name)
+
+	// some columns must remain constant on the corresponding block/module segment, concerns:
+	// edc.FirstAbsTxIDBlock, edc.LastAbsTxIDBlock, edc.AbsTxIDMax
+	DefineConstantConstraints(comp, edc, name)
+
+	// simple constraint asking that HashNum is constant
+	DefineHashNumConstraints(comp, edc, name)
+
+	// Constraints for the counters edc.Ct, edc.AbsTxID, edc.BlockID
 	DefineCounterConstraints(comp, edc, name)
+
+	// Enforce data consistency with the arithmetization fetchers using projection queries
 	ProjectionQueries(comp, edc, name, timestamps, metadata, txnData, rlp)
 }
 
-func AssignLimbSummary(run *wizard.ProverRuntime,
+// AssignExecutionDataCollector assigns the data in the ExecutionDataCollector, using
+// the arithmetizationfetchers fetch.TimestampFetcher, fetch.BlockTxnMetadata,
+// fetch.TxnDataFetcher, and fetch.RlpTxnFetcher.
+func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	edc ExecutionDataCollector,
 	timestamps fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
 	size := edc.Limb.Size()
+	// generate a helper struct that instantiates field element vectors for all our columns
 	vect := NewExecutionDataCollectorVectors(size)
 
 	fetchedAbsTxIdMax := rlp.AbsTxNumMax.GetColAssignmentAt(run, 0)
@@ -969,6 +1186,10 @@ func AssignLimbSummary(run *wizard.ProverRuntime,
 			lastAbsTxIDBlock := metadata.LastAbsTxId.GetColAssignmentAt(run, blockCt)
 			fetchNoTx := metadata.TotalNoTxnBlock.GetColAssignmentAt(run, blockCt)
 
+			// genericLoadFunction is a function that computes most of the data
+			// that is computed in a similar way in each type of row.
+			// opType is the type of row, and the field element value is the unaligned
+			// limb value
 			genericLoadFunction := func(opType int, value field.Element) {
 				vect.IsActive[totalCt].SetOne()
 				vect.SetLimbAndUnalignedLimb(totalCt, value, opType)
@@ -1050,13 +1271,17 @@ func AssignLimbSummary(run *wizard.ProverRuntime,
 		}
 	} // end of the block for loop
 
+	// assign the columns to the ExecutionDataCollector
 	AssignExecutionDataColumns(run, edc, vect)
+	// assign the selectors
 	edc.ComputeSelectorBlockDiff.Run(run)
 	edc.ComputeSelectorLastTxBlock.Run(run)
 	edc.ComputeSelectorEndOfAllTx.Run(run)
 	edc.ComputeSelectorAbsTxIDDiff.Run(run)
 }
 
+// AssignExecutionDataColumns uses the helper struct ExecutionDataCollectorVectors to assign the columns of
+// the ExecutionDataCollector
 func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataCollector, vect *ExecutionDataCollectorVectors) {
 	run.AssignColumn(edc.BlockID.GetColID(), smartvectors.NewRegular(vect.BlockID))
 	run.AssignColumn(edc.AbsTxID.GetColID(), smartvectors.NewRegular(vect.AbsTxID))
@@ -1073,6 +1298,8 @@ func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataColl
 	run.AssignColumn(edc.IsTxRLP.GetColID(), smartvectors.NewRegular(vect.IsTxRLP))
 	run.AssignColumn(edc.IsAddrHi.GetColID(), smartvectors.NewRegular(vect.IsAddrHi))
 	run.AssignColumn(edc.IsAddrLo.GetColID(), smartvectors.NewRegular(vect.IsAddrLo))
+	run.AssignColumn(edc.Ct.GetColID(), smartvectors.NewRegular(vect.Ct))
+	run.AssignColumn(edc.HashNum.GetColID(), smartvectors.NewConstant(field.NewElement(hashNum), len(vect.Ct)))
 	run.AssignColumn(edc.AbsTxIDMax.GetColID(), smartvectors.NewRegular(vect.AbsTxIDMax))
 	run.AssignColumn(edc.EndOfRlpSegment.GetColID(), smartvectors.NewRegular(vect.EndOfRlpSegment))
 	run.AssignColumn(edc.FirstAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.FirstAbsTxIDBlock))
