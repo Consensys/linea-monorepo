@@ -1,6 +1,7 @@
 package keccak
 
 import (
+	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -8,7 +9,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/base_conversion.go"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing/dedicated/spaghettifier"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 type LaneInfo struct {
@@ -17,8 +18,8 @@ type LaneInfo struct {
 	IsLaneActive         ifaces.Column
 }
 
-// CustomizedKeccakInputs stores the inputs required for [NewCustomizedKeccak]
-type CustomizedKeccakInputs struct {
+// KeccakOverBlockInputs stores the inputs required for [NewKeccakOverBlocks]
+type KeccakOverBlockInputs struct {
 	LaneInfo      LaneInfo
 	MaxNumKeccakF int
 
@@ -26,11 +27,13 @@ type CustomizedKeccakInputs struct {
 	Provider [][]byte
 }
 
-// CustomizedkeccakHash stores the result of the hash and the [wizard.ProverAction] of all the submodules.
-type CustomizedkeccakHash struct {
-	Inputs         *CustomizedKeccakInputs
+// KeccakOverBlocks stores the result of the hash and the [wizard.ProverAction] of all the submodules.
+type KeccakOverBlocks struct {
+	Inputs         *KeccakOverBlockInputs
 	HashHi, HashLo ifaces.Column
-	MaxNumKeccakF  int
+	// it indicates the active part of HashHi/HashLo
+	IsActive      ifaces.Column
+	MaxNumKeccakF int
 
 	// prover actions for  internal modules
 	pa_blockBaseConversion wizard.ProverAction
@@ -39,9 +42,9 @@ type CustomizedkeccakHash struct {
 	keccakF                keccakf.Module
 }
 
-// NewCustomizedKeccak implements the utilities for proving keccak hash over the given blocks.
+// NewKeccakOverBlocks implements the utilities for proving keccak hash over the given blocks.
 // It assumes that the padding and packing of the stream into blocks is done correctly,and thus directly uses the blocks.
-func NewCustomizedKeccak(comp *wizard.CompiledIOP, inp CustomizedKeccakInputs) *CustomizedkeccakHash {
+func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *KeccakOverBlocks {
 	var (
 		maxNumKeccakF        = inp.MaxNumKeccakF
 		lookupBaseConversion = base_conversion.NewLookupTables(comp)
@@ -70,6 +73,7 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, inp CustomizedKeccakInputs) *
 				keccakf.IO.HashOutputSlicesBaseB[2][:],
 				keccakf.IO.HashOutputSlicesBaseB[3][:]...,
 			),
+			IsActive:      keccakf.IO.IsActive,
 			MaxNumKeccakF: maxNumKeccakF,
 			Lookup:        lookupBaseConversion,
 		}
@@ -93,11 +97,12 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, inp CustomizedKeccakInputs) *
 	)
 
 	// set the module
-	m := &CustomizedkeccakHash{
+	m := &KeccakOverBlocks{
 		Inputs:                 &inp,
 		MaxNumKeccakF:          maxNumKeccakF,
 		HashHi:                 bcForHash.HashHi,
 		HashLo:                 bcForHash.HashLo,
+		IsActive:               bcForHash.IsActive,
 		pa_blockBaseConversion: bcForBlock,
 		keccakF:                keccakf,
 		pa_hashBaseConversion:  bcForHash,
@@ -108,12 +113,12 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, inp CustomizedKeccakInputs) *
 }
 
 // It implements [wizard.ProverAction] for customizedKeccak.
-func (m *CustomizedkeccakHash) Run(run *wizard.ProverRuntime) {
+func (m *KeccakOverBlocks) Run(run *wizard.ProverRuntime) {
 	// assign blockBaseConversion
 	m.pa_blockBaseConversion.Run(run)
 	// assign keccakF
 	// first, construct the traces for the accumulated Provider
-	permTrace := GenerateTrace(m.Inputs.Provider)
+	permTrace := keccak.GenerateTrace(m.Inputs.Provider)
 	m.keccakF.Assign(run, permTrace)
 	// assign HashBaseConversion
 	m.pa_hashBaseConversion.Run(run)

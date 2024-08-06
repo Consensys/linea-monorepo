@@ -1,17 +1,20 @@
 package antichamber
 
 import (
+	"fmt"
+
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/dedicated"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -42,9 +45,15 @@ type Addresses struct {
 	// a column of all 16 indicating that all 16 bytes of public key should be hashed.
 	col16 ifaces.Column
 
+	// used as the hassID for hashing by keccak.
+	hashNum ifaces.Column
+
 	// columns for decomposition and trimming the HashHi to AddressHi
 	limbColumnsUntrimmed        byte32cmp.LimbColumns
 	computeLimbColumnsUntrimmed wizard.ProverAction
+
+	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
+	provider generic.GenericByteModule
 }
 
 // AddressHi is the trimming of HashHi, taking its last 4bytes.
@@ -65,6 +74,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 		isAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
 		isAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
 		isAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
+		hashNum:              createCol("HASH_NUM"),
 	}
 
 	// addresses are fetched from two arithmetization modules (ecRecover and txn-data)
@@ -76,6 +86,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 	mustBeBinary(comp, addr.isAddressFromEcRec)
 	mustBeBinary(comp, addr.isAddressFromTxnData)
 	isZeroWhenInactive(comp, addr.isAddress, ac.IsActive)
+	isZeroWhenInactive(comp, addr.hashNum, ac.IsActive)
 
 	// check the  trimming of hashHi  to the addressHi
 	addr.csAddressTrimming(comp)
@@ -94,6 +105,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressLo},
 		column.Shift(addr.isAddressHiEcRec, -1), addr.isAddressFromEcRec,
 	)
+
 	td.csTxnData(comp)
 	// projection from txn-data to address columns
 	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
@@ -105,6 +117,14 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
 		td.isFrom, addr.isAddressFromTxnData,
 	)
+
+	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
+		sym.Mul(ac.IsActive,
+			sym.Sub(addr.hashNum, ac.ID, 1)),
+	)
+	// assign the keccak provider
+	addr.provider = addr.GetProvider(comp, addr.hashNum, ac.UnalignedGnarkData)
+
 	return addr
 }
 
@@ -144,16 +164,16 @@ func (addr *Addresses) csAddressTrimming(comp *wizard.CompiledIOP) {
 
 // It builds a provider from  public key extracted from Gnark-Data (as hash input) and addresses (as output).
 // the consistency check is then deferred to the keccak module.
-func (addr *Addresses) GetProvider(comp *wizard.CompiledIOP, ac *Antichamber, uaGnark *UnalignedGnarkData) generic.GenericByteModule {
+func (addr *Addresses) GetProvider(comp *wizard.CompiledIOP, id ifaces.Column, uaGnark *UnalignedGnarkData) generic.GenericByteModule {
 	// generate a generic byte Module as keccak provider.
-	provider := addr.buildGenericModule(ac, uaGnark)
+	provider := addr.buildGenericModule(id, uaGnark)
 	return provider
 }
 
 // It builds a GenericByteModule from Address columns and Public-Key/GnarkData columns.
-func (addr *Addresses) buildGenericModule(ac *Antichamber, uaGnark *UnalignedGnarkData) (pkModule generic.GenericByteModule) {
+func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGnarkData) (pkModule generic.GenericByteModule) {
 	pkModule.Data = generic.GenDataModule{
-		HashNum: ac.ID,
+		HashNum: id,
 		Limb:    uaGnark.GnarkData,
 
 		// a column of all 16, since all the bytes of public key are used in hashing
@@ -180,8 +200,28 @@ func (addr *Addresses) assignAddress(
 	uaGnark *UnalignedGnarkData,
 	td *txnData,
 ) {
-	td.assignTxnData(run)
-	addr.assignMainColumns(run, nbEcRecover, size, ac, uaGnark)
+	// assign td.isFrom
+	td.pa_IsZero.Run(run)
+
+	// assign HashNum
+	var (
+		one      = field.One()
+		id       = ac.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isActive = ac.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		hashNum  = common.NewVectorBuilder(addr.hashNum)
+	)
+
+	for row := range id {
+		if isActive[row].IsOne() {
+			f := *new(field.Element).Add(&id[row], &one)
+			hashNum.PushField(f)
+		} else {
+			hashNum.PushInt(0)
+		}
+	}
+	hashNum.PadAndAssign(run)
+	fmt.Printf("id %v\n", vector.Prettify(id))
+	addr.assignMainColumns(run, nbEcRecover, size, uaGnark)
 	addr.assignHelperColumns(run, ecRec)
 }
 
@@ -189,12 +229,9 @@ func (addr *Addresses) assignAddress(
 func (addr *Addresses) assignMainColumns(
 	run *wizard.ProverRuntime,
 	nbEcRecover, size int,
-	ac *Antichamber,
 	uaGnark *UnalignedGnarkData,
 ) {
-	pkModule := addr.buildGenericModule(ac, uaGnark)
-	// since we use it just for trace generating, we have to turn-off the info-module (hash output).
-	pkModule.Info = generic.GenInfoModule{}
+	pkModule := addr.buildGenericModule(addr.hashNum, uaGnark)
 
 	split := splitAt(nbEcRecover)
 	n := nbRowsPerEcRec
@@ -203,10 +240,7 @@ func (addr *Addresses) assignMainColumns(
 		hashHi, hashLo, isHash, trimmedHi []field.Element
 	)
 
-	permTrace := keccak.PermTraces{}
-	genTrace := generic.GenTrace{}
-	pkModule.AppendTraces(run, &genTrace, &permTrace)
-
+	permTrace := keccak.GenerateTrace(pkModule.Data.ScanStreams(run))
 	var v, w, u field.Element
 	for _, digest := range permTrace.HashOutPut {
 
@@ -272,23 +306,9 @@ func splitAt(nbEcRecover int) int {
 }
 
 func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
-	td.isFrom = comp.InsertCommit(0, ifaces.ColIDf("%v_IsFrom", NAME_ADDRESSES), td.ct.Size())
-	// check that isFrom == 1 iff ct==1
-	dedicated.InsertIsTargetValue(comp, 0, ifaces.QueryIDf("IsFrom_IsCorrect"), field.One(), td.ct, td.isFrom)
-}
 
-func (td *txnData) assignTxnData(run *wizard.ProverRuntime) {
-	// assign isFrom via CT
-	var isFrom []field.Element
-	ct := td.ct.GetColAssignment(run).IntoRegVecSaveAlloc()
-	for j := range ct {
-		if ct[j].IsOne() {
-			isFrom = append(isFrom, field.One())
-		} else {
-			isFrom = append(isFrom, field.Zero())
-		}
-	}
-	run.AssignColumn(td.isFrom.GetColID(), smartvectors.NewRegular(isFrom))
+	//  isFrom == 1 iff ct==1
+	td.isFrom, td.pa_IsZero = dedicated.IsZero(comp, sym.Sub(td.ct, 1))
 }
 
 // txndata represents the txn_data module from the arithmetization side.
@@ -298,5 +318,6 @@ type txnData struct {
 	ct     ifaces.Column
 
 	// helper column
-	isFrom ifaces.Column
+	isFrom    ifaces.Column
+	pa_IsZero wizard.ProverAction
 }

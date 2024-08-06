@@ -17,7 +17,7 @@ func makeTestCaseDataModule(c []makeTestCase) (
 ) {
 	maxNumKeccakF := 8
 
-	d := &GenericAccumulator{}
+	d := &GenericDataAccumulator{}
 	gdms := make([]generic.GenDataModule, len(c))
 
 	define = func(build *wizard.Builder) {
@@ -27,14 +27,14 @@ func makeTestCaseDataModule(c []makeTestCase) (
 		}
 
 		inp := GenericAccumulatorInputs{
-			Providers:     gdms,
+			ProvidersData: gdms,
 			MaxNumKeccakF: maxNumKeccakF,
 		}
-		d = NewGenericAccumulator(comp, inp)
+		d = NewGenericDataAccumulator(comp, inp)
 	}
 	prover = func(run *wizard.ProverRuntime) {
 		for i := range gdms {
-			testdata.GenerateAndAssignGenDataModule(run, &gdms[i], c[i].HashNum, c[i].ToHash)
+			testdata.GenerateAndAssignGenDataModule(run, &gdms[i], c[i].HashNum, c[i].ToHash, true)
 		}
 		d.Run(run)
 	}

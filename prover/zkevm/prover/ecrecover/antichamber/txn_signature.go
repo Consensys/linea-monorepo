@@ -22,9 +22,12 @@ type txSignature struct {
 	txHashHi ifaces.Column
 	txHashLo ifaces.Column
 	isTxHash ifaces.Column
+
+	// provider for keccak, Provider contain the inputs and outputs of keccak hash.
+	provider generic.GenericByteModule
 }
 
-func newTxSignatures(comp *wizard.CompiledIOP, size int) *txSignature {
+func newTxSignatures(comp *wizard.CompiledIOP, rlpTxn generic.GenDataModule, size int) *txSignature {
 	createCol := createColFn(comp, NAME_TXSIGNATURE, size)
 
 	// declare the native columns
@@ -34,18 +37,18 @@ func newTxSignatures(comp *wizard.CompiledIOP, size int) *txSignature {
 		isTxHash: createCol("TX_IS_HASH_HI"),
 	}
 
+	res.provider = res.GetProvider(comp, rlpTxn)
+
 	return res
 }
 
 // It builds a provider from rlp-txn (as hash input) and native columns of TxSignature (as hash output)
 // the consistency check is then deferred to the keccak module.
-func (txn *txSignature) GetProvider(comp *wizard.CompiledIOP) generic.GenericByteModule {
+func (txn *txSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.GenDataModule) generic.GenericByteModule {
 	provider := generic.GenericByteModule{}
 
-	// get rlp_txn from the compiler trace (the module should already be committed)
-	rlpTxn := generic.NewGenericByteModule(comp, generic.RLP_TXN)
 	// pass rlp-txn as DataModule.
-	provider.Data = rlpTxn.Data
+	provider.Data = rlpTxn
 
 	// generate infoModule from native columns
 	provider.Info = txn.buildInfoModule()
@@ -66,18 +69,14 @@ func (txn *txSignature) buildInfoModule() generic.GenInfoModule {
 }
 
 // it assign the native columns
-func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, nbEcRecover, size int) {
+func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, rlpTxn generic.GenDataModule, nbEcRecover, size int) {
 	n := startAt(nbEcRecover)
 
 	hashHi := vector.Repeat(field.Zero(), n)
 	hashLo := vector.Repeat(field.Zero(), n)
 	isTxHash := vector.Repeat(field.Zero(), n)
 
-	comp := run.Spec
-	rlpTxn := generic.NewGenericByteModule(comp, generic.RLP_TXN)
-	permTrace := keccak.PermTraces{}
-	genTrace := generic.GenTrace{}
-	rlpTxn.AppendTraces(run, &genTrace, &permTrace)
+	permTrace := keccak.GenerateTrace(rlpTxn.ScanStreams(run))
 
 	var v, w field.Element
 	for _, digest := range permTrace.HashOutPut {

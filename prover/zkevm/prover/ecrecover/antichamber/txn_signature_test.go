@@ -5,40 +5,50 @@ import (
 
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/datatransfer/acc_module"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTxnSignature(t *testing.T) {
+	c := RLP_TXN_test
 	limits := &Limits{
 		MaxNbEcRecover: 5,
 		MaxNbTx:        5,
 	}
 	gbmSize := 256
 	size := limits.sizeAntichamber()
+	m := &keccak.KeccakSingleProvider{}
 
-	m := keccak.Module{}
 	ac := Antichamber{Limits: limits}
 	var txSign *txSignature
-	gbm := generic.GenericByteModule{}
+	rlpTxn := generic.GenDataModule{}
 
 	nbKeccakF := ac.nbKeccakF(3)
 
 	compiled := wizard.Compile(func(b *wizard.Builder) {
 		comp := b.CompiledIOP
-		gbm = acc_module.CommitGBM(comp, 0, generic.RLP_TXN, gbmSize)
-		txSign = newTxSignatures(comp, size)
-		provider := txSign.GetProvider(comp)
-		m.Define(comp, []generic.GenericByteModule{provider}, nbKeccakF)
+		rlpTxn = testdata.CreateGenDataModule(comp, "RLP_TXN", gbmSize)
+		txSign = newTxSignatures(comp, rlpTxn, size)
+		provider := txSign.GetProvider(comp, rlpTxn)
+
+		keccakInp := keccak.KeccakSingleProviderInput{
+			Provider:      provider,
+			MaxNumKeccakF: nbKeccakF,
+		}
+		m = keccak.NewKeccakSingleProvider(comp, keccakInp)
 	}, dummy.Compile)
 
 	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
-		witSize := gbmSize - gbmSize/15
-		acc_module.AssignGBMfromTable(run, &gbm, witSize, limits.MaxNbTx)
-		txSign.assignTxSignature(run, limits.MaxNbEcRecover, size)
-		m.AssignKeccak(run)
+		testdata.GenerateAndAssignGenDataModule(run, &rlpTxn, c.HashNum, c.ToHash, true)
+		txSign.assignTxSignature(run, rlpTxn, limits.MaxNbEcRecover, size)
+		m.Run(run)
 	})
 	assert.NoError(t, wizard.Verify(compiled, proof))
+}
+
+var RLP_TXN_test = makeTestCase{
+	HashNum: []int{1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5},
+	ToHash:  []int{1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0},
 }

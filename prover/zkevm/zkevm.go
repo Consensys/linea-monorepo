@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/serialization"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
@@ -16,7 +15,7 @@ type ZkEvm struct {
 	// process.
 	arithmetization arithmetization.Arithmetization
 	// Keccak module in use. Generated during the compilation process.
-	keccak keccak.Module
+	keccak keccak.KeccakZkEVM
 	// State manager module in use. Generated during the compilation process.
 	stateManager statemanager.StateManagerLegacy
 
@@ -42,7 +41,7 @@ func NewZkEVM(
 		stateManager: statemanager.StateManagerLegacy{
 			Settings: &settings.Statemanager,
 		},
-		keccak: keccak.Module{
+		keccak: keccak.KeccakZkEVM{
 			Settings: &settings.Keccak,
 		},
 	}
@@ -87,9 +86,11 @@ func (z *ZkEvm) define(b *wizard.Builder) {
 
 	// If the keccak module is enabled, set the module.
 	if z.keccak.Settings.Enabled {
-		var providers []generic.GenericByteModule
-		nbKeccakF := z.keccak.Settings.MaxNumKeccakf
-		z.keccak.Define(b.CompiledIOP, providers, nbKeccakF)
+		keccakInp := keccak.KeccakZkEVMInput{
+			Settings: z.keccak.Settings,
+			// list of modules for integration
+		}
+		z.keccak = *keccak.NewKeccakZkEVM(b.CompiledIOP, keccakInp)
 	}
 }
 
@@ -110,7 +111,7 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 
 		// Assign the Keccak module
 		if z.keccak.Settings.Enabled {
-			z.keccak.AssignKeccak(run)
+			z.keccak.Run(run)
 		}
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/packing/dedicated"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 // laneRepackingInputs collects the inputs of the [newLane] function.

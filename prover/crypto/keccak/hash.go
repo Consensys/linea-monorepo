@@ -177,3 +177,11 @@ func (state *State) XorIn(block *Block, traces *PermTraces) {
 func (state *State) ExtractDigest() Digest {
 	return castDigest(state[0][0], state[1][0], state[2][0], state[3][0])
 }
+
+// it generates [PermTraces] from the given stream.
+func GenerateTrace(streams [][]byte) (t PermTraces) {
+	for _, stream := range streams {
+		Hash(stream, &t)
+	}
+	return t
+}

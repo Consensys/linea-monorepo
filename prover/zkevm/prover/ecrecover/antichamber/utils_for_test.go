@@ -1,7 +1,7 @@
 package antichamber
 
 import (
-	permTrace "github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+
 	"golang.org/x/crypto/sha3"
 )
 
@@ -29,16 +30,14 @@ func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antic
 
 func AssignEcRecTxnData(
 	run *wizard.ProverRuntime,
-	gbm generic.GenericByteModule,
+	gbm generic.GenDataModule,
 	nbEcRec, nbTxS int,
 	sizeTxnData, size int,
 	td *txnData, ecRec *EcRecover,
 	ac *Antichamber,
 ) {
 
-	permTrace := &permTrace.PermTraces{}
-	genTrace := &generic.GenTrace{}
-	gbm.AppendTraces(run, genTrace, permTrace)
+	permTrace := keccak.GenerateTrace(gbm.ScanStreams(run))
 
 	// now assign ecRecover.Limb and txn_data.From from the permutation trace.
 	isEcRecRes := make([]field.Element, nbEcRec*nbRowsPerEcRec)

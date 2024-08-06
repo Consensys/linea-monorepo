@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -13,12 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// makes Define and Prove function for testing [NewCustomizedKeccak]
+// makes Define and Prove function for testing [NewKeccakOverBlocks]
 func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
 	prover wizard.ProverStep,
 ) {
-	mod := &CustomizedkeccakHash{}
+	mod := &KeccakOverBlocks{}
 	maxNumKeccakF := 16
 	size := utils.NextPowerOfTwo(maxNumKeccakF * generic.KeccakUsecase.NbOfLanesPerBlock())
 
@@ -26,7 +27,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 		comp := builder.CompiledIOP
 		createCol := common.CreateColFn(comp, "Test_Customized_Keccak", size)
 
-		inp := CustomizedKeccakInputs{
+		inp := KeccakOverBlockInputs{
 			LaneInfo: LaneInfo{
 				Lanes:                createCol("Lanes"),
 				IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
@@ -36,7 +37,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 			MaxNumKeccakF: maxNumKeccakF,
 			Provider:      providers,
 		}
-		mod = NewCustomizedKeccak(comp, inp)
+		mod = NewKeccakOverBlocks(comp, inp)
 	}
 
 	prover = func(run *wizard.ProverRuntime) {
@@ -45,7 +46,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 		mod.Run(run)
 
 		// check the hash result
-		permTrace := GenerateTrace(mod.Inputs.Provider)
+		permTrace := keccak.GenerateTrace(mod.Inputs.Provider)
 		hi := mod.HashHi.GetColAssignment(run).IntoRegVecSaveAlloc()
 		lo := mod.HashLo.GetColAssignment(run).IntoRegVecSaveAlloc()
 		for i, expectedHash := range permTrace.HashOutPut {

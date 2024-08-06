@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
@@ -13,7 +14,7 @@ import (
 
 // it receives columns hashNum and toHash and generates GenDataModule.
 func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule,
-	hashNumInt, toHashInt []int, path ...string) {
+	hashNumInt, toHashInt []int, flag bool, path ...string) {
 
 	var (
 		size    = gdm.Limb.Size()
@@ -45,8 +46,16 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 
 		toHash[i] = field.NewElement(uint64(toHashInt[i]))
 		hashNum[i] = field.NewElement(uint64(hashNumInt[i]))
-		numBytesInt, numBytesF := randNBytes(rng)
-		nBytes[i] = numBytesF
+		var numBytesInt int
+		var numBytesF field.Element
+		if flag {
+			numBytesInt, numBytesF = randNBytes(rng)
+			nBytes[i] = numBytesF
+		} else {
+			nBytes[i] = field.NewElement(16)
+			numBytesInt = 16
+		}
+
 		limbs[i] = randLimbs(rng, numBytesInt)
 	}
 
@@ -117,4 +126,66 @@ func CreateGenDataModule(
 	gbm.NBytes = createCol("NBYTES")
 	gbm.TO_HASH = createCol("TO_HASH")
 	return gbm
+}
+
+// CreateGenInfoModule is used for testing, it commits to the [generic.GenInfoModule] columns,
+func CreateGenInfoModule(
+	comp *wizard.CompiledIOP,
+	name string,
+	size int,
+) (gim generic.GenInfoModule) {
+	createCol := common.CreateColFn(comp, name, size)
+	gim.HashHi = createCol("HASH_HI")
+	gim.HashLo = createCol("HASH_LO")
+	gim.IsHashHi = createCol("IS_HASH_HI")
+	gim.IsHashLo = createCol("IS_HASH_LO")
+	return gim
+}
+
+// it embeds  the expected hash (for the steam encoded inside gdm) inside gim columns.
+func GenerateAndAssignGenInfoModule(
+	run *wizard.ProverRuntime,
+	gim *generic.GenInfoModule,
+	gdm generic.GenDataModule,
+	isHashHi, isHashLo []int,
+) {
+
+	var (
+		hashHi      = common.NewVectorBuilder(gim.HashHi)
+		hashLo      = common.NewVectorBuilder(gim.HashLo)
+		isHashHiCol = common.NewVectorBuilder(gim.IsHashHi)
+		isHashLoCol = common.NewVectorBuilder(gim.IsHashLo)
+	)
+	streams := gdm.ScanStreams(run)
+	var res [][32]byte
+	for _, stream := range streams {
+		res = append(res, keccak.Hash(stream))
+
+	}
+	ctrHi := 0
+	ctrLo := 0
+	for i := range isHashHi {
+		if isHashHi[i] == 1 {
+			hashHi.PushHi(res[ctrHi])
+			isHashHiCol.PushInt(1)
+			ctrHi++
+		} else {
+			hashHi.PushInt(0)
+			isHashHiCol.PushInt(0)
+		}
+
+		if isHashLo[i] == 1 {
+			hashLo.PushLo(res[ctrLo])
+			isHashLoCol.PushInt(1)
+			ctrLo++
+		} else {
+			hashLo.PushInt(0)
+			isHashLoCol.PushInt(0)
+		}
+	}
+
+	hashHi.PadAndAssign(run)
+	hashLo.PadAndAssign(run)
+	isHashHiCol.PadAndAssign(run)
+	isHashLoCol.PadAndAssign(run)
 }
