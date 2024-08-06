@@ -61,6 +61,9 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 		),
 	)
 
+	// inter, the old state column, is initially zero
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.inter))
+
 	// Counter constraints
 	// First, the counter starts from 0
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "COUNTER_LOCAL"), ifaces.ColumnAsVariable(hasher.counter))

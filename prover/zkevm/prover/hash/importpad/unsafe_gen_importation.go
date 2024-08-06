@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 )
 
-// It prints the importation columns, it is not safe to be used directly for test.
-// Rather the csv file for importation columns should be filled up manually as the expected values.
+// It prints the Importation columns, it is not safe to be used directly for test.
+// Rather the csv file for Importation columns should be filled up manually as the expected values.
 // The function is kept here for reproducibility.
 //
 //lint:ignore U1000 Ignore unused function temporarily for debugging

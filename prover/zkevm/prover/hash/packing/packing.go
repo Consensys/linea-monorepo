@@ -1,4 +1,4 @@
-// Packing package implements the utilities for packing
+// Packing package implements the utilities for Packing
 // the limbs of variable length to the lanes of fixed length.
 package packing
 
@@ -28,16 +28,16 @@ const (
 	BLOCK              = "BLOCK"
 )
 
-// Importaion implements the set of required columns for launching the packing module.
+// Importaion implements the set of required columns for launching the Packing module.
 type Importation struct {
-	// The set of the limbs that are subject to packing (i.e., should be  pushed into the pack).
+	// The set of the limbs that are subject to Packing (i.e., should be  pushed into the pack).
 	// Limbs are 16 bytes, left aligned.
 	Limb ifaces.Column
 	// It is 1 if the associated limb is the first limb of the new hash.
 	IsNewHash ifaces.Column
 	// NByte is the meaningful length of limbs in byte.
 	// \Sum NByte[i] should divide the blockSize,
-	// otherwise a padding step is required before calling the packing module
+	// otherwise a padding step is required before calling the Packing module
 	NByte ifaces.Column
 	// The active part of the columns in the Importation module
 	IsActive ifaces.Column
@@ -54,26 +54,26 @@ type PackingInput struct {
 	Imported Importation
 }
 
-// packing implements the [wizard.ProverAction] receiving the limbs and relevant parameters,
+// Packing implements the [wizard.ProverAction] receiving the limbs and relevant parameters,
 //
 //	it repack them in the lanes of the same size.
-type packing struct {
+type Packing struct {
 	Inputs PackingInput
 
 	// submodules
 	Cleaning   cleaningCtx
 	LookUps    lookUpTables
 	Decomposed decomposition
-	// it stores the result of the packing
+	// it stores the result of the Packing
 	// limbs are repacked in Lane column.
 	Repacked laneRepacking
 	Block    block
 }
 
 /*
-NewPack creates a packing object.
+NewPack creates a Packing object.
 
-The lanes and relevant metadata can be accessed via packing.Repacked.
+The lanes and relevant metadata can be accessed via Packing.Repacked.
 
 It panics if  the columns in Imported have a size different from;
 
@@ -81,7 +81,7 @@ It panics if  the columns in Imported have a size different from;
 
 It also panics if the number of generated blocks passes the limit inp.maxNumBlocks
 */
-func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *packing {
+func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *Packing {
 	var (
 		isNewHash  = inp.Imported.IsNewHash
 		lookup     = NewLookupTables(comp)
@@ -92,7 +92,7 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *packing {
 		block      = newBlock(comp, getBlockInputs(lanes, inp.PackingParam))
 	)
 
-	return &packing{
+	return &Packing{
 		Inputs:     inp,
 		Cleaning:   cleaning,
 		Decomposed: decomposed,
@@ -101,8 +101,8 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *packing {
 	}
 }
 
-// Run assign the packing module.
-func (pck *packing) Run(run *wizard.ProverRuntime) {
+// Run assign the Packing module.
+func (pck *Packing) Run(run *wizard.ProverRuntime) {
 
 	// assign subModules
 	pck.Cleaning.Assign(run)
@@ -111,7 +111,7 @@ func (pck *packing) Run(run *wizard.ProverRuntime) {
 	pck.Block.Assign(run)
 }
 
-// it stores the inputs /outputs of spaghettifier used in the packing module.
+// it stores the inputs /outputs of spaghettifier used in the Packing module.
 type spaghettiCtx struct {
 	// ContentSpaghetti
 	decLimbSp, decLenSp, decLenPowerSp ifaces.Column

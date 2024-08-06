@@ -32,7 +32,7 @@ type ImportAndPadInputs struct {
 // columns.
 type importation struct {
 
-	// Inputs tracks the input structure used for instantiating this [importation]
+	// Inputs tracks the input structure used for instantiating this [Importation]
 	Inputs         ImportAndPadInputs
 	HashNum        ifaces.Column // identifier for the hash the current limb belongs to
 	Limbs          ifaces.Column // limbs declared by the current row
@@ -51,7 +51,7 @@ type importation struct {
 }
 
 // importationAssignmentBuilder is a utility struct used to build an assignment
-// for the importation module. It is an internal of the package and is called
+// for the Importation module. It is an internal of the package and is called
 // in the [importation.Run] function.
 type importationAssignmentBuilder struct {
 	HashNum        *common.VectorBuilder
@@ -75,7 +75,7 @@ type padderAssignmentBuilder interface {
 	padAndAssign(run *wizard.ProverRuntime)
 }
 
-// ImportAndPad defines and constrains the importation and the padding of a
+// ImportAndPad defines and constrains the Importation and the padding of a
 // group of generic byte module following a prespecified padding strategy.
 func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int) *importation {
 
@@ -180,7 +180,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	return res
 }
 
-// Run performs the assignment of the importation module.
+// Run performs the assignment of the Importation module.
 func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 	var (

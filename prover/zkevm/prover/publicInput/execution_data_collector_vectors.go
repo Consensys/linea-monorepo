@@ -13,6 +13,8 @@ type ExecutionDataCollectorVectors struct {
 	IsActive                                                                       []field.Element
 	IsNoTx, IsBlockHashHi, IsBlockHashLo, IsTimestamp, IsTxRLP, IsAddrHi, IsAddrLo []field.Element
 
+	Ct []field.Element
+
 	FirstAbsTxIDBlock, LastAbsTxIDBlock []field.Element
 
 	EndOfRlpSegment []field.Element
@@ -36,6 +38,7 @@ func NewExecutionDataCollectorVectors(size int) *ExecutionDataCollectorVectors {
 		IsTxRLP:           make([]field.Element, size),
 		IsAddrHi:          make([]field.Element, size),
 		IsAddrLo:          make([]field.Element, size),
+		Ct:                make([]field.Element, size),
 		FirstAbsTxIDBlock: make([]field.Element, size),
 		LastAbsTxIDBlock:  make([]field.Element, size),
 		EndOfRlpSegment:   make([]field.Element, size),
@@ -69,6 +72,7 @@ func (vect *ExecutionDataCollectorVectors) SetLimbAndUnalignedLimb(totalCt int, 
 }
 
 func (vect *ExecutionDataCollectorVectors) SetCounters(totalCt, blockCt, absTxCt, absTxIdMax int) {
+	vect.Ct[totalCt].SetInt64(int64(totalCt))
 	vect.BlockID[totalCt].SetInt64(int64(blockCt + 1))
 	vect.AbsTxID[totalCt].SetInt64(int64(absTxCt))
 	vect.AbsTxIDMax[totalCt].SetInt64(int64(absTxIdMax))
