@@ -101,7 +101,11 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 	}
 
 	// declare submodules
-	res.txSignature = newTxSignatures(comp, rlpTxn, size)
+	txSignInputs := txSignatureInputs{
+		RlpTxn: rlpTxn,
+		ac:     *res,
+	}
+	res.txSignature = newTxSignatures(comp, txSignInputs)
 	res.EcRecover = newEcRecover(comp, limits, ecSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
 	res.Addresses = newAddress(comp, size, res.EcRecover, res, txSource)
@@ -149,7 +153,7 @@ func (ac *Antichamber) Assign(run *wizard.ProverRuntime, ecSrc *ecDataSource, tx
 	nbActualEcRecover := ecSrc.nbActualInstances(run)
 	ac.assignAntichamber(run, nbActualEcRecover)
 	ac.EcRecover.Assign(run, ecSrc)
-	ac.txSignature.assignTxSignature(run, rlpTxn, nbActualEcRecover, ac.size)
+	ac.txSignature.assignTxSignature(run)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
 	ac.AlignedGnarkData.Assign(run)

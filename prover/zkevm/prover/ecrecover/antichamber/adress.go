@@ -1,8 +1,6 @@
 package antichamber
 
 import (
-	"fmt"
-
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
@@ -118,6 +116,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 		td.isFrom, addr.isAddressFromTxnData,
 	)
 
+	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
 		sym.Mul(ac.IsActive,
 			sym.Sub(addr.hashNum, ac.ID, 1)),
@@ -220,7 +219,6 @@ func (addr *Addresses) assignAddress(
 		}
 	}
 	hashNum.PadAndAssign(run)
-	fmt.Printf("id %v\n", vector.Prettify(id))
 	addr.assignMainColumns(run, nbEcRecover, size, uaGnark)
 	addr.assignHelperColumns(run, ecRec)
 }

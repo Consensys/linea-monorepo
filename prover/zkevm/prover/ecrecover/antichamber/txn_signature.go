@@ -5,8 +5,11 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -17,27 +20,58 @@ import (
 //
 // columns for rlp-txn lives on the arithmetization side.
 type txSignature struct {
-	// we dont need it since order is preserved by projection.
-	// txID     ifaces.Column
+	Inputs   *txSignatureInputs
 	txHashHi ifaces.Column
 	txHashLo ifaces.Column
 	isTxHash ifaces.Column
 
-	// provider for keccak, Provider contain the inputs and outputs of keccak hash.
+	// provider for keccak, Provider contains the inputs and outputs of keccak hash.
 	provider generic.GenericByteModule
 }
 
-func newTxSignatures(comp *wizard.CompiledIOP, rlpTxn generic.GenDataModule, size int) *txSignature {
-	createCol := createColFn(comp, NAME_TXSIGNATURE, size)
+type txSignatureInputs struct {
+	RlpTxn generic.GenDataModule
+	ac     Antichamber
+}
 
-	// declare the native columns
-	res := &txSignature{
-		txHashHi: createCol("TX_HASH_HI"),
-		txHashLo: createCol("TX_HASH_LO"),
-		isTxHash: createCol("TX_IS_HASH_HI"),
-	}
+func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *txSignature {
+	var (
+		createCol = createColFn(comp, NAME_TXSIGNATURE, inp.ac.size)
 
-	res.provider = res.GetProvider(comp, rlpTxn)
+		res = &txSignature{
+			txHashHi: createCol("TX_HASH_HI"),
+			txHashLo: createCol("TX_HASH_LO"),
+			isTxHash: createCol("TX_IS_HASH_HI"),
+
+			Inputs: &inp,
+		}
+	)
+
+	commonconstraints.MustBeBinary(comp, res.isTxHash)
+
+	// isTxHash = 1 if isFeching = 1 and Source = 1
+	comp.InsertGlobal(0, ifaces.QueryIDf("IS_TX_HASH"),
+		sym.Mul(inp.ac.IsFetching, inp.ac.Source,
+			sym.Sub(1, res.isTxHash),
+		),
+	)
+
+	// txHashHi remains the same between two fetchings.
+	comp.InsertGlobal(0, "txHashHI_REMAIN_SAME",
+		sym.Mul(inp.ac.IsActive,
+			sym.Sub(1, inp.ac.IsFetching),
+			sym.Sub(res.txHashHi, column.Shift(res.txHashHi, -1))),
+	)
+
+	// txHashLo remains the same between two fetchings.
+	comp.InsertGlobal(0, "txHashLO_REMAIN_SAME",
+		sym.Mul(inp.ac.IsActive,
+			sym.Sub(1, inp.ac.IsFetching),
+			sym.Sub(res.txHashLo, column.Shift(res.txHashLo, -1)),
+		),
+	)
+
+	res.provider = res.GetProvider(comp, inp.RlpTxn)
 
 	return res
 }
@@ -59,7 +93,6 @@ func (txn *txSignature) GetProvider(comp *wizard.CompiledIOP, rlpTxn generic.Gen
 // it builds an infoModule from native columns
 func (txn *txSignature) buildInfoModule() generic.GenInfoModule {
 	info := generic.GenInfoModule{
-		// HashNum:   txn.txID,
 		HashHi:   txn.txHashHi,
 		HashLo:   txn.txHashLo,
 		IsHashHi: txn.isTxHash,
@@ -69,16 +102,19 @@ func (txn *txSignature) buildInfoModule() generic.GenInfoModule {
 }
 
 // it assign the native columns
-func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, rlpTxn generic.GenDataModule, nbEcRecover, size int) {
-	n := startAt(nbEcRecover)
+func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime) {
 
-	hashHi := vector.Repeat(field.Zero(), n)
-	hashLo := vector.Repeat(field.Zero(), n)
-	isTxHash := vector.Repeat(field.Zero(), n)
+	var (
+		nbEcRecover = txn.Inputs.ac.Limits.MaxNbEcRecover
+		n           = startAt(nbEcRecover)
+		hashHi      = vector.Repeat(field.Zero(), n)
+		hashLo      = vector.Repeat(field.Zero(), n)
+		isTxHash    = vector.Repeat(field.Zero(), n)
+		size        = txn.Inputs.ac.size
+		permTrace   = keccak.GenerateTrace(txn.Inputs.RlpTxn.ScanStreams(run))
+		v, w        field.Element
+	)
 
-	permTrace := keccak.GenerateTrace(rlpTxn.ScanStreams(run))
-
-	var v, w field.Element
 	for _, digest := range permTrace.HashOutPut {
 		hi := digest[:halfDigest]
 		lo := digest[halfDigest:]
