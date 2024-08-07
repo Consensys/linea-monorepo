@@ -222,15 +222,24 @@ func (ctx *compilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 	)
 
 	parallel.Execute(len(ctx.Columns.RangeChecked), func(start, stop int) {
-		for i := range ctx.Columns.RangeChecked {
+		for i := start; i < stop; i++ {
 
 			var (
-				l      = ctx.Columns.L[i].GetColAssignment(run)
-				r      = ctx.Columns.R[i].GetColAssignment(run)
-				o      = ctx.Columns.O[i].GetColAssignment(run)
-				rcSize = ctx.Columns.RangeChecked[i].Size()
-				rc     = make([]field.Element, 0, rcSize)
+				activated = ctx.Columns.Activators[i].GetColAssignment(run).Get(0)
+				l         = ctx.Columns.L[i].GetColAssignment(run)
+				r         = ctx.Columns.R[i].GetColAssignment(run)
+				o         = ctx.Columns.O[i].GetColAssignment(run)
+				rcSize    = ctx.Columns.RangeChecked[i].Size()
+				rc        = make([]field.Element, 0, rcSize)
 			)
+
+			if activated.IsZero() {
+				run.AssignColumn(
+					ctx.Columns.RangeChecked[i].GetColID(),
+					smartvectors.NewConstant(field.Zero(), rcSize),
+				)
+				continue
+			}
 
 			for i := range rcLValue {
 				if rcLValue[i].IsOne() {

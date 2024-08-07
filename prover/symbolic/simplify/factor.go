@@ -330,8 +330,6 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
 		return nil, false
 	}
 
-	fmt.Printf("returning the %++v with exponents %++v\n", e.Children, factoredExponents)
-
 	return sym.NewProduct(e.Children, factoredExponents), true
 }
 

@@ -12,8 +12,7 @@ import (
 
 // WitnessAssigner allows obtaining witness assignment for a circuit.
 type WitnessAssigner interface {
-	// NBInstance returns the number of concretely provided instances.
-	NbInstances() int
+	NumEffWitnesses(run *wizard.ProverRuntime) int
 	Assign(run *wizard.ProverRuntime, i int) (private, public witness.Witness, err error)
 }
 
@@ -22,7 +21,7 @@ type witnessFuncAssigner struct {
 	assigners []func() frontend.Circuit
 }
 
-func (w *witnessFuncAssigner) NbInstances() int {
+func (w *witnessFuncAssigner) NumEffWitnesses(run *wizard.ProverRuntime) int {
 	return len(w.assigners)
 }
 

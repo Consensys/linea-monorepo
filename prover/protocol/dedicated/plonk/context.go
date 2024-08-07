@@ -56,6 +56,12 @@ type compilationCtx struct {
 		Ql, Qr, Qm, Qo, Qk, Qcp ifaces.Column
 		// Witness columns
 		L, R, O, PI, TinyPI, Cp []ifaces.Column
+		// Activators are tiny verifier-visible columns that are used to
+		// deactivate the constraints happening for constraints that are not
+		// happening in the system. The verifier is required to check that the
+		// columns are assigned to binary values and that they are structured
+		// as a sequence of 1s followed by a sequence of 0s.
+		Activators []ifaces.Column
 		// Columns representing the permutation
 		S [3]ifaces.ColAssignment
 		// Commitment randomness
