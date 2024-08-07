@@ -32,10 +32,10 @@ abstract contract L2MessageServiceV1 is
 
   address internal _messageSender;
 
-  // @dev initialise to save user cost with existing slot.
+  // @dev initialize to save user cost with existing slot.
   uint256 public nextMessageNumber;
 
-  // @dev initialise minimumFeeInWei variable.
+  // @dev initialize minimumFeeInWei variable.
   uint256 public minimumFeeInWei;
 
   // @dev adding these should not affect storage as they are constants and are stored in bytecode.
@@ -48,44 +48,6 @@ abstract contract L2MessageServiceV1 is
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
-  }
-
-  /**
-   * @notice Initialises underlying message service dependencies.
-   * @param _securityCouncil The address owning the security council role.
-   * @param _l1l2MessageSetter The address owning the add L1L2MessageHashes functionality.
-   * @param _rateLimitPeriod The period to rate limit against.
-   * @param _rateLimitAmount The limit allowed for withdrawing the period.
-   */
-  function initialize(
-    address _securityCouncil,
-    address _l1l2MessageSetter,
-    uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
-  ) external initializer {
-    if (_securityCouncil == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    if (_l1l2MessageSetter == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    __ERC165_init();
-    __Context_init();
-    __AccessControl_init();
-    __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
-    __L2MessageManager_init(_l1l2MessageSetter);
-    __ReentrancyGuard_init();
-
-    nextMessageNumber = 1;
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _securityCouncil);
-    _grantRole(MINIMUM_FEE_SETTER_ROLE, _securityCouncil);
-    _grantRole(RATE_LIMIT_SETTER_ROLE, _securityCouncil);
-    _grantRole(PAUSE_MANAGER_ROLE, _securityCouncil);
-
-    _messageSender = DEFAULT_SENDER_ADDRESS;
   }
 
   /**

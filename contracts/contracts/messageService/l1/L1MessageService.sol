@@ -34,32 +34,14 @@ abstract contract L1MessageService is
   /**
    * @notice Initialises underlying message service dependencies.
    * @dev _messageSender is initialised to a non-zero value for gas efficiency on claiming.
-   * @param _limitManagerAddress The address owning the rate limiting management role.
-   * @param _pauseManagerAddress The address owning the pause management role.
    * @param _rateLimitPeriod The period to rate limit against.
    * @param _rateLimitAmount The limit allowed for withdrawing the period.
    */
-  function __MessageService_init(
-    address _limitManagerAddress,
-    address _pauseManagerAddress,
-    uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
-  ) internal onlyInitializing {
-    if (_limitManagerAddress == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    if (_pauseManagerAddress == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
+  function __MessageService_init(uint256 _rateLimitPeriod, uint256 _rateLimitAmount) internal onlyInitializing {
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
-
-    _grantRole(RATE_LIMIT_SETTER_ROLE, _limitManagerAddress);
-    _grantRole(PAUSE_MANAGER_ROLE, _pauseManagerAddress);
 
     nextMessageNumber = 1;
   }

@@ -14,4 +14,66 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
   /// @dev Total contract storage is 50 slots with the gap below.
   /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap_L2MessageService;
+
+  /**
+   * @notice Initializes underlying message service dependencies.
+   * @param _rateLimitPeriod The period to rate limit against.
+   * @param _rateLimitAmount The limit allowed for withdrawing the period.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _pauseTypeRoles The list of pause type roles.
+   * @param _unpauseTypeRoles The list of unpause type roles.
+   */
+  function initialize(
+    uint256 _rateLimitPeriod,
+    uint256 _rateLimitAmount,
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
+  ) external initializer {
+    __ERC165_init();
+    __Context_init();
+    __AccessControl_init();
+    __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
+
+    __ReentrancyGuard_init();
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+
+    _resetPermissions(_roleAddresses);
+
+    nextMessageNumber = 1;
+
+    _messageSender = DEFAULT_SENDER_ADDRESS;
+  }
+
+  /**
+   * @notice Resets permissions for a list of addresses.
+   * @dev This function is a reinitializer and can only be called once per version.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _pauseTypeRoles The list of pause type roles.
+   * @param _unpauseTypeRoles The list of unpause type roles.
+   */
+  function reinitializePauseTypesAndPermissions(
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
+  ) external reinitializer(2) {
+    _resetPermissions(_roleAddresses);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+  }
+
+  /**
+   * @notice Resets permissions for a list of addresses.
+   * @dev This function is a reinitializer and can only be called once per version.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   */
+  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+    uint256 roleAddressesLength = _roleAddresses.length;
+
+    for (uint256 i; i < roleAddressesLength; i++) {
+      if (_roleAddresses[i].addressWithRole == address(0)) {
+        revert ZeroAddressNotAllowed();
+      }
+      _grantRole(_roleAddresses[i].role, _roleAddresses[i].addressWithRole);
+    }
+  }
 }
