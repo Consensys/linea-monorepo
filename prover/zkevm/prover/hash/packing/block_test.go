@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,22 +27,24 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 		// if the blockSize is not consistent with PackingParam, newPack() would panic.
 		nbOfLanesPerBlock = uc.BlockSizeBytes()
 		size              = utils.NextPowerOfTwo(maxNumBlock * nbOfLanesPerBlock)
-		effectiveSize     = maxNumBlock / 2 * nbOfLanesPerBlock
+		effectiveSize     = maxNumBlock * nbOfLanesPerBlock
 	)
 
 	block := block{}
-	var isActive ifaces.Column
+	var isActive, isFirstLaneOfHash ifaces.Column
 
 	define = func(build *wizard.Builder) {
 		comp := build.CompiledIOP
 
 		// commit to isActive
 		isActive = comp.InsertCommit(0, "IsActive", size)
+		isFirstLaneOfHash = comp.InsertCommit(0, "IsFirstLaneOfHash", size)
 
 		inp := blockInput{
 			lanes: laneRepacking{
-				IsLaneActive: isActive,
-				Size:         size,
+				IsLaneActive:         isActive,
+				Size:                 size,
+				IsFirstLaneOfNewHash: isFirstLaneOfHash,
 			},
 			param: uc,
 		}
@@ -55,6 +58,17 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 		// assign isActive
 		col := vector.Repeat(field.One(), effectiveSize)
 		run.AssignColumn(isActive.GetColID(), smartvectors.RightZeroPadded(col, size))
+		// assign isFirstLaneOfHash
+		isFirst := common.NewVectorBuilder(isFirstLaneOfHash)
+		for i := 0; i < effectiveSize; i++ {
+			if i%nbOfLanesPerBlock == 0 && i/nbOfLanesPerBlock == 2 {
+				isFirst.PushInt(1)
+			} else {
+				isFirst.PushInt(0)
+			}
+
+		}
+		isFirst.PadAndAssign(run)
 
 		block.Assign(run)
 	}
