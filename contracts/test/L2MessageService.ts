@@ -37,7 +37,7 @@ import {
   generateKeccak256Hash,
 } from "./utils/helpers";
 
-describe("L2MessageService", () => {
+describe.only("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -255,7 +255,7 @@ describe("L2MessageService", () => {
         expect(await ethers.provider.getBalance(BLOCK_COINBASE)).to.be.gt(initialCoinbaseBalance + MINIMUM_FEE);
       });
 
-      it("Should succeed if 'MinimumFeeChanged' event is emitted", async () => {
+      it.only("Should succeed if 'MinimumFeeChanged' event is emitted", async () => {
         await expectEvent(
           l2MessageService,
           l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE),

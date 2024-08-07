@@ -57,20 +57,17 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
    * @param _usedAmount The amount used to be added.
    */
   function _addUsedAmount(uint256 _usedAmount) internal {
-    uint256 currentPeriodAmountTemp;
-
     if (currentPeriodEnd < block.timestamp) {
       currentPeriodEnd = block.timestamp + periodInSeconds;
-      currentPeriodAmountTemp = _usedAmount;
     } else {
-      currentPeriodAmountTemp = currentPeriodAmountInWei + _usedAmount;
+      _usedAmount += currentPeriodAmountInWei;
     }
 
-    if (currentPeriodAmountTemp > limitInWei) {
+    if (_usedAmount > limitInWei) {
       revert RateLimitExceeded();
     }
 
-    currentPeriodAmountInWei = currentPeriodAmountTemp;
+    currentPeriodAmountInWei = _usedAmount;
   }
 
   /**

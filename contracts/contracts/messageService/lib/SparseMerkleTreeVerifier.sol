@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.24;
 
+import { Utils } from "../../lib/Utils.sol";
+
 /**
  * @title Library to verify sparse merkle proofs and to get the leaf hash value
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 library SparseMerkleTreeVerifier {
+  using Utils for *;
+
   /**
    * @notice Verify merkle proof
    * @param _leafHash Leaf hash.
@@ -24,24 +28,11 @@ library SparseMerkleTreeVerifier {
 
     for (uint256 height; height < _proof.length; ++height) {
       if (((_leafIndex >> height) & 1) == 1) {
-        node = _efficientKeccak(_proof[height], node);
+        node = Utils._efficientKeccak(_proof[height], node);
       } else {
-        node = _efficientKeccak(node, _proof[height]);
+        node = Utils._efficientKeccak(node, _proof[height]);
       }
     }
     return node == _root;
-  }
-
-  /**
-   * @notice Performs a gas optimized keccak hash
-   * @param _left Left value.
-   * @param _right Right value.
-   */
-  function _efficientKeccak(bytes32 _left, bytes32 _right) internal pure returns (bytes32 value) {
-    assembly {
-      mstore(0x00, _left)
-      mstore(0x20, _right)
-      value := keccak256(0x00, 0x40)
-    }
   }
 }

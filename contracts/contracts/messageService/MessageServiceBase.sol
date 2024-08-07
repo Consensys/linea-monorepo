@@ -19,6 +19,13 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
   uint256[10] private __base_gap;
 
   /**
+   * @dev Event emitted when the remote sender is set.
+   * @param remoteSender The address of the new remote sender.
+   * @param setter The address of the account that set the remote sender.
+   */
+  event RemoteSenderSet(address indexed remoteSender, address indexed setter);
+
+  /**
    * @dev Thrown when the caller address is not the message service address
    */
   error CallerIsNotMessageService();
@@ -71,6 +78,7 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
 
   /**
    * @notice Sets the remote sender
+   * @dev This function sets the remote sender address and emits the RemoteSenderSet event.
    * @param _remoteSender The authorized remote sender address, cannot be empty.
    */
   function _setRemoteSender(address _remoteSender) internal {
@@ -79,5 +87,6 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
     }
 
     remoteSender = _remoteSender;
+    emit RemoteSenderSet(_remoteSender, msg.sender);
   }
 }

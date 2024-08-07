@@ -166,6 +166,7 @@ class CoordinatorConfigTest {
         "b015579f" to "IsNotPaused",
         "3b174434" to "MessageHashesListLengthHigherThanOneHundred",
         // L2 Message Service
+        "6446cc9c" to "MessageHashesListLengthIsZero",
         "d39e75f9" to "L1MessageNumberSynchronizationWrong",
         "7557a60a" to "L1RollingHashSynchronizationWrong",
         "36a4bb94" to "FinalRollingHashIsZero"

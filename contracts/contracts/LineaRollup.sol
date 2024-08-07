@@ -191,6 +191,10 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       revert BlobSubmissionDataIsMissing();
     }
 
+    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(blobSubmissionLength);
+    }
+
     bytes32 currentDataEvaluationPoint;
     bytes32 currentDataHash;
     uint256 lastFinalizedBlockNumber = currentL2BlockNumber;
