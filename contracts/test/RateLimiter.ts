@@ -201,4 +201,33 @@ describe("Rate limiter", () => {
       await assertCurrentPeriodAmount(0n);
     });
   });
+
+  describe("When adding used amounts", () => {
+    it("should not change currentPeriodAmountInWei when _usedAmount is 0", async () => {
+      await testRateLimiter.withdrawSomeAmount(100n);
+
+      const initialAmount = await testRateLimiter.currentPeriodAmountInWei();
+
+      await testRateLimiter.withdrawSomeAmount(0);
+
+      const finalAmount = await testRateLimiter.currentPeriodAmountInWei();
+
+      expect(finalAmount).to.equal(initialAmount);
+    });
+
+    it("should not change currentPeriodAmountInWei after 24 hours passed when _usedAmount is 0", async () => {
+      await testRateLimiter.withdrawSomeAmount(100n);
+
+      const initialAmount = await testRateLimiter.currentPeriodAmountInWei();
+
+      // 24 hours pass
+      await time.increase(ONE_DAY_IN_SECONDS);
+
+      await testRateLimiter.withdrawSomeAmount(0);
+
+      const finalAmount = await testRateLimiter.currentPeriodAmountInWei();
+
+      expect(finalAmount).to.equal(initialAmount);
+    });
+  });
 });
