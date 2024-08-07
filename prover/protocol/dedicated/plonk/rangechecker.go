@@ -238,27 +238,27 @@ func (ctx *compilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 					ctx.Columns.RangeChecked[i].GetColID(),
 					smartvectors.NewConstant(field.Zero(), rcSize),
 				)
-				continue
+			} else {
+
+				for i := range rcLValue {
+					if rcLValue[i].IsOne() {
+						rc = append(rc, l.Get(i))
+					}
+
+					if rcRValue[i].IsOne() {
+						rc = append(rc, r.Get(i))
+					}
+
+					if rcOValue[i].IsOne() {
+						rc = append(rc, o.Get(i))
+					}
+				}
+
+				run.AssignColumn(
+					ctx.Columns.RangeChecked[i].GetColID(),
+					smartvectors.RightZeroPadded(rc, rcSize),
+				)
 			}
-
-			for i := range rcLValue {
-				if rcLValue[i].IsOne() {
-					rc = append(rc, l.Get(i))
-				}
-
-				if rcRValue[i].IsOne() {
-					rc = append(rc, r.Get(i))
-				}
-
-				if rcOValue[i].IsOne() {
-					rc = append(rc, o.Get(i))
-				}
-			}
-
-			run.AssignColumn(
-				ctx.Columns.RangeChecked[i].GetColID(),
-				smartvectors.RightZeroPadded(rc, rcSize),
-			)
 
 			ctx.RangeCheck.limbDecomposition[i].Run(run)
 		}

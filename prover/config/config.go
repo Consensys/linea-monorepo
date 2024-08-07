@@ -1,14 +1,11 @@
 package config
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"text/template"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -205,9 +202,6 @@ type Execution struct {
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
 
-	// Features specifies the optional features that can be used to tune the definition of the ZkEvm.
-	Features Features `mapstructure:"features"`
-
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
 }
@@ -254,26 +248,4 @@ func (cfg *WithRequestDir) DirTo() string {
 
 func (cfg *WithRequestDir) DirDone() string {
 	return path.Join(cfg.RequestsRootDir, RequestsDoneSubDir)
-}
-
-// Features specifies the optional features that can be used to tune the
-// definition of the ZkEvm.
-type Features struct {
-	WithKeccak bool `mapstructure:"with_keccak"`
-	WithECDSA  bool `mapstructure:"with_ecdsa"`
-}
-
-func (f *Features) Checksum() string {
-	// encode the struct to json, then hash it
-	encoded, err := json.Marshal(f)
-	if err != nil {
-		panic(err) // should never happen
-	}
-
-	digest, err := utils.Digest(bytes.NewReader(encoded))
-	if err != nil {
-		panic(err) // should never happen
-	}
-
-	return digest
 }

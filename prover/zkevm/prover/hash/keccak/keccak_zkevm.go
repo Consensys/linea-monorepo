@@ -11,11 +11,6 @@ import (
 	gen_acc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
 
-type KeccakZkEVMInput struct {
-	Settings *Settings
-	// the list of providers, encoding inputs and outputs of hash
-	Providers []generic.GenericByteModule
-}
 type KeccakZkEVM struct {
 	Settings *Settings
 
@@ -25,20 +20,33 @@ type KeccakZkEVM struct {
 	pa_keccak  wizard.ProverAction
 }
 
-func NewKeccakZkEVM(comp *wizard.CompiledIOP, inp KeccakZkEVMInput) *KeccakZkEVM {
+func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
+	return newKeccakZkEvm(
+		comp,
+		settings, append(
+			providersFromEcdsa,
+			getShakiraArithmetization(comp),
+			getRlpAddArithmetization(comp),
+		),
+	)
+}
+
+func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []generic.GenericByteModule) *KeccakZkEVM {
 
 	// create the list of  [generic.GenDataModule] and [generic.GenInfoModule]
-	var gdm []generic.GenDataModule
-	var gim []generic.GenInfoModule
+	var (
+		gdm []generic.GenDataModule
+		gim []generic.GenInfoModule
+	)
 
-	for i := range inp.Providers {
-		gdm = append(gdm, inp.Providers[i].Data)
-		gim = append(gim, inp.Providers[i].Info)
+	for i := range providers {
+		gdm = append(gdm, providers[i].Data)
+		gim = append(gim, providers[i].Info)
 	}
 
 	var (
 		inpAcc = gen_acc.GenericAccumulatorInputs{
-			MaxNumKeccakF: inp.Settings.MaxNumKeccakf,
+			MaxNumKeccakF: settings.MaxNumKeccakf,
 			ProvidersData: gdm,
 			ProvidersInfo: gim,
 		}
@@ -53,7 +61,7 @@ func NewKeccakZkEVM(comp *wizard.CompiledIOP, inp KeccakZkEVMInput) *KeccakZkEVM
 				Data: accData.Provider,
 				Info: accInfo.Provider,
 			},
-			MaxNumKeccakF: inp.Settings.MaxNumKeccakf,
+			MaxNumKeccakF: settings.MaxNumKeccakf,
 		}
 		keccak = NewKeccakSingleProvider(comp, keccakInp)
 	)
@@ -61,7 +69,9 @@ func NewKeccakZkEVM(comp *wizard.CompiledIOP, inp KeccakZkEVMInput) *KeccakZkEVM
 	res := &KeccakZkEVM{
 		pa_accData: accData,
 		pa_accInfo: accInfo,
-		pa_keccak:  keccak}
+		pa_keccak:  keccak,
+		Settings:   &settings,
+	}
 	return res
 
 }
@@ -70,4 +80,42 @@ func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 	k.pa_accData.Run(run)
 	k.pa_accInfo.Run(run)
 	k.pa_keccak.Run(run)
+}
+
+func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
+	return generic.GenericByteModule{
+		Data: generic.GenDataModule{
+			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
+			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
+			Limb:    comp.Columns.GetHandle("shakiradata.LIMB"),
+			NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
+			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
+		},
+		Info: generic.GenInfoModule{
+			HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
+			HashLo:   comp.Columns.GetHandle("shakira.LIMB"),
+			HashHi:   comp.Columns.GetHandle("shakira.LIMB"),
+			IsHashLo: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_LO"),
+			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
+		},
+	}
+}
+
+func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
+	return generic.GenericByteModule{
+		Data: generic.GenDataModule{
+			HashNum: comp.Columns.GetHandle("rlpaddr.COUNTER"),
+			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
+			Limb:    comp.Columns.GetHandle("rlpaddr.LIMB"),
+			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
+			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
+		},
+		Info: generic.GenInfoModule{
+			HashNum:  comp.Columns.GetHandle("rlpaddr.COUNTER"),
+			HashLo:   comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO"),
+			HashHi:   comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI"),
+			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
+			IsHashHi: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),
+		},
+	}
 }

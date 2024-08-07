@@ -84,10 +84,9 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner
 			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
 			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
-
-		if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
-			ctx.assignRangeChecked(run)
-		}
-
 	})
+
+	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+		ctx.assignRangeChecked(run)
+	}
 }

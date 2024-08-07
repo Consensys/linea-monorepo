@@ -12,7 +12,9 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
 
 const (
@@ -97,7 +99,7 @@ var (
 // behavior is motivated by the fact that the compilation process takes time
 // and we don't want to spend the compilation time twice, plus in practice we
 // won't need to call it with different configuration parameters.
-func FullZkEvm(feat *config.Features, tl *config.TracesLimits) *ZkEvm {
+func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 
@@ -107,29 +109,25 @@ func FullZkEvm(feat *config.Features, tl *config.TracesLimits) *ZkEvm {
 			Arithmetization: arithmetization.Settings{
 				Traces: tl,
 			},
-			Statemanager: statemanager.SettingsLegacy{
-				MaxMerkleProof: merkleProofLimit,
+			Statemanager: statemanager.Settings{
+				AccSettings: accumulator.Settings{
+					MaxNumProofs: merkleProofLimit,
+				},
 			},
 			// The compilation suite itself is hard-coded and reflects the
 			// actual full proof system.
 			CompilationSuite: fullCompilationSuite,
-		}
-
-		// Keccak is feature-gated although we plan to make it mandatory in the
-		// future.
-		if feat.WithKeccak {
-			settings.Keccak.Enabled = true
-			settings.Keccak.MaxNumKeccakf = keccakLimit
-		}
-
-		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = NewZkEVM(settings).Compile(
-			fullCompilationSuite,
-			wizard.VersionMetadata{
+			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/full",
 				Version: "beta-v1",
 			},
-		)
+			Keccak: keccak.Settings{
+				MaxNumKeccakf: keccakLimit,
+			},
+		}
+
+		// Initialize the Full zkEVM arithmetization
+		fullZkEvm = NewZkEVM(settings)
 
 	})
 

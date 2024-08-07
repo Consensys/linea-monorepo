@@ -28,7 +28,7 @@ type GenDataModule struct {
 	Index   ifaces.Column // identifier for the current limb
 	Limb    ifaces.Column // the content of the limb to hash
 	NBytes  ifaces.Column // indicates the size of the current limb
-	TO_HASH ifaces.Column
+	ToHash  ifaces.Column
 }
 
 // GenInfoModule collects the columns summarizing information about the hash as
@@ -45,47 +45,13 @@ type GenInfoModule struct {
 // the assignment to GenericByteModule
 type GenTrace struct {
 	HashNum, Index, Limb, NByte []field.Element
-	TO_HASH                     []field.Element
+	ToHash                      []field.Element
 	//used for the assignment to the leftovers
 	CleanLimb []field.Element
 
 	// info Trace
 	HashLo, HashHi, HashNum_Info []field.Element
 	IsHashLo, IsHashHi           []field.Element
-}
-
-// Creates a new GenericByteModule from the given definition
-func NewGenericByteModule(
-	comp *wizard.CompiledIOP,
-	definition GenericByteModuleDefinition,
-) GenericByteModule {
-
-	// Load the mandatory fields
-	res := GenericByteModule{
-		Data: GenDataModule{
-			HashNum: comp.Columns.GetHandle(definition.Data.HashNum),
-			Index:   comp.Columns.GetHandle(definition.Data.Index),
-			Limb:    comp.Columns.GetHandle(definition.Data.Limb),
-			NBytes:  comp.Columns.GetHandle(definition.Data.NBytes),
-		},
-	}
-
-	// Optionally load the info module. Not every module has an info module
-	if definition.Info != (InfoDef{}) {
-		res.Info = GenInfoModule{
-			HashNum:  comp.Columns.GetHandle(definition.Info.HashNum),
-			HashLo:   comp.Columns.GetHandle(definition.Info.HashLo),
-			HashHi:   comp.Columns.GetHandle(definition.Info.HashHi),
-			IsHashLo: comp.Columns.GetHandle(definition.Info.IsHashLo),
-			IsHashHi: comp.Columns.GetHandle(definition.Info.IsHashHi),
-		}
-	}
-
-	if len(definition.Data.TO_HASH) > 0 {
-		res.Data.TO_HASH = comp.Columns.GetHandle(definition.Data.TO_HASH)
-	}
-
-	return res
 }
 
 // ScanStream scans the receiver GenDataModule's assignment and returns the list
@@ -95,7 +61,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 	var (
 		numRow      = gdm.Limb.Size()
 		limbs       = gdm.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash      = gdm.TO_HASH.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash      = gdm.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 		hashNum     = gdm.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
 		nByte       = gdm.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		streams     = [][]byte(nil)

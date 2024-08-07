@@ -29,9 +29,9 @@ type Settings struct {
 }
 
 // NewStateManager instantiate the [StateManager] module
-func NewStateManager(comp *wizard.CompiledIOP, settings Settings) StateManager {
+func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager {
 
-	sm := StateManager{
+	sm := &StateManager{
 		stateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
 		accumulator:  accumulator.NewModule(comp, settings.AccSettings),
 		mimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{

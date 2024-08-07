@@ -31,14 +31,13 @@ func CheckerZkEvm(tl *config.TracesLimits) *ZkEvm {
 			Arithmetization: arithmetization.Settings{
 				Traces: tl,
 			},
-		}
-		checkerZkEvm = NewZkEVM(settings).Compile(
-			checkerCompilationSuite,
-			wizard.VersionMetadata{
+			CompilationSuite: checkerCompilationSuite,
+			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/checker",
 				Version: "beta-v1",
 			},
-		)
+		}
+		checkerZkEvm = NewZkEVM(settings)
 	})
 	return checkerZkEvm
 }

@@ -36,6 +36,11 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		va = finalEvaluationCheck{}
 	)
 
+	// Skip the compilation phase if no lookup constraint is being used
+	if len(mainLookupCtx.lookupTables) == 0 {
+		return
+	}
+
 	// Step 1. construct the "per table" contexts and pack the Sigma's into
 	// zCatalog.
 	for _, lookupTable := range mainLookupCtx.lookupTables {

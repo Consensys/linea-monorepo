@@ -28,7 +28,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
 		limbCol    = common.NewVectorBuilder(gdm.Limb)
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
-		toHashCol  = common.NewVectorBuilder(gdm.TO_HASH)
+		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
 		indexCol   = common.NewVectorBuilder(gdm.Index)
 	)
 
@@ -124,7 +124,7 @@ func CreateGenDataModule(
 	gbm.Index = createCol("INDEX")
 	gbm.Limb = createCol("LIMBS")
 	gbm.NBytes = createCol("NBYTES")
-	gbm.TO_HASH = createCol("TO_HASH")
+	gbm.ToHash = createCol("TO_HASH")
 	return gbm
 }
 

@@ -38,15 +38,15 @@ func runTestSha2(t *testing.T, tc testCaseFile) {
 	t.Logf("testcase %++v", tc)
 
 	var (
-		inp   Sha2Blocks
-		mod   *sha2BlockHashing
+		inp   sha2BlocksInputs
+		mod   *sha2BlockModule
 		inpCt = csvtraces.MustOpenCsvFile(tc.InpFile)
 		modCt = csvtraces.MustOpenCsvFile(tc.ModFile)
 	)
 
 	comp := wizard.Compile(func(build *wizard.Builder) {
 
-		inp = Sha2Blocks{
+		inp = sha2BlocksInputs{
 			Name:                 "TESTING",
 			PackedUint32:         inpCt.GetCommit(build, "PACKED_DATA"),
 			Selector:             inpCt.GetCommit(build, "SELECTOR"),
@@ -55,7 +55,7 @@ func runTestSha2(t *testing.T, tc testCaseFile) {
 			MaxNbCircuit:         1,
 		}
 
-		mod = CheckSha2BlockHash(build.CompiledIOP, &inp)
+		mod = newSha2BlockModule(build.CompiledIOP, &inp)
 
 		if tc.WithCircuit {
 			mod.WithCircuit(build.CompiledIOP, plonk.WithRangecheck(16, 6, false))

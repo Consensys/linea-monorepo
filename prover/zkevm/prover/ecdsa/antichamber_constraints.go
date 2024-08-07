@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
@@ -8,14 +8,14 @@ import (
 )
 
 // csIsActive constraints that IsActive module to be only one for antichamber rounds.
-func (ac *Antichamber) csIsActive(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csIsActive(comp *wizard.CompiledIOP) {
 	// column must be binary
 	mustBeBinary(comp, ac.IsActive)
 	// allow becoming inactive from active but now vice versa
 	isZeroWhenInactive(comp, ac.IsActive, column.Shift(ac.IsActive, -1))
 }
 
-func (ac *Antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
 	for _, c := range ac.cols(false) {
 		isZeroWhenInactive(comp, c, ac.IsActive)
 	}
@@ -33,7 +33,7 @@ func (ac *Antichamber) csZeroWhenInactive(comp *wizard.CompiledIOP) {
 	}
 }
 
-func (ac *Antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
 	// pushing and fetching must be binary
 	mustBeBinary(comp, ac.IsPushing)
 	mustBeBinary(comp, ac.IsFetching)
@@ -45,7 +45,7 @@ func (ac *Antichamber) csConsistentPushingFetching(comp *wizard.CompiledIOP) {
 	)
 }
 
-func (ac *Antichamber) csIDSequential(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csIDSequential(comp *wizard.CompiledIOP) {
 	idDiff := sym.Sub(ac.ID, column.Shift(ac.ID, -1))
 	// ID must be sequential
 	comp.InsertGlobal(
@@ -55,13 +55,13 @@ func (ac *Antichamber) csIDSequential(comp *wizard.CompiledIOP) {
 	)
 }
 
-func (ac *Antichamber) csSource(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csSource(comp *wizard.CompiledIOP) {
 	// source must be binary
 	// Source=0 <> ECRecover, Source=1 <> TxSignature
 	mustBeBinary(comp, ac.Source)
 }
 
-func (ac *Antichamber) csTransitions(comp *wizard.CompiledIOP) {
+func (ac *antichamber) csTransitions(comp *wizard.CompiledIOP) {
 	// stop fetching when have received ecrecover address limbs
 	// TODO: store the condition as a variable to use later
 	comp.InsertGlobal(

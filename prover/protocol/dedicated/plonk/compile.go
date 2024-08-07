@@ -194,19 +194,13 @@ func (ctx *compilationCtx) addGateConstraint() {
 	for i := 0; i < ctx.maxNbInstances; i++ {
 
 		// Declare the expression
-		exp := sym.Mul(
-			// The conversion into an activator is required for the system
-			// to understand that the expression is multiplied by a scalar
-			// and not by a wrongfully constructed column
-			accessors.NewFromPublicColumn(ctx.Columns.Activators[i], 0),
-			sym.Add(
-				sym.Mul(ctx.Columns.L[i], ctx.Columns.Ql),
-				sym.Mul(ctx.Columns.R[i], ctx.Columns.Qr),
-				sym.Mul(ctx.Columns.O[i], ctx.Columns.Qo),
-				sym.Mul(ctx.Columns.L[i], ctx.Columns.R[i], ctx.Columns.Qm),
-				ctx.Columns.PI[i],
-				ctx.Columns.Qk,
-			),
+		exp := sym.Add(
+			sym.Mul(ctx.Columns.L[i], ctx.Columns.Ql),
+			sym.Mul(ctx.Columns.R[i], ctx.Columns.Qr),
+			sym.Mul(ctx.Columns.O[i], ctx.Columns.Qo),
+			sym.Mul(ctx.Columns.L[i], ctx.Columns.R[i], ctx.Columns.Qm),
+			ctx.Columns.PI[i],
+			ctx.Columns.Qk,
 		)
 
 		roundLRO := ctx.round
@@ -229,9 +223,18 @@ func (ctx *compilationCtx) addGateConstraint() {
 			// increase the LRO
 			roundLRO++
 		}
-
 		// And registers the gate expression as a global variable
-		ctx.comp.InsertGlobal(roundLRO, ctx.queryIDf("GATE_CS_INSTANCE_%v", i), exp)
+		ctx.comp.InsertGlobal(
+			roundLRO,
+			ctx.queryIDf("GATE_CS_INSTANCE_%v", i),
+			sym.Mul(
+				exp,
+				// The conversion into an activator is required for the system
+				// to understand that the expression is multiplied by a scalar
+				// and not by a wrongly-sized constructed column
+				accessors.NewFromPublicColumn(ctx.Columns.Activators[i], 0),
+			),
+		)
 	}
 }
 

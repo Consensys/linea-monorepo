@@ -23,7 +23,7 @@ const (
 
 // EcMulIntegration integrated EC_MUL precompile call verification inside a
 // gnark circuit.
-type EcAddIntegration struct {
+type EcAdd struct {
 	*EcDataAddSource
 	AlignedGnarkData *plonk.Alignment
 
@@ -31,8 +31,23 @@ type EcAddIntegration struct {
 	*Limits
 }
 
-// NewEcAddIntegration creates a new EC_ADD integration.
-func NewEcAddIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []plonk.Option) *EcAddIntegration {
+func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
+	return newEcAdd(
+		comp,
+		limits,
+		&EcDataAddSource{
+			CsEcAdd: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECADD"),
+			Limb:    comp.Columns.GetHandle("ecdata.LIMB"),
+			Index:   comp.Columns.GetHandle("ecdata.INDEX"),
+			IsData:  comp.Columns.GetHandle("ecdata.IS_ECADD_DATA"),
+			IsRes:   comp.Columns.GetHandle("ecdata.IS_ECADD_RESULT"),
+		},
+		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+	)
+}
+
+// newEcAdd creates a new EC_ADD integration.
+func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []plonk.Option) *EcAdd {
 	size := limits.sizeEcAddIntegration()
 
 	toAlign := &plonk.CircuitAlignmentInput{
@@ -45,7 +60,7 @@ func NewEcAddIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAd
 		PlonkOptions:       plonkOptions,
 		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
 	}
-	res := &EcAddIntegration{
+	res := &EcAdd{
 		EcDataAddSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
 		size:             size,
@@ -55,7 +70,7 @@ func NewEcAddIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAd
 }
 
 // Assign assigns the data from the trace to the gnark inputs.
-func (em *EcAddIntegration) Assign(run *wizard.ProverRuntime, src *EcDataAddSource) {
+func (em *EcAdd) Assign(run *wizard.ProverRuntime) {
 	em.AlignedGnarkData.Assign(run)
 }
 

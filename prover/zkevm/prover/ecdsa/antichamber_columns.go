@@ -1,8 +1,8 @@
-package antichamber
+package ecdsa
 
 import "github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 
-func (ac *Antichamber) cols(withActive bool) []ifaces.Column {
+func (ac *antichamber) cols(withActive bool) []ifaces.Column {
 	res := []ifaces.Column{
 		ac.ID,
 		ac.IsPushing,
@@ -50,7 +50,7 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 	}
 }
 
-func (ac *Antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
+func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 	return &unalignedGnarkDataSource{
 		IsActive:   ac.IsActive,
 		IsPushing:  ac.IsPushing,

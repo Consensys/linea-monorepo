@@ -180,7 +180,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 			Src: generic.GenericByteModule{Data: generic.GenDataModule{
 				HashNum: execDataCollector.HashNum,
 				Index:   execDataCollector.Ct,
-				TO_HASH: execDataCollector.IsActive,
+				ToHash:  execDataCollector.IsActive,
 				NBytes:  execDataCollector.NoBytes,
 				Limb:    execDataCollector.Limb,
 			}},

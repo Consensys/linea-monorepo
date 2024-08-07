@@ -121,8 +121,8 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			if c == circuits.ExecutionLargeCircuitID {
 				limits = cfg.TracesLimitsLarge
 			}
-			extraFlags["cfg_checksum"] = limits.Checksum() + cfg.Execution.Features.Checksum()
-			zkEvm := zkevm.FullZkEvm(&cfg.Execution.Features, &limits)
+			extraFlags["cfg_checksum"] = limits.Checksum()
+			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 		case circuits.BlobDecompressionV0CircuitID, circuits.BlobDecompressionV1CircuitID:
 			dict, err = os.ReadFile(fDictPath)

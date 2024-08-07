@@ -108,7 +108,7 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 				TotalPairings:     inpCt.GetCommit(build, "ECDATA_TOTAL_PAIRINGS"),
 			}
 
-			mod = NewECPair(build.CompiledIOP, limits, inp)
+			mod = newECPair(build.CompiledIOP, limits, inp)
 			if withPairingCircuit {
 				mod.WithPairingCircuit(build.CompiledIOP, plonk.WithRangecheck(16, 6, false))
 			}

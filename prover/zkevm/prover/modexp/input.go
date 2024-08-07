@@ -15,6 +15,7 @@ import (
 //
 // The columns provided here are columns from the BLK_MDXP module.
 type Input struct {
+	Settings Settings
 	// Binary column indicating if we have base limbs
 	IsModExpBase ifaces.Column
 	// Binary column indicating if we have exponent limbs
@@ -28,6 +29,21 @@ type Input struct {
 	isModExp ifaces.Column
 	// Multiplexed column containing limbs for base, exponent, modulus, and result
 	Limbs ifaces.Column
+}
+
+type Settings struct {
+	MaxNbInstance256, MaxNbInstance4096 int
+}
+
+func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
+	return Input{
+		Settings:         settings,
+		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
+		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
+		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
+		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
+		Limbs:            comp.Columns.GetHandle("blake2fmodexpdata.LIMB"),
+	}
 }
 
 // setIsModexp constructs, constraints and set the [isModexpColumn]

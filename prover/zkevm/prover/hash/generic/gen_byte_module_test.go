@@ -30,7 +30,7 @@ func TestScanByteStream(t *testing.T) {
 		*gdm = GenDataModule{
 			HashNum: build.RegisterCommit("A", 32),
 			Limb:    build.RegisterCommit("B", 32),
-			TO_HASH: build.RegisterCommit("C", 32),
+			ToHash:  build.RegisterCommit("C", 32),
 			NBytes:  build.RegisterCommit("D", 32),
 		}
 	})
@@ -56,7 +56,7 @@ func assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataModule, stream [
 		limbs   = common.NewVectorBuilder(gdm.Limb)
 		hashNum = common.NewVectorBuilder(gdm.HashNum)
 		nbBytes = common.NewVectorBuilder(gdm.NBytes)
-		toHash  = common.NewVectorBuilder(gdm.TO_HASH)
+		toHash  = common.NewVectorBuilder(gdm.ToHash)
 	)
 
 	for hashID := range stream {

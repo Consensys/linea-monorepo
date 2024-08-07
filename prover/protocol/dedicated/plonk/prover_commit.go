@@ -133,6 +133,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 				run.AssignColumn(ctx.Columns.L[i].GetColID(), zeroCol)
 				run.AssignColumn(ctx.Columns.R[i].GetColID(), zeroCol)
 				run.AssignColumn(ctx.Columns.O[i].GetColID(), zeroCol)
+				continue
 			}
 
 			// Inject the coin which will be assigned to the randomness
@@ -150,11 +151,11 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
 		}
 
-		if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
-			ctx.assignRangeChecked(run)
-		}
-
 	})
+
+	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+		ctx.assignRangeChecked(run)
+	}
 }
 
 // Run the gnark solver and put the result in solSync.solChan
