@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"math/big"

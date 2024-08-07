@@ -50,14 +50,13 @@ func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
 				Traces:      tl,
 				NumColLimit: numColLimitLight,
 			},
-		}
-		partialZkEvm = NewZkEVM(settings).Compile(
-			partialCompilationSuite,
-			wizard.VersionMetadata{
+			CompilationSuite: partialCompilationSuite,
+			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/partial",
 				Version: "beta-v1",
 			},
-		)
+		}
+		partialZkEvm = NewZkEVM(settings)
 	})
 
 	return partialZkEvm

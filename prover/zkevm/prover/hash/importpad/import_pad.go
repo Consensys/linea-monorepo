@@ -173,7 +173,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		[]ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},
 		[]ifaces.Column{res.HashNum, res.Limbs, res.NBytes, res.Index},
-		inp.Src.Data.TO_HASH,
+		inp.Src.Data.ToHash,
 		res.IsInserted,
 	)
 
@@ -189,7 +189,7 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 		limbs   = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		nBytes  = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		index   = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash  = srcData.TO_HASH.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash  = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 
 		iab = importationAssignmentBuilder{
 			HashNum:        common.NewVectorBuilder(imp.HashNum),

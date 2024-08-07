@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
@@ -31,7 +31,7 @@ type EcRecover struct {
 	// mask for selecting columns in this submodule for projection query
 	AuxProjectionMask ifaces.Column
 
-	*Limits
+	*Settings
 }
 
 type ecDataSource struct {
@@ -63,7 +63,7 @@ func (ecSrc *ecDataSource) nbActualInstances(run *wizard.ProverRuntime) int {
 	return int(maxId) + 1
 }
 
-func newEcRecover(comp *wizard.CompiledIOP, limits *Limits, src *ecDataSource) *EcRecover {
+func newEcRecover(comp *wizard.CompiledIOP, limits *Settings, src *ecDataSource) *EcRecover {
 	createCol := createColFn(comp, NAME_ECRECOVER, limits.sizeAntichamber())
 	res := &EcRecover{
 		EcRecoverID:       createCol("ECRECOVER_ID"),
@@ -74,7 +74,7 @@ func newEcRecover(comp *wizard.CompiledIOP, limits *Limits, src *ecDataSource) *
 		EcRecoverIsRes:    createCol("ECRECOVER_IS_RES"),
 		AuxProjectionMask: createCol("AUX_PROJECTION_MASK"),
 
-		Limits: limits,
+		Settings: limits,
 	}
 	res.csEcDataProjection(comp, src)
 	res.csConstraintAuxProjectionMask(comp)
@@ -134,7 +134,7 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 	}
 
 	// assign this submodule components
-	size := ec.sizeAntichamber()
+	size := ec.Settings.sizeAntichamber()
 	run.AssignColumn(ec.EcRecoverID.GetColID(), smartvectors.RightZeroPadded(resEcRecoverID, size))
 	run.AssignColumn(ec.Limb.GetColID(), smartvectors.RightZeroPadded(resLimb, size))
 	run.AssignColumn(ec.SuccessBit.GetColID(), smartvectors.RightZeroPadded(resSuccessBit, size))

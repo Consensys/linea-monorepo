@@ -1,6 +1,9 @@
 package zkevm
 
 import (
+	"math/big"
+
+	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
 )
 
@@ -11,5 +14,10 @@ type Witness struct {
 	// proof trace generation.
 	ExecTracesFPath string
 	// StateManager traces
-	SMTraces [][]statemanager.DecodedTrace
+	SMTraces     [][]statemanager.DecodedTrace
+	TxSignatures map[[32]byte]ethereum.Signature
+}
+
+func (w Witness) TxSignatureGetter(txHash []byte) (r, s, v *big.Int, err error) {
+	panic("unimplemented")
 }

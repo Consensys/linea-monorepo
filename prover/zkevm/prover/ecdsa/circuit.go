@@ -1,4 +1,4 @@
-package ecrecover
+package ecdsa
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type MultiEcRecoverCircuit struct {
 	Instances []EcRecoverInstance `gnark:",public"`
 }
 
-func NewMultiEcRecoverCircuit(nbInstances int) *MultiEcRecoverCircuit {
+func newMultiEcRecoverCircuit(nbInstances int) *MultiEcRecoverCircuit {
 	return &MultiEcRecoverCircuit{
 		Instances: make([]EcRecoverInstance, nbInstances),
 	}
@@ -101,7 +101,7 @@ func (c *EcRecoverInstance) splitInputs(api frontend.API) (PK *sw_emulated.Affin
 	return
 }
 
-func InputFiller(circuitInstance, inputIndex int) field.Element {
+func inputFiller(circuitInstance, inputIndex int) field.Element {
 	// every instance has 14 inputs.
 	// pubkey xHi, pubkey xLo, pubkey yHi, pubkey yLo, hHi, hLo, vHi, vLo, rHi, rLo, sHi, sLo, successBit, ecrecoverBit
 

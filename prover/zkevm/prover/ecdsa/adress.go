@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
@@ -58,7 +58,7 @@ type Addresses struct {
 const trimmingSize = 4
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
-func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *txnData) *Addresses {
+func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antichamber, td *txnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 	// declare the native columns
@@ -176,9 +176,9 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 		Limb:    uaGnark.GnarkData,
 
 		// a column of all 16, since all the bytes of public key are used in hashing
-		NBytes:  addr.col16,
-		Index:   uaGnark.GnarkPublicKeyIndex,
-		TO_HASH: uaGnark.IsPublicKey,
+		NBytes: addr.col16,
+		Index:  uaGnark.GnarkPublicKeyIndex,
+		ToHash: uaGnark.IsPublicKey,
 	}
 
 	pkModule.Info = generic.GenInfoModule{
@@ -194,7 +194,7 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 func (addr *Addresses) assignAddress(
 	run *wizard.ProverRuntime,
 	nbEcRecover, size int,
-	ac *Antichamber,
+	ac *antichamber,
 	ecRec *EcRecover,
 	uaGnark *UnalignedGnarkData,
 	td *txnData,

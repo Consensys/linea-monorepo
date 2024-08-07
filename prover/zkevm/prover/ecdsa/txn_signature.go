@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
@@ -31,7 +31,7 @@ type txSignature struct {
 
 type txSignatureInputs struct {
 	RlpTxn generic.GenDataModule
-	ac     Antichamber
+	ac     *antichamber
 }
 
 func newTxSignatures(comp *wizard.CompiledIOP, inp txSignatureInputs) *txSignature {
@@ -105,7 +105,7 @@ func (txn *txSignature) buildInfoModule() generic.GenInfoModule {
 func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime) {
 
 	var (
-		nbEcRecover = txn.Inputs.ac.Limits.MaxNbEcRecover
+		nbEcRecover = txn.Inputs.ac.Inputs.settings.MaxNbEcRecover
 		n           = startAt(nbEcRecover)
 		hashHi      = vector.Repeat(field.Zero(), n)
 		hashLo      = vector.Repeat(field.Zero(), n)

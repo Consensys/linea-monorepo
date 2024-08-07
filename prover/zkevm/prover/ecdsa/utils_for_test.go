@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antichamber) (td *txnData, ecRec *EcRecover) {
+func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *antichamber) (td *txnData, ecRec *EcRecover) {
 	td = &txnData{
 		fromHi: comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromHi"), size1),
 		fromLo: comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromLo"), size1),
@@ -34,7 +34,7 @@ func AssignEcRecTxnData(
 	nbEcRec, nbTxS int,
 	sizeTxnData, size int,
 	td *txnData, ecRec *EcRecover,
-	ac *Antichamber,
+	ac *antichamber,
 ) {
 
 	permTrace := keccak.GenerateTrace(gbm.ScanStreams(run))
@@ -88,25 +88,29 @@ func AssignEcRecTxnData(
 }
 
 // it estimates the required number of number of keccakF.
-func (l *Limits) nbKeccakF(nbKeccakFPerTxn int) int {
+func (l *Settings) nbKeccakF(nbKeccakFPerTxn int) int {
 	return l.MaxNbTx*nbKeccakFPerTxn + l.MaxNbEcRecover
 }
 
-func (l *Limits) sizeTxnData(nbRowsPerTxInTxnData int) int {
+func (l *Settings) sizeTxnData(nbRowsPerTxInTxnData int) int {
 	return utils.NextPowerOfTwo(l.MaxNbTx * nbRowsPerTxInTxnData)
 }
 
 // It receives a set of public keys, and assigns the txn_data
 func (td *txnData) assignTxnDataFromPK(
 	run *wizard.ProverRuntime,
-	ac *Antichamber,
+	ac *antichamber,
 	rlpTxnHashes [][32]byte,
 	nbRowsPerTxInTxnData int,
 ) {
 
 	// compute the hash of public keys
-	var pkHash [][]byte
-	hasher := sha3.NewLegacyKeccak256()
+	var (
+		pkHash  [][]byte
+		hasher  = sha3.NewLegacyKeccak256()
+		maxNbTx = ac.Inputs.settings.MaxNbTx
+	)
+
 	for i := range rlpTxnHashes {
 		pk, _, _, _, err := generateDeterministicSignature(rlpTxnHashes[i][:])
 		if err != nil {
@@ -122,15 +126,15 @@ func (td *txnData) assignTxnDataFromPK(
 	// now assign  txn_data from the hash results.
 	// populate the CT column
 	var ctWit []field.Element
-	for i := 0; i < ac.MaxNbTx; i++ {
+	for i := 0; i < maxNbTx; i++ {
 		for j := 0; j < nbRowsPerTxInTxnData; j++ {
 			ctWit = append(ctWit, field.NewElement(uint64(j+1)))
 		}
 	}
 
 	// populate the columns FromHi and FromLo
-	fromHi := make([]field.Element, ac.MaxNbTx*nbRowsPerTxInTxnData)
-	fromLo := make([]field.Element, ac.MaxNbTx*nbRowsPerTxInTxnData)
+	fromHi := make([]field.Element, maxNbTx*nbRowsPerTxInTxnData)
+	fromLo := make([]field.Element, maxNbTx*nbRowsPerTxInTxnData)
 
 	for i := 0; i < len(pkHash); i++ {
 		fromHi[i*nbRowsPerTxInTxnData].SetBytes(pkHash[i][halfDigest-trimmingSize : halfDigest])
@@ -139,13 +143,13 @@ func (td *txnData) assignTxnDataFromPK(
 	}
 
 	// these are arithmetization columns, so LeftZeroPad
-	run.AssignColumn(td.fromHi.GetColID(), smartvectors.LeftZeroPadded(fromHi, ac.sizeTxnData(nbRowsPerTxInTxnData)))
-	run.AssignColumn(td.fromLo.GetColID(), smartvectors.LeftZeroPadded(fromLo, ac.sizeTxnData(nbRowsPerTxInTxnData)))
-	run.AssignColumn(td.ct.GetColID(), smartvectors.LeftZeroPadded(ctWit, ac.sizeTxnData(nbRowsPerTxInTxnData)))
+	run.AssignColumn(td.fromHi.GetColID(), smartvectors.LeftZeroPadded(fromHi, ac.Inputs.settings.sizeTxnData(nbRowsPerTxInTxnData)))
+	run.AssignColumn(td.fromLo.GetColID(), smartvectors.LeftZeroPadded(fromLo, ac.Inputs.settings.sizeTxnData(nbRowsPerTxInTxnData)))
+	run.AssignColumn(td.ct.GetColID(), smartvectors.LeftZeroPadded(ctWit, ac.Inputs.settings.sizeTxnData(nbRowsPerTxInTxnData)))
 }
 
 // it commits to the txn_data
-func commitTxnData(comp *wizard.CompiledIOP, limits *Limits, nbRowsPerTxInTxnData int) (td *txnData) {
+func commitTxnData(comp *wizard.CompiledIOP, limits *Settings, nbRowsPerTxInTxnData int) (td *txnData) {
 	size := limits.sizeTxnData(nbRowsPerTxInTxnData)
 	td = &txnData{
 		fromHi: comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromHi"), size),

@@ -120,7 +120,7 @@ func mustProveAndPass(
 
 		// Run the full prover to obtain the intermediate proof
 		logrus.Info("Get Full IOP")
-		fullZkEvm := zkevm.FullZkEvm(&cfg.Execution.Features, traces)
+		fullZkEvm := zkevm.FullZkEvm(traces)
 
 		var (
 			setup       circuits.Setup
@@ -152,8 +152,8 @@ func mustProveAndPass(
 		if err != nil {
 			utils.Panic("could not get the traces checksum from the setup manifest: %v", err)
 		}
-		if setupCfgChecksum != traces.Checksum()+cfg.Execution.Features.Checksum() {
-			utils.Panic("traces + features checksum in the setup manifest does not match the one in the config")
+		if setupCfgChecksum != traces.Checksum() {
+			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response

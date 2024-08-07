@@ -139,7 +139,9 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				}
 			}
 
-			ci.numEffWitnesses = (filled-1)/ci.nbPublicInputs + 1
+			if filled > 0 {
+				ci.numEffWitnesses = utils.DivCeil(filled-1, ci.nbPublicInputs)
+			}
 
 			for filled < ci.nbPublicInputs*ci.NbCircuitInstances {
 				select {
@@ -372,12 +374,16 @@ type checkActivatorAndMask Alignment
 func (c checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
 	for i := range c.circMaskOpenings {
 		var (
-			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y
-			valActiv  = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
+			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
+			valOpened    = localOpening.Y
+			valActiv     = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
 		)
 
 		if valOpened != valActiv {
-			return fmt.Errorf("activator does not match the circMask %v", i)
+			return fmt.Errorf(
+				"%v: activator does not match the circMask %v (activator=%v, mask=%v)",
+				c.Name, i, valActiv.String(), valOpened.String(),
+			)
 		}
 	}
 

@@ -22,7 +22,7 @@ type sha2BlockHashingAssignment struct {
 	HashHi, HashLo          *common.VectorBuilder
 }
 
-func newSha2BlockHashingAssignment(sbh *sha2BlockHashing) sha2BlockHashingAssignment {
+func newSha2BlockHashingAssignment(sbh *sha2BlockModule) sha2BlockHashingAssignment {
 	return sha2BlockHashingAssignment{
 		IsActive:                common.NewVectorBuilder(sbh.IsActive),
 		IsEffBlock:              common.NewVectorBuilder(sbh.IsEffBlock),
@@ -35,7 +35,7 @@ func newSha2BlockHashingAssignment(sbh *sha2BlockHashing) sha2BlockHashingAssign
 }
 
 // Run implements the [wizard.ProverAction] interface.
-func (sbh *sha2BlockHashing) Run(run *wizard.ProverRuntime) {
+func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 
 	var (
 		assi                 = newSha2BlockHashingAssignment(sbh)

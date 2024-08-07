@@ -8,7 +8,6 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "dev"
-features = { with_keccak = true, with_ecdsa = false }
 requests_root_dir = "/data/prover-execution/v3"
 
 [blob_decompression]

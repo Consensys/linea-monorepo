@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"testing"
@@ -13,11 +13,11 @@ import (
 
 func TestTxnSignature(t *testing.T) {
 
-	limits := &Limits{
+	settings := &Settings{
 		MaxNbEcRecover: 5,
 		MaxNbTx:        5,
 	}
-	size := limits.sizeAntichamber()
+	size := settings.sizeAntichamber()
 	m := &keccak.KeccakSingleProvider{}
 	var txSign *txSignature
 
@@ -27,12 +27,12 @@ func TestTxnSignature(t *testing.T) {
 			createCol = common.CreateColFn(comp, "TESTING_TxSignature", size)
 
 			txSignInputs = txSignatureInputs{
-				ac: Antichamber{
+				ac: &antichamber{
 					IsFetching: createCol("Is_Fetching"),
 					IsActive:   createCol("Is_Active"),
 					Source:     createCol("Source"),
 					size:       size,
-					Limits:     limits,
+					Inputs:     &antichamberInput{settings: settings},
 				},
 				RlpTxn: testdata.CreateGenDataModule(comp, "RLP_TXN", 128),
 			}
@@ -65,9 +65,10 @@ var rlpTxnTest = makeTestCase{
 }
 
 func (txSign txSignature) assigntxSignInputs(run *wizard.ProverRuntime, c makeTestCase) {
+
 	var (
-		nbEcRec    = txSign.Inputs.ac.Limits.MaxNbEcRecover
-		nbTxn      = txSign.Inputs.ac.Limits.MaxNbEcRecover
+		nbEcRec    = txSign.Inputs.ac.Inputs.settings.MaxNbEcRecover
+		nbTxn      = txSign.Inputs.ac.Inputs.settings.MaxNbTx
 		isFetching = common.NewVectorBuilder(txSign.Inputs.ac.IsFetching)
 		isActive   = common.NewVectorBuilder(txSign.Inputs.ac.IsActive)
 		source     = common.NewVectorBuilder(txSign.Inputs.ac.Source)

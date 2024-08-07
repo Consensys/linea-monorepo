@@ -31,14 +31,11 @@ func MakeTestCaseKeccakZkEVM(t *testing.T, c []makeTestCaseGBM) (
 			}
 		}
 
-		inp := KeccakZkEVMInput{
-			Settings: &Settings{
-				MaxNumKeccakf: maxNumKeccakF,
-			},
-
-			Providers: gbm,
-		}
-		mod = NewKeccakZkEVM(comp, inp)
+		mod = newKeccakZkEvm(
+			comp,
+			Settings{MaxNumKeccakf: maxNumKeccakF},
+			gbm,
+		)
 	}
 
 	prover = func(run *wizard.ProverRuntime) {
