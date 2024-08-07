@@ -45,6 +45,7 @@ func TestAlignment(t *testing.T) {
 		ct.Assign(run, "DATA", "DATA_MASK")
 		alignment.Assign(run)
 	})
+
 	ct.CheckAssignmentColumn(runLeaked, "IS_ACTIVE", alignment.IsActive)
 	ct.CheckAssignmentColumn(runLeaked, "CIRCUIT_INPUT", alignment.CircuitInput)
 	ct.CheckAssignmentColumn(runLeaked, "FULL_CIRCUIT_INPUT_MASK", alignment.FullCircuitInputMask)

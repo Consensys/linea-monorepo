@@ -82,9 +82,6 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		}
 
 		concrete := v.Elem()
-		if fmt.Sprintf("%++v", concrete) == "<invalid reflect.Value>" {
-			fmt.Printf("Parent(v) = %++v\n", v)
-		}
 
 		rawValue, err := SerializeValue(concrete, mode)
 		if err != nil {

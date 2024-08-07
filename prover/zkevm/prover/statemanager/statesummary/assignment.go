@@ -1,7 +1,6 @@
 package statesummary
 
 import (
-	"fmt"
 	"io"
 	"sync"
 
@@ -142,8 +141,6 @@ func (ss *stateSummaryAssignmentBuilder) pushBlockTraces(batchNumber int, traces
 // pushAccountSegment pushes a list of rows corresponding to an account within
 // a block.
 func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, segment accountSegmentWitness) {
-
-	fmt.Printf("ss accumulator statement = %v\n", ss.accumulatorStatement)
 
 	for segID, seg := range segment {
 

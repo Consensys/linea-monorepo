@@ -35,7 +35,7 @@ func NewFromPublicColumn(col ifaces.Column, pos int) ifaces.Accessor {
 	}
 
 	if !nat.Status().IsPublic() {
-		panic("expected an coin.IntegerVec")
+		panic("expected a public column")
 	}
 	if nat.Size() <= pos {
 		utils.Panic("the column has size %v, but requested position %v", nat.Size(), pos)

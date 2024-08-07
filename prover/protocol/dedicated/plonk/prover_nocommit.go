@@ -37,18 +37,30 @@ var (
 func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner) {
 
 	var (
-		ctx           = compilationCtx(pa)
-		maxNbInstance = pa.maxNbInstances
+		ctx             = compilationCtx(pa)
+		maxNbInstance   = pa.maxNbInstances
+		numEffInstances = wa.NumEffWitnesses(run)
 	)
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {
 		for i := start; i < stop; i++ {
+
+			if i >= numEffInstances {
+				run.AssignColumn(ctx.Columns.TinyPI[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.TinyPI[i].Size()))
+				run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.L[0].Size()))
+				run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.R[0].Size()))
+				run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.O[0].Size()))
+				run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.Zero(), 1))
+				continue
+			}
+
 			// create the witness assignment
 			witness, pubWitness, err := wa.Assign(run, i)
 			if err != nil {
 				utils.Panic("Could not create the witness: %v", err)
 			}
 			if ctx.TinyPISize() > 0 {
+
 				// Converts it as a smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
 					[]field.Element(pubWitness.Vector().(fr.Vector)),
@@ -70,6 +82,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner
 			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.NewRegular(solution.L))
 			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.NewRegular(solution.R))
 			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
+			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
 
 		if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
