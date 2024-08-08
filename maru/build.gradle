@@ -1,0 +1,219 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+plugins {
+  alias(libs.plugins.errorprone)
+  alias(libs.plugins.spotless)
+  alias(libs.plugins.spring.dependency.management)
+}
+
+allprojects {
+  apply plugin: libs.plugins.errorprone.get().getPluginId()
+  apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
+  apply from: "${rootDir}/gradle/versions.gradle"
+  apply plugin: 'java-library'
+  apply plugin: 'jacoco'
+
+  repositories {
+    maven {
+      url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
+      content { includeGroupByRegex('org\\.hyperledger\\..*') }
+    }
+    maven {
+      url 'https://artifacts.consensys.net/public/maven/maven/'
+      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
+    }
+    maven {
+      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
+      content { includeGroupByRegex('com\\.splunk\\..*') }
+    }
+
+    mavenCentral()
+  }
+
+  apply plugin: libs.plugins.spotless.get().getPluginId()
+
+  spotless {
+    java {
+      // This path needs to be relative to each project
+      target 'src/**/*.java'
+      removeUnusedImports()
+      googleJavaFormat('1.23.0')
+      importOrder 'org.hyperledger', 'java', ''
+      trimTrailingWhitespace()
+      endWithNewline()
+      // apply appropriate license header files.
+      licenseHeaderFile("${rootDir}/gradle/spotless/java.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*.*ConsenSys AG\\.)")
+    }
+    // spotless check applied to build.gradle (groovy) files
+    groovyGradle {
+      target '*.gradle'
+      greclipse('4.26').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+      endWithNewline()
+    }
+  }
+
+  tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += [
+      '-Xlint:unchecked',
+      '-Xlint:cast',
+      '-Xlint:rawtypes',
+      '-Xlint:overloads',
+      '-Xlint:divzero',
+      '-Xlint:finally',
+      '-Xlint:static',
+      '-Werror',
+    ]
+
+    options.errorprone {
+      excludedPaths = '.*/generated/*.*'
+      disableWarningsInGeneratedCode = true
+      // Our equals need to be symmetric, this checker doesn't respect that.
+      check('EqualsGetClass', CheckSeverity.OFF)
+      // We like to use futures with no return values.
+      check('FutureReturnValueIgnored', CheckSeverity.OFF)
+      // We use the JSR-305 annotations instead of the Google annotations.
+      check('ImmutableEnumChecker', CheckSeverity.OFF)
+      // This is a style check instead of an error-prone pattern.
+      check('UnnecessaryParentheses', CheckSeverity.OFF)
+
+      // This check is broken in Java 12.  See https://github.com/google/error-prone/issues/1257
+      if (JavaVersion.current() == JavaVersion.VERSION_12) {
+        check('Finally', CheckSeverity.OFF)
+      }
+      // This check is broken after Java 12.  See https://github.com/google/error-prone/issues/1352
+      if (JavaVersion.current() > JavaVersion.VERSION_12) {
+        check('TypeParameterUnusedInFormals', CheckSeverity.OFF)
+      }
+
+      check('FieldCanBeFinal', CheckSeverity.WARN)
+      check('InsecureCryptoUsage', CheckSeverity.WARN)
+      check('WildcardImport', CheckSeverity.WARN)
+    }
+
+    options.encoding = 'UTF-8'
+  }
+
+  // IntelliJ workaround to allow repeated debugging of unchanged code
+  tasks.withType(JavaExec) {
+    if (it.name.contains(".")) {
+      outputs.upToDateWhen { false }
+    }
+  }
+
+  dependencies {
+    errorprone 'com.google.errorprone:error_prone_core'
+  }
+
+  test {
+    jvmArgs += [
+      '-Xmx4g',
+      '-XX:-UseGCOverheadLimit',
+      // Mockito and jackson-databind do some strange reflection during tests.
+      // This suppresses an illegal access warning.
+      '--add-opens',
+      'java.base/java.util=ALL-UNNAMED',
+      '--add-opens',
+      'java.base/java.util.concurrent=ALL-UNNAMED',
+      '--add-opens',
+      'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+      // errorprone tests need access to the javac compiler
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED',
+      '--add-exports',
+      'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED'
+    ]
+    Set toImport = [
+      'test.ethereum.include',
+      'test.ethereum.state.eip',
+      'root.log.level',
+      'evm.log.level',
+      'acctests.keepLogsOfPassingTests'
+    ]
+    for (String name : toImport) {
+      if (System.getProperty(name) != null) {
+        systemProperty name, System.getProperty(name)
+      }
+    }
+    useJUnitPlatform {}
+  }
+}
+
+subprojects {
+  if (file('src/integration-test').directory) {
+    sourceSets {
+      integrationTest {
+        java {
+          compileClasspath += main.output
+          runtimeClasspath += main.output
+          srcDir file('src/integration-test/java')
+        }
+        resources.srcDir file('src/integration-test/resources')
+      }
+    }
+
+    //    if (file('src/test-support').directory) {
+    //      dependencies { integrationTestImplementation sourceSets.testSupport.output }
+    //    }
+
+    task integrationTest(type: Test, dependsOn: ["compileTestJava"]) {
+      group = "verification"
+      description = "Runs the Besu integration tests"
+
+      jvmArgs = [
+        '--add-opens',
+        'java.base/java.util=ALL-UNNAMED',
+        '--add-opens',
+        'java.base/java.util.concurrent=ALL-UNNAMED'
+      ]
+      testClassesDirs = sourceSets.integrationTest.output.classesDirs
+      classpath = sourceSets.integrationTest.runtimeClasspath
+      outputs.upToDateWhen { false }
+      useJUnitPlatform {}
+    }
+  }
+
+  tasks.withType(Test) {
+    // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
+    maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
+  }
+
+  tasks.withType(JavaCompile) {
+    options.fork = true
+    options.incremental = true
+  }
+
+  configurations {
+    testSupportImplementation.extendsFrom implementation
+    integrationTestImplementation.extendsFrom implementation
+    testSupportArtifacts
+  }
+
+  // making sure assemble task invokes integration test compile
+  afterEvaluate { project ->
+    if (project.tasks.findByName('compileIntegrationTestJava')) {
+      project.tasks.assemble.dependsOn compileIntegrationTestJava
+    }
+  }
+}
+
+dependencies {
+  errorprone 'com.google.errorprone:error_prone_core'
+}
+
+apply plugin: 'application'
+
+run {
+  // TODO: Fill
+}
