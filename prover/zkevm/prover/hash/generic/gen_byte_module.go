@@ -13,15 +13,15 @@ const GEN_LEFT_ALIGNMENT = 16
 
 // Generic byte module as specified by the arithmetization. It contains two set
 // of columns, Data and Info. This module can be used for various concrete
-// arithmetization modules that call the keccak module.
+// arithmetization modules that call the hash module.
 type GenericByteModule struct {
-	// Data module summarizing informations about the data to hash. I
+	// Data module summarizing the information about the data to hash.
 	Data GenDataModule
-	// Info module summarizing informations about the hash as a whole
+	// Info module contains the result of the hash.
 	Info GenInfoModule
 }
 
-// GenDataModule collects the columns summarizing the informations about the
+// GenDataModule collects the columns summarizing the information about the
 // data to hash.
 type GenDataModule struct {
 	HashNum ifaces.Column // identifier for the hash
@@ -31,27 +31,13 @@ type GenDataModule struct {
 	ToHash  ifaces.Column
 }
 
-// GenInfoModule collects the columns summarizing information about the hash as
-// as a whole.
+// GenInfoModule collects the columns summarizing information about the result of the hash
 type GenInfoModule struct {
-	// Identifier for the hash. Allows joining with the data module
-	HashNum  ifaces.Column
-	HashLo   ifaces.Column
-	HashHi   ifaces.Column
-	IsHashLo ifaces.Column
-	IsHashHi ifaces.Column
-}
-
-// the assignment to GenericByteModule
-type GenTrace struct {
-	HashNum, Index, Limb, NByte []field.Element
-	ToHash                      []field.Element
-	//used for the assignment to the leftovers
-	CleanLimb []field.Element
-
-	// info Trace
-	HashLo, HashHi, HashNum_Info []field.Element
-	IsHashLo, IsHashHi           []field.Element
+	HashNum  ifaces.Column // Identifier for the hash. Allows joining with the data module
+	HashLo   ifaces.Column // The Low part of the hash result
+	HashHi   ifaces.Column // The Hi part of the hash result
+	IsHashLo ifaces.Column // indicating the location of HashHi
+	IsHashHi ifaces.Column // indicting the location od HashLo
 }
 
 // ScanStream scans the receiver GenDataModule's assignment and returns the list
