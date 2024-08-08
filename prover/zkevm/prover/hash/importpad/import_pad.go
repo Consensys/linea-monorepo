@@ -3,6 +3,7 @@ package importpad
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -48,6 +49,10 @@ type importation struct {
 
 	// Padder stores the padding-strategy-specific
 	padder padder
+
+	// helper column
+	indexIsZero ifaces.Column
+	paIsZero    wizard.ProverAction
 }
 
 // importationAssignmentBuilder is a utility struct used to build an assignment
@@ -129,25 +134,34 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	// IsNewHash is correctly set after the IsPadded IsInserted structure:
+	// When Index = 0, IsNewHash = 1
+	res.indexIsZero, res.paIsZero = dedicated.IsZero(comp, res.Index)
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET", inp.Name),
+		sym.Mul(res.IsActive, res.indexIsZero,
+			sym.Sub(1, res.IsNewHash),
+		),
+	)
+
+	//  IsPadded is correctly set before each newHash.
 	// IsInserted[i] * IsPadded[i-1] == IsNewHash
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET", inp.Name),
+		ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
 		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
 	)
 
-	// This addresses the boundary case of the above column
-	comp.InsertLocal(
-		0,
-		ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET_BEGIN", inp.Name),
-		sym.Sub(res.IsNewHash, 1),
+	// before IsActive transits to 0, there should be a padding zone.
+	// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
+		sym.Mul(res.IsActive,
+			sym.Sub(1, column.Shift(res.IsActive, 1)),
+			sym.Sub(1, res.IsPadded),
+		),
 	)
 
-	// When IsNewHash is 1, then the index must be zero
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%v_INDEX_MUST_RESTART_AT_0", inp.Name),
-		sym.Mul(res.IsNewHash, res.Index),
+	// to handle the above constraint for the case where isActive[i] = 1  for all i .
+	// IsPadded[last-row]= isActive[last-row]
+	comp.InsertLocal(0, ifaces.QueryIDf("%v_LAST_PADDING_LAST_HASH_WELL_SET", inp.Name),
+		sym.Sub(column.Shift(res.IsActive, -1), column.Shift(res.IsPadded, -1)),
 	)
 
 	// Ensures that AccPaddedBytes is well-set
@@ -266,6 +280,8 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 	iab.IsActive.PadAndAssign(run, field.Zero())
 	iab.IsNewHash.PadAndAssign(run, field.Zero())
 	iab.Padder.padAndAssign(run)
+
+	imp.paIsZero.Run(run)
 }
 
 // pushPaddingCommonColumns push an insertion row corresponding to the first
