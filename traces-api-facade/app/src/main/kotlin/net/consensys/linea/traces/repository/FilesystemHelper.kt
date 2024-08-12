@@ -36,7 +36,7 @@ class FilesystemHelper(
     }
   }
 
-  fun readGzipedJsonFileAsString(filePath: Path): Future<String> {
+  fun readGzippedJsonFileAsString(filePath: Path): Future<String> {
     val startTime = System.nanoTime()
     return java.io.FileInputStream(filePath.toFile()).use { fileIs ->
       val filesystemLoadTime = elapsedTimeInMillisSince(startTime)
@@ -49,8 +49,9 @@ class FilesystemHelper(
           log.debug(
             "total_time={}ms (file_load={} unzip={} toString={}) in {}",
             elapsedTimeInMillisSince(startTime),
+            filesystemLoadTime,
             unzipTime - filesystemLoadTime,
-            toStringTime - unzipTime - filesystemLoadTime,
+            toStringTime - unzipTime,
             filePath.fileName
           )
           Future.succeededFuture(result)

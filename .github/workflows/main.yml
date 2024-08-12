@@ -119,8 +119,10 @@ jobs:
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
     secrets: inherit
 
   run-e2e-tests-geth-tracing:

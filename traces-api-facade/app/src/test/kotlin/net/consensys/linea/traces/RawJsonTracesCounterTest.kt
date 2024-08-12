@@ -17,7 +17,7 @@ class RawJsonTracesCounterTest {
   fun parse_file() {
     val fsHelper = FilesystemHelper(Mockito.mock(), log = log)
 
-    val parsed = fsHelper.readGzipedJsonFileAsString(Path.of("../../testdata/traces/raw/small.json.gz"))
+    val parsed = fsHelper.readGzippedJsonFileAsString(Path.of("../../testdata/traces/raw/small.json.gz"))
 
     val counted = counter.concreteCountTraces(parsed.get()).component1()
       ?.tracesCounters
