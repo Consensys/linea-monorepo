@@ -34,6 +34,14 @@ class FilesystemConflatedTracesRepository(
     return "$startBlockNumber-$endBlockNumber.conflated.v$tracesVersion.$extension"
   }
 
+  private fun inProgressDestinationFileName(
+    startBlockNumber: ULong,
+    endBlockNumber: ULong,
+    tracesVersion: String
+  ): String {
+    return "${destinationFileName(startBlockNumber, endBlockNumber, tracesVersion)}.inprogress"
+  }
+
   override fun findConflatedTraces(
     startBlockNumber: ULong,
     endBlockNumber: ULong,
@@ -55,27 +63,37 @@ class FilesystemConflatedTracesRepository(
   }
 
   override fun saveConflatedTraces(conflation: TracesConflation): SafeFuture<String> {
-    val fileName =
-      destinationFileName(
+    val inProgressFileName =
+      inProgressDestinationFileName(
         conflation.startBlockNumber,
         conflation.endBlockNumber,
         conflation.traces.version
       )
-    val filePath = tracesDirectory.resolve(fileName)
+    val inProgressFilePath = tracesDirectory.resolve(inProgressFileName)
 
     return vertx
       .executeBlocking(
         Callable {
           if (gzipCompressionEnabled) {
-            saveConflatedTracesGzipCompressed(filePath, conflation.traces.result)
+            saveConflatedTracesGzipCompressed(inProgressFilePath, conflation.traces.result)
           } else {
-            saveConflatedTracesRawJson(filePath, conflation.traces.result)
+            saveConflatedTracesRawJson(inProgressFilePath, conflation.traces.result)
           }
         },
         false
       )
       .toSafeFuture()
-      .thenApply { fileName }
+      .thenApply {
+        destinationFileName(
+          conflation.startBlockNumber,
+          conflation.endBlockNumber,
+          conflation.traces.version
+        ).also { destinationFileName ->
+          tracesDirectory.resolve(destinationFileName).run {
+            inProgressFilePath.toFile().renameTo(this.toFile())
+          }
+        }
+      }
   }
 
   private fun saveConflatedTracesGzipCompressed(filePath: Path, traces: JsonObject) {
