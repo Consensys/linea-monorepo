@@ -43,9 +43,6 @@ processTestResources.dependsOn(':acceptance-tests:generateTestContractWrappers')
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
 
-  dependsOn(project(":native:compress").compileJava)
-  dependsOn(project(":sequencer").copyPluginJar)
-
   inputs.property("integration.date", LocalTime.now()) // so it runs on every invocation
 
   useJUnitPlatform {
@@ -56,16 +53,16 @@ tasks.register('acceptanceTests', Test) {
 dependencies {
   testImplementation project(":native:compress")
   testImplementation project(":sequencer")
-  testImplementation "${besuArtifactGroup}.internal:dsl:$besuVersion"
-  testImplementation "${besuArtifactGroup}.internal:api:${besuVersion}"
+
+  testImplementation "${besuArtifactGroup}:besu-datatypes"
+  testImplementation "${besuArtifactGroup}:evm"
   testImplementation "${besuArtifactGroup}:plugin-api"
-  testImplementation "${besuArtifactGroup}.internal:algorithms:${besuVersion}"
-  testImplementation "${besuArtifactGroup}:besu-datatypes:$besuVersion"
-  testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion"
-  testImplementation "${besuArtifactGroup}.internal:eth:$besuVersion:test-support"
-  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion"
-  testImplementation "${besuArtifactGroup}.internal:core:$besuVersion:test-support"
-  testImplementation "${besuArtifactGroup}:evm:$besuVersion"
+
+  testImplementation "${besuArtifactGroup}.internal:algorithms"
+  testImplementation "${besuArtifactGroup}.internal:api"
+  testImplementation "${besuArtifactGroup}.internal:core"
+  testImplementation "${besuArtifactGroup}.internal:dsl"
+  testImplementation "${besuArtifactGroup}.internal:eth"
 
   testImplementation 'io.tmio:tuweni-bytes'
   testImplementation 'io.tmio:tuweni-units'

@@ -63,13 +63,21 @@ dependencyManagement {
       entry "arithmetization"
     }
 
-
     // Besu dependencies
     dependencySet(group: "${besuArtifactGroup}", version: "${besuVersion}") {
       entry "besu-datatypes"
       entry "evm"
       entry "plugin-api"
-      entry "internal"
+    }
+
+    // Besu internal dependencies
+    dependencySet(group: "${besuArtifactGroup}.internal", version: "${besuVersion}") {
+      entry "algorithms"
+      entry "api"
+      entry "core"
+      entry "dsl"
+      entry "eth"
+      entry "rlp"
     }
 
     dependencySet(group: 'ch.qos.logback', version: '1.5.6') {

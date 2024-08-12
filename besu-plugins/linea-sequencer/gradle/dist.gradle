@@ -1,5 +1,3 @@
-import de.undercouch.gradle.tasks.download.Download
-
 /*
  * Copyright Consensys Software Inc.
  *
@@ -27,38 +25,9 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-def lineaBesuDistTar = new File(new File(buildDir, "tmp"), rootProject.besuFilename)
-
-tasks.register('copyLocalLineaBesu', Copy) {
-  onlyIf {
-    project.hasProperty('useLocalLineaBesuDir')
-  }
-  def localLineaBesuDir = "${findProperty('useLocalLineaBesuDir')}".replaceFirst('^~', System.getProperty('user.home'))
-  doFirst {
-    if (!file(localLineaBesuDir).exists()) {
-      throw new GradleException("${localLineaBesuDir} not found")
-    }
-  }
-
-  from new File("${localLineaBesuDir}/build/distributions/${rootProject.besuFilename}")
-  into lineaBesuDistTar.parentFile
-}
-
-tasks.register('downloadLatestLineaBesu', Download) {
-  onlyIf {
-    !project.hasProperty('useLocalLineaBesuDir')
-  }
-    src rootProject.besuUrl
-    dest lineaBesuDistTar
-    onlyIfModified true
-}
-
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
 jar {
-  dependsOn downloadLatestLineaBesu
-  dependsOn copyLocalLineaBesu
-
   archiveBaseName = distributionIdentifier
 
   manifest {
@@ -92,77 +61,4 @@ def calculateVersion() {
 static def getCheckedOutGitCommitHash() {
   def hashLength = 8
   "git rev-parse HEAD".execute().text.take(hashLength)
-}
-
-tasks.register('distTar', Tar) {
-  dependsOn jar
-  dependsOn downloadLatestLineaBesu
-  dependsOn copyLocalLineaBesu
-
-  from(tarTree(lineaBesuDistTar), {
-    eachFile { path = path.replaceFirst(rootProject.besuIdentifier, '') }
-    includeEmptyDirs = false
-    exclude "**/LICENSE"
-  })
-
-  from(configurations.installedJars) {
-    into "plugins"
-    exclude "**/common*.jar"
-  }
-
-  into besuPluginsIdentifier
-  archiveBaseName = distributionIdentifier
-  compression = Compression.GZIP
-  archiveExtension = 'tar.gz'
-
-  exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register('installDist', Copy) {
-  dependsOn distTar
-
-  from(tarTree(distTar.outputs.getFiles().getSingleFile()), {
-    eachFile { path = path.replaceFirst(besuPluginsIdentifier, distributionIdentifier) }
-    includeEmptyDirs = false
-  })
-  into "$buildDir/distributions/install"
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register('distZip', Zip) {
-  dependsOn installDist
-
-  archiveBaseName = distributionIdentifier
-  from installDist.outputs.getFiles()
-  archiveBaseName
-  setArchiveExtension 'zip'
-  duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-}
-
-tasks.register("copyPluginJar") {
-  dependsOn installDist
-
-  doLast {
-    def copyInto = rootProject.besuPluginDir
-    def copyFrom = new File("${project(":sequencer").buildDir}/libs")
-
-    copy {
-      from copyFrom.toString()
-      into copyInto.toString()
-      include '*.jar'
-    }
-  }
-}
-
-tasks.register('deployPlugins', Copy) {
-  dependsOn jar
-  dependsOn installDist
-
-  from(configurations.installedJars) {
-    into new File(distributionIdentifier, "plugins")
-    exclude "**/common*.jar"
-  }
-
-  into installDist.destinationDir
 }

@@ -16,8 +16,13 @@ import java.time.LocalTime
  */
 
 apply plugin: 'jacoco'
+
 jacoco {
   toolVersion = '0.8.12'
+}
+
+configurations {
+  testSupportImplementation.extendsFrom implementation
 }
 
 test {
