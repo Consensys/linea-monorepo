@@ -33,7 +33,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 			return err
 		}
 		if err := rlp.Encode(w, []interface{}{
-			// tx.ChainId(),
+			// tx.ChainID(),
 			tx.Nonce(),
 			tx.GasTipCap(),
 			tx.GasFeeCap(),
@@ -52,7 +52,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 			return err
 		}
 		if err := rlp.Encode(w, []interface{}{
-			// tx.ChainId(),
+			// tx.ChainID(),
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
@@ -74,7 +74,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
-			// tx.ChainId(), uint(0), uint(0),
+			// tx.ChainID(), uint(0), uint(0),
 		}); err != nil {
 			return err
 		}

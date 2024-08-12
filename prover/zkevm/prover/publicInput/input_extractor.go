@@ -33,5 +33,6 @@ type FunctionalInputExtractor struct {
 	InitialRollingHashNumber, FinalRollingHashNumber query.LocalOpening
 
 	ChainID              query.LocalOpening
+	NBytesChainID        query.LocalOpening
 	L2MessageServiceAddr query.LocalOpening
 }

@@ -1,14 +1,15 @@
-package publicInput
+package execution_data_collector
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	publicInput "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 type MIMCHasher struct {
@@ -19,7 +20,7 @@ type MIMCHasher struct {
 	// this column stores the MiMC hashes
 	hash ifaces.Column
 	// a constant column that stores the last relevant value of the hash
-	hashFinal ifaces.Column
+	HashFinal ifaces.Column
 	// inter is an intermediary column used to enforce the MiMC constraints
 	inter ifaces.Column
 }
@@ -29,9 +30,9 @@ func NewMIMCHasher(comp *wizard.CompiledIOP, data, isActive ifaces.Column, name 
 	res := &MIMCHasher{
 		data:      data,
 		isActive:  isActive,
-		hash:      publicInput.CreateCol(name, "HASH", size, comp),
-		hashFinal: publicInput.CreateCol(name, "HASH_FINAL", size, comp),
-		inter:     publicInput.CreateCol(name, "INTER", size, comp),
+		hash:      util.CreateCol(name, "HASH", size, comp),
+		HashFinal: util.CreateCol(name, "HASH_FINAL", 1, comp),
+		inter:     util.CreateCol(name, "INTER", size, comp),
 	}
 	return res
 }
@@ -53,32 +54,11 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	// inter, the old state column, is initially zero
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.inter))
 
-	// below, constrain the hashFinal column
-	// two cases: Case 1: isActive is not completely full, then  ctMax is equal to the counter at the last cell where isActive is 1
-	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "HASH_FINAL_GLOBAL_CONSTRAINT"),
-		sym.Mul(
-			hasher.isActive,
-			sym.Sub(1,
-				column.Shift(hasher.isActive, 1),
-			),
-			sym.Sub(
-				hasher.hash,
-				hasher.hashFinal,
-			),
-		),
-	)
-
-	// Case 2: isActive is completely full, in which case we ask that isActive[size]*(counter[size]-ctMax[size]) = 0
-	// i.e. at the last row, counter is equal to ctMax
-	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "HASH_FINAL_LOCAL_CONSTRAINT"),
-		sym.Mul(
-			column.Shift(hasher.isActive, -1),
-			sym.Sub(
-				column.Shift(hasher.hash, -1),
-				column.Shift(hasher.hashFinal, -1),
-			),
-		),
-	)
+	// prepare accessors for HashFinal
+	comp.Columns.SetStatus(hasher.HashFinal.GetColID(), column.Proof)
+	accHashFinal := accessors.NewFromPublicColumn(hasher.HashFinal, 0)
+	// constrain HashFinal
+	util.CheckLastELemConsistency(comp, hasher.isActive, hasher.hash, accHashFinal, name)
 
 }
 
@@ -120,6 +100,6 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 
 	// assign the hasher columns
 	run.AssignColumn(hasher.hash.GetColID(), smartvectors.NewRegular(hash))
-	run.AssignColumn(hasher.hashFinal.GetColID(), smartvectors.NewConstant(finalHash, size))
+	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewRegular([]field.Element{finalHash}))
 	run.AssignColumn(hasher.inter.GetColID(), smartvectors.NewRegular(inter))
 }

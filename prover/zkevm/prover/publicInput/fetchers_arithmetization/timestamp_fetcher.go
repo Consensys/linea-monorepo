@@ -10,24 +10,13 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 const (
 	TimestampOffset = -6 // the corresponding offset position for the timestamp
 )
-
-// BlockDataCols models the arithmetization's BlockData module
-type BlockDataCols struct {
-	// RelBlock is the relative block number, ranging from 1 to the total number of blocks
-	RelBlock ifaces.Column
-	// Inst encodes the type of the row
-	Inst ifaces.Column
-	// Ct is a counter column
-	Ct ifaces.Column
-	// DataHi/DataLo encode the data, for example the timestamps
-	DataHi, DataLo ifaces.Column
-}
 
 // TimestampFetcher is a struct used to fetch the timestamps from the arithmetization's BlockDataCols
 type TimestampFetcher struct {
@@ -43,24 +32,87 @@ type TimestampFetcher struct {
 	SelectorTimestamp ifaces.Column
 	// prover action to compute SelectorTimestamp
 	ComputeSelectorTimestamp wizard.ProverAction
+	// the absolute ID of the first block number
+	FirstBlockID ifaces.Column
+	// the absolute ID of the last block number
+	LastBlockID ifaces.Column
 }
 
 // NewTimestampFetcher returns a new TimestampFetcher with initialized columns that are not constrained.
-func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *BlockDataCols) TimestampFetcher {
+func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) TimestampFetcher {
 	size := bdc.Ct.Size()
 	res := TimestampFetcher{
-		RelBlock:      utilities.CreateCol(name, "REL_BLOCK", size, comp),
-		First:         utilities.CreateCol(name, "FIRST", 1, comp),
-		Last:          utilities.CreateCol(name, "LAST", 1, comp),
-		Data:          utilities.CreateCol(name, "DATA", size, comp),
-		FilterFetched: utilities.CreateCol(name, "FILTER_FETCHED", size, comp),
+		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
+		First:         util.CreateCol(name, "FIRST", 1, comp),
+		Last:          util.CreateCol(name, "LAST", 1, comp),
+		Data:          util.CreateCol(name, "DATA", size, comp),
+		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
+		FirstBlockID:  util.CreateCol(name, "FIRST_BLOCK_ID", 1, comp),
+		LastBlockID:   util.CreateCol(name, "LAST_BLOCK_ID", 1, comp),
 	}
 	return res
 }
 
+// ConstrainFirstAndLastBlockID constraing the values of FirstBlockID and LastBlockID
+func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
+	// set the fetcher columns as public for accessors
+	comp.Columns.SetStatus(fetcher.FirstBlockID.GetColID(), column.Proof)
+	comp.Columns.SetStatus(fetcher.LastBlockID.GetColID(), column.Proof)
+	// get accessors
+	accessFirstBlockID := accessors.NewFromPublicColumn(fetcher.FirstBlockID, 0)
+	accessLastBlockID := accessors.NewFromPublicColumn(fetcher.LastBlockID, 0)
+	// Constrain the First Block ID
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_%s_%s", name, "FIRST_BLOCK_ID_GLOBAL", fetcher.FirstBlockID.GetColID()),
+		sym.Mul(
+			fetcher.SelectorTimestamp, // select only non-padding, valid rows.
+			sym.Sub(
+				bdc.FirstBlock,
+				accessFirstBlockID,
+			),
+		),
+	)
+
+	// FilterFetched is already constrained in the fetcher, no need to constrain it again
+	// two cases: Case 1: FilterFetched is not completely filled with 1s (we have a border between 1s and 0s)
+	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s_%s", name, "LAST_BLOCK_ID_GLOBAL", fetcher.LastBlockID.GetColID()),
+		sym.Mul(
+			fetcher.FilterFetched,
+			sym.Sub(1,
+				column.Shift(fetcher.FilterFetched, 1),
+			),
+			sym.Sub(
+				accessLastBlockID,
+				sym.Add(
+					fetcher.RelBlock,
+					accessFirstBlockID,
+					-1,
+				),
+			),
+		),
+	)
+
+	// Case 2: FilterFetched is completely filled with 1s, in which case we do not have a border between 1s and 0s
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s_%s", name, "LAST_BLOCK_ID_LOCAL", fetcher.LastBlockID.GetColID()),
+		sym.Mul(
+			column.Shift(fetcher.FilterFetched, -1),
+			sym.Sub(
+				accessLastBlockID,
+				sym.Add(
+					column.Shift(fetcher.RelBlock, -1),
+					accessFirstBlockID,
+					-1,
+				),
+			),
+		),
+	)
+
+}
+
 // DefineTimestampFetcher specifies the constraints of the TimestampFetcher with respect to the BlockDataCols
-func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *BlockDataCols) {
-	timestampField := utilities.GetTimestampField()
+func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher, name string, bdc *arith.BlockDataCols) {
+	timestampField := util.GetTimestampField()
 	// constrain the fetcher.SelectorTimestamp column, which will be the filter for the arithmetization's BlockDataCols
 	fetcher.SelectorTimestamp, fetcher.ComputeSelectorTimestamp = dedicated.IsZero(
 		comp,
@@ -138,14 +190,17 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 		fetcher.SelectorTimestamp, // filter lights up on the arithmetization's BlockDataCols rows that contain timestamp data
 	)
 
+	// constrain the First/Last Block ID counters
+	ConstrainFirstAndLastBlockID(comp, fetcher, name, bdc)
+
 }
 
 // AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
-func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher TimestampFetcher, bdc *BlockDataCols) {
+func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher TimestampFetcher, bdc *arith.BlockDataCols) {
 
-	var first, last field.Element
+	var first, last, firstBlockID field.Element
 	// get the hardcoded timestamp flag
-	timestampField := utilities.GetTimestampField()
+	timestampField := util.GetTimestampField()
 
 	// initialize empty fetched data and filter on the fetched data
 	size := bdc.Ct.Size()
@@ -167,6 +222,8 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher TimestampFetcher,
 			if fetchedRelBlock.IsOne() {
 				// the first relative block has code 0x1
 				first.Set(&timestamp)
+				// set the first absolute block ID
+				firstBlockID = bdc.FirstBlock.GetColAssignmentAt(run, i)
 			}
 			// continuously update the last timestamp value
 			last.Set(&timestamp)
@@ -178,6 +235,10 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher TimestampFetcher,
 			counter++
 		}
 	}
+	// compute the last absolute block ID
+	var lastBlockID field.Element
+	fieldCounter := field.NewElement(uint64(counter - 1))
+	lastBlockID.Add(&firstBlockID, &fieldCounter)
 
 	// assign the fetcher columns
 	run.AssignColumn(fetcher.First.GetColID(), smartvectors.NewRegular([]field.Element{first}))
@@ -185,6 +246,8 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher TimestampFetcher,
 	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
 	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.NewRegular(data))
 	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
+	run.AssignColumn(fetcher.FirstBlockID.GetColID(), smartvectors.NewRegular([]field.Element{firstBlockID}))
+	run.AssignColumn(fetcher.LastBlockID.GetColID(), smartvectors.NewRegular([]field.Element{lastBlockID}))
 	// assign the SelectorTimestamp using the ComputeSelectorTimestamp prover action
 	fetcher.ComputeSelectorTimestamp.Run(run)
 }
