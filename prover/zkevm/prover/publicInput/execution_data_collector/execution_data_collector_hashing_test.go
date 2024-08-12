@@ -1,7 +1,8 @@
-package publicInput
+package execution_data_collector
 
 import (
 	"fmt"
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	"strings"
 	"testing"
 
@@ -104,9 +105,9 @@ func ComputeMiMCHashFixedTestData() field.Element {
 // BlockData, TxnData and RlpTxn from CSV test files. It then defines and assigns
 // an ExecutionDataCollector, then pads, packs and MiMC-hashes its limbs.
 func TestExecutionDataCollectorAndHash(t *testing.T) {
-	ctBlockData := util.InitializeCsv("testdata/blockdata_mock.csv", t)
-	ctTxnData := util.InitializeCsv("testdata/txndata_mock.csv", t)
-	ctRlpTxn := util.InitializeCsv("testdata/rlp_txn_mock.csv", t)
+	ctBlockData := util.InitializeCsv("../testdata/blockdata_mock.csv", t)
+	ctTxnData := util.InitializeCsv("../testdata/txndata_mock.csv", t)
+	ctRlpTxn := util.InitializeCsv("../testdata/rlp_txn_mock.csv", t)
 
 	var (
 		execDataCollector ExecutionDataCollector
@@ -114,45 +115,22 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		timestampFetcher  fetch.TimestampFetcher
 		txnDataFetcher    fetch.TxnDataFetcher
 		rlpTxnFetcher     fetch.RlpTxnFetcher
-		txnDataCols       *fetch.TxnData
-		blockDataCols     *fetch.BlockDataCols
-		rlpTxn            *fetch.RlpTxn
+		txnDataCols       *arith.TxnData
+		blockDataCols     *arith.BlockDataCols
+		rlpTxn            *arith.RlpTxn
 		mimcHasher        *MIMCHasher
 
-		importInp importpad.ImportAndPadInputs
-		importMod wizard.ProverAction
+		importInp  importpad.ImportAndPadInputs
+		paddingMod wizard.ProverAction
 
 		packingInp pack.PackingInput
 		packingMod *pack.Packing
 	)
 
 	define := func(b *wizard.Builder) {
-		blockDataCols = &fetch.BlockDataCols{
-			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
-			Inst:     ctBlockData.GetCommit(b, "INST"),
-			Ct:       ctBlockData.GetCommit(b, "CT"),
-			DataHi:   ctBlockData.GetCommit(b, "DATA_HI"),
-			DataLo:   ctBlockData.GetCommit(b, "DATA_LO"),
-		}
-		txnDataCols = &fetch.TxnData{
-			AbsTxNum:        ctTxnData.GetCommit(b, "TD.ABS_TX_NUM"),
-			AbsTxNumMax:     ctTxnData.GetCommit(b, "TD.ABS_TX_NUM_MAX"),
-			RelTxNum:        ctTxnData.GetCommit(b, "TD.REL_TX_NUM"),
-			RelTxNumMax:     ctTxnData.GetCommit(b, "TD.REL_TX_NUM_MAX"),
-			Ct:              ctTxnData.GetCommit(b, "TD.CT"),
-			FromHi:          ctTxnData.GetCommit(b, "TD.FROM_HI"),
-			FromLo:          ctTxnData.GetCommit(b, "TD.FROM_LO"),
-			IsLastTxOfBlock: ctTxnData.GetCommit(b, "TD.IS_LAST_TX_OF_BLOCK"),
-			RelBlock:        ctTxnData.GetCommit(b, "TD.REL_BLOCK"),
-		}
-		rlpTxn = &fetch.RlpTxn{
-			AbsTxNum:       ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM"),
-			AbsTxNumMax:    ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM_MAX"),
-			ToHashByProver: ctRlpTxn.GetCommit(b, "RL.TO_HASH_BY_PROVER"),
-			Limb:           ctRlpTxn.GetCommit(b, "RL.LIMB"),
-			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
-		}
-
+		// define the arith test modules
+		blockDataCols, txnDataCols, rlpTxn = arith.DefineTestingArithModules(b, ctBlockData, ctTxnData, ctRlpTxn)
+		// create and define a metadata fetcher
 		blockTxnMeta = fetch.NewBlockTxnMetadata(b.CompiledIOP, "BLOCK_TX_METADATA", txnDataCols)
 		fetch.DefineBlockTxnMetaData(b.CompiledIOP, &blockTxnMeta, "BLOCK_TX_METADATA", txnDataCols)
 		// create a new timestamp fetcher
@@ -190,18 +168,18 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// define the padding module. The import and pad module is first assigned
 		// a new variable because we need to access its field although the
 		// struct itself is private.
-		imported := importpad.ImportAndPad(b.CompiledIOP, importInp, limbColSize)
-		importMod = imported
+		padding := importpad.ImportAndPad(b.CompiledIOP, importInp, limbColSize)
+		paddingMod = padding
 
 		// create an input for the packing module
 		packingInp = pack.PackingInput{
 			MaxNumBlocks: execDataCollector.BlockID.Size(),
 			PackingParam: generic.MiMCUsecase,
 			Imported: pack.Importation{
-				Limb:      imported.Limbs,
-				NByte:     imported.NBytes,
-				IsNewHash: imported.IsNewHash,
-				IsActive:  imported.IsActive,
+				Limb:      padding.Limbs,
+				NByte:     padding.NBytes,
+				IsNewHash: padding.IsNewHash,
+				IsActive:  padding.IsActive,
 			},
 		}
 		// create a new packing module
@@ -214,35 +192,8 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 
 	prove := func(run *wizard.ProverRuntime) {
 		// assign the CSV data for the mock BlockData, TxnData and RlpTxn arithmetization modules
-		ctBlockData.Assign(
-			run,
-			"REL_BLOCK",
-			"INST",
-			"CT",
-			"DATA_HI",
-			"DATA_LO",
-		)
-		ctTxnData.Assign(
-			run,
-			"TD.ABS_TX_NUM",
-			"TD.ABS_TX_NUM_MAX",
-			"TD.REL_TX_NUM",
-			"TD.REL_TX_NUM_MAX",
-			"TD.CT",
-			"TD.FROM_HI",
-			"TD.FROM_LO",
-			"TD.IS_LAST_TX_OF_BLOCK",
-			"TD.REL_BLOCK",
-		)
-		ctRlpTxn.Assign(
-			run,
-			"RT.ABS_TX_NUM",
-			"RT.ABS_TX_NUM_MAX",
-			"RL.TO_HASH_BY_PROVER",
-			"RL.LIMB",
-			"RL.NBYTES",
-		)
-		// assign the mock arithmetization modules
+		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
+		// assign the fetchers
 		fetch.AssignTimestampFetcher(run, timestampFetcher, blockDataCols)
 		fetch.AssignBlockTxnMetadata(run, blockTxnMeta, txnDataCols)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txnDataCols)
@@ -251,7 +202,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		AssignExecutionDataCollector(run, execDataCollector, timestampFetcher, blockTxnMeta, txnDataFetcher, rlpTxnFetcher)
 
 		// assign the padding module
-		importMod.Run(run)
+		paddingMod.Run(run)
 		// assign the packing module
 		packingMod.Run(run)
 		// assign the hasher
@@ -259,7 +210,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 		// compute the MiMC hash of the fixed TestData
 		fixedHash := ComputeMiMCHashFixedTestData()
 		// assert that we are computing the hash correctly
-		assert.Equal(t, fixedHash, mimcHasher.hashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
+		assert.Equal(t, fixedHash, mimcHasher.HashFinal.GetColAssignmentAt(run, 0), "Final Hash Value is Incorrect")
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

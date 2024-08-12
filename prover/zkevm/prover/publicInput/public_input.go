@@ -1,16 +1,241 @@
 package publicInput
 
-import fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+import (
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
+	pack "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing"
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	edc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
+	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/logs"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/ethereum/go-ethereum/common"
+)
 
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.
 type PublicInput struct {
-	TimestampFetcher fetch.TimestampFetcher
-	RootHashFetcher  fetch.RootHashFetcher
+	Inputs             InputModules
+	Aux                AuxiliaryModules
+	TimestampFetcher   fetch.TimestampFetcher
+	RootHashFetcher    fetch.RootHashFetcher
+	RollingHashFetcher logs.RollingSelector
+	LogHasher          logs.LogHasher
+	ExecMiMCHasher     edc.MIMCHasher
+	DataNbBytes        ifaces.Column
+	ChainID            ifaces.Column
+	ChainIDNBytes      ifaces.Column
+}
+
+// AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
+type AuxiliaryModules struct {
+	fetchedL2L1, fetchedRollingMsg, fetchedRollingHash logs.ExtractedData
+	logSelectors                                       logs.Selectors
+	blockTxnMetadata                                   fetch.BlockTxnMetadata
+	txnDataFetcher                                     fetch.TxnDataFetcher
+	rlpTxnFetcher                                      fetch.RlpTxnFetcher
+	execDataCollector                                  edc.ExecutionDataCollector
+	execDataCollectorPadding                           wizard.ProverAction
+	execDataCollectorPacking                           pack.Packing
+}
+
+// Settings contains options for proving and verifying that the public inputs are computed properly.
+type Settings struct {
+	Name          string
+	BridgeAddress types.EthAddress
+	ChainID       field.Element // uint16
+}
+
+// InputModules groups several arithmetization modules needed to compute the public input.
+type InputModules struct {
+	BlockData    *arith.BlockDataCols
+	TxnData      *arith.TxnData
+	RlpTxn       *arith.RlpTxn
+	LogCols      logs.LogColumns
+	StateSummary *statesummary.Module
+}
+
+// newPublicInput receives as input a series of modules and returns a *PublicInput and
+// an *AuxiliaryModules struct. The AuxiliaryModules are intermediary modules needed to
+// both define and assign the PublicInput.
+func newPublicInput(
+	comp *wizard.CompiledIOP,
+	inp *InputModules,
+	settings Settings,
+) *PublicInput {
+
+	if len(settings.Name) == 0 {
+		utils.Panic("no name was provided in settings: %++v", settings)
+	}
+
+	// Timestamps
+	timestampFetcher := fetch.NewTimestampFetcher(comp, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+	fetch.DefineTimestampFetcher(comp, &timestampFetcher, "PUBLIC_INPUT_TIMESTAMP_FETCHER", inp.BlockData)
+
+	// Logs: Fetchers, Selectors and Hasher
+	fetchedL2L1 := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
+	fetchedRollingMsg := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_MSG")
+	fetchedRollingHash := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_HASH")
+	logSelectors := logs.NewSelectorColumns(comp, inp.LogCols, common.Address(settings.BridgeAddress))
+	logHasherL2l1 := logs.NewLogHasher(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
+	rollingSelector := logs.NewRollingSelector(comp, "PUBLIC_INPUT_ROLLING_SEL")
+
+	// Define Logs: Fetchers, Selectors and Hasher
+	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedL2L1, logs.L2L1)
+	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedRollingMsg, logs.RollingMsgNo)
+	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedRollingHash, logs.RollingHash)
+	logs.DefineHasher(comp, logHasherL2l1, "PUBLIC_INPUT_L2L1LOGS", fetchedL2L1)
+	logs.DefineRollingSelector(comp, rollingSelector, "PUBLIC_INPUT_ROLLING_SEL", fetchedRollingHash, fetchedRollingMsg)
+
+	// RootHash fetcher from the StateSummary
+	rootHashFetcher := fetch.NewRootHashFetcher(comp, "PUBLIC_INPUT_ROOT_HASH_FETCHER")
+	fetch.DefineRootHashFetcher(comp, rootHashFetcher, "PUBLIC_INPUT_ROOT_HASH_FETCHER", *inp.StateSummary)
+
+	// Metadata fetcher
+	blockTxnMeta := fetch.NewBlockTxnMetadata(comp, "BLOCK_TX_METADATA", inp.TxnData)
+	fetch.DefineBlockTxnMetaData(comp, &blockTxnMeta, "BLOCK_TX_METADATA", inp.TxnData)
+
+	// TxnData fetcher
+	txnDataFetcher := fetch.NewTxnDataFetcher(comp, "PUBLIC_INPUT_TXN_DATA_FETCHER", inp.TxnData)
+	fetch.DefineTxnDataFetcher(comp, &txnDataFetcher, "PUBLIC_INPUT_TXN_DATA_FETCHER", inp.TxnData)
+
+	// RlpTxn fetcher
+	rlpFetcher := fetch.NewRlpTxnFetcher(comp, "PUBLIC_INPUT_RLP_TXN_FETCHER", inp.RlpTxn)
+	fetch.DefineRlpTxnFetcher(comp, &rlpFetcher, "PUBLIC_INPUT_RLP_TXN_FETCHER", inp.RlpTxn)
+
+	// ExecutionDataCollector
+	limbColSize := edc.GetSummarySize(inp.TxnData, inp.RlpTxn)
+	limbColSize = 2 * limbColSize // we need to artificially blow up the column size by 2, or padding will fail
+	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
+	edc.DefineExecutionDataCollector(comp, &execDataCollector, "EXECUTION_DATA_COLLECTOR", timestampFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
+
+	// ExecutionDataCollector: Padding
+	importInp := importpad.ImportAndPadInputs{
+		Name: settings.Name,
+		Src: generic.GenericByteModule{Data: generic.GenDataModule{
+			HashNum: execDataCollector.HashNum,
+			Index:   execDataCollector.Ct,
+			ToHash:  execDataCollector.IsActive,
+			NBytes:  execDataCollector.NoBytes,
+			Limb:    execDataCollector.Limb,
+		}},
+		PaddingStrategy: generic.MiMCUsecase,
+	}
+	padding := importpad.ImportAndPad(comp, importInp, limbColSize)
+
+	// ExecutionDataCollector: Packing
+	packingInp := pack.PackingInput{
+		MaxNumBlocks: execDataCollector.BlockID.Size(),
+		PackingParam: generic.MiMCUsecase,
+		Imported: pack.Importation{
+			Limb:      padding.Limbs,
+			NByte:     padding.NBytes,
+			IsNewHash: padding.IsNewHash,
+			IsActive:  padding.IsActive,
+		},
+	}
+	packingMod := pack.NewPack(comp, packingInp)
+
+	// ExecutionDataCollector: Hashing
+	mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
+	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+
+	publicInput := &PublicInput{
+		TimestampFetcher:   timestampFetcher,
+		RootHashFetcher:    rootHashFetcher,
+		RollingHashFetcher: rollingSelector,
+		LogHasher:          logHasherL2l1,
+		ExecMiMCHasher:     *mimcHasher,
+		DataNbBytes:        execDataCollector.TotalBytesCounter,
+		ChainID:            rlpFetcher.ChainID,
+		ChainIDNBytes:      rlpFetcher.NBytesChainID,
+		Inputs:             *inp,
+		Aux: AuxiliaryModules{
+			fetchedL2L1:              fetchedL2L1,
+			fetchedRollingMsg:        fetchedRollingMsg,
+			fetchedRollingHash:       fetchedRollingHash,
+			logSelectors:             logSelectors,
+			blockTxnMetadata:         blockTxnMeta,
+			txnDataFetcher:           txnDataFetcher,
+			rlpTxnFetcher:            rlpFetcher,
+			execDataCollector:        execDataCollector,
+			execDataCollectorPadding: padding,
+			execDataCollectorPacking: *packingMod,
+		},
+	}
+
+	return publicInput
+}
+
+// Assign both a PublicInput and AuxiliaryModules using data from InputModules.
+// The AuxiliaryModules are intermediary modules needed to both define and assign the PublicInput.
+func (pub *PublicInput) Assign(run *wizard.ProverRuntime) {
+
+	var (
+		inp = pub.Inputs
+		aux = pub.Aux
+	)
+
+	// assign the timestamp module
+	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
+	// assign the log modules
+	aux.logSelectors.Assign(run)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedL2L1, logs.L2L1)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingMsg, logs.RollingMsgNo)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingHash, logs.RollingHash)
+	logs.AssignHasher(run, pub.LogHasher, aux.fetchedL2L1)
+	logs.AssignRollingSelector(run, pub.RollingHashFetcher, aux.fetchedRollingHash, aux.fetchedRollingMsg)
+	// assign the root hash fetcher
+	fetch.AssignRootHashFetcher(run, pub.RootHashFetcher, *inp.StateSummary)
+	// assign the execution data collector's necessary fetchers
+	fetch.AssignBlockTxnMetadata(run, aux.blockTxnMetadata, inp.TxnData)
+	fetch.AssignTxnDataFetcher(run, aux.txnDataFetcher, inp.TxnData)
+	fetch.AssignRlpTxnFetcher(run, &aux.rlpTxnFetcher, inp.RlpTxn)
+	// assign the ExecutionDataCollector
+	edc.AssignExecutionDataCollector(run, aux.execDataCollector, pub.TimestampFetcher, aux.blockTxnMetadata, aux.txnDataFetcher, aux.rlpTxnFetcher)
+	aux.execDataCollectorPadding.Run(run)
+	aux.execDataCollectorPacking.Run(run)
+	pub.ExecMiMCHasher.AssignHasher(run)
 }
 
 // GetExtractor returns [FunctionalInputExtractor] giving access to the totality
 // of the public inputs recovered by the public input module.
 func (pi *PublicInput) GetExtractor() *FunctionalInputExtractor {
-	panic("unimplemented")
+	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
+		return query.NewLocalOpening(ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
+	}
+	initialRollingHash := [2]query.LocalOpening{
+		createNewLocalOpening(pi.RollingHashFetcher.FirstHi),
+		createNewLocalOpening(pi.RollingHashFetcher.FirstLo),
+	}
+	finalRollingHash := [2]query.LocalOpening{
+		createNewLocalOpening(pi.RollingHashFetcher.LastHi),
+		createNewLocalOpening(pi.RollingHashFetcher.LastLo),
+	}
+
+	res := &FunctionalInputExtractor{
+		DataNbBytes:              createNewLocalOpening(pi.DataNbBytes),
+		DataChecksum:             createNewLocalOpening(pi.ExecMiMCHasher.HashFinal),
+		L2MessageHash:            createNewLocalOpening(pi.LogHasher.HashFinal),
+		InitialStateRootHash:     createNewLocalOpening(pi.RootHashFetcher.First),
+		FinalStateRootHash:       createNewLocalOpening(pi.RootHashFetcher.Last),
+		InitialBlockNumber:       createNewLocalOpening(pi.TimestampFetcher.FirstBlockID),
+		FinalBlockNumber:         createNewLocalOpening(pi.TimestampFetcher.LastBlockID),
+		InitialBlockTimestamp:    createNewLocalOpening(pi.TimestampFetcher.First),
+		FinalBlockTimestamp:      createNewLocalOpening(pi.TimestampFetcher.Last),
+		InitialRollingHash:       initialRollingHash,
+		FinalRollingHash:         finalRollingHash,
+		InitialRollingHashNumber: createNewLocalOpening(pi.RollingHashFetcher.FirstMessageNo),
+		FinalRollingHashNumber:   createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo),
+		ChainID:                  createNewLocalOpening(pi.ChainID),
+		NBytesChainID:            createNewLocalOpening(pi.ChainIDNBytes),
+		L2MessageServiceAddr:     query.LocalOpening{},
+	}
+	return res
 }
