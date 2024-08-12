@@ -1,3 +1,4 @@
+import com.github.jk1.license.filter.LicenseBundleNormalizer
 
 buildscript {
   ext {
@@ -8,4 +9,33 @@ buildscript {
     besuPluginDir = File.createTempDir("plugins")
   }
 }
+
+plugins {
+  id 'java-library'
+  id 'com.github.jk1.dependency-license-report' version '2.8'
+}
+
 version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
+
+licenseReport {
+  // This is for the allowed-licenses-file in checkLicense Task
+  // Accepts File, URL or String path to local or remote file
+  allowedLicensesFile = rootProject.file("gradle/allowed-licenses.json")
+
+  excludes = []
+
+  // If set to true, then all boms will be excluded from the report
+  excludeBoms = true
+
+  filters = [
+    new LicenseBundleNormalizer(bundlePath: rootProject.file("gradle/license-normalizer-bundle.json"))
+  ]
+}
+
+build {
+  dependsOn checkLicense
+}
+
+jar {
+  enabled = false
+}

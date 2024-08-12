@@ -14,12 +14,12 @@
  */
 
 // Default tasks and build aliases
-defaultTasks 'build', 'checkLicenses', 'javadoc', 'jar'
+defaultTasks 'build', 'checkLicense', 'javadoc', 'jar'
 
 def buildAliases = ['dev': [
   'spotlessApply',
   'build',
-  'checkLicenses',
+  'checkLicense',
 ]]
 
 def expandedTaskList = []
