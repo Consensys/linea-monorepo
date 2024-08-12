@@ -2,16 +2,13 @@ package net.consensys.zkevm.coordinator.clients.prover
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
-import com.github.michaelbull.result.Result
 import io.vertx.core.Vertx
 import net.consensys.linea.CommonDomainFunctions.blockIntervalString
-import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClient
 import net.consensys.zkevm.coordinator.clients.GenerateTracesResponse
 import net.consensys.zkevm.coordinator.clients.GetProofResponse
 import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceLogsClient
-import net.consensys.zkevm.coordinator.clients.ProverErrorType
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
 import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.domain.RlpBridgeLogsData
@@ -57,9 +54,7 @@ class FileBasedExecutionProverClient(
     FileMonitor.Config(config.pollingInterval, config.timeout)
   ),
   val proverResponsesRepository: FileBasedProverResponsesRepository = FileBasedProverResponsesRepository(
-    vertx,
     FileBasedProverResponsesRepository.Config(config.responseDirectory),
-    mapper = mapper,
     proofResponseFileNameProvider = executionProofResponseFileNameProvider,
     fileMonitor
   )
@@ -121,13 +116,11 @@ class FileBasedExecutionProverClient(
       endBlockNumber
     )
 
-    fun findResponse(): SafeFuture<ExecutionProofResponse?> {
-      return proverResponsesRepository
-        .find(proverResponseIndex)
-        .thenApply { response -> response.component1() }
+    fun findResponse(): SafeFuture<Unit> {
+      return proverResponsesRepository.find(proverResponseIndex)
     }
 
-    fun monitor(): SafeFuture<Result<ExecutionProofResponse, ErrorResponse<ProverErrorType>>> {
+    fun monitor(): SafeFuture<Unit> {
       return proverResponsesRepository.monitor(proverResponseIndex)
     }
   }
@@ -188,8 +181,8 @@ class FileBasedExecutionProverClient(
 
     // Check if the request is already proven. If so, return it.
     // This happens when coordinator is restarted and the request is already proven.
-    return responseMonitor.findResponse().thenCompose { alreadyProvenResponse ->
-      if (alreadyProvenResponse != null) {
+    return responseMonitor.findResponse().handleComposed { _, throwable ->
+      if (throwable == null) {
         log.debug(
           "execution proof already proven: batch={} reusedResponse={}",
           blockIntervalString(startBlockNumber, endBlockNumber),
