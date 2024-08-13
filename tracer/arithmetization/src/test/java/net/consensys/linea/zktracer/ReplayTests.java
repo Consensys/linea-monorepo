@@ -104,4 +104,9 @@ public class ReplayTests {
   void multipleFailingCallToEcrecover() {
     replay("5000544.json.gz");
   }
+
+  @Test
+  void incident777zkGethMainnet() {
+    replay("7461019-7461030.json.gz");
+  }
 }
