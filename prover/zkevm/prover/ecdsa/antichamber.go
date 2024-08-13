@@ -161,7 +161,7 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 	)
 	ac.assignAntichamber(run, nbActualEcRecover)
 	ac.EcRecover.Assign(run, ecSrc)
-	ac.txSignature.assignTxSignature(run)
+	ac.txSignature.assignTxSignature(run, nbActualEcRecover)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
 	ac.AlignedGnarkData.Assign(run)

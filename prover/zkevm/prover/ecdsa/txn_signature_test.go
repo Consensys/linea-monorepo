@@ -13,6 +13,7 @@ import (
 
 func TestTxnSignature(t *testing.T) {
 
+	// for this test they are the actual values
 	settings := &Settings{
 		MaxNbEcRecover: 5,
 		MaxNbTx:        5,
@@ -53,7 +54,7 @@ func TestTxnSignature(t *testing.T) {
 
 		// assign txSignInputs
 		txSign.assigntxSignInputs(run, rlpTxnTest)
-		txSign.assignTxSignature(run)
+		txSign.assignTxSignature(run, settings.MaxNbEcRecover)
 		m.Run(run)
 	})
 	assert.NoError(t, wizard.Verify(compiled, proof))

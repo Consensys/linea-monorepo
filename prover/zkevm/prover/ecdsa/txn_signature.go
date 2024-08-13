@@ -102,10 +102,10 @@ func (txn *txSignature) buildInfoModule() generic.GenInfoModule {
 }
 
 // it assign the native columns
-func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime) {
+func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, nbActualEcRecover int) {
 
 	var (
-		nbEcRecover = txn.Inputs.ac.Inputs.settings.MaxNbEcRecover
+		nbEcRecover = nbActualEcRecover
 		n           = startAt(nbEcRecover)
 		hashHi      = vector.Repeat(field.Zero(), n)
 		hashLo      = vector.Repeat(field.Zero(), n)
