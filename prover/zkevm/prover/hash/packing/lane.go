@@ -131,7 +131,7 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 	ipTracker := dedicated.InsertPartitionedIP(comp, "PIP_For_LaneRePacking",
 		s.decLimbSp,
 		l.coeff,
-		column.Shift(l.isLaneComplete, 1),
+		l.isLaneComplete,
 	)
 
 	// Project the lanes from ipTracker over the Lane column.

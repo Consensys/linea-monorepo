@@ -77,7 +77,6 @@ func (ctx cleaningCtx) csNbZeros(comp *wizard.CompiledIOP) {
 		[]ifaces.Column{ctx.nbZeros, ctx.powersNbZeros},
 	)
 	commonconstraints.MustZeroWhenInactive(comp, isActive, ctx.nbZeros)
-	// this also guarantees that cleanLimb full fills the same constraint.
 
 	//  The constraint for nbZeros = (MaxBytes - NByte)* isActive
 	nbZeros := sym.Sub(MAXNBYTE, nByte)
