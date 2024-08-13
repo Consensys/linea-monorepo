@@ -87,6 +87,7 @@ public class LineaEndpointServicePlugin extends AbstractLineaRequiredPlugin {
         lineaEstimateGasMethod::execute);
 
     lineaSetExtraDataMethod = new LineaSetExtraData(rpcEndpointService);
+
     rpcEndpointService.registerRPCEndpoint(
         lineaSetExtraDataMethod.getNamespace(),
         lineaSetExtraDataMethod.getName(),
