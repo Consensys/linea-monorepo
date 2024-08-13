@@ -19,7 +19,7 @@ import (
 // It stores the inputs for [newDecomposition] function.
 type decompositionInputs struct {
 	// parameters for decomposition,
-	// the are used to determine the number slices and their lengths.
+	// the are used to determine the number of slices and their lengths.
 	param       generic.HashingUsecase
 	cleaningCtx cleaningCtx
 }
@@ -39,7 +39,7 @@ type decomposition struct {
 	// decomposedLenPowers = 2^(8*decomposedLen)
 	decomposedLenPowers []ifaces.Column
 	// prover action for lengthConsistency;
-	// it checks that decomposedLimbs is of length decomposedLen.
+	// it checks that decomposedLimb is of length decomposedLen.
 	pa wizard.ProverAction
 	// it indicates the active part of the decomposition module
 	isActive ifaces.Column
@@ -149,7 +149,7 @@ func (decomposed *decomposition) csDecomposLen(
 
 }
 
-// decomposedLimbs cis the the decomposition of cleanLimbs
+// decomposedLimbs is the the decomposition of cleanLimbs
 func (decomposed *decomposition) csDecomposition(
 	comp *wizard.CompiledIOP, cleanLimbs ifaces.Column) {
 
