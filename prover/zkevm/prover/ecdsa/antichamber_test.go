@@ -34,9 +34,9 @@ func TestAntichamber(t *testing.T) {
 	var ecSrc *ecDataSource
 	var txSrc *txnData
 	limits := &Settings{
-		MaxNbEcRecover:     2,
+		MaxNbEcRecover:     3,
 		MaxNbTx:            2,
-		NbInputInstance:    4,
+		NbInputInstance:    5,
 		NbCircuitInstances: 1,
 	}
 	var rlpTxn generic.GenDataModule
