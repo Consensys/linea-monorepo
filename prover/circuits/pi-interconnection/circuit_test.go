@@ -1,4 +1,4 @@
-package pi_interconnection
+package pi_interconnection_test
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestMerkle(t *testing.T) {
 				assert.NoError(t, err)
 				toHashBytes[i] = x.Bytes()
 				toHashHex[i] = utils.HexEncodeToString(toHashBytes[i][:])
-				assert.Equal(t, 32, internal.Copy(toHashSnark[i][:], toHashBytes[i][:]))
+				assert.Equal(t, 32, utils.Copy(toHashSnark[i][:], toHashBytes[i][:]))
 			}
 			for i := len(toHashHex); i < len(toHashSnark); i++ { // pad with zeros
 				for j := range toHashSnark[i] {
@@ -49,7 +50,7 @@ func TestMerkle(t *testing.T) {
 
 			hsh := sha3.NewLegacyKeccak256()
 			for i := range rootsHex {
-				root := MerkleRoot(hsh, c.nbLeaves, toHashBytes[i*c.nbLeaves:min(len(toHashBytes), (i+1)*c.nbLeaves)])
+				root := pi_interconnection.MerkleRoot(hsh, c.nbLeaves, toHashBytes[i*c.nbLeaves:min(len(toHashBytes), (i+1)*c.nbLeaves)])
 				rootHex := utils.HexEncodeToString(root[:])
 				assert.Equal(t, rootsHex[i], rootHex)
 			}
@@ -90,7 +91,7 @@ func (c *testMerkleCircuit) Define(api frontend.API) error {
 	}
 
 	for i := range c.Roots {
-		root := merkleRoot(hshK, c.ToHash[i*nbLeaves:(i+1)*nbLeaves])
+		root := pi_interconnection.MerkleRootSnark(hshK, c.ToHash[i*nbLeaves:(i+1)*nbLeaves])
 		internal.AssertSliceEquals(api, c.Roots[i][:], root[:])
 	}
 

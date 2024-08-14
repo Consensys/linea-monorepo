@@ -18,6 +18,7 @@ import (
 	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"math/big"
 
 	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
@@ -111,11 +112,11 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 			NbBatches:      len(i.BatchSums),
 		},
 	}
-	internal.Copy(res.X[:], i.X[:])
+	utils.Copy(res.X[:], i.X[:])
 	if len(i.BatchSums) > len(res.BatchSums) {
 		return res, errors.New("batches do not fit in circuit")
 	}
-	for n := internal.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
+	for n := utils.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
 		res.BatchSums[n] = 0
 	}
 	return res, nil

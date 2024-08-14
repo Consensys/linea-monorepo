@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"path"
 
@@ -44,6 +45,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		}
 	)
 
+	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
+
 	for i, execReqFPath := range req.ExecutionProofs {
 		po := &execution.Response{}
 		fpath := path.Join(cfg.Execution.DirTo(), execReqFPath)
@@ -66,8 +69,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			utils.Panic("conflated batch %v reports a parent state hash mismatch, but this is not the first batch of the sequence", i)
 		}
 
-		// This is purposefuly overwritten at each iteration over i. We want to
-		// keep the final velue.
+		// This is purposefully overwritten at each iteration over i. We want to
+		// keep the final value.
 		cf.FinalBlockNumber = uint(po.FirstBlockNumber + len(po.BlocksData) - 1)
 
 		for _, blockdata := range po.BlocksData {
@@ -86,13 +89,29 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
-			pClaim, err := parseProofClaim(po.Proof, po.DebugData.FinalHash, po.VerifyingKeyShaSum)
+			pClaim, err := parseProofClaim(po.Proof, po.DebugData.FinalHash, po.VerifyingKeyShaSum) // @gbotrel Is finalHash the state hash? If so why is it given as the execution circuit's PI?
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			// TODO make sure this belongs in the if
+			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
+			piq, err := public_input.ExecutionSerializable{
+				L2MsgHashes:            l2MessageHashes,
+				FinalStateRootHash:     po.DebugData.FinalHash, // TODO @tabaie make sure this is the right value
+				FinalBlockNumber:       uint64(cf.FinalBlockNumber),
+				FinalBlockTimestamp:    finalBlock.TimeStamp,
+				FinalRollingHash:       cf.L1RollingHash,
+				FinalRollingHashNumber: uint64(cf.L1RollingHashMessageNumber),
+			}.Decode()
+			if err != nil {
+				return nil, err
+			}
+			cf.ExecutionPI = append(cf.ExecutionPI, piq)
 		}
 	}
+
+	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.CompressionProofs))
 
 	for i, decompReqFPath := range req.CompressionProofs {
 		dp := &blobdecompression.Response{}
@@ -120,6 +139,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.DecompressionPI = append(cf.DecompressionPI, dp.Request)
 		}
 	}
 

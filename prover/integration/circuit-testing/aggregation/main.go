@@ -45,7 +45,7 @@ func main() {
 
 		// Building aggregation circuit for max `nc` proofs
 		logrus.Infof("Building aggregation circuit for size of %v\n", nc)
-		ccs, err := aggregation.MakeCS(nc, vkeys)
+		ccs, err := aggregation.MakeCS(nc, []string{"blob-decompression-v1", "execution"}, nil, vkeys) // TODO @Tabaie add a PI key
 		if err != nil {
 			panic(err)
 		}
@@ -89,7 +89,8 @@ func main() {
 		// Assigning the BW6 circuit
 		logrus.Infof("Generating the aggregation proof for arity %v", nc)
 
-		bw6Proof, err := aggregation.MakeProof(&ppBw6, nc, innerProofClaims, frBw6.NewElement(10))
+		// TODO @Tabaie add a PI proof
+		bw6Proof, err := aggregation.MakeProof(&ppBw6, nc, innerProofClaims, nil, frBw6.NewElement(10))
 		if err != nil {
 			panic(err)
 		}

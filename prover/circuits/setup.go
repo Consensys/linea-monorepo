@@ -89,7 +89,7 @@ func (s *Setup) CurveID() ecc.ID {
 	return fieldToCurve(s.Circuit.Field())
 }
 
-func (s *Setup) VerifiyingKeyDigest() string {
+func (s *Setup) VerifyingKeyDigest() string {
 	r, err := objectChecksum(s.VerifyingKey)
 	if err != nil {
 		utils.Panic("could not get the verifying key digest: %v", err)

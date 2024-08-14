@@ -100,10 +100,11 @@ type Config struct {
 	// accessed (prover). The file structure is described in TODO @gbotrel.
 	AssetsDir string `mapstructure:"assets_dir" validate:"required,dir"`
 
-	Controller        Controller
-	Execution         Execution
-	BlobDecompression BlobDecompression `mapstructure:"blob_decompression"`
-	Aggregation       Aggregation
+	Controller                 Controller
+	Execution                  Execution
+	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
+	Aggregation                Aggregation
+	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -248,4 +249,14 @@ func (cfg *WithRequestDir) DirTo() string {
 
 func (cfg *WithRequestDir) DirDone() string {
 	return path.Join(cfg.RequestsRootDir, RequestsDoneSubDir)
+}
+
+type PublicInput struct {
+	MaxNbDecompression int `mapstructure:"max_nb_decompression" validate:"gte=0"`
+	MaxNbExecution     int `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits      int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
+	MaxNbKeccakF       int `mapstructure:"max_nb_keccakf" validate:"gte=0"`
+	ExecutionMaxNbMsg  int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth   int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle   int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
 }
