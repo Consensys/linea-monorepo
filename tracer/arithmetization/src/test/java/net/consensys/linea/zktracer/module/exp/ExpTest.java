@@ -20,6 +20,9 @@ import static java.lang.Math.min;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -28,12 +31,28 @@ import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
 public class ExpTest {
-  // Generates 128, 64, 2, 1 as LD
-  private static final int[] LD_INDICES = new int[] {1, 2, 7, 8};
-  private static final int[] C = new int[] {1, 2, 10, 15, 16, 17, 20, 31, 32};
+  // Generates 128, 64, 2, 1 as LD (leading digit)
+  // LD_INDICES | LD
+  // ---------- | ---------------------
+  // 1          | 128 = 1000 0000 = 0x80
+  // 2          | 64  = 0100 0000 = 0x40
+  // 7          | 2   = 0000 0010 = 0x02
+  // 8          | 1   = 0000 0001 = 0x01
+  private static final int[] LD_INDICES = new int[] {1, 2, 7, 8}; // LEADING_DIGIT_INDICES
+
+  // Generates 1, 2, 10, 15, 16, 17, 20, 31, 32 as ebsCutoff and cdsCutoff
+  // and k (index of a specific sequence of bytes based on the test case)
+  private static final int[] C = new int[] {1, 2, 10, 15, 16, 17, 20, 31, 32}; // CUTOFFS
+
+  // See https://github.com/Consensys/linea-specification-internal/issues/326 as additional
+  // documentation
 
   @Test
   void testExpLogSingleCase() {
@@ -73,66 +92,69 @@ public class ExpTest {
     bytecodeRunner.run();
   }
 
-  @Test
-  void testExpLogFFBlockCase() {
-    for (int k = 0; k <= 32; k++) {
-      Bytes exponent = Bytes.fromHexString(ffBlock(k));
-      BytecodeCompiler program =
-          BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
-      BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-      bytecodeRunner.run();
-    }
+  @ParameterizedTest
+  @ValueSource(
+      ints = {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26, 27, 28, 29, 30, 31, 32
+      })
+  void testExpLogFFBlockCase(int k) {
+    Bytes exponent = Bytes.fromHexString(ffBlock(k));
+    BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
   }
 
-  @Test
-  void testExpLogFFAtCase() {
-    for (int k = 1; k <= 32; k++) {
-      Bytes exponent = Bytes.fromHexString(ffAt(k));
-      BytecodeCompiler program =
-          BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
-      BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-      bytecodeRunner.run();
-    }
+  @ParameterizedTest
+  @ValueSource(
+      ints = {
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32
+      })
+  void testExpLogFFAtCase(int k) {
+    Bytes exponent = Bytes.fromHexString(ffAt(k));
+    BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
   }
 
-  @Disabled("EXP tests are disabled due to running for over 30 min.")
-  @Test
-  void testModexpLogFFBlockWithLDCase() {
+  @Disabled("We may want to run these long tests only during nightly builds")
+  @ParameterizedTest
+  @MethodSource("testModexpLogSource")
+  void testModexpLogFFBlockWithLDCase(int ebsCutoff, int cdsCutoff, int k, int LDIndex) {
+    log.debug("k: " + k);
+    log.debug("LDIndex: " + LDIndex);
+    // 0x00000000000000000000000000000040ffffffffffffffffffffffffffffffff
+    Bytes wordAfterBase = Bytes.fromHexStringLenient(ffBlockWithLd(k, LDIndex));
+    BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
+  }
+
+  @Disabled("We may want to run these long tests only during nightly builds")
+  @ParameterizedTest
+  @MethodSource("testModexpLogSource")
+  void testModexpLogLDAtCase(int ebsCutoff, int cdsCutoff, int k, int ldIndex) {
+    log.debug("k: " + k);
+    log.debug("ldIndex: " + ldIndex);
+    Bytes wordAfterBase = Bytes.fromHexStringLenient(ldAt(k, ldIndex));
+    BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
+  }
+
+  private static Stream<Arguments> testModexpLogSource() {
+    List<Arguments> moxexpLogCases = new ArrayList<>();
     for (int ebsCutoff : C) {
       for (int cdsCutoff : C) {
         for (int k : C) {
           for (int LDIndex : LD_INDICES) {
-            log.debug("k: " + k);
-            log.debug("LDIndex: " + LDIndex);
-            Bytes wordAfterBase = Bytes.fromHexStringLenient(ffBlockWithLd(k, LDIndex));
-            BytecodeCompiler program =
-                initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
-            BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-            bytecodeRunner.run();
+            moxexpLogCases.add(Arguments.of(ebsCutoff, cdsCutoff, k, LDIndex));
           }
         }
       }
     }
-  }
-
-  @Disabled("EXP tests are disabled due to running for over 30 min.")
-  @Test
-  void testModexpLogLDAtCase() {
-    for (int ebsCutoff : C) {
-      for (int cdsCutoff : C) {
-        for (int k : C) {
-          for (int ldIndex : LD_INDICES) {
-            log.debug("k: " + k);
-            log.debug("ldIndex: " + ldIndex);
-            Bytes wordAfterBase = Bytes.fromHexStringLenient(ldAt(k, ldIndex));
-            BytecodeCompiler program =
-                initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
-            BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-            bytecodeRunner.run();
-          }
-        }
-      }
-    }
+    return moxexpLogCases.stream();
   }
 
   @Test
@@ -161,19 +183,25 @@ public class ExpTest {
     bytecodeRunner.run();
   }
 
-  @Disabled("EXP tests are disabled due to running for over 30 min.")
-  @Test
-  void testModexpLogZerosCase() {
+  @ParameterizedTest
+  @MethodSource("testModexpLogZerosCaseSource")
+  void testModexpLogZerosCase(int ebsCutoff, int cdsCutoff) {
+    Bytes wordAfterBase =
+        Bytes.fromHexStringLenient(
+            "0000000000000000000000000000000000000000000000000000000000000000");
+    BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
+  }
+
+  private static Stream<Arguments> testModexpLogZerosCaseSource() {
+    List<Arguments> moxexpLogCases = new ArrayList<>();
     for (int ebsCutoff : C) {
       for (int cdsCutoff : C) {
-        Bytes wordAfterBase =
-            Bytes.fromHexStringLenient(
-                "0000000000000000000000000000000000000000000000000000000000000000");
-        BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
-        BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-        bytecodeRunner.run();
+        moxexpLogCases.add(Arguments.of(ebsCutoff, cdsCutoff));
       }
     }
+    return moxexpLogCases.stream();
   }
 
   private BytecodeCompiler initProgramInvokingModexp(
@@ -205,7 +233,6 @@ public class ExpTest {
         .op(OpCode.STATICCALL);
   }
 
-  @Disabled("EXP tests are disabled due to running for over 30 min.")
   @Test
   void testExpUtils() {
     // ExpLog case
