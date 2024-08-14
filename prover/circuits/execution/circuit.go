@@ -1,14 +1,14 @@
 package execution
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/circuits"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
@@ -51,15 +51,13 @@ func assign(
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
 	funcInputs FunctionalPublicInput,
-	publicInput field.Element,
 ) CircuitExecution {
 
 	wizardVerifier := wizard.GetWizardVerifierCircuitAssignment(comp, proof)
 	return CircuitExecution{
 		WizardVerifier: *wizardVerifier,
 		FuncInputs:     funcInputs.ToSnarkType(),
-		PublicInput:    publicInput,
-		// NB: the extractor field is omitted as it is not part of the witness
+		PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),
 	}
 }
 
@@ -84,10 +82,9 @@ func MakeProof(
 	comp *wizard.CompiledIOP,
 	wproof wizard.Proof,
 	funcInputs FunctionalPublicInput,
-	publicInput fr.Element,
 ) string {
 
-	assignment := assign(comp, wproof, funcInputs, publicInput)
+	assignment := assign(comp, wproof, funcInputs)
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		panic(err)
@@ -104,7 +101,7 @@ func MakeProof(
 		panic(err)
 	}
 
-	logrus.Infof("generated outer-circuit proof `%++v` for input `%v`", proof, publicInput.String())
+	logrus.Infof("generated outer-circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
 
 	// Sanity-check : the proof must pass
 	{

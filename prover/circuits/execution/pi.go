@@ -2,15 +2,17 @@ package execution
 
 import (
 	"encoding/binary"
+	"hash"
+	"slices"
+
 	"github.com/consensys/gnark/frontend"
 	gnarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"hash"
-	"slices"
 )
 
 // FunctionalPublicInputQSnark the information on this execution that cannot be extracted from other input in the same aggregation batch
@@ -150,6 +152,16 @@ func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide 
 
 	return hsh.Sum(nil)
 
+}
+
+func (pi *FunctionalPublicInput) SumAsField() field.Element {
+
+	var (
+		sumBytes = pi.Sum()
+		sum      = new(field.Element).SetBytes(sumBytes)
+	)
+
+	return *sum
 }
 
 func writeNum(hsh hash.Hash, n uint64) {

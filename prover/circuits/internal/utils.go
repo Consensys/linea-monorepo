@@ -3,6 +3,9 @@ package internal
 import (
 	"encoding/binary"
 	"errors"
+	"math/big"
+	"slices"
+
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
@@ -16,8 +19,6 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
-	"math/big"
-	"slices"
 )
 
 // @reviewer: let's discuss which of these may be good candidates for gnark/std

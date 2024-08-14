@@ -1,6 +1,8 @@
 package execution
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
@@ -103,9 +105,18 @@ func checkPublicInputs(
 		gnarkFuncInp.ChainID,
 	)
 
-	api.AssertIsEqual(
-		wvc.GetLocalPointEvalParams(wizardFuncInp.L2MessageServiceAddr.ID).Y,
-		gnarkFuncInp.L2MessageServiceAddr,
+	var (
+		twoPow128     = new(big.Int).SetInt64(1)
+		_             = twoPow128.Lsh(twoPow128, 128)
+		bridgeAddress = api.Add(
+			api.Mul(
+				twoPow128,
+				wizardFuncInp.L2MessageServiceAddrHi.GetFrontendVariable(api, wvc),
+			),
+			wizardFuncInp.L2MessageServiceAddrLo.GetFrontendVariable(api, wvc),
+		)
 	)
+
+	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
 
 }

@@ -16,7 +16,7 @@ import (
 type StateManager struct {
 	accumulator                 accumulator.Module
 	accumulatorSummaryConnector accumulatorsummary.Module
-	stateSummary                statesummary.Module
+	StateSummary                statesummary.Module // exported because needed by the public input module
 	mimcCodeHash                mimccodehash.Module
 }
 
@@ -32,7 +32,7 @@ type Settings struct {
 func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager {
 
 	sm := &StateManager{
-		stateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
+		StateSummary: statesummary.NewModule(comp, settings.stateSummarySize()),
 		accumulator:  accumulator.NewModule(comp, settings.AccSettings),
 		mimcCodeHash: mimccodehash.NewModule(comp, mimccodehash.Inputs{
 			Name: "MiMCCodeHash",
@@ -48,10 +48,10 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 		},
 	)
 
-	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.stateSummary)
+	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
 	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
-	sm.stateSummary.ConnectToHub(comp, acp(comp), scp(comp))
-	lookupStateSummaryCodeHash(comp, &sm.stateSummary.Account, &sm.mimcCodeHash)
+	sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
+	lookupStateSummaryCodeHash(comp, &sm.StateSummary.Account, &sm.mimcCodeHash)
 
 	return sm
 }
@@ -60,7 +60,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
 
-	sm.stateSummary.Assign(run, shomeiTraces)
+	sm.StateSummary.Assign(run, shomeiTraces)
 	sm.accumulator.Assign(run, utils.Join(shomeiTraces...))
 	sm.accumulatorSummaryConnector.Assign(run)
 	sm.mimcCodeHash.Assign(run)

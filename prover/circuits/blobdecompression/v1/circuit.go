@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -19,7 +21,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"math/big"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 
 	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 )
@@ -316,7 +318,7 @@ func BatchesChecksumAssign(ends []int, payload []byte) [][]byte {
 
 	batchStart := 0
 	for i := range res {
-		ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
+		gnarkutil.ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
 		res[i] = bytes.Clone(buf[:])
 		batchStart = ends[i]
 	}

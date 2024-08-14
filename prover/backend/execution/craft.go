@@ -1,90 +1,117 @@
 package execution
 
 import (
+	"bytes"
+
+	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+
+	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
 	"github.com/consensys/zkevm-monorepo/prover/config"
+	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm"
 )
 
 // Craft prover's functional inputs
 func CraftProverOutput(
 	cfg *config.Config,
 	req *Request,
-) (Response, [][]statemanager.DecodedTrace) {
+) Response {
 
 	var (
-		po              Response
-		smTraces        [][]statemanager.DecodedTrace
 		l2BridgeAddress = cfg.Layer2.MsgSvcContract
+		blocks          = req.Blocks()
+		execDataBuf     = &bytes.Buffer{}
+		rsp             = Response{
+			BlocksData:           make([]BlockData, len(blocks)),
+			ChainID:              cfg.Layer2.ChainID,
+			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
+			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
+		}
 	)
 
 	// Extract the data from the block
-	blocks := req.Blocks()
-	po.BlocksData = make([]BlockData, len(blocks))
 	for i := range blocks {
 
-		// The assignment is not made in the loop directly otherwise the
-		// linter will detect "memory aliasing in a for loop" even though
-		// we do not modify the data of the block.
-		block := &blocks[i]
+		var (
+			// The assignment is not made in the loop directly otherwise the
+			// linter will detect "memory aliasing in a for loop" even though
+			// we do not modify the data of the block.
+			block = &blocks[i]
 
-		// Encode the transactions
-		po.BlocksData[i].RlpEncodedTransactions = RlpTransactions(block)
-		po.BlocksData[i].FromAddresses = utils.HexConcat(FromAddresses(block)...)
+			// Fetch the transaction indices
+			logs = req.LogsForBlock(i)
 
-		// Fetch the transaction indices
-		logs := req.LogsForBlock(i)
-		po.BlocksData[i].BatchReceptionIndices = bridge.BatchReceptionIndex(
-			logs,
-			l2BridgeAddress,
+			// Filter the logs L2 to L1, and hash them before sending them
+			// back to the coordinator.
+			l2l1MessageHashes = bridge.L2L1MessageHashes(logs, l2BridgeAddress)
 		)
 
-		// Fetch the timestamps
-		po.BlocksData[i].TimeStamp = block.Time()
+		// This encodes the block as it will be by the compressor before running
+		// the compression algorithm.
+		blob.EncodeBlockForCompression(block, execDataBuf)
 
-		// Filter the logs L2 to L1, and hash them before sending them
-		// back to the coordinator.
-		l2l1MessageHashes := bridge.L2L1MessageHashes(logs, l2BridgeAddress)
-		po.BlocksData[i].L2ToL1MsgHashes = l2l1MessageHashes
+		// Encode the transactions
+		rsp.BlocksData[i].RlpEncodedTransactions = RlpTransactions(block)
+		rsp.BlocksData[i].FromAddresses = FromAddresses(block)
+		rsp.BlocksData[i].TimeStamp = block.Time()
+		rsp.BlocksData[i].L2ToL1MsgHashes = l2l1MessageHashes
+		rsp.BlocksData[i].BlockHash = types.FullBytes32(block.Hash())
 
 		// Also filters the RollingHashUpdated logs
 		events := bridge.ExtractRollingHashUpdated(logs, l2BridgeAddress)
 		if len(events) > 0 {
-			po.BlocksData[i].LastRollingHashUpdatedEvent = events[len(events)-1]
+			rsp.BlocksData[i].LastRollingHashUpdatedEvent = events[len(events)-1]
 		}
+		rsp.AllRollingHashEvent = append(rsp.AllRollingHashEvent, events...)
+
+		// This collects the L2 message hashes
+		rsp.AllL2L1MessageHashes = append(
+			rsp.AllL2L1MessageHashes,
+			l2l1MessageHashes...,
+		)
 	}
 
-	// Value of the first blocks
-	po.FirstBlockNumber = int(blocks[0].NumberU64())
+	rsp.ExecDataChecksum = mimcHashLooselyPacked(execDataBuf.Bytes())
 
 	// Add into that the data of the state-manager
 	// Run the inspector and pass the parsed traces back to the caller.
 	// These traces may be used by the state-manager module depending on
 	// if the flag `PROVER_WITH_STATE_MANAGER`
-	smTraces = InspectStateManagerTraces(cfg, req, &po)
+	inspectStateManagerTraces(req, &rsp)
 
-	// Hash everything into the prover inputs
-	po.ComputeProofInput()
+	// Value of the first blocks
+	rsp.FirstBlockNumber = int(blocks[0].NumberU64())
 
-	return po, smTraces
+	// Set the public input as part of the response immediately so that we can
+	// easily debug issues during the proving.
+	rsp.PublicInput = types.Bytes32(rsp.FuncInput().Sum())
+
+	return rsp
 }
 
-// InspectStateManagerTraces parsed the state-manager traces from the given
+// inspectStateManagerTraces parsed the state-manager traces from the given
 // input and inspect them to see if they are self-consistent and if they match
 // the parentStateRootHash. This behaviour can be altered by setting the field
 // `tolerate_state_root_hash_mismatch`, see its documentation. In case of
 // success, the function returns the decoded state-manager traces. Otherwise, it
 // panics.
-func InspectStateManagerTraces(
-	cfg *config.Config,
+func inspectStateManagerTraces(
 	req *Request,
 	resp *Response,
-) (traces [][]statemanager.DecodedTrace) {
+) {
+
 	// Extract the traces from the inputs
-	traces = req.StateManagerTraces()
-	firstParent := req.ZkParentStateRootHash
-	parent := req.ZkParentStateRootHash
+	var (
+		traces      = req.StateManagerTraces()
+		firstParent = req.ZkParentStateRootHash
+		parent      = req.ZkParentStateRootHash
+	)
 
 	for i := range traces {
 
@@ -102,19 +129,95 @@ func InspectStateManagerTraces(
 			}
 
 			// Populate the prover's output with the recovered root hash
-			resp.BlocksData[i].RootHash = new.Hex()
+			resp.BlocksData[i].RootHash = new
 			parent = new
 		} else {
 			// This can happen when there are no transaction in a block
 			// In this case, we do not need to do anything
-			resp.BlocksData[i].RootHash = parent.Hex()
+			resp.BlocksData[i].RootHash = parent
 		}
 
 	}
 
 	resp.ParentStateRootHash = firstParent.Hex()
+}
 
-	// Returns the traces to be used by the state-manager prover. nil
-	// if no traces are available.
-	return traces
+func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
+
+	res := map[[32]byte]ethereum.Signature{}
+	blocks := req.Blocks()
+
+	for i := range blocks {
+		for _, tx := range blocks[i].Transactions() {
+
+			var (
+				txHash      = [32]byte(tx.Hash())
+				txSignature = ethereum.GetJsonSignature(tx)
+			)
+
+			res[txHash] = txSignature
+		}
+	}
+
+	return res
+}
+
+// FuncInput are all the relevant fields parsed by the prover that
+// are functionally useful to contextualize what the proof is proving. This
+// is used by the aggregation circuit to ensure that the execution proofs
+// relate to consecutive Linea block execution.
+func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
+
+	var (
+		firstBlock = &rsp.BlocksData[0]
+		lastBlock  = &rsp.BlocksData[len(rsp.BlocksData)-1]
+		fi         = &execution.FunctionalPublicInput{
+			L2MessageServiceAddr:  types.EthAddress(rsp.L2BridgeAddress),
+			MaxNbL2MessageHashes:  rsp.MaxNbL2MessageHashes,
+			ChainID:               uint64(rsp.ChainID),
+			FinalBlockTimestamp:   lastBlock.TimeStamp,
+			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData)),
+			InitialBlockTimestamp: firstBlock.TimeStamp,
+			InitialBlockNumber:    uint64(rsp.FirstBlockNumber),
+			DataChecksum:          rsp.ExecDataChecksum,
+			L2MessageHashes:       types.AsByteArrSlice(rsp.AllL2L1MessageHashes),
+			InitialStateRootHash:  types.Bytes32FromHex(rsp.ParentStateRootHash),
+			FinalStateRootHash:    lastBlock.RootHash,
+		}
+	)
+
+	if len(rsp.AllRollingHashEvent) > 0 {
+		var (
+			firstRHEvent = rsp.AllRollingHashEvent[0]
+			lastRHEvent  = rsp.AllRollingHashEvent[len(rsp.AllRollingHashEvent)-1]
+		)
+
+		fi.InitialRollingHash = firstRHEvent.RollingHash
+		fi.FinalRollingHash = lastRHEvent.RollingHash
+		fi.InitialRollingHashNumber = uint64(firstRHEvent.MessageNumber)
+		fi.FinalRollingHashNumber = uint64(lastRHEvent.MessageNumber)
+	}
+
+	return fi
+}
+
+func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
+	return &Witness{
+		ZkEVM: &zkevm.Witness{
+			ExecTracesFPath: req.ConflatedExecutionTracesFile,
+			SMTraces:        req.StateManagerTraces(),
+			TxSignatures:    req.collectSignatures(),
+			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
+			ChainID:         cfg.Layer2.ChainID,
+		},
+		FuncInp: rsp.FuncInput(),
+	}
+}
+
+// mimcHashLooselyPacked hashes the input stream b using the MiMC hash function
+// encoding each slice of 31 bytes into a field element separately.
+func mimcHashLooselyPacked(b []byte) types.Bytes32 {
+	var buf [32]byte
+	gnarkutil.ChecksumLooselyPackedBytes(b, buf[:], mimc.NewMiMC())
+	return types.AsBytes32(buf[:])
 }

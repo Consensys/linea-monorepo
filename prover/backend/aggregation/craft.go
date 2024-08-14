@@ -5,9 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"path"
+
+	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
+
+	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
@@ -48,9 +50,12 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 
 	for i, execReqFPath := range req.ExecutionProofs {
-		po := &execution.Response{}
-		fpath := path.Join(cfg.Execution.DirTo(), execReqFPath)
-		f := files.MustRead(fpath)
+
+		var (
+			po    = &execution.Response{}
+			fpath = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			f     = files.MustRead(fpath)
+		)
 
 		if err := json.NewDecoder(f).Decode(po); err != nil {
 			return nil, fmt.Errorf("fields collection, decoding %s, %w", execReqFPath, err)
@@ -74,22 +79,27 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		cf.FinalBlockNumber = uint(po.FirstBlockNumber + len(po.BlocksData) - 1)
 
 		for _, blockdata := range po.BlocksData {
-			l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes...)
+
+			for i := range blockdata.L2ToL1MsgHashes {
+				l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes[i].Hex())
+			}
+
 			l2MsgBlockOffsets = append(l2MsgBlockOffsets, len(blockdata.L2ToL1MsgHashes) > 0)
 			cf.HowManyL2Msgs += uint(len(blockdata.L2ToL1MsgHashes))
 
 			// The goal is that we want to keep the final value
 			lastRollingHashEvent := blockdata.LastRollingHashUpdatedEvent
 			if lastRollingHashEvent != (bridge.RollingHashUpdated{}) {
-				cf.L1RollingHash = lastRollingHashEvent.RollingHash
+				cf.L1RollingHash = lastRollingHashEvent.RollingHash.Hex()
 				cf.L1RollingHashMessageNumber = uint(lastRollingHashEvent.MessageNumber)
 			}
+
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
 		}
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
-			pClaim, err := parseProofClaim(po.Proof, po.DebugData.FinalHash, po.VerifyingKeyShaSum) // @gbotrel Is finalHash the state hash? If so why is it given as the execution circuit's PI?
+			pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
@@ -98,7 +108,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
 			piq, err := public_input.ExecutionSerializable{
 				L2MsgHashes:            l2MessageHashes,
-				FinalStateRootHash:     po.DebugData.FinalHash, // TODO @tabaie make sure this is the right value
+				FinalStateRootHash:     po.PublicInput.Hex(), // TODO @tabaie make sure this is the right value
 				FinalBlockNumber:       uint64(cf.FinalBlockNumber),
 				FinalBlockTimestamp:    finalBlock.TimeStamp,
 				FinalRollingHash:       cf.L1RollingHash,
