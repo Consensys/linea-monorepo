@@ -1,12 +1,11 @@
 package publicInput
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
 	pack "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing"
@@ -31,6 +30,7 @@ type PublicInput struct {
 	DataNbBytes        ifaces.Column
 	ChainID            ifaces.Column
 	ChainIDNBytes      ifaces.Column
+	Extractor          FunctionalInputExtractor
 }
 
 // AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
@@ -47,9 +47,7 @@ type AuxiliaryModules struct {
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
 type Settings struct {
-	Name          string
-	BridgeAddress types.EthAddress
-	ChainID       field.Element // uint16
+	Name string
 }
 
 // InputModules groups several arithmetization modules needed to compute the public input.
@@ -61,6 +59,63 @@ type InputModules struct {
 	StateSummary *statesummary.Module
 }
 
+// NewPublicInputZkEVM constructs and returns a [PublicInput] module using the
+// right columns from the arithmetization by their names.
+func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *statesummary.Module) PublicInput {
+
+	getCol := func(s string) ifaces.Column {
+		return comp.Columns.GetHandle(ifaces.ColID(s))
+	}
+
+	return newPublicInput(
+		comp,
+		&InputModules{
+			BlockData: &arith.BlockDataCols{
+				RelBlock:   getCol("blockdata.REL_BLOCK"),
+				Inst:       getCol("blockdata.INST"),
+				Ct:         getCol("blockdata.CT"),
+				DataHi:     getCol("blockdata.DATA_HI"),
+				DataLo:     getCol("blockdata.DATA_LO"),
+				FirstBlock: getCol("blockdata.FIRST_BLOCK_NUMBER"),
+			},
+			TxnData: &arith.TxnData{
+				AbsTxNum:        getCol("txndata.ABS_TX_NUM"),
+				AbsTxNumMax:     getCol("txndata.ABS_TX_NUM_MAX"),
+				Ct:              getCol("txndata.CT"),
+				FromHi:          getCol("txndata.FROM_HI"),
+				FromLo:          getCol("txndata.FROM_LO"),
+				IsLastTxOfBlock: getCol("txndata.IS_LAST_TX_OF_BLOCK"),
+				RelBlock:        getCol("txndata.REL_BLOCK"),
+				RelTxNum:        getCol("txndata.REL_TX_NUM"),
+				RelTxNumMax:     getCol("txndata.REL_TX_NUM_MAX"),
+			},
+			RlpTxn: &arith.RlpTxn{
+				AbsTxNum:       getCol("rlptxn.ABS_TX_NUM"),
+				AbsTxNumMax:    getCol("rlptxn.ABS_TX_NUM_MAX"),
+				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
+				Limb:           getCol("rlptxn.LIMB"),
+				NBytes:         getCol("rlptxn.nBYTES"),
+				Done:           getCol("rlptxn.DONE"),
+				IsPhaseChainID: getCol("rlptxn.IS_PHASE_CHAIN_ID"),
+			},
+			LogCols: logs.LogColumns{
+				IsLog0:       getCol("loginfo.IS_LOG_X_0"),
+				IsLog1:       getCol("loginfo.IS_LOG_X_1"),
+				IsLog2:       getCol("loginfo.IS_LOG_X_2"),
+				IsLog3:       getCol("loginfo.IS_LOG_X_3"),
+				IsLog4:       getCol("loginfo.IS_LOG_X_4"),
+				AbsLogNum:    getCol("loginfo.ABS_LOG_NUM"),
+				AbsLogNumMax: getCol("loginfo.ABS_LOG_NUM_MAX"),
+				Ct:           getCol("loginfo.CT"),
+				OutgoingHi:   getCol("loginfo.ADDRESS_HI"),
+				OutgoingLo:   getCol("loginfo.ADDRESS_LO"),
+				TxEmitsLogs:  getCol("loginfo.TXN_EMITS_LOGS"),
+			},
+			StateSummary: ss,
+		},
+		*settings)
+}
+
 // newPublicInput receives as input a series of modules and returns a *PublicInput and
 // an *AuxiliaryModules struct. The AuxiliaryModules are intermediary modules needed to
 // both define and assign the PublicInput.
@@ -68,7 +123,7 @@ func newPublicInput(
 	comp *wizard.CompiledIOP,
 	inp *InputModules,
 	settings Settings,
-) *PublicInput {
+) PublicInput {
 
 	if len(settings.Name) == 0 {
 		utils.Panic("no name was provided in settings: %++v", settings)
@@ -82,7 +137,7 @@ func newPublicInput(
 	fetchedL2L1 := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
 	fetchedRollingMsg := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_MSG")
 	fetchedRollingHash := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_HASH")
-	logSelectors := logs.NewSelectorColumns(comp, inp.LogCols, common.Address(settings.BridgeAddress))
+	logSelectors := logs.NewSelectorColumns(comp, inp.LogCols)
 	logHasherL2l1 := logs.NewLogHasher(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
 	rollingSelector := logs.NewRollingSelector(comp, "PUBLIC_INPUT_ROLLING_SEL")
 
@@ -146,7 +201,7 @@ func newPublicInput(
 	mimcHasher := edc.NewMIMCHasher(comp, packingMod.Repacked.Lanes, packingMod.Repacked.IsLaneActive, "MIMC_HASHER")
 	mimcHasher.DefineHasher(comp, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
-	publicInput := &PublicInput{
+	publicInput := PublicInput{
 		TimestampFetcher:   timestampFetcher,
 		RootHashFetcher:    rootHashFetcher,
 		RollingHashFetcher: rollingSelector,
@@ -170,12 +225,14 @@ func newPublicInput(
 		},
 	}
 
+	publicInput.generateExtractor(comp)
+
 	return publicInput
 }
 
 // Assign both a PublicInput and AuxiliaryModules using data from InputModules.
 // The AuxiliaryModules are intermediary modules needed to both define and assign the PublicInput.
-func (pub *PublicInput) Assign(run *wizard.ProverRuntime) {
+func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
 
 	var (
 		inp = pub.Inputs
@@ -185,7 +242,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime) {
 	// assign the timestamp module
 	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
 	// assign the log modules
-	aux.logSelectors.Assign(run)
+	aux.logSelectors.Assign(run, l2BridgeAddress)
 	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedL2L1, logs.L2L1)
 	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingMsg, logs.RollingMsgNo)
 	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingHash, logs.RollingHash)
@@ -202,24 +259,28 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime) {
 	aux.execDataCollectorPadding.Run(run)
 	aux.execDataCollectorPacking.Run(run)
 	pub.ExecMiMCHasher.AssignHasher(run)
+	pub.Extractor.Run(run)
 }
 
 // GetExtractor returns [FunctionalInputExtractor] giving access to the totality
 // of the public inputs recovered by the public input module.
-func (pi *PublicInput) GetExtractor() *FunctionalInputExtractor {
+func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
+
 	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
-		return query.NewLocalOpening(ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
+		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
 	}
+
 	initialRollingHash := [2]query.LocalOpening{
 		createNewLocalOpening(pi.RollingHashFetcher.FirstHi),
 		createNewLocalOpening(pi.RollingHashFetcher.FirstLo),
 	}
+
 	finalRollingHash := [2]query.LocalOpening{
 		createNewLocalOpening(pi.RollingHashFetcher.LastHi),
 		createNewLocalOpening(pi.RollingHashFetcher.LastLo),
 	}
 
-	res := &FunctionalInputExtractor{
+	pi.Extractor = FunctionalInputExtractor{
 		DataNbBytes:              createNewLocalOpening(pi.DataNbBytes),
 		DataChecksum:             createNewLocalOpening(pi.ExecMiMCHasher.HashFinal),
 		L2MessageHash:            createNewLocalOpening(pi.LogHasher.HashFinal),
@@ -235,7 +296,7 @@ func (pi *PublicInput) GetExtractor() *FunctionalInputExtractor {
 		FinalRollingHashNumber:   createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo),
 		ChainID:                  createNewLocalOpening(pi.ChainID),
 		NBytesChainID:            createNewLocalOpening(pi.ChainIDNBytes),
-		L2MessageServiceAddr:     query.LocalOpening{},
+		L2MessageServiceAddrHi:   accessors.NewFromPublicColumn(pi.Aux.logSelectors.L2BridgeAddressColHI, 0),
+		L2MessageServiceAddrLo:   accessors.NewFromPublicColumn(pi.Aux.logSelectors.L2BridgeAddressColLo, 0),
 	}
-	return res
 }

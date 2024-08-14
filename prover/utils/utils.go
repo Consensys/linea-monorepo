@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 )
 
@@ -171,6 +172,22 @@ func RepeatSlice[T any](s []T, n int) []T {
 	res := make([]T, 0, n*len(s))
 	for i := 0; i < n; i++ {
 		res = append(res, s...)
+	}
+	return res
+}
+
+func BigsToBytes(ins []*big.Int) []byte {
+	res := make([]byte, len(ins))
+	for i := range ins {
+		res[i] = byte(ins[i].Uint64())
+	}
+	return res
+}
+
+func BigsToInts(ints []*big.Int) []int {
+	res := make([]int, len(ints))
+	for i := range ints {
+		res[i] = int(ints[i].Uint64())
 	}
 	return res
 }

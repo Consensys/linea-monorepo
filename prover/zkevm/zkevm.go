@@ -101,6 +101,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		ecmul        = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
 		ecpair       = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
 		sha2         = sha2.NewSha2ZkEvm(comp, s.Sha2)
+		publicInput  = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
 	)
 
 	return &ZkEvm{
@@ -113,6 +114,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		ecmul:           ecmul,
 		ecpair:          ecpair,
 		sha2:            sha2,
+		PublicInput:     &publicInput,
 	}
 }
 
@@ -135,5 +137,6 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		z.ecmul.Assign(run)
 		z.ecpair.Assign(run)
 		z.sha2.Run(run)
+		z.PublicInput.Assign(run, input.L2BridgeAddress)
 	}
 }

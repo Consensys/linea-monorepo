@@ -6,12 +6,16 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
 	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
+
+type Witness struct {
+	FuncInp *execution.FunctionalPublicInput
+	ZkEVM   *zkevm.Witness
+}
 
 func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 	traces := &cfg.TracesLimits
@@ -28,26 +32,19 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 		func() {
 			// Compute the prover's output.
 			// WARN: CraftProverOutput calls functions that can panic.
-			out, smTraces := CraftProverOutput(cfg, req)
+			out := CraftProverOutput(cfg, req)
 
 			if cfg.Execution.ProverMode != config.ProverModeProofless {
 				// Development, Partial, Full or Full-large Mode
-
-				// inputs of the prover
-				proverInps := &zkevm.Witness{
-					ExecTracesFPath: req.ConflatedExecTraceFilepath(cfg.Execution.ConflatedTracesDir),
-					SMTraces:        smTraces,
-				}
 
 				// WARN:
 				// - MustProveAndPass can panic
 				// - Execution prover calls function that can panic
 				// - NewFromString can panic
 				out.Proof, out.VerifyingKeyShaSum = mustProveAndPass(
-					proverInps,
 					cfg,
 					traces,
-					field.NewFromString(out.DebugData.FinalHash),
+					NewWitness(cfg, req, &out),
 				)
 
 				out.Version = cfg.Version
@@ -72,10 +69,9 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 // returning such a function. This is important to avoid side-effects
 // when calling it twice.
 func mustProveAndPass(
-	witness *zkevm.Witness,
 	cfg *config.Config,
 	traces *config.TracesLimits,
-	publicInput field.Element,
+	w *Witness,
 ) (proofHexString string, vkeyShaSum string) {
 
 	switch cfg.Execution.ProverMode {
@@ -86,7 +82,7 @@ func mustProveAndPass(
 			// was correctly generated even though we do not prove it.
 			// Run the checker with all the options
 			checker := zkevm.CheckerZkEvm(traces)
-			proof := checker.ProveInner(witness)
+			proof := checker.ProveInner(w.ZkEVM)
 			if err := checker.VerifyInner(proof); err != nil {
 				utils.Panic("(PARTIAL-MODE ONLY) The checker did not pass: %v", err)
 			}
@@ -97,7 +93,7 @@ func mustProveAndPass(
 			// proof is sanity-checked to ensure that the prover never outputs
 			// invalid proofs.
 			partial := zkevm.PartialZkEvm(traces)
-			proof = partial.ProveInner(witness)
+			proof = partial.ProveInner(w.ZkEVM)
 			if err := partial.VerifyInner(proof); err != nil {
 				utils.Panic("The prover did not pass: %v", err)
 			}
@@ -113,7 +109,7 @@ func mustProveAndPass(
 			utils.Panic(err.Error())
 		}
 
-		return dummy.MakeProof(&setup, publicInput, circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()
+		return dummy.MakeProof(&setup, w.FuncInp.SumAsField(), circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()
 
 	case config.ProverModeFull:
 		logrus.Info("Running the FULL prover")
@@ -134,7 +130,7 @@ func mustProveAndPass(
 
 		// Generates the inner-proof and sanity-check it so that we ensure that
 		// the prover nevers outputs invalid proofs.
-		proof := fullZkEvm.ProveInner(witness)
+		proof := fullZkEvm.ProveInner(w.ZkEVM)
 
 		logrus.Info("Sanity-checking the inner-proof")
 		if err := fullZkEvm.VerifyInner(proof); err != nil {
@@ -157,7 +153,7 @@ func mustProveAndPass(
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
-		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, execution.FunctionalPublicInput{}, publicInput), setup.VerifyingKeyDigest()
+		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 	default:
 		panic("not implemented")
 	}

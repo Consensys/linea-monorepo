@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -14,6 +13,7 @@ import (
 	stmCommon "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/common"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mock"
 	stmgr "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Test Defining and Assigning all modules using test data, and then generating
@@ -24,7 +24,7 @@ func TestPublicInputDefineAndAssign(t *testing.T) {
 	ctRlpTxn := util.InitializeCsv("testdata/rlp_txn_mock.csv", t)
 
 	var (
-		pub       *PublicInput
+		pub       PublicInput
 		inp       InputModules
 		extractor *FunctionalInputExtractor
 	)
@@ -42,12 +42,10 @@ func TestPublicInputDefineAndAssign(t *testing.T) {
 		// Define the Logs
 		inp.LogCols = logs.NewLogColumns(b.CompiledIOP, logColSize, "MOCK")
 		pub = newPublicInput(b.CompiledIOP, &inp, Settings{
-			BridgeAddress: bridgeAddress,
-			ChainID:       field.NewFromString("0xccc00000000000000000000000000000"),
-			Name:          "TESTING",
+			Name: "TESTING",
 		})
 		// Compute an extractor
-		extractor = pub.GetExtractor()
+		extractor = &pub.Extractor
 		fmt.Println(extractor) // do something else with it
 	}
 
@@ -64,7 +62,7 @@ func TestPublicInputDefineAndAssign(t *testing.T) {
 		inp.StateSummary.Assign(run, shomeiTraces)
 		// Assign the Logs
 		logs.LogColumnsAssign(run, &inp.LogCols, testLogs[:])
-		pub.Assign(run)
+		pub.Assign(run, common.Address(bridgeAddress))
 
 	}
 

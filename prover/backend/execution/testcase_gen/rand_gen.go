@@ -11,9 +11,10 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 // Random number generator
@@ -77,10 +78,10 @@ func (g *RandGen) TxRlp(numTxs int) ([]string, []uint16) {
 }
 
 // Returns a list of addresses with the given size
-func (g *RandGen) FromAddresses(numTxs int) (fromAddresses []string) {
-	fromAddresses = make([]string, numTxs)
+func (g *RandGen) FromAddresses(numTxs int) (fromAddresses []types.EthAddress) {
+	fromAddresses = make([]types.EthAddress, numTxs)
 	for i := range fromAddresses {
-		fromAddresses[i] = g.Address().Hex()
+		fromAddresses[i] = types.EthAddress(*g.Address())
 	}
 	return fromAddresses
 }
@@ -127,8 +128,8 @@ func (g *RandGen) PopulateBlockData(
 ) (nextTimeStamp uint64) {
 	pbi.L2ToL1MsgHashes = g.L2L1MsgHashes()
 	pbi.RlpEncodedTransactions, pbi.BatchReceptionIndices = g.TxRlp(g.Params.SupTxPerBlock)
-	pbi.FromAddresses = utils.HexConcat(g.FromAddresses(g.Params.SupTxPerBlock)...)
-	pbi.RootHash = g.HexStringForNBytes(32)
+	pbi.FromAddresses = g.FromAddresses(g.Params.SupTxPerBlock)
+	pbi.RootHash = types.Bytes32FromHex(g.HexStringForNBytes(32))
 	pbi.TimeStamp = prevTimeStamp + uint64(g.PositiveInt(24))
 	return pbi.TimeStamp
 }
@@ -157,7 +158,7 @@ func (g *RandGen) AnyTypeTxRlp() (res string) {
 // Generate a legacy tx
 func (g *RandGen) LegacyTxRLP() string {
 	t0 := common.BytesToAddress(g.Bytes(20))
-	tx := types.LegacyTx{
+	tx := ethtypes.LegacyTx{
 		Nonce:    g.Nonce(),
 		GasPrice: g.BigInt(1_000_000),
 		Gas:      g.Uint64() % 100_000,
@@ -165,13 +166,13 @@ func (g *RandGen) LegacyTxRLP() string {
 		Value:    g.Value(),
 		Data:     g.CallData(),
 	}
-	encoded := ethereum.EncodeTxForSigning(types.NewTx(&tx))
+	encoded := ethereum.EncodeTxForSigning(ethtypes.NewTx(&tx))
 	return hexutil.Encode(encoded)
 }
 
 // Generate an access list tx
 func (g *RandGen) EIP2930Tx() string {
-	tx := types.AccessListTx{
+	tx := ethtypes.AccessListTx{
 		ChainID:  ChainID(),
 		Nonce:    g.Nonce(),
 		GasPrice: g.BigInt(1_000_000),
@@ -180,13 +181,13 @@ func (g *RandGen) EIP2930Tx() string {
 		Value:    g.Value(),
 		Data:     g.CallData(),
 	}
-	encoded := ethereum.EncodeTxForSigning(types.NewTx(&tx))
+	encoded := ethereum.EncodeTxForSigning(ethtypes.NewTx(&tx))
 	return hexutil.Encode(encoded)
 }
 
 // Generates a dynamic fee tx
 func (g *RandGen) DynFeeTx() string {
-	tx := types.DynamicFeeTx{
+	tx := ethtypes.DynamicFeeTx{
 		ChainID:   ChainID(),
 		Nonce:     g.Nonce(),
 		GasTipCap: g.BigInt(1_000_000),
@@ -196,7 +197,7 @@ func (g *RandGen) DynFeeTx() string {
 		Value:     g.Value(),
 		Data:      g.CallData(),
 	}
-	encoded := ethereum.EncodeTxForSigning(types.NewTx(&tx))
+	encoded := ethereum.EncodeTxForSigning(ethtypes.NewTx(&tx))
 	return hexutil.Encode(encoded)
 }
 
@@ -254,10 +255,10 @@ func (g *RandGen) MsgReceiptConfirmationTx() string {
 	}
 
 	// Craft the transaction, randomly from any of
-	var tx types.TxData
+	var tx ethtypes.TxData
 	switch g.Intn(3) {
 	case 0:
-		tx = &types.LegacyTx{
+		tx = &ethtypes.LegacyTx{
 			Nonce:    g.Nonce(),
 			GasPrice: g.BigInt(1000),
 			Gas:      g.Gas(),
@@ -266,7 +267,7 @@ func (g *RandGen) MsgReceiptConfirmationTx() string {
 			Data:     txDataBuf.Bytes(),
 		}
 	case 1:
-		tx = &types.AccessListTx{
+		tx = &ethtypes.AccessListTx{
 			ChainID:    ChainID(),
 			Nonce:      g.Nonce(),
 			GasPrice:   g.BigInt(1000),
@@ -274,10 +275,10 @@ func (g *RandGen) MsgReceiptConfirmationTx() string {
 			To:         L2BridgeAddress(),
 			Value:      big.NewInt(0),
 			Data:       txDataBuf.Bytes(),
-			AccessList: types.AccessList{},
+			AccessList: ethtypes.AccessList{},
 		}
 	case 2:
-		tx = &types.DynamicFeeTx{
+		tx = &ethtypes.DynamicFeeTx{
 			ChainID:    ChainID(),
 			Nonce:      g.Nonce(),
 			GasTipCap:  g.BigInt(1000),
@@ -286,11 +287,11 @@ func (g *RandGen) MsgReceiptConfirmationTx() string {
 			To:         L2BridgeAddress(),
 			Value:      big.NewInt(0),
 			Data:       txDataBuf.Bytes(),
-			AccessList: types.AccessList{},
+			AccessList: ethtypes.AccessList{},
 		}
 	}
 
-	encoded := ethereum.EncodeTxForSigning(types.NewTx(tx))
+	encoded := ethereum.EncodeTxForSigning(ethtypes.NewTx(tx))
 
 	// Append a random from to the transaction RLP
 	return g.AppendAddress(hexutil.Encode(encoded))
@@ -351,11 +352,11 @@ func (g *RandGen) BigInt(n int64) *big.Int {
 }
 
 // Generates a list of L2 msg logs
-func (g *RandGen) L2L1MsgHashes() (hashes []string) {
-	hashes = []string{}
+func (g *RandGen) L2L1MsgHashes() (hashes []types.FullBytes32) {
+	hashes = []types.FullBytes32{}
 	n := g.Intn(g.Params.SupL2L1LogsPerBlock)
 	for i := 0; i < n; i++ {
-		hashes = append(hashes, g.HexStringForNBytes(32))
+		hashes = append(hashes, types.FullBytes32FromHex(g.HexStringForNBytes(32)))
 	}
 	return hashes
 }

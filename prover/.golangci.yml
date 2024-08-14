@@ -14,11 +14,17 @@ run:
   # Default: [].
   build-tags:
     - nocorset
-  skip-dirs:
+
+issues:
+  exclude-dirs:
     - compressor
+  exclude:
+    # Only appears on CI
+    - '.*printf: non-constant format string in call to.*'
 
 linters-settings:
   staticcheck:
     checks:
       - all
       - '-SA1019' # disable the rule against deprecated code
+      - '-SA1006'

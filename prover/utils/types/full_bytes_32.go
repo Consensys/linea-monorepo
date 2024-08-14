@@ -93,3 +93,12 @@ func DummyFullByte(i int) (f FullBytes32) {
 	f[0] = byte(i)
 	return f
 }
+
+// Converts a slice of [Bytes32] or [FullBytes32] into a slice of [32]byte
+func AsByteArrSlice[T ~[32]byte](s []T) [][32]byte {
+	res := make([][32]byte, len(s))
+	for i := range s {
+		res[i] = [32]byte(s[i])
+	}
+	return res
+}

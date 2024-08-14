@@ -16,7 +16,7 @@ type builder struct {
 }
 
 func NewBuilder(z *zkevm.ZkEvm) *builder {
-	return &builder{comp: z.WizardIOP, extractor: z.PublicInput.GetExtractor()}
+	return &builder{comp: z.WizardIOP, extractor: &z.PublicInput.Extractor}
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
