@@ -87,7 +87,7 @@ func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *K
 	inpSpaghetti := spaghettifier.SpaghettificationInput{
 		Name:          "KECCAK",
 		ContentMatrix: [][]ifaces.Column{keccakf.Blocks[:]},
-		Filter:        isBlock(keccakf.IO.IsBlcok),
+		Filter:        isBlock(keccakf.IO.IsBlock),
 		SpaghettiSize: bcForBlock.LaneX.Size(),
 	}
 

@@ -97,7 +97,7 @@ func TestKeccakf(t *testing.T) {
 }
 
 func BenchmarkDataTransferModule(b *testing.B) {
-
+	b.Skip()
 	maxNumKeccakF := []int{
 		1 << 13,
 		// 1 << 16,

@@ -55,7 +55,7 @@ func piChiIotaTestingModule(
 		}
 
 		mod.lookups = newLookUpTables(comp, maxNumKeccakf)
-		mod.IO.declareColumnsInput(comp, round, maxNumKeccakf)
+		mod.IO.declareColumnsInput(comp, maxNumKeccakf)
 		mod.piChiIota = newPiChiIota(comp, round, maxNumKeccakf, *mod)
 	}
 
@@ -125,7 +125,7 @@ func piChiIotaTestingModule(
 
 			// Then assigns all the columns of the rho module
 			mod.assignStateAndBlocks(run, traces, numKeccakf)
-			mod.IO.assignInputOutput(run, traces)
+			mod.IO.assignBlockFlags(run, traces)
 			mod.piChiIota.assign(run, numKeccakf, mod.lookups, mod.rho.aRho,
 				mod.Blocks, mod.IO.IsBlockBaseB)
 		}

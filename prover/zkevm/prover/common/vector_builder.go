@@ -176,3 +176,8 @@ func (vb *VectorBuilder) Slice() []field.Element {
 func (vb *VectorBuilder) PushSliceF(s []field.Element) {
 	vb.slice = append(vb.slice, s...)
 }
+
+// it overwrites the last push
+func (vb *VectorBuilder) OverWriteInt(n int) {
+	vb.slice[len(vb.slice)-1] = field.NewElement(uint64(n))
+}
