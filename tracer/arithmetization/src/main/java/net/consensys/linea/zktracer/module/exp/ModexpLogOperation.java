@@ -59,7 +59,7 @@ public class ModexpLogOperation extends ExpOperation {
       final BigInteger lead = trim.shiftRight(8 * (32 - ebsCutoff));
 
       // lead_log (same as EYP)
-      final int leadLog = lead.signum() == 0 ? 0 : log2(lead, RoundingMode.FLOOR);
+      int leadLog = lead.signum() == 0 ? 0 : log2(lead, RoundingMode.FLOOR);
 
       return new LeadLogTrimLead(leadLog, trim);
     }
@@ -138,7 +138,8 @@ public class ModexpLogOperation extends ExpOperation {
     pPreprocessingWcpArg2Hi[2] = Bytes.of(0);
     pPreprocessingWcpArg2Lo[2] = Bytes.of(LLARGEPO);
     pPreprocessingWcpInst[2] = UnsignedByte.of(EVM_INST_LT);
-    pPreprocessingWcpRes[2] = wcp.callLT(Bytes.of(this.ebsCutoff), Bytes.of(LLARGEPO));
+    final boolean ebsCutoffLeq16 = wcp.callLT(Bytes.of(this.ebsCutoff), Bytes.of(LLARGEPO));
+    pPreprocessingWcpRes[2] = ebsCutoffLeq16;
 
     // Fourth row
     pPreprocessingWcpFlag[3] = true;
@@ -147,37 +148,21 @@ public class ModexpLogOperation extends ExpOperation {
     pPreprocessingWcpArg2Hi[3] = Bytes.of(0);
     pPreprocessingWcpArg2Lo[3] = Bytes.of(0);
     pPreprocessingWcpInst[3] = UnsignedByte.of(EVM_INST_ISZERO);
-    final boolean rawHiPartIsZero = wcp.callISZERO(this.rawLead.hi());
-    pPreprocessingWcpRes[3] = rawHiPartIsZero;
+    final boolean rawLeadHiIsZero = wcp.callISZERO(this.rawLead.hi());
+    pPreprocessingWcpRes[3] = rawLeadHiIsZero;
 
-    // Fifth row
-    final int paddedBase2Log =
-        8 * nBytesExcludingLeadingByte + nBitsOfLeadingByteExcludingLeadingBit;
+    // Fifth row is filled later since we need pComputationTrimAcc
 
-    pPreprocessingWcpFlag[4] = true;
-    pPreprocessingWcpArg1Hi[4] = Bytes.of(0);
-    pPreprocessingWcpArg1Lo[4] = Bytes.of(paddedBase2Log);
-    pPreprocessingWcpArg2Hi[4] = Bytes.of(0);
-    pPreprocessingWcpArg2Lo[4] = Bytes.of(0);
-    pPreprocessingWcpInst[4] = UnsignedByte.of(EVM_INST_ISZERO);
-    pPreprocessingWcpRes[4] = wcp.callISZERO(Bytes.of(paddedBase2Log));
-
-    // Linking constraints and fill rawAcc
+    // Linking constraints and fill rawAcc and pltJmp
     if (minCutoffLeq16) {
       pComputationRawAcc = leftPadTo(this.rawLead.hi(), LLARGE);
-    } else if (!rawHiPartIsZero) {
-      pComputationRawAcc = leftPadTo(this.rawLead.hi(), LLARGE);
-    } else {
-      pComputationRawAcc = leftPadTo(this.rawLead.lo(), LLARGE);
-    }
-
-    // Fill pltJmp
-    if (minCutoffLeq16) {
       pComputationPltJmp = (short) minCutoff;
     } else {
-      if (!rawHiPartIsZero) {
+      if (!rawLeadHiIsZero) {
+        pComputationRawAcc = leftPadTo(this.rawLead.hi(), LLARGE);
         pComputationPltJmp = (short) 16;
       } else {
+        pComputationRawAcc = leftPadTo(this.rawLead.lo(), LLARGE);
         pComputationPltJmp = (short) (minCutoff - 16);
       }
     }
@@ -194,5 +179,15 @@ public class ModexpLogOperation extends ExpOperation {
         pComputationMsb = UnsignedByte.of(trimByte);
       }
     }
+
+    // Fifth row
+    pPreprocessingWcpFlag[4] = true;
+    pPreprocessingWcpArg1Hi[4] = Bytes.of(0);
+    pPreprocessingWcpArg1Lo[4] = pComputationTrimAcc;
+    pPreprocessingWcpArg2Hi[4] = Bytes.of(0);
+    pPreprocessingWcpArg2Lo[4] = Bytes.of(0);
+    pPreprocessingWcpInst[4] = UnsignedByte.of(EVM_INST_ISZERO);
+    final boolean trimAccIsZero = wcp.callISZERO(pComputationTrimAcc);
+    pPreprocessingWcpRes[4] = trimAccIsZero;
   }
 }
