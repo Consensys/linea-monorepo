@@ -75,7 +75,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 
 		// apply import and pad
 		inpImportPadd = importpad.ImportAndPadInputs{
-			Name: "KECCAK",
+			Name: "SHA2",
 			Src: generic.GenericByteModule{
 				Data: inp.Provider.Data,
 			},
@@ -110,13 +110,13 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		cSha2 = newSha2BlockModule(comp, cSha2Inp)
 	)
 
-	projection.InsertProjection(comp, "KECCAK_RES_HI",
+	projection.InsertProjection(comp, "SHA2_RES_HI",
 		[]ifaces.Column{cSha2.HashHi},
 		[]ifaces.Column{inp.Provider.Info.HashHi},
 		cSha2.IsActive,
 		inp.Provider.Info.IsHashHi,
 	)
-	projection.InsertProjection(comp, "KECCAK_RES_LO",
+	projection.InsertProjection(comp, "SHA2_RES_LO",
 		[]ifaces.Column{cSha2.HashLo},
 		[]ifaces.Column{inp.Provider.Info.HashLo},
 		cSha2.IsActive,
