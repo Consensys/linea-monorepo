@@ -1,6 +1,5 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
-  id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 configurations.configureEach {
@@ -71,7 +70,7 @@ application {
 }
 
 jar {
-  archiveBaseName = 'coordiantor'
+  archiveBaseName = 'coordinator'
   manifest {
     attributes(
       'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
@@ -79,10 +78,6 @@ jar {
       'Multi-Release': 'true'
     )
   }
-}
-
-shadowJar {
-  exclude("**/Log4j2Plugins.dat")
 }
 
 distributions {
