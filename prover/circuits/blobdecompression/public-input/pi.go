@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"math/big"
 	"math/bits"
 )
@@ -87,7 +87,7 @@ func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, eva
 	}
 
 	blobEmulated := packCrumbsEmulated(api, blobCrumbs) // perf-TODO use the original blob bytes
-	evaluationChallengeEmulated := internal.NewElementFromBytes[emulated.BLS12381Fr](api, evaluationChallenge[:])
+	evaluationChallengeEmulated := utils.NewElementFromBytes[emulated.BLS12381Fr](api, evaluationChallenge[:])
 
 	blobEmulatedBitReversed := make([]*emulated.Element[emulated.BLS12381Fr], len(blobEmulated))
 	copy(blobEmulatedBitReversed, blobEmulated)

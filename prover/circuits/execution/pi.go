@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"hash"
 	"slices"
@@ -15,11 +16,11 @@ import (
 // FunctionalPublicInputQSnark the information on this execution that cannot be extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
 	DataChecksum           frontend.Variable
-	L2MessageHashes        internal.Var32Slice // TODO range check
+	L2MessageHashes        internal.Var32Slice
 	FinalStateRootHash     frontend.Variable
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
-	FinalRollingHash       [32]frontend.Variable // TODO range check
+	FinalRollingHash       [32]frontend.Variable
 	FinalRollingHashNumber frontend.Variable
 }
 
@@ -103,15 +104,14 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 		ChainID:                  pi.ChainID,
 		L2MessageServiceAddr:     slices.Clone(pi.L2MessageServiceAddr[:]),
 	}
-	internal.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
-	internal.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
+	utils.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
+	utils.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
 
 	return res
 }
 
 func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide a keccak hasher
 	hsh := mimc.NewMiMC()
-	// TODO incorporate length too? Technically not necessary
 
 	var zero [1]byte
 	for i := range pi.L2MessageHashes {

@@ -113,7 +113,7 @@ func mustProveAndPass(
 			utils.Panic(err.Error())
 		}
 
-		return dummy.MakeProof(&setup, publicInput, circuits.MockCircuitIDExecution), setup.VerifiyingKeyDigest()
+		return dummy.MakeProof(&setup, publicInput, circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()
 
 	case config.ProverModeFull:
 		logrus.Info("Running the FULL prover")
@@ -157,7 +157,7 @@ func mustProveAndPass(
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
-		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, execution.FunctionalPublicInput{}, publicInput), setup.VerifiyingKeyDigest()
+		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, execution.FunctionalPublicInput{}, publicInput), setup.VerifyingKeyDigest()
 	default:
 		panic("not implemented")
 	}

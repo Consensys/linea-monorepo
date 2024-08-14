@@ -180,3 +180,20 @@ func (FakeTestingT) Errorf(format string, args ...interface{}) {
 func (FakeTestingT) FailNow() {
 	os.Exit(-1)
 }
+
+func RandIntN(n int) int {
+	var b [8]byte
+	_, err := rand.Read(b[:])
+	if err != nil {
+		panic(err)
+	}
+	return int(binary.BigEndian.Uint64(b[:]) % uint64(n))
+}
+
+func RandIntSliceN(length, n int) []int {
+	res := make([]int, length)
+	for i := range res {
+		res[i] = RandIntN(n)
+	}
+	return res
+}

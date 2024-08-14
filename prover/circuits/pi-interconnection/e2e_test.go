@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
@@ -34,15 +35,15 @@ func TestSingleBlockBlob(t *testing.T) {
 
 func TestSingleBlobBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
-	config := pi_interconnection.Config{
-		MaxNbDecompression:   len(req.Decompressions),
-		MaxNbExecution:       len(req.Executions),
-		MaxNbKeccakF:         100,
-		MaxNbMsgPerExecution: 1,
-		L2MsgMerkleDepth:     5,
-		L2MessageMaxNbMerkle: 1,
+	cfg := config.PublicInput{
+		MaxNbDecompression: len(req.Decompressions),
+		MaxNbExecution:     len(req.Executions),
+		MaxNbKeccakF:       100,
+		ExecutionMaxNbMsg:  1,
+		L2MsgMerkleDepth:   5,
+		L2MsgMaxNbMerkle:   1,
 	}
-	compiled, err := config.Compile(dummy.Compile)
+	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
 
 	a, err := compiled.Assign(req)
@@ -74,7 +75,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 
 	blob := blobtesting.TinyTwoBatchBlob(t)
 
-	execReq := []pi_interconnection.ExecutionRequest{{
+	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
@@ -104,7 +105,6 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes))
 
 	req := pi_interconnection.Request{
-		DecompDict:     blobtesting.GetDict(t),
 		Decompressions: []blobsubmission.Response{*blobResp},
 		Executions:     execReq,
 		Aggregation: public_input.Aggregation{
@@ -131,7 +131,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	t.Skipf("Flacky test due to the number of keccakf outgoing the limit specified for the test")
 	blobs := blobtesting.ConsecutiveBlobs(t, 2, 2)
 
-	execReq := []pi_interconnection.ExecutionRequest{{
+	execReq := []public_input.Execution{{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(3)},
 		FinalStateRootHash:     internal.Uint64To32Bytes(4),
 		FinalBlockNumber:       5,
@@ -186,7 +186,6 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq[0].L2MsgHashes, execReq[1].L2MsgHashes, execReq[2].L2MsgHashes, execReq[3].L2MsgHashes))
 
 	req := pi_interconnection.Request{
-		DecompDict:     blobtesting.GetDict(t),
 		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
 		Executions:     execReq,
 		Aggregation: public_input.Aggregation{
@@ -215,17 +214,17 @@ func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request) {
 
 		decomposeLittleEndian(t, slack[:], i, 3)
 
-		config := pi_interconnection.Config{
-			MaxNbDecompression:   len(req.Decompressions) + slack[0],
-			MaxNbExecution:       len(req.Executions) + slack[1],
-			MaxNbKeccakF:         maxNbKeccakF,
-			MaxNbMsgPerExecution: 1 + slack[2],
-			L2MsgMerkleDepth:     5,
-			L2MessageMaxNbMerkle: 1 + slack[3],
+		config := config.PublicInput{
+			MaxNbDecompression: len(req.Decompressions) + slack[0],
+			MaxNbExecution:     len(req.Executions) + slack[1],
+			MaxNbKeccakF:       maxNbKeccakF,
+			ExecutionMaxNbMsg:  1 + slack[2],
+			L2MsgMerkleDepth:   5,
+			L2MsgMaxNbMerkle:   1 + slack[3],
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {
-			compiled, err := config.Compile(dummy.Compile)
+			compiled, err := pi_interconnection.Compile(config, dummy.Compile)
 			assert.NoError(t, err)
 
 			a, err := compiled.Assign(req)

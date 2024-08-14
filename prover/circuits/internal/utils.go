@@ -13,8 +13,8 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
 	"math/big"
 	"slices"
@@ -128,7 +128,7 @@ func (r *Range) LastArray32F(provider func(int) [32]frontend.Variable) [32]front
 }
 
 func RegisterHints() {
-	hint.RegisterHint(toCrumbsHint, concatHint, decomposeIntoBytesHint, checksumSubSlicesHint)
+	hint.RegisterHint(toCrumbsHint, concatHint, checksumSubSlicesHint, partitionSliceHint)
 }
 
 func toCrumbsHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -605,71 +605,6 @@ func Ite[T any](cond bool, ifSo, ifNot T) T {
 	return ifNot
 }
 
-func ToBytes(api frontend.API, x frontend.Variable) [32]frontend.Variable {
-	var res [32]frontend.Variable
-	d := decomposeIntoBytes(api, x, fr377.Bits)
-	slack := 32 - len(d) // should be zero
-	copy(res[slack:], d)
-	for i := 0; i < slack; i++ {
-		res[i] = 0
-	}
-	return res
-}
-
-func decomposeIntoBytes(api frontend.API, data frontend.Variable, nbBits int) []frontend.Variable {
-	if nbBits == 0 {
-		nbBits = api.Compiler().FieldBitLen()
-	}
-
-	nbBytes := (api.Compiler().FieldBitLen() + 7) / 8
-
-	bytes, err := api.Compiler().NewHint(decomposeIntoBytesHint, nbBytes, data)
-	if err != nil {
-		panic(err)
-	}
-	lastNbBits := nbBits % 8
-	if lastNbBits == 0 {
-		lastNbBits = 8
-	}
-	rc := rangecheck.New(api)
-	api.AssertIsLessOrEqual(bytes[0], 1<<lastNbBits-1) //TODO try range checking this as well
-	for i := 1; i < nbBytes; i++ {
-		rc.Check(bytes[i], 8)
-	}
-
-	return bytes
-}
-
-func decomposeIntoBytesHint(_ *big.Int, ins, outs []*big.Int) error {
-	nbBytes := len(outs) / len(ins)
-	if nbBytes*len(ins) != len(outs) {
-		return errors.New("incongruent number of ins/outs")
-	}
-	var v, radix, zero big.Int
-	radix.SetUint64(256)
-	for i := range ins {
-		v.Set(ins[i])
-		for j := nbBytes - 1; j >= 0; j-- {
-			outs[i*nbBytes+j].Mod(&v, &radix)
-			v.Rsh(&v, 8)
-		}
-		if v.Cmp(&zero) != 0 {
-			return errors.New("not fitting in len(outs)/len(ins) many bytes")
-		}
-	}
-	return nil
-}
-
-func Copy[T any](dst []frontend.Variable, src []T) (n int) {
-	n = min(len(dst), len(src))
-
-	for i := 0; i < n; i++ {
-		dst[i] = src[i]
-	}
-
-	return
-}
-
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]
 func PartialSums(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	res := make([]frontend.Variable, len(s))
@@ -690,46 +625,6 @@ func Differences(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	return res
 }
 
-// NewElementFromBytes range checks the bytes and gives a reduced field element
-func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) *emulated.Element[T] {
-	bits := make([]frontend.Variable, 8*len(bytes))
-	for i := range bytes {
-		copy(bits[8*i:], api.ToBinary(bytes[len(bytes)-i-1], 8))
-	}
-
-	f, err := emulated.NewField[T](api)
-	if err != nil {
-		panic(err)
-	}
-
-	return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
-}
-
-// ReduceBytes reduces given bytes modulo a given field. As a side effect, the "bytes" are range checked
-func ReduceBytes[T emulated.FieldParams](api frontend.API, bytes []frontend.Variable) []frontend.Variable {
-	f, err := emulated.NewField[T](api)
-	if err != nil {
-		panic(err)
-	}
-
-	bits := f.ToBits(NewElementFromBytes[T](api, bytes))
-	res := make([]frontend.Variable, (len(bits)+7)/8)
-	copy(bits[:], bits)
-	for i := len(bits); i < len(bits); i++ {
-		bits[i] = 0
-	}
-	for i := range res {
-		bitsStart := 8 * (len(res) - i - 1)
-		bitsEnd := bitsStart + 8
-		if i == 0 {
-			bitsEnd = len(bits)
-		}
-		res[i] = api.FromBinary(bits[bitsStart:bitsEnd]...)
-	}
-
-	return res
-}
-
 func NewSliceOf32Array[T any](values [][32]T, maxLen int) Var32Slice {
 	if maxLen < len(values) {
 		panic("maxLen too small")
@@ -739,11 +634,11 @@ func NewSliceOf32Array[T any](values [][32]T, maxLen int) Var32Slice {
 		Length: len(values),
 	}
 	for i := range values {
-		Copy(res.Values[i][:], values[i][:])
+		utils.Copy(res.Values[i][:], values[i][:])
 	}
 	var zeros [32]byte
 	for i := len(values); i < maxLen; i++ {
-		Copy(res.Values[i][:], zeros[:])
+		utils.Copy(res.Values[i][:], zeros[:])
 	}
 	return res
 }
@@ -809,5 +704,170 @@ func RotateLeft(api frontend.API, v []frontend.Variable, n frontend.Variable) (r
 func CloneSlice[T any](s []T, cap ...int) []T {
 	res := make([]T, len(s), max(len(s), Sum(cap...)))
 	copy(res, s)
+	return res
+}
+
+// PartitionSlice populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i
+// There are no guarantee on the values in the subs past their actual lengths. The hint sets them to zero but PartitionSlice does not check that fact.
+// It may produce an incorrect result if selectors are out of range
+func PartitionSlice(api frontend.API, s []frontend.Variable, selectors []frontend.Variable, subs ...[]frontend.Variable) {
+	if len(s) != len(selectors) {
+		panic("s and selectors must have the same length")
+	}
+	hintIn := make([]frontend.Variable, 1+len(subs)+len(s)+len(selectors))
+	hintIn[0] = len(subs)
+	hintOutLen := 0
+	for i := range subs {
+		hintIn[1+i] = len(subs[i])
+		hintOutLen += len(subs[i])
+	}
+	for i := range s {
+		hintIn[1+len(subs)+i] = s[i]
+		hintIn[1+len(subs)+len(s)+i] = selectors[i]
+	}
+	subsGlued, err := api.Compiler().NewHint(partitionSliceHint, hintOutLen, hintIn...)
+	if err != nil {
+		panic(err)
+	}
+
+	subsT := make([]*logderivlookup.Table, len(subs))
+	for i := range subs {
+		copy(subs[i], subsGlued[:len(subs[i])])
+		subsGlued = subsGlued[len(subs[i]):]
+		subsT[i] = SliceToTable(api, subs[i])
+		subsT[i].Insert(0)
+	}
+
+	subI := make([]frontend.Variable, len(subs))
+	for i := range subI {
+		subI[i] = 0
+	}
+
+	indicators := make([]frontend.Variable, len(subs))
+	subHeads := make([]frontend.Variable, len(subs))
+	for i := range s {
+		for j := range subs[:len(subs)-1] {
+			indicators[j] = api.IsZero(api.Sub(selectors[i], j))
+		}
+		indicators[len(subs)-1] = api.Sub(1, SumSnark(api, indicators[:len(subs)-1]...))
+
+		for j := range subs {
+			subHeads[j] = subsT[j].Lookup(subI[j])[0]
+			subI[j] = api.Add(subI[j], indicators[j])
+		}
+
+		api.AssertIsEqual(s[i], InnerProd(api, subHeads, indicators))
+	}
+
+	// Check that the dummy trailing values weren't actually picked
+	for i := range subI {
+		api.AssertIsDifferent(subI[i], len(subs[i])+1)
+	}
+}
+
+func SumSnark(api frontend.API, x ...frontend.Variable) frontend.Variable {
+	res := frontend.Variable(0)
+	for i := range x {
+		res = api.Add(res, x[i])
+	}
+	return res
+}
+
+// ins: [nbSubs, maxLen_0, ..., maxLen_{nbSubs-1}, s..., indicators...]
+func partitionSliceHint(_ *big.Int, ins, outs []*big.Int) error {
+
+	subs := make([][]*big.Int, ins[0].Uint64())
+	for i := range subs {
+		subs[i] = outs[:ins[1+i].Uint64()]
+		outs = outs[len(subs[i]):]
+	}
+	if len(outs) != 0 {
+		return errors.New("the sum of subslice max lengths does not equal output length")
+	}
+
+	ins = ins[1+len(subs):]
+
+	s := ins[:len(ins)/2]
+	indicators := ins[len(s):]
+	if len(s) != len(indicators) {
+		return errors.New("s and indicators must be of the same length")
+	}
+
+	for i := range s {
+		b := int(indicators[i].Uint64())
+		if b < 0 || b >= len(subs) || !indicators[i].IsUint64() {
+			return errors.New("indicator out of range")
+		}
+		subs[b][0] = s[i]
+		subs[b] = subs[b][1:]
+	}
+
+	for i := range subs {
+		for j := range subs[i] {
+			subs[i][j].SetInt64(0)
+		}
+	}
+
+	return nil
+}
+
+// PartitionSliceEmulated populates sub-slices subs[0], ... where subs[i] contains the elements s[j] with selectors[j] = i
+// There are no guarantee on the values in the subs past their actual lengths. The hint sets them to zero but PartitionSlice does not check that fact.
+// It may produce an incorrect result if selectors are out of range
+func PartitionSliceEmulated[T emulated.FieldParams](api frontend.API, s []emulated.Element[T], selectors []frontend.Variable, subSliceMaxLens ...int) [][]emulated.Element[T] {
+	field, err := emulated.NewField[T](api)
+	if err != nil {
+		panic(err)
+	}
+
+	// transpose limbs for selection
+	limbs := make([][]frontend.Variable, len(s[0].Limbs)) // limbs are indexed limb first, element second
+	for i := range limbs {
+		limbs[i] = make([]frontend.Variable, len(s))
+	}
+	for i := range s {
+		if len(limbs) != len(s[i].Limbs) {
+			panic("expected uniform number of limbs")
+		}
+		for j := range limbs {
+			limbs[j][i] = s[i].Limbs[j]
+		}
+	}
+
+	subLimbs := make([][][]frontend.Variable, len(limbs)) // subLimbs is indexed limb first, sub-slice second, element third
+
+	for i := range limbs { // construct the sub-slices limb by limb
+		subLimbs[i] = make([][]frontend.Variable, len(subSliceMaxLens))
+		for j := range subSliceMaxLens {
+			subLimbs[i][j] = make([]frontend.Variable, subSliceMaxLens[j])
+		}
+
+		PartitionSlice(api, limbs[i], selectors, subLimbs[i]...)
+	}
+
+	// put the limbs back together
+	subSlices := make([][]emulated.Element[T], len(subSliceMaxLens))
+	for i := range subSlices {
+		subSlices[i] = make([]emulated.Element[T], subSliceMaxLens[i])
+		for j := range subSlices[i] {
+			currLimbs := make([]frontend.Variable, len(limbs))
+			for k := range currLimbs {
+				currLimbs[k] = subLimbs[k][i][j]
+			}
+			subSlices[i][j] = *field.NewElement(currLimbs) // TODO make sure dereferencing is not problematic
+		}
+	}
+
+	return subSlices
+}
+
+func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
+	if len(x) != len(y) {
+		panic("mismatched lengths")
+	}
+	res := frontend.Variable(0)
+	for i := range x {
+		res = api.Add(res, api.Mul(x[i], y[i]))
+	}
 	return res
 }

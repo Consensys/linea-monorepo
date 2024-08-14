@@ -181,7 +181,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		DecompressionProof: circuits.SerializeProofRaw(proof),
-		VerifyingKeyShaSum: setup.VerifiyingKeyDigest(),
+		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
 	}
 
 	resp.Debug.PublicInput = "0x" + pubInput.Text(16)
@@ -227,7 +227,7 @@ func dummyProve(cfg *config.Config, req *Request) (*Response, error) {
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		DecompressionProof: proof,
-		VerifyingKeyShaSum: setup.VerifiyingKeyDigest(),
+		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
 	}
 
 	inputString := utils.HexEncodeToString(input)

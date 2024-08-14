@@ -2,7 +2,6 @@ package aggregation
 
 import (
 	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	"github.com/consensys/gnark/backend/plonk"
@@ -17,6 +16,7 @@ func MakeProof(
 	setup *circuits.Setup,
 	maxNbProof int,
 	proofClaims []ProofClaimAssignment,
+	piProof plonk.Proof,
 	publicInput fr.Element,
 ) (
 	plonk.Proof,
@@ -27,6 +27,7 @@ func MakeProof(
 	assignment, err := AssignAggregationCircuit(
 		maxNbProof,
 		proofClaims,
+		piProof,
 		publicInput,
 	)
 
@@ -44,18 +45,11 @@ func MakeProof(
 }
 
 // Assigns the proof using placeholders
-func AssignAggregationCircuit(
-	maxNbProof int,
-	proofClaims []ProofClaimAssignment,
-	publicInput fr.Element,
-) (
-	c *AggregationCircuit,
-	err error,
-) {
+func AssignAggregationCircuit(maxNbProof int, proofClaims []ProofClaimAssignment, publicInputProof plonk.Proof, publicInput fr.Element) (c *Circuit, err error) {
 
-	c = &AggregationCircuit{
-		ProofClaims:      make([]proofClaim, maxNbProof),
-		DummyPublicInput: publicInput,
+	c = &Circuit{
+		ProofClaims: make([]proofClaim, maxNbProof),
+		PublicInput: publicInput,
 	}
 
 	for i := range c.ProofClaims {

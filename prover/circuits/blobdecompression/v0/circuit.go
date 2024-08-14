@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -137,7 +138,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	xBytes := internal.ToBytes(api, c.X[1])
+	xBytes := utils.ToBytes(api, c.X[1])
 	rc := rangecheck.New(api)
 	const nbBitsLower = (fr377.Bits - 1) % 8
 	rc.Check(xBytes[0], nbBitsLower)

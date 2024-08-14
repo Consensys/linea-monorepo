@@ -3,6 +3,8 @@ package internal_test
 import (
 	"crypto/rand"
 	"fmt"
+	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -55,7 +57,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 	}
 
 	endPointsSnark := make([]frontend.Variable, lengthsSliceLength)
-	for n := internal.Copy(endPointsSnark, internal.PartialSumsInt(lengths)); n < lengthsSliceLength; n++ {
+	for n := utils.Copy(endPointsSnark, internal.PartialSumsInt(lengths)); n < lengthsSliceLength; n++ {
 		endPointsSnark[n] = n * 234
 	}
 
@@ -103,7 +105,7 @@ func TestReduceBytes(t *testing.T) {
 
 	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		for i := range cases {
-			got := internal.ReduceBytes[emulated.BN254Fr](api, test_vector_utils.ToVariableSlice(cases[i]))
+			got := utils.ReduceBytes[emulated.BN254Fr](api, test_vector_utils.ToVariableSlice(cases[i]))
 			internal.AssertSliceEquals(api,
 				got,
 				test_vector_utils.ToVariableSlice(reduced[i]),
@@ -112,4 +114,114 @@ func TestReduceBytes(t *testing.T) {
 
 		return nil
 	})(t)
+}
+
+func TestPartitionSliceEmulated(t *testing.T) {
+	selectors := []int{1, 0, 2, 2, 1}
+
+	s := make([]fr381.Element, len(selectors))
+	for i := range s {
+		_, err := s[i].SetRandom()
+		assert.NoError(t, err)
+	}
+
+	subs := make([][]fr381.Element, 3)
+	for i := range subs {
+		subs[i] = make([]fr381.Element, 0, len(selectors)-1)
+	}
+
+	for i := range s {
+		subs[selectors[i]] = append(subs[selectors[i]], s[i])
+	}
+
+	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+
+		field, err := emulated.NewField[emulated.BLS12381Fr](api)
+		assert.NoError(t, err)
+
+		// convert randomized elements to emulated
+		sEmulated := elementsToEmulated(field, s)
+
+		subsEmulatedExpected := internal.MapSlice(func(s []fr381.Element) []emulated.Element[emulated.BLS12381Fr] {
+			return elementsToEmulated(field, append(s, make([]fr381.Element, cap(s)-len(s))...)) // pad with zeros to see if padding is done correctly
+		}, subs...)
+
+		subsEmulated := internal.PartitionSliceEmulated(api, sEmulated, test_vector_utils.ToVariableSlice(selectors), internal.MapSlice(func(s []fr381.Element) int { return cap(s) }, subs...)...)
+
+		assert.Equal(t, len(subsEmulatedExpected), len(subsEmulated))
+		for i := range subsEmulated {
+			assert.Equal(t, len(subsEmulatedExpected[i]), len(subsEmulated[i]))
+			for j := range subsEmulated[i] {
+				field.AssertIsEqual(&subsEmulated[i][j], &subsEmulatedExpected[i][j])
+			}
+		}
+
+		return nil
+	})(t)
+}
+
+func elementsToEmulated(field *emulated.Field[emulated.BLS12381Fr], s []fr381.Element) []emulated.Element[emulated.BLS12381Fr] {
+	return internal.MapSlice(func(element fr381.Element) emulated.Element[emulated.BLS12381Fr] {
+		return *field.NewElement(internal.MapSlice(func(x uint64) frontend.Variable { return x }, element[:]...))
+	}, s...)
+}
+
+func TestPartitionSlice(t *testing.T) {
+	const (
+		nbSubs   = 3
+		sliceLen = 10
+	)
+
+	test := func(slice []frontend.Variable, selectors []int, subsSlack []int) func(*testing.T) {
+		assert.Equal(t, len(selectors), len(slice))
+		assert.Equal(t, len(subsSlack), nbSubs)
+
+		subs := make([][]frontend.Variable, nbSubs)
+		for j := range subs {
+			subs[j] = make([]frontend.Variable, 0, sliceLen)
+		}
+
+		for j := range slice {
+			subs[selectors[j]] = append(subs[selectors[j]], slice[j])
+		}
+
+		for j := range subs {
+			subs[j] = append(subs[j], test_vector_utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
+		}
+
+		return test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+
+			slice := test_vector_utils.ToVariableSlice(slice)
+
+			subsEncountered := internal.MapSlice(func(s []frontend.Variable) []frontend.Variable { return make([]frontend.Variable, len(s)) }, subs...)
+			internal.PartitionSlice(api, slice, test_vector_utils.ToVariableSlice(selectors), subsEncountered...)
+
+			assert.Equal(t, len(subs), len(subsEncountered))
+			for j := range subsEncountered {
+				internal.AssertSliceEquals(api, subsEncountered[j], subs[j])
+			}
+
+			return nil
+		})
+	}
+
+	test([]frontend.Variable{5}, []int{2}, []int{1, 0, 0})(t)
+	test([]frontend.Variable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
+	test(test_vector_utils.ToVariableSlice(test_utils.Range[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
+
+	for i := 0; i < 200; i++ {
+
+		slice := make([]frontend.Variable, sliceLen)
+		for j := range slice {
+			var x fr377.Element
+			_, err := x.SetRandom()
+			slice[j] = &x
+			assert.NoError(t, err)
+		}
+
+		selectors := test_utils.RandIntSliceN(sliceLen, nbSubs)
+		subsSlack := test_utils.RandIntSliceN(nbSubs, 2)
+
+		t.Run(fmt.Sprintf("selectors=%v,slack=%v", selectors, subsSlack), test(slice, selectors, subsSlack))
+	}
 }

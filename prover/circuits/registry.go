@@ -1,19 +1,20 @@
 package circuits
 
 // CircuitID is a type to represent the different circuits.
-// Is is used to identify the circuit to be used in the prover.
+// It is used to identify the circuit to be used in the prover.
 type CircuitID string
 
 const (
-	ExecutionCircuitID              CircuitID = "execution"
-	ExecutionLargeCircuitID         CircuitID = "execution-large"
-	BlobDecompressionV0CircuitID    CircuitID = "blob-decompression-v0"
-	BlobDecompressionV1CircuitID    CircuitID = "blob-decompression-v1"
-	AggregationCircuitID            CircuitID = "aggregation"
-	EmulationCircuitID              CircuitID = "emulation"
-	EmulationDummyCircuitID         CircuitID = "emulation-dummy"
-	ExecutionDummyCircuitID         CircuitID = "execution-dummy"
-	BlobDecompressionDummyCircuitID CircuitID = "blob-decompression-dummy"
+	ExecutionCircuitID                  CircuitID = "execution"
+	ExecutionLargeCircuitID             CircuitID = "execution-large"
+	BlobDecompressionV0CircuitID        CircuitID = "blob-decompression-v0"
+	BlobDecompressionV1CircuitID        CircuitID = "blob-decompression-v1"
+	AggregationCircuitID                CircuitID = "aggregation"
+	EmulationCircuitID                  CircuitID = "emulation"
+	EmulationDummyCircuitID             CircuitID = "emulation-dummy"
+	ExecutionDummyCircuitID             CircuitID = "execution-dummy"
+	BlobDecompressionDummyCircuitID     CircuitID = "blob-decompression-dummy"
+	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.
