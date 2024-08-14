@@ -165,6 +165,7 @@ jobs:
           docker logs postman --since 1h &>> docker_logs/postman.txt
           docker logs traces-node --since 1h &>> docker_logs/traces-node.txt
           docker logs traces-node-v2 --since 1h &>> docker_logs/traces-node-v2.txt
+          docker logs sequencer --since 1h &>> docker_logs/sequencer.txt
       - name: Archive debug logs
         uses: actions/upload-artifact@v4
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}
