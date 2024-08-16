@@ -19,4 +19,5 @@ plugins {
   id 'com.github.ben-manes.versions'
   id 'io.spring.dependency-management'
   id "de.undercouch.download"
+  id 'com.adarshr.test-logger'
 }

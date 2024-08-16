@@ -14,7 +14,7 @@
  *
  */
 
-package net.consensys.linea.zktracer.testing;
+package net.consensys.linea.testing;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +30,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.ModificationNotAllowedException;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.AccountStorageEntry;
@@ -173,5 +174,14 @@ public class ToyAccount implements MutableAccount {
   @Override
   public void becomeImmutable() {
     mutable = false;
+  }
+
+  public ReferenceTestWorldState.AccountMock toAccountMock() {
+    Map<String, String> accountMockStorage = new HashMap<>();
+    for (Map.Entry<UInt256, UInt256> e : storage.entrySet()) {
+      accountMockStorage.put(e.getKey().toHexString(), e.getValue().toHexString());
+    }
+    return new ReferenceTestWorldState.AccountMock(
+        Long.toHexString(nonce), balance.toHexString(), accountMockStorage, code.toHexString());
   }
 }

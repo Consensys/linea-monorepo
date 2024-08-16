@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testing;
+package net.consensys.linea.testing;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BLOCK_GAS_LIMIT;

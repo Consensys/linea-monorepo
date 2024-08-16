@@ -13,26 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testing;
+package net.consensys.linea.testing;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 
-/** Contains methods that execute module tests. */
-public class ModuleTests {
-
-  /**
-   * Compiles and runs a predefined sequence of bytecode instructions for testing purposes.
-   *
-   * @param opCode opcode for which the test should be run
-   * @param arguments args of the opcode for which the test should be run
-   */
-  public static void runTestWithOpCodeArgs(final OpCode opCode, final List<Bytes32> arguments) {
-    Bytes bytecode = BytecodeCompiler.newProgram().opAnd32ByteArgs(opCode, arguments).compile();
-
-    BytecodeRunner.of(bytecode).run();
-  }
-}
+/**
+ * Dynamic test case data structure.
+ *
+ * @param name name of the test case
+ * @param arguments arguments for the test case
+ * @param customAssertions optional custom assertions per test case
+ */
+public record DynamicTestCase(
+    String name, List<OpcodeCall> arguments, BiConsumer<OpCode, List<Bytes32>> customAssertions) {}

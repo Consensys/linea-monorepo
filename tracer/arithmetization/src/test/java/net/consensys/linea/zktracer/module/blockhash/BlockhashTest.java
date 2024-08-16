@@ -17,9 +17,9 @@ package net.consensys.linea.zktracer.module.blockhash;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOCKHASH_MAX_HISTORY;
 
+import net.consensys.linea.testing.BytecodeCompiler;
+import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.testing.BytecodeCompiler;
-import net.consensys.linea.zktracer.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
 

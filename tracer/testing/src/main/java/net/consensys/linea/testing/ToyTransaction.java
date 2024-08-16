@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testing;
+package net.consensys.linea.testing;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
