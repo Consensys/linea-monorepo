@@ -24,7 +24,7 @@ import java.io.InputStreamReader;
 import java.util.zip.GZIPInputStream;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironment;
 import org.junit.jupiter.api.Test;
 
 /**

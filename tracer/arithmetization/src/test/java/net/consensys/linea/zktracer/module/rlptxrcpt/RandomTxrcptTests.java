@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import net.consensys.linea.zktracer.testing.ToyAccount;
-import net.consensys.linea.zktracer.testing.ToyTransaction;
+import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.testing.ToyTransaction;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.datatypes.AccessListEntry;

@@ -13,6 +13,7 @@ nohup.out
 .externalToolBuilders/
 .gradle/
 .idea/
+.cargo/
 .loadpath
 .metadata
 .prefs

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
-import net.consensys.linea.zktracer.testing.BytecodeRunner;
+import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
 

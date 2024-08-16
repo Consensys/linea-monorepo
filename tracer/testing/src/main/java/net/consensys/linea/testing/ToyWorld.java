@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.testing;
+package net.consensys.linea.testing;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,8 +41,8 @@ import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 public class ToyWorld implements WorldUpdater {
   private ToyWorld parent;
   @Getter private List<ToyAccount> accounts;
-  private Map<Address, ToyAccount> addressAccountMap;
   private AuthorizedCodeService authorizedCodeService;
+  @Getter private Map<Address, ToyAccount> addressAccountMap;
 
   private ToyWorld() {
     this(null, new ArrayList<>());
@@ -184,11 +184,6 @@ public class ToyWorld implements WorldUpdater {
   @Override
   public Optional<WorldUpdater> parentUpdater() {
     return Optional.empty();
-  }
-
-  @Override
-  public void setAuthorizedCodeService(final AuthorizedCodeService authorizedCodeService) {
-    this.authorizedCodeService = authorizedCodeService;
   }
 
   public static class ToyWorldBuilder {

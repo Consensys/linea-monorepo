@@ -18,9 +18,9 @@ package net.consensys.linea.zktracer.module.mod;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.testing.DynamicTests;
+import net.consensys.linea.testing.OpcodeCall;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.testing.DynamicTests;
-import net.consensys.linea.zktracer.testing.OpcodeCall;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
