@@ -204,7 +204,7 @@ class TestExecutor(request: String, pk: String) {
           /* gasPrice = */ null,
           /* gasLimit = */ null,
           /* to = */ Numeric.prependHexPrefix(sourceWallet.address),
-          /* value = */ BigInteger.valueOf(100000)
+          /* value = */ RoundRobinMoneyTransfer.valueToTransfer
         )
         val (gasPrice, gasLimit) = ethConnection.estimateGasPriceAndLimit(transactionForEstimation)
 
@@ -213,7 +213,8 @@ class TestExecutor(request: String, pk: String) {
           nbTransferPerWallets = scenario.nbTransfers,
           chainId = chainId,
           gasPerCall = gasLimit,
-          gasPricePerCall = gasPrice
+          gasPricePerCall = gasPrice,
+          valuePerCall = RoundRobinMoneyTransfer.valueToTransfer
         )
       }
 
@@ -487,7 +488,8 @@ class TestExecutor(request: String, pk: String) {
     nbTransferPerWallets: Int,
     chainId: Int,
     gasPerCall: BigInteger,
-    gasPricePerCall: BigInteger
+    gasPricePerCall: BigInteger,
+    valuePerCall: BigInteger = BigInteger.ZERO,
   ): Map<Int, Wallet> {
     val wallets: Map<Int, Wallet> = createWallets(nbWallets)
     executionDetails.addInitialization(
@@ -497,7 +499,8 @@ class TestExecutor(request: String, pk: String) {
         sourceWallet = sourceWallet,
         chainId = chainId,
         gasPerCall = gasPerCall,
-        gasPricePerCall = gasPricePerCall
+        gasPricePerCall = gasPricePerCall,
+        valuePerCall = valuePerCall
       )
     )
     return wallets
@@ -511,7 +514,7 @@ class TestExecutor(request: String, pk: String) {
   ): Map<Wallet, List<TransactionDetail>> {
     return walletsFunding.generateTransactions(
       wallets,
-      BigInteger.valueOf(1000),
+      RoundRobinMoneyTransfer.valueToTransfer,
       nbTransferPerWallets,
       chainId
     )

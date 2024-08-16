@@ -13,6 +13,7 @@
 
 package net.consensys.zkevm.load.swagger;
 
+import java.math.BigInteger;
 import java.util.Objects;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.SerializedName;
@@ -45,8 +46,13 @@ public class CreateContract extends Contract {
   @SerializedName(SERIALIZED_NAME_NAME)
   private String name;
 
-  public CreateContract() {
+  public static final String SERIALIZED_NAME_GAS_LIMIT = "gasLimit";
+  @SerializedName(SERIALIZED_NAME_GAS_LIMIT)
+  private BigInteger gasLimit;
+
+  public CreateContract(BigInteger gasLimit) {
     this.contractCallType = this.getClass().getSimpleName();
+    this.gasLimit = gasLimit;
   }
 
   public CreateContract byteCode(String byteCode) {
@@ -58,13 +64,24 @@ public class CreateContract extends Contract {
    * Get byteCode
    * @return byteCode
   **/
-  @javax.annotation.Nullable
   public String getByteCode() {
     return byteCode;
   }
 
   public void setByteCode(String byteCode) {
     this.byteCode = byteCode;
+  }
+
+   /**
+   * Get gasLimit
+   * @return gasLimit
+  **/
+  public BigInteger getGasLimit() {
+    return gasLimit;
+  }
+
+  public void setGasLimit(BigInteger gasLimit) {
+    this.gasLimit = gasLimit;
   }
 
 
