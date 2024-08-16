@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0-rc1
+* feat(toy-exec-env-v2): add new ToyExecutionEnvironment that builds the General State Test Case spec to run tests ([#842](https://github.com/Consensys/linea-tracer/pull/842))
+* feat: initial Integration of Go Corset ([#907](https://github.com/Consensys/linea-tracer/pull/907))
+* feat(exp): update ([#937](https://github.com/Consensys/linea-tracer/pull/937))
+* fix(blockCapturer): missing handling of selfdestruct ([#936](https://github.com/Consensys/linea-tracer/pull/936))
+* docs: retires zk-EVM ([#903](https://github.com/Consensys/linea-tracer/pull/903))
+* fix: add replay test for incident 777 on zkGeth mainnet ([#927](https://github.com/Consensys/linea-tracer/pull/927))
+* test(ecpairing): implement extensive test for ecpairing ([#822](https://github.com/Consensys/linea-tracer/pull/822))([#909](https://github.com/Consensys/linea-tracer/pull/909))
+
 ## 0.3.0-rc2
 * feat: Update Linea-Besu to 24.7-develop-c0029e6 ([#905](https://github.com/Consensys/linea-tracer/pull/905))
 
