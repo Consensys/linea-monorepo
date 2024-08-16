@@ -92,8 +92,8 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   }
 
   @Override
-  public void beforeExternalServices() {
-    super.beforeExternalServices();
+  public void start() {
+    super.start();
     try (Stream<String> lines =
         Files.lines(
             Path.of(new File(transactionPoolValidatorConfiguration().denyListPath()).toURI()))) {
