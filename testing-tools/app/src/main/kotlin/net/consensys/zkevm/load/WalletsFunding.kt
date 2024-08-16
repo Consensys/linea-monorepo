@@ -122,15 +122,18 @@ class WalletsFunding(
     sourceWallet: Wallet,
     chainId: Int,
     gasPerCall: BigInteger,
-    gasPricePerCall: BigInteger
+    gasPricePerCall: BigInteger,
+    valuePerCall: BigInteger
   ): Map<Wallet, List<TransactionDetail>> {
     val balance = ethConnection.getBalance(sourceWallet)
     logger.info("[FUNDING] source of funds balance is {}.", balance)
     var nonce = ethConnection.getNonce(sourceOfFundsWallet.encodedAddress())
     logger.info("[FUNDING] initial nonce is {}.", nonce)
     // 5% of margin more just to ensure we have a little more than enough
-    val transferredAmount =
+    val ethForTransfers = BigInteger.valueOf((nbTransactions).toLong()).multiply(valuePerCall)
+    val ethForGas =
       gasPricePerCall.multiply(BigInteger.valueOf((nbTransactions).toLong())).multiply(gasPerCall)
+    val transferredAmount = ethForTransfers.add(ethForGas)
     logger.debug(
       "[FUNDING] gas price is {}, transferred amount is {}.",
       gasPricePerCall,
