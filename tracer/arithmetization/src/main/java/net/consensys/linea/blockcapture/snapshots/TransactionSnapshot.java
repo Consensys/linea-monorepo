@@ -55,8 +55,8 @@ public record TransactionSnapshot(
 
   public static TransactionSnapshot of(Transaction tx) {
     return new TransactionSnapshot(
-        tx.getS().toString(16),
         tx.getR().toString(16),
+        tx.getS().toString(16),
         tx.getType() == TransactionType.FRONTIER
             ? tx.getV().toString(16)
             : tx.getYParity().toString(16),
