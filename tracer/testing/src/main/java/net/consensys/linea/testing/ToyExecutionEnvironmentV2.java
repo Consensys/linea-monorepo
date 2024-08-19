@@ -63,7 +63,6 @@ public class ToyExecutionEnvironmentV2 {
   private static final long DEFAULT_TIME_STAMP = 1347310;
   private static final Hash DEFAULT_HASH =
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
-  private static final EVM evm = MainnetEVMs.london(EvmConfiguration.DEFAULT);
   private static final FeeMarket feeMarket = FeeMarket.london(-1);
 
   @Builder.Default private BigInteger chainId = CHAIN_ID;
@@ -71,11 +70,12 @@ public class ToyExecutionEnvironmentV2 {
   @Singular private final List<Transaction> transactions;
 
   public void run() {
+    final EVM evm = MainnetEVMs.london(this.chainId, EvmConfiguration.DEFAULT);
     GeneralStateReferenceTestTools.executeTest(
-        this.buildGeneralStateTestCaseSpec(), getMainnetTransactionProcessor(), feeMarket);
+        this.buildGeneralStateTestCaseSpec(evm), getMainnetTransactionProcessor(evm), feeMarket);
   }
 
-  public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec() {
+  public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec(EVM evm) {
     Map<String, ReferenceTestWorldState.AccountMock> accountMockMap =
         toyWorld.getAddressAccountMap().entrySet().stream()
             .collect(
@@ -113,8 +113,7 @@ public class ToyExecutionEnvironmentV2 {
         /*expectException*/ null);
   }
 
-  private MainnetTransactionProcessor getMainnetTransactionProcessor() {
-
+  private MainnetTransactionProcessor getMainnetTransactionProcessor(EVM evm) {
     PrecompileContractRegistry precompileContractRegistry = new PrecompileContractRegistry();
 
     MainnetPrecompiledContracts.populateForIstanbul(
