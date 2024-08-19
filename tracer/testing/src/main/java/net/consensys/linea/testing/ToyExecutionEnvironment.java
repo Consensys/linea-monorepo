@@ -84,7 +84,7 @@ public class ToyExecutionEnvironment {
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
 
   private final ToyWorld toyWorld;
-  private final EVM evm = MainnetEVMs.london(EvmConfiguration.DEFAULT);
+
   @Builder.Default private BigInteger chainId = CHAIN_ID;
   @Singular private final List<Transaction> transactions;
 
@@ -217,7 +217,9 @@ public class ToyExecutionEnvironment {
   }
 
   private MainnetTransactionProcessor getMainnetTransactionProcessor() {
-
+    // Construct EVM for executing transactions.
+    final EVM evm = MainnetEVMs.london(this.chainId, EvmConfiguration.DEFAULT);
+    //
     PrecompileContractRegistry precompileContractRegistry = new PrecompileContractRegistry();
 
     MainnetPrecompiledContracts.populateForIstanbul(
