@@ -202,7 +202,6 @@ export async function generateFinalizationData(overrides?: Partial<FinalizationD
   return {
     aggregatedProof: generateRandomBytes(928),
     finalBlockInData: 99n,
-    lastFinalizedShnarf: generateParentSubmissionDataForIndex(1).shnarf,
     shnarfData: generateParentShnarfData(1),
     parentStateRootHash: generateRandomBytes(32),
     lastFinalizedTimestamp: BigInt((await networkTime.latest()) - 2),

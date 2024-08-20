@@ -438,7 +438,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   function finalizeBlocksWithProof(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
-    FinalizationDataV2 calldata _finalizationData
+    FinalizationDataV3 calldata _finalizationData
   ) external whenTypeAndGeneralNotPaused(PROVING_SYSTEM_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
@@ -449,20 +449,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     if (stateRootHashes[lastFinalizedBlockNumber] != _finalizationData.parentStateRootHash) {
       revert StartingRootHashDoesNotMatch();
     }
-
     bytes32 lastFinalizedShnarf = currentFinalizedShnarf;
-
-    if (_finalizationData.lastFinalizedShnarf != lastFinalizedShnarf) {
-      revert LastFinalizedShnarfWrong(lastFinalizedShnarf, _finalizationData.lastFinalizedShnarf);
-    }
-
     bytes32 finalShnarf = _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber, true);
 
     uint256 publicInput = _computePublicInput(
       _finalizationData,
       lastFinalizedShnarf,
       finalShnarf,
-      lastFinalizedBlockNumber
+      lastFinalizedBlockNumber,
+      shnarfFinalBlockNumbers[finalShnarf]
     );
 
     _verifyProof(
@@ -481,9 +476,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
    * @param _finalizationData The full finalization data.
    */
   function finalizeBlocksWithoutProof(
-    FinalizationDataV2 calldata _finalizationData
+    FinalizationDataV3 calldata _finalizationData
   ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(DEFAULT_ADMIN_ROLE) {
-    _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
+    bytes32 finalShnarf = _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
+
+    if (shnarfFinalBlockNumbers[finalShnarf] != _finalizationData.finalBlockInData) {
+      revert FinalBlockDoesNotMatchShnarfFinalBlock(
+        _finalizationData.finalBlockInData,
+        shnarfFinalBlockNumbers[finalShnarf]
+      );
+    }
   }
 
   /**
@@ -494,7 +496,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
    * @return finalShnarf The final computed shnarf in finalizing.
    */
   function _finalizeBlocks(
-    FinalizationDataV2 calldata _finalizationData,
+    FinalizationDataV3 calldata _finalizationData,
     uint256 _lastFinalizedBlock,
     bool _withProof
   ) internal returns (bytes32 finalShnarf) {
@@ -539,13 +541,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       _finalizationData.shnarfData.dataEvaluationPoint,
       _finalizationData.shnarfData.dataEvaluationClaim
     );
-
-    if (shnarfFinalBlockNumbers[finalShnarf] != _finalizationData.finalBlockInData) {
-      revert FinalBlockDoesNotMatchShnarfFinalBlock(
-        _finalizationData.finalBlockInData,
-        shnarfFinalBlockNumbers[finalShnarf]
-      );
-    }
 
     _addL2MerkleRoots(_finalizationData.l2MerkleRoots, _finalizationData.l2MerkleTreesDepth);
     _anchorL2MessagingBlocks(_finalizationData.l2MessagingBlocksOffsets, _lastFinalizedBlock);
@@ -655,36 +650,36 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
    * )
    * Data is found at the following offsets:
    * 0x00    parentStateRootHash
-   * 0x20    lastFinalizedShnarf
-   * 0x40    finalBlockInData
-   * 0x60    shnarfData.parentShnarf
-   * 0x80    shnarfData.snarkHash
-   * 0xa0    shnarfData.finalStateRootHash
-   * 0xc0    shnarfData.dataEvaluationPoint
-   * 0xe0    shnarfData.dataEvaluationClaim
-   * 0x100   lastFinalizedTimestamp
-   * 0x120   finalTimestamp
-   * 0x140   lastFinalizedL1RollingHash
-   * 0x160   l1RollingHash
-   * 0x180   lastFinalizedL1RollingHashMessageNumber
-   * 0x1a0   l1RollingHashMessageNumber
-   * 0x1c0   l2MerkleTreesDepth
-   * 0x1e0   l2MerkleRootsLengthLocation
-   * 0x200   l2MessagingBlocksOffsetsLengthLocation
-   * 0x220   l2MerkleRootsLength
-   * 0x240   l2MerkleRoots
+   * 0x20    finalBlockInData
+   * 0x40    shnarfData.parentShnarf
+   * 0x60    shnarfData.snarkHash
+   * 0x80    shnarfData.finalStateRootHash
+   * 0xa0    shnarfData.dataEvaluationPoint
+   * 0xc0    shnarfData.dataEvaluationClaim
+   * 0xe0    lastFinalizedTimestamp
+   * 0x100   finalTimestamp
+   * 0x120   lastFinalizedL1RollingHash
+   * 0x140   l1RollingHash
+   * 0x160   lastFinalizedL1RollingHashMessageNumber
+   * 0x180   l1RollingHashMessageNumber
+   * 0x1a0   l2MerkleTreesDepth
+   * 0x1c0   l2MerkleRootsLengthLocation
+   * 0x1e0   l2MessagingBlocksOffsetsLengthLocation
+   * 0x200   l2MerkleRootsLength
+   * 0x220   l2MerkleRoots
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
-   * @param _lastFinalizedShnarf The last finalized shnarf.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
+   * @param _finalBlockNumber Final block number being finalized.
    */
   function _computePublicInput(
-    FinalizationDataV2 calldata _finalizationData,
+    FinalizationDataV3 calldata _finalizationData,
     bytes32 _lastFinalizedShnarf,
     bytes32 _finalShnarf,
-    uint256 _lastFinalizedBlockNumber
+    uint256 _lastFinalizedBlockNumber,
+    uint256 _finalBlockNumber
   ) private pure returns (uint256 publicInput) {
     assembly {
       let mPtr := mload(0x40)
@@ -695,12 +690,12 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
        * _finalizationData.lastFinalizedTimestamp
        * _finalizationData.finalTimestamp
        */
-      calldatacopy(add(mPtr, 0x40), add(_finalizationData, 0x100), 0x40)
+      calldatacopy(add(mPtr, 0x40), add(_finalizationData, 0xe0), 0x40)
 
       mstore(add(mPtr, 0x80), _lastFinalizedBlockNumber)
 
-      // _finalizationData.finalBlockInData
-      calldatacopy(add(mPtr, 0xA0), add(_finalizationData, 0x40), 0x20)
+      // shnarfFinalBlockNumbers[finalShnarf]
+      mstore(add(mPtr, 0xA0), _finalBlockNumber)
 
       /**
        * _finalizationData.lastFinalizedL1RollingHash
@@ -709,7 +704,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
        * _finalizationData.l1RollingHashMessageNumber
        * _finalizationData.l2MerkleTreesDepth
        */
-      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x140), 0xA0)
+      calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
 
       /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
@@ -717,8 +712,8 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
        * as we need the space left for the array hash to be stored at 0x160.
        */
       let mPtrMerkleRoot := add(mPtr, 0x180)
-      let merkleRootsLen := calldataload(add(_finalizationData, 0x220))
-      calldatacopy(mPtrMerkleRoot, add(_finalizationData, 0x240), mul(merkleRootsLen, 0x20))
+      let merkleRootsLen := calldataload(add(_finalizationData, 0x200))
+      calldatacopy(mPtrMerkleRoot, add(_finalizationData, 0x220), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
       mstore(add(mPtr, 0x160), l2MerkleRootsHash)
 
