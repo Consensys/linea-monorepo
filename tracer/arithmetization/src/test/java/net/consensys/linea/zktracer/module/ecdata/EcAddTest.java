@@ -15,16 +15,67 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class EcAddTest {
 
+  @ParameterizedTest
+  @MethodSource("ecAddSource")
+  void testEcAdd(String pX, String pY, String qX, String qY) {
+    BytecodeCompiler program =
+        BytecodeCompiler.newProgram()
+            // First place the parameters in memory
+            .push(pX) // pX
+            .push(0)
+            .op(OpCode.MSTORE)
+            .push(pY) // pY
+            .push(0x20)
+            .op(OpCode.MSTORE)
+            .push(qX) // qX
+            .push(0x40)
+            .op(OpCode.MSTORE)
+            .push(qY) // qY
+            .push(0x60)
+            .op(OpCode.MSTORE)
+            // Do the call
+            .push(0x40) // retSize
+            .push(0x80) // retOffset
+            .push(0x80) // argSize
+            .push(0) // argOffset
+            .push(6) // address
+            .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
+            .op(OpCode.STATICCALL);
+
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
+  }
+
+  private static Stream<Arguments> ecAddSource() {
+    List<Arguments> arguments = new ArrayList<>();
+    // Test case problematic to @AlexandreBelling
+    arguments.add(
+        Arguments.of(
+            "8d555288636cfb5abeac1d38a828fc4d975fb8def9f63a34f8c91701b5478d1",
+            "2fe58eb05ff7bed143c398b0b62e18e8b0327a3be8250b2923ea29e6773a65f5",
+            "d89e2e42be7fbda9358a2689c73af3ecd519728359f175ee7919d31c8f61d5d",
+            "eb7c8cfbbe0a89bf12697e97b482c3a91ff985ba456f1684a0b68efa2933019"));
+    // TODO: add other interesting cases
+    return arguments.stream();
+  }
+
   @Test
-  void testEcAddGeneric() {
+  void testEcAddSingleCase() {
     // TODO: The same inputs in failingMmuModexp return 0x, debug it!
     BytecodeCompiler program =
         BytecodeCompiler.newProgram()
