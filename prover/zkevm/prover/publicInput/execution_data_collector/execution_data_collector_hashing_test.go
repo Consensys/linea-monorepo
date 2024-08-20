@@ -2,9 +2,10 @@ package execution_data_collector
 
 import (
 	"fmt"
-	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	"strings"
 	"testing"
+
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
@@ -181,6 +182,7 @@ func TestExecutionDataCollectorAndHash(t *testing.T) {
 				IsNewHash: padding.IsNewHash,
 				IsActive:  padding.IsActive,
 			},
+			Name: "TESTING",
 		}
 		// create a new packing module
 		packingMod = pack.NewPack(b.CompiledIOP, packingInp)

@@ -35,8 +35,9 @@ type block struct {
 func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 
 	var (
+		name            = inp.lanes.Inputs.pckInp.Name
 		size            = inp.lanes.Size
-		createCol       = common.CreateColFn(comp, BLOCK, size)
+		createCol       = common.CreateColFn(comp, BLOCK+"_"+name, size)
 		isLaneActive    = inp.lanes.IsLaneActive
 		nbLanesPerBlock = inp.param.NbOfLanesPerBlock()
 	)
@@ -52,7 +53,7 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 
 	// constraints over accNumLanes (accumulate backward)
 	// accNumLane[last] =isLaneActive[last]
-	comp.InsertLocal(0, ifaces.QueryIDf("AccNumLane_Last"),
+	comp.InsertLocal(0, ifaces.QueryIDf(name+"_AccNumLane_Last"),
 		sym.Sub(column.Shift(b.accNumLane, -1),
 			column.Shift(isLaneActive, -1)),
 	)
@@ -69,20 +70,22 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 			b.accNumLane,
 		)
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("AccNumLane_Glob"),
-		expr)
+	comp.InsertGlobal(0, ifaces.QueryIDf(name+"_AccNumLane_Glob"), expr)
 
 	// isBlockComplete[0] = 1
 	// NB: this guarantees that the total sum of  nybtes ,given via imported.Nbytes,
 	// indeed divides the blockSize.
 	// This fact can be used to guarantee that enough zeroes where padded during padding.
 	comp.InsertLocal(
-		0, ifaces.QueryIDf("IsBlockComplete"),
-		sym.Sub(1, b.IsBlockComplete),
+		0, ifaces.QueryIDf(name+"_IsBlockComplete"),
+		sym.Mul(
+			isLaneActive,
+			sym.Sub(1, b.IsBlockComplete),
+		),
 	)
 
 	// if isFirstLaneOfNewHash = 1 then isBlockComplete = 1.
-	comp.InsertGlobal(0, ifaces.QueryIDf("EACH_HASH_HAS_COMPLETE_BLOCKS"),
+	comp.InsertGlobal(0, ifaces.QueryIDf(name+"_EACH_HASH_HAS_COMPLETE_BLOCKS"),
 		sym.Mul(
 			inp.lanes.IsFirstLaneOfNewHash,
 			sym.Sub(1, b.IsBlockComplete),

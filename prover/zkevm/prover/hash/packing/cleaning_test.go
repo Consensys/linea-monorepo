@@ -35,7 +35,7 @@ func makeTestCaseCleaningModule(uc generic.HashingUsecase) (
 		comp := build.CompiledIOP
 		imported = createImportationColumns(comp, size)
 		lookup := NewLookupTables(comp)
-		cleaning = NewClean(comp, getCleaningInputs(imported, lookup))
+		cleaning = NewClean(comp, newCleaningInputs(imported, lookup, "TEST"))
 	}
 	prover = func(run *wizard.ProverRuntime) {
 		var (

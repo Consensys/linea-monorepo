@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 )
 
 // MerkleCommitment represents a (merkle-mode) Vortex commitment
@@ -34,9 +35,14 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
+	logrus.Infof("Vortex compiler: RS encoding nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
 	encodedMatrix = p.encodeRows(ps)
+	logrus.Infof("Vortex compiler: RS encoding DONE")
+	logrus.Infof("Vortex compiler: SIS hashing nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
 	colHashes = p.hashColumns(encodedMatrix)
+	logrus.Infof("Vortex compiler: SIS hashing DONE")
 
+	logrus.Infof("Vortex compiler: SIS merkle hashing START")
 	// Hash the digest by chunk and build the tree using the chunk hashes as leaves.
 	var leaves []types.Bytes32
 
@@ -55,6 +61,7 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 			return hashtypes.Hasher{Hash: p.HashFunc()}
 		},
 	)
+	logrus.Infof("Vortex compiler: SIS merkle hashing DONE")
 
 	return encodedMatrix, tree, colHashes
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"unicode"
 
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
@@ -168,6 +169,10 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 				rawFieldName = strcase.ToLowerCamel(fieldName)
 				fieldValue   = v.Field(i)
 			)
+
+			if unicode.IsLower(rune(fieldName[0])) {
+				utils.Panic("unexported field: struct=%v name=%v type=%v", typeOfV.String(), fieldName, fieldValue.Type().String())
+			}
 
 			r, err := SerializeValue(fieldValue, mode)
 			if err != nil {

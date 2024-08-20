@@ -164,6 +164,14 @@ func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) iface
 //   - if the size of the column is not a power of 2
 //   - if a column using the same name has already been registered
 func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column {
+
+	// @alex: this has actually caught a few typos. When wrongly setting an
+	// incorrect but very large size here, it will generate a disproportionate
+	// wizard
+	if size > 1<<27 {
+		utils.Panic("column %v has size %v", name, size)
+	}
+
 	c.assertConsistentRound(round)
 
 	if len(name) == 0 {
@@ -485,6 +493,13 @@ func (c *CompiledIOP) InsertVerifier(round int, ver VerifierStep, gnarkVer Gnark
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard.
 func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Column, max int) {
+
+	// @alex: this has actually caught a few typos. When wrongly setting an
+	// incorrect but very large value here, the query will tend to always pass
+	// and thus the tests will tend to miss it.
+	if max > 1<<27 {
+		utils.Panic("the range check query %v has an overly large boundary (max=%v)", name, max)
+	}
 
 	// sanity-check the bound should be larger than 0
 	if max == 0 {

@@ -3,8 +3,6 @@ package wizard
 import (
 	"crypto/sha256"
 	"io"
-
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // CompiledIOPSerializer is a function capable of serializing a Compiled-IOP
@@ -28,12 +26,12 @@ func (comp *CompiledIOP) BootstrapFiatShamir(vm VersionMetadata, ser CompiledIOP
 	io.WriteString(hasher, vm.Title)
 	io.WriteString(hasher, vm.Version)
 
-	compBlob, err := ser(comp)
-	if err != nil {
-		utils.Panic("Could not serialize the compiled IOP to bootstrap the FS state: %v", err)
-	}
+	// compBlob, err := ser(comp)
+	// if err != nil {
+	// 	utils.Panic("Could not serialize the compiled IOP to bootstrap the FS state: %v", err)
+	// }
 
-	hasher.Write(compBlob)
+	// hasher.Write(compBlob)
 	digest := hasher.Sum(nil)
 	digest[0] = 0 // This is to prevent potential errors due to overflowing the field
 	comp.fiatShamirSetup.SetBytes(digest)

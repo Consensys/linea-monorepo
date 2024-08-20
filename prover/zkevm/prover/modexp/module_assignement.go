@@ -3,6 +3,7 @@ package modexp
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
 )
 
@@ -35,35 +36,43 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 
 	for currPosition := 0; currPosition < len(limbs); {
 
-		if isModexp[currPosition].IsOne() {
-
-			isLarge := false
-
-			for k := 0; k < modexpNumRowsPerInstance; k++ {
-				if k%32 < 30 && !limbs[currPosition+k].IsZero() {
-					isLarge = true
-					break
-				}
-			}
-
-			for k := 0; k < modexpNumRowsPerInstance; k++ {
-
-				builder.isActive.PushOne()
-				builder.isSmall.PushBoolean(!isLarge)
-				builder.isLarge.PushBoolean(isLarge)
-				builder.limbs.PushField(limbs[currPosition+k])
-
-				if !isLarge && k%32 >= 30 {
-					builder.toSmallCirc.PushOne()
-				} else {
-					builder.toSmallCirc.PushZero()
-				}
-			}
-
-			currPosition += modexpNumRowsPerInstance
+		if isModexp[currPosition].IsZero() {
+			currPosition++
+			continue
 		}
 
-		currPosition++
+		// This sanity-check is purely defensive and will indicate that we
+		// missed the start of a Modexp instance
+		if len(limbs)-currPosition < modexpNumRowsPerInstance {
+			utils.Panic("A new modexp is starting but there is not enough rows (currPosition=%v len(ecdata.Limb)=%v)", currPosition, len(limbs))
+		}
+
+		isLarge := false
+
+		// An instance is considered large if any of the operand has more than
+		// 2 16-bytes limbs.
+		for k := 0; k < modexpNumRowsPerInstance; k++ {
+			if k%32 < 30 && !limbs[currPosition+k].IsZero() {
+				isLarge = true
+				break
+			}
+		}
+
+		for k := 0; k < modexpNumRowsPerInstance; k++ {
+
+			builder.isActive.PushOne()
+			builder.isSmall.PushBoolean(!isLarge)
+			builder.isLarge.PushBoolean(isLarge)
+			builder.limbs.PushField(limbs[currPosition+k])
+
+			if !isLarge && k%32 >= 30 {
+				builder.toSmallCirc.PushOne()
+			} else {
+				builder.toSmallCirc.PushZero()
+			}
+		}
+
+		currPosition += modexpNumRowsPerInstance
 	}
 
 	builder.isActive.PadAndAssign(run, field.Zero())

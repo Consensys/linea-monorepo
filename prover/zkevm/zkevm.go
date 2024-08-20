@@ -1,6 +1,7 @@
 package zkevm
 
 import (
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/serialization"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
@@ -94,7 +95,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		comp         = b.CompiledIOP
 		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
 		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa)
-		stateManager = statemanager.NewStateManager(comp, s.Statemanager)
+		stateManager = statemanager.NewStateManagerNoHub(comp, s.Statemanager)
 		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp)
 		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
@@ -129,8 +130,8 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
+		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
 		z.stateManager.Assign(run, input.SMTraces)
-		z.ecdsa.Assign(run, input.TxSignatureGetter)
 		z.keccak.Run(run)
 		z.modexp.Assign(run)
 		z.ecadd.Assign(run)
@@ -139,4 +140,10 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		z.sha2.Run(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress)
 	}
+}
+
+// Limits returns the configuration limits used to instantiate the current
+// zk-EVM.
+func (z *ZkEvm) Limits() *config.TracesLimits {
+	return z.arithmetization.Settings.Traces
 }

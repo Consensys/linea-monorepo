@@ -96,29 +96,38 @@ func (d *UnalignedGnarkData) Assign(run *wizard.ProverRuntime, src *unalignedGna
 }
 
 func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime, src *unalignedGnarkDataSource, txSigs TxSignatureGetter) {
+
 	// copies data from the ecrecover part and txn part. Then it also computes
 	// the public key values and stores them in the corresponding rows.
-	sourceSource := run.GetColumn(src.Source.GetColID())
-	sourceIsActive := run.GetColumn(src.IsActive.GetColID())
-	sourceLimb := run.GetColumn(src.Limb.GetColID())
-	sourceSuccessBit := run.GetColumn(src.SuccessBit.GetColID())
-	sourceTxHashHi := run.GetColumn(src.TxHashHi.GetColID())
-	sourceTxHashLo := run.GetColumn(src.TxHashLo.GetColID())
+	var (
+		sourceSource     = run.GetColumn(src.Source.GetColID())
+		sourceIsActive   = run.GetColumn(src.IsActive.GetColID())
+		sourceLimb       = run.GetColumn(src.Limb.GetColID())
+		sourceSuccessBit = run.GetColumn(src.SuccessBit.GetColID())
+		sourceTxHashHi   = run.GetColumn(src.TxHashHi.GetColID())
+		sourceTxHashLo   = run.GetColumn(src.TxHashLo.GetColID())
+	)
 
 	if sourceSource.Len() != d.size || sourceIsActive.Len() != d.size || sourceLimb.Len() != d.size || sourceSuccessBit.Len() != d.size || sourceTxHashHi.Len() != d.size || sourceTxHashLo.Len() != d.size {
 		panic("unexpected source length")
 	}
 
 	var resIsPublicKey, resGnarkIndex, resGnarkPkIndex, resGnarkData []field.Element
+	txCount := 0
+
 	for i := 0; i < d.size; {
-		isActive := sourceIsActive.Get(i)
-		source := sourceSource.Get(i)
-		rows := make([]field.Element, nbRowsPerGnarkPushing)
-		var buf [32]byte
-		var prehashedMsg [32]byte
-		r, s, v := new(big.Int), new(big.Int), new(big.Int)
-		var err error
-		var prependZeroCount uint
+
+		var (
+			isActive         = sourceIsActive.Get(i)
+			source           = sourceSource.Get(i)
+			rows             = make([]field.Element, nbRowsPerGnarkPushing)
+			buf              [32]byte
+			prehashedMsg     [32]byte
+			r, s, v          = new(big.Int), new(big.Int), new(big.Int)
+			err              error
+			prependZeroCount uint
+		)
+
 		if isActive.IsOne() && source.Cmp(&SOURCE_ECRECOVER) == 0 {
 			prependZeroCount = nbRowsPerEcRecFetching
 			// we copy the data from ecrecover
@@ -169,7 +178,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			copy(prehashedMsg[16:], txLowBts[16:])
 			r, s, v, err = txSigs(prehashedMsg[:])
 			if err != nil {
-				utils.Panic("error getting tx signature: %v", err)
+				utils.Panic("error getting tx-signature err=%v, txNum=%v", err, txCount)
 			}
 			v.FillBytes(buf[:])
 			rows[6].SetBytes(buf[:16])
@@ -182,6 +191,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			rows[11].SetBytes(buf[16:])
 
 			i += NB_TX_INPUTS
+			txCount++
 		} else {
 			// we have run out of inputs.
 			break
@@ -193,7 +203,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 		}
 		err = pk.RecoverFrom(prehashedMsg[:], uint(v.Uint64()-27), r, s)
 		if err != nil {
-			utils.Panic("error recovering public key: %v", err)
+			utils.Panic("error recovering public: err=%v v=%v r=%v s=%v", err.Error(), v.Uint64()-27, r.String(), s.String())
 		}
 		pkx := pk.A.X.Bytes()
 		rows[0].SetBytes(pkx[:16])

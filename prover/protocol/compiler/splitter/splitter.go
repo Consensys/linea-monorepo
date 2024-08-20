@@ -288,14 +288,35 @@ func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalCon
 				}
 				translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subHandle))
 			case variables.X:
-				panic("unsupported, the value of `x` in the unsplit query and the split would be different")
+				utils.Panic("unsupported, the value of `x` in the unsplit query and the split would be different. query=%v", q.Name())
 			case variables.PeriodicSample:
-				// Check that the period is not larger than the domain size
+				// Check that the period is not larger than the domain size. If
+				// the period is smaller this is a no-op because the period does
+				// not change.
+				translated := symbolic.NewVariable(metadata)
+
 				if m.T > ctx.size {
-					panic("unsupported case : the period is larger than the split")
+
+					// Here, there are two possibilities. (1) The current slot is
+					// on a portion of the Periodic sample where everything is
+					// zero or (2) the current slot matchs a portion of the
+					// periodic sampling containing a 1. To determine which is
+					// the current situation, we need to find out where the slot
+					// is located compared to the period.
+					var (
+						slotStartAt = (slot * ctx.size) % m.T
+						slotStopAt  = slotStartAt + ctx.size
+					)
+
+					if m.Offset >= slotStartAt && m.Offset < slotStopAt {
+						translated = variables.NewPeriodicSample(ctx.size, m.Offset%ctx.size)
+					} else {
+						translated = symbolic.NewConstant(0)
+					}
 				}
+
 				// And we can just pass it over because the period does not change
-				translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
+				translationMap.InsertNew(m.String(), translated)
 			default:
 				// Repass the same variable (for coins or other types of single-valued variable)
 				translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))

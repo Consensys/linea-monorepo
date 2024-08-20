@@ -86,6 +86,8 @@ func Compile(comp *wizard.CompiledIOP) {
 	*/
 	verifier := func(run *wizard.VerifierRuntime) error {
 
+		logrus.Infof("started to run the dummy verifier")
+
 		var finalErr error
 		lock := sync.Mutex{}
 
@@ -102,6 +104,7 @@ func Compile(comp *wizard.CompiledIOP) {
 					lock.Lock()
 					finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
 					lock.Unlock()
+					logrus.Debugf("query %v failed\n", name)
 				} else {
 					logrus.Debugf("query %v passed\n", name)
 				}

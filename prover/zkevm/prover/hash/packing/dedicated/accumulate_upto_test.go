@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -32,7 +33,7 @@ func makeTestCaseLaneAlloc() (
 
 		colA := comp.InsertCommit(0, ifaces.ColIDf("COL_A"), size)
 
-		acc = AccumulateUpToMax(comp, maxValue, colA)
+		acc = AccumulateUpToMax(comp, maxValue, colA, verifiercol.NewConstantCol(field.One(), size))
 
 	}
 	prover = func(run *wizard.ProverRuntime) {

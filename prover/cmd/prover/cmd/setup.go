@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 
 	blob_v0 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
@@ -50,10 +51,10 @@ var allCircuits = []string{
 	string(circuits.ExecutionLargeCircuitID),
 	string(circuits.BlobDecompressionV0CircuitID),
 	string(circuits.BlobDecompressionV1CircuitID),
+	string(circuits.PublicInputInterconnectionCircuitID),
 	string(circuits.AggregationCircuitID),
 	string(circuits.EmulationCircuitID),
 	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
-	string(circuits.PublicInputInterconnectionCircuitID),
 }
 
 func init() {

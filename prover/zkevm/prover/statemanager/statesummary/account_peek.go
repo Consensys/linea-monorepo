@@ -2,6 +2,7 @@ package statesummary
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
@@ -9,6 +10,10 @@ import (
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+)
+
+var (
+	emptyCodeHash = statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG)
 )
 
 // AccountPeek contains the view of the State-summary module regarding accounts.
@@ -45,8 +50,8 @@ type AccountPeek struct {
 	// ComputeAddressHash is responsible for computing the AddressHash
 	ComputeAddressHash wizard.ProverAction
 
-	// AddressLimbs stores the limbs of the address
-	AddressLimbs byte32cmp.LimbColumns
+	// AddressHashLimbs stores the limbs of the address
+	AddressHashLimbs byte32cmp.LimbColumns
 
 	// ComputeAddressLimbs computes the [AddressLimbs] column.
 	ComputeAddressLimbs wizard.ProverAction
@@ -123,17 +128,17 @@ func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
 		},
 	)
 
-	accPeek.AddressLimbs, accPeek.ComputeAddressLimbs = byte32cmp.Decompose(
+	accPeek.AddressHashLimbs, accPeek.ComputeAddressLimbs = byte32cmp.Decompose(
 		comp,
-		accPeek.Address,
-		10, // numLimbs so that we have 20 bytes
+		accPeek.AddressHash,
+		16, // numLimbs so that we have 20 bytes
 		16, // number of bits per limbs (= 2 bytes)
 	)
 
 	accPeek.HasGreaterAddressAsPrev, accPeek.HasSameAddressAsPrev, _, accPeek.ComputeAddressComparison = byte32cmp.CmpMultiLimbs(
 		comp,
-		accPeek.AddressLimbs,
-		accPeek.AddressLimbs.Shift(-1),
+		accPeek.AddressHashLimbs,
+		accPeek.AddressHashLimbs.Shift(-1),
 	)
 
 	return accPeek
@@ -147,6 +152,11 @@ type Account struct {
 	Exists, Nonce, Balance, MiMCCodeHash, CodeSize, StorageRoot ifaces.Column
 	// KeccakCodeHash stores the keccak code hash of the account.
 	KeccakCodeHash HiLoColumns
+	// HasEmptyCodeHash is an indicator column indicating whether the current
+	// account has an empty codehash
+	HasEmptyCodeHash             ifaces.Column
+	CptHasEmptyCodeHash          wizard.ProverAction
+	ExistsAndHasNonEmptyCodeHash ifaces.Column
 }
 
 // newAccount returns a new AccountPeek with initialized and unconstrained
@@ -161,15 +171,44 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		)
 	}
 
-	return Account{
-		Exists:         createCol("EXISTS"),
-		Nonce:          createCol("NONCE"),
-		Balance:        createCol("BALANCE"),
-		MiMCCodeHash:   createCol("MIMC_CODEHASH"),
-		CodeSize:       createCol("CODESIZE"),
-		StorageRoot:    createCol("STORAGE_ROOT"),
-		KeccakCodeHash: newHiLoColumns(comp, size, name+"_KECCAK_CODE_HASH"),
+	acc := Account{
+		Exists:                       createCol("EXISTS"),
+		Nonce:                        createCol("NONCE"),
+		Balance:                      createCol("BALANCE"),
+		MiMCCodeHash:                 createCol("MIMC_CODEHASH"),
+		CodeSize:                     createCol("CODESIZE"),
+		StorageRoot:                  createCol("STORAGE_ROOT"),
+		KeccakCodeHash:               newHiLoColumns(comp, size, name+"_KECCAK_CODE_HASH"),
+		ExistsAndHasNonEmptyCodeHash: createCol("EXISTS_AND_NON_EMPTY_CODEHASH"),
 	}
+
+	// There is no need for an IsActive mask here because the column will be
+	// multiplied by Exists which is already zero when inactive.
+	acc.HasEmptyCodeHash, acc.CptHasEmptyCodeHash = dedicated.IsZero(comp, acc.CodeSize)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_%v_CPT_EXIST_AND_NONEMPTY_CODE", name),
+		sym.Sub(
+			acc.ExistsAndHasNonEmptyCodeHash,
+			sym.Mul(
+				sym.Sub(1, acc.HasEmptyCodeHash),
+				acc.Exists,
+			),
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_%v_MIMC_CODEHASH_FOR_EXISTING_BUT_EMPTY_CODE", name),
+		sym.Mul(
+			acc.Exists,
+			acc.HasEmptyCodeHash,
+			sym.Sub(acc.MiMCCodeHash, *new(field.Element).SetBytes(emptyCodeHash[:])),
+		),
+	)
+
+	return acc
 }
 
 // accountPeekAssignmentBuilder is a convenience structure storing column
@@ -193,19 +232,21 @@ func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuild
 type accountAssignmentBuilder struct {
 	exists, nonce, balance, miMCCodeHash, codeSize, storageRoot *common.VectorBuilder
 	keccakCodeHash                                              hiLoAssignmentBuilder
+	existsAndHasNonEmptyCodeHash                                *common.VectorBuilder
 }
 
 // newAccountAssignmentBuilder returns a new [accountAssignmentBuilder] bound
 // to an [Account].
 func newAccountAssignmentBuilder(ap *Account) accountAssignmentBuilder {
 	return accountAssignmentBuilder{
-		exists:         common.NewVectorBuilder(ap.Exists),
-		nonce:          common.NewVectorBuilder(ap.Nonce),
-		balance:        common.NewVectorBuilder(ap.Balance),
-		miMCCodeHash:   common.NewVectorBuilder(ap.MiMCCodeHash),
-		codeSize:       common.NewVectorBuilder(ap.CodeSize),
-		storageRoot:    common.NewVectorBuilder(ap.StorageRoot),
-		keccakCodeHash: newHiLoAssignmentBuilder(ap.KeccakCodeHash),
+		exists:                       common.NewVectorBuilder(ap.Exists),
+		nonce:                        common.NewVectorBuilder(ap.Nonce),
+		balance:                      common.NewVectorBuilder(ap.Balance),
+		miMCCodeHash:                 common.NewVectorBuilder(ap.MiMCCodeHash),
+		codeSize:                     common.NewVectorBuilder(ap.CodeSize),
+		storageRoot:                  common.NewVectorBuilder(ap.StorageRoot),
+		existsAndHasNonEmptyCodeHash: common.NewVectorBuilder(ap.ExistsAndHasNonEmptyCodeHash),
+		keccakCodeHash:               newHiLoAssignmentBuilder(ap.KeccakCodeHash),
 	}
 }
 
@@ -230,6 +271,7 @@ func (ss *accountAssignmentBuilder) pushAll(acc types.Account) {
 	ss.codeSize.PushInt(int(acc.CodeSize))
 	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
 	ss.storageRoot.PushBytes32(acc.StorageRoot)
+	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }
 
 // pushOverrideStorageRoot is as [accountAssignmentBuilder.pushAll] but allows
@@ -257,6 +299,7 @@ func (ss *accountAssignmentBuilder) pushOverrideStorageRoot(
 	ss.codeSize.PushInt(int(acc.CodeSize))
 	ss.miMCCodeHash.PushBytes32(acc.MimcCodeHash)
 	ss.storageRoot.PushBytes32(storageRoot)
+	ss.existsAndHasNonEmptyCodeHash.PushBoolean(accountExists && acc.CodeSize > 0)
 }
 
 // PadAndAssign terminates the receiver by padding all the columns representing
@@ -270,4 +313,5 @@ func (ss *accountAssignmentBuilder) PadAndAssign(run *wizard.ProverRuntime) {
 	ss.miMCCodeHash.PadAndAssign(run)
 	ss.storageRoot.PadAndAssign(run)
 	ss.codeSize.PadAndAssign(run)
+	ss.existsAndHasNonEmptyCodeHash.PadAndAssign(run)
 }

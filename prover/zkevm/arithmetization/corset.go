@@ -151,12 +151,6 @@ func AssignFromCorset(traceFile string, run *wizard.ProverRuntime) {
 	}
 	logrus.Info("Done.")
 
-	logrus.Info("Parsing JSON...")
-	if err != nil {
-		utils.Panic("Could not read trace file, Corset says: `%v`", corsetErrToString(err))
-	}
-	logrus.Info("Done.")
-
 	numberOfThreads := runtime.NumCPU() / 2
 
 	cTraceFile := C.CString(traceFile)
@@ -170,7 +164,7 @@ func AssignFromCorset(traceFile string, run *wizard.ProverRuntime) {
 		false,                   // fail on missing columns in the trace
 	)
 	if trace == nil {
-		utils.Panic("Error while computing trace, Corset says: `%v`", corsetErrToString(err))
+		utils.Panic("Error while computing trace from file %v, Corset says: `%v`", traceFile, corsetErrToString(err))
 	}
 	logrus.Info("Done.")
 

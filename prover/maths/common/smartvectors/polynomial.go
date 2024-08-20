@@ -106,9 +106,13 @@ func Interpolate(v SmartVector, x field.Element, oncoset ...bool) field.Element 
 
 // Batch-evaluate polynomials in Lagrange basis
 func BatchInterpolate(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
-	polys := make([][]field.Element, len(vs))
-	results := make([]field.Element, len(vs))
-	computed := make([]bool, len(vs))
+
+	var (
+		polys         = make([][]field.Element, len(vs))
+		results       = make([]field.Element, len(vs))
+		computed      = make([]bool, len(vs))
+		totalConstant = 0
+	)
 
 	// smartvector to []fr.element
 	parallel.Execute(len(vs), func(start, stop int) {
@@ -118,29 +122,44 @@ func BatchInterpolate(vs []SmartVector, x field.Element, oncoset ...bool) []fiel
 				// constant vectors
 				results[i] = con.val
 				computed[i] = true
+				totalConstant++
 				continue
 			}
+
 			// non-constant vectors
 			polys[i] = vs[i].IntoRegVecSaveAlloc()
-
 		}
 	})
 
-	return BatchInterpolateSV(results, computed, polys, x, oncoset...)
+	if totalConstant == len(vs) {
+		return results
+	}
+
+	return batchInterpolateSV(results, computed, polys, x, oncoset...)
 }
 
 // Optimized batch interpolate for smart vectors.
 // This reduces the number of computation by pre-processing
 // constant vectors in advance in BatchInterpolate()
-func BatchInterpolateSV(results []field.Element, computed []bool, polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
+func batchInterpolateSV(results []field.Element, computed []bool, polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
 
-	poly := polys[0]
-
-	if !utils.IsPowerOfTwo(len(poly)) {
-		utils.Panic("only support powers of two but poly has length %v", len(poly))
+	n := 0
+	for i := range polys {
+		if len(polys[i]) > 0 {
+			n = len(polys[i])
+		}
 	}
 
-	n := len(poly)
+	if n == 0 {
+		// that's a possible edge-case and it can happen if all the input polys
+		// are constant smart-vectors. This is should be prevented by the the
+		// caller.
+		return results
+	}
+
+	if !utils.IsPowerOfTwo(n) {
+		utils.Panic("only support powers of two but poly has length %v", len(polys))
+	}
 
 	domain := fft.NewDomain(n)
 	denominator := make([]field.Element, n)

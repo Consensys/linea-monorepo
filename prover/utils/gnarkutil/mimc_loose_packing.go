@@ -1,6 +1,7 @@
 package gnarkutil
 
 import (
+	"encoding/binary"
 	"errors"
 	hashinterface "hash"
 	"math/big"
@@ -66,4 +67,19 @@ func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Has
 // if b consists of only one "element", the result is not hashed
 func ChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
 	partialChecksumLooselyPackedBytes(b, buf, h)
+
+	// hash the length along with the partial sum
+	var numBuf [8]byte
+	binary.BigEndian.PutUint64(numBuf[:], uint64(len(b)))
+	h.Reset()
+	h.Write(numBuf[:])
+	h.Write(buf)
+
+	res := h.Sum(nil)
+
+	for i := 0; i < len(buf)-len(res); i++ { // one final "packing"
+		buf[i] = 0
+	}
+
+	copy(buf[len(buf)-len(res):], res)
 }

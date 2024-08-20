@@ -94,7 +94,7 @@ type Config struct {
 	Version string `validate:"required,semver"`
 
 	// LogLevel sets the log level for the logger.
-	LogLevel logLevel `mapstructure:"log_level" validate:"required,gte=0,lte=5"`
+	LogLevel logLevel `mapstructure:"log_level" validate:"required,gte=0,lte=6"`
 
 	// AssetsDir stores the root of the directory where the assets are stored (setup) or
 	// accessed (prover). The file structure is described in TODO @gbotrel.

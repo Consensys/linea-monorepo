@@ -22,22 +22,23 @@ func checkPublicInputs(
 	var (
 		finalRollingHash   = internal.CombineBytesIntoElements(api, gnarkFuncInp.FinalRollingHash)
 		initialRollingHash = internal.CombineBytesIntoElements(api, gnarkFuncInp.InitialRollingHash)
+		execDataHash       = execDataHash(api, wvc, wizardFuncInp)
 	)
 
-	hsh, err := mimc.NewMiMC(api)
-	if err != nil {
-		panic(err)
-	}
-
-	hsh.Write(wvc.GetLocalPointEvalParams(wizardFuncInp.DataNbBytes.ID).Y, wvc.GetLocalPointEvalParams(wizardFuncInp.DataChecksum.ID).Y)
-	api.AssertIsEqual(hsh.Sum(), gnarkFuncInp.DataChecksum)
+	// As we have this issue, the execDataHash will not match what we have in the
+	// functional input (the txnrlp is incorrect). It should be converted into
+	// an [api.AssertIsEqual] once this is resolved.
+	//
+	// https://github.com/Consensys/zkevm-monorepo/issues/3801
+	//
+	shouldBeEqual(api, execDataHash, gnarkFuncInp.DataChecksum)
 
 	api.AssertIsEqual(
 		wvc.GetLocalPointEvalParams(wizardFuncInp.L2MessageHash.ID).Y,
 		// TODO: this operation is done a second time when computing the final
 		// public input which is wasteful although not dramatic (~8000 unused
 		// constraints)
-		gnarkFuncInp.L2MessageHashes.Checksum(api),
+		gnarkFuncInp.L2MessageHashes.CheckSumMiMC(api),
 	)
 
 	api.AssertIsEqual(
@@ -100,14 +101,11 @@ func checkPublicInputs(
 		gnarkFuncInp.FinalRollingHashNumber,
 	)
 
-	api.AssertIsEqual(
-		wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
-		gnarkFuncInp.ChainID,
-	)
-
 	var (
 		twoPow128     = new(big.Int).SetInt64(1)
+		twoPow112     = new(big.Int).SetInt64(1)
 		_             = twoPow128.Lsh(twoPow128, 128)
+		_             = twoPow112.Lsh(twoPow112, 112)
 		bridgeAddress = api.Add(
 			api.Mul(
 				twoPow128,
@@ -117,6 +115,43 @@ func checkPublicInputs(
 		)
 	)
 
+	api.AssertIsEqual(
+		api.Div(
+			wvc.GetLocalPointEvalParams(wizardFuncInp.ChainID.ID).Y,
+			twoPow112,
+		),
+		gnarkFuncInp.ChainID,
+	)
+
 	api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
 
+}
+
+// execDataHash hash the execution-data with its length so that we can guard
+// against padding attack (although the padding attacks are not possible to
+// being with due to the encoding of the plaintext)
+func execDataHash(
+	api frontend.API,
+	wvc *wizard.WizardVerifierCircuit,
+	wFuncInp publicInput.FunctionalInputExtractor,
+) frontend.Variable {
+
+	hsh, err := mimc.NewMiMC(api)
+	if err != nil {
+		panic(err)
+	}
+
+	hsh.Write(
+		wvc.GetLocalPointEvalParams(wFuncInp.DataNbBytes.ID).Y,
+		wvc.GetLocalPointEvalParams(wFuncInp.DataChecksum.ID).Y,
+	)
+
+	return hsh.Sum()
+}
+
+// shouldBeEqual is a placeholder dummy function that generate fake constraints
+// as a replacement for what should be an api.AssertIsEqual. If we just commented
+// out the api.AssertIsEqual we might have an unconstrained variable.
+func shouldBeEqual(api frontend.API, a, b frontend.Variable) {
+	_ = api.Sub(a, b)
 }

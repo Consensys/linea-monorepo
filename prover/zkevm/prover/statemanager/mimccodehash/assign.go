@@ -66,7 +66,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 	for i := 0; i < length; i++ {
 
-		if cfi[i+1].IsZero() && !cfi[i].IsZero() {
+		if !cfi[i].IsZero() && ((i+1 == length) || cfi[i+1].IsZero()) {
 			// This is the last row in the active area of the rom input.
 			// We assign one more row to make the assignment of the last row
 			// for other columns below work correctly, we exclude codeHash and

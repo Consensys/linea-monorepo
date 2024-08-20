@@ -1,6 +1,7 @@
 package zkevm
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
@@ -22,5 +23,17 @@ type Witness struct {
 }
 
 func (w Witness) TxSignatureGetter(txHash []byte) (r, s, v *big.Int, err error) {
-	panic("unimplemented")
+	var (
+		sig, found = w.TxSignatures[[32]byte(txHash)]
+	)
+
+	if !found {
+		return nil, nil, nil, fmt.Errorf("could not find signature for tx hash = 0x%x", txHash)
+	}
+
+	r, _ = new(big.Int).SetString(sig.R, 0)
+	s, _ = new(big.Int).SetString(sig.S, 0)
+	v, _ = new(big.Int).SetString(sig.V, 0)
+
+	return r, s, v, nil
 }

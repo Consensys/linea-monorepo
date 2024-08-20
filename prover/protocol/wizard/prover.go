@@ -478,46 +478,49 @@ func (run *ProverRuntime) goNextRound() {
 	initialTranscriptSize := run.FS.TranscriptSize
 	initialNumCoinsGenerated := run.FS.NumCoinGenerated
 
-	/*
-		Make sure that all messages have been written and use them
-		to update the FS state.  Note that we do not need to update
-		FS using the last round of the prover because he is always
-		the last one to "talk" in the protocol.
-	*/
-	start := run.FS.TranscriptSize
-	msgsToFS := run.Spec.Columns.AllKeysProofAt(run.currRound)
-	for _, msgName := range msgsToFS {
-		instance := run.GetMessage(msgName)
-		run.FS.UpdateSV(instance)
-	}
-	logrus.Debugf("Fiat-shamir round %v - %v proof elements in the transcript", run.currRound, run.FS.TranscriptSize-start)
+	if !run.Spec.DummyCompiled {
 
-	/*
-		Make sure that all messages have been written and use them
-		to update the FS state.  Note that we do not need to update
-		FS using the last round of the prover because he is always
-		the last one to "talk" in the protocol.
-	*/
-	start = run.FS.TranscriptSize
-	msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
-	for _, msgName := range msgsToFS {
-		instance := run.GetMessage(msgName)
-		run.FS.UpdateSV(instance)
-	}
-	logrus.Debugf("Fiat-shamir round %v - %v public inputs in the transcript", run.currRound, run.FS.TranscriptSize-start)
+		/*
+			Make sure that all messages have been written and use them
+			to update the FS state.  Note that we do not need to update
+			FS using the last round of the prover because he is always
+			the last one to "talk" in the protocol.
+		*/
+		start := run.FS.TranscriptSize
+		msgsToFS := run.Spec.Columns.AllKeysProofAt(run.currRound)
+		for _, msgName := range msgsToFS {
+			instance := run.GetMessage(msgName)
+			run.FS.UpdateSV(instance)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v proof elements in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
-	/*
-		Also include the prover's allegations for all evaluations
-	*/
-	start = run.FS.TranscriptSize
-	paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
-	for _, qName := range paramsToFS {
-		// Implicitly, this will panic whenever we start supporting
-		// a new type of query params
-		params := run.QueriesParams.MustGet(qName)
-		params.UpdateFS(run.FS)
+		/*
+			Make sure that all messages have been written and use them
+			to update the FS state.  Note that we do not need to update
+			FS using the last round of the prover because he is always
+			the last one to "talk" in the protocol.
+		*/
+		start = run.FS.TranscriptSize
+		msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
+		for _, msgName := range msgsToFS {
+			instance := run.GetMessage(msgName)
+			run.FS.UpdateSV(instance)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v public inputs in the transcript", run.currRound, run.FS.TranscriptSize-start)
+
+		/*
+			Also include the prover's allegations for all evaluations
+		*/
+		start = run.FS.TranscriptSize
+		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
+		for _, qName := range paramsToFS {
+			// Implicitly, this will panic whenever we start supporting
+			// a new type of query params
+			params := run.QueriesParams.MustGet(qName)
+			params.UpdateFS(run.FS)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v query params in the transcript", run.currRound, run.FS.TranscriptSize-start)
 	}
-	logrus.Debugf("Fiat-shamir round %v - %v query params in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
 	// Increment the number of rounds
 	run.currRound++

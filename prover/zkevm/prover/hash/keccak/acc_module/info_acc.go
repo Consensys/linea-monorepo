@@ -1,8 +1,6 @@
 package gen_acc
 
 import (
-	"fmt"
-
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
@@ -152,10 +150,6 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 				sHashLo = append(sHashLo, hashLo[j])
 			}
 		}
-	}
-
-	for i := range sFilters {
-		fmt.Printf("sFilter[%v] %v\n", i, vector.Prettify(sFilters[i]))
 	}
 
 	run.AssignColumn(info.Provider.HashHi.GetColID(), smartvectors.RightZeroPadded(sHashHi, info.size))

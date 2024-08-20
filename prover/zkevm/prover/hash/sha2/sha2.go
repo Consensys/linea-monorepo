@@ -3,6 +3,7 @@
 package sha2
 
 import (
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -53,16 +54,16 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 			},
 			Info: generic.GenInfoModule{
 				HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
-				HashLo:   comp.Columns.GetHandle("shakira.LIMB"),
-				HashHi:   comp.Columns.GetHandle("shakira.LIMB"),
-				IsHashLo: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES_LO"),
+				HashLo:   comp.Columns.GetHandle("shakiradata.LIMB"),
+				HashHi:   comp.Columns.GetHandle("shakiradata.LIMB"),
+				IsHashLo: column.Shift(comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES_HI"), -1),
 				IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES_HI"),
 			},
 		},
 	})
 }
 
-// newSha2SingleProvider implements the utilities for proving keccak hash
+// newSha2SingleProvider implements the utilities for proving sha2 hash
 // over the streams which are encoded inside a set of structs [generic.GenDataModule].
 // It calls;
 // -  Padding module to insure the correct padding of the streams.
@@ -94,6 +95,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 				IsNewHash: imported.IsNewHash,
 				IsActive:  imported.IsActive,
 			},
+			Name: "SHA2",
 		}
 
 		packing = packing.NewPack(comp, inpPck)
@@ -107,7 +109,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 			Selector:             packing.Repacked.IsLaneActive,
 			IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
 		}
-		cSha2 = newSha2BlockModule(comp, cSha2Inp)
+		cSha2 = newSha2BlockModule(comp, cSha2Inp).WithCircuit(comp)
 	)
 
 	projection.InsertProjection(comp, "SHA2_RES_HI",
@@ -138,7 +140,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	return m
 }
 
-// It implements [wizard.ProverAction] for keccak.
+// It implements [wizard.ProverAction] for sha2.
 func (m *Sha2SingleProvider) Run(run *wizard.ProverRuntime) {
 
 	// assign ImportAndPad module

@@ -33,9 +33,9 @@ type StoragePeek struct {
 	// KeyLimbs represents the key in limb decomposition.
 	KeyLimbs byte32cmp.LimbColumns
 
-	// ComputeKeyLimbsHi and ComputeKeyLimbLo are responsible for computing the
+	// ComputeKeyLimbs and ComputeKeyLimbLo are responsible for computing the
 	// "hi" and the "lo" limbs of the KeyLimbs.
-	ComputeKeyLimbsHi, ComputeKeyLimbsLo wizard.ProverAction
+	ComputeKeyLimbs wizard.ProverAction
 
 	// KeyIncreased is a column indicating whether the current storage
 	// key is strictly greater than the previous one.
@@ -115,10 +115,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		sym.Sub(res.NewValueHash, hashOfZeroStorage()),
 	)
 
-	var keyLimbsHi, keyLimbsLo byte32cmp.LimbColumns
-	keyLimbsHi, res.ComputeKeyLimbsHi = byte32cmp.Decompose(comp, res.Key.Hi, 16, 16)
-	keyLimbsLo, res.ComputeKeyLimbsLo = byte32cmp.Decompose(comp, res.Key.Lo, 16, 16)
-	res.KeyLimbs = byte32cmp.FuseLimbs(keyLimbsLo, keyLimbsHi)
+	res.KeyLimbs, res.ComputeKeyLimbs = byte32cmp.Decompose(comp, res.KeyHash, 16, 16)
 
 	res.KeyIncreased, _, _, res.ComputeKeyIncreased = byte32cmp.CmpMultiLimbs(
 		comp,

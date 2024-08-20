@@ -11,13 +11,13 @@ import (
 
 // Represents a constant column
 type ConstCol struct {
-	F    field.Element
-	size int
+	F     field.Element
+	Size_ int
 }
 
 // NewConstCol creates a new ConstCol column
 func NewConstantCol(f field.Element, size int) ifaces.Column {
-	return ConstCol{F: f, size: size}
+	return ConstCol{F: f, Size_: size}
 }
 
 // Returns the round of definition of the column (always zero)
@@ -29,7 +29,7 @@ func (cc ConstCol) Round() int {
 
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
-	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.size)
+	return ifaces.ColIDf("CONSTCOL_%v_%v", cc.F.String(), cc.Size_)
 }
 
 // Always return true
@@ -37,17 +37,17 @@ func (cc ConstCol) MustExists() {}
 
 // Returns the size of the column
 func (cc ConstCol) Size() int {
-	return cc.size
+	return cc.Size_
 }
 
 // Returns a constant smart-vector
 func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
-	return smartvectors.NewConstant(cc.F, cc.size)
+	return smartvectors.NewConstant(cc.F, cc.Size_)
 }
 
 // Returns the column as a list of gnark constants
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
-	res := make([]frontend.Variable, cc.size)
+	res := make([]frontend.Variable, cc.Size_)
 	for i := range res {
 		res[i] = cc.F
 	}
@@ -56,12 +56,12 @@ func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Varia
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	return cc.GetColAssignment(run).Get(pos)
+	return cc.F
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return cc.GetColAssignmentGnark(run)[pos]
+	return cc.F
 }
 
 // Since the column is directly defined from the
