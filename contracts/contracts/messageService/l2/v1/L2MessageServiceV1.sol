@@ -79,6 +79,7 @@ abstract contract L2MessageServiceV1 is
     __ReentrancyGuard_init();
 
     nextMessageNumber = 1;
+    minimumFeeInWei = 0.0001 ether;
 
     _grantRole(DEFAULT_ADMIN_ROLE, _securityCouncil);
     _grantRole(MINIMUM_FEE_SETTER_ROLE, _securityCouncil);
