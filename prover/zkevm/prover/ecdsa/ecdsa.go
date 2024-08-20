@@ -28,8 +28,8 @@ func NewEcdsaZkEvm(
 	}
 }
 
-func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter) {
-	e.ant.assign(run, txSig)
+func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter, nbTx int) {
+	e.ant.assign(run, txSig, nbTx)
 }
 
 func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {

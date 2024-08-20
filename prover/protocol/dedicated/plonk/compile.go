@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 )
 
 // PlonkCheck adds a PLONK circuit in the wizard. Namely, the function takes a
@@ -47,6 +48,8 @@ func PlonkCheck(
 	// function to call to get an assignment
 	options ...Option,
 ) compilationCtx {
+
+	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
 
 	// Create the ctx
 	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)

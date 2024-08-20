@@ -22,6 +22,7 @@ type decompositionInputs struct {
 	// the are used to determine the number of slices and their lengths.
 	param       generic.HashingUsecase
 	cleaningCtx cleaningCtx
+	Name        string
 }
 
 // Decomposition struct stores all the intermediate columns required to constraint correct decomposition.
@@ -109,7 +110,7 @@ func newDecomposition(comp *wizard.CompiledIOP, inp decompositionInputs) decompo
 // declare the native columns
 func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 
-	createCol := common.CreateColFn(comp, DECOMPOSITION, decomposed.size)
+	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.size)
 	for x := 0; x < decomposed.nbSlices; x++ {
 		decomposed.decomposedLimbs = append(decomposed.decomposedLimbs, createCol("Decomposed_Limbs", x))
 		decomposed.decomposedLen = append(decomposed.decomposedLen, createCol("Decomposed_Len", x))
@@ -141,11 +142,11 @@ func (decomposed *decomposition) csDecomposLen(
 
 		// Equivalence of "decomposedLenPowers" with "2^(decomposedLen * 8)"
 		comp.InsertInclusion(0,
-			ifaces.QueryIDf("Decomposed_Len_Powers_%v", j), []ifaces.Column{lu.colNumber, lu.colPowers},
+			ifaces.QueryIDf("%v_Decomposed_Len_Powers_%v", decomposed.Inputs.Name, j), []ifaces.Column{lu.colNumber, lu.colPowers},
 			[]ifaces.Column{decomposed.decomposedLen[j], decomposed.decomposedLenPowers[j]})
 	}
 	// \sum_i decomposedLen[i]=NByte
-	comp.InsertGlobal(0, ifaces.QueryIDf("DecomposedLen_IsNByte"), sym.Sub(s, imported.NByte))
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_DecomposedLen_IsNByte", decomposed.Inputs.Name), sym.Sub(s, imported.NByte))
 
 }
 
@@ -159,7 +160,7 @@ func (decomposed *decomposition) csDecomposition(
 		cleanLimb = sym.Add(sym.Mul(cleanLimb, decomposed.decomposedLenPowers[k]), decomposed.decomposedLimbs[k])
 	}
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("Decompose_CleanLimbs"), sym.Sub(cleanLimb, cleanLimbs))
+	comp.InsertGlobal(0, ifaces.QueryIDf("Decompose_CleanLimbs_%v", decomposed.Inputs.Name), sym.Sub(cleanLimb, cleanLimbs))
 }
 
 // /  Constraints over the form of filter and decomposedLen;
@@ -170,7 +171,7 @@ func (decomposed decomposition) csFilter(comp *wizard.CompiledIOP) {
 		// s.resIsZero = 1 iff decomposedLen = 0
 		decomposed.resIsZero[j], decomposed.paIsZero[j] = iszero.IsZero(comp, decomposed.decomposedLen[j])
 		// s.filter = (1 - s.resIsZero), this enforces filters to be binary.
-		comp.InsertGlobal(0, ifaces.QueryIDf("%v_%v", "IS_NON_ZERO", j),
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_%v_%v", decomposed.Inputs.Name, "IS_NON_ZERO", j),
 			sym.Sub(decomposed.filter[j],
 				sym.Sub(1, decomposed.resIsZero[j])),
 		)
@@ -178,7 +179,7 @@ func (decomposed decomposition) csFilter(comp *wizard.CompiledIOP) {
 
 	// filter[0] = 1 over is Active.
 	// this ensures that the first slice of the limb falls in the first column.
-	comp.InsertGlobal(0, "FIRST_SLICE_IN_FIRST_COLUMN",
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_FIRST_SLICE_IN_FIRST_COLUMN", decomposed.Inputs.Name),
 		sym.Sub(
 			decomposed.filter[0], decomposed.isActive),
 	)
@@ -222,6 +223,7 @@ func getDecompositionInputs(cleaning cleaningCtx, pckParam PackingInput) decompo
 	decInp := decompositionInputs{
 		cleaningCtx: cleaning,
 		param:       pckParam.PackingParam,
+		Name:        pckParam.Name,
 	}
 	return decInp
 }

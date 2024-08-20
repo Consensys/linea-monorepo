@@ -2,6 +2,7 @@ package execution
 
 import (
 	"bytes"
+	"path"
 
 	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
@@ -144,18 +145,22 @@ func inspectStateManagerTraces(
 
 func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
 
-	res := map[[32]byte]ethereum.Signature{}
-	blocks := req.Blocks()
+	var (
+		res    = map[[32]byte]ethereum.Signature{}
+		blocks = req.Blocks()
+		currTx = 0
+	)
 
 	for i := range blocks {
 		for _, tx := range blocks[i].Transactions() {
 
 			var (
-				txHash      = [32]byte(tx.Hash())
+				txHash      = ethereum.GetTxHash(tx)
 				txSignature = ethereum.GetJsonSignature(tx)
 			)
 
 			res[txHash] = txSignature
+			currTx++
 		}
 	}
 
@@ -176,7 +181,7 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 			MaxNbL2MessageHashes:  rsp.MaxNbL2MessageHashes,
 			ChainID:               uint64(rsp.ChainID),
 			FinalBlockTimestamp:   lastBlock.TimeStamp,
-			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData)),
+			FinalBlockNumber:      uint64(rsp.FirstBlockNumber + len(rsp.BlocksData) - 1),
 			InitialBlockTimestamp: firstBlock.TimeStamp,
 			InitialBlockNumber:    uint64(rsp.FirstBlockNumber),
 			DataChecksum:          rsp.ExecDataChecksum,
@@ -204,7 +209,7 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 	return &Witness{
 		ZkEVM: &zkevm.Witness{
-			ExecTracesFPath: req.ConflatedExecutionTracesFile,
+			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
 			SMTraces:        req.StateManagerTraces(),
 			TxSignatures:    req.collectSignatures(),
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,

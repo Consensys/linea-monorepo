@@ -1,6 +1,8 @@
 package lookup
 
 import (
+	"slices"
+
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
@@ -32,11 +34,13 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		// which Z context should be used to handle a part of a given permutation
 		// query.
 		zCatalog = map[[2]int]*zCtx{}
+		zEntries = [][2]int{}
 		// verifier actions
 		va = finalEvaluationCheck{}
 	)
 
-	// Skip the compilation phase if no lookup constraint is being used
+	// Skip the compilation phase if no lookup constraint is being used. Otherwise
+	// it will register a verifier action that is not required and will be bugged.
 	if len(mainLookupCtx.lookupTables) == 0 {
 		return
 	}
@@ -67,8 +71,33 @@ func CompileLogDerivative(comp *wizard.CompiledIOP) {
 		)
 	}
 
+	// This loops is necessary to build a sorted list of the entries of zCatalog.
+	// Without it, if we tried to loop over zCatalog directly, the entries would
+	// be processed in a non-deterministic order. The sorting order itself is
+	// without importance, what matters is that zEntries is in deterministic
+	// order.
+	for entry := range zCatalog {
+		zEntries = append(zEntries, entry)
+	}
+
+	slices.SortFunc(zEntries, func(a, b [2]int) int {
+		switch {
+		case a[0] < b[0]:
+			return -1
+		case a[0] > b[0]:
+			return 1
+		case a[1] < b[1]:
+			return -1
+		case a[1] > b[1]:
+			return 1
+		default:
+			return 0
+		}
+	})
+
 	// compile zCatalog
-	for entry, zC := range zCatalog {
+	for _, entry := range zEntries {
+		zC := zCatalog[entry]
 		// z-packing compile
 		zC.compile(comp)
 		// entry[0]:round, entry[1]: size

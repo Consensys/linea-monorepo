@@ -105,16 +105,21 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	)
 
 	td.csTxnData(comp)
-	// projection from txn-data to address columns
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
+	// Waiting for the resolution of:
+	//
+	//		https://github.com/Consensys/zkevm-monorepo/issues/3801
+	//
+	// // projection from txn-data to address columns
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
+	// 	[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
+	//
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
+	// 	[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
@@ -218,6 +223,7 @@ func (addr *Addresses) assignAddress(
 			hashNum.PushInt(0)
 		}
 	}
+
 	hashNum.PadAndAssign(run)
 	addr.assignMainColumns(run, nbEcRecover, size, uaGnark)
 	addr.assignHelperColumns(run, ecRec)

@@ -198,12 +198,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		srcData = imp.Inputs.Src.Data
-		hashNum = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs   = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nBytes  = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
-		index   = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash  = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
+		sha2Count = 0
+		srcData   = imp.Inputs.Src.Data
+		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs     = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 
 		iab = importationAssignmentBuilder{
 			HashNum:        common.NewVectorBuilder(imp.HashNum),
@@ -237,12 +238,16 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 	for i := range hashNum {
 
 		if toHash[i].IsZero() {
-			if i == len(hashNum)-1 {
+			// The condition of sha2Count addresses the case were sha2 is never
+			// called.
+			if sha2Count > 0 && i == len(hashNum)-1 {
 				imp.padder.pushPaddingRows(currByteSize, &iab)
 			}
 
 			continue
 		}
+
+		sha2Count++
 
 		if i > 0 && currHashNum != hashNum[i] && !currHashNum.IsZero() {
 			imp.padder.pushPaddingRows(currByteSize, &iab)

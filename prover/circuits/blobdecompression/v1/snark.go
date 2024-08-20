@@ -235,9 +235,11 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 
 	api.AssertIsEqual(batchI, nbBatches) // check that we're actually done
 
-	// Ensure the computed partial sums match
+	// hash along the lengths and compare with expected values
 	for i := range batchEnds {
-		batchesRange.AssertEqualI(i, expectedChecksums[i], partialSums[i])
+		hasher.Reset()
+		hasher.Write(batchLengths[i], partialSums[i])
+		batchesRange.AssertEqualI(i, expectedChecksums[i], hasher.Sum())
 	}
 
 	return nil

@@ -22,7 +22,7 @@ const (
 	// nbInstancePerCircuit256 and nbInstancePerCircuit4096 state how many
 	// instance of modexp are taken care of by a single gnark circuit in the
 	// "small" variant (256 bits) or the "large" variant (4096 bits)
-	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 20, 1
+	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 10, 1
 )
 
 // Module implements the wizard part responsible for checking the MODEXP

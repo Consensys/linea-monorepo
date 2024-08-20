@@ -106,6 +106,9 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 			witness := handle.GetColAssignment(run)
 			witnesses[i] = witness
 
+			if witness.Len() == 0 {
+				logrus.Errorf("found a witness of size zero: %v", handle.GetColID())
+			}
 		}
 	})
 

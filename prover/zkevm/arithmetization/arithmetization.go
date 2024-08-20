@@ -26,6 +26,8 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 		Settings: &settings,
 	}
 	wrapped.Define(builder)
+
+	registerMissingColumns(builder, &settings)
 	return &Arithmetization{
 		Settings: &settings,
 	}
@@ -40,4 +42,12 @@ func Assign(run *wizard.ProverRuntime, traceFile string) {
 		traceFile,
 		run,
 	)
+}
+
+// registerMissingColumn registers columns that exists in the arithmetization
+// but are omitted in the define.go as they are unconstrained due to the hub
+// being missing.
+func registerMissingColumns(b *wizard.Builder, limits *Settings) {
+	b.RegisterCommit("shakiradata.LIMB", limits.Traces.Shakiradata)
+	b.RegisterCommit("blake2fmodexpdata.LIMB", limits.Traces.Blake2Fmodexpdata)
 }

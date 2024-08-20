@@ -27,6 +27,7 @@ package projection
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
@@ -39,6 +40,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // projectionProverAction is a compilation artefact generated during the
@@ -46,7 +48,9 @@ import (
 // [wizard.ProverAction]. It is meant to compute to assign the "Horner" columns
 // and their respective local opening queries.
 type projectionProverAction struct {
+	Name               ifaces.QueryID
 	FilterA, FilterB   ifaces.Column
+	ColA, ColB         []ifaces.Column
 	ABoard, BBoard     sym.ExpressionBoard
 	EvalCoin           coin.Info
 	HornerA, HornerB   ifaces.Column
@@ -135,9 +139,12 @@ func InsertProjection(
 		aExpr, _, _ = wizardutils.AsExpr(a)
 		bExpr, _, _ = wizardutils.AsExpr(b)
 		pa          = projectionProverAction{
+			Name:     queryName,
 			EvalCoin: comp.InsertCoin(round, coin.Namef("%v_EVAL_COIN", queryName), coin.Field),
 			FilterA:  filterA,
 			FilterB:  filterB,
+			ColA:     columnsA,
+			ColB:     columnsB,
 			ABoard:   aExpr.Board(),
 			BBoard:   bExpr.Board(),
 			HornerA:  comp.InsertCommit(round, ifaces.ColIDf("%v_HORNER_A", queryName), sizeA),
@@ -225,6 +232,69 @@ func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(pa.HornerB.GetColID(), smartvectors.NewRegular(hornerB))
 	run.AssignLocalPoint(pa.HornerA0.ID, hornerA[0])
 	run.AssignLocalPoint(pa.HornerB0.ID, hornerB[0])
+
+	if hornerA[0] != hornerB[0] {
+
+		var (
+			colA  = make([][]field.Element, len(pa.ColA))
+			colB  = make([][]field.Element, len(pa.ColB))
+			cntA  = 0
+			cntB  = 0
+			rowsA = [][]string{}
+			rowsB = [][]string{}
+		)
+
+		for c := range pa.ColA {
+			colA[c] = pa.ColA[c].GetColAssignment(run).IntoRegVecSaveAlloc()
+			colB[c] = pa.ColB[c].GetColAssignment(run).IntoRegVecSaveAlloc()
+		}
+
+		for i := range fA {
+
+			if fA[i].IsZero() {
+				continue
+			}
+
+			row := make([]string, len(pa.ColA))
+
+			for c := range pa.ColA {
+				fString := colA[c][i].Text(16)
+				if colA[c][i].IsUint64() && colA[c][i].Uint64() < 1000000 {
+					fString = colA[c][i].String()
+				}
+				row[c] = fmt.Sprintf("%v=%v", pa.ColA[c].GetColID(), fString)
+			}
+
+			rowsA = append(rowsA, row)
+			cntA++
+		}
+
+		for i := range fB {
+
+			if fB[i].IsZero() {
+				continue
+			}
+
+			row := make([]string, len(pa.ColB))
+
+			for c := range pa.ColB {
+				fString := colB[c][i].Text(16)
+				if colB[c][i].IsUint64() && colB[c][i].Uint64() < 1000000 {
+					fString = colB[c][i].String()
+				}
+				row[c] = fmt.Sprintf("%v=%v", pa.ColB[c].GetColID(), fString)
+			}
+
+			rowsB = append(rowsB, row)
+			cntB++
+		}
+
+		for i := range rowsA {
+			fmt.Printf("row=%v %v %v\n", i, strings.Join(rowsA[i], " "), strings.Join(rowsB[i], " "))
+		}
+
+		logrus.Errorf("projection query %v failed", pa.Name)
+	}
 }
 
 // Run implements the [wizard.VerifierAction] interface.
