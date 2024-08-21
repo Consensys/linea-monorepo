@@ -58,7 +58,7 @@ func TestHashGnarkAny(t *testing.T) {
 		t.Fatalf("could not get the witness: %v", err)
 	}
 
-	err = ccs.IsSolved(wit, gkrmimc.SolverOpts(ccs)...)
+	err = ccs.IsSolved(wit)
 	if err != nil {
 		t.Fatalf("circuit not solved: %v", err.Error())
 	}

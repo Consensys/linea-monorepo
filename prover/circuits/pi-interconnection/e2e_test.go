@@ -18,7 +18,6 @@ import (
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
@@ -63,7 +62,7 @@ func TestSingleBlobBlobE2E(t *testing.T) {
 			w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
 			assert.NoError(t, err)
 
-			assert.NoError(t, cs.IsSolved(w, gkrmimc.SolverOpts(cs)...))
+			assert.NoError(t, cs.IsSolved(w))
 		})
 	}
 }
