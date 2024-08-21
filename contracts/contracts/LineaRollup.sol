@@ -85,7 +85,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
-    _resetPermissions(_initializationData.roleAddresses);
+    _setPermissions(_initializationData.roleAddresses);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
@@ -99,7 +99,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
-   * @notice Resets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
+   * @notice Sets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
    * @param _roleAddresses The list of addresses to grant roles to.
    * @param _pauseTypeRoles The list of pause type roles.
@@ -110,16 +110,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(6) {
-    _resetPermissions(_roleAddresses);
+    _setPermissions(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
   }
 
   /**
-   * @notice Resets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses.
    * @dev This function is a reinitializer and can only be called once per version.
    * @param _roleAddresses The list of addresses to grant roles to.
    */
-  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
     uint256 roleAddressesLength = _roleAddresses.length;
 
     for (uint256 i; i < roleAddressesLength; i++) {

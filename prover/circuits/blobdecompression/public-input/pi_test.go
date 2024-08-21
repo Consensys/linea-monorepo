@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -89,11 +90,11 @@ func TestInterpolateLagrange(t *testing.T) {
 
 		scalars, err := internal.Bls12381ScalarToBls12377Scalars(evaluationPointFr)
 		assert.NoError(t, err)
-		internal.Copy(assignment.EvaluationPoint[:], scalars[:])
+		utils.Copy(assignment.EvaluationPoint[:], scalars[:])
 
 		scalars, err = internal.Bls12381ScalarToBls12377Scalars(evaluation)
 		assert.NoError(t, err)
-		internal.Copy(assignment.Evaluation[:], scalars[:])
+		utils.Copy(assignment.Evaluation[:], scalars[:])
 
 		return &assignment
 	}
@@ -198,7 +199,7 @@ func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
 
 	scalars, err := internal.Bls12381ScalarToBls12377Scalars(b)
 	assert.NoError(t, err)
-	internal.Copy(r[:], scalars[:])
+	utils.Copy(r[:], scalars[:])
 
 	return
 }
@@ -238,7 +239,7 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 				assignment.Eip4844Enabled = 1
 			}
 
-			internal.Copy(assignment.X[:], decodeHex(t, testCase.ExpectedX))
+			utils.Copy(assignment.X[:], decodeHex(t, testCase.ExpectedX))
 			assignment.Y = decodeHexHL(t, testCase.ExpectedY)
 
 			t.Run(folderAndFile, func(t *testing.T) {
@@ -375,7 +376,7 @@ func TestFrConversions(t *testing.T) {
 
 		assert.Equal(t, tmp, xBack, fmt.Sprintf("out-of-snark conversion round-trip failed on %s or 0x%s", tmp.Text(10), tmp.Text(16)))
 		var assignment testFrConversionCircuit
-		internal.Copy(assignment.X[:], xPartitioned[:])
+		utils.Copy(assignment.X[:], xPartitioned[:])
 		options = append(options, test.WithValidAssignment(&assignment))
 	}
 

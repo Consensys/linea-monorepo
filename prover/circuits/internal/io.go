@@ -17,7 +17,7 @@ func CopyHexEncodedBytes(dst []frontend.Variable, hex string) error {
 		dst[i] = 0
 	}
 
-	Copy(dst[slack:], b) // This will panic if b is too long
+	utils.Copy(dst[slack:], b) // This will panic if b is too long
 
 	return nil
 }

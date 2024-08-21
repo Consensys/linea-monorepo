@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
@@ -58,7 +58,7 @@ type Addresses struct {
 const trimmingSize = 4
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
-func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *txnData) *Addresses {
+func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antichamber, td *txnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 	// declare the native columns
@@ -105,16 +105,21 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antich
 	)
 
 	td.csTxnData(comp)
-	// projection from txn-data to address columns
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
+	// Waiting for the resolution of:
+	//
+	//		https://github.com/Consensys/zkevm-monorepo/issues/3801
+	//
+	// // projection from txn-data to address columns
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
+	// 	[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
+	//
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
+	// 	[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
@@ -176,9 +181,9 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 		Limb:    uaGnark.GnarkData,
 
 		// a column of all 16, since all the bytes of public key are used in hashing
-		NBytes:  addr.col16,
-		Index:   uaGnark.GnarkPublicKeyIndex,
-		TO_HASH: uaGnark.IsPublicKey,
+		NBytes: addr.col16,
+		Index:  uaGnark.GnarkPublicKeyIndex,
+		ToHash: uaGnark.IsPublicKey,
 	}
 
 	pkModule.Info = generic.GenInfoModule{
@@ -194,7 +199,7 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 func (addr *Addresses) assignAddress(
 	run *wizard.ProverRuntime,
 	nbEcRecover, size int,
-	ac *Antichamber,
+	ac *antichamber,
 	ecRec *EcRecover,
 	uaGnark *UnalignedGnarkData,
 	td *txnData,
@@ -218,6 +223,7 @@ func (addr *Addresses) assignAddress(
 			hashNum.PushInt(0)
 		}
 	}
+
 	hashNum.PadAndAssign(run)
 	addr.assignMainColumns(run, nbEcRecover, size, uaGnark)
 	addr.assignHelperColumns(run, ecRec)

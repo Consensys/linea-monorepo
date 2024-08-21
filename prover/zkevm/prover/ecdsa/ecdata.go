@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 var (
@@ -31,7 +30,7 @@ type EcRecover struct {
 	// mask for selecting columns in this submodule for projection query
 	AuxProjectionMask ifaces.Column
 
-	*Limits
+	*Settings
 }
 
 type ecDataSource struct {
@@ -45,25 +44,28 @@ type ecDataSource struct {
 }
 
 func (ecSrc *ecDataSource) nbActualInstances(run *wizard.ProverRuntime) int {
-	var maxId uint64
-	csCol := ecSrc.CsEcrecover.GetColAssignment(run)
-	idCol := ecSrc.ID.GetColAssignment(run)
+	var (
+		count     int = 0
+		csCol         = ecSrc.CsEcrecover.GetColAssignment(run)
+		indexCol      = ecSrc.Index.GetColAssignment(run)
+		isDataCol     = ecSrc.IsData.GetColAssignment(run)
+	)
+
 	for i := 0; i < csCol.Len(); i++ {
-		sel := csCol.Get(i)
-		if sel.IsOne() {
-			id := idCol.Get(i)
-			if !id.IsUint64() {
-				utils.Panic("source ecrecover id must be uint64")
-			}
-			if id.Uint64() > maxId {
-				maxId = id.Uint64()
-			}
+		var (
+			cs     = csCol.Get(i)
+			index  = indexCol.Get(i)
+			isData = isDataCol.Get(i)
+		)
+
+		if cs.IsOne() && index.IsZero() && isData.IsOne() {
+			count++
 		}
 	}
-	return int(maxId) + 1
+	return count
 }
 
-func newEcRecover(comp *wizard.CompiledIOP, limits *Limits, src *ecDataSource) *EcRecover {
+func newEcRecover(comp *wizard.CompiledIOP, limits *Settings, src *ecDataSource) *EcRecover {
 	createCol := createColFn(comp, NAME_ECRECOVER, limits.sizeAntichamber())
 	res := &EcRecover{
 		EcRecoverID:       createCol("ECRECOVER_ID"),
@@ -74,7 +76,7 @@ func newEcRecover(comp *wizard.CompiledIOP, limits *Limits, src *ecDataSource) *
 		EcRecoverIsRes:    createCol("ECRECOVER_IS_RES"),
 		AuxProjectionMask: createCol("AUX_PROJECTION_MASK"),
 
-		Limits: limits,
+		Settings: limits,
 	}
 	res.csEcDataProjection(comp, src)
 	res.csConstraintAuxProjectionMask(comp)
@@ -87,13 +89,21 @@ func (ec *EcRecover) Assign(run *wizard.ProverRuntime, src *ecDataSource) {
 }
 
 func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDataSource) {
-	sourceCsEcRecover := run.GetColumn(src.CsEcrecover.GetColID())
-	sourceID := run.GetColumn(src.ID.GetColID())
-	sourceLimb := run.GetColumn(src.Limb.GetColID())
-	sourceSuccessBit := run.GetColumn(src.SuccessBit.GetColID())
-	sourceIndex := run.GetColumn(src.Index.GetColID())
-	sourceIsData := run.GetColumn(src.IsData.GetColID())
-	sourceIsRes := run.GetColumn(src.IsRes.GetColID())
+
+	var (
+		nbInstances       = src.nbActualInstances(run)
+		currRow           = int(0)
+		sourceCsEcRecover = run.GetColumn(src.CsEcrecover.GetColID())
+		sourceID          = run.GetColumn(src.ID.GetColID())
+		sourceLimb        = run.GetColumn(src.Limb.GetColID())
+		sourceSuccessBit  = run.GetColumn(src.SuccessBit.GetColID())
+		sourceIndex       = run.GetColumn(src.Index.GetColID())
+		sourceIsData      = run.GetColumn(src.IsData.GetColID())
+		sourceIsRes       = run.GetColumn(src.IsRes.GetColID())
+		//
+		resEcRecoverID, resLimb, resSuccessBit, resEcRecoverIndex   []field.Element
+		resEcRecoverIsData, resEcRecoverIsRes, resAuxProjectionMask []field.Element
+	)
 
 	if sourceCsEcRecover.Len() != sourceID.Len() ||
 		sourceID.Len() != sourceLimb.Len() ||
@@ -103,19 +113,24 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 		sourceIsData.Len() != sourceIsRes.Len() {
 		panic("all source columns must have the same length")
 	}
-	var resEcRecoverID, resLimb, resSuccessBit, resEcRecoverIndex, resEcRecoverIsData, resEcRecoverIsRes, resAuxProjectionMask []field.Element
-	var rowEcRecoverID, rowLimb, rowSuccessBit, rowEcRecoverIndex, rowEcRecoverIsData, rowEcRecoverIsRes, rowAuxProjectionMask [nbRowsPerEcRec]field.Element
-	nbInstances := src.nbActualInstances(run)
+
 	for i := 0; i < nbInstances; i++ {
-		if i*nbRowsPerEcRecFetching >= sourceCsEcRecover.Len() {
-			break
+
+		var (
+			rowEcRecoverID, rowLimb, rowSuccessBit, rowEcRecoverIndex   [nbRowsPerEcRec]field.Element
+			rowEcRecoverIsData, rowEcRecoverIsRes, rowAuxProjectionMask [nbRowsPerEcRec]field.Element
+		)
+
+		// This loops
+		for _ = 0; currRow < sourceCsEcRecover.Len(); currRow++ {
+			selected := sourceCsEcRecover.Get(currRow)
+			if selected.IsOne() {
+				break
+			}
 		}
-		selected := sourceCsEcRecover.Get(i * nbRowsPerEcRecFetching)
-		if selected.IsZero() {
-			continue
-		}
+
 		for j := 0; j < nbRowsPerEcRecFetching; j++ {
-			sourceIdx := i*nbRowsPerEcRecFetching + j
+			sourceIdx := currRow + j
 			rowEcRecoverID[j] = sourceID.Get(sourceIdx)
 			rowLimb[j] = sourceLimb.Get(sourceIdx)
 			rowSuccessBit[j] = sourceSuccessBit.Get(sourceIdx)
@@ -124,6 +139,11 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 			rowEcRecoverIsRes[j] = sourceIsRes.Get(sourceIdx)
 			rowAuxProjectionMask[j] = sourceCsEcRecover.Get(sourceIdx)
 		}
+
+		// This ensures that the next iteration starts from the first position
+		// after the ECRECOVER segment we just imported.
+		currRow += nbRowsPerEcRecFetching
+
 		resEcRecoverID = append(resEcRecoverID, rowEcRecoverID[:]...)
 		resLimb = append(resLimb, rowLimb[:]...)
 		resSuccessBit = append(resSuccessBit, rowSuccessBit[:]...)
@@ -134,7 +154,7 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 	}
 
 	// assign this submodule components
-	size := ec.sizeAntichamber()
+	size := ec.Settings.sizeAntichamber()
 	run.AssignColumn(ec.EcRecoverID.GetColID(), smartvectors.RightZeroPadded(resEcRecoverID, size))
 	run.AssignColumn(ec.Limb.GetColID(), smartvectors.RightZeroPadded(resLimb, size))
 	run.AssignColumn(ec.SuccessBit.GetColID(), smartvectors.RightZeroPadded(resSuccessBit, size))

@@ -164,6 +164,8 @@ func (ctx SelfRecursionCtx) GluePositions() {
 			positionVec.(verifiercol.FromAccessors).Accessors,
 			merklePos.Size()/sizePositionVec,
 		),
+		field.Zero(),
+		merklePos.Size(),
 	)
 
 	// If MerkleRoots is correct, then there is a permutation we can

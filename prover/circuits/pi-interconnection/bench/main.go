@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	"time"
 
@@ -23,14 +24,14 @@ func main() {
 	var b test_utils.FakeTestingT
 	req := pitesting.AssignSingleBlockBlob(b)
 
-	c, err := pi_interconnection.Config{
-		MaxNbDecompression:   400,
-		MaxNbExecution:       400,
-		MaxNbKeccakF:         10000,
-		MaxNbMsgPerExecution: 16,
-		L2MsgMerkleDepth:     5,
-		L2MessageMaxNbMerkle: 10,
-	}.Compile(dummy.Compile) // note that the solving/proving time will not reflect the wizard proof or verification
+	c, err := pi_interconnection.Compile(config.PublicInput{
+		MaxNbDecompression: 400,
+		MaxNbExecution:     400,
+		MaxNbKeccakF:       10000,
+		ExecutionMaxNbMsg:  16,
+		L2MsgMerkleDepth:   5,
+		L2MsgMaxNbMerkle:   10,
+	}, dummy.Compile) // note that the solving/proving time will not reflect the wizard proof or verification
 	assert.NoError(b, err)
 
 	a, err := c.Assign(req)

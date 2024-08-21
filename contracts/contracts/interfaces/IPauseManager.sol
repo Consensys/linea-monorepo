@@ -54,14 +54,14 @@ interface IPauseManager {
 
   /**
    * @notice Pauses functionality by specific type.
-   * @dev Requires the role as mapped in pauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in pauseTypeRoles for the pauseType.
    * @param _pauseType The pause type value.
    */
   function pauseByType(uint8 _pauseType) external;
 
   /**
    * @notice Unpauses functionality by specific type.
-   * @dev Requires the role as mapped in pauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in unPauseTypeRoles for the pauseType.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(uint8 _pauseType) external;

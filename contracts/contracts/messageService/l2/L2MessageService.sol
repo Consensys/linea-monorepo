@@ -38,7 +38,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
-    _resetPermissions(_roleAddresses);
+    _setPermissions(_roleAddresses);
 
     nextMessageNumber = 1;
 
@@ -46,7 +46,7 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
   }
 
   /**
-   * @notice Resets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses.
    * @dev This function is a reinitializer and can only be called once per version.
    * @param _roleAddresses The list of addresses to grant roles to.
    * @param _pauseTypeRoles The list of pause type roles.
@@ -57,16 +57,16 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(2) {
-    _resetPermissions(_roleAddresses);
+    _setPermissions(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
   }
 
   /**
-   * @notice Resets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses.
    * @dev This function is a reinitializer and can only be called once per version.
    * @param _roleAddresses The list of addresses to grant roles to.
    */
-  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
     uint256 roleAddressesLength = _roleAddresses.length;
 
     for (uint256 i; i < roleAddressesLength; i++) {

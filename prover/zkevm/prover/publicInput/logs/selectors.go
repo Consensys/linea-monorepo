@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -139,6 +138,7 @@ func GetName(logType int) string {
 type Selectors struct {
 	// size of selector columns
 	Size int
+
 	// SelectorCounterX is 1 when the counter Ct column in the logs satisfies Ct = X and 0 otherwise
 	SelectorCounter0, SelectorCounter1, SelectorCounter3, SelectorCounter4, SelectorCounter5                                    ifaces.Column
 	ComputeSelectorCounter0, ComputeSelectorCounter1, ComputeSelectorCounter3, ComputeSelectorCounter4, ComputeSelectorCounter5 wizard.ProverAction
@@ -148,8 +148,7 @@ type Selectors struct {
 	// SelectFirstTopicRollingHi/Lo is 1 on rows where the first topic has the shape expected from L2L1 logs
 	SelectFirstTopicRollingHi, SelectFirstTopicRollingLo               ifaces.Column
 	ComputeSelectFirstTopicRollingHi, ComputeSelectFirstTopicRollingLo wizard.ProverAction
-	// helper field containing the L2BridgeAddress
-	L2BridgeAddress common.Address
+
 	// columns containing the hi and lo parts of l2BridgeAddress
 	L2BridgeAddressColHI, L2BridgeAddressColLo ifaces.Column
 	// SelectorL2BridgeAddressHi/Lo is 1 on rows where the OutgoingHi/Lo columns contain the bridge address,
@@ -161,7 +160,7 @@ type Selectors struct {
 /*
 NewSelectorColumns creates the selector columns used to fetch data from LogColumns
 */
-func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns, l2BridgeAddress common.Address) Selectors {
+func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns) Selectors {
 	// first compute selectors that light up when Ct=0, Ct=1, and Ct=5
 	SelectorCounter0, ComputeSelectorCounter0 := dedicated.IsZero(
 		comp,
@@ -221,32 +220,9 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns, l2BridgeAddress
 		sym.Sub(lc.OutgoingLo, firstTopicRollingLo),
 	)
 
-	// register columns that contain the Hi/Lo parts of the l2BridgeAddress
-	addrHi, addrLo := ConvertAddress(statemanager.Address(l2BridgeAddress))
-	bridgeAddrColHi := comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_HI"), 1)
-	bridgeAddrColLo := comp.InsertCommit(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_LO"), 1)
+	bridgeAddrColHi := comp.InsertProof(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_HI"), 1)
+	bridgeAddrColLo := comp.InsertProof(0, ifaces.ColIDf("LOGS_FETCHER_BRIDGE_ADDRESS_LO"), 1)
 
-	// constrain the l2BridgeAddress columns to indeed have the proper data
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("LOGS_FETCHER_BRIDGE_ADDRESS_HI_CONSTRAINT"),
-		sym.Sub(
-			bridgeAddrColHi,
-			addrHi,
-		),
-	)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("LOGS_FETCHER_BRIDGE_ADDRESS_LO_CONSTRAINT"),
-		sym.Sub(
-			bridgeAddrColLo,
-			addrLo,
-		),
-	)
-	// set the l2BridgeAddress columns as public for accessors
-	comp.Columns.SetStatus(bridgeAddrColHi.GetColID(), column.Proof)
-	comp.Columns.SetStatus(bridgeAddrColLo.GetColID(), column.Proof)
 	// get an accessor
 	accessBridgeHi := accessors.NewFromPublicColumn(bridgeAddrColHi, 0) // to fetch the only field element in the column
 	accessBridgeLo := accessors.NewFromPublicColumn(bridgeAddrColLo, 0) // to fetch the only field element in the column
@@ -288,7 +264,6 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns, l2BridgeAddress
 		// columns and a helper field which contain the l2bridgeAddress
 		L2BridgeAddressColHI: bridgeAddrColHi,
 		L2BridgeAddressColLo: bridgeAddrColLo,
-		L2BridgeAddress:      l2BridgeAddress,
 		// selectors that light up on rows that contain the expected l2bridgeAddress
 		SelectorL2BridgeAddressHi:        SelectorL2BridgeAddressHi,
 		ComputeSelectorL2BridgeAddressHi: ComputeSelectorL2BridgeAddressHi,
@@ -299,11 +274,11 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns, l2BridgeAddress
 }
 
 // Assign values for the selectors
-func (sel Selectors) Assign(run *wizard.ProverRuntime) {
-	addrHi, addrLo := ConvertAddress(statemanager.Address(sel.L2BridgeAddress))
+func (sel Selectors) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
+	addrHi, addrLo := ConvertAddress(statemanager.Address(l2BridgeAddress))
 	// assign the columns that contain the l2 bridge address
-	run.AssignColumn("LOGS_FETCHER_BRIDGE_ADDRESS_HI", smartvectors.NewRegular([]field.Element{addrHi}))
-	run.AssignColumn("LOGS_FETCHER_BRIDGE_ADDRESS_LO", smartvectors.NewRegular([]field.Element{addrLo}))
+	run.AssignColumn(sel.L2BridgeAddressColHI.GetColID(), smartvectors.NewRegular([]field.Element{addrHi}))
+	run.AssignColumn(sel.L2BridgeAddressColLo.GetColID(), smartvectors.NewRegular([]field.Element{addrLo}))
 	// now we assign the dedicated selectors for counters
 	sel.ComputeSelectorCounter0.Run(run)
 	sel.ComputeSelectorCounter1.Run(run)

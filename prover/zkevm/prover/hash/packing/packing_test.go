@@ -38,6 +38,7 @@ func makeTestCasePackingModule(uc generic.HashingUsecase) (
 			MaxNumBlocks: maxNumBlock,
 			PackingParam: uc,
 			Imported:     imported,
+			Name:         "TESTING",
 		}
 
 		pck = NewPack(comp, inp)

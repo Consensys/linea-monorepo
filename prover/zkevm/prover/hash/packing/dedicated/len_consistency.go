@@ -2,6 +2,7 @@ package dedicated
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
@@ -43,10 +44,11 @@ type lengthConsistency struct {
 func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistency {
 
 	var (
+		name      = strconv.Itoa(len(comp.ListCommitments()))
 		numCol    = len(inp.Table)
 		size      = inp.Table[0].Size()
 		numBytes  = inp.MaxLen
-		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY", size)
+		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY_"+name, size)
 	)
 
 	res := &lengthConsistency{
@@ -82,7 +84,7 @@ func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistenc
 			// bytesLen is binary
 			commonconstraints.MustBeBinary(comp, res.bytesLen[j][k])
 		}
-		comp.InsertGlobal(0, ifaces.QueryIDf("CLDLen_%v", j), sym.Sub(sum, inp.TableLen[j]))
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_CLDLen_%v", name, j), sym.Sub(sum, inp.TableLen[j]))
 	}
 	return res
 }
