@@ -7,14 +7,18 @@ import { IMessageService } from "../interfaces/IMessageService.sol";
 import { IERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20PermitUpgradeable.sol";
 import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
+
+import { PauseManager } from "../messageService/lib/PauseManager.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { StorageFiller39 } from "./lib/StorageFiller39.sol";
 
 /**
  * @title Linea Canonical Token Bridge
@@ -24,12 +28,25 @@ import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
  */
 contract TokenBridge is
   ITokenBridge,
-  PausableUpgradeable,
-  Ownable2StepUpgradeable,
+  Initializable,
+  ReentrancyGuardUpgradeable,
+  AccessControlUpgradeable,
   MessageServiceBase,
-  ReentrancyGuardUpgradeable
+  PauseManager,
+  StorageFiller39
 {
   using SafeERC20Upgradeable for IERC20Upgradeable;
+
+  bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
+  bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
+  bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
+  bytes32 public constant REMOVE_RESERVED_TOKEN_ROLE = keccak256("REMOVE_RESERVED_TOKEN_ROLE");
+  bytes32 public constant SET_CUSTOM_CONTRACT_ROLE = keccak256("SET_CUSTOM_CONTRACT_ROLE");
+
+  bytes32 public constant PAUSE_INITIATE_TOKEN_BRIDGING_ROLE = keccak256("PAUSE_INITIATE_TOKEN_BRIDGING_ROLE");
+  bytes32 public constant UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE = keccak256("UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE");
+  bytes32 public constant PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = keccak256("PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE");
+  bytes32 public constant UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = keccak256("UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE");
 
   // solhint-disable-next-line var-name-mixedcase
   bytes4 internal constant _PERMIT_SELECTOR = IERC20PermitUpgradeable.permit.selector;
@@ -94,37 +111,74 @@ contract TokenBridge is
   }
 
   /**
+   * @notice Initializes TokenBridge and underlying service dependencies - used for new networks only.
    * @dev Contract will be used as proxy implementation.
-   * @param _messageService The address of the MessageService contract.
-   * @param _tokenBeacon The address of the tokenBeacon.
-   * @param _sourceChainId The source chain id of the current layer
-   * @param _targetChainId The target chaind id of the targeted layer
-   * @param _reservedTokens The list of reserved tokens to be set
+   * @param _initializationData The initial data used for initializing the TokenBridge contract.
    */
   function initialize(
-    address _securityCouncil,
-    address _messageService,
-    address _tokenBeacon,
-    uint256 _sourceChainId,
-    uint256 _targetChainId,
-    address[] calldata _reservedTokens
-  ) external nonZeroAddress(_securityCouncil) nonZeroAddress(_messageService) nonZeroAddress(_tokenBeacon) initializer {
-    __Pausable_init();
-    __Ownable2Step_init();
-    __MessageServiceBase_init(_messageService);
+    InitializationData calldata _initializationData
+  )
+    external
+    nonZeroAddress(_initializationData.messageService)
+    nonZeroAddress(_initializationData.tokenBeacon)
+    initializer
+  {
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
+    __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
-    tokenBeacon = _tokenBeacon;
-    sourceChainId = _sourceChainId;
-    targetChainId = _targetChainId;
+    tokenBeacon = _initializationData.tokenBeacon;
+    sourceChainId = _initializationData.sourceChainId;
+    targetChainId = _initializationData.targetChainId;
+
+    _resetPermissions(_initializationData.roleAddresses);
 
     unchecked {
-      for (uint256 i; i < _reservedTokens.length; ) {
-        if (_reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
-        setReserved(_reservedTokens[i]);
+      for (uint256 i; i < _initializationData.reservedTokens.length; ) {
+        if (_initializationData.reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
+        nativeToBridgedToken[sourceChainId][_initializationData.reservedTokens[i]] = RESERVED_STATUS;
         ++i;
       }
     }
-    _transferOwnership(_securityCouncil);
+  }
+
+  /**
+   * @notice Resets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
+   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _pauseTypeRoles The list of pause type roles.
+   * @param _unpauseTypeRoles The list of unpause type roles.
+   */
+  function reinitializePauseTypesAndPermissions(
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
+  ) external reinitializer(2) {
+    assembly {
+      /// @dev Wiping the storage slot 101 of _owner as it is replaced by AccessControl and there is now the ERC165 __gap in its place.
+      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
+      sstore(101, 0)
+      sstore(213, 0)
+    }
+    __ReentrancyGuard_init();
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+
+    _resetPermissions(_roleAddresses);
+  }
+
+  /**
+   * @notice Resets permissions for a list of addresses.
+   * @dev This function is a reinitializer and can only be called once per version.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   */
+  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+    uint256 roleAddressesLength = _roleAddresses.length;
+
+    for (uint256 i; i < roleAddressesLength; i++) {
+      if (_roleAddresses[i].addressWithRole == address(0)) {
+        revert ZeroAddressNotAllowed();
+      }
+      _grantRole(_roleAddresses[i].role, _roleAddresses[i].addressWithRole);
+    }
   }
 
   /**
@@ -147,12 +201,14 @@ contract TokenBridge is
    * @param _token The address of the token to be bridged.
    * @param _amount The amount of the token to be bridged.
    * @param _recipient The address that will receive the tokens on the other chain.
+  //  TODO: check if natspec needs to be updated
    */
   function bridgeToken(
     address _token,
     uint256 _amount,
     address _recipient
-  ) public payable nonZeroAddress(_token) nonZeroAddress(_recipient) nonZeroAmount(_amount) whenNotPaused nonReentrant {
+  ) public payable nonZeroAddress(_token) nonZeroAddress(_recipient) nonZeroAmount(_amount) nonReentrant {
+    _requireTypeAndGeneralNotPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
     uint256 sourceChainIdCache = sourceChainId;
     address nativeMappingValue = nativeToBridgedToken[sourceChainIdCache][_token];
     if (nativeMappingValue == RESERVED_STATUS) {
@@ -208,6 +264,7 @@ contract TokenBridge is
    * @param _amount The amount of the token to be bridged.
    * @param _recipient The address that will receive the tokens on the other chain.
    * @param _permitData The permit data for the token, if applicable.
+   //  TODO: check if natspec needs to be updated
    */
   function bridgeTokenWithPermit(
     address _token,
@@ -231,6 +288,7 @@ contract TokenBridge is
    * @param _chainId The token's origin layer chaindId
    * @param _tokenMetadata Additional data used to deploy the bridged token if it
    *   doesn't exist already.
+   //  TODO: check if natspec needs to be updated
    */
   function completeBridging(
     address _nativeToken,
@@ -238,7 +296,13 @@ contract TokenBridge is
     address _recipient,
     uint256 _chainId,
     bytes calldata _tokenMetadata
-  ) external nonReentrant onlyMessagingService onlyAuthorizedRemoteSender whenNotPaused {
+  )
+    external
+    nonReentrant
+    onlyMessagingService
+    onlyAuthorizedRemoteSender
+    whenTypeAndGeneralNotPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)
+  {
     address nativeMappingValue = nativeToBridgedToken[_chainId][_nativeToken];
     address bridgedToken;
 
@@ -260,9 +324,12 @@ contract TokenBridge is
 
   /**
    * @dev Change the address of the Message Service.
+   * @dev SET_MESSAGE_SERVICE_ROLE is required to execute.
    * @param _messageService The address of the new Message Service.
    */
-  function setMessageService(address _messageService) public nonZeroAddress(_messageService) onlyOwner {
+  function setMessageService(
+    address _messageService
+  ) public nonZeroAddress(_messageService) onlyRole(SET_MESSAGE_SERVICE_ROLE) {
     address oldMessageService = address(messageService);
     messageService = IMessageService(_messageService);
     emit MessageServiceUpdated(_messageService, oldMessageService, msg.sender);
@@ -311,9 +378,10 @@ contract TokenBridge is
 
   /**
    * @dev Sets the address of the remote token bridge. Can only be called once.
+   * @dev SET_REMOTE_TOKENBRIDGE_ROLE is required to execute.
    * @param _remoteTokenBridge The address of the remote token bridge to be set.
    */
-  function setRemoteTokenBridge(address _remoteTokenBridge) external onlyOwner {
+  function setRemoteTokenBridge(address _remoteTokenBridge) external onlyRole(SET_REMOTE_TOKENBRIDGE_ROLE) {
     if (remoteSender != EMPTY) revert RemoteTokenBridgeAlreadySet(remoteSender);
     _setRemoteSender(_remoteTokenBridge);
     emit RemoteTokenBridgeSet(_remoteTokenBridge, msg.sender);
@@ -348,20 +416,24 @@ contract TokenBridge is
   /**
    * @dev Linea can reserve tokens. In this case, the token cannot be bridged.
    *   Linea can only reserve tokens that have not been bridged before.
+   * @dev SET_RESERVED_TOKEN_ROLE is required to execute.
    * @notice Make sure that _token is native to the current chain
    *   where you are calling this function from
    * @param _token The address of the token to be set as reserved.
    */
-  function setReserved(address _token) public nonZeroAddress(_token) onlyOwner isNewToken(_token) {
+  function setReserved(
+    address _token
+  ) public nonZeroAddress(_token) isNewToken(_token) onlyRole(SET_RESERVED_TOKEN_ROLE) {
     nativeToBridgedToken[sourceChainId][_token] = RESERVED_STATUS;
     emit TokenReserved(_token);
   }
 
   /**
    * @dev Removes a token from the reserved list.
+   * @dev REMOVE_RESERVED_TOKEN_ROLE is required to execute.
    * @param _token The address of the token to be removed from the reserved list.
    */
-  function removeReserved(address _token) external nonZeroAddress(_token) onlyOwner {
+  function removeReserved(address _token) external nonZeroAddress(_token) onlyRole(REMOVE_RESERVED_TOKEN_ROLE) {
     uint256 cachedSourceChainId = sourceChainId;
 
     if (nativeToBridgedToken[cachedSourceChainId][_token] != RESERVED_STATUS) revert NotReserved(_token);
@@ -374,13 +446,20 @@ contract TokenBridge is
    * @dev Linea can set a custom ERC20 contract for specific ERC20.
    *   For security purpose, Linea can only call this function if the token has
    *   not been bridged yet.
+   * @dev SET_CUSTOM_CONTRACT_ROLE is required to execute.
    * @param _nativeToken The address of the token on the source chain.
    * @param _targetContract The address of the custom contract.
    */
   function setCustomContract(
     address _nativeToken,
     address _targetContract
-  ) external nonZeroAddress(_nativeToken) nonZeroAddress(_targetContract) onlyOwner isNewToken(_nativeToken) {
+  )
+    external
+    nonZeroAddress(_nativeToken)
+    nonZeroAddress(_targetContract)
+    onlyRole(SET_CUSTOM_CONTRACT_ROLE)
+    isNewToken(_nativeToken)
+  {
     if (bridgedToNativeToken[_targetContract] != EMPTY) {
       revert AlreadyBrigedToNativeTokenSet(_targetContract);
     }
@@ -397,20 +476,6 @@ contract TokenBridge is
     nativeToBridgedToken[cachedTargetChainId][_nativeToken] = _targetContract;
     bridgedToNativeToken[_targetContract] = _nativeToken;
     emit CustomContractSet(_nativeToken, _targetContract, msg.sender);
-  }
-
-  /**
-   * @dev Pause the contract, can only be called by the owner.
-   */
-  function pause() external onlyOwner {
-    _pause();
-  }
-
-  /**
-   * @dev Unpause the contract, can only be called by the owner.
-   */
-  function unpause() external onlyOwner {
-    _unpause();
   }
 
   // Helpers to safely get the metadata from a token, inspired by
