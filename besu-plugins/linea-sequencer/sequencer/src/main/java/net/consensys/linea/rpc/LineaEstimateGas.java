@@ -348,7 +348,13 @@ public class LineaEstimateGas {
   }
 
   private JsonCallParameter parseRequest(final Object[] params) {
-    final var callParameters = parameterParser.required(params, 0, JsonCallParameter.class);
+    final JsonCallParameter callParameters;
+    try {
+      callParameters = parameterParser.required(params, 0, JsonCallParameter.class);
+    } catch (JsonRpcParameter.JsonRpcParameterException e) {
+      throw new InvalidJsonRpcParameters(
+          "Invalid call parameters (index 0)", RpcErrorType.INVALID_CALL_PARAMS);
+    }
     validateParameters(callParameters);
     return callParameters;
   }
