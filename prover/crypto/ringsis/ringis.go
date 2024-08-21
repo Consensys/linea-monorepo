@@ -67,8 +67,22 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 	}
 
 	// Optimization for these specific parameters
-	if params.LogTwoBound == 8 && params.LogTwoDegree == 6 {
-		res.twiddleCosets = sis.PrecomputeTwiddlesCoset(
+	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 64 {
+		res.twiddleCosets = ringsis_64_8.PrecomputeTwiddlesCoset(
+			rsis.Domain.Generator,
+			rsis.Domain.FrMultiplicativeGen,
+		)
+	}
+
+	if params.LogTwoBound == 16 && 1<<params.LogTwoDegree == 64 {
+		res.twiddleCosets = ringsis_64_16.PrecomputeTwiddlesCoset(
+			rsis.Domain.Generator,
+			rsis.Domain.FrMultiplicativeGen,
+		)
+	}
+
+	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 32 {
+		res.twiddleCosets = ringsis_32_8.PrecomputeTwiddlesCoset(
 			rsis.Domain.Generator,
 			rsis.Domain.FrMultiplicativeGen,
 		)

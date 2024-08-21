@@ -109,6 +109,9 @@ func (vb *VectorBuilder) Pop() {
 
 // RepushLast pushes a value equal to the last pushed value of `vb`
 func (vb *VectorBuilder) RepushLast() {
+	if len(vb.slice) == 0 {
+		panic("attempted to repush the last item of an empty builder")
+	}
 	last := vb.slice[len(vb.slice)-1]
 	vb.PushField(last)
 }

@@ -64,6 +64,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 				IsNewHash: imported.IsNewHash,
 				IsActive:  imported.IsActive,
 			},
+			Name: "KECCAK",
 		}
 
 		packing = packing.NewPack(comp, inpPck)

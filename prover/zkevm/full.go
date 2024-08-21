@@ -11,8 +11,14 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
@@ -37,13 +43,13 @@ var (
 	// of the self-recursion currently relies on the number of limbs to be a
 	// power of two, we go with this one although it overshoots our security
 	// level target.
-	sisInstance = ringsis.Params{LogTwoBound: 8, LogTwoDegree: 6}
+	sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	// This is the compilation suite in use for the full prover
 	fullCompilationSuite = compilationSuite{
 		// logdata.Log("initial-wizard"),
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<19, true),
+		compiler.Arcane(1<<10, 1<<19, false),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -56,7 +62,7 @@ var (
 		// logdata.Log("post-selfrecursion-1"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<18, true),
+		compiler.Arcane(1<<10, 1<<18, false),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -69,7 +75,7 @@ var (
 		// logdata.Log("post-selfrecursion-2"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<16, true),
+		compiler.Arcane(1<<10, 1<<16, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -82,7 +88,7 @@ var (
 		// logdata.Log("post-selfrecursion-3"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<13, true),
+		compiler.Arcane(1<<10, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -111,8 +117,11 @@ func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 			},
 			Statemanager: statemanager.Settings{
 				AccSettings: accumulator.Settings{
-					MaxNumProofs: merkleProofLimit,
+					MaxNumProofs:    merkleProofLimit,
+					Name:            "SM_ACCUMULATOR",
+					MerkleTreeDepth: 40,
 				},
+				MiMCCodeHashSize: tl.Rom,
 			},
 			// The compilation suite itself is hard-coded and reflects the
 			// actual full proof system.
@@ -123,6 +132,37 @@ func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 			},
 			Keccak: keccak.Settings{
 				MaxNumKeccakf: keccakLimit,
+			},
+			Ecdsa: ecdsa.Settings{
+				MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls,
+				MaxNbTx:            tl.BlockTransactions,
+				NbInputInstance:    4,
+				NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls+tl.BlockTransactions, 4),
+			},
+			Modexp: modexp.Settings{
+				MaxNbInstance256:  tl.PrecompileModexpEffectiveCalls,
+				MaxNbInstance4096: 1,
+			},
+			Ecadd: ecarith.Limits{
+				// 14 was found the right number to have just under 2^19 constraints
+				// per circuit.
+				NbInputInstances:   utils.DivCeil(tl.PrecompileEcaddEffectiveCalls, 28),
+				NbCircuitInstances: 28,
+			},
+			Ecmul: ecarith.Limits{
+				NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls, 6),
+				NbInputInstances:   6,
+			},
+			Ecpair: ecpair.Limits{
+				NbMillerLoopInputInstances:   1,
+				NbMillerLoopCircuits:         tl.PrecompileEcpairingMillerLoops,
+				NbFinalExpInputInstances:     1,
+				NbFinalExpCircuits:           tl.PrecompileEcpairingEffectiveCalls,
+				NbG2MembershipInputInstances: 6,
+				NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls, 6),
+			},
+			Sha2: sha2.Settings{
+				MaxNumSha2F: tl.PrecompileSha2Blocks,
 			},
 		}
 

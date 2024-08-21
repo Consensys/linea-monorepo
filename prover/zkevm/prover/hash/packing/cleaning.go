@@ -20,6 +20,8 @@ type cleaningInputs struct {
 	// lookup table used for storing powers of 2^8,
 	// removing the redundant zeroes from Limbs.
 	lookup lookUpTables
+	// Name gives additional context for the input name
+	Name string
 }
 
 // cleaningCtx stores all the intermediate columns required for imposing the constraints.
@@ -38,7 +40,7 @@ type cleaningCtx struct {
 // NewClean imposes the constraint for cleaning the limbs.
 func NewClean(comp *wizard.CompiledIOP, inp cleaningInputs) cleaningCtx {
 
-	createCol := common.CreateColFn(comp, CLEANING, inp.imported.Limb.Size())
+	createCol := common.CreateColFn(comp, CLEANING+"_"+inp.Name, inp.imported.Limb.Size())
 	ctx := cleaningCtx{
 		CleanLimb:     createCol("CleanLimb"),
 		nbZeros:       createCol("NbZeroes"),
@@ -54,7 +56,7 @@ func NewClean(comp *wizard.CompiledIOP, inp cleaningInputs) cleaningCtx {
 	// impose the cleaning of limbs
 	limb := sym.Mul(ctx.powersNbZeros, ctx.CleanLimb)
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("LimbCleaning"),
+	comp.InsertGlobal(0, ifaces.QueryIDf("LimbCleaning_%v", inp.Name),
 		sym.Sub(limb, inp.imported.Limb),
 	)
 
@@ -72,7 +74,7 @@ func (ctx cleaningCtx) csNbZeros(comp *wizard.CompiledIOP) {
 	)
 
 	// Equivalence of "PowersNbZeros" with "2^(NbZeros * 8)"
-	comp.InsertInclusion(0, ifaces.QueryIDf("NumToPowers"),
+	comp.InsertInclusion(0, ifaces.QueryIDf("NumToPowers_%v", ctx.Inputs.Name),
 		[]ifaces.Column{ctx.Inputs.lookup.colNumber, ctx.Inputs.lookup.colPowers},
 		[]ifaces.Column{ctx.nbZeros, ctx.powersNbZeros},
 	)
@@ -80,7 +82,7 @@ func (ctx cleaningCtx) csNbZeros(comp *wizard.CompiledIOP) {
 
 	//  The constraint for nbZeros = (MaxBytes - NByte)* isActive
 	nbZeros := sym.Sub(MAXNBYTE, nByte)
-	comp.InsertGlobal(0, ifaces.QueryIDf("NbZeros"),
+	comp.InsertGlobal(0, ifaces.QueryIDf("NB_ZEROES_%v", ctx.Inputs.Name),
 		sym.Mul(
 			sym.Sub(
 				nbZeros, ctx.nbZeros),
@@ -129,6 +131,15 @@ func (ctx *cleaningCtx) assignNbZeros(run *wizard.ProverRuntime) {
 	var a big.Int
 	for row := 0; row < len(nByte); row++ {
 		b := nByte[row]
+
+		// @alex: it is possible that the "imported" is returning "inactive"
+		// zones when using Sha2.
+		if b.IsZero() {
+			nbZeros.PushZero()
+			powersNbZeros.PushOne()
+			continue
+		}
+
 		res.Sub(&fr16, &b)
 		nbZeros.PushField(res)
 		res.BigInt(&a)
@@ -140,10 +151,11 @@ func (ctx *cleaningCtx) assignNbZeros(run *wizard.ProverRuntime) {
 	powersNbZeros.PadAndAssign(run, field.One())
 }
 
-// it generates CleaningInputs
-func getCleaningInputs(imported Importation, lookup lookUpTables) cleaningInputs {
+// newCleaningInputs constructs CleaningInputs
+func newCleaningInputs(imported Importation, lookup lookUpTables, name string) cleaningInputs {
 	return cleaningInputs{
 		imported: imported,
 		lookup:   lookup,
+		Name:     name,
 	}
 }

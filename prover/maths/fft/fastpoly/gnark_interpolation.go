@@ -15,8 +15,13 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	n := len(poly)
+	// When the poly is of length 1 it means it is a constant polynomial and its
+	// evaluation is trivial.
+	if len(poly) == 1 {
+		return poly[0]
+	}
 
+	n := len(poly)
 	domain := fft.NewDomain(n)
 	one := field.One()
 
@@ -43,7 +48,8 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 		}
 
 		// If the current term is the constant zero, we continue without generating
-		// constraints.
+		// constraints. As a result, 'terms' may contain nil elements. Therefore,
+		// we will need need to remove them later
 		if c, isC := api.Compiler().ConstantValue(poly[i]); isC && c.IsInt64() && c.Int64() == 0 {
 			continue
 		}
@@ -55,8 +61,28 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 		terms[i] = api.Mul(terms[i], poly[i])
 	}
 
+	nonNilTerms := make([]frontend.Variable, 0, len(terms))
+	for i := range terms {
+		if terms[i] == nil {
+			continue
+		}
+
+		nonNilTerms = append(nonNilTerms, terms[i])
+	}
+
 	// Then sum all the terms
-	res := api.Add(terms[0], terms[1], terms[2:]...)
+	var res frontend.Variable
+
+	switch {
+	case len(nonNilTerms) == 0:
+		res = 0
+	case len(nonNilTerms) == 1:
+		res = nonNilTerms[0]
+	case len(nonNilTerms) == 2:
+		res = api.Add(nonNilTerms[0], nonNilTerms[1])
+	default:
+		res = api.Add(nonNilTerms[0], nonNilTerms[1], nonNilTerms[2:]...)
+	}
 
 	/*
 		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}

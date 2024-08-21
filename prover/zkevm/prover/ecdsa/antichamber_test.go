@@ -91,7 +91,7 @@ func TestAntichamber(t *testing.T) {
 			ct.Assign(run,
 				"EC_DATA_CS_ECRECOVER", "EC_DATA_ID", "EC_DATA_LIMB", "EC_DATA_SUCCESS_BIT", "EC_DATA_INDEX", "EC_DATA_IS_DATA", "EC_DATA_IS_RES",
 			)
-			ac.assign(run, dummyTxSignatureGetter)
+			ac.assign(run, dummyTxSignatureGetter, limits.MaxNbTx)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {

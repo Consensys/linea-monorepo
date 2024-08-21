@@ -8,6 +8,7 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
+conflated_traces_dir = "./prover-v2/conflated"
 
 [blob_decompression]
 prover_mode = "dev"
