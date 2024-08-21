@@ -52,7 +52,7 @@ func TestFactory(t *testing.T) {
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness, SolverOpts(scs)...)
+	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 }
 
@@ -73,7 +73,7 @@ func TestFactoryWithPadding(t *testing.T) {
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness, SolverOpts(scs)...)
+	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 }
 
@@ -105,7 +105,7 @@ func TestFactoryManySizes(t *testing.T) {
 			witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 			require.NoError(t, err)
 
-			err = scs.IsSolved(witness, SolverOpts(scs)...)
+			err = scs.IsSolved(witness)
 			require.NoError(t, err)
 		})
 	}

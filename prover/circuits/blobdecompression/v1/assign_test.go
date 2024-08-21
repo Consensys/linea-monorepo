@@ -5,6 +5,8 @@ package v1_test
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
@@ -13,12 +15,10 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression"
 	v1 "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	blobcompressorv1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 	blobtestutils "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func prepareTestBlob(t require.TestingT) (c, a frontend.Circuit) {
@@ -88,5 +88,5 @@ func TestSingleBlockBlobNoEngine(t *testing.T) {
 	w, err := frontend.NewWitness(a, ecc.BLS12_377.ScalarField())
 	assert.NoError(t, err)
 
-	assert.NoError(t, cs.IsSolved(w, gkrmimc.SolverOpts(cs)...))
+	assert.NoError(t, cs.IsSolved(w))
 }
