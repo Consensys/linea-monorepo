@@ -72,6 +72,7 @@ jobs:
       POSTMAN_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
       PROVER_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
       TRACES_API_TAG: ${{ inputs.commit_tag }}-${{ inputs.untested_tag_suffix }}
+      GITHUB_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
     runs-on: ubuntu-22.04-16core

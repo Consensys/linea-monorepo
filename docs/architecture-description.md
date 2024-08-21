@@ -39,6 +39,7 @@ B) IntelliJ - https://www.jetbrains.com/help/idea/markdown.html#table-of-content
     * [Aggregation](#aggregation-1)
   * [L1 -> L2 messages](#l1---l2-messages)
   * [L2 -> L1](#l2---l1)
+* [Finalized block tag on L2](#finalized-block-tag-on-l2)
 <!-- TOC -->
 
 # Transaction execution and management
@@ -968,3 +969,12 @@ Any party (e.g. via an npm package we provide for the bridge/partners etc) does 
 5. Queries the L2 blocks in that list (or range - lowest-highest) to get all MessageSent events.
 6. Groups all the message hashes from the query into groups based on the tree depth from the Merkle root anchoring events. E.g. depth 5 results in 2^5 (32) hashes. A group will be filled with empty hashes to make 32 if it is partial.
 7. Picks the group for the required message hash and constructs a Merkle proof to claim against using the group's message hashes.
+
+
+# Finalized Block Tag on L2
+
+For a Linea besu node to support `finalized` tag on Ethereum RPC methods (e.g. `eth_getBlockByNumber`), the linea besu node would need to run with the `finalized-tag-updater` plugin (download [page](https://github.com/Consensys/zkevm-monorepo/releases/tag/finalized-tag-updater-v0.0.1) and please note that it requires a Github access token for now but would soon to be publicly downloadable from [linea-monorepo](https://github.com/Consensys/linea-monorepo))
+
+The plugin periodically calls the L1 Linea rollup contract's `currentL2BlockNumber` method to retrieve the latest proven L2 block number from the current L1 `finalized` block, and set the L2 block number as the `finalized` (and `safe` block number) to the plugin-hosting besu client.
+
+For more information on how to run besu node with plugin, please check out the Besu official [website](https://besu.hyperledger.org/private-networks/concepts/plugins)

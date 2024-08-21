@@ -33,6 +33,7 @@ abstract class PeriodicPollingService(
   override fun stop(): SafeFuture<Unit> {
     if (timerId != null) {
       vertx.cancelTimer(timerId!!)
+      timerId = null
     } else {
       log.info("Service is not running to stop it!")
     }
@@ -45,11 +46,15 @@ abstract class PeriodicPollingService(
       action()
         .whenComplete { _, error ->
           error?.let(::handleError)
-          timerId = vertx.setTimer(pollingIntervalMs, this::actionHandler)
+          if (timerId != null) {
+            timerId = vertx.setTimer(pollingIntervalMs, this::actionHandler)
+          }
         }
     } catch (e: Exception) {
       handleError(e)
-      timerId = vertx.setTimer(pollingIntervalMs, this::actionHandler)
+      if (timerId != null) {
+        timerId = vertx.setTimer(pollingIntervalMs, this::actionHandler)
+      }
     }
   }
 }

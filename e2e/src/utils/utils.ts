@@ -65,6 +65,14 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
+export async function getBlockByNumberOrBlockTag(
+  rpcUrl: URL,
+  blockTag: BlockTag
+): Promise<ethers.providers.Block> {
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl.href);
+  return provider.getBlock(blockTag)
+}
+
 export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(
   contract: TContract,
   eventFilter: TypedEventFilter<TEvent>,

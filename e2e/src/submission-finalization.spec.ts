@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import { BigNumber, Wallet, ethers } from "ethers";
+import { Wallet, ethers } from "ethers";
 import { OPERATOR_ROLE, ROLLING_HASH_UPDATED_EVENT_SIGNATURE, VERIFIER_SETTER_ROLE } from "./utils/constants";
 import { getAndIncreaseFeeData } from "./utils/helpers";
 import { MessageEvent } from "./utils/types";
-import { getMessageSentEventFromLogs, sendMessage, sendTransactionsWithInterval, waitForEvents } from "./utils/utils";
+import { getMessageSentEventFromLogs, sendMessage, sendTransactionsWithInterval, waitForEvents, wait, getBlockByNumberOrBlockTag } from "./utils/utils";
 
 const submissionAndFinalizationTestSuite = (title: string) => {
   describe(title, () => {
@@ -164,7 +164,7 @@ const submissionAndFinalizationTestSuite = (title: string) => {
         lineaRollup.stateRootHashes(dataFinalizedEvent.args.lastBlockFinalized),
       ]);
 
-      expect(lastBlockFinalized).toEqual(BigNumber.from(dataFinalizedEvent.args.lastBlockFinalized));
+      expect(lastBlockFinalized.toBigInt()).toBeGreaterThanOrEqual(dataFinalizedEvent.args.lastBlockFinalized.toBigInt());
       expect(newStateRootHash).toEqual(dataFinalizedEvent.args.finalRootHash);
       expect(dataFinalizedEvent.args.withProof).toBeTruthy();
 
@@ -172,6 +172,29 @@ const submissionAndFinalizationTestSuite = (title: string) => {
 
       clearInterval(sendTransactionsPromise);
     }, 300_000);
+
+    it( "Check L2 safe/finalized tag update on sequencer", async () => {
+      if (SEQUENCER_ENDPOINT == null) {
+        console.log("Skipped the \"Check L2 safe/finalized tag update on sequencer\" test");
+        return;
+      }
+      const lastFinalizedL2BlockNumberOnL1 = (await lineaRollup.currentL2BlockNumber({ blockTag: "finalized" })).toNumber();
+      console.log(`lastFinalizedL2BlockNumberOnL1=${lastFinalizedL2BlockNumberOnL1}`)
+
+      let safeL2BlockNumber = -1, finalizedL2BlockNumber = -1
+      while (safeL2BlockNumber < lastFinalizedL2BlockNumberOnL1 || finalizedL2BlockNumber < lastFinalizedL2BlockNumberOnL1) {
+        safeL2BlockNumber = (await getBlockByNumberOrBlockTag(SEQUENCER_ENDPOINT, "safe")).number;
+        finalizedL2BlockNumber = (await getBlockByNumberOrBlockTag(SEQUENCER_ENDPOINT, "finalized")).number;
+        await wait(1_000);
+      }
+
+      console.log(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);
+
+      expect(safeL2BlockNumber).toBeGreaterThanOrEqual(lastFinalizedL2BlockNumberOnL1);
+      expect(finalizedL2BlockNumber).toBeGreaterThanOrEqual(lastFinalizedL2BlockNumberOnL1);
+
+      console.log("L2 safe/finalized tag update on sequencer done.");
+    }, 300_000)
 
     it("Check L1 claiming", async () => {
       // Send transactions on L2 in the background to make the L2 chain moving forward
@@ -198,6 +221,9 @@ const submissionAndFinalizationTestSuite = (title: string) => {
       await waitForEvents(lineaRollup, lineaRollup.filters.MessageClaimed(messageHash), 1_000);
 
       expect(await lineaRollup.isMessageClaimed(messageNumber)).toBeTruthy();
+
+      console.log("L1 claiming done.");
+
       clearInterval(sendTransactionsPromise);
     }, 400_000);
   });

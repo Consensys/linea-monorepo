@@ -44,6 +44,7 @@ include 'coordinator:persistence:feehistory'
 include 'coordinator:ethereum:gas-pricing'
 include 'coordinator:ethereum:gas-pricing:static-cap'
 include 'coordinator:ethereum:gas-pricing:dynamic-cap'
+include 'finalized-tag-updater'
 include 'testing-tools'
 include('testing-tools:app')
 include('traces-api-facade:app')
