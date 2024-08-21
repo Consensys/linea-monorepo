@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title LineaRollup interface for current functions, events and errors.

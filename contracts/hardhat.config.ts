@@ -28,9 +28,10 @@ const config: HardhatUserConfig = {
     artifacts: "./build",
   },
   solidity: {
+    // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
     compilers: [
       {
-        version: "0.8.25",
+        version: "0.8.26",
         settings: {
           viaIR: useViaIR,
           optimizer: {
@@ -41,7 +42,7 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: "0.8.24",
+        version: "0.8.25",
         settings: {
           viaIR: useViaIR,
           optimizer: {
@@ -81,17 +82,9 @@ const config: HardhatUserConfig = {
       accounts: [process.env.SEPOLIA_PRIVATE_KEY || EMPTY_HASH],
       url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
-    goerli: {
-      accounts: [process.env.GOERLI_PRIVATE_KEY || EMPTY_HASH],
-      url: "https://goerli.infura.io/v3/" + process.env.INFURA_API_KEY,
-    },
     linea_mainnet: {
       accounts: [process.env.LINEA_MAINNET_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
-    },
-    linea_goerli: {
-      accounts: [process.env.LINEA_GOERLI_PRIVATE_KEY || EMPTY_HASH],
-      url: "https://linea-goerli.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
     linea_sepolia: {
       accounts: [process.env.LINEA_SEPOLIA_PRIVATE_KEY || EMPTY_HASH],
@@ -122,21 +115,11 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       mainnet: process.env.ETHERSCAN_API_KEY ?? "",
-      goerli: process.env.ETHERSCAN_API_KEY ?? "",
       sepolia: process.env.ETHERSCAN_API_KEY ?? "",
       linea_sepolia: process.env.LINEASCAN_API_KEY ?? "",
-      linea_goerli: process.env.LINEASCAN_API_KEY ?? "",
       linea_mainnet: process.env.LINEASCAN_API_KEY ?? "",
     },
     customChains: [
-      {
-        network: "linea_goerli",
-        chainId: 59140,
-        urls: {
-          apiURL: "https://api-goerli.lineascan.build/api",
-          browserURL: "https://goerli.lineascan.build/",
-        },
-      },
       {
         network: "linea_sepolia",
         chainId: 59141,
