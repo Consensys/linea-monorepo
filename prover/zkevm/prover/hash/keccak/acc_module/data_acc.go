@@ -73,7 +73,7 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
 			[]ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
 			[]ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
-			gbm.TO_HASH,
+			gbm.ToHash,
 			d.sFilters[i],
 		)
 	}
@@ -95,7 +95,7 @@ func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProv
 	d.Provider.Limb = createCol("sLimb")
 	d.Provider.NBytes = createCol("sNBytes")
 	d.Provider.Index = createCol("sIndex")
-	d.Provider.TO_HASH = d.IsActive
+	d.Provider.ToHash = d.IsActive
 }
 
 // It assigns the columns specific to the submodule.
@@ -108,7 +108,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 		asb[i].Limb = providers[i].Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].NBytes = providers[i].NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].Index = providers[i].Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		asb[i].TO_HASH = providers[i].TO_HASH.GetColAssignment(run).IntoRegVecSaveAlloc()
+		asb[i].TO_HASH = providers[i].ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	sFilters := make([][]field.Element, len(providers))

@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
@@ -209,6 +210,6 @@ func StartFromBlock() int {
 	return *startFromBlock
 }
 
-func EndWithRootHash() string {
-	return *endWithRootHash
+func EndWithRootHash() types.Bytes32 {
+	return types.Bytes32FromHex(*endWithRootHash)
 }

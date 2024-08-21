@@ -23,7 +23,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu:${SEQUENCER_TAG:-linea-delivery-27}
+    image: consensys/linea-besu:${SEQUENCER_TAG:-linea-delivery-28}
     profiles: [ "l2", "l2-bc", "debug" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
@@ -65,7 +65,7 @@ services:
   linea-besu-sequencer-plugin-downloader:
     image: busybox:1.36.1
     # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test29/besu-sequencer-plugins-v0.1.4-test29.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test32/besu-sequencer-plugins-v0.1.4-test32.jar",  "/linea-besu-sequencer" ]
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
@@ -261,7 +261,7 @@ services:
     ports:
       - "9545:9545"
     restart: on-failure
-    command: [ 'java', '-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/app-all.jar', '--traces-limits', 'config/traces-limits-v1.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-web3signer-override.config.toml' ]
+    command: [ 'java', '-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits', 'config/traces-limits-v1.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-web3signer-override.config.toml' ]
     volumes:
       - ../config/coordinator/coordinator-docker.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker.config.toml:ro
       - ../config/coordinator/coordinator-docker-web3signer-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-web3signer-override.config.toml:ro

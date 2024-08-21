@@ -1,19 +1,20 @@
-package publicInput
+package execution_data_collector
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 	"testing"
 )
 
 // TestAssignmentExecutionDataCollector tests whether the execution data collector
 // defines its constraints and assigns its columns without any errors.
-func TestAssignmentExecutionDataCollector(t *testing.T) {
-	ctBlockData := utilities.InitializeCsv("testdata/blockdata_mock.csv", t)
-	ctTxnData := utilities.InitializeCsv("testdata/txndata_mock.csv", t)
-	ctRlpTxn := utilities.InitializeCsv("testdata/rlp_txn_mock.csv", t)
+func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
+	ctBlockData := util.InitializeCsv("../testdata/blockdata_mock.csv", t)
+	ctTxnData := util.InitializeCsv("../testdata/txndata_mock.csv", t)
+	ctRlpTxn := util.InitializeCsv("../testdata/rlp_txn_mock.csv", t)
 
 	var (
 		edc              ExecutionDataCollector
@@ -21,38 +22,15 @@ func TestAssignmentExecutionDataCollector(t *testing.T) {
 		timestampFetcher fetch.TimestampFetcher
 		txnDataFetcher   fetch.TxnDataFetcher
 		rlpTxnFetcher    fetch.RlpTxnFetcher
-		txd              *fetch.TxnData
-		bdc              *fetch.BlockDataCols
-		rt               *fetch.RlpTxn
+		txd              *arith.TxnData
+		bdc              *arith.BlockDataCols
+		rt               *arith.RlpTxn
 	)
 
 	define := func(b *wizard.Builder) {
-		bdc = &fetch.BlockDataCols{
-			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
-			Inst:     ctBlockData.GetCommit(b, "INST"),
-			Ct:       ctBlockData.GetCommit(b, "CT"),
-			DataHi:   ctBlockData.GetCommit(b, "DATA_HI"),
-			DataLo:   ctBlockData.GetCommit(b, "DATA_LO"),
-		}
-		txd = &fetch.TxnData{
-			AbsTxNum:        ctTxnData.GetCommit(b, "TD.ABS_TX_NUM"),
-			AbsTxNumMax:     ctTxnData.GetCommit(b, "TD.ABS_TX_NUM_MAX"),
-			RelTxNum:        ctTxnData.GetCommit(b, "TD.REL_TX_NUM"),
-			RelTxNumMax:     ctTxnData.GetCommit(b, "TD.REL_TX_NUM_MAX"),
-			Ct:              ctTxnData.GetCommit(b, "TD.CT"),
-			FromHi:          ctTxnData.GetCommit(b, "TD.FROM_HI"),
-			FromLo:          ctTxnData.GetCommit(b, "TD.FROM_LO"),
-			IsLastTxOfBlock: ctTxnData.GetCommit(b, "TD.IS_LAST_TX_OF_BLOCK"),
-			RelBlock:        ctTxnData.GetCommit(b, "TD.REL_BLOCK"),
-		}
-		rt = &fetch.RlpTxn{
-			AbsTxNum:       ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM"),
-			AbsTxNumMax:    ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM_MAX"),
-			ToHashByProver: ctRlpTxn.GetCommit(b, "RL.TO_HASH_BY_PROVER"),
-			Limb:           ctRlpTxn.GetCommit(b, "RL.LIMB"),
-			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
-		}
-
+		// define the arith test modules
+		bdc, txd, rt = arith.DefineTestingArithModules(b, ctBlockData, ctTxnData, ctRlpTxn)
+		// create and define a metadata fetcher
 		btm = fetch.NewBlockTxnMetadata(b.CompiledIOP, "BLOCK_TX_METADATA", txd)
 		fetch.DefineBlockTxnMetaData(b.CompiledIOP, &btm, "BLOCK_TX_METADATA", txd)
 		// create a new timestamp fetcher
@@ -72,34 +50,7 @@ func TestAssignmentExecutionDataCollector(t *testing.T) {
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
-		ctBlockData.Assign(
-			run,
-			"REL_BLOCK",
-			"INST",
-			"CT",
-			"DATA_HI",
-			"DATA_LO",
-		)
-		ctTxnData.Assign(
-			run,
-			"TD.ABS_TX_NUM",
-			"TD.ABS_TX_NUM_MAX",
-			"TD.REL_TX_NUM",
-			"TD.REL_TX_NUM_MAX",
-			"TD.CT",
-			"TD.FROM_HI",
-			"TD.FROM_LO",
-			"TD.IS_LAST_TX_OF_BLOCK",
-			"TD.REL_BLOCK",
-		)
-		ctRlpTxn.Assign(
-			run,
-			"RT.ABS_TX_NUM",
-			"RT.ABS_TX_NUM_MAX",
-			"RL.TO_HASH_BY_PROVER",
-			"RL.LIMB",
-			"RL.NBYTES",
-		)
+		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
 		fetch.AssignTimestampFetcher(run, timestampFetcher, bdc)
 		fetch.AssignBlockTxnMetadata(run, btm, txd)
 		fetch.AssignTxnDataFetcher(run, txnDataFetcher, txd)

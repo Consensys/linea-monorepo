@@ -172,7 +172,7 @@ interface ILineaRollup {
   error BlobSubmissionDataIsMissing();
 
   /**
-   * @dev Thrown when the data for the last blobs submission is empty.
+   * @dev Thrown when a blob has been submitted but there is no data for it.
    */
   error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 

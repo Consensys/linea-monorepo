@@ -57,7 +57,7 @@ func TestImportAndPad(t *testing.T) {
 					Src: generic.GenericByteModule{Data: generic.GenDataModule{
 						HashNum: inpCt.GetCommit(build, "HASH_NUM"),
 						Index:   inpCt.GetCommit(build, "INDEX"),
-						TO_HASH: inpCt.GetCommit(build, "TO_HASH"),
+						ToHash:  inpCt.GetCommit(build, "TO_HASH"),
 						NBytes:  inpCt.GetCommit(build, "NBYTES"),
 						Limb:    inpCt.GetCommit(build, "LIMBS"),
 					}},
@@ -113,7 +113,7 @@ func checkPaddingAssignment(t *testing.T, run *wizard.ProverRuntime, paddingFunc
 			HashNum: mod.HashNum,
 			Limb:    mod.Limbs,
 			NBytes:  mod.NBytes,
-			TO_HASH: mod.IsActive,
+			ToHash:  mod.IsActive,
 		}
 
 		inputStreams        = mod.Inputs.Src.Data.ScanStreams(run)

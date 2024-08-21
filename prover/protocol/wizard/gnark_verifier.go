@@ -390,10 +390,8 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 
 		// Perform the conversion to frontend.Variable, element by element
 		assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+		res.columnsIDs.InsertNew(colName, len(res.Columns))
 		res.Columns = append(res.Columns, assignedMsg)
-
-		// Also add the index
-		res.columnsIDs.InsertNew(colName, i)
 	}
 
 	/*

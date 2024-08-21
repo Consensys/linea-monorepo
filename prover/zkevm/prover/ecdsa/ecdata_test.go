@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"os"
@@ -19,7 +19,7 @@ func TestEcDataAssignData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	limits := &Limits{
+	limits := &Settings{
 		MaxNbEcRecover: 3, // data has two entires, test if can align when have bigger limit
 	}
 	var ecRec *EcRecover

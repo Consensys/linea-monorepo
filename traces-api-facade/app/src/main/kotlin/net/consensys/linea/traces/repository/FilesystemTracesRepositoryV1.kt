@@ -77,7 +77,7 @@ class FilesystemTracesRepositoryV1(
     block: TracesFileIndex
   ): SafeFuture<String> {
     val startTime = System.nanoTime()
-    return fsHelper.readGzipedJsonFileAsString(Path.of(filePath))
+    return fsHelper.readGzippedJsonFileAsString(Path.of(filePath))
       .map { json -> tracesOnlyFilter(json) }
       .toSafeFuture()
       .whenComplete { _, _ ->

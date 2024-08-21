@@ -8,12 +8,10 @@ import (
 
 func MakeDefine(cfg *config.Config) wizard.DefineFunc {
 	return func(b *wizard.Builder) {
-		arith := arithmetization.Arithmetization{
-			Settings: &arithmetization.Settings{
-				Traces: &cfg.TracesLimits,
-			},
-		}
-		arith.Define(b)
+		_ = arithmetization.NewArithmetization(
+			b,
+			arithmetization.Settings{Traces: &cfg.TracesLimits},
+		)
 	}
 }
 

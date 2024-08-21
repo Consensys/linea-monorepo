@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
 	decompression "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
@@ -18,31 +17,22 @@ import (
 	"hash"
 )
 
-type ExecutionRequest struct {
-	L2MsgHashes            [][32]byte
-	FinalStateRootHash     [32]byte
-	FinalBlockNumber       uint64
-	FinalBlockTimestamp    uint64
-	FinalRollingHash       [32]byte
-	FinalRollingHashNumber uint64
-}
-
 type Request struct {
-	DecompDict     []byte
 	Decompressions []blobsubmission.Response
-	Executions     []ExecutionRequest
+	Executions     []public_input.Execution
 	Aggregation    public_input.Aggregation
 }
 
 func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	internal.RegisterHints()
 	keccak.RegisterHints()
+	utils.RegisterHints()
 
 	// TODO there is data duplication in the request. Check consistency
 
 	// infer config
 	config := c.getConfig()
-	a = config.allocateCircuit()
+	a = allocateCircuit(config)
 
 	if len(r.Decompressions) > config.MaxNbDecompression {
 		err = errors.New("number of decompression proofs exceeds maximum")
@@ -69,7 +59,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	if err != nil {
 		return
 	}
-	internal.Copy(a.ParentShnarf[:], prevShnarf)
+	utils.Copy(a.ParentShnarf[:], prevShnarf)
 
 	execDataChecksums := make([][]byte, 0, len(r.Executions))
 	shnarfs := make([][]byte, config.MaxNbDecompression)
@@ -156,7 +146,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		} else {
 			a.DecompressionFPIQ[i] = fpis.FunctionalPublicInputQSnark
 		}
-		internal.Copy(a.DecompressionFPIQ[i].X[:], zero[:])
+		utils.Copy(a.DecompressionFPIQ[i].X[:], zero[:])
 		if a.DecompressionPublicInput[i], err = fpi.Sum(decompression.WithBatchesSum(zero[:])); err != nil { // TODO zero batches sum is probably incorrect
 			return
 		}
@@ -164,7 +154,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 	// Aggregation FPI
 
-	aggregationFPI, err := aggregation.NewFunctionalPublicInput(&r.Aggregation)
+	aggregationFPI, err := public_input.NewAggregationFPI(&r.Aggregation)
 	if err != nil {
 		return
 	}
@@ -173,10 +163,10 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		return
 	}
 	aggregationFPI.NbDecompression = uint64(len(r.Decompressions))
-	a.FunctionalPublicInputQSnark = aggregationFPI.ToSnarkType().FunctionalPublicInputQSnark
+	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << config.L2MsgMerkleDepth
-	maxNbL2MessageHashes := config.L2MessageMaxNbMerkle * merkleNbLeaves
+	maxNbL2MessageHashes := config.L2MsgMaxNbMerkle * merkleNbLeaves
 	l2MessageHashes := make([][32]byte, 0, maxNbL2MessageHashes)
 	// Execution FPI
 	executionFPI := execution.FunctionalPublicInput{
@@ -187,7 +177,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 		FinalRollingHashNumber: aggregationFPI.InitialRollingHashNumber,
 		L2MessageServiceAddr:   aggregationFPI.L2MessageServiceAddr,
 		ChainID:                aggregationFPI.ChainID,
-		MaxNbL2MessageHashes:   config.MaxNbMsgPerExecution,
+		MaxNbL2MessageHashes:   config.ExecutionMaxNbMsg,
 	}
 	for i := range a.ExecutionFPIQ {
 		executionFPI.InitialRollingHash = executionFPI.FinalRollingHash
@@ -251,16 +241,16 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	}
 
 	// pad the merkle roots
-	if len(r.Aggregation.L2MsgRootHashes) > config.L2MessageMaxNbMerkle {
+	if len(r.Aggregation.L2MsgRootHashes) > config.L2MsgMaxNbMerkle {
 		err = errors.New("more merkle trees than there is capacity")
 		return
 	}
 
 	{
-		roots := internal.CloneSlice(r.Aggregation.L2MsgRootHashes, config.L2MessageMaxNbMerkle)
+		roots := internal.CloneSlice(r.Aggregation.L2MsgRootHashes, config.L2MsgMaxNbMerkle)
 		emptyRootHex := utils.HexEncodeToString(emptyTree[len(emptyTree)-1][:32])
 
-		for i := len(r.Aggregation.L2MsgRootHashes); i < config.L2MessageMaxNbMerkle; i++ {
+		for i := len(r.Aggregation.L2MsgRootHashes); i < config.L2MsgMaxNbMerkle; i++ {
 			for depth := config.L2MsgMerkleDepth; depth > 0; depth-- {
 				for j := 0; j < 1<<(depth-1); j++ {
 					hshK.Skip(emptyTree[config.L2MsgMerkleDepth-depth])

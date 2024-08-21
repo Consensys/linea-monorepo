@@ -295,7 +295,7 @@ func (b *Builder) equalizeRounds(numRounds int) {
 		Check and reserve for the verifiers
 	*/
 	if comp.subVerifiers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.SubProvers.Len(), helpMsg)
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.subVerifiers.Len(), helpMsg)
 	}
 	comp.subVerifiers.Reserve(numRounds)
 
@@ -303,7 +303,7 @@ func (b *Builder) equalizeRounds(numRounds int) {
 		Check and reserve for the gnark verifiers
 	*/
 	if comp.gnarkSubVerifiers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.SubProvers.Len(), helpMsg)
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the gnark verifier. %v", numRounds, comp.gnarkSubVerifiers.Len(), helpMsg)
 	}
 	comp.gnarkSubVerifiers.Reserve(numRounds)
 }

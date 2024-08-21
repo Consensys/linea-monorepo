@@ -16,16 +16,21 @@ type Arithmetization struct {
 	Settings *Settings
 }
 
-// Define is the function that declares all the columns and the constraints of
+// NewArithmetization is the function that declares all the columns and the constraints of
 // the zkEVM in the input builder object.
-func (a *Arithmetization) Define(builder *wizard.Builder) {
+func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetization {
 	// wrapped works as an adapter between the define.Define and the
 	// wizard.Builder. This value is only relevant during the execution of the
 	// current function and it should not be reused thereafter.
 	wrapped := define.Builder{
-		Settings: a.Settings,
+		Settings: &settings,
 	}
 	wrapped.Define(builder)
+
+	registerMissingColumns(builder, &settings)
+	return &Arithmetization{
+		Settings: &settings,
+	}
 }
 
 // Assign the arithmetization related columns. Namely, it will open the file
@@ -37,4 +42,12 @@ func Assign(run *wizard.ProverRuntime, traceFile string) {
 		traceFile,
 		run,
 	)
+}
+
+// registerMissingColumn registers columns that exists in the arithmetization
+// but are omitted in the define.go as they are unconstrained due to the hub
+// being missing.
+func registerMissingColumns(b *wizard.Builder, limits *Settings) {
+	b.RegisterCommit("shakiradata.LIMB", limits.Traces.Shakiradata)
+	b.RegisterCommit("blake2fmodexpdata.LIMB", limits.Traces.Blake2Fmodexpdata)
 }

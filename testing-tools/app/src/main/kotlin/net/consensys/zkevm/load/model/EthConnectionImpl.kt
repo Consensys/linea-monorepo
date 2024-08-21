@@ -11,11 +11,7 @@ import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Request
 import org.web3j.protocol.core.methods.request.Transaction
-import org.web3j.protocol.core.methods.response.EthBlock
-import org.web3j.protocol.core.methods.response.EthGetBalance
-import org.web3j.protocol.core.methods.response.EthGetTransactionReceipt
-import org.web3j.protocol.core.methods.response.EthSendTransaction
-import org.web3j.protocol.core.methods.response.EthTransaction
+import org.web3j.protocol.core.methods.response.*
 import org.web3j.protocol.http.HttpService
 import org.web3j.tuples.generated.Tuple2
 import org.web3j.utils.Numeric
@@ -28,9 +24,15 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 import java.util.stream.Collectors
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 class EthConnectionImpl(url: String?) : EthConnection {
-  private val httpService: HttpService = HttpService(url)
+  private val httpService: HttpService = run {
+    val builder = HttpService.getOkHttpClientBuilder()
+    builder.readTimeout(5.minutes.toJavaDuration())
+    HttpService(url, builder.build())
+  }
   private val web3: Web3j = Web3j.build(httpService)
   private val logger = LoggerFactory.getLogger(EthConnectionImpl::class.java)
 
@@ -63,7 +65,16 @@ class EthConnectionImpl(url: String?) : EthConnection {
   }
 
   override fun estimateGas(transaction: Transaction): BigInteger {
-    return web3.ethEstimateGas(transaction).send().amountUsed
+    val estimationResponse = web3.ethEstimateGas(transaction).send()
+    try {
+      return estimationResponse.amountUsed
+    } catch (e: Exception) {
+      if (estimationResponse.error != null) {
+        throw RuntimeException(estimationResponse.error.message, e)
+      } else {
+        throw e
+      }
+    }
   }
 
   @Throws(IOException::class)

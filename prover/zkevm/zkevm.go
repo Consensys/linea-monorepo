@@ -1,10 +1,16 @@
 package zkevm
 
 import (
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/serialization"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
 )
@@ -13,48 +19,61 @@ import (
 type ZkEvm struct {
 	// Arithmetization definition function. Generated during the compilation
 	// process.
-	arithmetization arithmetization.Arithmetization
+	arithmetization *arithmetization.Arithmetization
 	// Keccak module in use. Generated during the compilation process.
-	keccak keccak.KeccakZkEVM
+	keccak *keccak.KeccakZkEVM
 	// State manager module in use. Generated during the compilation process.
-	stateManager statemanager.StateManagerLegacy
-
+	stateManager *statemanager.StateManager
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
 	// used to access them to define the outer-circuit.
-	PublicInput publicInput.PublicInput
+	PublicInput *publicInput.PublicInput
+	// ecdsa is the module responsible for verifying the ecdsa tx signatures and
+	// ecrecover
+	ecdsa *ecdsa.EcdsaZkEvm
+
+	// modexp is the module responsible for proving the calls to the modexp
+	// precompile
+	modexp *modexp.Module
+	// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+	//
+	// ecadd is the module responsible for proving the calls to the ecadd
+	// precompile
+	// ecadd *ecarith.EcAdd
+	// ecmul is the module responsible for proving the calls to the ecmul
+	// precompile
+	ecmul *ecarith.EcMul
+	// ecpair is the module responsible for the proving the calls the ecpairing
+	// precompile
+	ecpair *ecpair.ECPair
+	// sha2 is the module responsible for doing the computation of the sha2
+	// precompile.
+	sha2 *sha2.Sha2SingleProvider
 
 	// Contains the actual wizard-IOP compiled object. This object is called to
 	// generate the inner-proof.
 	WizardIOP *wizard.CompiledIOP
 }
 
-// Instantiate a new ZkEvm instance. The function itself is a noop. Call
-// `Compile` to actually instantate the zkEVM proof scheme. It only dispatches
-// the configuration across its components.
+// NewZkEVM instantiates a new ZkEvm instance. The function returns a fully
+// initialized and compiled zkEVM object tuned with the caller's parameters and
+// the input compilation suite.
+//
+// The function can take a bit of time to complete. It will populate the zkEVM
+// struct and needs to be called before running the prover of the inner-proof.
 func NewZkEVM(
 	settings Settings, // Settings for the zkEVM
 ) *ZkEvm {
-	return &ZkEvm{
-		arithmetization: arithmetization.Arithmetization{
-			Settings: &settings.Arithmetization,
-		},
-		stateManager: statemanager.StateManagerLegacy{
-			Settings: &settings.Statemanager,
-		},
-		keccak: keccak.KeccakZkEVM{
-			Settings: &settings.Keccak,
-		},
-	}
-}
 
-// Compiles instantiate the prover scheme over the parameterized zkEVM. The
-// function can take a bit of time to complete. It will populate the zkEVM
-// struct and needs to be called before running the prover of the inner-proof.
-// It returns the (populated) receiver.
-func (z *ZkEvm) Compile(suite compilationSuite, vm wizard.VersionMetadata) *ZkEvm {
-	z.WizardIOP = wizard.Compile(z.define, suite...)
-	z.WizardIOP.BootstrapFiatShamir(vm, serialization.SerializeCompiledIOP)
-	return z
+	var (
+		res    *ZkEvm
+		define = func(b *wizard.Builder) {
+			res = newZkEVM(b, &settings)
+		}
+		wizardIOP = wizard.Compile(define, settings.CompilationSuite...).BootstrapFiatShamir(settings.Metadata, serialization.SerializeCompiledIOP)
+	)
+
+	res.WizardIOP = wizardIOP
+	return res
 }
 
 // Prove assigns and runs the inner-prover of the zkEVM and then, it returns the
@@ -68,29 +87,41 @@ func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 	return wizard.Verify(z.WizardIOP, proof)
 }
 
-// The define function of the zkEVM define module. This function is unexported
-// and should not be exported. The user should instead use the "Compile"
-// function. This function is meant to be passed as a closure to the
+// newZkEVM is the main define function of the zkEVM module. This function is
+// unexported and should not be exported. The user should instead use the
+// "NewZkEvm" function. This function is meant to be passed as a closure to the
 // wizard.Compile function. Thus, this is an internal.
-func (z *ZkEvm) define(b *wizard.Builder) {
+func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 
-	// Run the arithmetization function first. Always. Because the other modules
-	// are "building" on top of it.
-	z.arithmetization.Define(b)
+	var (
+		comp         = b.CompiledIOP
+		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
+		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa)
+		stateManager = statemanager.NewStateManagerNoHub(comp, s.Statemanager)
+		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
+		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp)
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
+		ecmul       = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
+		ecpair      = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
+		sha2        = sha2.NewSha2ZkEvm(comp, s.Sha2)
+		publicInput = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
+	)
 
-	// Recall, the state-manager is not feature-gated for the full prover but it
-	// is disabled for the partial and the checker
-	if z.stateManager.Settings.Enabled {
-		z.stateManager.Define(b.CompiledIOP)
-	}
-
-	// If the keccak module is enabled, set the module.
-	if z.keccak.Settings.Enabled {
-		keccakInp := keccak.KeccakZkEVMInput{
-			Settings: z.keccak.Settings,
-			// list of modules for integration
-		}
-		z.keccak = *keccak.NewKeccakZkEVM(b.CompiledIOP, keccakInp)
+	return &ZkEvm{
+		arithmetization: arith,
+		ecdsa:           ecdsa,
+		stateManager:    stateManager,
+		keccak:          keccak,
+		modexp:          modexp,
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// ecadd:           ecadd,
+		ecmul:       ecmul,
+		ecpair:      ecpair,
+		sha2:        sha2,
+		PublicInput: &publicInput,
 	}
 }
 
@@ -105,13 +136,22 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
-		if z.stateManager.Settings.Enabled {
-			z.stateManager.Assign(run, input.SMTraces)
-		}
-
-		// Assign the Keccak module
-		if z.keccak.Settings.Enabled {
-			z.keccak.Run(run)
-		}
+		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
+		z.stateManager.Assign(run, input.SMTraces)
+		z.keccak.Run(run)
+		z.modexp.Assign(run)
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// z.ecadd.Assign(run)
+		z.ecmul.Assign(run)
+		z.ecpair.Assign(run)
+		z.sha2.Run(run)
+		z.PublicInput.Assign(run, input.L2BridgeAddress)
 	}
+}
+
+// Limits returns the configuration limits used to instantiate the current
+// zk-EVM.
+func (z *ZkEvm) Limits() *config.TracesLimits {
+	return z.arithmetization.Settings.Traces
 }

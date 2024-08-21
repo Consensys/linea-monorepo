@@ -43,6 +43,9 @@ Interleaving:
 */
 func Naturalize(comp *wizard.CompiledIOP) {
 
+	logrus.Trace("started naturalization compiler")
+	defer logrus.Trace("finished naturalization compiler")
+
 	// The compilation process is applied separately for each query
 	for roundID := 0; roundID < comp.NumRounds(); roundID++ {
 		for _, qName := range comp.QueriesParams.AllKeysAt(roundID) {

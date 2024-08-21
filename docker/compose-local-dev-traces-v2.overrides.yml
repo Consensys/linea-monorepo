@@ -9,7 +9,7 @@ services:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
   linea-besu-sequencer-plugin-downloader:
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.3.0-rc1.1/linea-sequencer-v0.3.0-rc1.1.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.3.0-rc2.2/linea-sequencer-v0.3.0-rc2.2.jar",  "/linea-besu-sequencer" ]
 
   traces-node:
     command: ['echo', 'forced exit as replaced by traces-node-v2']
@@ -95,7 +95,7 @@ services:
     # ./gradlew :coordinator:app:shadowJar
     # docker build coordinator --build-context=jar=./coordinator/app/build/libs/ -t local/linea-coordinator:latest
     # image: local/linea-coordinator:latest
-    command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/app-all.jar', '--traces-limits-v2', 'config/traces-limits-v2.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-traces-v2-override.config.toml' ]
+    command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits-v2', 'config/traces-limits-v2.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-traces-v2-override.config.toml' ]
     # command: ['echo', 'forced exit to run coordinator in debug mode in IntelliJ']
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug coordinator

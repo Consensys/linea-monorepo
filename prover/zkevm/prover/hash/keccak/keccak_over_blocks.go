@@ -85,9 +85,9 @@ func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *K
 	// thus, we need to check that the blocks in keccakf matches the one from base conversion.
 	// blocks in keccakf are the spaghetti form of LaneX.
 	inpSpaghetti := spaghettifier.SpaghettificationInput{
-		Name:          "KECCAK",
+		Name:          "KECCAK_OVER_BLOCKS",
 		ContentMatrix: [][]ifaces.Column{keccakf.Blocks[:]},
-		Filter:        isBlock(keccakf.IO.IsBlcok),
+		Filter:        isBlock(keccakf.IO.IsBlock),
 		SpaghettiSize: bcForBlock.LaneX.Size(),
 	}
 

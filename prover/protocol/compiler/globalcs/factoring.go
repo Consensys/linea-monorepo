@@ -43,7 +43,7 @@ func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symb
 	if !found {
 		wrapper.Expr = simplify.AutoSimplify(flattenedExpr)
 		if err := comp.Artefacts.Store(cacheKey, wrapper); err != nil {
-			utils.Panic("could not cache the factored expression: %v", err)
+			utils.Panic("could not cache the factored expression: %v", err.Error())
 		}
 	}
 

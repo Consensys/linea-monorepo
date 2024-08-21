@@ -1,17 +1,13 @@
 package net.consensys.zkevm.coordinator.clients
 
 import com.fasterxml.jackson.databind.node.ArrayNode
-import com.github.michaelbull.result.Ok
-import com.github.michaelbull.result.Result
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
-import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.coordinator.clients.prover.CommonTestData.bridgeLogs
 import net.consensys.zkevm.coordinator.clients.prover.CommonTestData.ethLogs
-import net.consensys.zkevm.coordinator.clients.prover.ExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.prover.FileBasedExecutionProverClient
 import net.consensys.zkevm.coordinator.clients.prover.SimpleFileNameProvider
 import net.consensys.zkevm.coordinator.clients.prover.randomExecutionPayloads
@@ -46,7 +42,6 @@ class FileBasedBatchExecutionProverClientTest {
   private val tracesFileName = "/some/path/1-3-conflated-traces.json.gz"
   private val tracesEngineVersion = "0.2.3"
   private val zkEvmStateManagerVersion = "0.3.4"
-  private val proverVersion = "0.4.5"
   private val requestSubdirectory = "request"
   private val responseSubdirectory = "response"
   private val mapper = proofResponseMapperV1
@@ -128,16 +123,15 @@ class FileBasedBatchExecutionProverClientTest {
   ) {
     val outputDirectory = Path.of(tempDir.toString(), responseSubdirectory)
     val proverClient = buildProverClient(vertx, tempDir)
-    val expectedProverOutput = mapper.readValue(proofFile, ExecutionProofResponse::class.java)
 
     val startBlockNumber = 3123UL
     val endBlockNumber = 3129UL
     val fileMonitor = proverClient.ResponseFileMonitor(startBlockNumber, endBlockNumber)
     fileMonitor
       .monitor()
-      .thenApply { response: Result<ExecutionProofResponse, ErrorResponse<ProverErrorType>> ->
+      .thenApply { response: Unit ->
         testContext
-          .verify { Assertions.assertThat(response).isEqualTo(Ok(expectedProverOutput)) }
+          .verify { Assertions.assertThat(response).isEqualTo(Unit) }
           .completeNow()
       }
       .exceptionally { testContext.failNow(it) }
