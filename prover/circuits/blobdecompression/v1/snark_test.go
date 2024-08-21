@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"testing"
+
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1/test_utils"
 	cInternal "github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"testing"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -143,7 +145,7 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 
 		for j := range sums {
 			if j < len(batchEnds) {
-				ChecksumLooselyPackedBytes(blob[batchStart:batchEnds[j]], buf, hsh)
+				gnarkutil.ChecksumLooselyPackedBytes(blob[batchStart:batchEnds[j]], buf, hsh)
 				lengths[j] = batchEnds[j] - batchStart
 				sums[j] = bytes.Clone(buf)
 				batchStart = batchEnds[j]

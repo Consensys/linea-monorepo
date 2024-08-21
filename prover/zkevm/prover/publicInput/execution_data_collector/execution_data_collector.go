@@ -1,4 +1,4 @@
-package publicInput
+package execution_data_collector
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -179,6 +180,8 @@ type ExecutionDataCollector struct {
 	FirstAbsTxIDBlock, LastAbsTxIDBlock ifaces.Column
 	// lights up as 1 on the row that contains the last RLP limb of the current transaction.
 	EndOfRlpSegment ifaces.Column
+	// a counter that computes the total number of bytes in all the previous rows, from the first to the current.
+	TotalBytesCounter ifaces.Column
 
 	// Selector columns
 	// SelectorBlockDiff[i]=1 if (edc.BlockId[i] = edc.BlockId[i+1]), used to enforce constancies when
@@ -224,13 +227,14 @@ func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) 
 		Ct:                util.CreateCol(name, "CT", size, comp),
 		HashNum:           util.CreateCol(name, "HASH_NUM", size, comp),
 		EndOfRlpSegment:   util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
+		TotalBytesCounter: util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
 	}
 	return res
 }
 
 // GetSummarySize estimates a necessary upper bound on the ExecutionDataCollector columns
 // we currently ignore the following modules btm *fetch.BlockTxnMetadata, bdc *fetch.BlockDataCols,
-func GetSummarySize(td *fetch.TxnData, rt *fetch.RlpTxn) int {
+func GetSummarySize(td *arith.TxnData, rt *arith.RlpTxn) int {
 	// number of transactions, block timestamp, blockhash + for every transaction, sender address + transaction RLP limbs
 	size := td.Ct.Size()
 	if size < rt.Limb.Size() {
@@ -986,11 +990,37 @@ func DefineSelectorConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 
 }
 
+// DefineTotalBytesCounterConstraints enforces that edc.TotalBytesCounter[0] = edc.NoBytes[0] and
+// edc.TotalBytesCounter[i+1]=edc.TotalBytesCounter[i]+edc.NoBytes[i+1] for i>=0
+func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_START_LOCAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
+		sym.Mul(
+			edc.IsActive,
+			sym.Sub(
+				edc.TotalBytesCounter,
+				edc.NoBytes, // blockIDs start from 1
+			),
+		),
+	)
+
+	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%v_TOTAL_BYTES_COUNTER_GLOBAL_CONSTRAINT", name, edc.TotalBytesCounter.GetColID()),
+		sym.Mul(
+			edc.IsActive,
+			sym.Sub(
+				edc.TotalBytesCounter,
+				edc.NoBytes,
+				column.Shift(edc.TotalBytesCounter, -1),
+			),
+		),
+	)
+}
+
 // DefineCounterConstraints enforces counter constraints for BlockId, AbsTxId and Ct.
 func DefineCounterConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
 	DefineBlockIdCounterConstraints(comp, edc, name)
 	DefineAbsTxIdCounterConstraints(comp, edc, name)
 	DefineCtCounterConstraints(comp, edc, name)
+	DefineTotalBytesCounterConstraints(comp, edc, name)
 }
 
 // DefineZeroizationConstraints enforces that multiple columns are zero when the IsActive filter is zero.
@@ -1149,7 +1179,7 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	// simple constraint asking that HashNum is constant
 	DefineHashNumConstraints(comp, edc, name)
 
-	// Constraints for the counters edc.Ct, edc.AbsTxID, edc.BlockID
+	// Constraints for the counters edc.Ct, edc.AbsTxID, edc.BlockID and edc.TotalBytesCounter
 	DefineCounterConstraints(comp, edc, name)
 
 	// Enforce data consistency with the arithmetization fetchers using projection queries
@@ -1304,4 +1334,5 @@ func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataColl
 	run.AssignColumn(edc.EndOfRlpSegment.GetColID(), smartvectors.NewRegular(vect.EndOfRlpSegment))
 	run.AssignColumn(edc.FirstAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.FirstAbsTxIDBlock))
 	run.AssignColumn(edc.LastAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.LastAbsTxIDBlock))
+	run.AssignColumn(edc.TotalBytesCounter.GetColID(), smartvectors.NewRegular(vect.TotalBytesCounter))
 }

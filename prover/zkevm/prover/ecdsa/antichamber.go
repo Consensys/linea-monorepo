@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecrecover"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
 )
 
@@ -43,7 +42,16 @@ func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name 
 	}
 }
 
-type Antichamber struct {
+type antichamberInput struct {
+	ecSource     *ecDataSource
+	txSource     *txnData
+	rlpTxn       generic.GenDataModule
+	settings     *Settings
+	plonkOptions []plonk.Option
+}
+
+type antichamber struct {
+	Inputs     *antichamberInput
 	IsActive   ifaces.Column
 	ID         ifaces.Column
 	IsPushing  ifaces.Column
@@ -58,66 +66,62 @@ type Antichamber struct {
 
 	// size of AntiChamber
 	size int
-	*Limits
 
 	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
 	Providers []generic.GenericByteModule
 }
 
-type GnarkData struct {
-	IdPerm         ifaces.Column
-	GnarkIndexPerm ifaces.Column
-	DataPerm       ifaces.Column
-}
-
-type Limits struct {
+type Settings struct {
 	MaxNbEcRecover     int
 	MaxNbTx            int
 	NbInputInstance    int
 	NbCircuitInstances int
 }
 
-func (l *Limits) sizeAntichamber() int {
+func (l *Settings) sizeAntichamber() int {
 	return utils.NextPowerOfTwo(l.MaxNbEcRecover*nbRowsPerEcRec + l.MaxNbTx*nbRowsPerTxSign)
 }
 
-func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSource, txSource *txnData, rlpTxn generic.GenDataModule, plonkOptions []plonk.Option) *Antichamber {
-	if limits.MaxNbEcRecover+limits.MaxNbTx != limits.NbInputInstance*limits.NbCircuitInstances {
-		utils.Panic("the number of supported instances %v should be %v + %v", limits.NbInputInstance*limits.NbCircuitInstances, limits.MaxNbEcRecover, limits.MaxNbTx)
+func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *antichamber {
+
+	settings := inputs.settings
+	if settings.MaxNbEcRecover+settings.MaxNbTx > settings.NbInputInstance*settings.NbCircuitInstances {
+		utils.Panic("the number of supported instances %v should be %v + %v", settings.NbInputInstance*settings.NbCircuitInstances, settings.MaxNbEcRecover, settings.MaxNbTx)
 	}
-	size := limits.sizeAntichamber()
+	size := inputs.settings.sizeAntichamber()
 	createCol := createColFn(comp, NAME_ANTICHAMBER, size)
 
 	// declare the native columns
-	res := &Antichamber{
+	res := &antichamber{
+
 		IsActive:   createCol("IS_ACTIVE"),
 		ID:         createCol("ID"),
 		IsPushing:  createCol("IS_PUSHING"),
 		IsFetching: createCol("IS_FETCHING"),
 		Source:     createCol("SOURCE"),
+		Inputs:     inputs,
 
-		size:   size,
-		Limits: limits,
+		size: size,
 	}
 
 	// declare submodules
 	txSignInputs := txSignatureInputs{
-		RlpTxn: rlpTxn,
-		ac:     *res,
+		RlpTxn: inputs.rlpTxn,
+		ac:     res,
 	}
 	res.txSignature = newTxSignatures(comp, txSignInputs)
-	res.EcRecover = newEcRecover(comp, limits, ecSource)
+	res.EcRecover = newEcRecover(comp, inputs.settings, inputs.ecSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
-	res.Addresses = newAddress(comp, size, res.EcRecover, res, txSource)
+	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.txSource)
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_GNARK_DATA,
 		Round:              ROUND_NR,
 		DataToCircuit:      res.UnalignedGnarkData.GnarkData,
 		DataToCircuitMask:  res.IsPushing,
-		Circuit:            ecrecover.NewMultiEcRecoverCircuit(limits.NbInputInstance),
-		InputFiller:        ecrecover.InputFiller,
-		PlonkOptions:       plonkOptions,
-		NbCircuitInstances: limits.NbCircuitInstances,
+		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
+		InputFiller:        inputFiller,
+		PlonkOptions:       inputs.plonkOptions,
+		NbCircuitInstances: settings.NbCircuitInstances,
 	}
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 
@@ -139,7 +143,7 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 	return res
 }
 
-// Assign assings all values in the antichamber. This includes assignment of all
+// assign assings all values in the antichamber. This includes assignment of all
 // the submodules:
 //   - EcRecover
 //   - TxSignature
@@ -149,11 +153,15 @@ func NewAntichamber(comp *wizard.CompiledIOP, limits *Limits, ecSource *ecDataSo
 //
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
-func (ac *Antichamber) Assign(run *wizard.ProverRuntime, ecSrc *ecDataSource, txSource *txnData, rlpTxn generic.GenDataModule, txGet TxSignatureGetter) {
-	nbActualEcRecover := ecSrc.nbActualInstances(run)
-	ac.assignAntichamber(run, nbActualEcRecover)
+func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
+	var (
+		ecSrc             = ac.Inputs.ecSource
+		txSource          = ac.Inputs.txSource
+		nbActualEcRecover = ecSrc.nbActualInstances(run)
+	)
+	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
 	ac.EcRecover.Assign(run, ecSrc)
-	ac.txSignature.assignTxSignature(run)
+	ac.txSignature.assignTxSignature(run, nbActualEcRecover)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
 	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
 	ac.AlignedGnarkData.Assign(run)
@@ -167,9 +175,15 @@ func (ac *Antichamber) Assign(run *wizard.ProverRuntime, ecSrc *ecDataSource, tx
 //   - Source
 //
 // The assignment depends on the number of defined EcRecover and TxSignature instances.
-func (ac *Antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances int) {
-	if nbRowsPerEcRec*ac.MaxNbEcRecover+nbRowsPerTxSign*ac.MaxNbTx > ac.size {
-		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*ac.MaxNbEcRecover+15*ac.MaxNbTx, ac.size)
+func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances, nbTxInstances int) {
+
+	var (
+		maxNbEcRecover = ac.Inputs.settings.MaxNbEcRecover
+		maxNbTx        = ac.Inputs.settings.MaxNbTx
+	)
+
+	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.size {
+		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.size)
 	}
 	// prepare root module columns
 	// for ecrecover case we need 10+14 rows (fetchin and pushing). For TX we need 1+14
@@ -197,7 +211,7 @@ func (ac *Antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 		idxInstance++
 	}
 
-	for i := 0; i < ac.MaxNbTx; i++ {
+	for i := 0; i < nbTxInstances; i++ {
 		for j := 0; j < nbRowsPerTxSign; j++ {
 			resIsActive[nbRowsPerEcRec*nbEcRecInstances+i*nbRowsPerTxSign+j] = field.NewElement(1)
 			resID[nbRowsPerEcRec*nbEcRecInstances+i*nbRowsPerTxSign+j] = field.NewElement(idxInstance)

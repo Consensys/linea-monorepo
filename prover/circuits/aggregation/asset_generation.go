@@ -11,33 +11,43 @@ import (
 )
 
 type builder struct {
-	maxNbProofs int
-	vKeys       []plonk.VerifyingKey
+	maxNbProofs   int
+	vKeys         []plonk.VerifyingKey
+	allowedInputs []string
+	piVKey        plonk.VerifyingKey
 }
 
 func NewBuilder(
 	maxNbProofs int,
+	allowedInputs []string,
+	piVKey plonk.VerifyingKey,
 	vKeys []plonk.VerifyingKey,
 ) *builder {
 	return &builder{
-		maxNbProofs: maxNbProofs,
-		vKeys:       vKeys,
+		piVKey:        piVKey,
+		allowedInputs: allowedInputs,
+		maxNbProofs:   maxNbProofs,
+		vKeys:         vKeys,
 	}
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return MakeCS(b.maxNbProofs, b.vKeys)
+	return MakeCS(b.maxNbProofs, b.allowedInputs, b.piVKey, b.vKeys)
 }
 
 // Initializes the bw6 aggregation circuit and returns a compiled constraint
 // system.
 func MakeCS(
 	maxNbProofs int,
+	allowedInputs []string,
+	piVKey plonk.VerifyingKey,
 	vKeys []plonk.VerifyingKey,
 ) (constraint.ConstraintSystem, error) {
 
-	aggCircuit, err := AllocateAggregationCircuit(
+	aggCircuit, err := AllocateCircuit(
 		maxNbProofs,
+		allowedInputs,
+		piVKey,
 		vKeys,
 	)
 

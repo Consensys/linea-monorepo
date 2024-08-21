@@ -34,6 +34,9 @@ There are the following requirements:
 */
 func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
+	logrus.Trace("started vortex compiler")
+	defer logrus.Trace("finished vortex compiler")
+
 	if !utils.IsPowerOfTwo(blowUpFactor) {
 		utils.Panic("expected a power of two but rho was %v", blowUpFactor)
 	}
@@ -302,7 +305,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		if deg%numLimbs != 0 {
 			utils.Panic("the number of limbs should at least divide the degree")
 		}
-		numFieldPerPoly := deg / numLimbs
+		numFieldPerPoly := utils.Max(1, deg/numLimbs)
 		numShadow := (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
 		targetSize := ctx.comp.Columns.GetSize(coms[0])
 
@@ -579,6 +582,14 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	}
 
 	for _, name := range precomputedColNames {
+
+		_, ok := ctx.PolynomialsTouchedByTheQuery[name]
+		if !ok {
+			logrus.Warnf("got an unconstrained column: %v -> marking as ignored", name)
+			comp.Columns.MarkAsIgnored(name)
+			continue
+		}
+
 		pCol := comp.Columns.GetHandle(name)
 		// Marking all these columns as "Ignored" to mean that the compiler
 		// should ignore theses columns.
@@ -606,7 +617,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			sisDegree          = ctx.SisParams.OutputSize()
 			sisNumLimbs        = ctx.SisParams.NumLimbs()
 			sisNumFieldPerPoly = utils.Max(1, sisDegree/sisNumLimbs)
-			numShadowRows      = len(precomputedCols) % sisNumFieldPerPoly
+			numShadowRows      = sisNumFieldPerPoly - (len(precomputedCols) % sisNumFieldPerPoly)
 		)
 
 		if sisDegree > sisNumLimbs && numShadowRows > 0 {
@@ -619,8 +630,10 @@ func (ctx *Ctx) processStatusPrecomputed() {
 				precomputedCols = append(precomputedCols, shadowCol)
 			}
 		}
+
 	}
 
+	logrus.Infof("Processed %v precomputed columns", len(precomputedCols))
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 }
 

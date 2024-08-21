@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
+
 	blob_v0 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
 	blob_v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
@@ -49,6 +51,7 @@ var allCircuits = []string{
 	string(circuits.ExecutionLargeCircuitID),
 	string(circuits.BlobDecompressionV0CircuitID),
 	string(circuits.BlobDecompressionV1CircuitID),
+	string(circuits.PublicInputInterconnectionCircuitID),
 	string(circuits.AggregationCircuitID),
 	string(circuits.EmulationCircuitID),
 	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
@@ -102,7 +105,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	}
 
 	// for each circuit, we start by compiling the circuit
-	// the we do a shashum and compare against the one in the manifest.json
+	// then we do a sha sum and compare against the one in the manifest.json
 	for c, setup := range inCircuits {
 		if !setup {
 			// we skip aggregation in this first loop since the setup is more complex
@@ -121,8 +124,8 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 			if c == circuits.ExecutionLargeCircuitID {
 				limits = cfg.TracesLimitsLarge
 			}
-			extraFlags["cfg_checksum"] = limits.Checksum() + cfg.Execution.Features.Checksum()
-			zkEvm := zkevm.FullZkEvm(&cfg.Execution.Features, &limits)
+			extraFlags["cfg_checksum"] = limits.Checksum()
+			zkEvm := zkevm.FullZkEvm(&limits)
 			builder = execution.NewBuilder(zkEvm)
 		case circuits.BlobDecompressionV0CircuitID, circuits.BlobDecompressionV1CircuitID:
 			dict, err = os.ReadFile(fDictPath)
@@ -139,11 +142,13 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 				extraFlags["maxUncompressedBytes"] = blob_v1.MaxUncompressedBytes
 				builder = v1.NewBuilder(len(dict))
 			}
+		case circuits.PublicInputInterconnectionCircuitID:
+			builder = pi_interconnection.NewBuilder(cfg.PublicInputInterconnection)
 		case circuits.EmulationDummyCircuitID:
 			// we can get the Verifier.sol from there.
 			builder = dummy.NewBuilder(circuits.MockCircuitIDEmulation, ecc.BN254.ScalarField())
 		default:
-			continue // dummy, aggregation or emulation circuits are handled later
+			continue // dummy, aggregation, emulation or public input circuits are handled later
 		}
 
 		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlags); err != nil {
@@ -162,6 +167,12 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 	if !(inCircuits[circuits.AggregationCircuitID] || inCircuits[circuits.EmulationCircuitID]) {
 		// we are done
 		return nil
+	}
+
+	// get verifying key for public-input circuit
+	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+	if err != nil {
+		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmd.Name(), err)
 	}
 
 	// first, we need to collect the verifying keys
@@ -217,7 +228,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
-		builder := aggregation.NewBuilder(numProofs, allowedVkForAggregation)
+		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup.VerifyingKey, allowedVkForAggregation)
 		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}

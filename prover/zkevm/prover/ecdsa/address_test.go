@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"testing"
@@ -14,11 +14,11 @@ import (
 
 func TestAddress(t *testing.T) {
 	c := testCases
-	limits := &Limits{
+	limits := &Settings{
 		MaxNbEcRecover: 1,
 		MaxNbTx:        4,
 	}
-	ac := &Antichamber{Limits: limits}
+	ac := &antichamber{Inputs: &antichamberInput{settings: limits}}
 	var addr *Addresses
 	var uaGnark *UnalignedGnarkData
 	var ecRec *EcRecover
@@ -28,7 +28,7 @@ func TestAddress(t *testing.T) {
 
 	size := limits.sizeAntichamber()
 
-	nbKeccakF := ac.nbKeccakF(8) // if each txn has 8 blocks
+	nbKeccakF := ac.Inputs.settings.nbKeccakF(8) // if each txn has 8 blocks
 	nbRowsPerTxInTxnData := 9
 
 	sizeTxnData := utils.NextPowerOfTwo(limits.MaxNbTx * nbRowsPerTxInTxnData)
@@ -38,14 +38,14 @@ func TestAddress(t *testing.T) {
 
 		// generate a gbm and use it to represent gnark-columns
 		gbmGnark = testdata.CreateGenDataModule(comp, "UnGNARK", size)
-		ac = &Antichamber{
-			Limits: limits,
+		ac = &antichamber{
+			Inputs: &antichamberInput{settings: limits},
 			ID:     gbmGnark.HashNum,
 		}
 		uaGnark = &UnalignedGnarkData{
 			GnarkData:           gbmGnark.Limb,
 			GnarkPublicKeyIndex: gbmGnark.Index,
-			IsPublicKey:         gbmGnark.TO_HASH,
+			IsPublicKey:         gbmGnark.ToHash,
 		}
 		ac.UnalignedGnarkData = uaGnark
 

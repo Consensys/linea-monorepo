@@ -1,4 +1,4 @@
-package antichamber
+package ecdsa
 
 import (
 	"crypto/rand"
@@ -30,13 +30,13 @@ func TestAntichamber(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ac *Antichamber
+	var ac *antichamber
 	var ecSrc *ecDataSource
 	var txSrc *txnData
-	limits := &Limits{
-		MaxNbEcRecover:     2,
+	limits := &Settings{
+		MaxNbEcRecover:     3,
 		MaxNbTx:            2,
-		NbInputInstance:    4,
+		NbInputInstance:    5,
 		NbCircuitInstances: 1,
 	}
 	var rlpTxn generic.GenDataModule
@@ -65,7 +65,16 @@ func TestAntichamber(t *testing.T) {
 				IsRes:       ct.GetCommit(b, "EC_DATA_IS_RES"),
 			}
 
-			ac = NewAntichamber(b.CompiledIOP, limits, ecSrc, txSrc, rlpTxn, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			ac = newAntichamber(
+				b.CompiledIOP,
+				&antichamberInput{
+					ecSource:     ecSrc,
+					txSource:     txSrc,
+					rlpTxn:       rlpTxn,
+					plonkOptions: []plonk.Option{plonk.WithRangecheck(16, 6, true)},
+					settings:     limits,
+				},
+			)
 		},
 		dummy.Compile,
 	)
@@ -82,7 +91,7 @@ func TestAntichamber(t *testing.T) {
 			ct.Assign(run,
 				"EC_DATA_CS_ECRECOVER", "EC_DATA_ID", "EC_DATA_LIMB", "EC_DATA_SUCCESS_BIT", "EC_DATA_INDEX", "EC_DATA_IS_DATA", "EC_DATA_IS_RES",
 			)
-			ac.Assign(run, ecSrc, txSrc, rlpTxn, dummyTxSignatureGetter)
+			ac.assign(run, dummyTxSignatureGetter, limits.MaxNbTx)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {

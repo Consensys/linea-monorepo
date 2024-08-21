@@ -276,7 +276,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 			if !ok {
 				tableRow := make([]field.Element, len(a.S[i]))
 				for j := range tableRow {
-					tableRow[i] = a.S[i][j].GetColAssignmentAt(run, k)
+					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
 				}
 				utils.Panic(
 					"entry %v of the table %v is not included in the table. tableRow=%v",
