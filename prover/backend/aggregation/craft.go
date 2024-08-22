@@ -270,7 +270,7 @@ func PackOffsets(unpacked []bool) []byte {
 		if b {
 			// @alex: issue #2261 requires the prover to start counting from 1
 			// and not from zero for the offsets.
-			binary.BigEndian.PutUint16(tmp[:], uint16(i+1))
+			binary.BigEndian.PutUint16(tmp[:], utils.ToUint16(i+1)) // #nosec G115 -- Check above precludes overflowing
 			resWrite.Write(tmp[:])
 		}
 	}

@@ -110,7 +110,7 @@ func (ctx *cleaningCtx) assignCleanLimbs(run *wizard.ProverRuntime) {
 	for pos := 0; pos < len(limbs); pos++ {
 		// Extract the limb, which is left aligned to the 16-th byte
 		limbSerialized = limbs[pos].Bytes()
-		nbyte := int(nByte[pos].Uint64())
+		nbyte := field.ToInt(&nByte[pos])
 		res := limbSerialized[LEFT_ALIGNMENT : LEFT_ALIGNMENT+nbyte]
 		cleanLimbs.PushField(*(f.SetBytes(res)))
 	}

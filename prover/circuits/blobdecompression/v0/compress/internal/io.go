@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 	"math/big"
+	"math/bits"
 
 	hint "github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -50,6 +51,9 @@ func (r *RangeChecker) AssertLessThan(bound uint, c ...frontend.Variable) {
 // IsLessThan returns a variable that is 1 if 0 ≤ c < bound, 0 otherwise
 // TODO perf @Tabaie see if we can get away with a weaker contract, where the return value is 0 iff 0 ≤ c < bound
 func (r *RangeChecker) IsLessThan(bound uint, c frontend.Variable) frontend.Variable {
+	if bound >= 1<<(bits.UintSize/2-1) {
+		panic("possible overflow")
+	}
 	switch bound {
 	case 1:
 		return r.api.IsZero(c)
@@ -58,9 +62,11 @@ func (r *RangeChecker) IsLessThan(bound uint, c frontend.Variable) frontend.Vari
 	if bound%2 != 0 {
 		panic("odd bounds not yet supported")
 	}
+	// #nosec G115 -- bound < MaxInt - 1 ⇒ -bound > MinInt
 	v := plonk.EvaluateExpression(r.api, c, c, -int(bound-1), 0, 1, 0) // toRead² - (bound-1)× toRead
 	res := v
 	for i := uint(1); i < bound/2; i++ {
+		// #nosec G115 -- i*(bound-i-1) < bound² ≤ MaxUint/4 < MaxInt; the conversion is safe
 		res = plonk.EvaluateExpression(r.api, res, v, int(i*(bound-i-1)), 0, 1, 0)
 	}
 

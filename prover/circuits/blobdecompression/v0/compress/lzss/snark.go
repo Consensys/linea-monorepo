@@ -22,12 +22,12 @@ func Decompress(api frontend.API, c []frontend.Variable, cLength frontend.Variab
 	api.AssertIsLessOrEqual(cLength, len(c)) // sanity check
 
 	// size-related "constants"
-	wordNbBits := int(level)
+	wordNbBits := int(level)                                                                      // #nosec G115 -- Not expected to run on an architecture with byte-long words
 	shortBackRefType, longBackRefType, dictBackRefType := lzss.InitBackRefTypes(len(dict), level) // init the dictionary and backref types; only needed for the constants below
-	shortBrNbWords := int(shortBackRefType.NbBitsBackRef) / wordNbBits
-	longBrNbWords := int(longBackRefType.NbBitsBackRef) / wordNbBits
-	dictBrNbWords := int(dictBackRefType.NbBitsBackRef) / wordNbBits
-	byteNbWords := uint(8 / wordNbBits)
+	shortBrNbWords := int(shortBackRefType.NbBitsBackRef) / wordNbBits                            // #nosec G115 -- Not expected to run on an architecture with byte-long words
+	longBrNbWords := int(longBackRefType.NbBitsBackRef) / wordNbBits                              // #nosec G115 -- Not expected to run on an architecture with byte-long words
+	dictBrNbWords := int(dictBackRefType.NbBitsBackRef) / wordNbBits                              // #nosec G115 -- Not expected to run on an architecture with byte-long words
+	byteNbWords := uint(8 / wordNbBits)                                                           // #nosec G115 -- Guaranteed to be positive
 
 	// check header: version and compression level
 	const (
@@ -133,14 +133,14 @@ func initAddrTable(api frontend.API, bytes, c []frontend.Variable, wordNbBits in
 		}
 	}
 	readers := make([]*compress.NumReader, len(backrefs))
-	delimAndLenNbWords := int(8+backrefs[0].NbBitsLength) / wordNbBits
+	delimAndLenNbWords := int(8+backrefs[0].NbBitsLength) / wordNbBits // #nosec G115 -- not a problem on any architecture with word size > 8 bits
 	for i := range backrefs {
 		var readerC []frontend.Variable
 		if len(c) >= delimAndLenNbWords {
 			readerC = c[delimAndLenNbWords:]
 		}
 
-		readers[i] = compress.NewNumReader(api, readerC, int(backrefs[i].NbBitsAddress), wordNbBits)
+		readers[i] = compress.NewNumReader(api, readerC, int(backrefs[i].NbBitsAddress), wordNbBits) // #nosec G115 -- not a problem on any architecture with word size > 8 bits
 	}
 
 	res := logderivlookup.New(api)

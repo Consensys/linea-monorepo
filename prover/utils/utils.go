@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"golang.org/x/exp/constraints"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
 )
@@ -67,9 +69,9 @@ Taken from :
 https://github.com/protolambda/zrnt/blob/v0.13.2/eth2/util/math/math_util.go#L58
 The function panics if the input is more than  2**62 as this causes overflow
 */
-func NextPowerOfTwo[T ~int](in T) T {
-	if in > 1<<62 {
-		panic("Input is too large")
+func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
+	if in < 0 || uint64(in) > 1<<62 {
+		panic("Input out of range")
 	}
 	v := in
 	v--
@@ -187,7 +189,36 @@ func BigsToBytes(ins []*big.Int) []byte {
 func BigsToInts(ints []*big.Int) []int {
 	res := make([]int, len(ints))
 	for i := range ints {
-		res[i] = int(ints[i].Uint64())
+		u := ints[i].Uint64()
+		res[i] = int(u) // #nosec G115 - check below
+		if !ints[i].IsUint64() || uint64(res[i]) != u {
+			panic("overflow")
+		}
 	}
 	return res
+}
+
+// ToInt converts a uint, uint64 or int64 to an int, panicking on overflow.
+// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
+func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
+	if i > math.MaxInt {
+		panic("overflow")
+	}
+	return int(i) // #nosec G115 -- Checked for overflow
+}
+
+// ToUint64 converts a signed integer into a uint64, panicking on negative values.
+// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
+func ToUint64[T constraints.Signed](i T) uint64 {
+	if i < 0 {
+		panic("negative")
+	}
+	return uint64(i)
+}
+
+func ToUint16[T ~int | ~uint](i T) uint16 {
+	if i < 0 || i > math.MaxUint16 {
+		panic("out of range")
+	}
+	return uint16(i) // #nosec G115 -- Checked for overflow
 }

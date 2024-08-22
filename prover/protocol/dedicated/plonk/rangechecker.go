@@ -150,7 +150,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 		numRcR                           = smartvectors.Sum(rcRValue)
 		numRcO                           = smartvectors.Sum(rcOValue)
 		totalNumRangeCheckedValues       = numRcL.Uint64() + numRcR.Uint64() + numRcO.Uint64()
-		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(int(totalNumRangeCheckedValues))
+		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(totalNumRangeCheckedValues)
 	)
 
 	if totalNumRangeCheckedValues == 0 {
@@ -169,7 +169,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 			l            = ctx.Columns.L[i]
 			r            = ctx.Columns.R[i]
 			o            = ctx.Columns.O[i]
-			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), totalNumRangeCheckedValuesPadded)
+			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
 		)
 
 		ctx.Columns.RangeChecked[i] = rangeChecked

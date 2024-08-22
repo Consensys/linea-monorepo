@@ -252,11 +252,11 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		// i-th row of DecomposedLen
 		var lenRow []int
 		for j := 0; j < decomposed.nbSlices; j++ {
-			lenRow = append(lenRow, int(decomposedLen[j][i].Uint64()))
+			lenRow = append(lenRow, utils.ToInt(decomposedLen[j][i].Uint64()))
 		}
 
 		// populate DecomposedLimb
-		decomposedLimb := decomposeByLength(cleanLimbs[i], int(nByte[i].Uint64()), lenRow)
+		decomposedLimb := decomposeByLength(cleanLimbs[i], field.ToInt(&nByte[i]), lenRow)
 
 		for j := 0; j < decomposed.nbSlices; j++ {
 			decomposedLimbs[j][i] = decomposedLimb[j]
@@ -307,11 +307,11 @@ func cutUpToMax(nByte []field.Element, nbChunk, max int) (b [][]field.Element) {
 		}
 		s := 0
 		for j := 0; j < nbChunk; j++ {
-			s = s + int(a[j].Uint64())
+			s += field.ToInt(&a[j])
 			b[j] = append(b[j], a[j])
 		}
 
-		if s != int(nByte[i].Uint64()) {
+		if s != field.ToInt(&nByte[i]) {
 			utils.Panic("decomposition of nByte is not correct; nByte %v, s %v", nByte[i].Uint64(), s)
 		}
 

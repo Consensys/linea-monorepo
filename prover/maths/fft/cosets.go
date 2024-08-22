@@ -43,7 +43,7 @@ func cosetID(r, numCoset int) (cosetID int) {
 	cosetID64 := uint64(maxDomain / r * numCoset)
 	cosetID64 = bits.Reverse64(cosetID64)
 	cosetID64 >>= 64 - field.RootOfUnityOrder
-	return int(cosetID64)
+	return utils.ToInt(cosetID64)
 }
 
 /*

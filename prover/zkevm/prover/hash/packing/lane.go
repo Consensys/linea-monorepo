@@ -251,7 +251,7 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 	var isFirstBlockOfHash []int
 	isFirstBlockOfHash = append(isFirstBlockOfHash, 1)
 	for pos := 0; pos < len(limbs); pos++ {
-		nbyte := int(nBytes[pos].Uint64())
+		nbyte := field.ToInt(&nBytes[pos])
 		s = s + nbyte
 
 		// Extract the limb, which is left aligned to the 16-th byte

@@ -86,7 +86,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, error) {
 			LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 			L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
 			L2MsgRootHashes:                         cf.L2MsgRootHashes,
-			L2MsgMerkleTreeDepth:                    int(cf.L2MsgTreeDepth),
+			L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		},
 	})
 	if err != nil {

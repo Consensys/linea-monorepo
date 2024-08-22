@@ -143,7 +143,7 @@ func newElementFromVars(api frontend.API, x [2]frontend.Variable) *emulated.Elem
 }
 
 func bitReverse(n, logN int) int {
-	return int(bits.Reverse64(uint64(n)) >> (64 - logN))
+	return utils.ToInt(bits.Reverse64(uint64(n)) >> (64 - logN))
 }
 
 func bitReverseSlice[K interface{}](list []K) {
@@ -183,8 +183,8 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 		}
 	}
 
-	nbLimbs := int(fieldParams.NbLimbs())
-	limbNbWords := int(fieldParams.BitsPerLimb()) / bitsPerWord
+	nbLimbs := int(fieldParams.NbLimbs())                       // #nosec G115 -- Small number of limbs expected
+	limbNbWords := int(fieldParams.BitsPerLimb()) / bitsPerWord // #nosec G115 -- Expected to be 64
 	if uint(limbNbWords*bitsPerWord) != fieldParams.BitsPerLimb() {
 		panic("bitsPerWord must divide bitsPerLimb")
 	}

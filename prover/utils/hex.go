@@ -17,8 +17,10 @@ import (
 // Encode the uint64 into an hexstring representing it as a u256 in bigendian form
 func HexHashUint64(v ...uint64) string {
 	buffer := bytes.Buffer{}
+	var I big.Int
 	for i := range v {
-		bytes := big.NewInt(int64(v[i])).Bytes()
+		I.SetUint64(v[i])
+		bytes := I.Bytes()
 		bytes = append(make([]byte, 32-len(bytes)), bytes...)
 		buffer.Write(bytes)
 	}
@@ -29,6 +31,15 @@ func HexHashUint64(v ...uint64) string {
 func FmtInt32Bytes(v int) [32]byte {
 	var res [32]byte
 	b := big.NewInt(int64(v)).Bytes()
+	copy(res[32-len(b):], b)
+	return res
+}
+
+func FmtUint32Bytes(v uint) [32]byte {
+	var res [32]byte
+	var i big.Int
+	i.SetUint64(uint64(v))
+	b := i.Bytes()
 	copy(res[32-len(b):], b)
 	return res
 }
