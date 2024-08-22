@@ -1200,7 +1200,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	vect := NewExecutionDataCollectorVectors(size)
 
 	fetchedAbsTxIdMax := rlp.AbsTxNumMax.GetColAssignmentAt(run, 0)
-	absTxIdMax := int(fetchedAbsTxIdMax.Uint64())
+	absTxIdMax := field.ToInt(&fetchedAbsTxIdMax)
 
 	absTxCt := 1
 	rlpCt := 0
@@ -1256,7 +1256,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// iterate through transactions
-			for txIdInBlock := 1; txIdInBlock <= int(totalTxBlock); txIdInBlock++ {
+			for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
 
 				// load the sender address Hi
 				fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)

@@ -150,8 +150,8 @@ func (h *hashBaseConversion) Run(
 
 	for i := range h.Inputs.LimbsHiB {
 		for row := 0; row < size; row++ {
-			limbsLo[i].PushInt(int(BaseBToUint4(v[i][row], keccakf.BaseB)))
-			limbsHi[i].PushInt(int(BaseBToUint4(w[i][row], keccakf.BaseB)))
+			limbsLo[i].PushInt(utils.ToInt(BaseBToUint4(v[i][row], keccakf.BaseB)))
+			limbsHi[i].PushInt(utils.ToInt(BaseBToUint4(w[i][row], keccakf.BaseB)))
 		}
 
 		limbsHi[i].PadAndAssign(run, field.Zero())

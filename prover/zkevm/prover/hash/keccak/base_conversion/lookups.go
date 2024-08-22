@@ -2,6 +2,7 @@ package base_conversion
 
 import (
 	"encoding/binary"
+	"math"
 
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
@@ -44,12 +45,12 @@ func NewLookupTables(comp *wizard.CompiledIOP) lookUpTables {
 // convert slices of 16bits to keccak.BaseX (from uint16-BE to baseA_LE/baseB_LE)
 func baseConversionKeccakBaseX() (uint16Col, baseACol, baseBCol smartvectors.SmartVector) {
 	var u, v, w []field.Element
-	for i := 0; i < Power16; i++ {
+	for i := 0; i < math.MaxUint16; i++ {
 		u = append(u, field.NewElement(uint64(i)))
 
 		bs := make([]byte, 2)
 		// from uint16-BE to baseA_LE/baseB_LE
-		binary.LittleEndian.PutUint16(bs, uint16(i))
+		binary.LittleEndian.PutUint16(bs, uint16(i)) // #nosec G115 -- Bounded by loop condition
 		v = append(v, bytesToBaseX(bs, &keccakf.BaseAFr))
 		w = append(w, bytesToBaseX(bs, &keccakf.BaseBFr))
 	}

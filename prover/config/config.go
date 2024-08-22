@@ -55,7 +55,7 @@ func NewConfigFromFile(path string) (*Config, error) {
 	}
 
 	// Set the logging level
-	logrus.SetLevel(logrus.Level(cfg.LogLevel))
+	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)

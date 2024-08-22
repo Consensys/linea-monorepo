@@ -79,6 +79,7 @@ func randomizeInts(slices ...[]int) {
 			}
 			neg := 1 - 2*int(buff[0]>>7)
 			buff[0] &= 127
+			// #nosec G115 -- sign bit is set to be zero above
 			slice[i] = int(binary.BigEndian.Uint64(buff[:])) * neg
 		}
 	}
