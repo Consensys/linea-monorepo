@@ -45,7 +45,7 @@ func NewLookupTables(comp *wizard.CompiledIOP) lookUpTables {
 // convert slices of 16bits to keccak.BaseX (from uint16-BE to baseA_LE/baseB_LE)
 func baseConversionKeccakBaseX() (uint16Col, baseACol, baseBCol smartvectors.SmartVector) {
 	var u, v, w []field.Element
-	for i := 0; i < math.MaxUint16; i++ {
+	for i := 0; i <= math.MaxUint16; i++ {
 		u = append(u, field.NewElement(uint64(i)))
 
 		bs := make([]byte, 2)
