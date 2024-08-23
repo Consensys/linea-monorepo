@@ -71,7 +71,7 @@ The function panics if the input is more than  2**62 as this causes overflow
 */
 func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	if in < 0 || uint64(in) > 1<<62 {
-		panic("Input out of range")
+		panic("input out of range")
 	}
 	v := in
 	v--
