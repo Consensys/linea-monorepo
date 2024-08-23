@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0-rc2
+* fix: change implementation of gasAvailableForChildCall due to having side effects in TangerineWhistleGasCalculator ([#950](https://github.com/Consensys/linea-tracer/pull/950))
+* fix: `ToyWorld.commit()` ([#966](https://github.com/Consensys/linea-tracer/pull/966))
+* feat(ecadd): add test ([#956](https://github.com/Consensys/linea-tracer/pull/956))
+* fix: Use correct CHAINID in EVM ([#947](https://github.com/Consensys/linea-tracer/pull/947))
+* fix: swap ordering of r/s fields in tx snapshot ([#946](https://github.com/Consensys/linea-tracer/pull/946))
+
 ## 0.4.0-rc1
 * feat(toy-exec-env-v2): add new ToyExecutionEnvironment that builds the General State Test Case spec to run tests ([#842](https://github.com/Consensys/linea-tracer/pull/842))
 * feat: initial Integration of Go Corset ([#907](https://github.com/Consensys/linea-tracer/pull/907))
