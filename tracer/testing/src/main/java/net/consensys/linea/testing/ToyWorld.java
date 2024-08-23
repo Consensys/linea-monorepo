@@ -15,8 +15,8 @@
 
 package net.consensys.linea.testing;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,25 +39,27 @@ import org.hyperledger.besu.evm.worldstate.AuthorizedCodeService;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
-  private ToyWorld parent;
-  @Getter private List<ToyAccount> accounts;
-  private AuthorizedCodeService authorizedCodeService;
+  private final ToyWorld parent;
+  private final AuthorizedCodeService authorizedCodeService;
   @Getter private Map<Address, ToyAccount> addressAccountMap;
 
   private ToyWorld() {
-    this(null, new ArrayList<>());
+    this(null);
   }
 
   private ToyWorld(final ToyWorld parent) {
-    this(parent, new ArrayList<>());
+    this(parent, Collections.emptyList());
   }
 
   @Builder
   private ToyWorld(final ToyWorld parent, @Singular final List<ToyAccount> accounts) {
     this.parent = parent;
-    this.accounts = accounts;
     this.addressAccountMap = new HashMap<>();
     this.authorizedCodeService = new AuthorizedCodeService();
+    // Initialise the account map
+    for (ToyAccount account : accounts) {
+      addressAccountMap.put(account.getAddress(), account);
+    }
   }
 
   public static ToyWorld empty() {
@@ -65,25 +67,9 @@ public class ToyWorld implements WorldUpdater {
   }
 
   public static ToyWorld of(final ConflationSnapshot conflation) {
-    final ToyWorldBuilder protoWorld = builder();
-    for (AccountSnapshot account : conflation.accounts()) {
-      protoWorld.account(
-          ToyAccount.builder()
-              .address(Words.toAddress(Address.fromHexString(account.address())))
-              .nonce(account.nonce())
-              .balance(Wei.fromHexString(account.balance()))
-              .code(Bytes.fromHexString(account.code()))
-              .build());
-    }
-    final ToyWorld world = protoWorld.build();
-
-    for (StorageSnapshot s : conflation.storage()) {
-      world
-          .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
-          .setStorageValue(UInt256.fromHexString(s.key()), UInt256.fromHexString(s.value()));
-    }
-
-    return world;
+    ToyWorld worldUpdater = new ToyWorld();
+    initWorldUpdater(worldUpdater, conflation);
+    return worldUpdater;
   }
 
   @Override
@@ -123,7 +109,6 @@ public class ToyWorld implements WorldUpdater {
             .balance(balance)
             .build();
 
-    accounts.add(account);
     addressAccountMap.put(address, account);
 
     return authorizedCodeService.processMutableAccount(this, account, address);
@@ -176,31 +161,42 @@ public class ToyWorld implements WorldUpdater {
 
   @Override
   public void commit() {
-    if (parent != null) {
-      parent.addressAccountMap.putAll(addressAccountMap);
-    }
+    addressAccountMap.forEach(
+        (address, account) -> {
+          if (!account.updateParent()) {
+            parent.addressAccountMap.put(address, account);
+          }
+        });
   }
 
   @Override
   public Optional<WorldUpdater> parentUpdater() {
-    return Optional.empty();
+    return Optional.ofNullable(parent);
   }
 
-  public static class ToyWorldBuilder {
-    public ToyWorld build() {
-      ToyWorld toyWorld = new ToyWorld(parent);
-      if (accounts != null) {
-        for (ToyAccount account : accounts) {
-          toyWorld.createAccount(
-              null,
-              account.getAddress(),
-              account.getNonce(),
-              account.getBalance(),
-              account.getCode());
-        }
-      }
-
-      return toyWorld;
+  /**
+   * Initialise a world updater given a conflation. Observe this can be applied to any WorldUpdater,
+   * such as SimpleWorld.
+   *
+   * @param world The world to be initialised.
+   * @param conflation The conflation from which to initialise.
+   */
+  private static void initWorldUpdater(WorldUpdater world, final ConflationSnapshot conflation) {
+    for (AccountSnapshot account : conflation.accounts()) {
+      // Construct contract address
+      Address addr = Address.fromHexString(account.address());
+      // Create account
+      MutableAccount acc =
+          world.createAccount(
+              Words.toAddress(addr), account.nonce(), Wei.fromHexString(account.balance()));
+      // Update code
+      acc.setCode(Bytes.fromHexString(account.code()));
+    }
+    //
+    for (StorageSnapshot s : conflation.storage()) {
+      world
+          .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
+          .setStorageValue(UInt256.fromHexString(s.key()), UInt256.fromHexString(s.value()));
     }
   }
 }
