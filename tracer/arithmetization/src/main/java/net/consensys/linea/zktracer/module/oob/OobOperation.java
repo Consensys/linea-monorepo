@@ -19,6 +19,7 @@ import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Byte.toUnsignedInt;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static net.consensys.linea.zktracer.module.UtilCalculator.allButOneSixtyFourth;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_STIPEND;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_BLAKE2F_CDS;
 import static net.consensys.linea.zktracer.module.oob.Trace.CT_MAX_BLAKE2F_PARAMS;
@@ -464,10 +465,22 @@ public class OobOperation extends ModuleOperation {
         transfersValue = !frame.getStackItem(2).isZero();
       }
 
-      final BigInteger callGas =
-          BigInteger.valueOf(
-              ZkTracer.gasCalculator.gasAvailableForChildCall(
-                  frame, Words.clampedToLong(frame.getStackItem(0)), transfersValue));
+      //      final BigInteger callGas =
+      //          BigInteger.valueOf(
+      //              ZkTracer.gasCalculator.gasAvailableForChildCall(
+      //                  frame, Words.clampedToLong(frame.getStackItem(0)), transfersValue));
+
+      // shameless copy from gasAvailableForChildCall found in TangerineWhistleGasCalculator
+      // TODO: @Olivier and @François: find out whether frame.getRemainingGas was already
+      //  decremented by the upfront cost. If not we must replace remainingGas with the
+      //  decremented version
+      long remainingGas = frame.getRemainingGas();
+      long gasCap =
+          Words.unsignedMin(
+              allButOneSixtyFourth(remainingGas), Words.clampedToLong(frame.getStackItem(0)));
+      long callGasLong =
+          transfersValue ? gasCap + ZkTracer.gasCalculator.getAdditionalCallStipend() : gasCap;
+      final BigInteger callGas = BigInteger.valueOf(callGasLong);
 
       final BigInteger cds = EWord.of(frame.getStackItem(cdsIndex)).toUnsignedBigInteger();
       // Note that this check will disappear since it will be the MXP module taking care of it
