@@ -16,6 +16,14 @@ shadowJar {
     archiveClassifier.set('')
     archiveVersion.set("${project.version}")
   }
+  manifest {
+    attributes(
+      'Specification-Title': archiveBaseName,
+      'Specification-Version': project.version,
+      'Implementation-Title': archiveBaseName,
+      'Implementation-Version': project.version,
+    )
+  }
 }
 
 dependencies {
