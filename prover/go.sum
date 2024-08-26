@@ -96,8 +96,8 @@ github.com/consensys/bavard v0.1.13 h1:oLhMLOFGTLdlda/kma4VOJazblc7IM5y5QPd2A/Yj
 github.com/consensys/bavard v0.1.13/go.mod h1:9ItSMtA/dXMAiL7BG6bqW2m3NdSEObYWoH223nGHukI=
 github.com/consensys/compress v0.2.5 h1:gJr1hKzbOD36JFsF1AN8lfXz1yevnJi1YolffY19Ntk=
 github.com/consensys/compress v0.2.5/go.mod h1:pyM+ZXiNUh7/0+AUjUf9RKUM6vSH7T/fsn5LLS0j1Tk=
-github.com/consensys/gnark v0.10.1-0.20240820204737-841a46e699de h1:DXiYLidaVuK/pRCQ1SDT2wNFfibvmhvr8TTfbp+kXIc=
-github.com/consensys/gnark v0.10.1-0.20240820204737-841a46e699de/go.mod h1:6OZlCYQMepjrtkNwbW/gMc7UQZNcAfNrsj1/1iZ8d5U=
+github.com/consensys/gnark v0.10.1-0.20240823145956-fdb2b0de422b h1:ngEHP/X/GYQ41nLU9aNJ3GuQgyXde/q8BU//evxos1E=
+github.com/consensys/gnark v0.10.1-0.20240823145956-fdb2b0de422b/go.mod h1:6OZlCYQMepjrtkNwbW/gMc7UQZNcAfNrsj1/1iZ8d5U=
 github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef h1:4DaS1IYXk0vKcCdguGjkHVyN43YqmKUmpYDxb90VBnU=
 github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef/go.mod h1:wKqwsieaKPThcFkHe0d0zMsbHEUWFmZcG7KBCse210o=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=

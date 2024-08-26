@@ -2,8 +2,8 @@ package lzss
 
 import (
 	"github.com/consensys/gnark/frontend"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 )
 
@@ -18,7 +18,7 @@ type DecompressionTestCircuit struct {
 }
 
 func (c *DecompressionTestCircuit) Define(api frontend.API) error {
-	dict := test_vector_utils.ToVariableSlice(lzss.AugmentDict(c.Dict))
+	dict := internal.ToVariableSlice(lzss.AugmentDict(c.Dict))
 	dBack := make([]frontend.Variable, len(c.D)) // TODO Try smaller constants
 	if cb, ok := c.CBegin.(int); !ok || cb != 0 {
 		c.C = compress.ShiftLeft(api, c.C, c.CBegin)

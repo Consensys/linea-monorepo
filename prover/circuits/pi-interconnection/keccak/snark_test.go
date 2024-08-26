@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
@@ -52,8 +51,8 @@ func TestCreateCols(t *testing.T) {
 			In:                in,
 			InLength:          make([]frontend.Variable, len(c.in)),
 			Lanes:             make([]frontend.Variable, len(c.lanes)),
-			IsFirstLaneOfHash: test_vector_utils.ToVariableSlice(c.isFirstLaneOfHash),
-			IsLaneActive:      test_vector_utils.ToVariableSlice(c.isLaneActive),
+			IsFirstLaneOfHash: internal.ToVariableSlice(c.isFirstLaneOfHash),
+			IsLaneActive:      internal.ToVariableSlice(c.isLaneActive),
 			Hash:              hash,
 		}
 
@@ -263,7 +262,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 		t.Run(fmt.Sprintf("%d-%s", i, internal.Ite(fail, "fail", "pass")), func(t *testing.T) {
 
 			assignment := testCreateColsBoundaryChecks{
-				InLength: test_vector_utils.ToVariableSlice(c.inLength),
+				InLength: internal.ToVariableSlice(c.inLength),
 			}
 
 			err := test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField())

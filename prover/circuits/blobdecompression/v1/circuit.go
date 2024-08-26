@@ -17,7 +17,6 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -294,8 +293,8 @@ func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Ele
 	}
 
 	assignment = &Circuit{
-		Dict:        test_vector_utils.ToVariableSlice(dict),
-		BlobBytes:   test_vector_utils.ToVariableSlice(blobBytes),
+		Dict:        internal.ToVariableSlice(dict),
+		BlobBytes:   internal.ToVariableSlice(blobBytes),
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}
