@@ -28,9 +28,9 @@ import (
 )
 
 type Circuit struct {
-	AggregationPublicInput   frontend.Variable   `gnark:",public"` // the public input of the aggregation circuit
-	ExecutionPublicInput     []frontend.Variable `gnark:",public"`
-	DecompressionPublicInput []frontend.Variable `gnark:",public"`
+	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
+	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
@@ -86,6 +86,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	finalStateRootHashes := logderivlookup.New(api)
+	finalStateRootHashes.Insert(c.InitialStateRootHash)
 	for _, pi := range c.ExecutionFPIQ {
 		finalStateRootHashes.Insert(pi.FinalStateRootHash)
 	}
@@ -98,7 +99,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
 			BlobDataSnarkHash:    utils.ToBytes(api, piq.SnarkHash),
-			NewStateRootHash:     utils.ToBytes(api, finalStateRootHashes.Lookup(api.Sub(nbBatchesSums[i], 1))[0]),
+			NewStateRootHash:     utils.ToBytes(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
@@ -187,7 +188,9 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
-	api.AssertIsEqual(c.AggregationPublicInput, compress.ReadNum(api, aggregationPIBytes[:], big.NewInt(256)))
+	twoPow8 := big.NewInt(256)
+	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
+	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
 	return hshK.Finalize()
 }
@@ -238,16 +241,26 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 	}, nil
 }
 
-func (c *Compiled) getConfig() config.PublicInput {
+func (c *Compiled) getConfig() (config.PublicInput, error) {
+	executionNbMsg := 0
+	execs := c.Circuit.ExecutionFPIQ
+	if len(c.Circuit.ExecutionFPIQ) != 0 {
+		executionNbMsg = len(execs[0].L2MessageHashes.Values)
+		for i := range execs {
+			if len(execs[i].L2MessageHashes.Values) != executionNbMsg {
+				return config.PublicInput{}, errors.New("inconsistent max number of L2 message hashes")
+			}
+		}
+	}
 	return config.PublicInput{
 		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
 		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
 		MaxNbKeccakF:       c.Keccak.MaxNbKeccakF(),
-		ExecutionMaxNbMsg:  len(c.Circuit.ExecutionFPIQ[0].L2MessageHashes.Values),
+		ExecutionMaxNbMsg:  executionNbMsg,
 		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
 		MaxNbCircuits:      c.Circuit.MaxNbCircuits,
-	}
+	}, nil
 }
 
 func allocateCircuit(c config.PublicInput) Circuit {
