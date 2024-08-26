@@ -10,7 +10,7 @@ ZKEVM_BIN_VERSIONED_NAME := $(shell echo zkevm.bin-$(shell git -C zkevm-constrai
 ZKEVM_BIN_VERSIONED_PATH := "zkevm-constraints/$(ZKEVM_BIN_VERSIONED_NAME)"
 ZKEVM_BIN_ORIGINAL_PATH := "zkevm-constraints/zkevm.bin"
 
-ACCOUNT_FRAGMENT_FILE_PATH := "arithmetization/src/main/java/net/consensys/linea/zktracer/module/hub/fragment/AccountFragment.java"
+ACCOUNT_FRAGMENT_FILE_PATH := "arithmetization/src/main/java/net/consensys/linea/zktracer/module/hub/fragment/account/AccountFragment.java"
 
 # call this target with -> make node_address=<node_address> shadow-node-deploy
 shadow-node-deploy:
