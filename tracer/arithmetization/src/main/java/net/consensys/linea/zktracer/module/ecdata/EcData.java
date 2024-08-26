@@ -16,14 +16,13 @@
 package net.consensys.linea.zktracer.module.ecdata;
 
 import java.nio.MappedByteBuffer;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
@@ -42,7 +41,7 @@ public class EcData implements Module {
   public static final Set<Address> EC_PRECOMPILES =
       Set.of(Address.ECREC, Address.ALTBN128_ADD, Address.ALTBN128_MUL, Address.ALTBN128_PAIRING);
 
-  @Getter private final StackedSet<EcDataOperation> operations = new StackedSet<>();
+  @Getter private final StackedList<EcDataOperation> operations = new StackedList<>();
   private final Wcp wcp;
   private final Ext ext;
 
@@ -86,10 +85,7 @@ public class EcData implements Module {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
     long previousId = 0;
-    // Sort the operations by id given the fact that the initial data structure is a stacked set
-    List<EcDataOperation> sortedOperations =
-        this.operations.stream().sorted(Comparator.comparingLong(EcDataOperation::id)).toList();
-    for (EcDataOperation op : sortedOperations) {
+    for (EcDataOperation op : operations) {
       stamp++;
       op.trace(trace, stamp, previousId);
       previousId = op.id();
