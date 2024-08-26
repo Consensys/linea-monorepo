@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.0-beta
+* Merged the HUB branch ([#748](https://github.com/Consensys/linea-tracer/pull/748))
+
 ## 0.4.0-rc2
 * fix: change implementation of gasAvailableForChildCall due to having side effects in TangerineWhistleGasCalculator ([#950](https://github.com/Consensys/linea-tracer/pull/950))
 * fix: `ToyWorld.commit()` ([#966](https://github.com/Consensys/linea-tracer/pull/966))
