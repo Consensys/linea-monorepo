@@ -20,28 +20,19 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
-import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * Stores all the trace sections associated to the same transaction, stored in chronological order
  * of creation.
  */
 @Accessors(fluent = true)
-public class TxTrace implements PostTransactionDefer {
+public class TxTrace {
   /** The {@link TraceSection} of which this transaction trace is made of */
   @Getter private final List<TraceSection> trace = new ArrayList<>();
 
   /** A cache for the line count of this transaction */
   private int cachedLineCount = 0;
-
-  private long refundedGas = -1;
-  @Getter private long leftoverGas = -1;
-  @Getter private long gasRefundFinalCounter = 0; // TODO:
-
-  private static final int PARALLELIZATION_THRESHOLD = 10_000;
 
   public int size() {
     return this.trace.size();
@@ -70,30 +61,17 @@ public class TxTrace implements PostTransactionDefer {
    */
   public void add(TraceSection section) {
     section.parentTrace(this);
+    // Link the current section with the previous and next one
+    final TraceSection previousSection = this.trace.isEmpty() ? null : this.trace.getLast();
+    if (previousSection != null) {
+      previousSection.nextSection(section);
+      section.previousSection(previousSection);
+    } else {
+      // If this section is the first section of the transaction, set the logStamp
+      section.commonValues.logStamp(section.commonValues.stamps.log());
+    }
     this.trace.add(section);
   }
-
-  public long refundedGas() {
-    if (this.trace.size() >= PARALLELIZATION_THRESHOLD) {
-      return this.trace.parallelStream()
-          .filter(section -> !section.hasReverted())
-          .mapToLong(TraceSection::refundDelta)
-          .sum();
-    } else {
-      if (this.refundedGas == -1) {
-        this.refundedGas = 0;
-        for (TraceSection section : this.trace) {
-          if (!section.hasReverted()) {
-            this.refundedGas += section.refundDelta();
-          }
-        }
-      }
-      return this.refundedGas;
-    }
-  }
-
-  @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {}
 
   /**
    * Generate the final numeric trace from the accumulated information.
@@ -102,9 +80,8 @@ public class TxTrace implements PostTransactionDefer {
    */
   public void commit(Trace hubTrace) {
     for (TraceSection opSection : this.trace) {
-      for (TraceSection.TraceLine line : opSection.lines()) {
-        line.trace(hubTrace, opSection.stackHeight(), opSection.stackHeightNew());
-      }
+      opSection.seal();
+      opSection.trace(hubTrace);
     }
   }
 
@@ -114,7 +91,7 @@ public class TxTrace implements PostTransactionDefer {
   public int lineCount() {
     if (this.cachedLineCount == 0) {
       for (TraceSection s : trace) {
-        this.cachedLineCount += s.lines().size();
+        this.cachedLineCount += s.fragments().size();
       }
     }
     return this.cachedLineCount;

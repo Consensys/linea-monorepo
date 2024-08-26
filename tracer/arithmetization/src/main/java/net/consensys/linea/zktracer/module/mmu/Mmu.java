@@ -26,7 +26,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
@@ -90,14 +90,17 @@ public class Mmu implements Module {
     int mmuStamp = 0;
     int mmioStamp = 0;
 
-    for (MmuOperation mmuOp : this.mmuOperations) {
-      mmuOp.getCFI();
-      mmuOp.setExoBytes(exoSumDecoder);
-      mmuOp.fillLimb();
+    for (MmuOperation mmuOperation : mmuOperations) {
 
-      mmuStamp += 1;
-      mmuOp.trace(mmuStamp, mmioStamp, trace);
-      mmioStamp += mmuOp.mmuData().numberMmioInstructions();
+      if (mmuOperation.traceMe()) {
+        mmuOperation.getCFI();
+        mmuOperation.setExoBytes(exoSumDecoder);
+        mmuOperation.fillLimb();
+
+        mmuStamp += 1;
+        mmuOperation.trace(mmuStamp, mmioStamp, trace);
+        mmioStamp += mmuOperation.mmuData().numberMmioInstructions();
+      }
     }
   }
 

@@ -26,9 +26,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Mod implements Module {
   @Override
@@ -55,11 +53,6 @@ public class Mod implements Module {
   @Override
   public void popTransaction() {
     this.chunks.pop();
-  }
-
-  @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
-    this.chunks.enter();
   }
 
   @Override

@@ -15,12 +15,60 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
-import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import static net.consensys.linea.zktracer.module.shakiradata.HashType.KECCAK;
 
-public class KeccakSection extends TraceSection {
-  public KeccakSection(Hub hub, CallFrame callFrame, TraceFragment... chunks) {
-    this.addFragmentsAndStack(hub, callFrame, chunks);
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.evm.operation.Operation;
+
+public class KeccakSection extends TraceSection implements PostOpcodeDefer {
+
+  private final boolean triggerMmu;
+  private Bytes hashInput;
+
+  public KeccakSection(Hub hub) {
+    super(hub, (short) 3);
+    hub.defers().scheduleForPostExecution(this);
+
+    final ImcFragment imcFragment = ImcFragment.empty(hub);
+    this.addStackAndFragments(hub, imcFragment);
+
+    final MxpCall mxpCall = new MxpCall(hub);
+    imcFragment.callMxp(mxpCall);
+
+    final boolean mayTriggerNonTrivialOperation = mxpCall.mayTriggerNontrivialMmuOperation;
+    triggerMmu = mayTriggerNonTrivialOperation & Exceptions.none(hub.pch().exceptions());
+
+    if (triggerMmu) {
+      final MmuCall mmuCall = MmuCall.sha3(hub);
+      imcFragment.callMmu(mmuCall);
+      final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(0));
+      final long size = Words.clampedToLong(hub.messageFrame().getStackItem(1));
+      hashInput = hub.currentFrame().frame().shadowReadMemory(offset, size);
+    }
+  }
+
+  @Override
+  public void resolvePostExecution(
+      Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
+    final Bytes32 hashResult = Bytes32.leftPad(frame.getStackItem(0));
+
+    // retroactively set HASH_INFO_FLAG and HASH_INFO_KECCAK_HI, HASH_INFO_KECCAK_LO
+    this.triggerHashInfo(hashResult);
+
+    if (triggerMmu) {
+      final ShakiraDataOperation shakiraDataOperation =
+          new ShakiraDataOperation(this.hubStamp(), KECCAK, hashInput, hashResult);
+      hub.shakiraData().call(shakiraDataOperation);
+    }
   }
 }

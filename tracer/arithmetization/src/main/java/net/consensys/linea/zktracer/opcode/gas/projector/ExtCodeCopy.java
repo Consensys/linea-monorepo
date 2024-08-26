@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
@@ -61,6 +61,6 @@ public final class ExtCodeCopy extends GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(GasConstants.G_COPY.cost(), this.bitSize, 32);
+    return linearCost(GlobalConstants.GAS_CONST_G_COPY, this.bitSize, 32);
   }
 }

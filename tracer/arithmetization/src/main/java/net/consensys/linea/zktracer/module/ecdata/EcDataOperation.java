@@ -25,10 +25,6 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHAS
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_RESULT;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.CT_MAX_LARGE_POINT;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.CT_MAX_SMALL_POINT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.ECADD;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.ECMUL;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.ECPAIRING;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.ECRECOVER;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECADD_DATA;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECADD_RESULT;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECMUL_DATA;
@@ -49,17 +45,19 @@ import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECPAIR
 import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECPAIRING_RESULT;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECRECOVER_DATA;
 import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECRECOVER_RESULT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.types.Containers.repeat;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.util.List;
-import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ext.Ext;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
@@ -71,18 +69,19 @@ import org.hyperledger.besu.crypto.altbn128.Fq2;
 
 @Accessors(fluent = true)
 public class EcDataOperation extends ModuleOperation {
-  private static final Set<Integer> EC_TYPES = Set.of(ECRECOVER, ECADD, ECMUL, ECPAIRING);
   private static final EWord P_BN = EWord.of(P_BN_HI, P_BN_LO);
   public static final EWord SECP256K1N = EWord.of(SECP256K1N_HI, SECP256K1N_LO);
   public static final int nBYTES_OF_DELTA_BYTES = 4;
+
+  private final Bytes returnData;
 
   private final Wcp wcp;
   private final Ext ext;
 
   @Getter private final long id;
-  private final Bytes data;
+  private final Bytes rightPaddedCallData;
 
-  private final int ecType;
+  @Getter private final PrecompileScenarioFragment.PrecompileFlag precompileFlag;
   private final int nRows;
   private final int nRowsData;
   private final int nRowsResult;
@@ -112,8 +111,6 @@ public class EcDataOperation extends ModuleOperation {
   private final List<Bytes> extResLo;
   private final List<OpCode> extInst;
 
-  // TODO: this bit should be useless we should have only successful EcData Operations, will be
-  // fixed in PR #748
   @Getter private boolean successBit;
   private boolean circuitSelectorEcrecover;
   private boolean circuitSelectorEcadd;
@@ -122,34 +119,57 @@ public class EcDataOperation extends ModuleOperation {
   // pairing-specific
   private final int totalPairings;
 
-  private List<Boolean> notOnG2; // counter-constant
-  private List<Boolean> notOnG2Acc; // counter-constant
+  private final List<Boolean> notOnG2; // counter-constant
+  private final List<Boolean> notOnG2Acc; // counter-constant
   private boolean notOnG2AccMax; // index-constant
-  private List<Boolean> isInfinity; // counter-constant
-  private List<Boolean> overallTrivialPairing; // counter-constant
+  private final List<Boolean> isInfinity; // counter-constant
+  private final List<Boolean> overallTrivialPairing; // counter-constant
 
-  // For debugging
-  private boolean returnDataSet = false;
+  private EcDataOperation(
+      Wcp wcp,
+      Ext ext,
+      int id,
+      final PrecompileScenarioFragment.PrecompileFlag precompileFlag,
+      Bytes callData,
+      Bytes returnData) {
+    Preconditions.checkArgument(precompileFlag.isEcdataPrecompile(), "invalid EC type");
 
-  private EcDataOperation(Wcp wcp, Ext ext, int id, int ecType, Bytes data) {
-    Preconditions.checkArgument(EC_TYPES.contains(ecType), "invalid EC type");
+    this.precompileFlag = precompileFlag;
+    int callDataSize = callData.size();
+    Preconditions.checkArgument(
+        callDataSize > 0,
+        "EcDataOperation should only be called with nonempty call rightPaddedCallData");
+    final int paddedCallDataLength =
+        switch (precompileFlag) {
+          case PRC_ECRECOVER -> 128;
+          case PRC_ECADD -> 128;
+          case PRC_ECMUL -> 96;
+          case PRC_ECPAIRING -> {
+            Preconditions.checkArgument(callDataSize % 192 == 0);
+            yield callDataSize;
+          }
+          default -> throw new IllegalArgumentException(
+              "EcDataOperation expects to be called on an elliptic curve precompile, not on "
+                  + precompileFlag.name());
+        };
 
-    final int minInputLength = ecType == ECMUL ? 96 : 128;
-    if (data.size() < minInputLength) {
-      this.data = leftPadTo(data, minInputLength);
+    if (callData.size() < paddedCallDataLength) {
+      this.rightPaddedCallData = rightPadTo(callData, paddedCallDataLength);
     } else {
-      this.data = data;
+      // TODO: why keep the entire rightPaddedCallData rather than
+      // rightPaddedCallData[0:paddedCallDataLength] ?
+      this.rightPaddedCallData = callData;
     }
-    this.ecType = ecType;
 
-    if (ecType == ECPAIRING) {
-      totalPairings = data.size() / 192;
+    if (precompileFlag == PRC_ECPAIRING) {
+      Preconditions.checkArgument(callData.size() % 192 == 0);
+      totalPairings = callData.size() / 192;
     } else {
       totalPairings = 0;
     }
 
-    nRowsData = getIndexMax(ecType, true) + 1;
-    nRowsResult = getIndexMax(ecType, false) + 1;
+    nRowsData = getIndexMax(precompileFlag, true) + 1;
+    nRowsResult = getIndexMax(precompileFlag, false) + 1;
     nRows = nRowsData + nRowsResult;
     this.id = id;
 
@@ -182,150 +202,87 @@ public class EcDataOperation extends ModuleOperation {
     overallTrivialPairing = repeat(true, nRows);
     notOnG2 = repeat(false, nRows);
     notOnG2Acc = repeat(false, nRows);
+
+    // Set returnData
+    this.returnData = returnData;
   }
 
-  public static EcDataOperation of(Wcp wcp, Ext ext, int id, final int ecType, Bytes data) {
-    EcDataOperation ecDataRes = new EcDataOperation(wcp, ext, id, ecType, data);
-    switch (ecType) {
-      case ECRECOVER -> ecDataRes.handleRecover();
-      case ECADD -> ecDataRes.handleAdd();
-      case ECMUL -> ecDataRes.handleMul();
-      case ECPAIRING -> ecDataRes.handlePairing();
+  public static EcDataOperation of(
+      Wcp wcp,
+      Ext ext,
+      int id,
+      final PrecompileScenarioFragment.PrecompileFlag precompileFlag,
+      Bytes callData,
+      Bytes returnData) {
+    EcDataOperation ecDataOperation =
+        new EcDataOperation(wcp, ext, id, precompileFlag, callData, returnData);
+    switch (precompileFlag) {
+      case PRC_ECRECOVER -> ecDataOperation.handleRecover();
+      case PRC_ECADD -> ecDataOperation.handleAdd();
+      case PRC_ECMUL -> ecDataOperation.handleMul();
+      case PRC_ECPAIRING -> ecDataOperation.handlePairing();
     }
-    return ecDataRes;
+    return ecDataOperation;
   }
 
-  public void setReturnData(Bytes returnData) {
-    switch (ecType) {
-      case ECRECOVER -> {
-        EWord recoveredAddress = EWord.ZERO;
-
-        // Extract output
-        if (internalChecksPassed) {
-          recoveredAddress = EWord.of(returnData);
-        }
-
-        // Set success bit and output limb
-        successBit = !recoveredAddress.isZero();
-        limb.set(8, recoveredAddress.hi());
-        limb.set(9, recoveredAddress.lo());
-      }
-      case ECADD -> {
-        EWord resX = EWord.ZERO;
-        EWord resY = EWord.ZERO;
-
-        // Extract output
-        if (internalChecksPassed && returnData.toArray().length != 0) {
-          Preconditions.checkArgument(returnData.toArray().length == 64);
-          resX = EWord.of(returnData.slice(0, 32));
-          resY = EWord.of(returnData.slice(32, 32));
-        }
-
-        // Set success bit and output limb
-        successBit = internalChecksPassed;
-        limb.set(8, resX.hi());
-        limb.set(9, resX.lo());
-        limb.set(10, resY.hi());
-        limb.set(11, resY.lo());
-      }
-      case ECMUL -> {
-        EWord resX = EWord.ZERO;
-        EWord resY = EWord.ZERO;
-
-        // Extract output
-        if (internalChecksPassed && returnData.toArray().length != 0) {
-          Preconditions.checkArgument(returnData.toArray().length == 64);
-          resX = EWord.of(returnData.slice(0, 32));
-          resY = EWord.of(returnData.slice(32, 32));
-        }
-
-        // Set success bit and output limb
-        successBit = internalChecksPassed;
-        limb.set(6, resX.hi());
-        limb.set(7, resX.lo());
-        limb.set(8, resY.hi());
-        limb.set(9, resY.lo());
-      }
-      case ECPAIRING -> {
-        EWord pairingResult = EWord.ZERO;
-
-        // Extract output
-        if (internalChecksPassed) {
-          pairingResult = EWord.of(returnData);
-        }
-
-        // Set output limb
-        limb.set(limb.size() - 2, pairingResult.hi());
-        limb.set(limb.size() - 1, pairingResult.lo());
-
-        // Set successBit
-        if (!internalChecksPassed) {
-          successBit = false;
-        } else {
-          successBit = !notOnG2AccMax;
-        }
-      }
-    }
-    returnDataSet = true;
-  }
-
-  private int getTotalSize(int ecType, boolean isData) {
-    Preconditions.checkArgument(returnDataSet, "returnData must be set before");
-
+  private int getTotalSize(
+      PrecompileScenarioFragment.PrecompileFlag precompileFlag, boolean isData) {
     if (isData) {
-      return switch (ecType) {
-        case ECRECOVER -> TOTAL_SIZE_ECRECOVER_DATA;
-        case ECADD -> TOTAL_SIZE_ECADD_DATA;
-        case ECMUL -> TOTAL_SIZE_ECMUL_DATA;
-        case ECPAIRING -> TOTAL_SIZE_ECPAIRING_DATA_MIN * totalPairings;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> TOTAL_SIZE_ECRECOVER_DATA;
+        case PRC_ECADD -> TOTAL_SIZE_ECADD_DATA;
+        case PRC_ECMUL -> TOTAL_SIZE_ECMUL_DATA;
+        case PRC_ECPAIRING -> TOTAL_SIZE_ECPAIRING_DATA_MIN * totalPairings;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     } else {
-      return switch (ecType) {
-        case ECRECOVER -> successBit ? TOTAL_SIZE_ECRECOVER_RESULT : 0;
-        case ECADD -> successBit ? TOTAL_SIZE_ECADD_RESULT : 0;
-        case ECMUL -> successBit ? TOTAL_SIZE_ECMUL_RESULT : 0;
-        case ECPAIRING -> successBit ? TOTAL_SIZE_ECPAIRING_RESULT : 0;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> successBit ? TOTAL_SIZE_ECRECOVER_RESULT : 0;
+        case PRC_ECADD -> successBit ? TOTAL_SIZE_ECADD_RESULT : 0;
+        case PRC_ECMUL -> successBit ? TOTAL_SIZE_ECMUL_RESULT : 0;
+        case PRC_ECPAIRING -> successBit ? TOTAL_SIZE_ECPAIRING_RESULT : 0;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     }
   }
 
-  private static short getPhase(int ecType, boolean isData) {
+  private static short getPhase(
+      PrecompileScenarioFragment.PrecompileFlag precompileFlag, boolean isData) {
     if (isData) {
-      return switch (ecType) {
-        case ECRECOVER -> PHASE_ECRECOVER_DATA;
-        case ECADD -> PHASE_ECADD_DATA;
-        case ECMUL -> PHASE_ECMUL_DATA;
-        case ECPAIRING -> PHASE_ECPAIRING_DATA;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> PHASE_ECRECOVER_DATA;
+        case PRC_ECADD -> PHASE_ECADD_DATA;
+        case PRC_ECMUL -> PHASE_ECMUL_DATA;
+        case PRC_ECPAIRING -> PHASE_ECPAIRING_DATA;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     } else {
-      return switch (ecType) {
-        case ECRECOVER -> PHASE_ECRECOVER_RESULT;
-        case ECADD -> PHASE_ECADD_RESULT;
-        case ECMUL -> PHASE_ECMUL_RESULT;
-        case ECPAIRING -> PHASE_ECPAIRING_RESULT;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> PHASE_ECRECOVER_RESULT;
+        case PRC_ECADD -> PHASE_ECADD_RESULT;
+        case PRC_ECMUL -> PHASE_ECMUL_RESULT;
+        case PRC_ECPAIRING -> PHASE_ECPAIRING_RESULT;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     }
   }
 
-  private int getIndexMax(int ecType, boolean isData) {
+  private int getIndexMax(
+      PrecompileScenarioFragment.PrecompileFlag precompileFlag, boolean isData) {
     if (isData) {
-      return switch (ecType) {
-        case ECRECOVER -> INDEX_MAX_ECRECOVER_DATA;
-        case ECADD -> INDEX_MAX_ECADD_DATA;
-        case ECMUL -> INDEX_MAX_ECMUL_DATA;
-        case ECPAIRING -> (INDEX_MAX_ECPAIRING_DATA_MIN + 1) * totalPairings - 1;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> INDEX_MAX_ECRECOVER_DATA;
+        case PRC_ECADD -> INDEX_MAX_ECADD_DATA;
+        case PRC_ECMUL -> INDEX_MAX_ECMUL_DATA;
+        case PRC_ECPAIRING -> (INDEX_MAX_ECPAIRING_DATA_MIN + 1) * totalPairings - 1;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     } else {
-      return switch (ecType) {
-        case ECRECOVER -> INDEX_MAX_ECRECOVER_RESULT;
-        case ECADD -> INDEX_MAX_ECADD_RESULT;
-        case ECMUL -> INDEX_MAX_ECMUL_RESULT;
-        case ECPAIRING -> INDEX_MAX_ECPAIRING_RESULT;
+      return switch (precompileFlag) {
+        case PRC_ECRECOVER -> INDEX_MAX_ECRECOVER_RESULT;
+        case PRC_ECADD -> INDEX_MAX_ECADD_RESULT;
+        case PRC_ECMUL -> INDEX_MAX_ECMUL_RESULT;
+        case PRC_ECPAIRING -> INDEX_MAX_ECPAIRING_RESULT;
         default -> throw new IllegalArgumentException("invalid EC type");
       };
     }
@@ -367,10 +324,10 @@ public class EcDataOperation extends ModuleOperation {
 
   void handleRecover() {
     // Extract inputs
-    final EWord h = EWord.of(data.slice(0, 32));
-    final EWord v = EWord.of(data.slice(32, 32));
-    final EWord r = EWord.of(data.slice(64, 32));
-    final EWord s = EWord.of(data.slice(96, 32));
+    final EWord h = EWord.of(rightPaddedCallData.slice(0, 32));
+    final EWord v = EWord.of(rightPaddedCallData.slice(32, 32));
+    final EWord r = EWord.of(rightPaddedCallData.slice(64, 32));
+    final EWord s = EWord.of(rightPaddedCallData.slice(96, 32));
 
     // Set input limb
     limb.set(0, h.hi());
@@ -423,14 +380,27 @@ public class EcDataOperation extends ModuleOperation {
     // Because of the hashmap in the ext module, this useless row will only be inserted one time.
     // Tested by TestEcRecoverWithEmptyExt
     ext.callADDMOD(Bytes.EMPTY, Bytes.EMPTY, Bytes.EMPTY);
+
+    // Set result rows
+    EWord recoveredAddress = EWord.ZERO;
+
+    // Extract output
+    if (internalChecksPassed) {
+      recoveredAddress = EWord.of(returnData);
+    }
+
+    // Set success bit and output limb
+    successBit = !recoveredAddress.isZero();
+    limb.set(8, recoveredAddress.hi());
+    limb.set(9, recoveredAddress.lo());
   }
 
   void handleAdd() {
     // Extract inputs
-    final EWord pX = EWord.of(data.slice(0, 32));
-    final EWord pY = EWord.of(data.slice(32, 32));
-    final EWord qX = EWord.of(data.slice(64, 32));
-    final EWord qY = EWord.of(data.slice(96, 32));
+    final EWord pX = EWord.of(rightPaddedCallData.slice(0, 32));
+    final EWord pY = EWord.of(rightPaddedCallData.slice(32, 32));
+    final EWord qX = EWord.of(rightPaddedCallData.slice(64, 32));
+    final EWord qY = EWord.of(rightPaddedCallData.slice(96, 32));
 
     // Set limb
     limb.set(0, pX.hi());
@@ -459,13 +429,31 @@ public class EcDataOperation extends ModuleOperation {
 
     // set circuitSelectorEcadd
     circuitSelectorEcadd = internalChecksPassed;
+
+    // Set result rows
+    EWord resX = EWord.ZERO;
+    EWord resY = EWord.ZERO;
+
+    // Extract output
+    if (internalChecksPassed && returnData.toArray().length != 0) {
+      Preconditions.checkArgument(returnData.toArray().length == 64);
+      resX = EWord.of(returnData.slice(0, 32));
+      resY = EWord.of(returnData.slice(32, 32));
+    }
+
+    // Set success bit and output limb
+    successBit = internalChecksPassed;
+    limb.set(8, resX.hi());
+    limb.set(9, resX.lo());
+    limb.set(10, resY.hi());
+    limb.set(11, resY.lo());
   }
 
   void handleMul() {
     // Extract inputs
-    final EWord pX = EWord.of(data.slice(0, 32));
-    final EWord pY = EWord.of(data.slice(32, 32));
-    final EWord n = EWord.of(data.slice(64, 32));
+    final EWord pX = EWord.of(rightPaddedCallData.slice(0, 32));
+    final EWord pY = EWord.of(rightPaddedCallData.slice(32, 32));
+    final EWord n = EWord.of(rightPaddedCallData.slice(64, 32));
 
     // Set limb
     limb.set(0, pX.hi());
@@ -489,6 +477,24 @@ public class EcDataOperation extends ModuleOperation {
 
     // Set circuitSelectorEcmul
     circuitSelectorEcmul = internalChecksPassed;
+
+    // Set result rows
+    EWord resX = EWord.ZERO;
+    EWord resY = EWord.ZERO;
+
+    // Extract output
+    if (internalChecksPassed && returnData.toArray().length != 0) {
+      Preconditions.checkArgument(returnData.toArray().length == 64);
+      resX = EWord.of(returnData.slice(0, 32));
+      resY = EWord.of(returnData.slice(32, 32));
+    }
+
+    // Set success bit and output limb
+    successBit = internalChecksPassed;
+    limb.set(6, resX.hi());
+    limb.set(7, resX.lo());
+    limb.set(8, resY.hi());
+    limb.set(9, resY.lo());
   }
 
   void handlePairing() {
@@ -500,12 +506,12 @@ public class EcDataOperation extends ModuleOperation {
     for (int accPairings = 1; accPairings <= totalPairings; accPairings++) {
       // Extract inputs
       final int bytesOffset = (accPairings - 1) * 192;
-      final EWord aX = EWord.of(data.slice(bytesOffset, 32));
-      final EWord aY = EWord.of(data.slice(32 + bytesOffset, 32));
-      final EWord bXIm = EWord.of(data.slice(64 + bytesOffset, 32));
-      final EWord bXRe = EWord.of(data.slice(96 + bytesOffset, 32));
-      final EWord bYIm = EWord.of(data.slice(128 + bytesOffset, 32));
-      final EWord bYRe = EWord.of(data.slice(160 + bytesOffset, 32));
+      final EWord aX = EWord.of(rightPaddedCallData.slice(bytesOffset, 32));
+      final EWord aY = EWord.of(rightPaddedCallData.slice(32 + bytesOffset, 32));
+      final EWord bXIm = EWord.of(rightPaddedCallData.slice(64 + bytesOffset, 32));
+      final EWord bXRe = EWord.of(rightPaddedCallData.slice(96 + bytesOffset, 32));
+      final EWord bYIm = EWord.of(rightPaddedCallData.slice(128 + bytesOffset, 32));
+      final EWord bYRe = EWord.of(rightPaddedCallData.slice(160 + bytesOffset, 32));
 
       // Set limb
       final int rowsOffset = (accPairings - 1) * (INDEX_MAX_ECPAIRING_DATA_MIN + 1); // 12
@@ -595,15 +601,30 @@ public class EcDataOperation extends ModuleOperation {
 
     // This is after all pairings have been processed
 
-    // Success bit is set in setReturnData
+    // Set result rows
+    EWord pairingResult = EWord.ZERO;
+
+    // Extract output
+    if (internalChecksPassed) {
+      pairingResult = EWord.of(returnData);
+    }
+
+    // Set output limb
+    limb.set(limb.size() - 2, pairingResult.hi());
+    limb.set(limb.size() - 1, pairingResult.lo());
+
+    // Set callSuccess
+    if (!internalChecksPassed) {
+      successBit = false;
+    } else {
+      successBit = !notOnG2AccMax;
+    }
 
     // acceptablePairOfPointsForPairingCircuit, g2MembershipTestRequired, circuitSelectorEcpairing,
     // circuitSelectorG2Membership are set in the trace method
   }
 
   void trace(Trace trace, final int stamp, final long previousId) {
-    Preconditions.checkArgument(returnDataSet, "returnData must be set before");
-
     final Bytes deltaByte =
         leftPadTo(Bytes.minimalBytes(id - previousId - 1), nBYTES_OF_DELTA_BYTES);
 
@@ -617,14 +638,18 @@ public class EcDataOperation extends ModuleOperation {
     for (int i = 0; i < nRows; i++) {
       boolean isData = i < nRowsData;
       // Turn isSmallPoint on if we are in the first row of a new pairing
-      if (ecType == ECPAIRING && isData && ct == 0 && !isSmallPoint && !isLargePoint) {
+      if (precompileFlag == PRC_ECPAIRING && isData && ct == 0 && !isSmallPoint && !isLargePoint) {
         isSmallPoint = true;
         smallPointIsAtInfinity = isInfinity.get(i);
         largePointIsAtInfinity = isInfinity.get(i + CT_MAX_SMALL_POINT + 1);
       }
 
       boolean notOnG2AccMax =
-          ecType == ECPAIRING && isData && this.notOnG2AccMax && internalChecksPassed;
+          precompileFlag == PRC_ECPAIRING
+              && isData
+              && this.notOnG2AccMax
+              && internalChecksPassed; // && conditions is necessary since we want IS_ECPAIRING_DATA
+      // = 1
       // && conditions is necessary since we want IS_ECPAIRING_DATA
       // We care about G2 membership only if ICP = 1
       boolean g2MembershipTestRequired =
@@ -633,13 +658,13 @@ public class EcDataOperation extends ModuleOperation {
                   : isLargePoint && !largePointIsAtInfinity && smallPointIsAtInfinity)
               && internalChecksPassed;
       boolean acceptablePairOfPointsForPairingCircuit =
-          ecType == ECPAIRING
+          precompileFlag == PRC_ECPAIRING
               && successBit
               && !notOnG2AccMax
               && !largePointIsAtInfinity
               && !smallPointIsAtInfinity;
 
-      if (ecType != ECPAIRING || !isData) {
+      if (precompileFlag != PRC_ECPAIRING || !isData) {
         Preconditions.checkArgument(ct == 0);
       }
       Preconditions.checkArgument(!(isSmallPoint && isLargePoint));
@@ -649,21 +674,21 @@ public class EcDataOperation extends ModuleOperation {
           .id(id)
           .index(isData ? i : i - nRowsData)
           .limb(limb.get(i))
-          .totalSize(Bytes.ofUnsignedLong(getTotalSize(ecType, isData)))
-          .phase(getPhase(ecType, isData))
-          .indexMax(Bytes.ofUnsignedLong(getIndexMax(ecType, isData)))
+          .totalSize(Bytes.ofUnsignedLong(getTotalSize(precompileFlag, isData)))
+          .phase(getPhase(precompileFlag, isData))
+          .indexMax(Bytes.ofUnsignedLong(getIndexMax(precompileFlag, isData)))
           .successBit(successBit)
-          .isEcrecoverData(ecType == ECRECOVER && isData)
-          .isEcrecoverResult(ecType == ECRECOVER && !isData)
-          .isEcaddData(ecType == ECADD && isData)
-          .isEcaddResult(ecType == ECADD && !isData)
-          .isEcmulData(ecType == ECMUL && isData)
-          .isEcmulResult(ecType == ECMUL && !isData)
-          .isEcpairingData(ecType == ECPAIRING && isData)
-          .isEcpairingResult(ecType == ECPAIRING && !isData)
+          .isEcrecoverData(precompileFlag == PRC_ECRECOVER && isData)
+          .isEcrecoverResult(precompileFlag == PRC_ECRECOVER && !isData)
+          .isEcaddData(precompileFlag == PRC_ECADD && isData)
+          .isEcaddResult(precompileFlag == PRC_ECADD && !isData)
+          .isEcmulData(precompileFlag == PRC_ECMUL && isData)
+          .isEcmulResult(precompileFlag == PRC_ECMUL && !isData)
+          .isEcpairingData(precompileFlag == PRC_ECPAIRING && isData)
+          .isEcpairingResult(precompileFlag == PRC_ECPAIRING && !isData)
           .totalPairings(Bytes.ofUnsignedLong(totalPairings))
           .accPairings(
-              ecType == ECPAIRING && isData
+              precompileFlag == PRC_ECPAIRING && isData
                   ? Bytes.ofUnsignedLong(1 + i / (INDEX_MAX_ECPAIRING_DATA_MIN + 1))
                   : Bytes.of(0))
           .internalChecksPassed(internalChecksPassed)
@@ -683,7 +708,7 @@ public class EcDataOperation extends ModuleOperation {
           .notOnG2AccMax(notOnG2AccMax)
           .isInfinity(isInfinity.get(i))
           .overallTrivialPairing(
-              ecType == ECPAIRING
+              precompileFlag == PRC_ECPAIRING
                   && isData
                   && overallTrivialPairing.get(
                       i)) // && conditions necessary because default value is true
@@ -714,7 +739,7 @@ public class EcDataOperation extends ModuleOperation {
           .validateRow();
 
       // Update ct, isSmallPoint, isLargePoint
-      if (ecType == ECPAIRING && isData) {
+      if (precompileFlag == PRC_ECPAIRING && isData) {
         ct++;
         if (isSmallPoint && ct == CT_MAX_SMALL_POINT + 1) {
           isSmallPoint = false;
@@ -732,9 +757,7 @@ public class EcDataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    // TODO: temporary hack, we should have only successful EcData Operations, will be fixed in PR
-    // #748
-    return successBit ? nRowsData + nRowsResult : 0;
+    return nRowsData + nRowsResult;
   }
 
   private Pair<Boolean, Boolean> callToC1Membership(int k, EWord pX, EWord pY) {

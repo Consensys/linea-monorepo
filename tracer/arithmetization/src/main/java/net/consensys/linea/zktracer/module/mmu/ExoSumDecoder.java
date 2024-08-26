@@ -56,7 +56,7 @@ public class ExoSumDecoder {
     exoIsTxcd = hubToMmuValues.exoIsTxcd();
 
     if (exoIsRom) {
-      return this.romLex.sortedChunks().get(exoId - 1).byteCode().copy();
+      return exoId == 0 ? Bytes.EMPTY : romLex.sortedChunks().get(exoId - 1).byteCode().copy();
     }
 
     if (exoIsTxcd) {

@@ -30,7 +30,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -43,11 +42,9 @@ public class Wcp implements Module {
   /** count the number of rows that could be added after the sequencer counts the number of line */
   public final Deque<Integer> additionalRows = new ArrayDeque<>();
 
-  private final Hub hub;
   private boolean batchUnderConstruction;
 
-  public Wcp(Hub hub) {
-    this.hub = hub;
+  public Wcp() {
     this.batchUnderConstruction = true;
   }
 
@@ -75,12 +72,12 @@ public class Wcp implements Module {
 
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
-    final OpCode opcode = this.hub.opCode();
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =
-        (opcode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
+        (opCode != OpCode.ISZERO) ? Bytes32.leftPad(frame.getStackItem(1)) : Bytes32.ZERO;
 
-    this.operations.add(new WcpOperation(opcode.byteValue(), arg1, arg2));
+    this.operations.add(new WcpOperation(opCode.byteValue(), arg1, arg2));
   }
 
   @Override

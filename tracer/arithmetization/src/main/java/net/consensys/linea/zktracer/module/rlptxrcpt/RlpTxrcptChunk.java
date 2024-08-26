@@ -30,7 +30,7 @@ import org.hyperledger.besu.evm.log.Log;
 public final class RlpTxrcptChunk extends ModuleOperation {
   private final TransactionType txType;
   private final Boolean status;
-  private final Long gasUsed;
+  private final int gasUsed;
   private final List<Log> logs;
 
   @Override

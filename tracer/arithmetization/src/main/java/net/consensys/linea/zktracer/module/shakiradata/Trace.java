@@ -48,7 +48,7 @@ public class Trace {
   private final MappedByteBuffer nBytes;
   private final MappedByteBuffer nBytesAcc;
   private final MappedByteBuffer phase;
-  private final MappedByteBuffer ripshaStamp;
+  private final MappedByteBuffer shakiraStamp;
   private final MappedByteBuffer selectorKeccakResHi;
   private final MappedByteBuffer selectorRipemdResHi;
   private final MappedByteBuffer selectorSha2ResHi;
@@ -69,7 +69,7 @@ public class Trace {
         new ColumnHeader("shakiradata.nBYTES", 1, length),
         new ColumnHeader("shakiradata.nBYTES_ACC", 4, length),
         new ColumnHeader("shakiradata.PHASE", 1, length),
-        new ColumnHeader("shakiradata.RIPSHA_STAMP", 4, length),
+        new ColumnHeader("shakiradata.SHAKIRA_STAMP", 4, length),
         new ColumnHeader("shakiradata.SELECTOR_KECCAK_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_RIPEMD_RES_HI", 1, length),
         new ColumnHeader("shakiradata.SELECTOR_SHA2_RES_HI", 1, length),
@@ -90,7 +90,7 @@ public class Trace {
     this.nBytes = buffers.get(10);
     this.nBytesAcc = buffers.get(11);
     this.phase = buffers.get(12);
-    this.ripshaStamp = buffers.get(13);
+    this.shakiraStamp = buffers.get(13);
     this.selectorKeccakResHi = buffers.get(14);
     this.selectorRipemdResHi = buffers.get(15);
     this.selectorSha2ResHi = buffers.get(16);
@@ -301,7 +301,7 @@ public class Trace {
     return this;
   }
 
-  public Trace ripshaStamp(final long b) {
+  public Trace shakiraStamp(final long b) {
     if (filled.get(11)) {
       throw new IllegalStateException("shakiradata.RIPSHA_STAMP already set");
     } else {
@@ -309,12 +309,12 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("ripshaStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("shakiraStamp has invalid value (" + b + ")");
     }
-    ripshaStamp.put((byte) (b >> 24));
-    ripshaStamp.put((byte) (b >> 16));
-    ripshaStamp.put((byte) (b >> 8));
-    ripshaStamp.put((byte) b);
+    shakiraStamp.put((byte) (b >> 24));
+    shakiraStamp.put((byte) (b >> 16));
+    shakiraStamp.put((byte) (b >> 8));
+    shakiraStamp.put((byte) b);
 
     return this;
   }
@@ -506,7 +506,7 @@ public class Trace {
     }
 
     if (!filled.get(11)) {
-      ripshaStamp.position(ripshaStamp.position() + 4);
+      shakiraStamp.position(shakiraStamp.position() + 4);
     }
 
     if (!filled.get(12)) {

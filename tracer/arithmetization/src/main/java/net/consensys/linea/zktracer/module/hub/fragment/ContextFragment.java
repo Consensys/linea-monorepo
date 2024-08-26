@@ -15,70 +15,133 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.callstack.CallStack;
-import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.Either;
 import net.consensys.linea.zktracer.types.MemorySpan;
-import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 
-public record ContextFragment(
-    CallStack callStack,
-    // Left: callFrameId, Right: contextNumber
-    Either<Integer, Integer> callFrameReference,
-    MemorySpan returnDataSegment,
-    boolean updateCallerReturndata)
-    implements TraceFragment {
+@Getter
+@Setter
+@Accessors(fluent = true)
+@AllArgsConstructor
+public class ContextFragment implements TraceFragment {
+  private final Hub hub;
+  private final CallStack callStack;
+  // Left: callFrameId, Right: contextNumber
+  private Either<Integer, Integer> callFrameReference;
+  private int returnDataContextNumber;
+  private MemorySpan returnDataSegment;
+  private boolean updateReturnData;
 
-  public static ContextFragment readContextData(final CallStack callStack) {
-
+  public static ContextFragment readContextDataByContextNumber(
+      final Hub hub, final int contextNumber) {
+    CallStack callStack = hub.callStack();
     return new ContextFragment(
+        hub,
         callStack,
-        Either.left(callStack.current().id()),
-        callStack.current().latestReturnDataSource().snapshot(),
+        Either.right(contextNumber),
+        callStack.getByContextNumber(contextNumber).returnDataContextNumber(),
+        callStack.current().returnDataSpan().snapshot(),
         false);
   }
 
-  public static ContextFragment initializeExecutionContext(final Hub hub) {
+  public static ContextFragment readContextDataById(final Hub hub, final int contextId) {
+    CallStack callStack = hub.callStack();
     return new ContextFragment(
+        hub,
+        callStack,
+        Either.left(contextId),
+        callStack.getById(contextId).returnDataContextNumber(),
+        callStack.current().returnDataSpan().snapshot(),
+        false);
+  }
+
+  public static ContextFragment readCurrentContextData(final Hub hub) {
+    return readContextDataById(hub, hub.callStack().current().id());
+  }
+
+  public static ContextFragment initializeNewExecutionContext(final Hub hub) {
+    return new ContextFragment(
+        hub,
         hub.callStack(),
-        Either.right(hub.stamp() + 1),
-        MemorySpan.fromStartEnd(
-            0, hub.transients().tx().besuTx().getData().map(Bytes::size).orElse(0)),
+        Either.right(hub.newChildContextNumber()),
+        0,
+        MemorySpan.empty(),
         false);
   }
 
-  public static ContextFragment executionEmptyReturnData(final CallStack callStack) {
+  public static ContextFragment executionProvidesEmptyReturnData(final Hub hub) {
+    CallStack callStack = hub.callStack();
     return new ContextFragment(
-        callStack, Either.left(callStack.parent().id()), MemorySpan.empty(), true);
-  }
-
-  public static ContextFragment nonExecutionEmptyReturnData(final CallStack callStack) {
-    return new ContextFragment(
-        callStack, Either.left(callStack.parent().id()), MemorySpan.empty(), true);
-  }
-
-  public static ContextFragment executionReturnData(final CallStack callStack) {
-    return new ContextFragment(
+        hub,
         callStack,
         Either.left(callStack.parent().id()),
-        callStack.current().returnDataSource(),
+        hub.callStack().current().contextNumber(),
+        MemorySpan.empty(),
         true);
   }
 
-  public static ContextFragment enterContext(
-      final CallStack callStack, final CallFrame calledCallFrame) {
+  public static ContextFragment executionProvidesEmptyReturnData(final Hub hub, int contextNumber) {
+    CallStack callStack = hub.callStack();
+    int parentId = callStack.getByContextNumber(contextNumber).parentFrameId();
     return new ContextFragment(
-        callStack, Either.left(calledCallFrame.id()), MemorySpan.empty(), false);
+        hub, callStack, Either.left(parentId), contextNumber, MemorySpan.empty(), true);
   }
 
-  public static ContextFragment providesReturnData(final CallStack callStack) {
+  public static ContextFragment nonExecutionProvidesEmptyReturnData(final Hub hub) {
+    CallStack callStack = hub.callStack();
     return new ContextFragment(
+        hub,
         callStack,
         Either.left(callStack.current().id()),
-        callStack.current().latestReturnDataSource().snapshot(),
+        hub.newChildContextNumber(),
+        MemorySpan.empty(),
+        true);
+  }
+
+  public static ContextFragment executionProvidesReturnData(final Hub hub) {
+    CallStack callStack = hub.callStack();
+    return new ContextFragment(
+        hub,
+        callStack,
+        Either.left(callStack.parent().id()),
+        hub.currentFrame().contextNumber(),
+        callStack.current().outputDataSpan(),
+        true);
+  }
+
+  public static ContextFragment executionProvidesReturnData(
+      final Hub hub, int receiverContextNumber, int providerContextNumber) {
+    CallStack callStack = hub.callStack();
+    return new ContextFragment(
+        hub,
+        callStack,
+        Either.right(receiverContextNumber),
+        providerContextNumber,
+        callStack.current().returnDataSpan().snapshot(),
+        true);
+    // TODO: is this what we want ?
+    //  also: will the latestReturnData have been updated ?
+  }
+
+  public static ContextFragment updateReturnData(
+      final Hub hub, final int returnDataContextNumber, final MemorySpan returnDataMetaInfo) {
+    return new ContextFragment(
+        hub,
+        hub.callStack(),
+        Either.right(hub.callStack().current().contextNumber()),
+        returnDataContextNumber,
+        returnDataMetaInfo,
         true);
   }
 
@@ -86,40 +149,41 @@ public record ContextFragment(
   public Trace trace(Trace trace) {
     final CallFrame callFrame =
         this.callFrameReference.map(this.callStack::getById, this.callStack::getByContextNumber);
-    final CallFrame parent = callStack.getParentOf(callFrame.id());
+    final CallFrame parent = callStack.getParentCallFrameById(callFrame.id());
 
-    final EWord eAddress = callFrame.addressAsEWord();
-    final EWord eCodeAddress = callFrame.codeAddressAsEWord();
-    final EWord parentAddress = parent.addressAsEWord();
+    final Address address = callFrame.accountAddress();
+    final Address codeAddress = callFrame.byteCodeAddress();
+    final Address callerAddress = callFrame.callerAddress();
 
     return trace
         .peekAtContext(true)
-        .pContextContextNumber(Bytes.ofUnsignedInt(callFrame.contextNumber()))
-        .pContextCallStackDepth(Bytes.ofUnsignedInt(callFrame.depth()))
+        .pContextContextNumber(callFrame.contextNumber())
+        .pContextCallStackDepth((short) callFrame.depth())
+        .pContextIsRoot(callFrame.isRoot())
         .pContextIsStatic(callFrame.type().isStatic())
-        .pContextAccountAddressHi(eAddress.hi())
-        .pContextAccountAddressLo(eAddress.lo())
-        .pContextByteCodeAddressHi(eCodeAddress.hi())
-        .pContextByteCodeAddressLo(eCodeAddress.lo())
-        .pContextAccountDeploymentNumber(Bytes.ofUnsignedInt(callFrame.accountDeploymentNumber()))
-        .pContextByteCodeDeploymentNumber(Bytes.ofUnsignedInt(callFrame.codeDeploymentNumber()))
-        .pContextByteCodeDeploymentStatus(callFrame.underDeployment() ? Bytes.of(1) : Bytes.EMPTY)
-        .pContextCallDataContextNumber(Bytes.ofUnsignedInt(parent.contextNumber()))
-        .pContextCallerAddressHi(parentAddress.hi())
-        .pContextCallerAddressLo(parentAddress.lo())
+        .pContextAccountAddressHi(highPart(address))
+        .pContextAccountAddressLo(lowPart(address))
+        .pContextAccountDeploymentNumber(callFrame.accountDeploymentNumber())
+        .pContextByteCodeAddressHi(highPart(codeAddress))
+        .pContextByteCodeAddressLo(lowPart(codeAddress))
+        .pContextByteCodeDeploymentNumber(callFrame.codeDeploymentNumber())
+        .pContextByteCodeDeploymentStatus(callFrame.isDeployment() ? 1 : 0)
+        .pContextByteCodeCodeFragmentIndex(callFrame.getCodeFragmentIndex(hub))
+        .pContextCallerAddressHi(highPart(callerAddress))
+        .pContextCallerAddressLo(lowPart(callerAddress))
         .pContextCallValue(callFrame.value())
-        .pContextCallDataOffset(
-            Bytes.ofUnsignedLong(callFrame.callDataInfo().memorySpan().offset()))
-        .pContextCallDataSize(Bytes.ofUnsignedLong(callFrame.callDataInfo().memorySpan().length()))
-        .pContextReturnAtOffset(
-            Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().offset()))
-        .pContextReturnAtCapacity(
-            Bytes.ofUnsignedLong(callFrame.requestedReturnDataTarget().length()))
-        .pContextUpdate(updateCallerReturndata)
-        .pContextReturnDataContextNumber(
-            Bytes.ofUnsignedInt(
-                callFrame.lastCallee().map(c -> callStack.getById(c).contextNumber()).orElse(0)))
-        .pContextReturnDataOffset(Bytes.ofUnsignedLong(returnDataSegment.offset()))
-        .pContextReturnDataSize(Bytes.ofUnsignedLong(returnDataSegment.length()));
+        .pContextCallDataContextNumber(parent.contextNumber())
+        .pContextCallDataOffset(callFrame.callDataInfo().memorySpan().offset())
+        .pContextCallDataSize(callFrame.callDataInfo().memorySpan().length())
+        .pContextReturnAtOffset(callFrame.returnDataTargetInCaller().offset())
+        .pContextReturnAtCapacity(callFrame.returnDataTargetInCaller().length())
+        .pContextUpdate(updateReturnData)
+        .pContextReturnDataContextNumber(returnDataContextNumber)
+        //             callFrame.id() == 0
+        //                 ? callFrame.universalParentReturnDataContextNumber
+        //                 : callFrame.lastCallee().map(c ->
+        // callStack.getById(c).contextNumber()).orElse(0))
+        .pContextReturnDataOffset(returnDataSegment.offset())
+        .pContextReturnDataSize(returnDataSegment.length());
   }
 }

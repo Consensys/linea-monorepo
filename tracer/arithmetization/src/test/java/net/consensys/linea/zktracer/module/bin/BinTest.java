@@ -32,25 +32,33 @@ public class BinTest {
   void testSignedSignextend() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
-                .immediate(UInt256.MAX_VALUE)
-                .immediate(UInt256.MAX_VALUE)
+                .push(UInt256.MAX_VALUE)
+                .push(UInt256.MAX_VALUE)
+                .op(OpCode.SIGNEXTEND)
+                .op(OpCode.POP)
+                .push(UInt256.valueOf(31))
+                .push(UInt256.MAX_VALUE)
+                .op(OpCode.SIGNEXTEND)
+                .op(OpCode.POP)
+                .push(UInt256.valueOf(32))
+                .push(UInt256.MAX_VALUE)
                 .op(OpCode.SIGNEXTEND)
                 .compile())
         .run();
+  }
 
+  @Test
+  void testSignextendRef() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
-                .immediate(UInt256.valueOf(31))
-                .immediate(UInt256.MAX_VALUE)
+                .push(0xFF)
+                .push(0)
                 .op(OpCode.SIGNEXTEND)
-                .compile())
-        .run();
-
-    BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
-                .immediate(UInt256.valueOf(32))
-                .immediate(UInt256.MAX_VALUE)
+                .op(OpCode.POP)
+                .push(0x7F)
+                .push(0)
                 .op(OpCode.SIGNEXTEND)
+                .op(OpCode.POP)
                 .compile())
         .run();
   }

@@ -15,16 +15,10 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-import java.util.List;
+import com.google.common.base.Preconditions;
+import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
-
-@RequiredArgsConstructor
-public final class BlakeEffectiveCall implements Module {
-  @Getter private final BlakeRounds blakeRounds;
+public final class BlakeEffectiveCall extends CountingOnlyModule {
 
   @Override
   public String moduleKey() {
@@ -32,22 +26,9 @@ public final class BlakeEffectiveCall implements Module {
   }
 
   @Override
-  public void enterTransaction() {}
-
-  @Override
-  public void popTransaction() {}
-
-  @Override
-  public int lineCount() {
-    int r = 0;
-    for (BlakeLimit count : this.blakeRounds.counts()) {
-      r += count.numberOfEffectiveCalls();
-    }
-    return r;
-  }
-
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    throw new UnsupportedOperationException("should never be called");
+  public void addPrecompileLimit(final int numberEffectiveCall) {
+    Preconditions.checkArgument(
+        numberEffectiveCall == 1, "can't add more than one effective precompile call at a time");
+    counts.add(numberEffectiveCall);
   }
 }

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -47,16 +47,18 @@ public final class SStore extends GasProjection {
     if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
       return 0L;
     } else {
-      return GasConstants.G_COLD_S_LOAD.cost();
+      return GlobalConstants.GAS_CONST_G_COLD_SLOAD;
     }
   }
 
   @Override
   public long sStoreValue() {
     if (newValue.equals(currentValue) || !originalValue.equals(currentValue)) {
-      return GasConstants.G_WARM_ACCESS.cost();
+      return GlobalConstants.GAS_CONST_G_WARM_ACCESS;
     } else {
-      return originalValue.isZero() ? GasConstants.G_S_SET.cost() : GasConstants.G_S_RESET.cost();
+      return originalValue.isZero()
+          ? GlobalConstants.GAS_CONST_G_SSET
+          : GlobalConstants.GAS_CONST_G_SRESET;
     }
   }
 
@@ -64,23 +66,23 @@ public final class SStore extends GasProjection {
   public long refund() {
     long rDirtyClear = 0;
     if (!originalValue.isZero() && currentValue.isZero()) {
-      rDirtyClear = -GasConstants.R_S_CLEAR.cost();
+      rDirtyClear = -GlobalConstants.REFUND_CONST_R_SCLEAR;
     }
     if (!originalValue.isZero() && newValue.isZero()) {
-      rDirtyClear = GasConstants.R_S_CLEAR.cost();
+      rDirtyClear = GlobalConstants.REFUND_CONST_R_SCLEAR;
     }
 
     long rDirtyReset = 0;
     if (originalValue.equals(newValue) && originalValue.isZero()) {
-      rDirtyReset = GasConstants.G_S_SET.cost() - GasConstants.G_WARM_ACCESS.cost();
+      rDirtyReset = GlobalConstants.GAS_CONST_G_SSET - GlobalConstants.GAS_CONST_G_WARM_ACCESS;
     }
     if (originalValue.equals(newValue) && !originalValue.isZero()) {
-      rDirtyReset = GasConstants.G_S_RESET.cost() - GasConstants.G_WARM_ACCESS.cost();
+      rDirtyReset = GlobalConstants.GAS_CONST_G_SRESET - GlobalConstants.GAS_CONST_G_WARM_ACCESS;
     }
 
     long r = 0;
     if (!currentValue.equals(newValue) && currentValue.equals(originalValue) && newValue.isZero()) {
-      r = GasConstants.R_S_CLEAR.cost();
+      r = GlobalConstants.REFUND_CONST_R_SCLEAR;
     }
     if (!currentValue.equals(newValue) && !currentValue.equals(originalValue)) {
       r = rDirtyClear + rDirtyReset;

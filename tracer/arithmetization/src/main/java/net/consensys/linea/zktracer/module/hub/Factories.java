@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 
 /** Contain factories for modules requiring access to longer-lived data. */
 @Accessors(fluent = true)
@@ -25,6 +25,6 @@ public class Factories {
   @Getter private final AccountFragment.AccountFragmentFactory accountFragment;
 
   public Factories(final Hub hub) {
-    this.accountFragment = new AccountFragment.AccountFragmentFactory(hub.defers());
+    this.accountFragment = new AccountFragment.AccountFragmentFactory(hub);
   }
 }

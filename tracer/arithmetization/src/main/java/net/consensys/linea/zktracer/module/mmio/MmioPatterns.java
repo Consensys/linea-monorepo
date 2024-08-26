@@ -27,9 +27,9 @@ import org.apache.tuweni.bytes.Bytes;
 public class MmioPatterns {
 
   static List<Bytes> isolateSuffix(final Bytes16 input, final List<Boolean> flag) {
-    List<Bytes> output = new ArrayList<>(LLARGE);
+    final List<Bytes> output = new ArrayList<>(LLARGE);
 
-    output.add(0, flag.get(0) ? Bytes.of(input.get(0)) : Bytes.EMPTY);
+    output.addFirst(flag.getFirst() ? Bytes.of(input.get(0)) : Bytes.EMPTY);
 
     for (short ct = 1; ct < LLARGE; ct++) {
       output.add(
@@ -43,9 +43,9 @@ public class MmioPatterns {
   }
 
   static List<Bytes> isolatePrefix(final Bytes16 input, final List<Boolean> flag) {
-    List<Bytes> output = new ArrayList<>(LLARGE);
+    final List<Bytes> output = new ArrayList<>(LLARGE);
 
-    output.add(0, flag.get(0) ? Bytes.EMPTY : Bytes.of(input.get(0)));
+    output.addFirst(flag.getFirst() ? Bytes.EMPTY : Bytes.of(input.get(0)));
 
     for (short ct = 1; ct < LLARGE; ct++) {
       output.add(
@@ -60,9 +60,9 @@ public class MmioPatterns {
 
   static List<Bytes> isolateChunk(
       final Bytes16 input, final List<Boolean> startFlag, final List<Boolean> endFlag) {
-    List<Bytes> output = new ArrayList<>(LLARGE);
+    final List<Bytes> output = new ArrayList<>(LLARGE);
 
-    output.add(0, startFlag.get(0) ? Bytes.of(input.get(0)) : Bytes.EMPTY);
+    output.addFirst(startFlag.getFirst() ? Bytes.of(input.get(0)) : Bytes.EMPTY);
 
     for (short ct = 1; ct < LLARGE; ct++) {
       if (startFlag.get(ct)) {
@@ -80,11 +80,13 @@ public class MmioPatterns {
   }
 
   static List<Bytes> power(final List<Boolean> flag) {
-    List<Bytes> output = new ArrayList<>(LLARGE);
+    final List<Bytes> output = new ArrayList<>(LLARGE);
 
-    output.add(0, flag.get(0) ? Bytes.ofUnsignedShort(256) : Bytes.of(1));
+    output.addFirst(flag.getFirst() ? Bytes.ofUnsignedShort(256) : Bytes.of(1));
 
     for (short ct = 1; ct < LLARGE; ct++) {
+      final Bytes toPut =
+          flag.get(ct) ? Bytes.concatenate(output.get(ct - 1), Bytes.of(0)) : output.get(ct - 1);
       output.add(
           ct,
           flag.get(ct) ? Bytes.concatenate(output.get(ct - 1), Bytes.of(0)) : output.get(ct - 1));
@@ -93,9 +95,9 @@ public class MmioPatterns {
   }
 
   static List<Bytes> antiPower(final List<Boolean> flag) {
-    List<Bytes> output = new ArrayList<>(LLARGE);
+    final List<Bytes> output = new ArrayList<>(LLARGE);
 
-    output.add(0, flag.get(0) ? Bytes.of(1) : Bytes.ofUnsignedShort(256));
+    output.addFirst(flag.getFirst() ? Bytes.of(1) : Bytes.ofUnsignedShort(256));
 
     for (short ct = 1; ct < LLARGE; ct++) {
       output.add(

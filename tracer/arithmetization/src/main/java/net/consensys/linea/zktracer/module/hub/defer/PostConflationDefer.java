@@ -25,5 +25,5 @@ public interface PostConflationDefer {
    *
    * @param hub the {@link Hub} in which the {@link Transaction} took place
    */
-  void runPostConflation(Hub hub, WorldView world);
+  void resolvePostConflation(Hub hub, WorldView world);
 }

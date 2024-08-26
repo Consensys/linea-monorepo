@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -15,272 +15,342 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import static net.consensys.linea.zktracer.module.UtilCalculator.allButOneSixtyFourth;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_ABORT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_EMPTY_INIT_CODE_WILL_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_EMPTY_INIT_CODE_WONT_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_EXCEPTION;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_FAILURE_CONDITION_WILL_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_FAILURE_CONDITION_WONT_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_FAILURE_WILL_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WILL_REVERT;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT;
+import static net.consensys.linea.zktracer.module.shakiradata.HashType.KECCAK;
+import static net.consensys.linea.zktracer.opcode.OpCode.CREATE;
+import static net.consensys.linea.zktracer.opcode.OpCode.CREATE2;
+import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
+import static org.hyperledger.besu.crypto.Hash.keccak256;
 
+import java.util.Optional;
+
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.defer.NextContextDefer;
-import net.consensys.linea.zktracer.module.hub.defer.PostExecDefer;
+import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
+import net.consensys.linea.zktracer.module.hub.defer.ImmediateContextEntryDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
-import net.consensys.linea.zktracer.module.hub.defer.ReEnterContextDefer;
-import net.consensys.linea.zktracer.module.hub.fragment.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.account.RlpAddrSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.MxpCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.StpCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.oob.opcodes.Create;
-import net.consensys.linea.zktracer.module.hub.fragment.scenario.ScenarioFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CreateOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
-import net.consensys.linea.zktracer.module.hub.signals.FailureConditions;
-import net.consensys.linea.zktracer.opcode.OpCode;
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
-import net.consensys.linea.zktracer.opcode.gas.projector.GasProjection;
-import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
+import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.operation.Operation;
+import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class CreateSection extends TraceSection
-    implements PostExecDefer, NextContextDefer, PostTransactionDefer, ReEnterContextDefer {
-  private final int creatorContextId;
-  private final boolean emptyInitCode;
-  private final OpCode opCode;
-  private final long initialGas;
-  private final AbortingConditions aborts;
-  private final short exceptions;
-  private final FailureConditions failures;
-  private final ScenarioFragment scenarioFragment;
+    implements ImmediateContextEntryDefer,
+        PostRollbackDefer,
+        ContextReEntryDefer,
+        PostTransactionDefer {
 
   // Just before create
-  private final AccountSnapshot oldCreatorSnapshot;
-  private final AccountSnapshot oldCreatedSnapshot;
+  private AccountSnapshot preOpcodeCreatorSnapshot;
+  private AccountSnapshot preOpcodeCreateeSnapshot;
 
-  // Just after create but before entering child frame
-  private AccountSnapshot midCreatorSnapshot;
-  private AccountSnapshot midCreatedSnapshot;
+  // Just at the entry child frame
+  private AccountSnapshot childEntryCreatorSnapshot;
+  private AccountSnapshot childEntryCreateeSnapshot;
 
-  // After return from child-context
-  private AccountSnapshot newCreatorSnapshot;
-  private AccountSnapshot newCreatedSnapshot;
+  // Just at the entry child frame
+  private AccountSnapshot reEntryCreatorSnapshot;
+  private AccountSnapshot reEntryCreateeSnapshot;
 
-  private boolean createSuccessful;
+  private RlpAddrSubFragment rlpAddrSubFragment;
 
-  /* true if the putatively created account already has code **/
-  private boolean targetHasCode() {
-    return !oldCreatedSnapshot.code().isEmpty();
-  }
+  // row i+0
+  final CreateScenarioFragment scenarioFragment;
+  // row i+?
+  private ContextFragment finalContextFragment;
 
-  public CreateSection(
-      Hub hub, AccountSnapshot oldCreatorSnapshot, AccountSnapshot oldCreatedSnapshot) {
-    this.creatorContextId = hub.currentFrame().id();
-    this.opCode = hub.opCode();
-    this.emptyInitCode = hub.transients().op().callDataSegment().isEmpty();
-    this.initialGas = hub.messageFrame().getRemainingGas();
-    this.aborts = hub.pch().aborts().snapshot();
-    this.exceptions = hub.pch().exceptions();
-    this.failures = hub.pch().failures().snapshot();
-
-    this.oldCreatorSnapshot = oldCreatorSnapshot;
-    this.oldCreatedSnapshot = oldCreatedSnapshot;
-
-    this.scenarioFragment = ScenarioFragment.forCreate(hub, this.targetHasCode());
+  // TODO: according to our preliminary conclusion in issue #866
+  //  CREATE's that raise a failure condition _do spawn a child context_.
+  public CreateSection(Hub hub) {
+    super(hub, maxNumberOfLines(hub.pch().exceptions(), hub.pch().abortingConditions()));
+    final short exceptions = hub.pch().exceptions();
 
     this.addStack(hub);
 
-    // Will be traced in one (and only one!) of these depending on the success of
-    // the operation
-    hub.defers().postExec(this);
-    hub.defers().nextContext(this, hub.currentFrame().id());
-    hub.defers().reEntry(this);
+    // row  i+ 0
+    scenarioFragment = new CreateScenarioFragment();
+    this.addFragment(scenarioFragment);
+
+    // row i + 1
+    final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);
+    this.addFragment(currentContextFragment);
+
+    // row: i + 2
+    final ImcFragment imcFragment = ImcFragment.empty(hub);
+    this.addFragment(imcFragment);
+
+    // STATICX case
+    // Note: in the static case this imc fragment remains empty
+    if (Exceptions.staticFault(exceptions)) {
+      scenarioFragment.setScenario(CREATE_EXCEPTION);
+      return;
+    }
+
+    final MxpCall mxpCall = new MxpCall(hub);
+    imcFragment.callMxp(mxpCall);
+    Preconditions.checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+
+    // MXPX case
+    if (mxpCall.mxpx) {
+      scenarioFragment.setScenario(CREATE_EXCEPTION);
+      return;
+    }
+
+    final StpCall stpCall = new StpCall(hub, mxpCall.getGasMxp());
+    stpCall.stpCallForCreates(hub);
+    imcFragment.callStp(stpCall);
+
+    Preconditions.checkArgument(
+        stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions));
+
+    // OOGX case
+    if (Exceptions.outOfGasException(exceptions)) {
+      scenarioFragment.setScenario(CREATE_EXCEPTION);
+      return;
+    }
+
+    // The CREATE(2) is now unexceptional
+    Preconditions.checkArgument(Exceptions.none(exceptions));
+    hub.currentFrame().childSpanningSection(this);
+
+    final CreateOobCall oobCall = new CreateOobCall();
+    imcFragment.callOob(oobCall);
+
+    final AbortingConditions aborts = hub.pch().abortingConditions().snapshot();
+    Preconditions.checkArgument(oobCall.isAbortingCondition() == aborts.any());
+
+    final CallFrame callFrame = hub.currentFrame();
+    final MessageFrame frame = callFrame.frame();
+
+    final Address creatorAddress = callFrame.accountAddress();
+    preOpcodeCreatorSnapshot = AccountSnapshot.canonical(hub, creatorAddress);
+
+    final Address createeAddress = getDeploymentAddress(frame);
+    preOpcodeCreateeSnapshot = AccountSnapshot.canonical(hub, createeAddress);
+
+    if (aborts.any()) {
+      scenarioFragment.setScenario(CREATE_ABORT);
+      this.finishAbortCreate(hub);
+      return;
+    }
+
+    // The CREATE(2) is now unexceptional and unaborted
+    Preconditions.checkArgument(aborts.none());
+    hub.defers().scheduleForImmediateContextEntry(this); // when we add the two account fragments
+    hub.defers().scheduleForPostRollback(this, hub.currentFrame()); // in case of Rollback
+    hub.defers().scheduleForPostTransaction(this); // when we add the last context row
+
+    rlpAddrSubFragment = RlpAddrSubFragment.makeFragment(hub, createeAddress);
+
+    final Optional<Account> deploymentAccount =
+        Optional.ofNullable(frame.getWorldUpdater().get(createeAddress));
+    final boolean createdAddressHasNonZeroNonce =
+        deploymentAccount.map(a -> a.getNonce() != 0).orElse(false);
+    final boolean createdAddressHasNonEmptyCode =
+        deploymentAccount.map(AccountState::hasCode).orElse(false);
+
+    final boolean failedCreate = createdAddressHasNonZeroNonce || createdAddressHasNonEmptyCode;
+    final boolean emptyInitCode = hub.transients().op().initCodeSegment().isEmpty();
+
+    // Trigger MMU & SHAKIRA to hash the (non-empty) InitCode of CREATE2 - even for failed CREATE2
+    if (hub.opCode() == CREATE2 && !emptyInitCode) {
+      final MmuCall mmuCall = MmuCall.create2(hub, failedCreate);
+      imcFragment.callMmu(mmuCall);
+
+      final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(1));
+      final long size = Words.clampedToLong(hub.messageFrame().getStackItem(2));
+      final Bytes create2InitCode = frame.shadowReadMemory(offset, size);
+      final Bytes32 hash = keccak256(create2InitCode);
+      final ShakiraDataOperation shakiraDataOperation =
+          new ShakiraDataOperation(hub.stamp(), KECCAK, create2InitCode, hash);
+      hub.shakiraData().call(shakiraDataOperation);
+    }
+
+    if (failedCreate || emptyInitCode) {
+      finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+
+      if (failedCreate) {
+        scenarioFragment.setScenario(CREATE_FAILURE_CONDITION_WONT_REVERT);
+      }
+      if (emptyInitCode) {
+        scenarioFragment.setScenario(CREATE_EMPTY_INIT_CODE_WONT_REVERT);
+      }
+
+      return;
+    }
+
+    // Finally, non-exceptional, non-aborting, non-failing, non-emptyInitCode create
+    hub.defers()
+        .scheduleForContextReEntry(
+            this, hub.currentFrame()); // To get the success bit of the CREATE(2)
+
+    hub.romLex().callRomLex(frame);
+
+    // Note: the case CREATE2 has been set before, we need to do it even in the failure case
+    if (hub.opCode() == CREATE) {
+      final MmuCall mmuCall = MmuCall.create(hub);
+      imcFragment.callMmu(mmuCall);
+    }
+
+    this.finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
   }
 
   @Override
-  public void runPostExec(Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
-    Address creatorAddress = oldCreatorSnapshot.address();
-    this.midCreatorSnapshot =
-        AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().get(creatorAddress),
-            true,
-            hub.transients().conflation().deploymentInfo().number(creatorAddress),
-            hub.transients().conflation().deploymentInfo().isDeploying(creatorAddress));
+  public void resolveUponImmediateContextEntry(Hub hub) {
+    childEntryCreatorSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreatorSnapshot.address());
+    childEntryCreateeSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreateeSnapshot.address());
 
-    Address createdAddress = oldCreatedSnapshot.address();
-    this.midCreatedSnapshot =
-        AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().get(createdAddress),
-            true,
-            hub.transients().conflation().deploymentInfo().number(createdAddress),
-            hub.transients().conflation().deploymentInfo().isDeploying(createdAddress));
-    // Pre-emptively set new* snapshots in case we never enter the child frame.
-    // Will be overwritten if we enter the child frame and runNextContext is explicitly called by
-    // the defer registry.
-    this.runAtReEnter(hub, frame);
-  }
-
-  @Override
-  public void runNextContext(Hub hub, MessageFrame frame) {}
-
-  @Override
-  public void runAtReEnter(Hub hub, MessageFrame frame) {
-    this.createSuccessful = !frame.getStackItem(0).isZero();
-
-    Address creatorAddress = oldCreatorSnapshot.address();
-    this.newCreatorSnapshot =
-        AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().get(creatorAddress),
-            true,
-            hub.transients().conflation().deploymentInfo().number(creatorAddress),
-            hub.transients().conflation().deploymentInfo().isDeploying(creatorAddress));
-
-    Address createdAddress = oldCreatedSnapshot.address();
-    this.newCreatedSnapshot =
-        AccountSnapshot.fromAccount(
-            frame.getWorldUpdater().get(createdAddress),
-            true,
-            hub.transients().conflation().deploymentInfo().number(createdAddress),
-            hub.transients().conflation().deploymentInfo().isDeploying(createdAddress));
-  }
-
-  @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
     final AccountFragment.AccountFragmentFactory accountFragmentFactory =
         hub.factories().accountFragment();
-    final boolean creatorReverted = hub.callStack().getById(this.creatorContextId).hasReverted();
-    final GasProjection projection = Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode());
-    final long upfrontCost =
-        projection.memoryExpansion() + projection.linearPerWord() + GasConstants.G_TX_CREATE.cost();
 
-    final ImcFragment commonImcFragment =
-        ImcFragment.empty(hub)
-            .callOob(
-                new Create(
-                    hub.pch().aborts().any(),
-                    hub.pch().failures().any(),
-                    EWord.of(hub.messageFrame().getStackItem(0)),
-                    EWord.of(oldCreatedSnapshot.balance()),
-                    oldCreatedSnapshot.nonce(),
-                    !oldCreatedSnapshot.code().isEmpty(),
-                    hub.callStack().depth()))
-            .callMxp(MxpCall.build(hub))
-            .callStp(
-                new StpCall(
-                    this.opCode.byteValue(),
-                    EWord.of(this.initialGas),
-                    EWord.ZERO,
-                    false,
-                    oldCreatedSnapshot.isWarm(),
-                    Exceptions.outOfGas(this.exceptions),
-                    upfrontCost,
-                    allButOneSixtyFourth(this.initialGas - upfrontCost),
-                    0));
+    final AccountFragment creatorAccountFragment =
+        accountFragmentFactory.make(
+            preOpcodeCreatorSnapshot,
+            childEntryCreatorSnapshot,
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+    creatorAccountFragment.rlpAddrSubFragment(rlpAddrSubFragment);
 
-    this.scenarioFragment.runPostTx(hub, state, tx, isSuccessful);
-    this.addFragmentsWithoutStack(hub, scenarioFragment);
-    if (Exceptions.staticFault(this.exceptions)) {
-      this.addFragmentsWithoutStack(
-          hub,
-          ImcFragment.empty(hub),
-          ContextFragment.readContextData(hub.callStack()),
-          ContextFragment.executionEmptyReturnData(hub.callStack()));
-    } else if (Exceptions.outOfMemoryExpansion(this.exceptions)) {
-      this.addFragmentsWithoutStack(
-          hub,
-          ImcFragment.empty(hub).callMxp(MxpCall.build(hub)),
-          ContextFragment.executionEmptyReturnData(hub.callStack()));
-    } else if (Exceptions.outOfGas(this.exceptions)) {
-      this.addFragmentsWithoutStack(
-          hub, commonImcFragment, ContextFragment.executionEmptyReturnData(hub.callStack()));
-    } else if (this.aborts.any()) {
-      this.addFragmentsWithoutStack(
-          hub,
-          commonImcFragment,
-          ContextFragment.readContextData(hub.callStack()),
-          accountFragmentFactory.make(oldCreatorSnapshot, newCreatorSnapshot),
-          ContextFragment.nonExecutionEmptyReturnData(hub.callStack()));
-    } else if (this.failures.any()) {
-      if (creatorReverted) {
-        this.addFragmentsWithoutStack(
-            hub,
-            commonImcFragment,
-            accountFragmentFactory.make(oldCreatorSnapshot, newCreatorSnapshot),
-            accountFragmentFactory.make(oldCreatedSnapshot, newCreatedSnapshot),
-            accountFragmentFactory.make(newCreatorSnapshot, oldCreatorSnapshot),
-            accountFragmentFactory.make(newCreatedSnapshot, oldCreatedSnapshot),
-            ContextFragment.nonExecutionEmptyReturnData(hub.callStack()));
-      } else {
-        this.addFragmentsWithoutStack(
-            hub,
-            commonImcFragment,
-            accountFragmentFactory.make(oldCreatorSnapshot, newCreatorSnapshot),
-            accountFragmentFactory.make(oldCreatedSnapshot, newCreatedSnapshot),
-            ContextFragment.nonExecutionEmptyReturnData(hub.callStack()));
-      }
+    final AccountFragment createeAccountFragment =
+        accountFragmentFactory.make(
+            preOpcodeCreateeSnapshot,
+            childEntryCreateeSnapshot,
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
+
+    this.addFragments(creatorAccountFragment, createeAccountFragment);
+  }
+
+  @Override
+  public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
+    final boolean deploymentSuccess = !frame.frame().getStackItem(0).isZero();
+
+    if (!deploymentSuccess) {
+      scenarioFragment.setScenario(CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT);
     } else {
-      if (this.emptyInitCode) {
-        if (creatorReverted) {
-          this.addFragmentsWithoutStack(
-              hub,
-              commonImcFragment,
-              accountFragmentFactory.make(oldCreatorSnapshot, newCreatorSnapshot),
-              accountFragmentFactory.make(oldCreatedSnapshot, newCreatedSnapshot),
-              accountFragmentFactory.make(newCreatorSnapshot, oldCreatorSnapshot),
-              accountFragmentFactory.make(newCreatedSnapshot, oldCreatedSnapshot),
-              ContextFragment.nonExecutionEmptyReturnData(hub.callStack()));
-        } else {
-          this.addFragmentsWithoutStack(
-              hub,
-              commonImcFragment,
-              accountFragmentFactory.make(oldCreatorSnapshot, newCreatorSnapshot),
-              accountFragmentFactory.make(oldCreatedSnapshot, newCreatedSnapshot),
-              ContextFragment.nonExecutionEmptyReturnData(hub.callStack()));
-        }
-      } else {
-        if (this.createSuccessful) {
-          if (creatorReverted) {
-            this.addFragmentsWithoutStack(
-                hub,
-                commonImcFragment,
-                accountFragmentFactory.make(oldCreatorSnapshot, midCreatorSnapshot),
-                accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
-                accountFragmentFactory.make(midCreatorSnapshot, oldCreatorSnapshot),
-                accountFragmentFactory.make(midCreatedSnapshot, oldCreatedSnapshot),
-                ContextFragment.initializeExecutionContext(hub));
+      scenarioFragment.setScenario(CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT);
 
-          } else {
-            this.addFragmentsWithoutStack(
-                hub,
-                commonImcFragment,
-                accountFragmentFactory.make(oldCreatorSnapshot, midCreatorSnapshot),
-                accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
-                ContextFragment.initializeExecutionContext(hub));
-          }
-        } else {
-          if (creatorReverted) {
-            this.addFragmentsWithoutStack(
-                hub,
-                commonImcFragment,
-                accountFragmentFactory.make(oldCreatorSnapshot, midCreatorSnapshot),
-                accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
-                accountFragmentFactory.make(midCreatorSnapshot, newCreatorSnapshot),
-                accountFragmentFactory.make(midCreatedSnapshot, newCreatedSnapshot),
-                accountFragmentFactory.make(newCreatorSnapshot, oldCreatorSnapshot),
-                accountFragmentFactory.make(newCreatedSnapshot, oldCreatedSnapshot),
-                ContextFragment.initializeExecutionContext(hub));
-          } else {
-            this.addFragmentsWithoutStack(
-                hub,
-                commonImcFragment,
-                accountFragmentFactory.make(oldCreatorSnapshot, midCreatorSnapshot),
-                accountFragmentFactory.make(oldCreatedSnapshot, midCreatedSnapshot),
-                accountFragmentFactory.make(midCreatorSnapshot, newCreatorSnapshot),
-                accountFragmentFactory.make(midCreatedSnapshot, newCreatedSnapshot),
-                ContextFragment.initializeExecutionContext(hub));
-          }
-        }
-      }
+      reEntryCreatorSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreatorSnapshot.address());
+      reEntryCreateeSnapshot = AccountSnapshot.canonical(hub, preOpcodeCreateeSnapshot.address());
+
+      final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+          hub.factories().accountFragment();
+
+      final int childRevertStamp = hub.getLastChildCallFrame(frame).revertStamp();
+
+      final AccountFragment undoCreator =
+          accountFragmentFactory.make(
+              childEntryCreatorSnapshot,
+              reEntryCreatorSnapshot,
+              DomSubStampsSubFragment.revertsWithChildDomSubStamps(
+                  this.hubStamp(), childRevertStamp, 2));
+
+      final AccountFragment undoCreatee =
+          accountFragmentFactory.make(
+              childEntryCreateeSnapshot,
+              reEntryCreateeSnapshot,
+              DomSubStampsSubFragment.revertsWithChildDomSubStamps(
+                  this.hubStamp(), childRevertStamp, 3));
+
+      this.addFragments(undoCreator, undoCreatee);
     }
+  }
+
+  @Override
+  public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+    scenarioFragment.setScenario(switchToRevert(scenarioFragment.getScenario()));
+
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        hub.factories().accountFragment();
+
+    final int revertStamp = callFrame.revertStamp();
+    final boolean firstUndo =
+        scenarioFragment.getScenario() != CREATE_NON_EMPTY_INIT_CODE_FAILURE_WILL_REVERT;
+
+    final AccountFragment undoCreator =
+        accountFragmentFactory.make(
+            firstUndo ? childEntryCreatorSnapshot : reEntryCreatorSnapshot,
+            preOpcodeCreatorSnapshot,
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                this.hubStamp(), revertStamp, firstUndo ? 2 : 4));
+
+    final AccountFragment undoCreatee =
+        accountFragmentFactory.make(
+            firstUndo ? childEntryCreateeSnapshot : reEntryCreateeSnapshot,
+            preOpcodeCreateeSnapshot,
+            DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                this.hubStamp(), revertStamp, firstUndo ? 3 : 5));
+
+    this.addFragments(undoCreator, undoCreatee);
+  }
+
+  @Override
+  public void resolvePostTransaction(
+      Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
+    addFragment(finalContextFragment);
+  }
+
+  private static short maxNumberOfLines(final short exceptions, final AbortingConditions abort) {
+    if (Exceptions.any(exceptions)) {
+      return 6;
+    }
+    if (abort.any()) {
+      return 7;
+    }
+    return 11; // Note: could be lower for unreverted successful CREATE(s)
+  }
+
+  private void finishAbortCreate(final Hub hub) {
+    final AccountFragment.AccountFragmentFactory accountFragmentFactory =
+        hub.factories().accountFragment();
+    final AccountFragment creatorAccountFragment =
+        accountFragmentFactory.make(
+            preOpcodeCreateeSnapshot,
+            preOpcodeCreateeSnapshot,
+            DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
+
+    final ContextFragment updatedCurrentContextFragment =
+        ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
+
+    this.addFragments(creatorAccountFragment, updatedCurrentContextFragment);
+  }
+
+  private static CreateScenarioFragment.CreateScenario switchToRevert(
+      final CreateScenarioFragment.CreateScenario previousScenario) {
+    return switch (previousScenario) {
+      case CREATE_FAILURE_CONDITION_WONT_REVERT -> CREATE_FAILURE_CONDITION_WILL_REVERT;
+      case CREATE_EMPTY_INIT_CODE_WONT_REVERT -> CREATE_EMPTY_INIT_CODE_WILL_REVERT;
+      case CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT -> CREATE_NON_EMPTY_INIT_CODE_FAILURE_WILL_REVERT;
+      case CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT -> CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WILL_REVERT;
+      default -> throw new IllegalArgumentException("unexpected Create scenario");
+    };
   }
 }

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.testing;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -56,15 +57,28 @@ public final class BytecodeRunner {
 
   @Setter private Consumer<ZkTracer> zkTracerValidator = zkTracer -> {};
 
+  // Default run method
   public void run() {
-    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT);
+    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of());
   }
 
+  // Ad-hoc senderBalance
   public void run(Wei senderBalance) {
-    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT);
+    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of());
   }
 
+  // Ad-hoc senderBalance and gasLimit
   public void run(Wei senderBalance, Long gasLimit) {
+    this.run(senderBalance, gasLimit, List.of());
+  }
+
+  // Ad-hoc accounts
+  public void run(List<ToyAccount> additionalAccounts) {
+    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, additionalAccounts);
+  }
+
+  // Ad-hoc senderBalance, gasLimit and accounts
+  public void run(Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts) {
     Preconditions.checkArgument(byteCode != null, "byteCode cannot be empty");
 
     KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -91,8 +105,12 @@ public final class BytecodeRunner {
             .gasLimit(selectedGasLimit)
             .build();
 
-    final ToyWorld toyWorld =
-        ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
+    List<ToyAccount> accounts = new ArrayList<>();
+    accounts.add(senderAccount);
+    accounts.add(receiverAccount);
+    accounts.addAll(additionalAccounts);
+
+    final ToyWorld toyWorld = ToyWorld.builder().accounts(accounts).build();
 
     toyExecutionEnvironment =
         ToyExecutionEnvironment.builder()

@@ -20,27 +20,21 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.runtime.LogInvocation;
+import net.consensys.linea.zktracer.runtime.LogData;
 
 /** Stores data relative to the conflation. */
 @Accessors(fluent = true)
 @Getter
 public class Conflation {
-  private int number = 0;
-  private DeploymentInfo deploymentInfo;
-  private final List<LogInvocation> logs = new ArrayList<>(100);
+  private final DeploymentInfo deploymentInfo = new DeploymentInfo();
+  private final List<LogData> logs = new ArrayList<>(100);
 
-  public int log(LogInvocation logInvocation) {
-    this.logs.add(logInvocation);
+  public int log(LogData logData) {
+    this.logs.add(logData);
     return this.logs.size() - 1;
   }
 
   public int currentLogId() {
     return this.logs.size() - 1;
-  }
-
-  public void update() {
-    this.number++;
-    this.deploymentInfo = new DeploymentInfo();
   }
 }

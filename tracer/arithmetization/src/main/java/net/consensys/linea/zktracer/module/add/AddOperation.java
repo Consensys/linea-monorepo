@@ -124,7 +124,7 @@ public final class AddOperation extends ModuleOperation {
           .byte2(UnsignedByte.of(resLo.get(ct)))
           .ct(UnsignedByte.of(ct))
           .ctMax(UnsignedByte.of(this.ctMax))
-          .inst(UnsignedByte.of(opCode.byteValue()))
+          .inst(UnsignedByte.of(opCode.byteValue() & 0xff))
           .overflow(overflowBit(ct, overflowHi, overflowLo))
           .resHi(resHi)
           .resLo(resLo)

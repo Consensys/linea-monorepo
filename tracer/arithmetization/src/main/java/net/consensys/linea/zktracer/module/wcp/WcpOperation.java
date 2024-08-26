@@ -95,7 +95,7 @@ public class WcpOperation extends ModuleOperation {
     this.arg2Lo = arg2.slice(LLARGE + offset, length);
 
     // Calculate Result Low
-    resLo = calculateResLow(wcpInst, arg1, arg2);
+    resLo = calculateResult(wcpInst, arg1, arg2);
 
     // Set bit 3 and AdjHi
     final BigInteger firstHi = this.arg1.slice(0, LLARGE).toUnsignedBigInteger();
@@ -133,7 +133,7 @@ public class WcpOperation extends ModuleOperation {
     this.bit2 = this.arg1Lo.compareTo(this.arg2Lo) == 0;
   }
 
-  private boolean calculateResLow(byte opCode, Bytes32 arg1, Bytes32 arg2) {
+  private boolean calculateResult(byte opCode, Bytes32 arg1, Bytes32 arg2) {
     return switch (opCode) {
       case EQbv -> arg1.compareTo(arg2) == 0;
       case ISZERObv -> arg1.isZero();

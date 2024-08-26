@@ -45,7 +45,7 @@ public final class StackLine {
 
   /** The default constructor, an empty stack line. */
   public StackLine() {
-    this(new ArrayList<>(4), -1);
+    this(new ArrayList<>(2), -1);
   }
 
   /**

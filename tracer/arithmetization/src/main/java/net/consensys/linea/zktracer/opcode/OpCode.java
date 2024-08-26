@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /** Represents the entire set of opcodes that are required by the arithmetization process. */
@@ -210,6 +211,19 @@ public enum OpCode {
     return UnsignedByte.of(byteValue());
   }
 
+  /** Returns true for JUMP-type instructions */
+  public boolean isJump() {
+    return this == OpCode.JUMP || this == OpCode.JUMPI;
+  }
+
+  public boolean isLog() {
+    return this == OpCode.LOG0
+        || this == OpCode.LOG1
+        || this == OpCode.LOG2
+        || this == OpCode.LOG3
+        || this == OpCode.LOG4;
+  }
+
   /** Returns whether the {@link OpCode} entails a contract creation. */
   public boolean isCreate() {
     return this == OpCode.CREATE || this == OpCode.CREATE2;
@@ -223,11 +237,13 @@ public enum OpCode {
         || this == OpCode.STATICCALL;
   }
 
-  public boolean callHasSixArgument() {
+  public boolean callMayNotTransferValue() {
+    Preconditions.checkArgument(isCall());
     return this == OpCode.DELEGATECALL || this == OpCode.STATICCALL;
   }
 
-  public boolean callHasSevenArgument() {
+  public boolean callCanTransferValue() {
+    Preconditions.checkArgument(isCall());
     return this == OpCode.CALL || this == OpCode.CALLCODE;
   }
 
@@ -245,5 +261,9 @@ public enum OpCode {
     }
 
     return false;
+  }
+
+  public short numberOfStackRows() {
+    return (short) (this.getData().stackSettings().twoLineInstruction() ? 2 : 1);
   }
 }

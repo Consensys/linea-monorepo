@@ -17,4 +17,5 @@ package net.consensys.linea.zktracer.module.gas;
 
 import java.math.BigInteger;
 
-public record GasParameters(BigInteger gasActl, BigInteger gasCost, boolean oogx) {}
+public record GasParameters(
+    int ctMax, BigInteger gasActual, BigInteger gasCost, boolean xahoy, boolean oogx) {}

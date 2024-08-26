@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
@@ -86,7 +87,7 @@ public class RightPaddedWordExtraction implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.DEFAULT); // all 0
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;

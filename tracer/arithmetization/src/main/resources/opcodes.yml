@@ -30,6 +30,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 2
       staticGas: G_LOW
+      flag1: true
   - mnemonic: SUB
     value: 0x03
     instructionFamily: ADD
@@ -89,7 +90,7 @@ opcodes:
       delta: 3
       nbAdded: 1
       nbRemoved: 3
-      staticGas: G_LOW
+      staticGas: G_MID
   - mnemonic: MULMOD
     value: 0x9
     instructionFamily: EXT
@@ -99,7 +100,7 @@ opcodes:
       delta: 3
       nbAdded: 1
       nbRemoved: 3
-      staticGas: G_LOW
+      staticGas: G_MID
   - mnemonic: EXP
     value: 0xa
     instructionFamily: MUL
@@ -110,6 +111,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 2
       staticGas: G_EXP
+      flag2: true
   - mnemonic: SIGNEXTEND
     value: 0xb
     instructionFamily: BIN
@@ -119,9 +121,9 @@ opcodes:
       delta: 2
       nbAdded: 1
       nbRemoved: 2
-      staticGas: G_VERY_LOW
-      # assigned SLT opcode for WCP module with value 0x0E. Change this value if Linéa/EVM uses this opcode.
-      # assigned SGT opcode for WCP module with value 0x0F. Change this value if Linéa/EVM uses this opcode.
+      staticGas: G_LOW
+      # assigned LEQ opcode for WCP module with value 0x0E. Change this value if Linéa/EVM uses this opcode.
+      # assigned GEQ opcode for WCP module with value 0x0F. Change this value if Linéa/EVM uses this opcode.
   - mnemonic: LT
     value: 0x10
     instructionFamily: WCP
@@ -273,7 +275,7 @@ opcodes:
       delta: 2
       nbAdded: 1
       nbRemoved: 2
-      staticGas: S_MXP
+      staticGas: G_KECCAK_256
     billing:
       byWord:
         type: TYPE_4
@@ -288,6 +290,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
+      flag1: true
   - mnemonic: BALANCE
     value: 0x31
     instructionFamily: ACCOUNT
@@ -298,8 +301,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 1
       staticGas: S_HUB
-      addressTrimmingInstruction: true
-      flag4: true
+      flag1: true
   - mnemonic: ORIGIN
     value: 0x32
     instructionFamily: TRANSACTION
@@ -331,7 +333,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
-      flag1: true
+      flag3: true
   - mnemonic: CALLDATALOAD
     value: 0x35
     instructionFamily: STACK_RAM
@@ -342,7 +344,6 @@ opcodes:
       nbAdded: 1
       nbRemoved: 1
       staticGas: G_VERY_LOW
-      oobFlag: true
       flag1: true
   - mnemonic: CALLDATASIZE
     value: 0x36
@@ -354,8 +355,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
-      flag1: true
-      flag3: true
+      flag4: true
   - mnemonic: CALLDATACOPY
     value: 0x37
     instructionFamily: COPY
@@ -365,7 +365,8 @@ opcodes:
       delta: 3
       nbAdded: 0
       nbRemoved: 3
-      staticGas: S_MXP
+      staticGas: G_VERY_LOW
+      flag1: true
     billing:
       byWord:
         type: TYPE_4
@@ -380,7 +381,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
-      flag1: true
+      flag4: true
   - mnemonic: CODECOPY
     value: 0x39
     instructionFamily: COPY
@@ -390,7 +391,7 @@ opcodes:
       delta: 3
       nbAdded: 0
       nbRemoved: 3
-      staticGas: S_MXP
+      staticGas: G_VERY_LOW
       flag3: true
     billing:
       byWord:
@@ -417,9 +418,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 1
       staticGas: S_HUB
-      addressTrimmingInstruction: true
-      flag1: true
-      flag3: true
+      flag2: true
   - mnemonic: EXTCODECOPY
     value: 0x3c
     instructionFamily: COPY
@@ -429,8 +428,7 @@ opcodes:
       delta: 4
       nbAdded: 0
       nbRemoved: 4
-      staticGas: S_MXP
-      addressTrimmingInstruction: true
+      staticGas: G_VERY_LOW
       flag4: true
     billing:
       byWord:
@@ -446,8 +444,6 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_BASE
-      flag1: true
-      flag2: true
   - mnemonic: RETURNDATACOPY
     value: 0x3e
     instructionFamily: COPY
@@ -457,8 +453,7 @@ opcodes:
       delta: 3
       nbAdded: 0
       nbRemoved: 3
-      oobFlag: true
-      staticGas: S_MXP
+      staticGas: G_VERY_LOW
       flag2: true
     billing:
       byWord:
@@ -474,8 +469,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 1
       staticGas: S_HUB
-      addressTrimmingInstruction: true
-      flag2: true
+      flag3: true
   - mnemonic: BLOCKHASH
     value: 0x40
     instructionFamily: BATCH
@@ -496,8 +490,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: TIMESTAMP
     value: 0x42
     instructionFamily: BATCH
@@ -507,8 +500,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: NUMBER
     value: 0x43
     instructionFamily: BATCH
@@ -518,8 +510,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: DIFFICULTY
     value: 0x44
     instructionFamily: BATCH
@@ -529,8 +520,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: GASLIMIT
     value: 0x45
     instructionFamily: BATCH
@@ -540,8 +530,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: CHAINID
     value: 0x46
     instructionFamily: BATCH
@@ -551,8 +540,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: SELFBALANCE
     value: 0x47
     instructionFamily: ACCOUNT
@@ -563,7 +551,6 @@ opcodes:
       nbAdded: 1
       nbRemoved: 0
       staticGas: G_LOW
-      flag1: true
   - mnemonic: BASEFEE
     value: 0x48
     instructionFamily: BATCH
@@ -573,8 +560,7 @@ opcodes:
       delta: 0
       nbAdded: 1
       nbRemoved: 0
-      staticGas: G_BLOCK_HASH
-      flag1: true
+      staticGas: G_BASE
   - mnemonic: POP
     value: 0x50
     instructionFamily: PUSH_POP
@@ -589,7 +575,7 @@ opcodes:
     value: 0x51
     instructionFamily: STACK_RAM
     stackSettings:
-      pattern: ONE_ONE
+      pattern: LOAD_STORE
       alpha: 1
       delta: 1
       nbAdded: 1
@@ -603,7 +589,7 @@ opcodes:
     value: 0x52
     instructionFamily: STACK_RAM
     stackSettings:
-      pattern: TWO_ZERO
+      pattern: LOAD_STORE
       alpha: 0
       delta: 2
       nbAdded: 0
@@ -617,7 +603,7 @@ opcodes:
     value: 0x53
     instructionFamily: STACK_RAM
     stackSettings:
-      pattern: TWO_ZERO
+      pattern: LOAD_STORE
       alpha: 0
       delta: 2
       nbAdded: 0
@@ -631,7 +617,7 @@ opcodes:
     value: 0x54
     instructionFamily: STORAGE
     stackSettings:
-      pattern: ONE_ONE
+      pattern: LOAD_STORE
       alpha: 1
       delta: 1
       nbAdded: 1
@@ -641,12 +627,11 @@ opcodes:
     value: 0x55
     instructionFamily: STORAGE
     stackSettings:
-      pattern: TWO_ZERO
+      pattern: LOAD_STORE
       alpha: 0
       delta: 2
       nbAdded: 0
       nbRemoved: 2
-      oobFlag: true
       staticGas: S_HUB
       forbiddenInStatic: true
       flag1: true
@@ -660,7 +645,6 @@ opcodes:
       nbAdded: 0
       nbRemoved: 1
       staticGas: G_MID
-      oobFlag: true
       flag1: true
   - mnemonic: JUMPI
     value: 0x57
@@ -671,8 +655,7 @@ opcodes:
       delta: 2
       nbAdded: 0
       nbRemoved: 2
-      staticGas: G_MID
-      oobFlag: true
+      staticGas: G_HIGH
       flag2: true
   - mnemonic: PC
     value: 0x58
@@ -1436,7 +1419,7 @@ opcodes:
       nbAdded: 0
       nbRemoved: 2
       staticGas: G_LOG_0
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
     billing:
       byByte:
@@ -1452,7 +1435,7 @@ opcodes:
       nbAdded: 0
       nbRemoved: 3
       staticGas: G_LOG_1
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
       flag1: true
     billing:
@@ -1469,10 +1452,9 @@ opcodes:
       nbAdded: 0
       nbRemoved: 4
       staticGas: G_LOG_2
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
-      flag1: true
-      flag3: true
+      flag2: true
     billing:
       byByte:
         type: TYPE_4
@@ -1487,9 +1469,8 @@ opcodes:
       nbAdded: 0
       nbRemoved: 5
       staticGas: G_LOG_3
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
-      flag1: true
       flag3: true
     billing:
       byByte:
@@ -1505,11 +1486,9 @@ opcodes:
       nbAdded: 0
       nbRemoved: 6
       staticGas: G_LOG_4
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
-      flag1: true
-      flag2: true
-      flag3: true
+      flag4: true
     billing:
       byByte:
         type: TYPE_4
@@ -1523,13 +1502,14 @@ opcodes:
       delta: 3
       nbAdded: 1
       nbRemoved: 3
-      oobFlag: true
       staticGas: G_CREATE
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
+      flag1: true
     billing:
       byMxp:
         type: TYPE_4
+        wordPrice: G_KECCAK_256_WORD
   - mnemonic: CALL
     value: 0xf1
     instructionFamily: CALL
@@ -1539,10 +1519,9 @@ opcodes:
       delta: 7
       nbAdded: 1
       nbRemoved: 7
-      oobFlag: true
       staticGas: S_CALL
-      twoLinesInstruction: true
-      addressTrimmingInstruction: true
+      twoLineInstruction: true
+      forbiddenInStatic: true
       flag1: true
     billing:
       byMxp:
@@ -1556,10 +1535,8 @@ opcodes:
       delta: 7
       nbAdded: 1
       nbRemoved: 7
-      oobFlag: true
       staticGas: S_CALL
-      twoLinesInstruction: true
-      addressTrimmingInstruction: true
+      twoLineInstruction: true
       flag2: true
     billing:
       byMxp:
@@ -1573,8 +1550,7 @@ opcodes:
       delta: 2
       nbAdded: 0
       nbRemoved: 2
-      oobFlag: true
-      staticGas: S_MXP
+      staticGas: G_ZERO
       flag1: true
     billing:
       byByte:
@@ -1590,8 +1566,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 6
       staticGas: S_CALL
-      twoLinesInstruction: true
-      addressTrimmingInstruction: true
+      twoLineInstruction: true
       flag3: true
     billing:
       byMxp:
@@ -1605,11 +1580,10 @@ opcodes:
       delta: 4
       nbAdded: 1
       nbRemoved: 4
-      oobFlag: true
       staticGas: G_CREATE
-      twoLinesInstruction: true
+      twoLineInstruction: true
       forbiddenInStatic: true
-      flag1: true
+      flag2: true
     billing:
       byWord:
         type: TYPE_4
@@ -1624,8 +1598,7 @@ opcodes:
       nbAdded: 1
       nbRemoved: 6
       staticGas: S_CALL
-      twoLinesInstruction: true
-      addressTrimmingInstruction: true
+      twoLineInstruction: true
       flag4: true
     billing:
       byMxp:
@@ -1639,7 +1612,7 @@ opcodes:
       delta: 2
       nbAdded: 0
       nbRemoved: 2
-      staticGas: S_MXP
+      staticGas: G_ZERO
       flag2: true
     billing:
       byMxp:
@@ -1654,6 +1627,7 @@ opcodes:
       nbAdded: 0
       nbRemoved: 0
       staticGas: G_ZERO
+      flag1: true
   - mnemonic: SELFDESTRUCT
     value: 0xff
     instructionFamily: HALT
@@ -1663,7 +1637,6 @@ opcodes:
       delta: 1
       nbAdded: 0
       nbRemoved: 1
-      staticGas: S_MXP
+      staticGas: S_MXP #TODO check
       forbiddenInStatic: true
-      addressTrimmingInstruction: true
       flag4: true

@@ -60,7 +60,8 @@ public class Gas implements Module {
   }
 
   private GasParameters extractGasParameters(MessageFrame frame) {
-    return new GasParameters(BigInteger.ZERO, BigInteger.ZERO, false);
+    // TODO: fill it with the actual values
+    return new GasParameters(0, BigInteger.ZERO, BigInteger.ZERO, false, false);
   }
 
   @Override

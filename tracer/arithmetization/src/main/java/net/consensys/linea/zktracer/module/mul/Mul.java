@@ -25,9 +25,7 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 public class Mul implements Module {
@@ -58,11 +56,6 @@ public class Mul implements Module {
   @Override
   public void popTransaction() {
     this.operations.pop();
-  }
-
-  @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
-    this.operations.enter();
   }
 
   @Override

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public final class Exp extends GasProjection {
@@ -30,11 +30,11 @@ public final class Exp extends GasProjection {
 
   @Override
   public long staticGas() {
-    return GasConstants.G_EXP.cost();
+    return GlobalConstants.GAS_CONST_G_EXP;
   }
 
   @Override
   public long expGas() {
-    return linearCost(GasConstants.G_EXP_BYTE.cost(), this.exponentByteSize, 1);
+    return linearCost(GlobalConstants.GAS_CONST_G_EXP_BYTE, this.exponentByteSize, 1);
   }
 }

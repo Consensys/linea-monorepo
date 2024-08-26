@@ -15,47 +15,26 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
-import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
-import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
-import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
-import net.consensys.linea.zktracer.module.shakiradata.ShakiraPrecompileType;
-import net.consensys.linea.zktracer.opcode.OpCode;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.internal.Words;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 
 @RequiredArgsConstructor
-public class Keccak implements Module {
-  private static final int ADDRESS_BYTES = 20;
-  private static final int HASH_BYTES = 32;
+public class Keccak extends CountingOnlyModule {
+  private static final int ADDRESS_BYTES = Address.SIZE;
+  private static final int HASH_BYTES = Hash.SIZE;
   private static final int L1_MSG_INDICES_BYTES = 8;
   private static final int L1_TIMESTAMPS_BYTES = 8;
   private static final int PUBKEY_BYTES = 64;
   private static final int KECCAK_BIT_RATE = 1088;
   private static final int KECCAK_BYTE_RATE = KECCAK_BIT_RATE / 8; // TODO: find correct name
 
-  private final Hub hub;
-  private final EcRecoverEffectiveCall ecRec;
+  private final EcRecoverEffectiveCall ecRecoverEffectiveCall;
   private final L2Block l2Block;
-
-  @Getter private final ShakiraData shakiraData;
-
-  private final Deque<List<Long>> deployedCodeSizes = new ArrayDeque<>();
-  private final Deque<List<Long>> sha3Sizes = new ArrayDeque<>();
-  private final Deque<List<Long>> create2Sizes = new ArrayDeque<>();
 
   @Override
   public String moduleKey() {
@@ -63,88 +42,39 @@ public class Keccak implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.deployedCodeSizes.push(new ArrayList<>());
-    this.sha3Sizes.push(new ArrayList<>());
-    this.create2Sizes.push(new ArrayList<>());
-  }
-
-  @Override
-  public void popTransaction() {
-    this.deployedCodeSizes.pop();
-    this.sha3Sizes.pop();
-    this.create2Sizes.pop();
-  }
-
-  private static int numKeccak(long x) {
-    final long r = (x + KECCAK_BYTE_RATE - 1) / KECCAK_BYTE_RATE;
-    Preconditions.checkState(r < Integer.MAX_VALUE, "demented KECCAK");
-    return (int) r;
-  }
-
-  @Override
-  public void tracePreOpcode(final MessageFrame frame) {
-    final OpCode opCode = this.hub.opCode();
-
-    final PlatformController pch = this.hub.pch();
-
-    if (Exceptions.none(pch.exceptions())) {
-      // Capture calls to SHA3.
-      if (opCode == OpCode.SHA3) {
-        callShakira(frame, 0, 1, this.sha3Sizes);
-      }
-
-      // Capture contract deployment
-      // TODO: compute the gas cost if we are under deployment.
-      if (opCode == OpCode.RETURN && hub.currentFrame().underDeployment()) {
-        callShakira(frame, 0, 1, this.deployedCodeSizes);
-      }
-
-      if (opCode == OpCode.CREATE2 && pch.aborts().none()) {
-        callShakira(frame, 1, 2, this.create2Sizes);
-      }
-    }
-  }
-
-  private void callShakira(
-      final MessageFrame frame,
-      final int codeOffsetStackItemOffset,
-      final int codeSizeStackItemOffset,
-      final Deque<List<Long>> codeSizes) {
-    final long codeSize = Words.clampedToLong(frame.getStackItem(codeSizeStackItemOffset));
-    codeSizes.peek().add(codeSize);
-
-    if (codeSize != 0) {
-      final long codeOffset = Words.clampedToLong(frame.getStackItem(codeOffsetStackItemOffset));
-      final Bytes byteCode = frame.shadowReadMemory(codeOffset, codeSize);
-
-      this.shakiraData.call(
-          new ShakiraDataOperation(hub.stamp(), ShakiraPrecompileType.KECCAK, byteCode));
-    }
+  public void addPrecompileLimit(final int dataByteLength) {
+    final int blockCount = numberOfKeccakBloc(dataByteLength);
+    this.counts.add(blockCount);
   }
 
   @Override
   public int lineCount() {
     final int l2L1LogsCount = this.l2Block.l2l1LogSizes().stream().mapToInt(List::size).sum();
     final int txCount = this.l2Block.sizesRlpEncodedTxs().size();
-    final int ecRecoverCount = ecRec.lineCount();
+    final int ecRecoverCount = ecRecoverEffectiveCall.lineCount();
 
     // From tx RLPs, used both for both the signature verification and the
     // public input computation.
-    return this.l2Block.sizesRlpEncodedTxs().stream().mapToInt(Keccak::numKeccak).sum()
-        // From deployed contracts,
-        // @alex, this formula suggests that the same data is hashed twice. Is this
-        // accurate? If this is actually the same data then we should not need to
-        // prove it twice. If the second time the data is hashed with a few extra
-        // bytes this should be accounted for : numKeccak(l) + numKeccak(l + extra)
-        + this.deployedCodeSizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
+    return this.l2Block.sizesRlpEncodedTxs().stream().mapToInt(Keccak::numberOfKeccakBloc).sum()
         // From ecRecover precompiles,
         // This accounts for the keccak of the recovered public keys to derive the
         // addresses. This also accounts for the transactions signatures
         // verifications.
-        + (txCount + ecRecoverCount) * numKeccak(PUBKEY_BYTES)
-        // From SHA3 opcode
-        + this.sha3Sizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
+        + (txCount + ecRecoverCount) * numberOfKeccakBloc(PUBKEY_BYTES)
+
+        // From deployed contracts, SHA3 opcode, and CREATE2
+        + counts.lineCount()
+
+        /**
+         * TODO: previous implem was missing CREATE2 and was the following: // From deployed
+         * contracts, // @alex, this formula suggests that the same data is hashed twice. Is this //
+         * accurate? If this is actually the same data then we should not need to // prove it twice.
+         * If the second time the data is hashed with a few extra // bytes this should be accounted
+         * for : numKeccak(l) + numKeccak(l + extra) +
+         * this.deployedCodeSizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
+         * // From SHA3 opcode +
+         * this.sha3Sizes.stream().flatMap(List::stream).mapToInt(Keccak::numKeccak).sum()
+         */
 
         // From public input computation. This accounts for the hashing of:
         // - The block data hash:
@@ -155,9 +85,11 @@ public class Keccak implements Module {
         //		- hashing the above resulting hashes together to obtain the hash
         //			for the current block data
         + txCount
-            * (numKeccak(HASH_BYTES) + numKeccak(ADDRESS_BYTES) + numKeccak(L1_MSG_INDICES_BYTES))
-        + l2L1LogsCount * numKeccak(HASH_BYTES)
-        + numKeccak(4 * HASH_BYTES) // 4 because there are 4 fields above
+            * (numberOfKeccakBloc(HASH_BYTES)
+                + numberOfKeccakBloc(ADDRESS_BYTES)
+                + numberOfKeccakBloc(L1_MSG_INDICES_BYTES))
+        + l2L1LogsCount * numberOfKeccakBloc(HASH_BYTES)
+        + numberOfKeccakBloc(4 * HASH_BYTES) // 4 because there are 4 fields above
 
         // - The top-level structure (with the worst-case assumption, the
         // 	  current block is alone in the conflation). This includes:
@@ -170,14 +102,15 @@ public class Keccak implements Module {
         // 			bytes). Note: it does not need to be hashed. It will just be
         //			included directly in the final hash.
         //		- the hash of the above fields, to obtain the final public input
-        + 2 * numKeccak(HASH_BYTES) // one for the parent, one for the current block
-        + 2 * numKeccak(L1_TIMESTAMPS_BYTES)
-        + numKeccak(HASH_BYTES) // for the block data hash
-        + numKeccak(4 * HASH_BYTES);
+        + 2 * numberOfKeccakBloc(HASH_BYTES) // one for the parent, one for the current block
+        + 2 * numberOfKeccakBloc(L1_TIMESTAMPS_BYTES)
+        + numberOfKeccakBloc(HASH_BYTES) // for the block data hash
+        + numberOfKeccakBloc(4 * HASH_BYTES);
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    throw new IllegalStateException("non-tracing module");
+  private static int numberOfKeccakBloc(final long dataByteLength) {
+    final long r = (dataByteLength + KECCAK_BYTE_RATE - 1) / KECCAK_BYTE_RATE;
+    Preconditions.checkState(r < Integer.MAX_VALUE, "demented KECCAK");
+    return (int) r;
   }
 }

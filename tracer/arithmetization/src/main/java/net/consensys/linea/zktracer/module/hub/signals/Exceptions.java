@@ -18,10 +18,10 @@ package net.consensys.linea.zktracer.module.hub.signals;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import net.consensys.linea.zktracer.opcode.gas.projector.GasProjector;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -32,18 +32,18 @@ public class Exceptions {
   private Exceptions() {}
 
   public static final short NONE = 0; // no exceptions occurred
-  private static final short INVALID_OPCODE = 1; // unknown opcode
-  private static final short STACK_UNDERFLOW = 2; // stack underflow
-  private static final short STACK_OVERFLOW = 4; // stack overflow
-  private static final short OUT_OF_MEMORY_EXPANSION = 8; // tried to use memory too far away
-  private static final short OUT_OF_GAS = 16; // not enough gas for instruction
-  private static final short RETURN_DATA_COPY_FAULT = 32; // trying to read past the RETURNDATA end
-  private static final short JUMP_FAULT = 64; // jumping to an invalid destination
-  private static final short STATIC_FAULT =
+  public static final short INVALID_OPCODE = 1; // unknown opcode
+  public static final short STACK_UNDERFLOW = 2; // stack underflow
+  public static final short STACK_OVERFLOW = 4; // stack overflow
+  public static final short MEMORY_EXPANSION_EXCEPTION = 8; // tried to use memory too far away
+  public static final short OUT_OF_GAS_EXCEPTION = 16; // not enough gas for instruction
+  public static final short RETURN_DATA_COPY_FAULT = 32; // trying to read past the RETURNDATA end
+  public static final short JUMP_FAULT = 64; // jumping to an invalid destination
+  public static final short STATIC_FAULT =
       128; // trying to execute non-static instruction in a static context
-  private static final short OUT_OF_SSTORE = 256; // not enough gas to execute an SSTORE
-  private static final short INVALID_CODE_PREFIX = 512;
-  private static final short CODE_SIZE_OVERFLOW = 2048;
+  public static final short OUT_OF_SSTORE = 256; // not enough gas to execute an SSTORE
+  public static final short INVALID_CODE_PREFIX = 512;
+  public static final short CODE_SIZE_OVERFLOW = 2048;
 
   public static boolean stackException(final short bitmask) {
     return stackOverflow(bitmask) || stackUnderflow(bitmask);
@@ -82,12 +82,12 @@ public class Exceptions {
     return (bitmask & STACK_OVERFLOW) != 0;
   }
 
-  public static boolean outOfMemoryExpansion(final short bitmask) {
-    return (bitmask & OUT_OF_MEMORY_EXPANSION) != 0;
+  public static boolean memoryExpansionException(final short bitmask) {
+    return (bitmask & MEMORY_EXPANSION_EXCEPTION) != 0;
   }
 
-  public static boolean outOfGas(final short bitmask) {
-    return (bitmask & OUT_OF_GAS) != 0;
+  public static boolean outOfGasException(final short bitmask) {
+    return (bitmask & OUT_OF_GAS_EXCEPTION) != 0;
   }
 
   public static boolean returnDataCopyFault(final short bitmask) {
@@ -185,7 +185,8 @@ public class Exceptions {
   }
 
   private static boolean isOutOfSStore(MessageFrame frame, OpCode opCode) {
-    return opCode == OpCode.SSTORE && frame.getRemainingGas() <= GasConstants.G_CALL_STIPEND.cost();
+    return opCode == OpCode.SSTORE
+        && frame.getRemainingGas() <= GlobalConstants.GAS_CONST_G_CALL_STIPEND;
   }
 
   private static boolean isInvalidCodePrefix(MessageFrame frame) {
@@ -215,7 +216,7 @@ public class Exceptions {
    */
   public static short fromFrame(final Hub hub, final MessageFrame frame) {
     OpCode opCode = hub.opCode();
-    OpCodeData opCodeData = hub.opCodeData();
+    OpCodeData opCodeData = hub.currentFrame().opCodeData();
 
     if (isInvalidOpcode(opCode)) {
       return INVALID_OPCODE;
@@ -257,10 +258,10 @@ public class Exceptions {
           MSTORE,
           MSTORE8 -> {
         if (isMemoryExpansionFault(frame, opCode, gp)) {
-          return OUT_OF_MEMORY_EXPANSION;
+          return MEMORY_EXPANSION_EXCEPTION;
         }
         if (isOutOfGas(frame, opCode, gp)) {
-          return OUT_OF_GAS;
+          return OUT_OF_GAS_EXCEPTION;
         }
       }
 
@@ -269,10 +270,10 @@ public class Exceptions {
           return RETURN_DATA_COPY_FAULT;
         }
         if (isMemoryExpansionFault(frame, opCode, gp)) {
-          return OUT_OF_MEMORY_EXPANSION;
+          return MEMORY_EXPANSION_EXCEPTION;
         }
         if (isOutOfGas(frame, opCode, gp)) {
-          return OUT_OF_GAS;
+          return OUT_OF_GAS_EXCEPTION;
         }
       }
 
@@ -280,7 +281,7 @@ public class Exceptions {
 
       case JUMP, JUMPI -> {
         if (isOutOfGas(frame, opCode, gp)) {
-          return OUT_OF_GAS;
+          return OUT_OF_GAS_EXCEPTION;
         }
         if (isJumpFault(frame, opCode)) {
           return JUMP_FAULT;
@@ -292,13 +293,13 @@ public class Exceptions {
           return OUT_OF_SSTORE;
         }
         if (isOutOfGas(frame, opCode, gp)) {
-          return OUT_OF_GAS;
+          return OUT_OF_GAS_EXCEPTION;
         }
       }
 
       default -> {
         if (isOutOfGas(frame, opCode, gp)) {
-          return OUT_OF_GAS;
+          return OUT_OF_GAS_EXCEPTION;
         }
       }
     }

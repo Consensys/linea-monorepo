@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
@@ -36,9 +36,9 @@ public final class SLoad extends GasProjection {
       return 0;
     } else {
       if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
-        return GasConstants.G_WARM_ACCESS.cost();
+        return GlobalConstants.GAS_CONST_G_WARM_ACCESS;
       } else {
-        return GasConstants.G_COLD_S_LOAD.cost();
+        return GlobalConstants.GAS_CONST_G_COLD_SLOAD;
       }
     }
   }

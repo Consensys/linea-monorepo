@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -31,7 +30,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 /** Implementation of a {@link Module} for addition/subtraction. */
 @RequiredArgsConstructor
 public class Add implements Module {
-  private final Hub hub;
 
   /** A set of the operations to trace */
   private final StackedSet<AddOperation> chunks = new StackedSet<>();
@@ -53,7 +51,11 @@ public class Add implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    this.chunks.add(new AddOperation(hub.opCode(), frame.getStackItem(0), frame.getStackItem(1)));
+    this.chunks.add(
+        new AddOperation(
+            OpCode.of(frame.getCurrentOperation().getOpcode()),
+            frame.getStackItem(0),
+            frame.getStackItem(1)));
   }
 
   @Override

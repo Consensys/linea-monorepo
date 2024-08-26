@@ -18,26 +18,27 @@ package net.consensys.linea.zktracer.module.shakiradata;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.nio.MappedByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.module.limits.Keccak;
+import net.consensys.linea.zktracer.module.limits.precompiles.RipemdBlocks;
+import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.log.Log;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 public class ShakiraData implements Module {
   private final Wcp wcp;
-  private final StackedSet<ShakiraDataOperation> operations = new StackedSet<>();
-  private final List<ShakiraDataOperation> sortedOperations = new ArrayList<>();
-  private int numberOfOperationsAtStartTx = 0;
-  private final ShakiraDataComparator comparator = new ShakiraDataComparator();
+  private final StackedList<ShakiraDataOperation> operations = new StackedList<>();
+
+  private final Sha256Blocks sha256Blocks;
+  private final Keccak keccak;
+  private final RipemdBlocks ripemdBlocks;
+
+  private long previousID = 0;
 
   @Override
   public String moduleKey() {
@@ -46,19 +47,18 @@ public class ShakiraData implements Module {
 
   @Override
   public void enterTransaction() {
-    this.operations.enter();
+    operations.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.sortedOperations.removeAll(this.operations.sets.getLast());
-    this.operations.pop();
+    operations.pop();
   }
 
   @Override
   public int lineCount() {
-    return this.operations.lineCount()
-        + 1; /*because the lookup HUB -> SHAKIRA requires at least two padding rows. TODO: should be done by Corset */
+    return operations.lineCount()
+        + 1; /*because the lookup HUB -> SHAKIRA requires at least two padding rows. TODO: shouldn't it be done by Corset via the spilling ? */
   }
 
   @Override
@@ -67,32 +67,18 @@ public class ShakiraData implements Module {
   }
 
   public void call(final ShakiraDataOperation operation) {
-    this.operations.add(operation);
-    this.wcp.callGT(operation.lastNBytes(), 0);
-    this.wcp.callLEQ(operation.lastNBytes(), LLARGE);
-  }
+    operations.add(operation);
 
-  @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
-    this.numberOfOperationsAtStartTx = operations.size();
-  }
+    wcp.callLT(previousID, operation.ID());
+    previousID = operation.ID();
+    wcp.callGT(operation.lastNBytes(), 0);
+    wcp.callLEQ(operation.lastNBytes(), LLARGE);
 
-  @Override
-  public void traceEndTx(
-      WorldView worldView,
-      Transaction tx,
-      boolean isSuccessful,
-      Bytes output,
-      List<Log> logs,
-      long gasUsed) {
-    final List<ShakiraDataOperation> newOperations =
-        new ArrayList<>(this.operations.sets.getLast());
-    newOperations.sort(comparator);
-    this.sortedOperations.addAll(newOperations);
-    final int numberOfOperationsAtEndTx = sortedOperations.size();
-    for (int i = numberOfOperationsAtStartTx; i < numberOfOperationsAtEndTx; i++) {
-      final long previousID = i == 0 ? 0 : sortedOperations.get(i - 1).ID();
-      this.wcp.callLT(previousID, sortedOperations.get(i).ID());
+    switch (operation.hashType()) {
+      case SHA256 -> sha256Blocks.addPrecompileLimit(operation.inputSize());
+      case KECCAK -> keccak.addPrecompileLimit(operation.inputSize());
+      case RIPEMD -> ripemdBlocks.addPrecompileLimit(operation.inputSize());
+      default -> throw new IllegalArgumentException("Precompile type not supported by SHAKIRA");
     }
   }
 
@@ -104,7 +90,7 @@ public class ShakiraData implements Module {
     trace.fillAndValidateRow();
 
     int stamp = 0;
-    for (ShakiraDataOperation operation : sortedOperations) {
+    for (ShakiraDataOperation operation : operations) {
       stamp++;
       operation.trace(trace, stamp);
     }

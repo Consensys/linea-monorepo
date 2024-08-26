@@ -39,13 +39,12 @@ import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.txndata.TxnData;
 import net.consensys.linea.zktracer.types.BitDecOutput;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogsBloomFilter;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class RlpTxnRcpt implements Module {
   private final TxnData txnData;
@@ -75,19 +74,13 @@ public class RlpTxnRcpt implements Module {
   }
 
   @Override
-  public void traceEndTx(
-      WorldView worldView,
-      Transaction tx,
-      boolean isSuccessful,
-      Bytes output,
-      List<Log> logList,
-      long gasUsed) {
+  public void traceEndTx(TransactionProcessingMetadata txMetaData) {
     RlpTxrcptChunk chunk =
         new RlpTxrcptChunk(
-            tx.getType(),
-            isSuccessful,
-            this.txnData.cumulatedGasUsed.getFirst().longValue(),
-            logList);
+            txMetaData.getBesuTransaction().getType(),
+            txMetaData.statusCode(),
+            txMetaData.getAccumulatedGasUsedInBlock(),
+            txMetaData.getLogs());
     this.chunkList.add(chunk);
   }
 
@@ -104,7 +97,7 @@ public class RlpTxnRcpt implements Module {
     phase2(traceValue, chunk.status(), trace);
 
     // PHASE 3: Cumulative gas Ru.
-    phase3(traceValue, chunk.gasUsed(), trace);
+    phase3(traceValue, (long) chunk.gasUsed(), trace);
 
     // PHASE 4: Bloom Filter Rb.
     phase4(traceValue, chunk.logs(), trace);

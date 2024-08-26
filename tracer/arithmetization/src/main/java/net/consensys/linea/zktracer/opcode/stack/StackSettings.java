@@ -26,7 +26,7 @@ import net.consensys.linea.zktracer.opcode.gas.GasConstants;
  * @param nbAdded the number of elements this operation adds on the stack
  * @param nbRemoved the number of elements this operation pops from the stack
  * @param staticGas the static part of the gas consumed by this operation
- * @param twoLinesInstruction whether this operation fills one or two stack lines
+ * @param twoLineInstruction whether this operation fills one or two stack lines
  * @param forbiddenInStatic whether this instruction is forbidden in a static context
  * @param addressTrimmingInstruction whether this instruction triggers addres trimming
  * @param oobFlag whether this instruction may trigger an OoB exception
@@ -42,7 +42,7 @@ public record StackSettings(
     int nbAdded,
     int nbRemoved,
     GasConstants staticGas,
-    boolean twoLinesInstruction,
+    boolean twoLineInstruction,
     boolean forbiddenInStatic,
     boolean addressTrimmingInstruction,
     boolean oobFlag,
