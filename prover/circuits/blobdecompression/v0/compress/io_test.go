@@ -10,8 +10,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
@@ -41,8 +41,8 @@ func TestShiftLeft(t *testing.T) {
 		}
 
 		assignment := shiftLeftCircuit{
-			Slice:       test_vector_utils.ToVariableSlice(b),
-			Shifted:     test_vector_utils.ToVariableSlice(shifted),
+			Slice:       internal.ToVariableSlice(b),
+			Shifted:     internal.ToVariableSlice(shifted),
 			ShiftAmount: shiftAmount,
 		}
 
@@ -99,7 +99,7 @@ func TestChecksumBytes(t *testing.T) {
 		}
 
 		assignment := checksumTestCircuit{
-			Bytes: test_vector_utils.ToVariableSlice(b),
+			Bytes: internal.ToVariableSlice(b),
 			Sum:   checksum,
 		}
 

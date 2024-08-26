@@ -7,7 +7,7 @@ toolchain go1.22.5
 require (
 	github.com/consensys/bavard v0.1.13
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.10.1-0.20240820204737-841a46e699de
+	github.com/consensys/gnark v0.10.1-0.20240823145956-fdb2b0de422b
 	github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2

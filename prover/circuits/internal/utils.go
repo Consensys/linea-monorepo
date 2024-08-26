@@ -872,3 +872,9 @@ func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
 	}
 	return res
 }
+
+func ToVariableSlice[X any](s []X) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
+	utils.Copy(res, s)
+	return res
+}
