@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.types.MemorySpan;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -73,9 +73,9 @@ public class Call extends GasProjection {
     }
 
     if (frame.isAddressWarm(to) || isPrecompile(to)) {
-      return GasConstants.G_WARM_ACCESS.cost();
+      return GlobalConstants.GAS_CONST_G_WARM_ACCESS;
     } else {
-      return GasConstants.G_COLD_ACCOUNT_ACCESS.cost();
+      return GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
     }
   }
 
@@ -86,7 +86,7 @@ public class Call extends GasProjection {
     }
 
     if ((recipient == null || recipient.isEmpty()) && !value.isZero()) {
-      return GasConstants.G_NEW_ACCOUNT.cost();
+      return GlobalConstants.GAS_CONST_G_NEW_ACCOUNT;
     } else {
       return 0L;
     }
@@ -101,7 +101,7 @@ public class Call extends GasProjection {
     if (value.isZero()) {
       return 0L;
     } else {
-      return GasConstants.G_CALL_VALUE.cost();
+      return GlobalConstants.GAS_CONST_G_CALL_VALUE;
     }
   }
 
@@ -128,6 +128,6 @@ public class Call extends GasProjection {
       return 0;
     }
 
-    return GasConstants.G_CALL_STIPEND.cost();
+    return GlobalConstants.GAS_CONST_G_CALL_STIPEND;
   }
 }

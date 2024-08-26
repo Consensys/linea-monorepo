@@ -40,8 +40,8 @@ public class Trace {
   public static final int NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION = 0x2;
   public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING = 0x4;
   public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_PURE_PADDING_PO = 0x5;
-  public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_SOME_DATA = 0x1;
-  public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_SOME_DATA_PO = 0x2;
+  public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_SOME_DATA = 0xa;
+  public static final int NB_PP_ROWS_ANY_TO_RAM_WITH_PADDING_SOME_DATA_PO = 0xb;
   public static final int NB_PP_ROWS_BLAKE = 0x2;
   public static final int NB_PP_ROWS_BLAKE_PO = 0x3;
   public static final int NB_PP_ROWS_BLAKE_PT = 0x4;

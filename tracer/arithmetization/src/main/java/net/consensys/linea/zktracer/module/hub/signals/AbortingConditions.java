@@ -29,15 +29,15 @@ import org.hyperledger.besu.datatypes.Wei;
 @Accessors(fluent = true)
 public final class AbortingConditions {
   private boolean callStackOverflow;
-  private boolean balanceTooLow;
+  private boolean insufficientBalance;
 
   /**
    * @param callStackOverflow too many nested contexts
-   * @param balanceTooLow trying to give more ETH than the caller has
+   * @param insufficientBalance trying to give more ETH than the caller has
    */
-  public AbortingConditions(boolean callStackOverflow, boolean balanceTooLow) {
+  public AbortingConditions(boolean callStackOverflow, boolean insufficientBalance) {
     this.callStackOverflow = callStackOverflow;
-    this.balanceTooLow = balanceTooLow;
+    this.insufficientBalance = insufficientBalance;
   }
 
   public static AbortingConditions of(Hub hub) {
@@ -48,7 +48,7 @@ public final class AbortingConditions {
 
   public void reset() {
     this.callStackOverflow = false;
-    this.balanceTooLow = false;
+    this.insufficientBalance = false;
   }
 
   public void prepare(Hub hub) {
@@ -57,11 +57,11 @@ public final class AbortingConditions {
       return;
     }
 
-    this.balanceTooLow =
+    this.insufficientBalance =
         switch (hub.currentFrame().opCode()) {
           case CALL, CALLCODE -> {
             if (Exceptions.none(hub.pch().exceptions())) {
-              final Address myAddress = hub.currentFrame().address();
+              final Address myAddress = hub.currentFrame().accountAddress();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();
               final Wei value = Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(2)));
@@ -73,7 +73,7 @@ public final class AbortingConditions {
           }
           case CREATE, CREATE2 -> {
             if (Exceptions.none(hub.pch().exceptions())) {
-              final Address myAddress = hub.currentFrame().address();
+              final Address myAddress = hub.currentFrame().accountAddress();
               final Wei myBalance =
                   hub.messageFrame().getWorldUpdater().get(myAddress).getBalance();
               final Wei value = Wei.of(UInt256.fromBytes(hub.messageFrame().getStackItem(0)));
@@ -88,7 +88,7 @@ public final class AbortingConditions {
   }
 
   public AbortingConditions snapshot() {
-    return new AbortingConditions(this.callStackOverflow, this.balanceTooLow);
+    return new AbortingConditions(this.callStackOverflow, this.insufficientBalance);
   }
 
   public boolean none() {
@@ -96,6 +96,6 @@ public final class AbortingConditions {
   }
 
   public boolean any() {
-    return this.callStackOverflow || this.balanceTooLow;
+    return this.callStackOverflow || this.insufficientBalance;
   }
 }

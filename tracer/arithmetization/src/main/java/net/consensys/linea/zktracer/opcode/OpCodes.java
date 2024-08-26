@@ -62,8 +62,8 @@ public class OpCodes {
   /**
    * Get opcode metadata per opcode long value.
    *
-   * @param value opcode long value.
-   * @return an instance of {@link OpCodeData} corresponding to the numeric (long) value.
+   * @param value opcode value.
+   * @return an instance of {@link OpCodeData} corresponding to the numeric value.
    */
   public static OpCodeData of(final int value) {
     if (value < 0 || value > 255) {

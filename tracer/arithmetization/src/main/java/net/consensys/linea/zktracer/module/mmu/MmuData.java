@@ -27,7 +27,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.call.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmio.CallStackReader;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
@@ -103,21 +103,30 @@ public class MmuData {
   }
 
   public void setSourceRamBytes() {
+    if (this.mmuCall.sourceRamBytes().isPresent()) {
+      this.sourceRamBytes(this.mmuCall.sourceRamBytes().get());
+      return;
+    }
     final MmuToMmioConstantValues mmuToMmioConstantValues = this.mmuToMmioConstantValues();
 
     final long sourceContextNumber = mmuToMmioConstantValues.sourceContextNumber();
     if (sourceContextNumber != 0) {
-      final Bytes sourceMemory = callStackReader.valueFromMemory(sourceContextNumber, true);
+      final Bytes sourceMemory = callStackReader.fullCopyOfContextMemory(sourceContextNumber, true);
       this.sourceRamBytes(sourceMemory);
     }
   }
 
   public void setTargetRamBytes() {
+    if (this.mmuCall.targetRamBytes().isPresent()) {
+      this.targetRamBytes(this.mmuCall.targetRamBytes().get());
+      return;
+    }
     final MmuToMmioConstantValues mmuToMmioConstantValues = this.mmuToMmioConstantValues();
 
     final long targetContextNumber = mmuToMmioConstantValues.targetContextNumber();
     if (targetContextNumber != 0) {
-      final Bytes targetMemory = callStackReader.valueFromMemory(targetContextNumber, false);
+      final Bytes targetMemory =
+          callStackReader.fullCopyOfContextMemory(targetContextNumber, false);
       this.targetRamBytes(targetMemory);
     }
   }

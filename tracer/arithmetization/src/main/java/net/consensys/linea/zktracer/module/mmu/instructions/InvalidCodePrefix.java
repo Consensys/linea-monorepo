@@ -19,13 +19,13 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_INVALID_CODE_PREFIX;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
-import net.consensys.linea.zktracer.module.mmio.CallStackReader;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
@@ -42,8 +42,8 @@ import org.apache.tuweni.bytes.Bytes;
 public class InvalidCodePrefix implements MmuInstruction {
   private final Euc euc;
   private final Wcp wcp;
-  private List<MmuEucCallRecord> eucCallRecords;
-  private List<MmuWcpCallRecord> wcpCallRecords;
+  private final List<MmuEucCallRecord> eucCallRecords;
+  private final List<MmuWcpCallRecord> wcpCallRecords;
 
   private long initialSourceLimbOffset;
   private short initialSourceByteOffset;
@@ -52,21 +52,19 @@ public class InvalidCodePrefix implements MmuInstruction {
   public InvalidCodePrefix(Euc euc, Wcp wcp) {
     this.euc = euc;
     this.wcp = wcp;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_INVALID_CODE_PREFIX);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_INVALID_CODE_PREFIX);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_INVALID_CODE_PREFIX);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_INVALID_CODE_PREFIX);
   }
 
   @Override
   public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
     // Set mmuData.sourceRamBytes
-    CallStackReader callStackReader = new CallStackReader(callStack);
-    final Bytes sourceMemory =
-        callStackReader.valueFromMemory(mmuData.hubToMmuValues().sourceId(), true);
+    final Bytes sourceMemory = mmuData.mmuCall().sourceRamBytes().get();
     mmuData.sourceRamBytes(sourceMemory);
 
     // row n°1
     final long dividend1 = mmuData.hubToMmuValues().sourceOffsetLo().longValueExact();
-    EucOperation eucOp = euc.callEUC(Bytes.ofUnsignedLong(dividend1), Bytes.of(16));
+    final EucOperation eucOp = euc.callEUC(Bytes.ofUnsignedLong(dividend1), Bytes.of(16));
     final short rem = (short) eucOp.remainder().toInt();
     final long quot = eucOp.quotient().toLong();
     initialSourceLimbOffset = quot;
@@ -120,7 +118,7 @@ public class InvalidCodePrefix implements MmuInstruction {
             .sourceLimbOffset(initialSourceLimbOffset)
             .sourceByteOffset(initialSourceByteOffset)
             .targetByteOffset((short) LLARGEMO)
-            .limb((Bytes16) microLimb)
+            .limb(Bytes16.leftPad(microLimb))
             .build());
 
     return mmuData;

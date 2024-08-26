@@ -30,19 +30,23 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public class CallStackReader {
   private final CallStack callStack;
 
-  public Bytes valueFromMemory(final long contextNumber, final boolean ramIsSource) {
+  /**
+   * Performs a full copy of the memory based on the identified context.
+   *
+   * @param contextNumber
+   * @param ramIsSource
+   * @return returns either the current contents of memory of an execution context or the return
+   *     data of a precompile or the calldata of a transaction depending on the type of the context.
+   */
+  public Bytes fullCopyOfContextMemory(final long contextNumber, final boolean ramIsSource) {
     final CallFrame callFrame = callStack.getByContextNumber(contextNumber);
 
-    if (callFrame.type() == CallFrameType.MANTLE || callFrame.type() == CallFrameType.BEDROCK) {
+    if (callFrame.type() == CallFrameType.TRANSACTION_CALL_DATA_HOLDER) {
       return callFrame.callDataInfo().data();
     }
 
     if (callFrame.type() == CallFrameType.PRECOMPILE_RETURN_DATA) {
-      if (ramIsSource) {
-        return callFrame.returnData();
-      } else {
-        return Bytes.EMPTY;
-      }
+      return ramIsSource ? callFrame.outputData() : Bytes.EMPTY;
     }
 
     final MessageFrame messageFrame = callFrame.frame();

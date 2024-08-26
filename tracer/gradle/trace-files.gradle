@@ -29,11 +29,11 @@
 //
 tasks.register("hub", TraceFilesTask) {
     group "Trace files generation"
-    dependsOn corsetExists
+    // dependsOn corsetExists
 
     module = 'hub'
-    files = ['account', 'context', 'shared', 'stack', 'storage', 'transaction', 'scenario', 'miscellaneous']
-            .collect {"hub/columns/${it}.lisp"}
+    files = ['hub/constants.lisp', 'hub/columns/account.lisp', 'hub/columns/context.lisp', 'hub/columns/shared.lisp', 'hub/columns/stack.lisp',
+             'hub/columns/storage.lisp', 'hub/columns/transaction.lisp', 'hub/columns/scenario.lisp', 'hub/columns/miscellaneous.lisp']
 }
 
 //
@@ -68,10 +68,10 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp naming scheme.
 //
-['bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata'].each {moduleName ->
+['bin', 'blockhash', 'euc', 'mmio', 'shf', 'wcp', 'rlptxn', 'rom', 'romlex', 'trm', 'stp', 'loginfo', 'logdata', 'gas'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
-        dependsOn corsetExists
+        // dependsOn corsetExists
 
         module = moduleName
         files = ["${moduleName}/columns.lisp"]
@@ -81,7 +81,7 @@ tasks.register('binreftable', TraceFilesTask) {
 //
 // Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
 //
-['mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata', 'gas'].each {moduleName ->
+['mmu', 'blake2fmodexpdata', 'blockdata', 'oob', 'exp', 'rlptxrcpt', 'rlpaddr', 'shakiradata', 'mxp', 'ecdata'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {
         group "Trace files generation"
         // dependsOn corsetExists
@@ -106,7 +106,7 @@ tasks.register('binreftable', TraceFilesTask) {
 }
 
 //
-// Put here modules following the conventional MODULE/columns.lisp, MODULE/constants.lisp naming scheme.
+// Shared constants:
 //
 ['constants'].each {moduleName ->
     tasks.register(moduleName, TraceFilesTask) {

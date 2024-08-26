@@ -25,7 +25,6 @@ import java.util.zip.GZIPInputStream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.testing.ToyExecutionEnvironment;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -82,7 +81,6 @@ public class ReplayTests {
   }
 
   @Test
-  @Disabled
   void leoFailingRange() {
     replay("5389571-5389577.json.gz");
   }
@@ -108,7 +106,6 @@ public class ReplayTests {
   }
 
   @Test
-  @Disabled
   void incident777zkGethMainnet() {
     replay("7461019-7461030.json.gz");
   }

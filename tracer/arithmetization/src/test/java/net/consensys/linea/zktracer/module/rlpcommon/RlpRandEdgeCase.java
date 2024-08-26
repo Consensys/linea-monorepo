@@ -61,7 +61,7 @@ public class RlpRandEdgeCase {
       case 0 -> 0L;
       case 1 -> RAND.nextLong(1, 128);
       case 2 -> RAND.nextLong(128, 256);
-      case 3 -> RAND.nextLong(256, 0xfffffffffffffffL);
+      case 3 -> RAND.nextLong(256, 0xfffffffffffffffL - 2);
       default -> throw new IllegalStateException("Unexpected value: " + selector);
     };
   }

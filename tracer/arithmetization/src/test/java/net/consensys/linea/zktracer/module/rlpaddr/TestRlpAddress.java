@@ -15,19 +15,14 @@
 
 package net.consensys.linea.zktracer.module.rlpaddr;
 
-import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randBigInt;
-import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randData;
 import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randLong;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -42,119 +37,108 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
 public class TestRlpAddress {
-  private static final int TEST_TX_COUNT = 30;
   private final Random rnd = new Random(666);
 
   @Test
-  void test() {
-    ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
-    List<Transaction> txList = new ArrayList<>();
+  void randDeployment() {
+    final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
 
-    for (int i = 0; i < TEST_TX_COUNT; i++) {
-      KeyPair keyPair = new SECP256K1().generateKeyPair();
-      Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
-      ToyAccount senderAccount = randSenderAccount(senderAddress);
+    final KeyPair keyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder()
+            .balance(Wei.of(100000000))
+            .nonce(randLong())
+            .address(senderAddress)
+            .build();
+    ;
 
-      Bytes initCode = randData(true);
-      int initCodeSize = initCode.size();
+    final Bytes initCode = BytecodeCompiler.newProgram().push(1).push(1).op(OpCode.SLT).compile();
 
-      int trigger = rnd.nextInt(0, 3);
-      ToyAccount receiverAccount;
-      switch (trigger) {
-        case 0 -> { // create with tx.To = null
-          world.account(senderAccount);
-          txList.add(
-              ToyTransaction.builder()
-                  .sender(senderAccount)
-                  .keyPair(keyPair)
-                  .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xffffL))
-                  .payload(initCode)
-                  .build());
-        }
-        case 1 -> { // Create OpCode
-          receiverAccount = randCreate(initCodeSize);
-          world.account(senderAccount).account(receiverAccount);
-          txList.add(
-              ToyTransaction.builder()
-                  .sender(senderAccount)
-                  .keyPair(keyPair)
-                  .to(receiverAccount)
-                  .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xffffL))
-                  .build());
-        }
-        case 2 -> { // Create2 OpCode
-          receiverAccount = randCreateTwo(initCodeSize);
-          world.account(senderAccount).account(receiverAccount);
-          txList.add(
-              ToyTransaction.builder()
-                  .sender(senderAccount)
-                  .keyPair(keyPair)
-                  .to(receiverAccount)
-                  .transactionType(TransactionType.FRONTIER)
-                  .gasLimit(rnd.nextLong(21000, 0xffffL))
-                  .build());
-        }
-      }
-    }
+    world.account(senderAccount);
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .keyPair(keyPair)
+            .transactionType(TransactionType.FRONTIER)
+            .gasLimit(1000000L)
+            .gasPrice(Wei.of(10L))
+            .payload(initCode)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder().toyWorld(world.build()).transaction(tx).build().run();
+  }
+
+  @Test
+  void create() {
+    final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
+
+    final KeyPair keyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+
+    final ToyAccount senderAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(1000))
+            .nonce(randLong())
+            .address(senderAddress)
+            .build();
+    world.account(senderAccount);
+
+    final Address contractAddress = Address.fromHexString("0x000bad000000b077000");
+    final ToyAccount contractAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(1000))
+            .nonce(10)
+            .address(contractAddress)
+            .code(
+                BytecodeCompiler.newProgram()
+
+                    // copy the entirety of the call data to RAM
+                    .op(OpCode.CALLDATASIZE)
+                    .push(0)
+                    .push(0)
+                    .op(OpCode.CALLDATACOPY)
+                    .op(OpCode.CALLDATASIZE)
+                    .push(0)
+                    .push(rnd.nextInt(0, 50000)) // value
+                    .op(OpCode.CREATE)
+                    .op(OpCode.STOP)
+                    .compile())
+            .build();
+    world.account(contractAccount);
+
+    final Bytes initCodeReturnContractCode =
+        BytecodeCompiler.newProgram()
+            .push(contractAddress)
+            .op(OpCode.EXTCODESIZE)
+            .op(OpCode.DUP1)
+            .push(0)
+            .push(0)
+            .op(OpCode.DUP5)
+            .op(OpCode.EXTCODECOPY)
+            .push(0)
+            .push(0)
+            .op(OpCode.RETURN)
+            .compile();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(contractAccount)
+            .keyPair(keyPair)
+            .transactionType(TransactionType.FRONTIER)
+            .gasLimit(1000000L)
+            .payload(initCodeReturnContractCode)
+            .build();
 
     ToyExecutionEnvironment.builder()
         .toyWorld(world.build())
-        .transactions(txList)
+        .transaction(tx)
         .testValidator(x -> {})
         .build()
         .run();
-  }
-
-  private ToyAccount randCreate(int initCodeSize) {
-    byte[] value = bigIntegerToBytes(BigInteger.valueOf(randLong())).toArray();
-    return ToyAccount.builder()
-        .balance(Wei.fromEth(1000))
-        .nonce(randLong())
-        .address(Address.wrap(Bytes.repeat((byte) 0x01, 20)))
-        .code(
-            BytecodeCompiler.newProgram()
-                .push(initCodeSize)
-                .push(1)
-                .push(1)
-                .op(OpCode.CALLDATACOPY)
-                .push(initCodeSize)
-                .push(1)
-                .push(value.length, value)
-                .op(OpCode.CREATE)
-                .compile())
-        .build();
-  }
-
-  private ToyAccount randCreateTwo(int initCodeSize) {
-    byte[] salt = bigIntegerToBytes(randBigInt(false)).toArray();
-    byte[] value = bigIntegerToBytes(BigInteger.valueOf(randLong())).toArray();
-
-    return ToyAccount.builder()
-        .balance(Wei.fromEth(1000))
-        .nonce(randLong())
-        .address(Address.wrap(Bytes.repeat((byte) 0x02, 20)))
-        .code(
-            BytecodeCompiler.newProgram()
-                .push(initCodeSize)
-                .push(1)
-                .push(1)
-                .op(OpCode.CALLDATACOPY)
-                .push(salt.length, salt)
-                .push(1)
-                .push(1)
-                .push(value.length, value)
-                .op(OpCode.CREATE2)
-                .compile())
-        .build();
-  }
-
-  final ToyAccount randSenderAccount(Address senderAddress) {
-    return ToyAccount.builder()
-        .balance(Wei.of(randBigInt(true)))
-        .nonce(randLong())
-        .address(senderAddress)
-        .build();
   }
 }

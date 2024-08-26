@@ -22,12 +22,13 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for memory expansion. */
 public class Mxp implements Module {
   /** A list of the operations to trace */
-  private final StackedList<MxpOperation> chunks = new StackedList<>();
+  private final StackedList<MxpOperation> mxpOperations = new StackedList<>();
 
   private Hub hub;
 
@@ -45,22 +46,21 @@ public class Mxp implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) { // This will be renamed to tracePreOp
-    this.chunks.add(new MxpOperation(frame, hub));
   }
 
   @Override
   public void enterTransaction() {
-    this.chunks.enter();
+    this.mxpOperations.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.chunks.pop();
+    this.mxpOperations.pop();
   }
 
   @Override
   public int lineCount() {
-    return this.chunks.lineCount();
+    return this.mxpOperations.lineCount();
   }
 
   @Override
@@ -71,8 +71,12 @@ public class Mxp implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    for (int i = 0; i < this.chunks.size(); i++) {
-      this.chunks.get(i).trace(i + 1, trace);
+    for (int i = 0; i < this.mxpOperations.size(); i++) {
+      this.mxpOperations.get(i).trace(i + 1, trace);
     }
+  }
+
+  public void call(MxpCall mxpCall) {
+    this.mxpOperations.add(new MxpOperation(mxpCall));
   }
 }

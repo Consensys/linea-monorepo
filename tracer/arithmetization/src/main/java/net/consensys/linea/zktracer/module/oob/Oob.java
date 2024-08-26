@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -28,44 +28,41 @@ import net.consensys.linea.zktracer.container.stacked.list.StackedList;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.opcode.OpCode;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
 /** Implementation of a {@link Module} for out of bounds. */
 public class Oob implements Module {
 
   /** A list of the operations to trace */
-  @Getter private final StackedList<OobOperation> chunks = new StackedList<>();
+  @Getter private final StackedList<OobOperation> oobOperations = new StackedList<>();
 
   private final Hub hub;
   private final Add add;
   private final Mod mod;
   private final Wcp wcp;
 
+  private OobOperation oobOperation;
+
   @Override
   public String moduleKey() {
     return "OOB";
   }
 
-  static final List<Address> PRECOMPILES_HANDLED_BY_OOB =
-      List.of(
-          Address.ECREC,
-          Address.SHA256,
-          Address.RIPEMD160,
-          Address.ID,
-          Address.ALTBN128_ADD,
-          Address.ALTBN128_MUL,
-          Address.ALTBN128_PAIRING,
-          Address.BLAKE2B_F_COMPRESSION);
+  public void call(OobCall oobCall) {
+    OobOperation oobOperation = new OobOperation(oobCall, hub.messageFrame(), add, mod, wcp, hub);
+    this.oobOperations.add(oobOperation);
+  }
 
   @Override
-  public void tracePreOpcode(MessageFrame frame) { // This will be renamed to tracePreOp
-    this.chunks.add(new OobOperation(frame, add, mod, wcp, hub, false, 0, 0));
+  public void tracePreOpcode(MessageFrame frame) { // TODO: maybe move in the hub
+    /*
+    oobOperation = new OobOperation(frame, add, mod, wcp, hub, false, 0, 0);
+    this.oobOperations.add(oobOperation);
     OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
 
     if (opCode.isCall()) {
@@ -73,93 +70,98 @@ public class Oob implements Module {
 
       if (PRECOMPILES_HANDLED_BY_OOB.contains(target)) {
         if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
-          OobOperation oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 1, 0);
-          this.chunks.add(oobOperation);
+          oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 1, 0);
+          this.oobOperations.add(oobOperation);
           boolean validCds = oobOperation.getOutgoingResLo()[0].equals(BigInteger.ONE);
           if (validCds) {
-            this.chunks.add(new OobOperation(frame, add, mod, wcp, hub, true, 2, 0));
+            oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 2, 0);
+            this.oobOperations.add(oobOperation);
           }
         } else if (target.equals(Address.MODEXP)) {
           for (int i = 1; i <= 7; i++) {
-            this.chunks.add(new OobOperation(frame, add, mod, wcp, hub, true, 0, i));
+            oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 0, i);
+            this.oobOperations.add(oobOperation);
           }
         } else {
           // Other precompiles case
-          this.chunks.add(new OobOperation(frame, add, mod, wcp, hub, true, 0, 0));
+          oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 0, 0);
+          this.oobOperations.add(oobOperation);
         }
       }
     }
+    */
   }
 
-  final void traceChunk(final OobOperation chunk, int stamp, Trace trace) {
-    int nRows = chunk.nRows();
+  final void traceChunk(final OobOperation oobOperation, int stamp, Trace trace) {
+    int nRows = oobOperation.nRows();
+    OobInstruction oobInstruction = oobOperation.oobCall.oobInstruction;
 
     for (int ct = 0; ct < nRows; ct++) {
-      trace = chunk.getOobParameters().trace(trace);
+      trace = oobOperation.getOobCall().trace(trace);
 
       // Note: if a value is bigger than 128, do not use Bytes.of and use Bytes.ofUnsignedType
       // instead (according to size)
       trace
           .stamp(stamp)
           .ct((short) ct)
-          .ctMax((short) chunk.maxCt())
-          .oobInst(bigIntegerToBytes(chunk.getOobInst()))
-          .isJump(chunk.isJump())
-          .isJumpi(chunk.isJumpi())
-          .isRdc(chunk.isRdc())
-          .isCdl(chunk.isCdl())
-          .isXcall(chunk.isXCall())
-          .isCall(chunk.isCall())
-          .isCreate(chunk.isCreate())
-          .isSstore(chunk.isSstore())
-          .isDeployment(chunk.isDeployment())
-          .isEcrecover(chunk.isEcRecover())
-          .isSha2(chunk.isSha2())
-          .isRipemd(chunk.isRipemd())
-          .isIdentity(chunk.isIdentity())
-          .isEcadd(chunk.isEcadd())
-          .isEcmul(chunk.isEcmul())
-          .isEcpairing(chunk.isEcpairing())
-          .isBlake2FCds(chunk.isBlake2FCds())
-          .isBlake2FParams(chunk.isBlake2FParams())
-          .isModexpCds(chunk.isModexpCds())
-          .isModexpXbs(chunk.isModexpXbs())
-          .isModexpLead(chunk.isModexpLead())
-          .isModexpPricing(chunk.isPrcModexpPricing())
-          .isModexpExtract(chunk.isPrcModexpExtract())
-          .addFlag(chunk.getAddFlag()[ct])
-          .modFlag(chunk.getModFlag()[ct])
-          .wcpFlag(chunk.getWcpFlag()[ct])
-          .outgoingInst(chunk.getOutgoingInst()[ct])
-          .outgoingData1(bigIntegerToBytes(chunk.getOutgoingData1()[ct]))
-          .outgoingData2(bigIntegerToBytes(chunk.getOutgoingData2()[ct]))
-          .outgoingData3(bigIntegerToBytes(chunk.getOutgoingData3()[ct]))
-          .outgoingData4(bigIntegerToBytes(chunk.getOutgoingData4()[ct]))
-          .outgoingResLo(bigIntegerToBytes(chunk.getOutgoingResLo()[ct]))
+          .ctMax((short) oobOperation.ctMax())
+          .oobInst(oobInstruction.getValue())
+          .isJump(oobInstruction == OOB_INST_JUMP)
+          .isJumpi(oobInstruction == OOB_INST_JUMPI)
+          .isRdc(oobInstruction == OOB_INST_RDC)
+          .isCdl(oobInstruction == OOB_INST_CDL)
+          .isXcall(oobInstruction == OOB_INST_XCALL)
+          .isCall(oobInstruction == OOB_INST_CALL)
+          .isCreate(oobInstruction == OOB_INST_CREATE)
+          .isSstore(oobInstruction == OOB_INST_SSTORE)
+          .isDeployment(oobInstruction == OOB_INST_DEPLOYMENT)
+          .isEcrecover(oobInstruction == OOB_INST_ECRECOVER)
+          .isSha2(oobInstruction == OOB_INST_SHA2)
+          .isRipemd(oobInstruction == OOB_INST_RIPEMD)
+          .isIdentity(oobInstruction == OOB_INST_IDENTITY)
+          .isEcadd(oobInstruction == OOB_INST_ECADD)
+          .isEcmul(oobInstruction == OOB_INST_ECMUL)
+          .isEcpairing(oobInstruction == OOB_INST_ECPAIRING)
+          .isBlake2FCds(oobInstruction == OOB_INST_BLAKE_CDS)
+          .isBlake2FParams(oobInstruction == OOB_INST_BLAKE_PARAMS)
+          .isModexpCds(oobInstruction == OOB_INST_MODEXP_CDS)
+          .isModexpXbs(oobInstruction == OOB_INST_MODEXP_XBS)
+          .isModexpLead(oobInstruction == OOB_INST_MODEXP_LEAD)
+          .isModexpPricing(oobInstruction == OOB_INST_MODEXP_PRICING)
+          .isModexpExtract(oobInstruction == OOB_INST_MODEXP_EXTRACT)
+          .addFlag(oobOperation.getAddFlag()[ct])
+          .modFlag(oobOperation.getModFlag()[ct])
+          .wcpFlag(oobOperation.getWcpFlag()[ct])
+          .outgoingInst(oobOperation.getOutgoingInst()[ct])
+          .outgoingData1(bigIntegerToBytes(oobOperation.getOutgoingData1()[ct]))
+          .outgoingData2(bigIntegerToBytes(oobOperation.getOutgoingData2()[ct]))
+          .outgoingData3(bigIntegerToBytes(oobOperation.getOutgoingData3()[ct]))
+          .outgoingData4(bigIntegerToBytes(oobOperation.getOutgoingData4()[ct]))
+          .outgoingResLo(bigIntegerToBytes(oobOperation.getOutgoingResLo()[ct]))
           .validateRow();
     }
   }
 
   @Override
   public void enterTransaction() {
-    this.chunks.enter();
+    this.oobOperations.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.chunks.pop();
+    this.oobOperations.pop();
   }
 
   @Override
   public int lineCount() {
-    return this.chunks.stream().mapToInt(OobOperation::nRows).sum();
+    return this.oobOperations.stream().mapToInt(OobOperation::nRows).sum();
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     Trace trace = new Trace(buffers);
-    for (int i = 0; i < this.chunks.size(); i++) {
-      this.traceChunk(this.chunks.get(i), i + 1, trace);
+    for (int i = 0; i < this.oobOperations.size(); i++) {
+      this.traceChunk(this.oobOperations.get(i), i + 1, trace);
     }
   }
 

@@ -29,10 +29,10 @@ public enum CallFrameType {
   STATIC,
   /** Within a call code. */
   CALL_CODE,
-  /** The bedrock context. */
-  BEDROCK,
-  /** A putative phantom frame below the BEDROCK holding the call data */
-  MANTLE,
+  /** The root context. */
+  ROOT,
+  /** A putative phantom frame below the root holding the call data */
+  TRANSACTION_CALL_DATA_HOLDER,
   /** A non-Besu CallFrame where we store the result of a precompile */
   PRECOMPILE_RETURN_DATA;
 

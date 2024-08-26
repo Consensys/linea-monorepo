@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment;
 
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
 
 /**
  * A TraceFragment represents a piece of a trace line; either a {@link CommonFragment} present in

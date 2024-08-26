@@ -126,7 +126,7 @@ public class MxpTest {
   }
 
   @Test
-  void testMxpRandomTriggerRoob() {
+  void testRandomMxpInstructionsFollowedByTriggeringRoob() {
     // Testing a random program
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     final int INSTRUCTION_COUNT = 256;
@@ -135,6 +135,32 @@ public class MxpTest {
       triggerNonTrivialOrNoop(program, isHalting);
     }
     triggerNonTrivialButMxpxOrRoob(program, false, true);
+    BytecodeRunner.of(program.compile()).run();
+  }
+
+  @Test
+  void testSingleLog3TriggersRoob() {
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    program
+        .push("30000003333333333333000000000000" + "00000000000000000000000000000003") // topic 3
+        .push("20000000000000000000222222222222" + "20000000000000000000000000000002") // topic 2
+        .push("10000000000000000000000000000000" + "00000000000001111111111111000001") // topic 1
+        .push("00000000000000000000010000000000" + "00000000000000000000000000000000") // size
+        .push("00000000000000000000000000000000" + "00000000000000000000000000000001") // offset
+        .op(OpCode.LOG3);
+    BytecodeRunner.of(program.compile()).run();
+  }
+
+  @Test
+  void testSingleUnexceptionalLog3() {
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    program
+        .push("30000003333333333333000000000000" + "00000000000000000000000000000003") // topic 3
+        .push("20000000000000000000222222222222" + "20000000000000000000000000000002") // topic 2
+        .push("10000000000000000000000000000000" + "00000000000001111111111111000001") // topic 1
+        .push("00000000000000000000000000000000" + "00000000000000000000000000000100") // size
+        .push("00000000000000000000000000000000" + "00000000000000000000000000000101") // offset
+        .op(OpCode.LOG3);
     BytecodeRunner.of(program.compile()).run();
   }
 

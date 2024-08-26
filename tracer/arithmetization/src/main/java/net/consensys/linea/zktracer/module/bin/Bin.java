@@ -22,21 +22,17 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for addition/subtraction. */
 public class Bin implements Module {
-  private final Hub hub;
 
   /** A set of the operations to trace */
   private final StackedSet<BinOperation> chunks = new StackedSet<>();
 
-  public Bin(final Hub hub) {
-    this.hub = hub;
-  }
+  public Bin() {}
 
   @Override
   public String moduleKey() {
@@ -55,7 +51,7 @@ public class Bin implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = this.hub.opCode();
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 =
         opCode == OpCode.NOT ? Bytes32.ZERO : Bytes32.leftPad(frame.getStackItem(1));

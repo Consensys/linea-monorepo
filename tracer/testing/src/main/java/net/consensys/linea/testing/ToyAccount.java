@@ -71,7 +71,7 @@ public class ToyAccount implements MutableAccount {
 
   @Override
   public boolean isStorageEmpty() {
-    return false;
+    return false; // TODO fix NPE triggered by setting it to this.storage.isEmpty();
   }
 
   @Override

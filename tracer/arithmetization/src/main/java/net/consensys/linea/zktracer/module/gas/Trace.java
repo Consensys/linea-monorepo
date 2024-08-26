@@ -30,44 +30,52 @@ import org.apache.tuweni.bytes.Bytes;
  * Please DO NOT ATTEMPT TO MODIFY this code directly.
  */
 public class Trace {
-  public static final int CT_MAX = 0x7;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
 
-  private final MappedByteBuffer acc1;
-  private final MappedByteBuffer acc2;
-  private final MappedByteBuffer byte1;
-  private final MappedByteBuffer byte2;
   private final MappedByteBuffer ct;
-  private final MappedByteBuffer gasActl;
+  private final MappedByteBuffer ctMax;
+  private final MappedByteBuffer exceptionsAhoy;
+  private final MappedByteBuffer first;
+  private final MappedByteBuffer gasActual;
   private final MappedByteBuffer gasCost;
-  private final MappedByteBuffer oogx;
-  private final MappedByteBuffer stamp;
+  private final MappedByteBuffer inputsAndOutputsAreMeaningful;
+  private final MappedByteBuffer outOfGasException;
+  private final MappedByteBuffer wcpArg1Lo;
+  private final MappedByteBuffer wcpArg2Lo;
+  private final MappedByteBuffer wcpInst;
+  private final MappedByteBuffer wcpRes;
 
   static List<ColumnHeader> headers(int length) {
     return List.of(
-        new ColumnHeader("gas.ACC_1", 8, length),
-        new ColumnHeader("gas.ACC_2", 8, length),
-        new ColumnHeader("gas.BYTE_1", 1, length),
-        new ColumnHeader("gas.BYTE_2", 1, length),
         new ColumnHeader("gas.CT", 1, length),
-        new ColumnHeader("gas.GAS_ACTL", 4, length),
+        new ColumnHeader("gas.CT_MAX", 1, length),
+        new ColumnHeader("gas.EXCEPTIONS_AHOY", 1, length),
+        new ColumnHeader("gas.FIRST", 1, length),
+        new ColumnHeader("gas.GAS_ACTUAL", 4, length),
         new ColumnHeader("gas.GAS_COST", 8, length),
-        new ColumnHeader("gas.OOGX", 1, length),
-        new ColumnHeader("gas.STAMP", 4, length));
+        new ColumnHeader("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL", 1, length),
+        new ColumnHeader("gas.OUT_OF_GAS_EXCEPTION", 1, length),
+        new ColumnHeader("gas.WCP_ARG1_LO", 16, length),
+        new ColumnHeader("gas.WCP_ARG2_LO", 16, length),
+        new ColumnHeader("gas.WCP_INST", 1, length),
+        new ColumnHeader("gas.WCP_RES", 1, length));
   }
 
   public Trace(List<MappedByteBuffer> buffers) {
-    this.acc1 = buffers.get(0);
-    this.acc2 = buffers.get(1);
-    this.byte1 = buffers.get(2);
-    this.byte2 = buffers.get(3);
-    this.ct = buffers.get(4);
-    this.gasActl = buffers.get(5);
-    this.gasCost = buffers.get(6);
-    this.oogx = buffers.get(7);
-    this.stamp = buffers.get(8);
+    this.ct = buffers.get(0);
+    this.ctMax = buffers.get(1);
+    this.exceptionsAhoy = buffers.get(2);
+    this.first = buffers.get(3);
+    this.gasActual = buffers.get(4);
+    this.gasCost = buffers.get(5);
+    this.inputsAndOutputsAreMeaningful = buffers.get(6);
+    this.outOfGasException = buffers.get(7);
+    this.wcpArg1Lo = buffers.get(8);
+    this.wcpArg2Lo = buffers.get(9);
+    this.wcpInst = buffers.get(10);
+    this.wcpRes = buffers.get(11);
   }
 
   public int size() {
@@ -78,85 +86,11 @@ public class Trace {
     return this.currentLine;
   }
 
-  public Trace acc1(final Bytes b) {
-    if (filled.get(0)) {
-      throw new IllegalStateException("gas.ACC_1 already set");
-    } else {
-      filled.set(0);
-    }
-
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("acc1 has invalid width (" + bs.bitLength() + "bits)");
-    }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      acc1.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc1.put(bs.get(j));
-    }
-
-    return this;
-  }
-
-  public Trace acc2(final Bytes b) {
-    if (filled.get(1)) {
-      throw new IllegalStateException("gas.ACC_2 already set");
-    } else {
-      filled.set(1);
-    }
-
-    // Trim array to size
-    Bytes bs = b.trimLeadingZeros();
-    // Sanity check against expected width
-    if (bs.bitLength() > 64) {
-      throw new IllegalArgumentException("acc2 has invalid width (" + bs.bitLength() + "bits)");
-    }
-    // Write padding (if necessary)
-    for (int i = bs.size(); i < 8; i++) {
-      acc2.put((byte) 0);
-    }
-    // Write bytes
-    for (int j = 0; j < bs.size(); j++) {
-      acc2.put(bs.get(j));
-    }
-
-    return this;
-  }
-
-  public Trace byte1(final UnsignedByte b) {
-    if (filled.get(2)) {
-      throw new IllegalStateException("gas.BYTE_1 already set");
-    } else {
-      filled.set(2);
-    }
-
-    byte1.put(b.toByte());
-
-    return this;
-  }
-
-  public Trace byte2(final UnsignedByte b) {
-    if (filled.get(3)) {
-      throw new IllegalStateException("gas.BYTE_2 already set");
-    } else {
-      filled.set(3);
-    }
-
-    byte2.put(b.toByte());
-
-    return this;
-  }
-
   public Trace ct(final long b) {
-    if (filled.get(4)) {
+    if (filled.get(0)) {
       throw new IllegalStateException("gas.CT already set");
     } else {
-      filled.set(4);
+      filled.set(0);
     }
 
     if (b >= 8L) {
@@ -167,29 +101,68 @@ public class Trace {
     return this;
   }
 
-  public Trace gasActl(final long b) {
-    if (filled.get(5)) {
-      throw new IllegalStateException("gas.GAS_ACTL already set");
+  public Trace ctMax(final long b) {
+    if (filled.get(1)) {
+      throw new IllegalStateException("gas.CT_MAX already set");
     } else {
-      filled.set(5);
+      filled.set(1);
+    }
+
+    if (b >= 8L) {
+      throw new IllegalArgumentException("ctMax has invalid value (" + b + ")");
+    }
+    ctMax.put((byte) b);
+
+    return this;
+  }
+
+  public Trace exceptionsAhoy(final Boolean b) {
+    if (filled.get(2)) {
+      throw new IllegalStateException("gas.EXCEPTIONS_AHOY already set");
+    } else {
+      filled.set(2);
+    }
+
+    exceptionsAhoy.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace first(final Boolean b) {
+    if (filled.get(3)) {
+      throw new IllegalStateException("gas.FIRST already set");
+    } else {
+      filled.set(3);
+    }
+
+    first.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace gasActual(final long b) {
+    if (filled.get(4)) {
+      throw new IllegalStateException("gas.GAS_ACTUAL already set");
+    } else {
+      filled.set(4);
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("gasActl has invalid value (" + b + ")");
+      throw new IllegalArgumentException("gasActual has invalid value (" + b + ")");
     }
-    gasActl.put((byte) (b >> 24));
-    gasActl.put((byte) (b >> 16));
-    gasActl.put((byte) (b >> 8));
-    gasActl.put((byte) b);
+    gasActual.put((byte) (b >> 24));
+    gasActual.put((byte) (b >> 16));
+    gasActual.put((byte) (b >> 8));
+    gasActual.put((byte) b);
 
     return this;
   }
 
   public Trace gasCost(final Bytes b) {
-    if (filled.get(6)) {
+    if (filled.get(5)) {
       throw new IllegalStateException("gas.GAS_COST already set");
     } else {
-      filled.set(6);
+      filled.set(5);
     }
 
     // Trim array to size
@@ -210,71 +183,153 @@ public class Trace {
     return this;
   }
 
-  public Trace oogx(final Boolean b) {
-    if (filled.get(7)) {
-      throw new IllegalStateException("gas.OOGX already set");
+  public Trace inputsAndOutputsAreMeaningful(final Boolean b) {
+    if (filled.get(6)) {
+      throw new IllegalStateException("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL already set");
     } else {
-      filled.set(7);
+      filled.set(6);
     }
 
-    oogx.put((byte) (b ? 1 : 0));
+    inputsAndOutputsAreMeaningful.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
-  public Trace stamp(final long b) {
+  public Trace outOfGasException(final Boolean b) {
+    if (filled.get(7)) {
+      throw new IllegalStateException("gas.OUT_OF_GAS_EXCEPTION already set");
+    } else {
+      filled.set(7);
+    }
+
+    outOfGasException.put((byte) (b ? 1 : 0));
+
+    return this;
+  }
+
+  public Trace wcpArg1Lo(final Bytes b) {
     if (filled.get(8)) {
-      throw new IllegalStateException("gas.STAMP already set");
+      throw new IllegalStateException("gas.WCP_ARG1_LO already set");
     } else {
       filled.set(8);
     }
 
-    if (b >= 4294967296L) {
-      throw new IllegalArgumentException("stamp has invalid value (" + b + ")");
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "wcpArg1Lo has invalid width (" + bs.bitLength() + "bits)");
     }
-    stamp.put((byte) (b >> 24));
-    stamp.put((byte) (b >> 16));
-    stamp.put((byte) (b >> 8));
-    stamp.put((byte) b);
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
+      wcpArg1Lo.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      wcpArg1Lo.put(bs.get(j));
+    }
+
+    return this;
+  }
+
+  public Trace wcpArg2Lo(final Bytes b) {
+    if (filled.get(9)) {
+      throw new IllegalStateException("gas.WCP_ARG2_LO already set");
+    } else {
+      filled.set(9);
+    }
+
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException(
+          "wcpArg2Lo has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
+      wcpArg2Lo.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      wcpArg2Lo.put(bs.get(j));
+    }
+
+    return this;
+  }
+
+  public Trace wcpInst(final UnsignedByte b) {
+    if (filled.get(10)) {
+      throw new IllegalStateException("gas.WCP_INST already set");
+    } else {
+      filled.set(10);
+    }
+
+    wcpInst.put(b.toByte());
+
+    return this;
+  }
+
+  public Trace wcpRes(final Boolean b) {
+    if (filled.get(11)) {
+      throw new IllegalStateException("gas.WCP_RES already set");
+    } else {
+      filled.set(11);
+    }
+
+    wcpRes.put((byte) (b ? 1 : 0));
 
     return this;
   }
 
   public Trace validateRow() {
     if (!filled.get(0)) {
-      throw new IllegalStateException("gas.ACC_1 has not been filled");
-    }
-
-    if (!filled.get(1)) {
-      throw new IllegalStateException("gas.ACC_2 has not been filled");
-    }
-
-    if (!filled.get(2)) {
-      throw new IllegalStateException("gas.BYTE_1 has not been filled");
-    }
-
-    if (!filled.get(3)) {
-      throw new IllegalStateException("gas.BYTE_2 has not been filled");
-    }
-
-    if (!filled.get(4)) {
       throw new IllegalStateException("gas.CT has not been filled");
     }
 
-    if (!filled.get(5)) {
-      throw new IllegalStateException("gas.GAS_ACTL has not been filled");
+    if (!filled.get(1)) {
+      throw new IllegalStateException("gas.CT_MAX has not been filled");
     }
 
-    if (!filled.get(6)) {
+    if (!filled.get(2)) {
+      throw new IllegalStateException("gas.EXCEPTIONS_AHOY has not been filled");
+    }
+
+    if (!filled.get(3)) {
+      throw new IllegalStateException("gas.FIRST has not been filled");
+    }
+
+    if (!filled.get(4)) {
+      throw new IllegalStateException("gas.GAS_ACTUAL has not been filled");
+    }
+
+    if (!filled.get(5)) {
       throw new IllegalStateException("gas.GAS_COST has not been filled");
     }
 
+    if (!filled.get(6)) {
+      throw new IllegalStateException("gas.INPUTS_AND_OUTPUTS_ARE_MEANINGFUL has not been filled");
+    }
+
     if (!filled.get(7)) {
-      throw new IllegalStateException("gas.OOGX has not been filled");
+      throw new IllegalStateException("gas.OUT_OF_GAS_EXCEPTION has not been filled");
     }
 
     if (!filled.get(8)) {
-      throw new IllegalStateException("gas.STAMP has not been filled");
+      throw new IllegalStateException("gas.WCP_ARG1_LO has not been filled");
+    }
+
+    if (!filled.get(9)) {
+      throw new IllegalStateException("gas.WCP_ARG2_LO has not been filled");
+    }
+
+    if (!filled.get(10)) {
+      throw new IllegalStateException("gas.WCP_INST has not been filled");
+    }
+
+    if (!filled.get(11)) {
+      throw new IllegalStateException("gas.WCP_RES has not been filled");
     }
 
     filled.clear();
@@ -285,39 +340,51 @@ public class Trace {
 
   public Trace fillAndValidateRow() {
     if (!filled.get(0)) {
-      acc1.position(acc1.position() + 8);
-    }
-
-    if (!filled.get(1)) {
-      acc2.position(acc2.position() + 8);
-    }
-
-    if (!filled.get(2)) {
-      byte1.position(byte1.position() + 1);
-    }
-
-    if (!filled.get(3)) {
-      byte2.position(byte2.position() + 1);
-    }
-
-    if (!filled.get(4)) {
       ct.position(ct.position() + 1);
     }
 
-    if (!filled.get(5)) {
-      gasActl.position(gasActl.position() + 4);
+    if (!filled.get(1)) {
+      ctMax.position(ctMax.position() + 1);
     }
 
-    if (!filled.get(6)) {
+    if (!filled.get(2)) {
+      exceptionsAhoy.position(exceptionsAhoy.position() + 1);
+    }
+
+    if (!filled.get(3)) {
+      first.position(first.position() + 1);
+    }
+
+    if (!filled.get(4)) {
+      gasActual.position(gasActual.position() + 4);
+    }
+
+    if (!filled.get(5)) {
       gasCost.position(gasCost.position() + 8);
     }
 
+    if (!filled.get(6)) {
+      inputsAndOutputsAreMeaningful.position(inputsAndOutputsAreMeaningful.position() + 1);
+    }
+
     if (!filled.get(7)) {
-      oogx.position(oogx.position() + 1);
+      outOfGasException.position(outOfGasException.position() + 1);
     }
 
     if (!filled.get(8)) {
-      stamp.position(stamp.position() + 4);
+      wcpArg1Lo.position(wcpArg1Lo.position() + 16);
+    }
+
+    if (!filled.get(9)) {
+      wcpArg2Lo.position(wcpArg2Lo.position() + 16);
+    }
+
+    if (!filled.get(10)) {
+      wcpInst.position(wcpInst.position() + 1);
+    }
+
+    if (!filled.get(11)) {
+      wcpRes.position(wcpRes.position() + 1);
     }
 
     filled.clear();

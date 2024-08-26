@@ -15,28 +15,72 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Iterator;
+import java.util.*;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.StackedContainer;
 import net.consensys.linea.zktracer.module.hub.State.TxState.Stamps;
-import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
+import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
+import net.consensys.linea.zktracer.types.EWord;
+import org.hyperledger.besu.datatypes.Address;
 
 public class State implements StackedContainer {
-  private final Deque<TxState> state = new ArrayDeque<>(50);
+  private final Deque<TxState> state = new ArrayDeque<>();
 
   State() {}
 
-  private TxState current() {
+  public TxState current() {
     return this.state.peek();
   }
 
   public Stamps stamps() {
     return this.current().stamps;
   }
+
+  @Getter @Setter HubProcessingPhase processingPhase;
+
+  @RequiredArgsConstructor
+  @EqualsAndHashCode
+  @Getter
+  public static class StorageSlotIdentifier {
+    final Address address;
+    final int deploymentNumber;
+    final EWord storageKey;
+  }
+
+  public void updateOrInsertStorageSlotOccurrence(
+      StorageSlotIdentifier slotIdentifier, StorageFragment storageFragment) {
+    final HashMap<StorageSlotIdentifier, StorageFragmentPair> current =
+        firstAndLastStorageSlotOccurrences.getLast();
+    if (current.containsKey(slotIdentifier)) {
+      current.get(slotIdentifier).update(storageFragment);
+    } else {
+      current.put(slotIdentifier, new State.StorageFragmentPair(storageFragment));
+    }
+  }
+
+  @Getter
+  public static class StorageFragmentPair {
+    final StorageFragment firstOccurrence;
+    @Setter StorageFragment finalOccurrence;
+
+    public StorageFragmentPair(StorageFragment firstOccurrence) {
+      this.firstOccurrence = firstOccurrence;
+      this.finalOccurrence = firstOccurrence;
+    }
+
+    public void update(StorageFragment current) {
+      setFinalOccurrence(current);
+    }
+  }
+
+  // initialized here
+  public ArrayList<HashMap<StorageSlotIdentifier, StorageFragmentPair>>
+      firstAndLastStorageSlotOccurrences = new ArrayList<>();
 
   /**
    * @return the current transaction trace elements
@@ -91,7 +135,7 @@ public class State implements StackedContainer {
   /** Describes the Hub state during a given transaction. */
   @Accessors(fluent = true)
   @Getter
-  static class TxState {
+  public static class TxState {
     Stamps stamps;
     TxTrace txTrace;
 
@@ -106,42 +150,43 @@ public class State implements StackedContainer {
     }
 
     TxState spinOff() {
-      return new TxState(this.stamps.spinOff());
+      return new TxState(this.stamps.snapshot());
     }
 
     /** Stores all the stamps associated to the tracing of a transaction. */
     @Accessors(fluent = true)
     @Getter
     public static class Stamps {
-      private int hub = 0;
-      private int mmu = 0;
-      private int mxp = 0;
-      private int hashInfo = 0;
+      private int hub = 0; // increments during execution
+      private int log = 0; // increments at RunPostTx
+      private int mxp = 0; // increments only at commit time
+      private int mmu = 0; // increments only at commit time
 
       public Stamps() {}
 
-      public Stamps(int hubStamp, int mmuStamp, int mxpStamp, int hashInfoStamp) {
+      public Stamps(final int hubStamp, final int logStamp) {
         this.hub = hubStamp;
-        this.mmu = mmuStamp;
-        this.mxp = mxpStamp;
-        this.hashInfo = hashInfoStamp;
+        this.log = logStamp;
       }
 
-      Stamps spinOff() {
-        return new Stamps(this.hub, this.mmu, this.mxp, this.hashInfo);
+      public Stamps snapshot() {
+        return new Stamps(this.hub, this.log);
       }
 
-      void incrementHubStamp() {
+      public void incrementHubStamp() {
         this.hub++;
       }
 
-      void stampSubmodules(final PlatformController platformController) {
-        if (platformController.signals().mmu()) {
-          this.mmu++;
-        }
-        if (platformController.signals().mxp()) {
-          this.mxp++;
-        }
+      public void incrementMmuStamp() {
+        this.mmu++;
+      }
+
+      public void incrementMxpStamp() {
+        this.mxp++;
+      }
+
+      public int incrementLogStamp() {
+        return this.log++;
       }
     }
   }

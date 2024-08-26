@@ -79,15 +79,24 @@ public class MmuOperation extends ModuleOperation {
     this.callStackReader = new CallStackReader(callStack);
   }
 
+  public boolean traceMe() {
+    return mmuData.mmuCall().traceMe();
+  }
+
   @Override
   protected int computeLineCount() {
-    return 1 + mmuData.numberMmuPreprocessingRows() + mmuData.numberMmioInstructions();
+    return traceMe()
+        ? 1 + mmuData.numberMmuPreprocessingRows() + mmuData.numberMmioInstructions()
+        : 0;
   }
 
   public int computeMmioLineCount() {
     int sum = 0;
-    for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
-      sum += numberOfRowOfMmioInstruction(mmuData.mmuToMmioInstructions().get(i).mmioInstruction());
+    if (traceMe()) {
+      for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
+        sum +=
+            numberOfRowOfMmioInstruction(mmuData.mmuToMmioInstructions().get(i).mmioInstruction());
+      }
     }
     return sum;
   }
@@ -142,15 +151,16 @@ public class MmuOperation extends ModuleOperation {
   }
 
   public void setExoBytes(ExoSumDecoder exoSumDecoder) {
+    if (mmuData.mmuCall().exoBytes().isPresent()) {
+      mmuData.exoBytes(mmuData.mmuCall().exoBytes().get());
+      return;
+    }
     final int exoSum = mmuData.hubToMmuValues().exoSum();
 
     if (exoSum != 0) {
       mmuData.exoSumDecoder(exoSumDecoder);
       final int exoId =
-          (int)
-              (mmuData.exoLimbIsSource()
-                  ? this.mmuData.hubToMmuValues().sourceId()
-                  : this.mmuData.hubToMmuValues().targetId());
+          mmuData.exoLimbIsSource() ? mmuData.mmuCall().sourceId() : mmuData.mmuCall().targetId();
       mmuData.exoBytes(exoSumDecoder.getExoBytes(mmuData.hubToMmuValues(), exoId));
     }
   }

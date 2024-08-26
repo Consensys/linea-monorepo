@@ -42,6 +42,62 @@ public class EcRecoverTest {
         .run();
   }
 
+  @ParameterizedTest
+  @MethodSource("ecRecoverSource")
+  void testEcRecover(
+      String description,
+      EWord h,
+      EWord v,
+      EWord r,
+      EWord s,
+      boolean expectedInternalChecksPassed,
+      boolean expectedSuccessBit) {
+    BytecodeCompiler program =
+        BytecodeCompiler.newProgram()
+            // First place the parameters in memory
+            .push(h)
+            .push(0)
+            .op(OpCode.MSTORE)
+            .push(v) // v
+            .push(0x20)
+            .op(OpCode.MSTORE)
+            .push(r) // r
+            .push(0x40)
+            .op(OpCode.MSTORE)
+            .push(s) // s
+            .push(0x60)
+            .op(OpCode.MSTORE)
+            // Do the call
+            .push(32) // retSize
+            .push(0x80) // retOffset
+            .push(0x80) // argSize
+            .push(0) // argOffset
+            .push(1) // address
+            .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
+            .op(OpCode.STATICCALL);
+
+    BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
+    bytecodeRunner.run();
+
+    // Retrieve recoveredAddress, internalChecksPassed, successBit
+    // Assert internalChecksPassed and successBit are what expected
+    EcDataOperation ecDataOperation =
+        bytecodeRunner.getHub().ecData().getOperations().stream().toList().get(0);
+    EWord recoveredAddress =
+        EWord.of(
+            ecDataOperation.limb().get(8).toUnsignedBigInteger(),
+            ecDataOperation.limb().get(9).toUnsignedBigInteger());
+    boolean internalChecksPassed = ecDataOperation.internalChecksPassed();
+    boolean successBit = ecDataOperation.successBit();
+
+    assertEquals(expectedInternalChecksPassed, internalChecksPassed);
+    assertEquals(expectedSuccessBit, successBit);
+
+    System.out.println("recoveredAddress: " + recoveredAddress);
+    System.out.println("internalChecksPassed: " + internalChecksPassed);
+    System.out.println("successBit: " + successBit);
+  }
+
   private static Stream<Arguments> ecRecoverSource() {
     EWord h =
         EWord.ofHexString("0x456e9aea5e197a1f1af7a3e85a3212fa4049a3ba34c2289b4c860fc0b0c64ef3");
@@ -172,29 +228,21 @@ public class EcRecoverTest {
     return Arguments.of(description, h, v, r, s, expectedInternalChecksPassed, expectedSuccessBit);
   }
 
-  @ParameterizedTest
-  @MethodSource("ecRecoverSource")
-  void testEcRecover(
-      String description,
-      EWord h,
-      EWord v,
-      EWord r,
-      EWord s,
-      boolean expectedInternalChecksPassed,
-      boolean expectedSuccessBit) {
+  @Test
+  void testEcRecoverInternalChecksFailSingleCase() {
     BytecodeCompiler program =
         BytecodeCompiler.newProgram()
             // First place the parameters in memory
-            .push(h)
+            .push("1111111111111111111111111111111111111111111111111111111111111111") // h
             .push(0)
             .op(OpCode.MSTORE)
-            .push(v) // v
+            .push("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") // v
             .push(0x20)
             .op(OpCode.MSTORE)
-            .push(r) // r
+            .push("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc") // r
             .push(0x40)
             .op(OpCode.MSTORE)
-            .push(s) // s
+            .push("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc") // s
             .push(0x60)
             .op(OpCode.MSTORE)
             // Do the call
@@ -208,23 +256,5 @@ public class EcRecoverTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
-
-    // Retrieve recoveredAddress, internalChecksPassed, successBit
-    // Assert internalChecksPassed and successBit are what expected
-    EcDataOperation ecDataOperation =
-        bytecodeRunner.getHub().ecData().getOperations().stream().toList().get(0);
-    EWord recoveredAddress =
-        EWord.of(
-            ecDataOperation.limb().get(8).toUnsignedBigInteger(),
-            ecDataOperation.limb().get(9).toUnsignedBigInteger());
-    boolean internalChecksPassed = ecDataOperation.internalChecksPassed();
-    boolean successBit = ecDataOperation.successBit();
-
-    assertEquals(internalChecksPassed, expectedInternalChecksPassed);
-    assertEquals(successBit, expectedSuccessBit);
-
-    System.out.println("recoveredAddress: " + recoveredAddress);
-    System.out.println("internalChecksPassed: " + internalChecksPassed);
-    System.out.println("successBit: " + successBit);
   }
 }

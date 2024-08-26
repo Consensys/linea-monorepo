@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -80,45 +81,52 @@ public class Blockhash implements Module {
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    this.opcodeArgument = Bytes32.leftPad(frame.getStackItem(0));
-    lowerBound =
-        this.wcp.callGEQ(
-            opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber - BLOCKHASH_MAX_HISTORY));
-    upperBound = this.wcp.callLT(opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber));
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    if (opCode == OpCode.BLOCKHASH) {
+      this.opcodeArgument = Bytes32.leftPad(frame.getStackItem(0));
+      lowerBound =
+          this.wcp.callGEQ(
+              opcodeArgument,
+              Bytes.ofUnsignedLong(this.absoluteBlockNumber - BLOCKHASH_MAX_HISTORY));
+      upperBound = this.wcp.callLT(opcodeArgument, Bytes.ofUnsignedLong(this.absoluteBlockNumber));
 
-    /* To prove the lex order of BLOCK_NUMBER_HI/LO, we call WCP at endConflation, so we need to add rows in WCP now.
-    If a BLOCK_NUMBER is already called at least two times, no need for additional rows in WCP*/
-    final int numberOfCall = this.numberOfCall.getOrDefault(this.opcodeArgument, 0);
-    if (numberOfCall < 2) {
-      this.wcp.additionalRows.push(
-          this.wcp.additionalRows.pop()
-              + Math.max(Math.min(LLARGE, this.opcodeArgument.trimLeadingZeros().size()), 1));
-      this.numberOfCall.replace(this.opcodeArgument, numberOfCall, numberOfCall + 1);
+      /* To prove the lex order of BLOCK_NUMBER_HI/LO, we call WCP at endConflation, so we need to add rows in WCP now.
+      If a BLOCK_NUMBER is already called at least two times, no need for additional rows in WCP*/
+      final int numberOfCall = this.numberOfCall.getOrDefault(this.opcodeArgument, 0);
+      if (numberOfCall < 2) {
+        this.wcp.additionalRows.push(
+            this.wcp.additionalRows.pop()
+                + Math.max(Math.min(LLARGE, this.opcodeArgument.trimLeadingZeros().size()), 1));
+        this.numberOfCall.replace(this.opcodeArgument, numberOfCall, numberOfCall + 1);
+      }
     }
   }
 
   @Override
   public void tracePostOpcode(MessageFrame frame) {
-    final Bytes32 result = Bytes32.leftPad(frame.getStackItem(0));
-    this.operations.add(
-        new BlockhashOperation(
-            this.relativeBlock,
-            this.opcodeArgument,
-            this.absoluteBlockNumber,
-            lowerBound,
-            upperBound,
-            result));
-    if (result != Bytes32.ZERO) {
-      blockHashMap.put(this.opcodeArgument, result);
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    if (opCode == OpCode.BLOCKHASH) {
+      final Bytes32 result = Bytes32.leftPad(frame.getStackItem(0));
+      this.operations.add(
+          new BlockhashOperation(
+              this.relativeBlock,
+              this.opcodeArgument,
+              this.absoluteBlockNumber,
+              lowerBound,
+              upperBound,
+              result));
+      if (result != Bytes32.ZERO) {
+        blockHashMap.put(this.opcodeArgument, result);
+      }
     }
   }
 
   @Override
   public void traceEndConflation(WorldView state) {
-    final BlockhashComparator BLOCKHASH_COMPARATOR = new BlockhashComparator();
     this.sortedOperations.addAll(this.operations);
-    this.sortedOperations.sort(BLOCKHASH_COMPARATOR);
     if (!this.sortedOperations.isEmpty()) {
+      final BlockhashComparator BLOCKHASH_COMPARATOR = new BlockhashComparator();
+      this.sortedOperations.sort(BLOCKHASH_COMPARATOR);
       this.wcp.callGEQ(this.sortedOperations.get(0).opcodeArgument(), Bytes32.ZERO);
       for (int i = 1; i < this.sortedOperations.size(); i++) {
         this.wcp.callGEQ(

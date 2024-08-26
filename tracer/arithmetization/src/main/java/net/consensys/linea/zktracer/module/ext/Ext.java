@@ -27,9 +27,7 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 public class Ext implements Module {
@@ -41,11 +39,6 @@ public class Ext implements Module {
   @Override
   public String moduleKey() {
     return "EXT";
-  }
-
-  @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
-    this.operations.enter();
   }
 
   @Override

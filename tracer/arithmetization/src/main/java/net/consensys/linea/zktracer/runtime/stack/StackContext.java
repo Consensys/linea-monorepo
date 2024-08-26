@@ -20,13 +20,10 @@ import java.util.Arrays;
 import java.util.List;
 
 import lombok.Getter;
-import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
-import net.consensys.linea.zktracer.types.MemorySegmentSnapshot;
-import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /**
  * A StackContext encode the stack-related information pertaining to the execution of an opcode
@@ -35,13 +32,12 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
  */
 @Accessors(fluent = true)
 public final class StackContext {
-  @Getter @Setter MemorySegmentSnapshot memorySegmentSnapshot;
 
   /** The opcode that triggered the stack operations. */
-  OpCode opCode;
+  final OpCode opCode;
 
   /** One or two lines to be traced, representing the stack operations performed by the opcode. */
-  @Getter final List<StackLine> lines = new ArrayList<>(4);
+  @Getter final List<StackLine> lines = new ArrayList<>(4); // TODO: why not 2 ???
 
   /**
    * The default constructor for a valid, albeit empty line.
@@ -50,7 +46,6 @@ public final class StackContext {
    */
   public StackContext(OpCode opCode) {
     this.opCode = opCode;
-    this.memorySegmentSnapshot = new MemorySegmentSnapshot(UnsignedByte.EMPTY_BYTES16);
   }
 
   /**

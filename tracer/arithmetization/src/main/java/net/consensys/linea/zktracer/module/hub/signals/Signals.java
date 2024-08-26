@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.module.ecdata.EcData.EC_PRECOMPILES;
-
 import java.util.Optional;
 import java.util.Set;
 
@@ -57,16 +55,13 @@ public class Signals {
   @Getter private boolean shf;
 
   @Getter private boolean gas;
-  @Getter private boolean mmu;
   @Getter private boolean mxp;
   @Getter private boolean oob;
   @Getter private boolean stp;
   @Getter private boolean exp;
   @Getter private boolean trm;
   @Getter private boolean hashInfo;
-  @Getter private boolean romLex;
   @Getter private boolean rlpAddr;
-  @Getter private boolean ecData;
 
   private final PlatformController platformController;
 
@@ -81,16 +76,13 @@ public class Signals {
     this.shf = false;
 
     this.gas = false;
-    this.mmu = false;
     this.mxp = false;
     this.oob = false;
     this.stp = false;
     this.exp = false;
     this.trm = false;
     this.hashInfo = false;
-    this.romLex = false;
     this.rlpAddr = false;
-    this.ecData = false;
   }
 
   public Signals snapshot() {
@@ -105,16 +97,13 @@ public class Signals {
     r.shf = this.shf;
 
     r.gas = this.gas;
-    r.mmu = this.mmu;
     r.mxp = this.mxp;
     r.oob = this.oob;
     r.stp = this.stp;
     r.exp = this.exp;
     r.trm = this.trm;
     r.hashInfo = this.hashInfo;
-    r.romLex = this.romLex;
     r.rlpAddr = this.rlpAddr;
-    r.ecData = this.ecData;
 
     return r;
   }
@@ -141,55 +130,14 @@ public class Signals {
     }
 
     switch (opCode) {
-      case CALLDATACOPY, CODECOPY -> {
-        this.mxp =
-            Exceptions.outOfMemoryExpansion(ex) || Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.mmu = Exceptions.none(ex) && !frame.getStackItem(2).isZero();
-      }
-
-      case RETURNDATACOPY -> {
-        this.oob = Exceptions.none(ex) || Exceptions.returnDataCopyFault(ex);
-        this.mxp =
-            Exceptions.none(ex) || Exceptions.outOfMemoryExpansion(ex) || Exceptions.outOfGas(ex);
-        this.mmu = Exceptions.none(ex) && !frame.getStackItem(2).isZero();
-      }
-
-      case EXTCODECOPY -> {
-        final boolean nonzeroSize = !frame.getStackItem(3).isZero();
-        this.mxp =
-            Exceptions.outOfMemoryExpansion(ex) || Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.trm = Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.mmu = Exceptions.none(ex) && nonzeroSize;
-
-        final Address address = Words.toAddress(frame.getStackItem(0));
-        final boolean targetAddressHasCode =
-            Optional.ofNullable(frame.getWorldUpdater().get(address))
-                .map(AccountState::hasCode)
-                .orElse(false);
-
-        this.romLex = Exceptions.none(ex) && nonzeroSize && targetAddressHasCode;
-      }
-
-      case LOG0, LOG1, LOG2, LOG3, LOG4 -> {
-        this.mxp =
-            Exceptions.outOfMemoryExpansion(ex) || Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.mmu =
-            Exceptions.none(ex)
-                && !frame
-                    .getStackItem(1)
-                    .isZero(); // TODO do not trigger the MMU if the context is going to revert and
-        // check the HUB does increment or not the MMU stamp for reverted LOG
-        // logInfo and logData are triggered via rlpRcpt at the end of the tx
-      }
-
       case CALL, DELEGATECALL, STATICCALL, CALLCODE -> {
         this.mxp = !Exceptions.staticFault(ex);
-        this.stp = Exceptions.outOfGas(ex) || Exceptions.none(ex);
+        this.stp = Exceptions.outOfGasException(ex) || Exceptions.none(ex);
         this.oob = opCode.equals(OpCode.CALL) && Exceptions.staticFault(ex) || Exceptions.none(ex);
-        this.trm = Exceptions.outOfGas(ex) || Exceptions.none(ex);
+        this.trm = Exceptions.outOfGasException(ex) || Exceptions.none(ex);
 
         final boolean triggersAbortingCondition =
-            Exceptions.none(ex) && this.platformController.aborts().any();
+            Exceptions.none(ex) && this.platformController.abortingConditions().any();
 
         final Address target = Words.toAddress(frame.getStackItem(1));
         final boolean targetAddressHasNonEmptyCode =
@@ -197,100 +145,39 @@ public class Signals {
                 .map(AccountState::hasCode)
                 .orElse(false);
 
-        this.romLex =
-            Exceptions.none(ex) && !triggersAbortingCondition && targetAddressHasNonEmptyCode;
-        this.ecData = Exceptions.none(ex) && EC_PRECOMPILES.contains(target);
         this.exp =
             Exceptions.none(ex)
-                && this.platformController.aborts().none()
+                && this.platformController.abortingConditions().none()
                 && target.equals(Address.MODEXP);
       }
 
-      case CREATE, CREATE2 -> {
-        boolean triggersAbortingCondition =
-            Exceptions.none(ex) && this.platformController.aborts().any();
-
-        boolean triggersFailureCondition = false;
-        if (Exceptions.none(ex) && this.platformController.aborts().none()) {
-          triggersFailureCondition = this.platformController.failures().any();
-        }
-
-        final boolean nonzeroSize = !frame.getStackItem(2).isZero();
-        final boolean isCreate2 = opCode == OpCode.CREATE2;
-
-        this.mxp = !Exceptions.staticFault(ex);
-        this.stp = Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.oob = Exceptions.none(ex);
-        this.rlpAddr = Exceptions.none(ex) && !triggersAbortingCondition;
-        this.hashInfo =
-            Exceptions.none(ex) && !triggersAbortingCondition && nonzeroSize && isCreate2;
-        this.romLex =
-            Exceptions.none(ex)
-                && !triggersAbortingCondition
-                && nonzeroSize
-                && !triggersFailureCondition;
-        this.mmu = this.hashInfo || this.romLex;
-      }
-
-      case REVERT -> {
-        this.mxp =
-            Exceptions.outOfMemoryExpansion(ex) || Exceptions.outOfGas(ex) || Exceptions.none(ex);
-        this.mmu =
-            Exceptions.none(ex)
-                && !frame.getStackItem(1).isZero()
-                && !hub.currentFrame().requestedReturnDataTarget().isEmpty();
-      }
-
-      case RETURN -> {
-        final boolean isDeployment = frame.getType() == MessageFrame.Type.CONTRACT_CREATION;
-        final boolean sizeNonZero = !frame.getStackItem(1).isZero();
-
-        // WARN: Static part, other modules may be dynamically requested in the hub
-        this.mxp =
-            Exceptions.outOfMemoryExpansion(ex)
-                || Exceptions.outOfGas(ex)
-                || Exceptions.invalidCodePrefix(ex)
-                || Exceptions.none(ex);
-        this.oob = isDeployment && (Exceptions.codeSizeOverflow(ex) || Exceptions.none(ex));
-        this.mmu =
-            (isDeployment && Exceptions.invalidCodePrefix(ex))
-                || (isDeployment && Exceptions.none(ex) && sizeNonZero)
-                || (!isDeployment
-                    && Exceptions.none(ex)
-                    && sizeNonZero
-                    && !hub.currentFrame().requestedReturnDataTarget().isEmpty());
-        this.romLex = this.hashInfo = isDeployment && Exceptions.none(ex) && sizeNonZero;
-      }
+      case REVERT -> this.mxp =
+          Exceptions.memoryExpansionException(ex)
+              || Exceptions.outOfGasException(ex)
+              || Exceptions.none(ex);
 
       case EXP -> {
-        this.exp = true;
-        this.mul = !Exceptions.outOfGas(ex);
+        this.exp = true; // TODO: use expCall instead
+        this.mul = !Exceptions.outOfGasException(ex);
       }
 
         // other opcodes
-      case ADD, SUB -> this.add = !Exceptions.outOfGas(ex);
-      case MUL -> this.mul = !Exceptions.outOfGas(ex);
-      case DIV, SDIV, MOD, SMOD -> this.mod = !Exceptions.outOfGas(ex);
-      case ADDMOD, MULMOD -> this.ext = !Exceptions.outOfGas(ex);
-      case LT, GT, SLT, SGT, EQ, ISZERO -> this.wcp = !Exceptions.outOfGas(ex);
-      case AND, OR, XOR, NOT, SIGNEXTEND, BYTE -> this.bin = !Exceptions.outOfGas(ex);
-      case SHL, SHR, SAR -> this.shf = !Exceptions.outOfGas(ex);
+      case ADD, SUB -> this.add = !Exceptions.outOfGasException(ex);
+      case MUL -> this.mul = !Exceptions.outOfGasException(ex);
+      case DIV, SDIV, MOD, SMOD -> this.mod = !Exceptions.outOfGasException(ex);
+      case ADDMOD, MULMOD -> this.ext = !Exceptions.outOfGasException(ex);
+      case LT, GT, SLT, SGT, EQ, ISZERO -> this.wcp = !Exceptions.outOfGasException(ex);
+      case AND, OR, XOR, NOT, SIGNEXTEND, BYTE -> this.bin = !Exceptions.outOfGasException(ex);
+      case SHL, SHR, SAR -> this.shf = !Exceptions.outOfGasException(ex);
       case SHA3 -> {
         this.mxp = true;
         this.hashInfo = Exceptions.none(ex) && !frame.getStackItem(1).isZero();
-        this.mmu = this.hashInfo;
       }
       case BALANCE, EXTCODESIZE, EXTCODEHASH, SELFDESTRUCT -> this.trm = true;
       case MLOAD, MSTORE, MSTORE8 -> {
         this.mxp = true;
-        this.mmu = Exceptions.none(ex);
       }
-      case CALLDATALOAD -> {
-        this.oob = true;
-        this.mmu =
-            Exceptions.none(ex)
-                && frame.getInputData().size() > Words.clampedToLong(frame.getStackItem(0));
-      }
+      case CALLDATALOAD -> this.oob = true;
       case SLOAD -> {}
       case SSTORE, JUMP, JUMPI -> this.oob = true;
       case MSIZE -> this.mxp = Exceptions.none(ex);

@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
+import java.util.List;
+
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -43,13 +45,36 @@ public class TrmTracerTest {
               + "ffffffff"
               + "ffffffff"
               + "ffffffff"
+              + "ffffffff"
               + "ffffffff");
-  private final Bytes32 EXTRACT_DISREGARDED_PREFIX_STRING =
+  private final Bytes32 BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___MAX_VALUE =
       Bytes32.fromHexString(
           "0x"
               + "ffffffff"
               + "ffffffff"
               + "ffffffff"
+              + "00000000"
+              + "00000000"
+              + "00000000"
+              + "00000000"
+              + "00000000");
+  private final Bytes32 BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___ONE =
+      Bytes32.fromHexString(
+          "0x"
+              + "00000000"
+              + "00000000"
+              + "00000001"
+              + "00000000"
+              + "00000000"
+              + "00000000"
+              + "00000000"
+              + "00000000");
+  private final Bytes32 BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___RANDOM =
+      Bytes32.fromHexString(
+          "0x"
+              + "b18cd834"
+              + "b6192fcf"
+              + "9f51322e"
               + "00000000"
               + "00000000"
               + "00000000"
@@ -65,7 +90,7 @@ public class TrmTracerTest {
 
   @Test
   void testNonCallTinyParamAround256() {
-    for (int tiny = 0; tiny < 16; tiny++) {
+    for (int tiny = 0; tiny < 32; tiny++) {
       nonCall(Bytes32.leftPad(Bytes.ofUnsignedLong((long) tiny + 248)));
     }
   }
@@ -75,7 +100,7 @@ public class TrmTracerTest {
     for (int tiny = 0; tiny < 16; tiny++) {
       nonCall(
           RANDOM_STRING_FROM_THE_INTERNET
-              .and(EXTRACT_DISREGARDED_PREFIX_STRING)
+              .and(BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___MAX_VALUE)
               .or(Bytes32.leftPad(Bytes.of(tiny))));
     }
   }
@@ -93,15 +118,40 @@ public class TrmTracerTest {
   }
 
   @Test
-  void testSixArgCall() {
+  void testSampleDelegateCall() {
     for (long tiny = 0; tiny < 16; tiny++) {
-      sixArgCall(tiny);
+      sampleDelegateCall(tiny);
     }
   }
 
   void nonCall(Bytes bytes) {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(bytes).op(OpCode.EXTCODEHASH).compile())
         .run();
+  }
+
+  @Test
+  void testTrimToUncoverATinyAddressAndQueryItsBalanceCodeHashAndCodeSize() {
+    BytecodeCompiler program = BytecodeCompiler.newProgram();
+
+    List<OpCode> opCodeList = List.of(OpCode.BALANCE, OpCode.EXTCODESIZE, OpCode.EXTCODEHASH);
+
+    for (int i = 0; i < 11; i++) {
+      program
+          .push(BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___MAX_VALUE)
+          .push(i)
+          .op(OpCode.OR)
+          .op(opCodeList.get(i % 3))
+          .push(BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___RANDOM)
+          .push(i)
+          .op(OpCode.OR)
+          .op(opCodeList.get((i + 1) % 3))
+          .push(BYTE_STRING_OUTSIDE_OF_ADDRESS_RANGE___ONE)
+          .push(i)
+          .op(OpCode.OR)
+          .op(opCodeList.get((i + 2) % 3));
+    }
+
+    BytecodeRunner.of(program.compile()).run();
   }
 
   void sevenArgCall(long rawAddr) {
@@ -119,7 +169,7 @@ public class TrmTracerTest {
         .run();
   }
 
-  void sixArgCall(long rawAddr) {
+  void sampleDelegateCall(long rawAddr) {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .push(Bytes.fromHexString("0xff")) // rds

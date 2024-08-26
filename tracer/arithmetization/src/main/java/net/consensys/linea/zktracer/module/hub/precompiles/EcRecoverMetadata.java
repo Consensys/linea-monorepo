@@ -19,7 +19,7 @@ import net.consensys.linea.zktracer.CurveOperations;
 import net.consensys.linea.zktracer.module.hub.Hub;
 
 /**
- * ECRECOVER success must be captured at *CALL-time, when the data is still available.
+ * ECRECOVER hubSuccess must be captured at *CALL-time, when the data is still available.
  *
  * @param recoverySuccessful whether the recovery process is successful
  */

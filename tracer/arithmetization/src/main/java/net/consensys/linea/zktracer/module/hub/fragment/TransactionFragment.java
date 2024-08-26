@@ -15,99 +15,71 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
+import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
-import net.consensys.linea.zktracer.module.hub.TransactionStack;
-import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
-import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.datatypes.TransactionType;
 
-public final class TransactionFragment implements TraceFragment, PostTransactionDefer {
+public final class TransactionFragment implements TraceFragment {
+  private final TransactionProcessingMetadata transactionProcessingMetadata;
   @Setter private TraceSection parentSection;
-  private final int batchNumber;
-  private final Address minerAddress;
-  private final Transaction tx;
-  private final boolean evmExecutes;
-  private final Wei gasPrice;
-  private final Wei baseFee;
-  private boolean txSuccess;
-  private final long initialGas;
 
-  private TransactionFragment(
-      int batchNumber,
-      Address minerAddress,
-      Transaction tx,
-      boolean evmExecutes,
-      Wei gasPrice,
-      Wei baseFee,
-      boolean txSuccess,
-      long initialGas) {
-    this.batchNumber = batchNumber;
-    this.minerAddress = minerAddress;
-    this.tx = tx;
-    this.evmExecutes = evmExecutes;
-    this.gasPrice = gasPrice;
-    this.baseFee = baseFee;
-    this.txSuccess = txSuccess;
-    this.initialGas = initialGas;
+  private TransactionFragment(TransactionProcessingMetadata transactionProcessingMetadata) {
+    this.transactionProcessingMetadata = transactionProcessingMetadata;
   }
 
   public static TransactionFragment prepare(
-      int batchNumber,
-      Address minerAddress,
-      Transaction tx,
-      boolean evmExecutes,
-      Wei gasPrice,
-      Wei baseFee,
-      long initialGas) {
-    return new TransactionFragment(
-        batchNumber, minerAddress, tx, evmExecutes, gasPrice, baseFee, false, initialGas);
+      TransactionProcessingMetadata transactionProcessingMetadata) {
+    return new TransactionFragment(transactionProcessingMetadata);
   }
 
   @Override
   public Trace trace(Trace trace) {
-    final EWord to = EWord.of(effectiveToAddress(tx));
-    final EWord from = EWord.of(tx.getSender());
-    final EWord miner = EWord.of(minerAddress);
-    long gasRefundAmount = this.parentSection.parentTrace().refundedGas();
-    long leftoverGas = this.parentSection.parentTrace().leftoverGas();
-    long gasRefundFinalCounter = this.parentSection.parentTrace().gasRefundFinalCounter();
+    final Transaction tx = transactionProcessingMetadata.getBesuTransaction();
+    final Address to = transactionProcessingMetadata.getEffectiveTo();
+    final Address from = transactionProcessingMetadata.getSender();
+    final Address miner = transactionProcessingMetadata.getCoinbase();
 
     return trace
         .peekAtTransaction(true)
+        .pTransactionBatchNum(transactionProcessingMetadata.getRelativeBlockNumber())
+        .pTransactionFromAddressHi(highPart(from))
+        .pTransactionFromAddressLo(lowPart(from))
         .pTransactionNonce(Bytes.ofUnsignedLong(tx.getNonce()))
-        .pTransactionIsDeployment(tx.getTo().isEmpty())
-        .pTransactionFromAddressHi(from.hi())
-        .pTransactionFromAddressLo(from.lo())
-        .pTransactionToAddressHi(to.hi())
-        .pTransactionToAddressLo(to.lo())
-        .pTransactionGasPrice(gasPrice)
-        .pTransactionBasefee(baseFee)
-        .pTransactionGasInitiallyAvailable(
-            Bytes.ofUnsignedLong(TransactionStack.computeInitGas(tx)))
-        .pTransactionInitialBalance(Bytes.ofUnsignedLong(initialGas))
+        .pTransactionInitialBalance(
+            bigIntegerToBytes(transactionProcessingMetadata.getInitialBalance()))
         .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
-        .pTransactionCoinbaseAddressHi(miner.hi())
-        .pTransactionCoinbaseAddressLo(miner.lo())
-        .pTransactionCallDataSize(Bytes.ofUnsignedInt(tx.getData().map(Bytes::size).orElse(0)))
-        .pTransactionRequiresEvmExecution(evmExecutes)
-        .pTransactionGasLeftover(Bytes.ofUnsignedLong(leftoverGas))
-        .pTransactionRefundCounterInfinity(Bytes.ofUnsignedLong(gasRefundFinalCounter))
-        .pTransactionRefundEffective(Bytes.ofUnsignedLong(gasRefundAmount))
-        .pTransactionStatusCode(txSuccess);
-  }
-
-  @Override
-  public void runPostTx(Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
-    this.txSuccess = isSuccessful;
+        .pTransactionToAddressHi(highPart(to))
+        .pTransactionToAddressLo(lowPart(to))
+        .pTransactionRequiresEvmExecution(transactionProcessingMetadata.requiresEvmExecution())
+        .pTransactionCopyTxcd(transactionProcessingMetadata.copyTransactionCallData())
+        .pTransactionIsDeployment(tx.getTo().isEmpty())
+        .pTransactionIsType2(tx.getType() == TransactionType.EIP1559)
+        .pTransactionGasLimit(Bytes.minimalBytes(tx.getGasLimit()))
+        .pTransactionGasInitiallyAvailable(
+            Bytes.minimalBytes(transactionProcessingMetadata.getInitiallyAvailableGas()))
+        .pTransactionGasPrice(
+            Bytes.minimalBytes(transactionProcessingMetadata.getEffectiveGasPrice()))
+        .pTransactionPriorityFeePerGas(
+            Bytes.minimalBytes(transactionProcessingMetadata.weiPerGasForMiner()))
+        .pTransactionBasefee(Bytes.minimalBytes(transactionProcessingMetadata.getBaseFee()))
+        .pTransactionCallDataSize(tx.getData().map(Bytes::size).orElse(0))
+        .pTransactionInitCodeSize(tx.getInit().map(Bytes::size).orElse(0))
+        .pTransactionStatusCode(transactionProcessingMetadata.statusCode())
+        .pTransactionGasLeftover(Bytes.minimalBytes(transactionProcessingMetadata.getLeftoverGas()))
+        .pTransactionRefundCounterInfinity(
+            Bytes.minimalBytes(transactionProcessingMetadata.getRefundCounterMax()))
+        .pTransactionRefundEffective(
+            Bytes.minimalBytes(transactionProcessingMetadata.getGasRefunded()))
+        .pTransactionCoinbaseAddressHi(highPart(miner))
+        .pTransactionCoinbaseAddressLo(lowPart(miner));
   }
 }

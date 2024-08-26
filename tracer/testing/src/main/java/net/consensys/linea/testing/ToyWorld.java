@@ -67,7 +67,7 @@ public class ToyWorld implements WorldUpdater {
   }
 
   public static ToyWorld of(final ConflationSnapshot conflation) {
-    ToyWorld worldUpdater = new ToyWorld();
+    final ToyWorld worldUpdater = new ToyWorld();
     initWorldUpdater(worldUpdater, conflation);
     return worldUpdater;
   }

@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -40,19 +40,19 @@ public final class Log extends GasProjection {
   public long staticGas() {
     switch (numTopics) {
       case 0 -> {
-        return GasConstants.G_LOG_0.cost();
+        return GlobalConstants.GAS_CONST_G_LOG;
       }
       case 1 -> {
-        return GasConstants.G_LOG_1.cost();
+        return GlobalConstants.GAS_CONST_G_LOG + GlobalConstants.GAS_CONST_G_LOG_TOPIC;
       }
       case 2 -> {
-        return GasConstants.G_LOG_2.cost();
+        return GlobalConstants.GAS_CONST_G_LOG + 2 * GlobalConstants.GAS_CONST_G_LOG_TOPIC;
       }
       case 3 -> {
-        return GasConstants.G_LOG_3.cost();
+        return GlobalConstants.GAS_CONST_G_LOG + 3 * GlobalConstants.GAS_CONST_G_LOG_TOPIC;
       }
       case 4 -> {
-        return GasConstants.G_LOG_4.cost();
+        return GlobalConstants.GAS_CONST_G_LOG + 4 * GlobalConstants.GAS_CONST_G_LOG_TOPIC;
       }
       default -> throw new IllegalStateException("Unexpected value: " + numTopics);
     }
@@ -70,6 +70,6 @@ public final class Log extends GasProjection {
 
   @Override
   public long linearPerByte() {
-    return linearCost(GasConstants.G_LOG_DATA.cost(), size, 1);
+    return linearCost(GlobalConstants.GAS_CONST_G_LOG_DATA, size, 1);
   }
 }

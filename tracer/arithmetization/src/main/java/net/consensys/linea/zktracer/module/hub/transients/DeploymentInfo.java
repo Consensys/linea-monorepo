@@ -41,6 +41,10 @@ public class DeploymentInfo {
     this.markDeploying(address);
   }
 
+  public int getDeploymentNumber(Address address) {
+    return this.deploymentNumber.get(address);
+  }
+
   public final boolean isDeploying(Address address) {
     return this.isDeploying.getOrDefault(address, false);
   }

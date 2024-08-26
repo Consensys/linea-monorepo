@@ -17,28 +17,27 @@ package net.consensys.linea.zktracer.module.trm;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
-import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
 import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class Trm implements Module {
   static final int MAX_CT = LLARGE;
   static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
 
-  private final StackedSet<TrmOperation> trimmings = new StackedSet<>();
+  private final StackedSet<TrmOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
@@ -47,40 +46,38 @@ public class Trm implements Module {
 
   @Override
   public void enterTransaction() {
-    this.trimmings.enter();
+    this.operations.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.trimmings.pop();
-  }
-
-  @Override
-  public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    switch (opCode) {
-      case BALANCE, EXTCODESIZE, EXTCODECOPY, EXTCODEHASH, SELFDESTRUCT -> {
-        this.trimmings.add(new TrmOperation(EWord.of(frame.getStackItem(0))));
-      }
-      case CALL, CALLCODE, DELEGATECALL, STATICCALL -> {
-        this.trimmings.add(new TrmOperation(EWord.of(frame.getStackItem(1))));
-      }
-    }
+    this.operations.pop();
   }
 
   public Address callTrimming(Bytes32 rawHash) {
-    this.trimmings.add(new TrmOperation(EWord.of(rawHash)));
+    operations.add(new TrmOperation(EWord.of(rawHash)));
     return Address.extract(rawHash);
   }
 
+  public Address callTrimming(Bytes addressToTrim) {
+    Bytes32 addressPadded = Bytes32.leftPad(addressToTrim);
+    return callTrimming(addressPadded);
+  }
+
   @Override
-  public void traceStartTx(WorldView worldView, Transaction tx) {
+  public void traceStartTx(WorldView world, TransactionProcessingMetadata txMetaData) {
+    // Add effective receiver Address
+    operations.add(new TrmOperation(EWord.of(txMetaData.getEffectiveTo())));
+
+    // Add Address in AccessList to warm
+    final Transaction tx = txMetaData.getBesuTransaction();
     final TransactionType txType = tx.getType();
+
     switch (txType) {
       case ACCESS_LIST, EIP1559 -> {
         if (tx.getAccessList().isPresent()) {
           for (AccessListEntry entry : tx.getAccessList().get()) {
-            this.trimmings.add(new TrmOperation(EWord.of(entry.address())));
+            operations.add(new TrmOperation(EWord.of(entry.address())));
           }
         }
       }
@@ -93,12 +90,6 @@ public class Trm implements Module {
     }
   }
 
-  public static boolean isPrec(EWord data) {
-    BigInteger trmAddrParamAsBigInt = data.slice(12, 20).toUnsignedBigInteger();
-    return (!trmAddrParamAsBigInt.equals(BigInteger.ZERO)
-        && (trmAddrParamAsBigInt.compareTo(BigInteger.TEN) < 0));
-  }
-
   @Override
   public List<ColumnHeader> columnsHeaders() {
     return Trace.headers(this.lineCount());
@@ -109,7 +100,7 @@ public class Trm implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (TrmOperation operation : this.trimmings) {
+    for (TrmOperation operation : this.operations) {
       stamp++;
       operation.trace(trace, stamp);
     }
@@ -117,6 +108,6 @@ public class Trm implements Module {
 
   @Override
   public int lineCount() {
-    return this.trimmings.lineCount();
+    return this.operations.lineCount();
   }
 }

@@ -15,11 +15,15 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
 
 public interface TraceSubFragment {
-  Trace trace(Trace trace);
+  default Trace trace(Trace trace) {
+    return trace;
+  }
 
-  default void postConflationRetcon(final Hub hub) {}
+  default Trace trace(Trace trace, State.TxState.Stamps stamps) {
+    return trace(trace);
+  }
 }

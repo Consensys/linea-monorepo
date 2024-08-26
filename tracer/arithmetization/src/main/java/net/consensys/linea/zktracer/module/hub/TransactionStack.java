@@ -15,132 +15,69 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
-
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.StackedContainer;
-import net.consensys.linea.zktracer.module.hub.transients.StorageInitialValues;
-import net.consensys.linea.zktracer.types.TxState;
-import org.hyperledger.besu.datatypes.Quantity;
+import net.consensys.linea.zktracer.module.hub.transients.Block;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class TransactionStack implements StackedContainer {
-  private final List<MetaTransaction> txs = new ArrayList<>(100);
+  private final List<TransactionProcessingMetadata> txs =
+      new ArrayList<>(200); // TODO: write the allocated memory from .toml file
   private int currentAbsNumber;
+  private int relativeTransactionNumber;
 
-  public MetaTransaction current() {
+  public TransactionProcessingMetadata current() {
     return this.txs.get(this.txs.size() - 1);
   }
 
-  public MetaTransaction getById(int id) {
-    return this.txs.get(id);
+  /* WARN: can't be called if currentAbsNumber == 1*/
+  public TransactionProcessingMetadata previous() {
+    return this.txs.get(this.txs.size() - 2);
   }
 
-  public MetaTransaction getByAbsNumber(int id) {
-    for (MetaTransaction tx : this.txs) {
-      if (tx.absNumber == id) {
-        return tx;
-      }
-    }
-
-    throw new IndexOutOfBoundsException("unknown tx");
+  public TransactionProcessingMetadata getByAbsoluteTransactionNumber(final int id) {
+    return this.txs.get(id - 1);
   }
 
   @Override
   public void enter() {
     this.currentAbsNumber += 1;
+    this.relativeTransactionNumber += 1;
   }
 
   @Override
   public void pop() {
+    this.txs.remove(this.current());
     this.currentAbsNumber -= 1;
+    this.relativeTransactionNumber -= 1;
   }
 
-  public void enterTransaction(final Transaction tx, final boolean requiresEvmExecution) {
-    this.enter();
-    if (tx.getTo().isPresent() && isPrecompile(tx.getTo().get())) {
-      throw new RuntimeException("Call to precompile forbidden");
-    } else {
-      //      this.number++;
-    }
+  public void resetBlock() {
+    this.relativeTransactionNumber = 0;
+  }
 
-    final MetaTransaction newTx =
-        MetaTransaction.builder()
-            .besuTx(tx)
-            .absNumber(currentAbsNumber)
-            .status(null)
-            .initialGas(tx.getGasLimit())
-            .requiresEvmExecution(requiresEvmExecution)
-            .build();
+  public void enterTransaction(final WorldView world, final Transaction tx, Block block) {
+    this.enter();
+
+    final TransactionProcessingMetadata newTx =
+        new TransactionProcessingMetadata(
+            world, tx, block, relativeTransactionNumber, currentAbsNumber);
     this.txs.add(newTx);
   }
 
-  public void exitTransaction(final Hub hub, boolean isSuccessful) {
-    if (this.current().state() != TxState.TX_SKIP) {
-      this.current().state(TxState.TX_FINAL);
+  public void setCodeFragmentIndex(Hub hub) {
+    for (TransactionProcessingMetadata tx : this.txs) {
+      final int cfi =
+          tx.requiresCfiUpdate() ? hub.getCfiByMetaData(tx.getEffectiveTo(), 1, true) : 0;
+      tx.setCodeFragmentIndex(cfi);
     }
-    this.current().status(!isSuccessful).endStamp(hub.stamp());
   }
 
-  public static long computeInitGas(Transaction tx) {
-    boolean isDeployment = tx.getTo().isEmpty();
-    return tx.getGasLimit()
-        - ZkTracer.gasCalculator.transactionIntrinsicGasCost(tx.getPayload(), isDeployment)
-        - tx.getAccessList().map(ZkTracer.gasCalculator::accessListGasCost).orElse(0L);
-  }
-
-  @Builder
-  @Accessors(fluent = true)
-  public static class MetaTransaction {
-    @Getter private int id;
-    @Getter private Transaction besuTx;
-    @Getter private int absNumber;
-    @Getter @Setter private TxState state;
-    @Setter @Builder.Default private Boolean status = null;
-    @Getter private long initialGas;
-    @Getter private final StorageInitialValues storage = new StorageInitialValues();
-    @Getter @Setter @Builder.Default int endStamp = -1;
-    @Getter @Setter boolean isSenderPreWarmed;
-    @Getter @Setter boolean isReceiverPreWarmed;
-    @Getter @Setter boolean requiresEvmExecution;
-
-    /**
-     * Returns the transaction result, or throws an exception if it is being accessed outside of its
-     * specified lifetime -- between the conclusion of a transaction and the start of a new one.
-     *
-     * @return the transaction final status
-     */
-    public boolean status() {
-      if (this.status == null) {
-        throw new RuntimeException("TX state can not be queried for now.");
-      }
-
-      return this.status;
-    }
-
-    public boolean shouldSkip(WorldView world) {
-      return (this.besuTx.getTo().isPresent()
-              && Optional.ofNullable(world.get(this.besuTx.getTo().get()))
-                  .map(a -> a.getCode().isEmpty())
-                  .orElse(true)) // pure transaction
-          || (this.besuTx.getTo().isEmpty()
-              && this.besuTx.getInit().isEmpty()); // contract creation without init code
-    }
-
-    public Wei gasPrice() {
-      return Wei.of(
-          this.besuTx.getGasPrice().map(Quantity::getAsBigInteger).orElse(BigInteger.ZERO));
-    }
+  public int getAccumulativeGasUsedInBlockBeforeTxStart() {
+    return this.relativeTransactionNumber == 1 ? 0 : this.previous().getAccumulatedGasUsedInBlock();
   }
 }

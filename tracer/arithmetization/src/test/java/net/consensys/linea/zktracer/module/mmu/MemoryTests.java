@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.mmu;
 
+import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
+
 import java.util.Random;
 
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -29,7 +31,7 @@ class MemoryTests {
   @Test
   void successionOverlappingMstore() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            newProgram()
                 .push(Bytes.repeat((byte) 1, 32))
                 .push(0)
                 .op(OpCode.MSTORE)
@@ -47,20 +49,102 @@ class MemoryTests {
 
   @Test
   void fastMload() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().push(34).push(0).op(OpCode.MLOAD).compile())
-        .run();
+    BytecodeRunner.of(newProgram().push(34).push(0).op(OpCode.MLOAD).compile()).run();
   }
 
   @Test
   void alignedMstore8() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().push(12).push(0).op(OpCode.MSTORE8).compile())
-        .run();
+    BytecodeRunner.of(newProgram().push(12).push(0).op(OpCode.MSTORE8).compile()).run();
   }
 
   @Test
   void nonAlignedMstore8() {
-    BytecodeRunner.of(
-            BytecodeCompiler.newProgram().push(66872).push(35).op(OpCode.MSTORE8).compile())
-        .run();
+    BytecodeRunner.of(newProgram().push(66872).push(35).op(OpCode.MSTORE8).compile()).run();
+  }
+
+  @Test
+  void mstoreAndReturn() {
+    BytecodeCompiler program = newProgram();
+    program
+        .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
+        .push(0x20)
+        .op(OpCode.MSTORE)
+        .push(0x10)
+        .push(0x30)
+        .op(OpCode.RETURN);
+    BytecodeRunner.of(program.compile()).run();
+  }
+
+  @Test
+  void mstoreAndRevert() {
+    BytecodeCompiler program = newProgram();
+    program
+        .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
+        .push(0x20)
+        .op(OpCode.MSTORE)
+        .push(0x10)
+        .push(0x28)
+        .op(OpCode.REVERT);
+    BytecodeRunner.of(program.compile()).run();
+  }
+
+  @Test
+  void returnAfterLog2() {
+    BytecodeCompiler program = newProgram();
+    program
+        .push(0x01)
+        .push(0x11)
+        .op(OpCode.SHA3) // KECCAK("00")
+        .push(0x00)
+        .op(OpCode.MSTORE)
+        .push(0x02)
+        .push(0x31)
+        .op(OpCode.SHA3) // KECCAK("0000")
+        .push(0x20)
+        .op(OpCode.MSTORE)
+        //
+        .push(0x20) // size
+        .push(0x10) // offset
+        .push(0xbbbbbbbb) // topic 2
+        .push(0xaaaaaaaa) // topic 1
+        .op(OpCode.LOG2)
+        .push("deadbeef00000000deadbeef33333333deadbeefccccccccdeadbeef11111111")
+        .push(0x40)
+        .op(OpCode.MSTORE)
+        .push(0x10)
+        .push(0x30)
+        .op(OpCode.RETURN);
+
+    BytecodeRunner.of(program.compile()).run();
+  }
+
+  @Test
+  void revertAfterLog2() {
+    BytecodeCompiler program = newProgram();
+    program
+        .push(0x01)
+        .push(0x11)
+        .op(OpCode.SHA3) // KECCAK("00")
+        .push(0x00)
+        .op(OpCode.MSTORE)
+        .push(0x02)
+        .push(0x31)
+        .op(OpCode.SHA3) // KECCAK("0000")
+        .push(0x20)
+        .op(OpCode.MSTORE)
+        //
+        .push(0x20) // size
+        .push(0x10) // offset
+        .push(0xbbbbbbbb) // topic 2
+        .push(0xaaaaaaaa) // topic 1
+        .op(OpCode.LOG2)
+        .push("deadbeef00000000deadbeef33333333deadbeefccccccccdeadbeef11111111")
+        .push(0x40)
+        .op(OpCode.MSTORE)
+        .push(0x10)
+        .push(0x30)
+        .op(OpCode.REVERT);
+
+    BytecodeRunner.of(program.compile()).run();
   }
 }
