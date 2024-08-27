@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1-beta
+* fix: removed old documentation files ([#995](https://github.com/Consensys/linea-tracer/pull/995))
+* feat(txndata): implement txn data update handling the max nonce ([#987](https://github.com/Consensys/linea-tracer/pull/987))
+* feat(hub): fill pMiscOobData9 ([#985](https://github.com/Consensys/linea-tracer/pull/985))
+* feat(ecdata): use constants for call data sizes ([#983](https://github.com/Consensys/linea-tracer/pull/983))
+* fix(hub): static exceptions that should not be thrown. ([#986](https://github.com/Consensys/linea-tracer/pull/986))
+* feat(ecdata): switch from stacked set to stacked list ([#981](https://github.com/Consensys/linea-tracer/pull/981))
+* fix(Makefile): updated file path to AccountFragment.java
+
 ## 0.5.0-beta
 * Merged the HUB branch ([#748](https://github.com/Consensys/linea-tracer/pull/748))
 
