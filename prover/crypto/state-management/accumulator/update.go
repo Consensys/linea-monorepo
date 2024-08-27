@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
+
 	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
@@ -125,7 +126,7 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks implements the [DeferableCheck] interface.
+// DeferMerkleChecks implements the [Trace] interface.
 func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,
@@ -147,4 +148,12 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 	newLeaf := hash(config, &newTuple.LeafOpening)
 	appendTo, _ = deferCheckUpdateRoot(config, trace.Proof, trace.OldSubRoot, leaf, newLeaf, appendTo)
 	return appendTo
+}
+
+func (trace UpdateTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+	return hash(cfg, trace.Key)
+}
+
+func (trace UpdateTrace[K, V]) RWInt() int {
+	return 1
 }

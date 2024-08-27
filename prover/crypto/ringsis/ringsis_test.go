@@ -67,9 +67,10 @@ func TestKeyMaxNumFieldHashable(t *testing.T) {
 
 	for _, testCase := range testCasesKey {
 		t.Run(fmt.Sprintf("case-%++v", testCase), func(t *testing.T) {
+			numFieldPerPoly := 8 * field.Bytes / testCase.LogTwoBound
 			key := GenerateKey(testCase.Params, testCase.Size)
 			assert.LessOrEqual(t, testCase.Size, key.MaxNumFieldHashable())
-			assert.LessOrEqual(t, key.MaxNumFieldHashable(), testCase.Size+1)
+			assert.LessOrEqual(t, key.MaxNumFieldHashable(), testCase.Size+numFieldPerPoly-1)
 		})
 	}
 }

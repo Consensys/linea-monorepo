@@ -1,11 +1,14 @@
 package mock
 
 import (
+	"io"
 	"math/big"
 	"slices"
 	"testing"
 
 	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/accumulator"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
@@ -140,6 +143,14 @@ func splitInAccountSegment(logs []StateAccessLog) [][]StateAccessLog {
 		)
 	}
 
+	// 3. Reorder the account segment by hkey
+	slices.SortFunc(accountSegments, func(a, b []StateAccessLog) int {
+		return types.Bytes32Cmp(
+			mimcHash(a[0].Address),
+			mimcHash(b[0].Address),
+		)
+	})
+
 	return accountSegments
 }
 
@@ -176,6 +187,10 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 			squashedAccSegment = squashSubSegmentForShomei(initAcc, subSegments[0])
 		)
 
+		// Since the acount segment is read-only, we can assume that all the
+		// the squashed logs are read-only
+		sortByHKeyStable(squashedAccSegment)
+
 		for _, log := range squashedAccSegment {
 			switch {
 			case log.Type == Storage:
@@ -194,6 +209,9 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 			squashedAccSegment = squashSubSegmentForShomei(initAcc, subSegments[0])
 		)
 
+		sortByHKeyStable(squashedAccSegment)
+		sortByRWStable(squashedAccSegment)
+
 		for _, log := range squashedAccSegment {
 			switch {
 			case log.Type == Storage:
@@ -208,7 +226,6 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 		}
 
 	case missingOrTransient:
-
 		trace := shomeiState.AccountTrie.ReadZeroAndProve(address)
 		return append(blockTrace, asDecodedTrace("0x", trace))
 	}
@@ -222,6 +239,11 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 			initAcc            = shomeiState.AccountTrie.Data.MustGet(accPos).Value
 			squashedAccSegment = squashSubSegmentForShomei(initAcc, relevSubSegment)
 		)
+
+		// Since the storage traces will all be read-only due to the fact that
+		// we ignore the "new" value since the account will be deleted, there
+		// is no need to sort by RW
+		sortByHKeyStable(squashedAccSegment)
 
 		if relevSubSegment[len(relevSubSegment)-1].Type != AccountErasal {
 			panic("expected deploy")
@@ -253,6 +275,9 @@ func applyAccountSegmentToShomei(shomeiState *statemanager.WorldState, accSegmen
 			relevSubSegment    = subSegments[len(subSegments)-1]
 			squashedAccSegment = squashSubSegmentForShomei(types.Account{}, relevSubSegment)
 		)
+
+		sortByHKeyStable(squashedAccSegment)
+		sortByRWStable(squashedAccSegment)
 
 		if relevSubSegment[0].Type != AccountInit {
 			panic("expected deploy")
@@ -582,7 +607,7 @@ func sortedKeysOf[T sortable, U any](m map[T]U) []T {
 }
 
 // asDecodedTrace converts a shomei trace
-func asDecodedTrace(location string, trace any) statemanager.DecodedTrace {
+func asDecodedTrace(location string, trace accumulator.Trace) statemanager.DecodedTrace {
 
 	var new = statemanager.DecodedTrace{Underlying: trace}
 	switch trace.(type) {
@@ -643,4 +668,44 @@ func AssertShomeiAgree(t *testing.T, state State, traces [][]StateAccessLog) {
 
 		initRootHash = new
 	}
+}
+
+func mimcHash(m io.WriterTo) types.Bytes32 {
+	h := mimc.NewMiMC()
+	m.WriteTo(h)
+	d := h.Sum(nil)
+	return types.AsBytes32(d)
+}
+
+func sortByHKeyStable(subSegment []StateAccessLog) {
+	slices.SortStableFunc(
+		subSegment[:len(subSegment)-1], // The last entry will be the account-level log which we don't want to sort
+		func(a, b StateAccessLog) int {
+			switch {
+			case mimcHash(a.Key).Hex() < mimcHash(b.Key).Hex():
+				return -1
+			case mimcHash(a.Key).Hex() > mimcHash(b.Key).Hex():
+				return 1
+			default:
+				return 0
+			}
+		},
+	)
+}
+
+func sortByRWStable(subSegment []StateAccessLog) {
+	slices.SortStableFunc(
+		subSegment[:len(subSegment)-1], // The last entry will be the account-level log which we don't want to sort
+		func(a, b StateAccessLog) int {
+			if a.IsWrite == b.IsWrite {
+				return 0
+			}
+
+			if a.IsWrite {
+				return 1
+			}
+
+			return -1
+		},
+	)
 }

@@ -151,7 +151,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &col,
-				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"a\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"c\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}}],\"round\":0}}",
+				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"a\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"c\",\"pos\":0}}],\"padding\":[0,0,0,0],\"round\":0,\"size\":8}}",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
@@ -180,7 +180,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &univ,
-				Expected:    "{\"type\":\"/protocol/query#UnivariateEval#0\",\"value\":{\"pols\":[{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"},{\"type\":\"/protocol/column#Shifted#0\",\"value\":{\"offset\":2,\"parent\":{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"}}},{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}},{\"type\":\"/protocol/accessors#FromConstAccessor#1\",\"value\":{\"f\":[0,0,0,0]}}],\"round\":0}}],\"queryId\":\"univ\"}}",
+				Expected:    "{\"type\":\"/protocol/query#UnivariateEval#0\",\"value\":{\"pols\":[{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"},{\"type\":\"/protocol/column#Shifted#0\",\"value\":{\"offset\":2,\"parent\":{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"}}},{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}}],\"padding\":[0,0,0,0],\"round\":0,\"size\":4}}],\"queryId\":\"univ\"}}",
 				Mode:        DeclarationMode,
 				CompiledIOP: comp,
 			}
@@ -210,7 +210,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &fromYs,
-				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromYs#0\",\"value\":{\"query\":\"univ\",\"ranges\":[\"a\",\"SHIFT_2_16_a\",\"b\",\"FROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_CONST_ACCESSOR_0_CONST_ACCESSOR_0_CONST_ACCESSOR_0\"],\"round\":0}}",
+				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromYs#0\",\"value\":{\"query\":\"univ\",\"ranges\":[\"a\",\"SHIFT_2_16_a\",\"b\",\"FROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4\"],\"round\":0}}",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}

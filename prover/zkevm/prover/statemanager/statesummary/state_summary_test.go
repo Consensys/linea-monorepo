@@ -51,7 +51,7 @@ func TestStateSummaryInternal(t *testing.T) {
 	}
 }
 
-func TestStateSummaryReadZeroShomei(t *testing.T) {
+func TestStateSummaryReadNonZeroShomei(t *testing.T) {
 
 	var (
 		addresses = []types.EthAddress{
@@ -99,10 +99,10 @@ func TestStateSummaryReadZeroShomei(t *testing.T) {
 
 	// Shuffle the logs to ensure they will be in the same order as shomei's
 	newTraces := [][]statemanager.DecodedTrace{make([]statemanager.DecodedTrace, 4)}
-	newTraces[0][0] = shomeiTraces[0][0]
-	newTraces[0][1] = shomeiTraces[0][3]
+	newTraces[0][0] = shomeiTraces[0][2]
+	newTraces[0][1] = shomeiTraces[0][0]
 	newTraces[0][2] = shomeiTraces[0][1]
-	newTraces[0][3] = shomeiTraces[0][2]
+	newTraces[0][3] = shomeiTraces[0][3]
 
 	define := func(b *wizard.Builder) {
 		ss = NewModule(b.CompiledIOP, 1<<6)

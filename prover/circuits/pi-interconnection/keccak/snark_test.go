@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateCols(t *testing.T) {
@@ -157,8 +158,6 @@ func (c *testCreateColsCircuit) Define(api frontend.API) error {
 func TestE2E(t *testing.T) {
 
 	wizardComponent := NewWizardVerifierSubCircuit(3, dummy.Compile) // increase maxNbKeccakF as needed when introducing longer test vectors
-	wizardSubCircuit, err := wizardComponent.Compile()
-	assert.NoError(t, err)
 
 	for i, c := range getTestCases(t) {
 
@@ -175,6 +174,9 @@ func TestE2E(t *testing.T) {
 				hash[j][k] = c.hash[j][k]
 			}
 		}
+
+		wizardSubCircuit, err := wizardComponent.Compile()
+		require.NoError(t, err)
 
 		circuit := testE2ECircuit{
 			In:             make([][][32]frontend.Variable, len(c.in)),
