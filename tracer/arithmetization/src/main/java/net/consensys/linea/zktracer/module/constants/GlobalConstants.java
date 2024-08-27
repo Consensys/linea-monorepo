@@ -26,12 +26,13 @@ import java.math.BigInteger;
 public class GlobalConstants {
   public static final int BLOCKHASH_MAX_HISTORY = 0x100;
   public static final int CREATE2_SHIFT = 0xff;
+  public static final long EIP2681_MAX_NONCE = 0xffffffffffffffffL;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
       new BigInteger("262949717399590921288928019264691438528");
   public static final BigInteger EMPTY_KECCAK_LO =
       new BigInteger("304396909071904405792975023732328604784");
-  public static final long EMPTY_RIPEMD_HI = 0x9c1185a5L;
+  public static final int EMPTY_RIPEMD_HI = 0x9c1185a5;
   public static final BigInteger EMPTY_RIPEMD_LO =
       new BigInteger("263072838190121256777638892741499129137");
   public static final BigInteger EMPTY_SHA2_HI =
