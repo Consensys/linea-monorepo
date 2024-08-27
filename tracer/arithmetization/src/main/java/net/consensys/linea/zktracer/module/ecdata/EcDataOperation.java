@@ -141,11 +141,11 @@ public class EcDataOperation extends ModuleOperation {
         "EcDataOperation should only be called with nonempty call rightPaddedCallData");
     final int paddedCallDataLength =
         switch (precompileFlag) {
-          case PRC_ECRECOVER -> 128;
-          case PRC_ECADD -> 128;
-          case PRC_ECMUL -> 96;
+          case PRC_ECRECOVER -> TOTAL_SIZE_ECRECOVER_DATA;
+          case PRC_ECADD -> TOTAL_SIZE_ECADD_DATA;
+          case PRC_ECMUL -> TOTAL_SIZE_ECMUL_DATA;
           case PRC_ECPAIRING -> {
-            Preconditions.checkArgument(callDataSize % 192 == 0);
+            Preconditions.checkArgument(callDataSize % TOTAL_SIZE_ECPAIRING_DATA_MIN == 0);
             yield callDataSize;
           }
           default -> throw new IllegalArgumentException(
@@ -162,8 +162,7 @@ public class EcDataOperation extends ModuleOperation {
     }
 
     if (precompileFlag == PRC_ECPAIRING) {
-      Preconditions.checkArgument(callData.size() % 192 == 0);
-      totalPairings = callData.size() / 192;
+      totalPairings = callDataSize / TOTAL_SIZE_ECPAIRING_DATA_MIN;
     } else {
       totalPairings = 0;
     }
@@ -505,7 +504,7 @@ public class EcDataOperation extends ModuleOperation {
 
     for (int accPairings = 1; accPairings <= totalPairings; accPairings++) {
       // Extract inputs
-      final int bytesOffset = (accPairings - 1) * 192;
+      final int bytesOffset = (accPairings - 1) * TOTAL_SIZE_ECPAIRING_DATA_MIN;
       final EWord aX = EWord.of(rightPaddedCallData.slice(bytesOffset, 32));
       final EWord aY = EWord.of(rightPaddedCallData.slice(32 + bytesOffset, 32));
       final EWord bXIm = EWord.of(rightPaddedCallData.slice(64 + bytesOffset, 32));
