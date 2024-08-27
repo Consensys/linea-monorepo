@@ -71,6 +71,7 @@ public class ModexpXbsOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(ZERO)
         .pMiscOobData7(bigIntegerToBytes(maxXbsYbs))
-        .pMiscOobData8(booleanToBytes(xbsNonZero));
+        .pMiscOobData8(booleanToBytes(xbsNonZero))
+        .pMiscOobData9(ZERO);
   }
 }

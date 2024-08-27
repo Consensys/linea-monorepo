@@ -66,6 +66,7 @@ public class ModexpCallDataSizeOobCall extends OobCall {
         .pMiscOobData5(booleanToBytes(extractMbs))
         .pMiscOobData6(ZERO)
         .pMiscOobData7(ZERO)
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }

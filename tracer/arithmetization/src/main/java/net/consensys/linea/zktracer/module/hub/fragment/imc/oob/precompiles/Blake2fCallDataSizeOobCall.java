@@ -65,6 +65,7 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(ZERO)
         .pMiscOobData7(ZERO)
-        .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero)); // Set after the constructor
+        .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero)) // Set after the constructor
+        .pMiscOobData9(ZERO);
   }
 }

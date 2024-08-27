@@ -63,6 +63,7 @@ public class SstoreOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(gas))
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(sstorex))
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }

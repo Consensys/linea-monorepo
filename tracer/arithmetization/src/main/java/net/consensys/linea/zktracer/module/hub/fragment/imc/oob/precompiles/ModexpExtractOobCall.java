@@ -70,6 +70,7 @@ public class ModexpExtractOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(mbs))
         .pMiscOobData6(booleanToBytes(extractBase))
         .pMiscOobData7(booleanToBytes(extractExponent))
-        .pMiscOobData8(booleanToBytes(extractModulus));
+        .pMiscOobData8(booleanToBytes(extractModulus))
+        .pMiscOobData9(ZERO);
   }
 }

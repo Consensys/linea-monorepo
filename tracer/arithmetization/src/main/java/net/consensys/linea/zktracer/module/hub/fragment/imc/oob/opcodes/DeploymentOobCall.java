@@ -72,6 +72,7 @@ public class DeploymentOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(maxCodeSizeException))
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }
