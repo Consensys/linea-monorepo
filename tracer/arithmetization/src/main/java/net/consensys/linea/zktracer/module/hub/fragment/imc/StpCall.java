@@ -64,7 +64,7 @@ public class StpCall implements TraceSubFragment {
     }
   }
 
-  public void stpCallForCalls(Hub hub) {
+  private void stpCallForCalls(Hub hub) {
     MessageFrame frame = hub.messageFrame();
 
     final boolean instructionCanTransferValue = this.opCode.callCanTransferValue();
@@ -98,7 +98,7 @@ public class StpCall implements TraceSubFragment {
     }
   }
 
-  public void stpCallForCreates(Hub hub) {
+  private void stpCallForCreates(Hub hub) {
     MessageFrame frame = hub.messageFrame();
 
     this.gas = EWord.ZERO; // irrelevant
