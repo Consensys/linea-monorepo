@@ -49,7 +49,8 @@ class WalletsFundingTest {
       sourceWallet,
       1944,
       BigInteger.valueOf(2500),
-      BigInteger.valueOf(2500)
+      BigInteger.valueOf(2500),
+      BigInteger.valueOf(1)
     )
 
     assertEquals(1, txs.size)
