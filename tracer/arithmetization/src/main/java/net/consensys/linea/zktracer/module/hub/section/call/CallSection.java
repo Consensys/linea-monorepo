@@ -149,7 +149,6 @@ public class CallSection extends TraceSection
     }
 
     final StpCall stpCall = new StpCall(hub, mxpCall.gasMxp);
-    stpCall.stpCallForCalls(hub);
     firstImcFragment.callStp(stpCall);
     Preconditions.checkArgument(
         stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions));
