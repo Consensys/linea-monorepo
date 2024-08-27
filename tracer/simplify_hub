@@ -1,4 +1,0 @@
-- make the CODE_HASH, NONCE and BALANCE comparisons required in the account perspective in the WCP and _NEW versions thereof
-- make the ORIGINAL etc ... storage value comparions from the storage perspecive in the WCP
-
-This could be beneficial in terms of constraints, in particular these flags will be useful when detecting CREATE failure conditions.
