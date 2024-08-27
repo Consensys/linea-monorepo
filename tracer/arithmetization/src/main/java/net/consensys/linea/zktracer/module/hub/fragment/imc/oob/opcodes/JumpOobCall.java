@@ -74,6 +74,7 @@ public class JumpOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(codeSize))
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(jumpGuaranteedException))
-        .pMiscOobData8(booleanToBytes(jumpMustBeAttempted));
+        .pMiscOobData8(booleanToBytes(jumpMustBeAttempted))
+        .pMiscOobData9(ZERO);
   }
 }

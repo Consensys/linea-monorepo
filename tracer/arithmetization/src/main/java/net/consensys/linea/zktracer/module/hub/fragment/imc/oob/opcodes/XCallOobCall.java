@@ -73,6 +73,7 @@ public class XCallOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(valueIsNonzero))
-        .pMiscOobData8(booleanToBytes(valueIsZero));
+        .pMiscOobData8(booleanToBytes(valueIsZero))
+        .pMiscOobData9(ZERO);
   }
 }

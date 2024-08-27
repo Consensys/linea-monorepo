@@ -71,6 +71,7 @@ public class ModexpPricingOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(returnGas))
         .pMiscOobData6(bigIntegerToBytes(exponentLog))
         .pMiscOobData7(Bytes.of(maxMbsBbs))
-        .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero));
+        .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero))
+        .pMiscOobData9(ZERO);
   }
 }

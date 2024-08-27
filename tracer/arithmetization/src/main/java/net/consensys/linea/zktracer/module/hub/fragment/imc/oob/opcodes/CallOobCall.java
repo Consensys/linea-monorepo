@@ -74,6 +74,7 @@ public class CallOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(bigIntegerToBytes(callStackDepth))
         .pMiscOobData7(booleanToBytes(!value.isZero()))
-        .pMiscOobData8(booleanToBytes(abortingCondition));
+        .pMiscOobData8(booleanToBytes(abortingCondition))
+        .pMiscOobData9(ZERO);
   }
 }

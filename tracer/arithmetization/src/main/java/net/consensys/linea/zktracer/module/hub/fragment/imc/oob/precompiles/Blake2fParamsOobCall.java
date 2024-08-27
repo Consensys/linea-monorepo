@@ -68,6 +68,7 @@ public class Blake2fParamsOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(returnGas)) // Set after the constructor
         .pMiscOobData6(bigIntegerToBytes(blakeR))
         .pMiscOobData7(bigIntegerToBytes(blakeF))
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }

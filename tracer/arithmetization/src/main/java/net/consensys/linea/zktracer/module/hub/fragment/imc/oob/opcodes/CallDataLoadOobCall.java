@@ -73,6 +73,7 @@ public class CallDataLoadOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(cds))
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(cdlOutOfBounds))
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }

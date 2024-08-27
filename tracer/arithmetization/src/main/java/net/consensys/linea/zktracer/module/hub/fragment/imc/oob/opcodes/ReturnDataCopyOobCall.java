@@ -82,6 +82,7 @@ public class ReturnDataCopyOobCall extends OobCall {
         .pMiscOobData5(bigIntegerToBytes(rds))
         .pMiscOobData6(ZERO)
         .pMiscOobData7(booleanToBytes(rdcx))
-        .pMiscOobData8(ZERO);
+        .pMiscOobData8(ZERO)
+        .pMiscOobData9(ZERO);
   }
 }

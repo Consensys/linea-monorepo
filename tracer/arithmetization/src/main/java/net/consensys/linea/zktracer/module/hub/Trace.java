@@ -151,6 +151,7 @@ public class Trace {
   private final MappedByteBuffer oobData6;
   private final MappedByteBuffer oobData7;
   private final MappedByteBuffer oobData8;
+  private final MappedByteBuffer oobData9;
   private final MappedByteBuffer peekAtAccount;
   private final MappedByteBuffer peekAtContext;
   private final MappedByteBuffer peekAtMiscellaneous;
@@ -406,6 +407,7 @@ public class Trace {
         new ColumnHeader("hub.OOB_DATA_6", 16, length),
         new ColumnHeader("hub.OOB_DATA_7", 16, length),
         new ColumnHeader("hub.OOB_DATA_8", 16, length),
+        new ColumnHeader("hub.OOB_DATA_9", 16, length),
         new ColumnHeader("hub.PEEK_AT_ACCOUNT", 1, length),
         new ColumnHeader("hub.PEEK_AT_CONTEXT", 1, length),
         new ColumnHeader("hub.PEEK_AT_MISCELLANEOUS", 1, length),
@@ -634,96 +636,97 @@ public class Trace {
     this.oobData6 = buffers.get(89);
     this.oobData7 = buffers.get(90);
     this.oobData8 = buffers.get(91);
-    this.peekAtAccount = buffers.get(92);
-    this.peekAtContext = buffers.get(93);
-    this.peekAtMiscellaneous = buffers.get(94);
-    this.peekAtScenario = buffers.get(95);
-    this.peekAtStack = buffers.get(96);
-    this.peekAtStorage = buffers.get(97);
-    this.peekAtTransaction = buffers.get(98);
-    this.prcBlake2FXorLogFlag = buffers.get(99);
-    this.prcEcaddXorLogInfoFlag = buffers.get(100);
-    this.prcEcmulXorMachineStateFlag = buffers.get(101);
-    this.prcEcpairingXorMaxcsx = buffers.get(102);
-    this.prcEcrecoverXorModFlag = buffers.get(103);
-    this.prcFailureKnownToHubXorMulFlag = buffers.get(104);
-    this.prcFailureKnownToRamXorMxpx = buffers.get(105);
-    this.prcIdentityXorMxpFlag = buffers.get(106);
-    this.prcModexpXorOogx = buffers.get(107);
-    this.prcRipemd160XorOpcx = buffers.get(108);
-    this.prcSha2256XorPushpopFlag = buffers.get(109);
-    this.prcSuccessCallerWillRevertXorRdcx = buffers.get(110);
-    this.prcSuccessCallerWontRevertXorShfFlag = buffers.get(111);
-    this.priorityFeePerGas = buffers.get(112);
-    this.programCounter = buffers.get(113);
-    this.programCounterNew = buffers.get(114);
-    this.refundCounter = buffers.get(115);
-    this.refundCounterInfinity = buffers.get(116);
-    this.refundCounterNew = buffers.get(117);
-    this.refundEffective = buffers.get(118);
-    this.returnAtCapacityXorMxpInst = buffers.get(119);
-    this.returnAtOffsetXorOobInst = buffers.get(120);
-    this.returnDataContextNumberXorStpGasStipend = buffers.get(121);
-    this.returnDataOffsetXorStpInstruction = buffers.get(122);
-    this.returnDataSize = buffers.get(123);
-    this.returnExceptionXorSox = buffers.get(124);
-    this.returnFromDeploymentEmptyCodeWillRevertXorSstorex = buffers.get(125);
-    this.returnFromDeploymentEmptyCodeWontRevertXorStackramFlag = buffers.get(126);
-    this.returnFromDeploymentNonemptyCodeWillRevertXorStackItemPop1 = buffers.get(127);
-    this.returnFromDeploymentNonemptyCodeWontRevertXorStackItemPop2 = buffers.get(128);
-    this.returnFromMessageCallWillTouchRamXorStackItemPop3 = buffers.get(129);
-    this.returnFromMessageCallWontTouchRamXorStackItemPop4 = buffers.get(130);
-    this.rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize = buffers.get(131);
-    this.rlpaddrDepAddrLoXorMmuSrcOffsetHiXorValueOrigHi = buffers.get(132);
+    this.oobData9 = buffers.get(92);
+    this.peekAtAccount = buffers.get(93);
+    this.peekAtContext = buffers.get(94);
+    this.peekAtMiscellaneous = buffers.get(95);
+    this.peekAtScenario = buffers.get(96);
+    this.peekAtStack = buffers.get(97);
+    this.peekAtStorage = buffers.get(98);
+    this.peekAtTransaction = buffers.get(99);
+    this.prcBlake2FXorLogFlag = buffers.get(100);
+    this.prcEcaddXorLogInfoFlag = buffers.get(101);
+    this.prcEcmulXorMachineStateFlag = buffers.get(102);
+    this.prcEcpairingXorMaxcsx = buffers.get(103);
+    this.prcEcrecoverXorModFlag = buffers.get(104);
+    this.prcFailureKnownToHubXorMulFlag = buffers.get(105);
+    this.prcFailureKnownToRamXorMxpx = buffers.get(106);
+    this.prcIdentityXorMxpFlag = buffers.get(107);
+    this.prcModexpXorOogx = buffers.get(108);
+    this.prcRipemd160XorOpcx = buffers.get(109);
+    this.prcSha2256XorPushpopFlag = buffers.get(110);
+    this.prcSuccessCallerWillRevertXorRdcx = buffers.get(111);
+    this.prcSuccessCallerWontRevertXorShfFlag = buffers.get(112);
+    this.priorityFeePerGas = buffers.get(113);
+    this.programCounter = buffers.get(114);
+    this.programCounterNew = buffers.get(115);
+    this.refundCounter = buffers.get(116);
+    this.refundCounterInfinity = buffers.get(117);
+    this.refundCounterNew = buffers.get(118);
+    this.refundEffective = buffers.get(119);
+    this.returnAtCapacityXorMxpInst = buffers.get(120);
+    this.returnAtOffsetXorOobInst = buffers.get(121);
+    this.returnDataContextNumberXorStpGasStipend = buffers.get(122);
+    this.returnDataOffsetXorStpInstruction = buffers.get(123);
+    this.returnDataSize = buffers.get(124);
+    this.returnExceptionXorSox = buffers.get(125);
+    this.returnFromDeploymentEmptyCodeWillRevertXorSstorex = buffers.get(126);
+    this.returnFromDeploymentEmptyCodeWontRevertXorStackramFlag = buffers.get(127);
+    this.returnFromDeploymentNonemptyCodeWillRevertXorStackItemPop1 = buffers.get(128);
+    this.returnFromDeploymentNonemptyCodeWontRevertXorStackItemPop2 = buffers.get(129);
+    this.returnFromMessageCallWillTouchRamXorStackItemPop3 = buffers.get(130);
+    this.returnFromMessageCallWontTouchRamXorStackItemPop4 = buffers.get(131);
+    this.rlpaddrDepAddrHiXorCallDataContextNumberXorMmuRefSize = buffers.get(132);
+    this.rlpaddrDepAddrLoXorMmuSrcOffsetHiXorValueOrigHi = buffers.get(133);
     this.rlpaddrFlagXorStpFlagXorCallSmcSuccessCallerWillRevertXorDecFlag3XorWarmthNew =
-        buffers.get(133);
-    this.rlpaddrKecHiXorMmuSrcOffsetLoXorValueOrigLo = buffers.get(134);
-    this.rlpaddrKecLoXorMmuTgtOffsetLo = buffers.get(135);
-    this.rlpaddrRecipe = buffers.get(136);
-    this.rlpaddrSaltHiXorMxpGasMxp = buffers.get(137);
-    this.rlpaddrSaltLoXorMxpOffset1Hi = buffers.get(138);
-    this.romlexFlagXorStpOogxXorCallSmcSuccessCallerWontRevertXorDecFlag4 = buffers.get(139);
-    this.selfdestructExceptionXorStaticx = buffers.get(140);
-    this.selfdestructWillRevertXorStaticFlag = buffers.get(141);
-    this.selfdestructWontRevertAlreadyMarkedXorStoFlag = buffers.get(142);
-    this.selfdestructWontRevertNotYetMarkedXorSux = buffers.get(143);
-    this.stackItemHeight1 = buffers.get(144);
-    this.stackItemHeight2 = buffers.get(145);
-    this.stackItemHeight3 = buffers.get(146);
-    this.stackItemHeight4 = buffers.get(147);
-    this.stackItemStamp1 = buffers.get(148);
-    this.stackItemStamp2 = buffers.get(149);
-    this.stackItemStamp3 = buffers.get(150);
-    this.stackItemStamp4 = buffers.get(151);
-    this.stackItemValueHi1 = buffers.get(152);
-    this.stackItemValueHi2 = buffers.get(153);
-    this.stackItemValueHi3 = buffers.get(154);
-    this.stackItemValueHi4 = buffers.get(155);
-    this.stackItemValueLo1 = buffers.get(156);
-    this.stackItemValueLo2 = buffers.get(157);
-    this.stackItemValueLo3 = buffers.get(158);
-    this.stackItemValueLo4 = buffers.get(159);
-    this.stoFinal = buffers.get(160);
-    this.stoFirst = buffers.get(161);
-    this.stpGasHi = buffers.get(162);
-    this.stpGasLo = buffers.get(163);
-    this.stpGasUpfrontGasCostXorGasLeftover = buffers.get(164);
-    this.stpValueHi = buffers.get(165);
-    this.stpValueLo = buffers.get(166);
-    this.subStamp = buffers.get(167);
-    this.swapFlag = buffers.get(168);
-    this.trmFlagXorStpWarmthXorCreateAbortXorDupFlag = buffers.get(169);
-    this.trmRawAddressHiXorMxpOffset1Lo = buffers.get(170);
-    this.twoLineInstruction = buffers.get(171);
-    this.txExec = buffers.get(172);
-    this.txFinl = buffers.get(173);
-    this.txInit = buffers.get(174);
-    this.txSkip = buffers.get(175);
-    this.txWarm = buffers.get(176);
-    this.txnFlag = buffers.get(177);
-    this.warmthNewXorCreateEmptyInitCodeWontRevertXorHaltFlag = buffers.get(178);
-    this.warmthXorCreateEmptyInitCodeWillRevertXorExtFlag = buffers.get(179);
-    this.wcpFlag = buffers.get(180);
+        buffers.get(134);
+    this.rlpaddrKecHiXorMmuSrcOffsetLoXorValueOrigLo = buffers.get(135);
+    this.rlpaddrKecLoXorMmuTgtOffsetLo = buffers.get(136);
+    this.rlpaddrRecipe = buffers.get(137);
+    this.rlpaddrSaltHiXorMxpGasMxp = buffers.get(138);
+    this.rlpaddrSaltLoXorMxpOffset1Hi = buffers.get(139);
+    this.romlexFlagXorStpOogxXorCallSmcSuccessCallerWontRevertXorDecFlag4 = buffers.get(140);
+    this.selfdestructExceptionXorStaticx = buffers.get(141);
+    this.selfdestructWillRevertXorStaticFlag = buffers.get(142);
+    this.selfdestructWontRevertAlreadyMarkedXorStoFlag = buffers.get(143);
+    this.selfdestructWontRevertNotYetMarkedXorSux = buffers.get(144);
+    this.stackItemHeight1 = buffers.get(145);
+    this.stackItemHeight2 = buffers.get(146);
+    this.stackItemHeight3 = buffers.get(147);
+    this.stackItemHeight4 = buffers.get(148);
+    this.stackItemStamp1 = buffers.get(149);
+    this.stackItemStamp2 = buffers.get(150);
+    this.stackItemStamp3 = buffers.get(151);
+    this.stackItemStamp4 = buffers.get(152);
+    this.stackItemValueHi1 = buffers.get(153);
+    this.stackItemValueHi2 = buffers.get(154);
+    this.stackItemValueHi3 = buffers.get(155);
+    this.stackItemValueHi4 = buffers.get(156);
+    this.stackItemValueLo1 = buffers.get(157);
+    this.stackItemValueLo2 = buffers.get(158);
+    this.stackItemValueLo3 = buffers.get(159);
+    this.stackItemValueLo4 = buffers.get(160);
+    this.stoFinal = buffers.get(161);
+    this.stoFirst = buffers.get(162);
+    this.stpGasHi = buffers.get(163);
+    this.stpGasLo = buffers.get(164);
+    this.stpGasUpfrontGasCostXorGasLeftover = buffers.get(165);
+    this.stpValueHi = buffers.get(166);
+    this.stpValueLo = buffers.get(167);
+    this.subStamp = buffers.get(168);
+    this.swapFlag = buffers.get(169);
+    this.trmFlagXorStpWarmthXorCreateAbortXorDupFlag = buffers.get(170);
+    this.trmRawAddressHiXorMxpOffset1Lo = buffers.get(171);
+    this.twoLineInstruction = buffers.get(172);
+    this.txExec = buffers.get(173);
+    this.txFinl = buffers.get(174);
+    this.txInit = buffers.get(175);
+    this.txSkip = buffers.get(176);
+    this.txWarm = buffers.get(177);
+    this.txnFlag = buffers.get(178);
+    this.warmthNewXorCreateEmptyInitCodeWontRevertXorHaltFlag = buffers.get(179);
+    this.warmthXorCreateEmptyInitCodeWillRevertXorExtFlag = buffers.get(180);
+    this.wcpFlag = buffers.get(181);
   }
 
   public int size() {
@@ -3659,6 +3662,31 @@ public class Trace {
     return this;
   }
 
+  public Trace pMiscOobData9(final Bytes b) {
+    if (filled.get(160)) {
+      throw new IllegalStateException("hub.misc/OOB_DATA_9 already set");
+    } else {
+      filled.set(160);
+    }
+
+    // Trim array to size
+    Bytes bs = b.trimLeadingZeros();
+    // Sanity check against expected width
+    if (bs.bitLength() > 128) {
+      throw new IllegalArgumentException("oobData9 has invalid width (" + bs.bitLength() + "bits)");
+    }
+    // Write padding (if necessary)
+    for (int i = bs.size(); i < 16; i++) {
+      oobData9.put((byte) 0);
+    }
+    // Write bytes
+    for (int j = 0; j < bs.size(); j++) {
+      oobData9.put(bs.get(j));
+    }
+
+    return this;
+  }
+
   public Trace pMiscOobFlag(final Boolean b) {
     if (filled.get(60)) {
       throw new IllegalStateException("hub.misc/OOB_FLAG already set");
@@ -3717,10 +3745,10 @@ public class Trace {
   }
 
   public Trace pMiscStpGasHi(final Bytes b) {
-    if (filled.get(160)) {
+    if (filled.get(161)) {
       throw new IllegalStateException("hub.misc/STP_GAS_HI already set");
     } else {
-      filled.set(160);
+      filled.set(161);
     }
 
     // Trim array to size
@@ -3742,10 +3770,10 @@ public class Trace {
   }
 
   public Trace pMiscStpGasLo(final Bytes b) {
-    if (filled.get(161)) {
+    if (filled.get(162)) {
       throw new IllegalStateException("hub.misc/STP_GAS_LO already set");
     } else {
-      filled.set(161);
+      filled.set(162);
     }
 
     // Trim array to size
@@ -3897,10 +3925,10 @@ public class Trace {
   }
 
   public Trace pMiscStpValueHi(final Bytes b) {
-    if (filled.get(162)) {
+    if (filled.get(163)) {
       throw new IllegalStateException("hub.misc/STP_VALUE_HI already set");
     } else {
-      filled.set(162);
+      filled.set(163);
     }
 
     // Trim array to size
@@ -3923,10 +3951,10 @@ public class Trace {
   }
 
   public Trace pMiscStpValueLo(final Bytes b) {
-    if (filled.get(163)) {
+    if (filled.get(164)) {
       throw new IllegalStateException("hub.misc/STP_VALUE_LO already set");
     } else {
-      filled.set(163);
+      filled.set(164);
     }
 
     // Trim array to size
@@ -5015,10 +5043,10 @@ public class Trace {
   }
 
   public Trace pStackInstruction(final Bytes b) {
-    if (filled.get(164)) {
+    if (filled.get(165)) {
       throw new IllegalStateException("hub.stack/INSTRUCTION already set");
     } else {
-      filled.set(164);
+      filled.set(165);
     }
 
     // Trim array to size
@@ -5364,10 +5392,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight1(final Bytes b) {
-    if (filled.get(165)) {
+    if (filled.get(166)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_1 already set");
     } else {
-      filled.set(165);
+      filled.set(166);
     }
 
     // Trim array to size
@@ -5390,10 +5418,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight2(final Bytes b) {
-    if (filled.get(166)) {
+    if (filled.get(167)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_2 already set");
     } else {
-      filled.set(166);
+      filled.set(167);
     }
 
     // Trim array to size
@@ -5416,10 +5444,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight3(final Bytes b) {
-    if (filled.get(167)) {
+    if (filled.get(168)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_3 already set");
     } else {
-      filled.set(167);
+      filled.set(168);
     }
 
     // Trim array to size
@@ -5442,10 +5470,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemHeight4(final Bytes b) {
-    if (filled.get(168)) {
+    if (filled.get(169)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_HEIGHT_4 already set");
     } else {
-      filled.set(168);
+      filled.set(169);
     }
 
     // Trim array to size
@@ -5516,10 +5544,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp1(final Bytes b) {
-    if (filled.get(169)) {
+    if (filled.get(170)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_1 already set");
     } else {
-      filled.set(169);
+      filled.set(170);
     }
 
     // Trim array to size
@@ -5542,10 +5570,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp2(final Bytes b) {
-    if (filled.get(170)) {
+    if (filled.get(171)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_2 already set");
     } else {
-      filled.set(170);
+      filled.set(171);
     }
 
     // Trim array to size
@@ -5568,10 +5596,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp3(final Bytes b) {
-    if (filled.get(171)) {
+    if (filled.get(172)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_3 already set");
     } else {
-      filled.set(171);
+      filled.set(172);
     }
 
     // Trim array to size
@@ -5594,10 +5622,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemStamp4(final Bytes b) {
-    if (filled.get(172)) {
+    if (filled.get(173)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_STAMP_4 already set");
     } else {
-      filled.set(172);
+      filled.set(173);
     }
 
     // Trim array to size
@@ -5620,10 +5648,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi1(final Bytes b) {
-    if (filled.get(173)) {
+    if (filled.get(174)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_1 already set");
     } else {
-      filled.set(173);
+      filled.set(174);
     }
 
     // Trim array to size
@@ -5646,10 +5674,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi2(final Bytes b) {
-    if (filled.get(174)) {
+    if (filled.get(175)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_2 already set");
     } else {
-      filled.set(174);
+      filled.set(175);
     }
 
     // Trim array to size
@@ -5672,10 +5700,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi3(final Bytes b) {
-    if (filled.get(175)) {
+    if (filled.get(176)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_3 already set");
     } else {
-      filled.set(175);
+      filled.set(176);
     }
 
     // Trim array to size
@@ -5698,10 +5726,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueHi4(final Bytes b) {
-    if (filled.get(176)) {
+    if (filled.get(177)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_HI_4 already set");
     } else {
-      filled.set(176);
+      filled.set(177);
     }
 
     // Trim array to size
@@ -5724,10 +5752,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo1(final Bytes b) {
-    if (filled.get(177)) {
+    if (filled.get(178)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_1 already set");
     } else {
-      filled.set(177);
+      filled.set(178);
     }
 
     // Trim array to size
@@ -5750,10 +5778,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo2(final Bytes b) {
-    if (filled.get(178)) {
+    if (filled.get(179)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_2 already set");
     } else {
-      filled.set(178);
+      filled.set(179);
     }
 
     // Trim array to size
@@ -5776,10 +5804,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo3(final Bytes b) {
-    if (filled.get(179)) {
+    if (filled.get(180)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_3 already set");
     } else {
-      filled.set(179);
+      filled.set(180);
     }
 
     // Trim array to size
@@ -5802,10 +5830,10 @@ public class Trace {
   }
 
   public Trace pStackStackItemValueLo4(final Bytes b) {
-    if (filled.get(180)) {
+    if (filled.get(181)) {
       throw new IllegalStateException("hub.stack/STACK_ITEM_VALUE_LO_4 already set");
     } else {
-      filled.set(180);
+      filled.set(181);
     }
 
     // Trim array to size
@@ -7566,7 +7594,7 @@ public class Trace {
       throw new IllegalStateException("hub.HUB_STAMP_TRANSACTION_END has not been filled");
     }
 
-    if (!filled.get(164)) {
+    if (!filled.get(165)) {
       throw new IllegalStateException("hub.INSTRUCTION has not been filled");
     }
 
@@ -7680,6 +7708,10 @@ public class Trace {
 
     if (!filled.get(159)) {
       throw new IllegalStateException("hub.OOB_DATA_8 has not been filled");
+    }
+
+    if (!filled.get(160)) {
+      throw new IllegalStateException("hub.OOB_DATA_9 has not been filled");
     }
 
     if (!filled.get(28)) {
@@ -7911,67 +7943,67 @@ public class Trace {
           "hub.SELFDESTRUCT_WONT_REVERT_NOT_YET_MARKED_xor_SUX has not been filled");
     }
 
-    if (!filled.get(165)) {
+    if (!filled.get(166)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_1 has not been filled");
     }
 
-    if (!filled.get(166)) {
+    if (!filled.get(167)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_2 has not been filled");
     }
 
-    if (!filled.get(167)) {
+    if (!filled.get(168)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_3 has not been filled");
     }
 
-    if (!filled.get(168)) {
+    if (!filled.get(169)) {
       throw new IllegalStateException("hub.STACK_ITEM_HEIGHT_4 has not been filled");
     }
 
-    if (!filled.get(169)) {
+    if (!filled.get(170)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_1 has not been filled");
     }
 
-    if (!filled.get(170)) {
+    if (!filled.get(171)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_2 has not been filled");
     }
 
-    if (!filled.get(171)) {
+    if (!filled.get(172)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_3 has not been filled");
     }
 
-    if (!filled.get(172)) {
+    if (!filled.get(173)) {
       throw new IllegalStateException("hub.STACK_ITEM_STAMP_4 has not been filled");
     }
 
-    if (!filled.get(173)) {
+    if (!filled.get(174)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_HI_1 has not been filled");
     }
 
-    if (!filled.get(174)) {
+    if (!filled.get(175)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_HI_2 has not been filled");
     }
 
-    if (!filled.get(175)) {
+    if (!filled.get(176)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_HI_3 has not been filled");
     }
 
-    if (!filled.get(176)) {
+    if (!filled.get(177)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_HI_4 has not been filled");
     }
 
-    if (!filled.get(177)) {
+    if (!filled.get(178)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_LO_1 has not been filled");
     }
 
-    if (!filled.get(178)) {
+    if (!filled.get(179)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_LO_2 has not been filled");
     }
 
-    if (!filled.get(179)) {
+    if (!filled.get(180)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_LO_3 has not been filled");
     }
 
-    if (!filled.get(180)) {
+    if (!filled.get(181)) {
       throw new IllegalStateException("hub.STACK_ITEM_VALUE_LO_4 has not been filled");
     }
 
@@ -7983,11 +8015,11 @@ public class Trace {
       throw new IllegalStateException("hub.sto_FIRST has not been filled");
     }
 
-    if (!filled.get(160)) {
+    if (!filled.get(161)) {
       throw new IllegalStateException("hub.STP_GAS_HI has not been filled");
     }
 
-    if (!filled.get(161)) {
+    if (!filled.get(162)) {
       throw new IllegalStateException("hub.STP_GAS_LO has not been filled");
     }
 
@@ -7996,11 +8028,11 @@ public class Trace {
           "hub.STP_GAS_UPFRONT_GAS_COST_xor_GAS_LEFTOVER has not been filled");
     }
 
-    if (!filled.get(162)) {
+    if (!filled.get(163)) {
       throw new IllegalStateException("hub.STP_VALUE_HI has not been filled");
     }
 
-    if (!filled.get(163)) {
+    if (!filled.get(164)) {
       throw new IllegalStateException("hub.STP_VALUE_LO has not been filled");
     }
 
@@ -8393,7 +8425,7 @@ public class Trace {
       hubStampTransactionEnd.position(hubStampTransactionEnd.position() + 4);
     }
 
-    if (!filled.get(164)) {
+    if (!filled.get(165)) {
       instruction.position(instruction.position() + 32);
     }
 
@@ -8516,6 +8548,10 @@ public class Trace {
 
     if (!filled.get(159)) {
       oobData8.position(oobData8.position() + 16);
+    }
+
+    if (!filled.get(160)) {
+      oobData9.position(oobData9.position() + 16);
     }
 
     if (!filled.get(28)) {
@@ -8743,67 +8779,67 @@ public class Trace {
           selfdestructWontRevertNotYetMarkedXorSux.position() + 1);
     }
 
-    if (!filled.get(165)) {
+    if (!filled.get(166)) {
       stackItemHeight1.position(stackItemHeight1.position() + 32);
     }
 
-    if (!filled.get(166)) {
+    if (!filled.get(167)) {
       stackItemHeight2.position(stackItemHeight2.position() + 32);
     }
 
-    if (!filled.get(167)) {
+    if (!filled.get(168)) {
       stackItemHeight3.position(stackItemHeight3.position() + 32);
     }
 
-    if (!filled.get(168)) {
+    if (!filled.get(169)) {
       stackItemHeight4.position(stackItemHeight4.position() + 32);
     }
 
-    if (!filled.get(169)) {
+    if (!filled.get(170)) {
       stackItemStamp1.position(stackItemStamp1.position() + 32);
     }
 
-    if (!filled.get(170)) {
+    if (!filled.get(171)) {
       stackItemStamp2.position(stackItemStamp2.position() + 32);
     }
 
-    if (!filled.get(171)) {
+    if (!filled.get(172)) {
       stackItemStamp3.position(stackItemStamp3.position() + 32);
     }
 
-    if (!filled.get(172)) {
+    if (!filled.get(173)) {
       stackItemStamp4.position(stackItemStamp4.position() + 32);
     }
 
-    if (!filled.get(173)) {
+    if (!filled.get(174)) {
       stackItemValueHi1.position(stackItemValueHi1.position() + 32);
     }
 
-    if (!filled.get(174)) {
+    if (!filled.get(175)) {
       stackItemValueHi2.position(stackItemValueHi2.position() + 32);
     }
 
-    if (!filled.get(175)) {
+    if (!filled.get(176)) {
       stackItemValueHi3.position(stackItemValueHi3.position() + 32);
     }
 
-    if (!filled.get(176)) {
+    if (!filled.get(177)) {
       stackItemValueHi4.position(stackItemValueHi4.position() + 32);
     }
 
-    if (!filled.get(177)) {
+    if (!filled.get(178)) {
       stackItemValueLo1.position(stackItemValueLo1.position() + 32);
     }
 
-    if (!filled.get(178)) {
+    if (!filled.get(179)) {
       stackItemValueLo2.position(stackItemValueLo2.position() + 32);
     }
 
-    if (!filled.get(179)) {
+    if (!filled.get(180)) {
       stackItemValueLo3.position(stackItemValueLo3.position() + 32);
     }
 
-    if (!filled.get(180)) {
+    if (!filled.get(181)) {
       stackItemValueLo4.position(stackItemValueLo4.position() + 32);
     }
 
@@ -8815,11 +8851,11 @@ public class Trace {
       stoFirst.position(stoFirst.position() + 1);
     }
 
-    if (!filled.get(160)) {
+    if (!filled.get(161)) {
       stpGasHi.position(stpGasHi.position() + 16);
     }
 
-    if (!filled.get(161)) {
+    if (!filled.get(162)) {
       stpGasLo.position(stpGasLo.position() + 16);
     }
 
@@ -8828,11 +8864,11 @@ public class Trace {
           stpGasUpfrontGasCostXorGasLeftover.position() + 8);
     }
 
-    if (!filled.get(162)) {
+    if (!filled.get(163)) {
       stpValueHi.position(stpValueHi.position() + 16);
     }
 
-    if (!filled.get(163)) {
+    if (!filled.get(164)) {
       stpValueLo.position(stpValueLo.position() + 16);
     }
 

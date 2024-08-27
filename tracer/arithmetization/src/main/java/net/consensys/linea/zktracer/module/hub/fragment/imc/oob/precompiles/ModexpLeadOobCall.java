@@ -71,6 +71,7 @@ public class ModexpLeadOobCall extends OobCall {
         .pMiscOobData5(ZERO)
         .pMiscOobData6(Bytes.of(cdsCutoff))
         .pMiscOobData7(Bytes.of(ebsCutoff))
-        .pMiscOobData8(Bytes.of(subEbs32));
+        .pMiscOobData8(Bytes.of(subEbs32))
+        .pMiscOobData9(ZERO);
   }
 }

@@ -58,21 +58,6 @@ public class JumpiOobCall extends OobCall {
   }
 
   @Override
-  public Trace trace(Trace trace) {
-    return trace
-        .pMiscOobFlag(true)
-        .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(bigIntegerToBytes(pcNewHi()))
-        .pMiscOobData2(bigIntegerToBytes(pcNewLo()))
-        .pMiscOobData3(bigIntegerToBytes(jumpConditionHi()))
-        .pMiscOobData4(bigIntegerToBytes(jumpConditionLo()))
-        .pMiscOobData5(bigIntegerToBytes(codeSize))
-        .pMiscOobData6(booleanToBytes(jumpNotAttempted))
-        .pMiscOobData7(booleanToBytes(jumpGuanranteedException))
-        .pMiscOobData8(booleanToBytes(jumpMustBeAttempted));
-  }
-
-  @Override
   public net.consensys.linea.zktracer.module.oob.Trace trace(
       net.consensys.linea.zktracer.module.oob.Trace trace) {
     return trace
@@ -85,5 +70,21 @@ public class JumpiOobCall extends OobCall {
         .data7(booleanToBytes(jumpGuanranteedException))
         .data8(booleanToBytes(jumpMustBeAttempted))
         .data9(ZERO);
+  }
+
+  @Override
+  public Trace trace(Trace trace) {
+    return trace
+        .pMiscOobFlag(true)
+        .pMiscOobInst(oobInstructionValue())
+        .pMiscOobData1(bigIntegerToBytes(pcNewHi()))
+        .pMiscOobData2(bigIntegerToBytes(pcNewLo()))
+        .pMiscOobData3(bigIntegerToBytes(jumpConditionHi()))
+        .pMiscOobData4(bigIntegerToBytes(jumpConditionLo()))
+        .pMiscOobData5(bigIntegerToBytes(codeSize))
+        .pMiscOobData6(booleanToBytes(jumpNotAttempted))
+        .pMiscOobData7(booleanToBytes(jumpGuanranteedException))
+        .pMiscOobData8(booleanToBytes(jumpMustBeAttempted))
+        .pMiscOobData9(ZERO);
   }
 }
