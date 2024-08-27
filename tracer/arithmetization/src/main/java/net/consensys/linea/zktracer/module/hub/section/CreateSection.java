@@ -127,7 +127,6 @@ public class CreateSection extends TraceSection
     }
 
     final StpCall stpCall = new StpCall(hub, mxpCall.getGasMxp());
-    stpCall.stpCallForCreates(hub);
     imcFragment.callStp(stpCall);
 
     Preconditions.checkArgument(
