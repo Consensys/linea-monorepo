@@ -146,10 +146,11 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
 
     this.initialBalance = getInitialBalance(world);
 
-    // Note: Besu's dataCost computation contains the 21_000 transaction cost
+    // Note: Besu's dataCost computation contains
+    // - the 21_000 transaction cost (we deduce it)
+    // - the contract creation cost in case of deployment (we set deployment to false to not add it)
     this.dataCost =
-        ZkTracer.gasCalculator.transactionIntrinsicGasCost(
-                besuTransaction.getPayload(), isDeployment)
+        ZkTracer.gasCalculator.transactionIntrinsicGasCost(besuTransaction.getPayload(), false)
             - GAS_CONST_G_TRANSACTION;
     this.accessListCost =
         besuTransaction.getAccessList().map(ZkTracer.gasCalculator::accessListGasCost).orElse(0L);

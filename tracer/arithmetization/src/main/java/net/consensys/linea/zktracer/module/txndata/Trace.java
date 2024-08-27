@@ -39,6 +39,7 @@ public class Trace {
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_4 = 0xa;
   public static final int COMMON_RLP_TXN_PHASE_NUMBER_5 = 0x7;
   public static final int CREATE2_SHIFT = 0xff;
+  public static final long EIP2681_MAX_NONCE = 0xffffffffffffffffL;
   public static final int EIP_3541_MARKER = 0xef;
   public static final BigInteger EMPTY_KECCAK_HI =
       new BigInteger("262949717399590921288928019264691438528");
@@ -287,9 +288,9 @@ public class Trace {
   public static final int MMU_INST_RAM_TO_EXO_WITH_PADDING = 0xfe20;
   public static final int MMU_INST_RAM_TO_RAM_SANS_PADDING = 0xfe40;
   public static final int MMU_INST_RIGHT_PADDED_WORD_EXTRACTION = 0xfe10;
-  public static final int NB_ROWS_TYPE_0 = 0x7;
-  public static final int NB_ROWS_TYPE_1 = 0x8;
-  public static final int NB_ROWS_TYPE_2 = 0x8;
+  public static final int NB_ROWS_TYPE_0 = 0x8;
+  public static final int NB_ROWS_TYPE_1 = 0x9;
+  public static final int NB_ROWS_TYPE_2 = 0x9;
   public static final int OOB_INST_BLAKE_CDS = 0xfa09;
   public static final int OOB_INST_BLAKE_PARAMS = 0xfb09;
   public static final int OOB_INST_CALL = 0xca;
@@ -375,6 +376,15 @@ public class Trace {
   public static final int WCP_INST_LEQ = 0xf;
   public static final int WORD_SIZE = 0x20;
   public static final int WORD_SIZE_MO = 0x1f;
+  public static final int comparaison___computing_effective_gas_price_row_offset = 0x8;
+  public static final int comparaison___detecting_empty_call_data_row_offset = 0x5;
+  public static final int comparaison___effective_refund_row_offset = 0x4;
+  public static final int comparaison___initial_balance_row_offset = 0x1;
+  public static final int comparaison___max_fee_and_basefee_row_offset = 0x6;
+  public static final int comparaison___maxfee_and_max_priority_fee_row_offset = 0x7;
+  public static final int comparaison___nonce_row_offset = 0x0;
+  public static final int comparaison___sufficient_gas_row_offset = 0x2;
+  public static final int comparaison___upper_limit_refunds_row_offset = 0x3;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
