@@ -15,18 +15,16 @@
 
 package net.consensys.linea.blockcapture.snapshots;
 
-import java.util.List;
+import org.hyperledger.besu.datatypes.Hash;
 
 /**
- * Contain the minimal set of information to replay a conflation as a unit test without requiring
- * access to the whole state.
+ * Responsible for storing the block hash of a given block.
  *
- * @param blocks the blocks within the conflation
- * @param accounts the accounts whose state will be read during the conflation execution
- * @param storage storage cells that will be accessed during the conflation execution
+ * @param blockNumber
+ * @param blockHash
  */
-public record ConflationSnapshot(
-    List<BlockSnapshot> blocks,
-    List<AccountSnapshot> accounts,
-    List<StorageSnapshot> storage,
-    List<BlockHashSnapshot> blockHashes) {}
+public record BlockHashSnapshot(long blockNumber, String blockHash) {
+  public static BlockHashSnapshot of(final long blockNumber, final Hash blockHash) {
+    return new BlockHashSnapshot(blockNumber, blockHash.toHexString());
+  }
+}

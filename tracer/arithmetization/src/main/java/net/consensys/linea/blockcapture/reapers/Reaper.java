@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 import net.consensys.linea.blockcapture.snapshots.AccountSnapshot;
+import net.consensys.linea.blockcapture.snapshots.BlockHashSnapshot;
 import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
@@ -28,6 +29,7 @@ import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
@@ -48,6 +50,9 @@ public class Reaper {
 
   /** Collect the account address read / written by the entire conflation */
   private final AddressReaper conflationAddresses = new AddressReaper();
+
+  /** Collection all block hashes read during the conflation * */
+  private final BlockHashReaper conflationHashes = new BlockHashReaper();
 
   /** Collect the blocks within a conflation */
   private final List<BlockSnapshot> blocks = new ArrayList<>();
@@ -118,6 +123,11 @@ public class Reaper {
     this.txStorage.touch(address, key);
   }
 
+  public void touchBlockHash(final long blockNumber, Hash blockHash) {
+    this.conflationHashes.touch(blockNumber, blockHash);
+    // No need to tx local hashes, since they are a global concept.
+  }
+
   /**
    * Uniquify and solidify the accumulated data, then return a {@link ConflationSnapshot}, which
    * contains the smallest dataset required to exactly replay the conflation within a test framework
@@ -131,7 +141,9 @@ public class Reaper {
     final List<AccountSnapshot> accounts = this.conflationAddresses.collapse(world);
     // Collapse storage
     final List<StorageSnapshot> storage = conflationStorage.collapse(world);
+    // Collapse block hashes
+    final List<BlockHashSnapshot> hashes = conflationHashes.collapse();
     // Done
-    return new ConflationSnapshot(this.blocks, accounts, storage);
+    return new ConflationSnapshot(this.blocks, accounts, storage, hashes);
   }
 }
