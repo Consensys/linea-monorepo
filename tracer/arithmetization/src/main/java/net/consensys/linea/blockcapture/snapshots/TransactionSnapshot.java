@@ -23,6 +23,8 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.DelegatingBytes;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
@@ -34,45 +36,68 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.evm.internal.Words;
 
-public record TransactionSnapshot(
-    String r,
-    String s,
-    String v,
-    TransactionType type,
-    String sender,
-    Optional<String> to,
-    long nonce,
-    String value,
-    String payload,
-    Optional<String> gasPrice,
-    Optional<String> maxPriorityFeePerGas,
-    Optional<String> maxFeePerGas,
-    Optional<String> maxFeePerBlobGas,
-    long gasLimit,
-    BigInteger chainId,
-    Optional<List<AccessListEntrySnapshot>> accessList) {
+public class TransactionSnapshot {
+  @Getter private final String r;
+  @Getter private final String s;
+  @Getter private final String v;
+  @Getter private final TransactionType type;
+  @Getter private final String sender;
+  @Getter private final Optional<String> to;
+  @Getter private final long nonce;
+  @Getter private final String value;
+  @Getter private final String payload;
+  @Getter private final Optional<String> gasPrice;
+  @Getter private final Optional<String> maxPriorityFeePerGas;
+  @Getter private final Optional<String> maxFeePerGas;
+  @Getter private final Optional<String> maxFeePerBlobGas;
+  @Getter private final long gasLimit;
+  @Getter private final BigInteger chainId;
+  @Getter private final Optional<List<AccessListEntrySnapshot>> accessList;
+  @Getter @Setter private TransactionResultSnapshot outcome;
+
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
 
-  public static TransactionSnapshot of(Transaction tx) {
-    return new TransactionSnapshot(
-        tx.getR().toString(16),
-        tx.getS().toString(16),
+  /**
+   * Construct an initial snapshot from a given transaction. Observe that this is not yet complete
+   * since it doesn't include the transaction outcomes.
+   *
+   * @param tx The transaction being recorded as a snapshot
+   */
+  public TransactionSnapshot(Transaction tx) {
+    this.r = tx.getR().toString(16);
+    this.s = tx.getS().toString(16);
+    this.v =
         tx.getType() == TransactionType.FRONTIER
             ? tx.getV().toString(16)
-            : tx.getYParity().toString(16),
-        tx.getType(),
-        tx.getSender().toHexString(),
-        tx.getTo().map(DelegatingBytes::toHexString),
-        tx.getNonce(),
-        tx.getValue().toHexString(),
-        tx.getPayload().toHexString(),
-        tx.getGasPrice().map(Quantity::toHexString),
-        tx.getMaxPriorityFeePerGas().map(Quantity::toHexString),
-        tx.getMaxFeePerGas().map(Quantity::toHexString),
-        tx.getMaxFeePerBlobGas().map(Quantity::toHexString),
-        tx.getGasLimit(),
-        tx.getChainId().orElse(CHAIN_ID),
-        tx.getAccessList().map(l -> l.stream().map(AccessListEntrySnapshot::from).toList()));
+            : tx.getYParity().toString(16);
+    this.type = tx.getType();
+    this.sender = tx.getSender().toHexString();
+    this.to = tx.getTo().map(DelegatingBytes::toHexString);
+    this.nonce = tx.getNonce();
+    this.value = tx.getValue().toHexString();
+    this.payload = tx.getPayload().toHexString();
+    this.gasPrice = tx.getGasPrice().map(Quantity::toHexString);
+    this.maxPriorityFeePerGas = tx.getMaxPriorityFeePerGas().map(Quantity::toHexString);
+    this.maxFeePerGas = tx.getMaxFeePerGas().map(Quantity::toHexString);
+    this.maxFeePerBlobGas = tx.getMaxFeePerBlobGas().map(Quantity::toHexString);
+    this.gasLimit = tx.getGasLimit();
+    this.chainId = tx.getChainId().orElse(CHAIN_ID);
+    this.accessList =
+        tx.getAccessList().map(l -> l.stream().map(AccessListEntrySnapshot::from).toList());
+  }
+
+  /**
+   * Set the outcome of the transaction so that the result is recorded and can be checked during the
+   * replay itself.
+   *
+   * @param result The transaction process result to record.
+   */
+  public void setTransactionResult(TransactionResultSnapshot result) {
+    this.outcome = result;
+  }
+
+  public static TransactionSnapshot of(Transaction tx) {
+    return new TransactionSnapshot(tx);
   }
 
   public Transaction toTransaction() {

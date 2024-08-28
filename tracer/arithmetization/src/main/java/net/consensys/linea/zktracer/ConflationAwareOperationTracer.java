@@ -15,7 +15,23 @@
 
 package net.consensys.linea.zktracer;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
+import org.hyperledger.besu.plugin.data.BlockBody;
+import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.tracer.BlockAwareOperationTracer;
 
 /**
@@ -33,4 +49,116 @@ public interface ConflationAwareOperationTracer extends BlockAwareOperationTrace
 
   /** Trace the end of conflation for a number of blocks. */
   void traceEndConflation(final WorldView state);
+
+  /**
+   * Construct a (conflation aware) operation tracer which multiplexes one or more existing tracers.
+   * The order in which calls are made to the multiplexed tracers follow the order in which they
+   * occur within the array.
+   *
+   * @param tracers The array of tracers to be multiplexed.
+   * @return A operation tracer which calls the relevant methods on each of the tracers it is
+   *     multiplexing.
+   */
+  public static ConflationAwareOperationTracer sequence(ConflationAwareOperationTracer... tracers) {
+    return new SequencingOperationTracer(tracers);
+  }
+
+  static class SequencingOperationTracer implements ConflationAwareOperationTracer {
+    private final List<ConflationAwareOperationTracer> tracers;
+
+    public SequencingOperationTracer(ConflationAwareOperationTracer... tracers) {
+      this.tracers = Arrays.asList(tracers);
+    }
+
+    @Override
+    public void traceStartConflation(long numBlocksInConflation) {
+      this.tracers.forEach(tracer -> tracer.traceStartConflation(numBlocksInConflation));
+    }
+
+    @Override
+    public void traceEndConflation(WorldView state) {
+      this.tracers.forEach(tracer -> tracer.traceEndConflation(state));
+    }
+
+    public void traceStartBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+      this.tracers.forEach(tracer -> tracer.traceStartBlock(blockHeader, blockBody));
+    }
+
+    public void traceStartBlock(final ProcessableBlockHeader processableBlockHeader) {
+      this.tracers.forEach(tracer -> tracer.traceStartBlock(processableBlockHeader));
+    }
+
+    public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
+      this.tracers.forEach(tracer -> tracer.traceEndBlock(blockHeader, blockBody));
+    }
+
+    @Override
+    public void tracePreExecution(final MessageFrame frame) {
+      this.tracers.forEach(tracer -> tracer.tracePreExecution(frame));
+    }
+
+    @Override
+    public void tracePostExecution(
+        final MessageFrame frame, final Operation.OperationResult operationResult) {
+      this.tracers.forEach(tracer -> tracer.tracePostExecution(frame, operationResult));
+    }
+
+    @Override
+    public void tracePrecompileCall(
+        final MessageFrame frame, final long gasRequirement, final Bytes output) {
+      this.tracers.forEach(tracer -> tracer.tracePrecompileCall(frame, gasRequirement, output));
+    }
+
+    @Override
+    public void traceAccountCreationResult(
+        final MessageFrame frame, final Optional<ExceptionalHaltReason> haltReason) {
+      this.tracers.forEach(tracer -> tracer.traceAccountCreationResult(frame, haltReason));
+    }
+
+    @Override
+    public void tracePrepareTransaction(final WorldView worldView, final Transaction transaction) {
+      this.tracers.forEach(tracer -> tracer.tracePrepareTransaction(worldView, transaction));
+    }
+
+    @Override
+    public void traceStartTransaction(final WorldView worldView, final Transaction transaction) {
+      this.tracers.forEach(tracer -> tracer.traceStartTransaction(worldView, transaction));
+    }
+
+    @Override
+    public void traceBeforeRewardTransaction(
+        final WorldView worldView, final Transaction tx, final Wei miningReward) {
+      this.tracers.forEach(
+          tracer -> tracer.traceBeforeRewardTransaction(worldView, tx, miningReward));
+    }
+
+    @Override
+    public void traceEndTransaction(
+        WorldView world,
+        Transaction tx,
+        boolean status,
+        Bytes output,
+        List<Log> logs,
+        long gasUsed,
+        Set<Address> selfDestructs,
+        long timeNs) {
+      String hash = tx.getHash().toHexString();
+      this.tracers.forEach(
+          tracer ->
+              tracer.traceEndTransaction(
+                  world, tx, status, output, logs, gasUsed, selfDestructs, timeNs));
+    }
+
+    public void traceContextEnter(final MessageFrame frame) {
+      this.tracers.forEach(tracer -> tracer.traceContextEnter(frame));
+    }
+
+    public void traceContextReEnter(final MessageFrame frame) {
+      this.tracers.forEach(tracer -> tracer.traceContextReEnter(frame));
+    }
+
+    public void traceContextExit(final MessageFrame frame) {
+      this.tracers.forEach(tracer -> tracer.traceContextExit(frame));
+    }
+  }
 }

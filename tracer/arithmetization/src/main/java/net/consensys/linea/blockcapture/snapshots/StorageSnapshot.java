@@ -19,11 +19,11 @@ import java.util.Optional;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.worldstate.WorldUpdater;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public record StorageSnapshot(String address, String key, String value) {
   public static Optional<StorageSnapshot> from(
-      Address address, UInt256 key, final WorldUpdater world) {
+      Address address, UInt256 key, final WorldView world) {
     return Optional.ofNullable(world.get(address))
         .map(
             account ->

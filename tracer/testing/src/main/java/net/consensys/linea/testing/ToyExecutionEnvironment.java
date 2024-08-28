@@ -35,8 +35,10 @@ import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
+import net.consensys.linea.blockcapture.snapshots.TransactionResultSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -59,6 +61,8 @@ import org.hyperledger.besu.evm.precompile.MainnetPrecompiledContracts;
 import org.hyperledger.besu.evm.precompile.PrecompileContractRegistry;
 import org.hyperledger.besu.evm.processor.ContractCreationProcessor;
 import org.hyperledger.besu.evm.processor.MessageCallProcessor;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
+import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 /** Fluent API for executing EVM transactions in tests. */
@@ -85,6 +89,7 @@ public class ToyExecutionEnvironment {
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
 
   private final ToyWorld toyWorld;
+  private final boolean resultChecking;
 
   @Builder.Default private BigInteger chainId = CHAIN_ID;
   @Singular private final List<Transaction> transactions;
@@ -144,34 +149,42 @@ public class ToyExecutionEnvironment {
    */
   private void executeFrom(final ConflationSnapshot conflation) {
     final ToyWorld overridenToyWorld = ToyWorld.of(conflation);
+
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
       for (TransactionSnapshot tx : blockSnapshot.txs()) {
-        this.chainId = tx.chainId();
+        this.chainId = tx.getChainId();
       }
     }
     final MainnetTransactionProcessor transactionProcessor = getMainnetTransactionProcessor();
-
     tracer.traceStartConflation(conflation.blocks().size());
+
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
       BlockHeader header = blockSnapshot.header().toBlockHeader();
+
       BlockBody body =
           new BlockBody(
               blockSnapshot.txs().stream().map(TransactionSnapshot::toTransaction).toList(),
               new ArrayList<>());
       tracer.traceStartBlock(header, body);
 
-      for (Transaction tx : body.getTransactions()) {
-        transactionProcessor.processTransaction(
-            overridenToyWorld.updater(),
-            (ProcessableBlockHeader) header,
-            tx,
-            header.getCoinbase(),
-            tracer,
-            blockId -> {
-              throw new RuntimeException("Block hash lookup not yet supported");
-            },
-            false,
-            Wei.ZERO);
+      for (TransactionSnapshot txs : blockSnapshot.txs()) {
+        Transaction tx = txs.toTransaction();
+        WorldUpdater updater = overridenToyWorld.updater();
+        // Process transaction leading to expected outcome
+        TransactionProcessingResult outcome =
+            transactionProcessor.processTransaction(
+                updater,
+                (ProcessableBlockHeader) header,
+                tx,
+                header.getCoinbase(),
+                buildOperationTracer(tx, txs.getOutcome()),
+                blockId -> {
+                  throw new RuntimeException("Block hash lookup not yet supported");
+                },
+                false,
+                Wei.ZERO);
+        // Commit transaction
+        updater.commit();
       }
       tracer.traceEndBlock(header, body);
     }
@@ -253,5 +266,27 @@ public class ToyExecutionEnvironment {
 
   public Hub getHub() {
     return tracer.getHub();
+  }
+
+  /**
+   * Construct an operation tracer which invokes the zkTracer appropriately, and can also
+   * (optionally) check the transaction outcome matches what was expected.
+   *
+   * @param tx Transaction being processed
+   * @param txs TransactionResultSnapshot which contains the expected result of this transaction.
+   * @return An implementation of OperationTracer which packages up the appropriate behavour.
+   */
+  private OperationTracer buildOperationTracer(Transaction tx, TransactionResultSnapshot txs) {
+    if (txs == null) {
+      String hash = tx.getHash().toHexString();
+      log.info("tx `{}` outcome not checked (missing)", hash);
+      return tracer;
+    } else if (!resultChecking) {
+      String hash = tx.getHash().toHexString();
+      log.info("tx `{}` outcome not checked (disabled)", hash);
+      return tracer;
+    } else {
+      return ConflationAwareOperationTracer.sequence(txs.check(), this.tracer);
+    }
   }
 }
