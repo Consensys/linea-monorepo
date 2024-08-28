@@ -86,23 +86,28 @@ public class RustCorsetValidator extends AbstractExecutable {
    *     additional information for debugging purposes.
    */
   public Result validate(final Path traceFile, final String zkEvmBin) {
-    Outcome outcome;
-    try {
-      List<String> commands = buildCommandLine(traceFile, zkEvmBin);
-      log.debug("{}", commands);
-      // Execute corset with a 5s timeout.
-      outcome = super.exec(5, commands);
-    } catch (Throwable e) {
-      log.error("Corset validation has thrown an exception: %s".formatted(e.getMessage()));
-      throw new RuntimeException(e);
+    if (active) {
+      Outcome outcome;
+      try {
+        List<String> commands = buildCommandLine(traceFile, zkEvmBin);
+        log.debug("{}", commands);
+        // Execute corset with a 5s timeout.
+        outcome = super.exec(5, commands);
+      } catch (Throwable e) {
+        log.error("Corset validation has thrown an exception: %s".formatted(e.getMessage()));
+        throw new RuntimeException(e);
+      }
+      // Check for success or failure
+      if (outcome.exitcode() != 0) {
+        log.error("Validation failed: %s".formatted(outcome.output()));
+        return new Result(false, traceFile.toFile(), outcome.output());
+      }
+      // success!
+      return new Result(true, traceFile.toFile(), outcome.output());
     }
-    // Check for success or failure
-    if (outcome.exitcode() != 0) {
-      log.error("Validation failed: %s".formatted(outcome.output()));
-      return new Result(false, traceFile.toFile(), outcome.output());
-    }
-    // success!
-    return new Result(true, traceFile.toFile(), outcome.output());
+    // Tool is not active
+    log.debug("(inactive)");
+    return null;
   }
 
   /**
@@ -139,8 +144,11 @@ public class RustCorsetValidator extends AbstractExecutable {
       this.fieldArithmetic = false;
       this.expansion = 0;
       this.autoConstraints = false;
-      // Check for default case (empty string)
-      if (!flags.isEmpty()) {
+      //
+      if (flags.equals("disable")) {
+        // Special case used to disable corset even when it is available.
+        active = false;
+      } else if (!flags.isEmpty()) {
         // split flags by separator
         String[] splitFlags = flags.split(",");
         // Build configuration based on flags

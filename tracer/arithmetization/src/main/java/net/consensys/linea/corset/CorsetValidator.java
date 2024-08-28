@@ -88,22 +88,26 @@ public class CorsetValidator {
    *     additional information for debugging purposes.
    */
   public Result validate(final Path traceFile, final String zkEvmBin) {
+    // Generate results from Rust and Go corset tools
+    Result rr = rustCorset.validate(traceFile, zkEvmBin);
+    Result rg = goCorset.validate(traceFile, zkEvmBin);
     // Sanity check at least one validator is active
     if (!rustCorset.isActive() && !goCorset.isActive()) {
       throw new RuntimeException("Neither corset nor go-corset are available");
-    }
-    // First, generate "official" result from Rust tool
-    Result rr = rustCorset.validate(traceFile, zkEvmBin);
-    Result rg = goCorset.validate(traceFile, zkEvmBin);
-    // Second, validate this against Go tool
-    if (rg != null && rg.isValid() != rr.isValid()) {
+    } else if (rustCorset.isActive() && goCorset.isActive() && rg.isValid() != rr.isValid()) {
+      // Both Rust and Go corset are active, but disagree.
       log.info("Output from Rust and Go tools differs ({} v {})", rr.isValid(), rg.isValid());
-      if (!rg.isValid()) {
-        return rg;
-      }
+      // Return failing result to force a test failure.
+      return rg.isValid() ? rr : rg;
+    } else if (rustCorset.isActive()) {
+      // Rust corset is active, and Go corset may or may not be.  Eitherway, default to Rust corset
+      // for the source of
+      // truth.
+      return rr;
+    } else {
+      // Only Go corset is active
+      return rg;
     }
-    //
-    return rr;
   }
 
   private void initDefaultZkEvm() {
