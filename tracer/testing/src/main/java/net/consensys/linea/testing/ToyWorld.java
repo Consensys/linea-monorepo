@@ -26,11 +26,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Singular;
 import net.consensys.linea.blockcapture.snapshots.AccountSnapshot;
+import net.consensys.linea.blockcapture.snapshots.BlockHashSnapshot;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
 import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.MutableAccount;
@@ -39,6 +41,12 @@ import org.hyperledger.besu.evm.worldstate.AuthorizedCodeService;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
+  /**
+   * The hash cache simply stores known hashes for blocks. All the needed hashes for execution
+   * should have been captured by the BlockCapturer and stored in the conflation.
+   */
+  private final Map<Long, Hash> blockHashCache = new HashMap<>();
+
   private final ToyWorld parent;
   private final AuthorizedCodeService authorizedCodeService;
   @Getter private Map<Address, ToyAccount> addressAccountMap;
@@ -67,9 +75,20 @@ public class ToyWorld implements WorldUpdater {
   }
 
   public static ToyWorld of(final ConflationSnapshot conflation) {
-    final ToyWorld worldUpdater = new ToyWorld();
-    initWorldUpdater(worldUpdater, conflation);
-    return worldUpdater;
+    final ToyWorld world = new ToyWorld();
+    initWorldUpdater(world, conflation);
+    // Initialise block hashes.  This can be null for replays which pre-date support for block hash
+    // capture and,
+    // hence, we must support this case (at least for now).
+    if (conflation.blockHashes() != null) {
+      // Initialise block hash cache
+      for (BlockHashSnapshot h : conflation.blockHashes()) {
+        Hash blockHash = Hash.fromHexString(h.blockHash());
+        world.blockHashCache.put(h.blockNumber(), blockHash);
+      }
+    }
+    // Done
+    return world;
   }
 
   @Override
@@ -175,6 +194,21 @@ public class ToyWorld implements WorldUpdater {
   }
 
   /**
+   * Obtain the block hash for a given block.
+   *
+   * @param blockNumber
+   * @return
+   */
+  public Hash blockHash(long blockNumber) {
+    // Sanity check we found the hash
+    if (!this.blockHashCache.containsKey(blockNumber)) {
+      throw new IllegalArgumentException("missing hash of block " + blockNumber);
+    }
+    // Yes, we have it.
+    return this.blockHashCache.get(blockNumber);
+  }
+
+  /**
    * Initialise a world updater given a conflation. Observe this can be applied to any WorldUpdater,
    * such as SimpleWorld.
    *
@@ -192,7 +226,7 @@ public class ToyWorld implements WorldUpdater {
       // Update code
       acc.setCode(Bytes.fromHexString(account.code()));
     }
-    //
+    // Initialise storage
     for (StorageSnapshot s : conflation.storage()) {
       world
           .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))

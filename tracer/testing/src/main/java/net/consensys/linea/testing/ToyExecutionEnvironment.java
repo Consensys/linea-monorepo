@@ -149,7 +149,6 @@ public class ToyExecutionEnvironment {
    */
   private void executeFrom(final ConflationSnapshot conflation) {
     final ToyWorld overridenToyWorld = ToyWorld.of(conflation);
-
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
       for (TransactionSnapshot tx : blockSnapshot.txs()) {
         this.chainId = tx.getChainId();
@@ -178,9 +177,7 @@ public class ToyExecutionEnvironment {
                 tx,
                 header.getCoinbase(),
                 buildOperationTracer(tx, txs.getOutcome()),
-                blockId -> {
-                  throw new RuntimeException("Block hash lookup not yet supported");
-                },
+                overridenToyWorld::blockHash,
                 false,
                 Wei.ZERO);
         // Commit transaction
@@ -286,7 +283,7 @@ public class ToyExecutionEnvironment {
       log.info("tx `{}` outcome not checked (disabled)", hash);
       return tracer;
     } else {
-      return ConflationAwareOperationTracer.sequence(txs.check(), this.tracer);
+      return ConflationAwareOperationTracer.sequence(txs.check(), tracer);
     }
   }
 }

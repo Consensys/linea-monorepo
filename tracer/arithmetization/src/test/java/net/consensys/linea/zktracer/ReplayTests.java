@@ -137,4 +137,14 @@ public class ReplayTests {
   void failingCreate2() {
     replay("2250197-2250197.json.gz");
   }
+
+  @Test
+  void blockHash1() {
+    replay("8718090.json.gz");
+  }
+
+  @Test
+  void blockHash2() {
+    replay("8718330.json.gz");
+  }
 }

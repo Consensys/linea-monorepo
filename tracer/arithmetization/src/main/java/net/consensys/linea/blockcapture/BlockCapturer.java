@@ -15,6 +15,7 @@
 
 package net.consensys.linea.blockcapture;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
 
@@ -26,6 +27,7 @@ import net.consensys.linea.zktracer.types.AddressUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -158,8 +160,13 @@ public class BlockCapturer implements ConflationAwareOperationTracer {
 
       case BLOCKHASH -> {
         if (frame.stackSize() > 0) {
-          final long blockNumber = frame.getStackItem(0).toLong();
-          // TODO: (see #935) this.reaper.touchBlockHash(blockNumber);
+          BigInteger peek0 = frame.getStackItem(0).toUnsignedBigInteger();
+          // Determine block number requested
+          final long blockNumber = peek0.longValueExact();
+          // Use enclosing frame to determine hash
+          Hash blockHash = frame.getBlockHashLookup().apply(blockNumber);
+          // Record it was seen
+          this.reaper.touchBlockHash(blockNumber, blockHash);
         }
       }
     }
