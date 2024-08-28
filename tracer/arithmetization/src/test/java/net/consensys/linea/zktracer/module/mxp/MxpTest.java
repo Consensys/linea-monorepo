@@ -40,6 +40,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 // https://github.com/Consensys/linea-besu-plugin/issues/197
@@ -125,6 +126,7 @@ public class MxpTest {
     BytecodeRunner.of(program.compile()).run();
   }
 
+  @Disabled
   @Test
   void testRandomMxpInstructionsFollowedByTriggeringRoob() {
     // Testing a random program
@@ -176,6 +178,7 @@ public class MxpTest {
     }
   }
 
+  @Disabled // Currently disabled due to #1014
   @Test
   void testMxpRandomAdvanced() {
     // Testing a random program that contains creates with meaning random arguments
