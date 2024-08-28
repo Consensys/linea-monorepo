@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -111,7 +112,7 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
 
   @Setter int codeFragmentIndex = -1;
 
-  @Setter Set<AccountSnapshot> destructedAccountsSnapshot;
+  @Setter Set<AccountSnapshot> destructedAccountsSnapshot = new HashSet<>();
 
   @Getter
   Map<EphemeralAccount, List<AttemptedSelfDestruct>> unexceptionalSelfDestructMap = new HashMap<>();

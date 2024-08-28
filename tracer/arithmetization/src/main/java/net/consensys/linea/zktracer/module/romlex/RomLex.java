@@ -161,9 +161,7 @@ public class RomLex implements Module, PostOpcodeDefer {
       }
 
       case RETURN -> {
-        Preconditions.checkArgument(frame.getType() != MessageFrame.Type.CONTRACT_CREATION);
-        Preconditions.checkArgument(
-            hub.transients().conflation().deploymentInfo().isDeploying(frame.getContractAddress()));
+        Preconditions.checkArgument(frame.getType() == MessageFrame.Type.CONTRACT_CREATION);
 
         final Bytes code = hub.transients().op().outputData();
 
