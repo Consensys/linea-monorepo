@@ -15,26 +15,48 @@
 
 package net.consensys.linea.blockcapture.reapers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
  * This object gathers all non-reversed accesses to storage values during the execution of a
  * conflation, then collapse them into a single mapping of the initial values in these slots.
  */
 public class StorageReaper {
-  private final Map<Address, Set<UInt256>> initialStorages = new HashMap<>();
+  /**
+   * The set of storage locations (i.e. address/key pairs) recorded as being touched by this reaper.
+   */
+  private final Map<Address, Set<UInt256>> touchedLocations = new HashMap<>();
 
   public void touch(final Address address, final UInt256 key) {
-    this.initialStorages.computeIfAbsent(address, k -> new HashSet<>()).add(key);
+    this.touchedLocations.computeIfAbsent(address, k -> new HashSet<>()).add(key);
   }
 
-  public Map<Address, Set<UInt256>> collapse() {
-    return this.initialStorages;
+  /**
+   * Collapse the recorded set of storage locations into a set of storage snapshots.
+   *
+   * @param world The world state to use for extracting current storage location values.
+   * @return List of storage snapshots
+   */
+  public List<StorageSnapshot> collapse(final WorldView world) {
+    final List<StorageSnapshot> storage = new ArrayList<>();
+    for (Map.Entry<Address, Set<UInt256>> e : touchedLocations.entrySet()) {
+      final Address address = e.getKey();
+
+      e.getValue().stream()
+          .flatMap(key -> StorageSnapshot.from(address, key, world).stream())
+          .forEach(storage::add);
+    }
+
+    return storage;
   }
 }

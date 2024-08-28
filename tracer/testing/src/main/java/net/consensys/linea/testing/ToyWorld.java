@@ -163,7 +163,7 @@ public class ToyWorld implements WorldUpdater {
   public void commit() {
     addressAccountMap.forEach(
         (address, account) -> {
-          if (!account.updateParent()) {
+          if (account == null || !account.updateParent()) {
             parent.addressAccountMap.put(address, account);
           }
         });

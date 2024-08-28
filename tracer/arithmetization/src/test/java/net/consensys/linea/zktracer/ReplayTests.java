@@ -50,8 +50,11 @@ public class ReplayTests {
    * net.consensys.linea.blockcapture.BlockCapturer} and execute it as a test.
    *
    * @param filename the file in resources/replays/ containing the replay
+   * @param resultChecking enable checking of transaction results. This should always be enabled.
+   *     However until existing problems are resolved with the replay mechanism, it may be useful to
+   *     disable this for specific tests on a case-by-case basis.
    */
-  public static void replay(String filename) {
+  public static void replay(String filename, boolean resultChecking) {
     final InputStream fileStream =
         ReplayTests.class.getClassLoader().getResourceAsStream("replays/%s".formatted(filename));
     if (fileStream == null) {
@@ -66,8 +69,18 @@ public class ReplayTests {
       throw new RuntimeException(e);
     }
     ToyExecutionEnvironment.builder()
+        .resultChecking(resultChecking)
         .build()
         .replay(new BufferedReader(new InputStreamReader(stream)));
+  }
+
+  /**
+   * Implementation of replay which enables result checking by default.
+   *
+   * @param filename
+   */
+  public static void replay(String filename) {
+    replay(filename, true);
   }
 
   @Test
@@ -108,5 +121,13 @@ public class ReplayTests {
   @Test
   void incident777zkGethMainnet() {
     replay("7461019-7461030.json.gz");
+  }
+
+  @Test
+  void block_6110045() {
+    // The purpose of this test is to check the mechanism for spotting divergence between the replay
+    // tests and mainnet.  Specifically, this replay has transaction result information embedded
+    // within it.
+    replay("6110045.json.gz");
   }
 }
