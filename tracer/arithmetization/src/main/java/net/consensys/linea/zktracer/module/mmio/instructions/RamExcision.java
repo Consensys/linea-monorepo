@@ -18,31 +18,19 @@ package net.consensys.linea.zktracer.module.mmio.instructions;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.excision;
 import static net.consensys.linea.zktracer.types.Bytecodes.readLimb;
 
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.mmio.MmioData;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.types.Bytes16;
 
-@RequiredArgsConstructor
-public class RamExcision implements MmioInstruction {
-  private final MmuData mmuData;
+public class RamExcision extends MmioInstruction {
 
-  private final int instructionNumber;
+  public RamExcision(MmuData mmuData, int instructionNumber) {
+    super(mmuData, instructionNumber);
+  }
 
   @Override
   public MmioData execute() {
-    final MmuToMmioConstantValues mmuToMmioConstantValues = mmuData.mmuToMmioConstantValues();
-    final MmuToMmioInstruction mmuToMmioInstruction =
-        mmuData.mmuToMmioInstructions().get(instructionNumber);
-
-    MmioData mmioData =
-        new MmioData(
-            mmuData.hubToMmuValues(),
-            mmuToMmioConstantValues,
-            mmuToMmioInstruction,
-            mmuData.exoSumDecoder());
+    final MmioData mmioData = super.execute();
 
     mmioData.cnA(mmioData.targetContext());
     mmioData.cnB(0);

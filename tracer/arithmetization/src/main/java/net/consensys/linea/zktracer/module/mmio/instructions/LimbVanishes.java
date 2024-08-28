@@ -15,33 +15,25 @@
 
 package net.consensys.linea.zktracer.module.mmio.instructions;
 
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.mmio.MmioData;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
+import net.consensys.linea.zktracer.types.Bytes16;
 
-@RequiredArgsConstructor
-public class LimbVanishes implements MmioInstruction {
-  private final MmuData mmuData;
+public class LimbVanishes extends MmioInstruction {
 
-  private final int instructionNumber;
+  public LimbVanishes(MmuData mmuData, int instructionNumber) {
+    super(mmuData, instructionNumber);
+  }
 
   @Override
   public MmioData execute() {
-    final MmuToMmioConstantValues mmuToMmioConstantValues = mmuData.mmuToMmioConstantValues();
-    final MmuToMmioInstruction mmuToMmioInstruction =
-        mmuData.mmuToMmioInstructions().get(instructionNumber);
+    final MmioData mmioData = super.execute();
 
-    MmioData mmioData =
-        new MmioData(
-            mmuData.hubToMmuValues(),
-            mmuToMmioConstantValues,
-            mmuToMmioInstruction,
-            mmuData.exoSumDecoder());
     mmioData.cnA(0);
     mmioData.cnB(0);
     mmioData.cnC(0);
+
+    mmioData.limb(Bytes16.ZERO);
 
     mmioData.indexX(mmioData.targetLimbOffset());
 

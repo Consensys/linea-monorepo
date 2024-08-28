@@ -45,6 +45,7 @@ public class Create extends MmuCall implements RomLexDefer {
                 hub.currentFrame()
                     .frame()
                     .shadowReadMemory(0, hub.currentFrame().frame().memoryByteSize())))
+        .exoBytes(Optional.of(hub.romLex().getCodeByMetadata(contract)))
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
         .size(Words.clampedToLong(hub.messageFrame().getStackItem(2)))
         .referenceSize(Words.clampedToLong(hub.messageFrame().getStackItem(2)))

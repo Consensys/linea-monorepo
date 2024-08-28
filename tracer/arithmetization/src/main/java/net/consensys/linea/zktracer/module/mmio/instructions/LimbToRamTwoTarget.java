@@ -21,31 +21,19 @@ import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.updateTempor
 import static net.consensys.linea.zktracer.types.Bytecodes.readLimb;
 
 import com.google.common.base.Preconditions;
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.mmio.MmioData;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
-import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.types.Bytes16;
 
-@RequiredArgsConstructor
-public class LimbToRamTwoTarget implements MmioInstruction {
-  private final MmuData mmuData;
+public class LimbToRamTwoTarget extends MmioInstruction {
 
-  private final int instructionId;
+  public LimbToRamTwoTarget(MmuData mmuData, int instructionNumber) {
+    super(mmuData, instructionNumber);
+  }
 
   @Override
   public MmioData execute() {
-    final MmuToMmioConstantValues mmuToMmioConstantValues = mmuData.mmuToMmioConstantValues();
-    final MmuToMmioInstruction mmuToMmioInstruction =
-        mmuData.mmuToMmioInstructions().get(instructionId);
-
-    MmioData mmioData =
-        new MmioData(
-            mmuData.hubToMmuValues(),
-            mmuToMmioConstantValues,
-            mmuToMmioInstruction,
-            mmuData.exoSumDecoder());
+    final MmioData mmioData = super.execute();
 
     Preconditions.checkArgument(
         mmioData.targetLimbIsTouchedTwice(),

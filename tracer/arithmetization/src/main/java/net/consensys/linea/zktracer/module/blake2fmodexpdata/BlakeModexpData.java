@@ -15,13 +15,6 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
-
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
@@ -34,7 +27,6 @@ import net.consensys.linea.zktracer.module.limits.precompiles.BlakeEffectiveCall
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import org.apache.tuweni.bytes.Bytes;
 
 @RequiredArgsConstructor
 public class BlakeModexpData implements Module {
@@ -97,28 +89,5 @@ public class BlakeModexpData implements Module {
       stamp++;
       o.trace(trace, stamp);
     }
-  }
-
-  // TODO: this should die, the MMU just have to read in MmuCall
-  public Bytes getInputDataByIdAndPhase(final int id, final int phase) {
-    final BlakeModexpDataOperation op = getOperationById(id);
-    return switch (phase) {
-      case PHASE_MODEXP_BASE -> op.modexpMetaData.get().base();
-      case PHASE_MODEXP_EXPONENT -> op.modexpMetaData.get().exp();
-      case PHASE_MODEXP_MODULUS -> op.modexpMetaData.get().mod();
-      case PHASE_MODEXP_RESULT -> Bytes.EMPTY; // TODO
-      case PHASE_BLAKE_DATA -> op.blake2fComponents.get().data();
-      case PHASE_BLAKE_RESULT -> Bytes.EMPTY; // TODO
-      default -> throw new IllegalStateException("Unexpected value: " + phase);
-    };
-  }
-
-  private BlakeModexpDataOperation getOperationById(final int id) {
-    for (BlakeModexpDataOperation operation : this.operations) {
-      if (id == operation.id) {
-        return operation;
-      }
-    }
-    throw new RuntimeException("BlakeModexpOperation not found");
   }
 }

@@ -51,7 +51,7 @@ import net.consensys.linea.zktracer.module.mmu.MmuData;
 
 @Accessors(fluent = true)
 public class MmioInstructions {
-  private Map<Integer, MmioInstruction> mmioInstructionMap;
+  private final Map<Integer, MmioInstruction> mmioInstructionMap;
 
   public MmioInstructions(final MmuData mmuData, final int mmioInstructionNumber) {
     mmioInstructionMap =

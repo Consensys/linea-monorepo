@@ -33,7 +33,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class MLoad implements MmuInstruction {
@@ -53,7 +52,7 @@ public class MLoad implements MmuInstruction {
     this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MLOAD);
   }
 
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
     final long dividend1 = mmuData.hubToMmuValues().sourceOffsetLo().longValueExact();
     final EucOperation eucOp = euc.callEUC(Bytes.ofUnsignedLong(dividend1), Bytes.of(LLARGE));
     final short rem = (short) eucOp.remainder().toInt();
@@ -93,9 +92,6 @@ public class MLoad implements MmuInstruction {
     // Setting MMIO constant values
     mmuData.mmuToMmioConstantValues(
         MmuToMmioConstantValues.builder().sourceContextNumber(hubToMmuValues.sourceId()).build());
-
-    // Setting the source ram bytes
-    mmuData.setSourceRamBytes();
 
     // First micro-instruction.
     mmuData.mmuToMmioInstruction(

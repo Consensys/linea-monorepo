@@ -16,10 +16,9 @@
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 
 public interface MmuInstruction {
-  MmuData preProcess(MmuData mmuData, final CallStack callStack);
+  MmuData preProcess(MmuData mmuData);
 
   MmuData setMicroInstructions(MmuData mmuData);
 }

@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class RamToRamSansPadding implements MmuInstruction {
@@ -72,7 +71,7 @@ public class RamToRamSansPadding implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(final MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(final MmuData mmuData) {
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
     row1(hubToMmuValues);
     row2(hubToMmuValues);
@@ -255,10 +254,6 @@ public class RamToRamSansPadding implements MmuInstruction {
             .sourceContextNumber(hubToMmuValues.sourceId())
             .targetContextNumber(hubToMmuValues.targetId())
             .build());
-
-    // Setting the source and target ram bytes
-    mmuData.setSourceRamBytes();
-    mmuData.setTargetRamBytes();
 
     // Setting the list of MMIO instructions
     if (mmuData.totalNonTrivialInitials() == 1) {

@@ -28,14 +28,12 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.mmio.CallStackReader;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 @AllArgsConstructor
@@ -53,16 +51,22 @@ public class MmuData {
   private HubToMmuValues hubToMmuValues;
   private MmuToMmioConstantValues mmuToMmioConstantValues;
   private List<MmuToMmioInstruction> mmuToMmioInstructions;
-  private ExoSumDecoder exoSumDecoder;
   private boolean mmuInstAnyToRamWithPaddingIsPurePadding;
   private Bytes exoBytes;
   private Bytes sourceRamBytes;
   private Bytes targetRamBytes;
-  private CallStackReader callStackReader;
   private final boolean exoLimbIsSource;
   private final boolean exoLimbIsTarget;
+  private static final List<Integer> MMU_INST_EXO_IS_SOURCE =
+      List.of(MMU_INST_ANY_TO_RAM_WITH_PADDING, MMU_INST_EXO_TO_RAM_TRANSPLANTS);
+  private static final List<Integer> MMU_INST_EXO_IS_TARGET =
+      List.of(
+          MMU_INST_BLAKE,
+          GlobalConstants.MMU_INST_MODEXP_DATA,
+          GlobalConstants.MMU_INST_MODEXP_ZERO,
+          GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING);
 
-  public MmuData(final MmuCall mmuCall, final CallStack callStack) {
+  public MmuData(final MmuCall mmuCall) {
     this(
         mmuCall,
         0,
@@ -74,20 +78,16 @@ public class MmuData {
         null,
         MmuToMmioConstantValues.builder().build(),
         new ArrayList<>(),
-        null,
         false,
         Bytes.EMPTY,
         Bytes.EMPTY,
         Bytes.EMPTY,
-        new CallStackReader(callStack),
-        List.of(MMU_INST_ANY_TO_RAM_WITH_PADDING, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
-            .contains(mmuCall.instruction()),
-        List.of(
-                MMU_INST_BLAKE,
-                GlobalConstants.MMU_INST_MODEXP_DATA,
-                GlobalConstants.MMU_INST_MODEXP_ZERO,
-                GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING)
-            .contains(mmuCall.instruction()));
+        MMU_INST_EXO_IS_SOURCE.contains(mmuCall.instruction()),
+        MMU_INST_EXO_IS_TARGET.contains(mmuCall.instruction()));
+
+    this.setSourceRamBytes();
+    this.setTargetRamBytes();
+    this.setExoBytes();
   }
 
   public int numberMmioInstructions() {
@@ -103,31 +103,20 @@ public class MmuData {
   }
 
   public void setSourceRamBytes() {
-    if (this.mmuCall.sourceRamBytes().isPresent()) {
-      this.sourceRamBytes(this.mmuCall.sourceRamBytes().get());
-      return;
-    }
-    final MmuToMmioConstantValues mmuToMmioConstantValues = this.mmuToMmioConstantValues();
-
-    final long sourceContextNumber = mmuToMmioConstantValues.sourceContextNumber();
-    if (sourceContextNumber != 0) {
-      final Bytes sourceMemory = callStackReader.fullCopyOfContextMemory(sourceContextNumber, true);
-      this.sourceRamBytes(sourceMemory);
+    if (mmuCall.sourceRamBytes().isPresent()) {
+      sourceRamBytes(mmuCall.sourceRamBytes().get());
     }
   }
 
   public void setTargetRamBytes() {
-    if (this.mmuCall.targetRamBytes().isPresent()) {
-      this.targetRamBytes(this.mmuCall.targetRamBytes().get());
-      return;
+    if (mmuCall.targetRamBytes().isPresent()) {
+      targetRamBytes(mmuCall.targetRamBytes().get());
     }
-    final MmuToMmioConstantValues mmuToMmioConstantValues = this.mmuToMmioConstantValues();
+  }
 
-    final long targetContextNumber = mmuToMmioConstantValues.targetContextNumber();
-    if (targetContextNumber != 0) {
-      final Bytes targetMemory =
-          callStackReader.fullCopyOfContextMemory(targetContextNumber, false);
-      this.targetRamBytes(targetMemory);
+  public void setExoBytes() {
+    if (mmuCall.exoBytes().isPresent()) {
+      exoBytes(mmuCall.exoBytes().get());
     }
   }
 }
