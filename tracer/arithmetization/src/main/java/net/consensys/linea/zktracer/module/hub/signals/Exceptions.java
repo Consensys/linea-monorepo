@@ -173,7 +173,7 @@ public class Exceptions {
     return false;
   }
 
-  private static boolean isStaticFault(final MessageFrame frame, OpCodeData opCodeData) {
+  protected static boolean isStaticFault(final MessageFrame frame, OpCodeData opCodeData) {
 
     // staticException requires a static context
     if (!frame.isStatic()) {

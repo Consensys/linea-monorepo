@@ -361,6 +361,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       for (final Exception e : tracingExceptions) {
         msg.append("  - ").append(e.getMessage()).append("\n");
       }
+      log.error("First exception that was caught while tracing:", tracingExceptions.getFirst());
       return msg.toString();
     }
 
