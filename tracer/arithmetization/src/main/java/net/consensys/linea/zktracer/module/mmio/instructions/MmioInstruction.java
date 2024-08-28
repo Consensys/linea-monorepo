@@ -15,8 +15,26 @@
 
 package net.consensys.linea.zktracer.module.mmio.instructions;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.mmio.MmioData;
+import net.consensys.linea.zktracer.module.mmu.MmuData;
+import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
+import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 
-public interface MmioInstruction {
-  MmioData execute();
+@RequiredArgsConstructor
+@Getter
+@Accessors(fluent = true)
+public class MmioInstruction {
+  protected final MmuData mmuData;
+  protected final int instructionNumber;
+
+  public MmioData execute() {
+    final MmuToMmioConstantValues mmuToMmioConstantValues = mmuData.mmuToMmioConstantValues();
+    final MmuToMmioInstruction mmuToMmioInstruction =
+        mmuData.mmuToMmioInstructions().get(instructionNumber);
+
+    return new MmioData(mmuData.hubToMmuValues(), mmuToMmioConstantValues, mmuToMmioInstruction);
+  }
 }

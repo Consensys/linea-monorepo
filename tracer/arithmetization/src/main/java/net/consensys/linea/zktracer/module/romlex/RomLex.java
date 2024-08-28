@@ -111,6 +111,10 @@ public class RomLex implements Module, PostOpcodeDefer {
     return Optional.empty();
   }
 
+  public Bytes getCodeByMetadata(final ContractMetadata metadata) {
+    return getChunkByMetadata(metadata).map(RomChunk::byteCode).orElse(Bytes.EMPTY);
+  }
+
   @Override
   public void traceStartTx(WorldView worldView, TransactionProcessingMetadata txMetaData) {
     final Transaction tx = txMetaData.getBesuTransaction();

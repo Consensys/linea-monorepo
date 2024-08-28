@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class ModexpData implements MmuInstruction {
@@ -72,7 +71,7 @@ public class ModexpData implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
     row1(hubToMmuValues);
     row2();
@@ -247,9 +246,6 @@ public class ModexpData implements MmuInstruction {
             .phase(hubToMmuValues.phase())
             .exoId((int) hubToMmuValues.targetId())
             .build());
-
-    // Setting the source ram bytes
-    mmuData.setSourceRamBytes();
 
     // Left Zeroes
     for (int i = 0; i < initialTotalLeftZeroes; i++) {

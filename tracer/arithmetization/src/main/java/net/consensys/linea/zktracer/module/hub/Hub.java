@@ -386,17 +386,8 @@ public class Hub implements Module {
     this.keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
     this.shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     this.blockdata = new Blockdata(this.wcp, this.txnData, this.rlpTxn);
-    this.mmu =
-        new Mmu(
-            this.euc,
-            this.wcp,
-            this.romLex,
-            this.rlpTxn,
-            this.rlpTxnRcpt,
-            this.ecData,
-            this.blakeModexpData,
-            this.callStack);
-    this.mmio = new Mmio(this.mmu);
+    this.mmu = new Mmu(euc, wcp);
+    this.mmio = new Mmio(mmu);
 
     this.refTableModules = List.of(new BinRt(), new InstructionDecoder(), new ShfRt());
 

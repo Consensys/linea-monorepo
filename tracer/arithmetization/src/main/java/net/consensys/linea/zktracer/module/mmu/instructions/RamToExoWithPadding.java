@@ -37,7 +37,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class RamToExoWithPadding implements MmuInstruction {
@@ -65,7 +64,7 @@ public class RamToExoWithPadding implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
 
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
     row1(hubToMmuValues);
@@ -200,9 +199,6 @@ public class RamToExoWithPadding implements MmuInstruction {
             .kecId(hubToMmuValues.auxId())
             .totalSize((int) hubToMmuValues.referenceSize())
             .build());
-
-    // Setting the source ram bytes
-    mmuData.setTargetRamBytes();
 
     // Setting the list of MMIO instructions
     if (mmuData.totalNonTrivialInitials() == 1) {

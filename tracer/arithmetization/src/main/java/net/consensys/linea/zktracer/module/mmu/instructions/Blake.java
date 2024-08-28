@@ -34,7 +34,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Blake implements MmuInstruction {
@@ -56,7 +55,7 @@ public class Blake implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
 
     // Preprocessing row n°1
@@ -125,9 +124,6 @@ public class Blake implements MmuInstruction {
             .phase(successBit ? hubToMmuValues.phase() : 0)
             .exoId(successBit ? (int) hubToMmuValues.targetId() : 0)
             .build());
-
-    // Setting the source ram bytes
-    mmuData.setSourceRamBytes();
 
     // First micro instruction
     mmuData.mmuToMmioInstruction(

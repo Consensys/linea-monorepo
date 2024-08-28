@@ -44,7 +44,6 @@ import net.consensys.linea.zktracer.module.mmu.instructions.RamToExoWithPadding;
 import net.consensys.linea.zktracer.module.mmu.instructions.RamToRamSansPadding;
 import net.consensys.linea.zktracer.module.mmu.instructions.RightPaddedWordExtraction;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 
 @Accessors(fluent = true)
 class MmuInstructions {
@@ -77,56 +76,56 @@ class MmuInstructions {
     this.blake = new Blake(euc, wcp);
   }
 
-  public MmuData compute(MmuData mmuData, final CallStack callStack) {
+  public MmuData compute(MmuData mmuData) {
     int mmuInstruction = mmuData.hubToMmuValues().mmuInstruction();
 
     return switch (mmuInstruction) {
       case MMU_INST_MLOAD -> {
-        mmuData = mLoadPreComputation.preProcess(mmuData, callStack);
+        mmuData = mLoadPreComputation.preProcess(mmuData);
         yield mLoadPreComputation.setMicroInstructions(mmuData);
       }
       case MMU_INST_MSTORE -> {
-        mmuData = mStorePreComputation.preProcess(mmuData, callStack);
+        mmuData = mStorePreComputation.preProcess(mmuData);
         yield mStorePreComputation.setMicroInstructions(mmuData);
       }
       case MMU_INST_MSTORE8 -> {
-        mmuData = mStore8PreComputation.preProcess(mmuData, callStack);
+        mmuData = mStore8PreComputation.preProcess(mmuData);
         yield mStore8PreComputation.setMicroInstructions(mmuData);
       }
       case MMU_INST_INVALID_CODE_PREFIX -> {
-        mmuData = invalidCodePrefix.preProcess(mmuData, callStack);
+        mmuData = invalidCodePrefix.preProcess(mmuData);
         yield invalidCodePrefix.setMicroInstructions(mmuData);
       }
       case MMU_INST_RIGHT_PADDED_WORD_EXTRACTION -> {
-        mmuData = rightPaddedWordExtraction.preProcess(mmuData, callStack);
+        mmuData = rightPaddedWordExtraction.preProcess(mmuData);
         yield rightPaddedWordExtraction.setMicroInstructions(mmuData);
       }
       case MMU_INST_RAM_TO_EXO_WITH_PADDING -> {
-        mmuData = ramToExoWithPadding.preProcess(mmuData, callStack);
+        mmuData = ramToExoWithPadding.preProcess(mmuData);
         yield ramToExoWithPadding.setMicroInstructions(mmuData);
       }
       case MMU_INST_EXO_TO_RAM_TRANSPLANTS -> {
-        mmuData = exoToRamTransplants.preProcess(mmuData, callStack);
+        mmuData = exoToRamTransplants.preProcess(mmuData);
         yield exoToRamTransplants.setMicroInstructions(mmuData);
       }
       case MMU_INST_RAM_TO_RAM_SANS_PADDING -> {
-        mmuData = ramToRamSansPadding.preProcess(mmuData, callStack);
+        mmuData = ramToRamSansPadding.preProcess(mmuData);
         yield ramToRamSansPadding.setMicroInstructions(mmuData);
       }
       case MMU_INST_ANY_TO_RAM_WITH_PADDING -> {
-        mmuData = anyToRamWithPadding.preProcess(mmuData, callStack);
+        mmuData = anyToRamWithPadding.preProcess(mmuData);
         yield anyToRamWithPadding.setMicroInstructions(mmuData);
       }
       case MMU_INST_MODEXP_ZERO -> {
-        mmuData = modexpZero.preProcess(mmuData, callStack);
+        mmuData = modexpZero.preProcess(mmuData);
         yield modexpZero.setMicroInstructions(mmuData);
       }
       case MMU_INST_MODEXP_DATA -> {
-        mmuData = modexpData.preProcess(mmuData, callStack);
+        mmuData = modexpData.preProcess(mmuData);
         yield modexpData.setMicroInstructions(mmuData);
       }
       case MMU_INST_BLAKE -> {
-        mmuData = blake.preProcess(mmuData, callStack);
+        mmuData = blake.preProcess(mmuData);
         yield blake.setMicroInstructions(mmuData);
       }
       default -> throw new IllegalArgumentException(

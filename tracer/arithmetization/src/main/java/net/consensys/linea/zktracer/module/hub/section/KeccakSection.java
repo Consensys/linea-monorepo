@@ -49,11 +49,11 @@ public class KeccakSection extends TraceSection implements PostOpcodeDefer {
     triggerMmu = mayTriggerNonTrivialOperation & Exceptions.none(hub.pch().exceptions());
 
     if (triggerMmu) {
-      final MmuCall mmuCall = MmuCall.sha3(hub);
-      imcFragment.callMmu(mmuCall);
       final long offset = Words.clampedToLong(hub.messageFrame().getStackItem(0));
       final long size = Words.clampedToLong(hub.messageFrame().getStackItem(1));
       hashInput = hub.currentFrame().frame().shadowReadMemory(offset, size);
+      final MmuCall mmuCall = MmuCall.sha3(hub, hashInput);
+      imcFragment.callMmu(mmuCall);
     }
   }
 

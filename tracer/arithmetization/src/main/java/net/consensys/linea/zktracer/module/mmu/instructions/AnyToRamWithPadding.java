@@ -43,7 +43,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class AnyToRamWithPadding implements MmuInstruction {
@@ -106,7 +105,7 @@ public class AnyToRamWithPadding implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
     final HubToMmuValues hubToMmuValues = mmuData.hubToMmuValues();
 
     // Shared PreProcessing
@@ -521,12 +520,6 @@ public class AnyToRamWithPadding implements MmuInstruction {
     mmuData.mmuToMmioConstantValues(
         MmuToMmioConstantValues.builder().targetContextNumber(hubToMmuValues.targetId()).build());
 
-    // Setting the source (if relevant) and target ram bytes
-    if (dataSourceIsRam) {
-      mmuData.setSourceRamBytes();
-    }
-    mmuData.setTargetRamBytes();
-
     if (totalRightZeroIsOne) {
       purePaddingOnlyMicroInstruction(mmuData);
     } else {
@@ -555,12 +548,6 @@ public class AnyToRamWithPadding implements MmuInstruction {
             .exoId(dataSourceIsRam ? 0 : (int) hubToMmuValues.sourceId())
             .totalSize((int) hubToMmuValues.referenceSize())
             .build());
-
-    // Setting the source (if relevant) and target ram bytes
-    if (dataSourceIsRam) {
-      mmuData.setSourceRamBytes();
-    }
-    mmuData.setTargetRamBytes();
 
     // Setting data transfer micro instructions
     if (totalNonTrivialIsOne) {

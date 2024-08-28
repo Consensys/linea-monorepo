@@ -31,7 +31,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class ExoToRamTransplants implements MmuInstruction {
@@ -46,7 +45,7 @@ public class ExoToRamTransplants implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
     // row n°1
     final Bytes dividend = Bytes.ofUnsignedInt(mmuData.hubToMmuValues().size());
     final EucOperation eucOp = euc.callEUC(dividend, Bytes.of(LLARGE));

@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
@@ -25,11 +26,14 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.LogData;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class LogSection extends TraceSection implements PostRollbackDefer {
+public class LogSection extends TraceSection implements PostRollbackDefer, PostTransactionDefer {
 
-  MmuCall mmuCall;
+  private MmuCall mmuCall;
+  private boolean logReverted = false;
 
   public LogSection(Hub hub) {
     super(hub, maxNumberOfRows(hub));
@@ -69,6 +73,8 @@ public class LogSection extends TraceSection implements PostRollbackDefer {
     // the unexceptional case
     Preconditions.checkArgument(Exceptions.none(exceptions));
 
+    hub.defers().scheduleForPostTransaction(this);
+
     final LogData logData = new LogData(hub);
     Preconditions.checkArgument(
         logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation);
@@ -88,8 +94,21 @@ public class LogSection extends TraceSection implements PostRollbackDefer {
 
   @Override
   public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
+    logReverted = true;
     if (mmuCall != null) {
       mmuCall.dontTraceMe();
+    }
+  }
+
+  @Override
+  public void resolvePostTransaction(
+      Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
+    if (!logReverted) {
+      hub.state.stamps().incrementLogStamp();
+      commonValues.logStamp(hub.state.stamps().log());
+      if (mmuCall != null) {
+        mmuCall.targetId(hub.state.stamps().log());
+      }
     }
   }
 }

@@ -28,7 +28,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 
 public class ModexpZero implements MmuInstruction {
   private List<MmuEucCallRecord> eucCallRecords;
@@ -40,7 +39,7 @@ public class ModexpZero implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
 
     // no call to wcp nor euc. So much fun.
     eucCallRecords.add(MmuEucCallRecord.EMPTY_CALL);
@@ -69,9 +68,6 @@ public class ModexpZero implements MmuInstruction {
             .phase(hubToMmuValues.phase())
             .targetContextNumber(hubToMmuValues.targetId())
             .build());
-
-    // Setting the source ram bytes
-    mmuData.setSourceRamBytes();
 
     for (int i = 0; i < Trace.NB_MICRO_ROWS_TOT_MODEXP_ZERO; i++) {
       vanishingMicroInstruction(mmuData, i);

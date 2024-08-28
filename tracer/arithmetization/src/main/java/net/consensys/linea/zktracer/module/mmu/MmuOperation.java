@@ -42,7 +42,6 @@ import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.mmio.CallStackReader;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -50,7 +49,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.RowTypeRecord;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -72,11 +70,11 @@ public class MmuOperation extends ModuleOperation {
   private boolean isModexpZero;
   private boolean isModexpData;
   private boolean isBlake;
-  private final CallStackReader callStackReader;
 
-  MmuOperation(MmuData mmuData, final CallStack callStack) {
+  private int mmioLineCount = -1;
+
+  MmuOperation(MmuData mmuData) {
     this.mmuData = mmuData;
-    this.callStackReader = new CallStackReader(callStack);
   }
 
   public boolean traceMe() {
@@ -91,14 +89,18 @@ public class MmuOperation extends ModuleOperation {
   }
 
   public int computeMmioLineCount() {
-    int sum = 0;
+    if (mmioLineCount != -1) {
+      return mmioLineCount;
+    }
+
+    mmioLineCount = 0;
     if (traceMe()) {
       for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
-        sum +=
+        mmioLineCount +=
             numberOfRowOfMmioInstruction(mmuData.mmuToMmioInstructions().get(i).mmioInstruction());
       }
     }
-    return sum;
+    return mmioLineCount;
   }
 
   void trace(final int mmuStamp, final int mmioStamp, Trace trace) {
@@ -109,7 +111,7 @@ public class MmuOperation extends ModuleOperation {
     traceMacroRow(mmuStamp, mmioStamp, trace);
 
     // Trace Preprocessing rows
-    tracePreprocessingRows(this.mmuData, mmuStamp, mmioStamp, trace);
+    tracePreprocessingRows(mmuData, mmuStamp, mmioStamp, trace);
 
     // Trace Micro Instructions Rows
     traceMicroRows(mmuStamp, mmioStamp, trace);
@@ -147,21 +149,6 @@ public class MmuOperation extends ModuleOperation {
         mmuData.hubToMmuValues().targetId(targetId);
         mmuData.mmuToMmioConstantValues().exoId(targetId);
       }
-    }
-  }
-
-  public void setExoBytes(ExoSumDecoder exoSumDecoder) {
-    if (mmuData.mmuCall().exoBytes().isPresent()) {
-      mmuData.exoBytes(mmuData.mmuCall().exoBytes().get());
-      return;
-    }
-    final int exoSum = mmuData.hubToMmuValues().exoSum();
-
-    if (exoSum != 0) {
-      mmuData.exoSumDecoder(exoSumDecoder);
-      final int exoId =
-          mmuData.exoLimbIsSource() ? mmuData.mmuCall().sourceId() : mmuData.mmuCall().targetId();
-      mmuData.exoBytes(exoSumDecoder.getExoBytes(mmuData.hubToMmuValues(), exoId));
     }
   }
 
@@ -238,7 +225,7 @@ public class MmuOperation extends ModuleOperation {
     traceFillMmuInstructionFlag(trace);
     traceOutAndBin(trace);
 
-    HubToMmuValues mmuHubInput = mmuData.hubToMmuValues();
+    final HubToMmuValues mmuHubInput = mmuData.hubToMmuValues();
 
     trace
         .stamp(mmuStamp)
@@ -274,8 +261,8 @@ public class MmuOperation extends ModuleOperation {
     for (int i = 1; i <= mmuData().numberMmuPreprocessingRows(); i++) {
       traceFillMmuInstructionFlag(trace);
       traceOutAndBin(trace);
-      MmuEucCallRecord currentMmuEucCallRecord = mmuData.eucCallRecords().get(i - 1);
-      MmuWcpCallRecord currentMmuWcpCallRecord = mmuData.wcpCallRecords().get(i - 1);
+      final MmuEucCallRecord currentMmuEucCallRecord = mmuData.eucCallRecords().get(i - 1);
+      final MmuWcpCallRecord currentMmuWcpCallRecord = mmuData.wcpCallRecords().get(i - 1);
       trace
           .stamp(mmuStamp)
           .mmioStamp(mmioStamp)
@@ -305,7 +292,7 @@ public class MmuOperation extends ModuleOperation {
 
   private List<RowTypeRecord> generateRowTypeList() {
     final int totInit = mmuData().numberMmioInstructions();
-    List<RowTypeRecord> output = new ArrayList<>(totInit);
+    final List<RowTypeRecord> output = new ArrayList<>(totInit);
 
     final int totLeftZeroInit = mmuData.totalLeftZeroesInitials();
     final int totNonTrivialInit = mmuData.totalNonTrivialInitials();

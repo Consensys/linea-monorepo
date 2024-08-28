@@ -32,7 +32,6 @@ import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioConstantValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuToMmioInstruction;
 import net.consensys.linea.zktracer.module.mmu.values.MmuWcpCallRecord;
-import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import org.apache.tuweni.bytes.Bytes;
 
 public class MStore8 implements MmuInstruction {
@@ -49,7 +48,7 @@ public class MStore8 implements MmuInstruction {
   }
 
   @Override
-  public MmuData preProcess(MmuData mmuData, final CallStack callStack) {
+  public MmuData preProcess(MmuData mmuData) {
 
     // row n°1
     final long dividend1 = mmuData.hubToMmuValues().targetOffset();
@@ -89,9 +88,6 @@ public class MStore8 implements MmuInstruction {
     // Setting MMIO constant values
     mmuData.mmuToMmioConstantValues(
         MmuToMmioConstantValues.builder().targetContextNumber(hubToMmuValues.targetId()).build());
-
-    // Setting the target ram bytes
-    mmuData.setTargetRamBytes();
 
     // First and only micro-instruction.
     mmuData.mmuToMmioInstruction(

@@ -14,6 +14,12 @@
  */
 package net.consensys.linea.zktracer.precompiles;
 
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BASE_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.BBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.EBS_MIN_OFFSET;
+import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
+
 import java.util.List;
 
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -43,6 +49,44 @@ public class ModexpTests {
             .push(0)
             .push(0)
             .push(0)
+            .push(0x05) // address
+            .push(0xffff) // gas
+            .op(OpCode.CALL)
+            .op(OpCode.POP)
+            .compile();
+    BytecodeRunner.of(bytecode).run();
+  }
+
+  @Test
+  void basicNonTrivialModexpTest() {
+    final int base = 2;
+    final int exp = 5;
+    final int mod = 7;
+    final Bytes bytecode =
+        BytecodeCompiler.newProgram()
+            .push(1)
+            .push(BBS_MIN_OFFSET)
+            .op(OpCode.MSTORE)
+            .push(1)
+            .push(EBS_MIN_OFFSET)
+            .op(OpCode.MSTORE)
+            .push(1)
+            .push(MBS_MIN_OFFSET)
+            .op(OpCode.MSTORE)
+            .push(base)
+            .push(BASE_MIN_OFFSET)
+            .op(OpCode.MSTORE8)
+            .push(exp)
+            .push(BASE_MIN_OFFSET + 1)
+            .op(OpCode.MSTORE8)
+            .push(mod)
+            .push(BASE_MIN_OFFSET + 2)
+            .op(OpCode.MSTORE8)
+            .push(MODEXP_COMPONENT_BYTE_SIZE) // retLength
+            .push(0) // retOffset
+            .push(BASE_MIN_OFFSET + 3) // argLength
+            .push(0) // argOffset
+            .push(0) // value
             .push(0x05) // address
             .push(0xffff) // gas
             .op(OpCode.CALL)
