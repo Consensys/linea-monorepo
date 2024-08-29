@@ -126,7 +126,7 @@ public class MxpTest {
     BytecodeRunner.of(program.compile()).run();
   }
 
-  @Disabled
+  @Disabled("see #1014")
   @Test
   void testRandomMxpInstructionsFollowedByTriggeringRoob() {
     // Testing a random program
@@ -178,7 +178,7 @@ public class MxpTest {
     }
   }
 
-  @Disabled // Currently disabled due to #1014
+  @Disabled("see #1014")
   @Test
   void testMxpRandomAdvanced() {
     // Testing a random program that contains creates with meaning random arguments
