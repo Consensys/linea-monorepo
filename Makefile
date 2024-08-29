@@ -9,7 +9,7 @@ $(shell \
 )
 endef
 
-npm-install:
+pnpm-install:
 		pnpm install
 
 docker-pull-develop:
