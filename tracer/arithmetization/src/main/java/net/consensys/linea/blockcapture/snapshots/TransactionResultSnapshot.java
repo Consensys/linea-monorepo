@@ -61,6 +61,11 @@ public record TransactionResultSnapshot(
 
   /** Simple wrapper which checks the transaction result matches an expected outcome. */
   private class TransactionChecker implements ConflationAwareOperationTracer {
+    /**
+     * Used to indicate that the result checker already failed this transaction and, hence, not to
+     * do it again!
+     */
+    private String failure = null;
 
     @Override
     public void traceEndTransaction(
@@ -72,93 +77,114 @@ public record TransactionResultSnapshot(
         long gasUsed,
         Set<Address> selfDestructs,
         long timeNs) {
-      String hash = tx.getHash().toHexString();
-      // Check against expected result
-      if (TransactionResultSnapshot.this.status() != status) {
-        throw new RuntimeException("tx " + hash + " outcome does not match expected outcome");
-      }
-      if (TransactionResultSnapshot.this.gasUsed() != gasUsed) {
-        throw new RuntimeException(
-            "tx " + hash + " gas (estimated) used does not expected gas used");
-      }
-      if (!TransactionResultSnapshot.this.output().equals(output.toHexString())) {
-        throw new RuntimeException("tx " + hash + " output does not match expected output");
-      }
-      // Convert logs into hex strings
-      List<String> actualLogStrings = logs.stream().map(l -> l.getData().toHexString()).toList();
-      if (!actualLogStrings.equals(TransactionResultSnapshot.this.logs())) {
-        throw new RuntimeException("tx " + hash + " logs do not match expected logs");
-      }
-      // Check each account
-      for (AccountSnapshot expAccount : TransactionResultSnapshot.this.accounts()) {
-        Address address = Address.fromHexString(expAccount.address());
-        Account actAccount = world.get(address);
-        // Check balance
-        Wei expBalance = Wei.fromHexString(expAccount.balance());
-        Wei actBalance = actAccount.getBalance();
-        if (!expBalance.equals(actBalance)) {
-          throw new RuntimeException(
+      // Check whether we already failed this transaction (or not).
+      if (failure != null) {
+        // Force complete failure.
+        throw new RuntimeException(failure);
+      } else {
+        String hash = tx.getHash().toHexString();
+        boolean expStatus = TransactionResultSnapshot.this.status();
+        // Check against expected result
+        if (TransactionResultSnapshot.this.status() != status) {
+          failTransaction(
               "tx "
                   + hash
-                  + " balance of account "
-                  + address
-                  + " ("
-                  + actBalance.toDecimalString()
-                  + ") does not match expected value ("
-                  + expBalance.toDecimalString()
+                  + " outcome does not match expected outcome (expected "
+                  + expStatus
+                  + ", was "
+                  + status
                   + ")");
         }
-        // Check nonce
-        long expNonce = expAccount.nonce();
-        long actNonce = actAccount.getNonce();
-        if (expNonce != actNonce) {
-          throw new RuntimeException(
+        long expGas = TransactionResultSnapshot.this.gasUsed();
+        if (expGas != gasUsed) {
+          failTransaction(
               "tx "
                   + hash
-                  + " nonce of account "
-                  + address
-                  + " ("
-                  + actNonce
-                  + ") does not match expected value ("
-                  + expNonce
+                  + " gas used does not match expected gas used  (expected "
+                  + expGas
+                  + ", was "
+                  + gasUsed
                   + ")");
         }
-        // Check code
-        Bytes expCode = Bytes.fromHexString(expAccount.code());
-        Bytes actCode = actAccount.getCode();
-        if (!expCode.equals(actCode)) {
-          throw new RuntimeException(
-              "tx "
-                  + hash
-                  + " code of account "
-                  + address
-                  + " ("
-                  + actCode
-                  + ") does not match expected value ("
-                  + expCode
-                  + ")");
+        if (!TransactionResultSnapshot.this.output().equals(output.toHexString())) {
+          failTransaction("tx " + hash + " output does not match expected output");
         }
-      }
-      // Check each storage location
-      for (StorageSnapshot expStorage : TransactionResultSnapshot.this.storage()) {
-        Address address = Address.fromHexString(expStorage.address());
-        UInt256 key = UInt256.fromHexString(expStorage.key());
-        UInt256 expValue = UInt256.fromHexString(expStorage.value());
-        Account actAccount = world.get(address);
-        UInt256 actValue = actAccount.getStorageValue(key);
-        if (!actValue.equals(expValue)) {
-          throw new RuntimeException(
-              "tx "
-                  + hash
-                  + " storage at "
-                  + address
-                  + ":"
-                  + key
-                  + "("
-                  + actValue
-                  + ") does not match expected value ("
-                  + expValue
-                  + ")");
+        // Convert logs into hex strings
+        List<String> actualLogStrings = logs.stream().map(l -> l.getData().toHexString()).toList();
+        if (!actualLogStrings.equals(TransactionResultSnapshot.this.logs())) {
+          failTransaction("tx " + hash + " logs do not match expected logs");
+        }
+        // Check each account
+        for (AccountSnapshot expAccount : TransactionResultSnapshot.this.accounts()) {
+          Address address = Address.fromHexString(expAccount.address());
+          Account actAccount = world.get(address);
+          // Check balance
+          Wei expBalance = Wei.fromHexString(expAccount.balance());
+          Wei actBalance = actAccount.getBalance();
+          if (!expBalance.equals(actBalance)) {
+            failTransaction(
+                "tx "
+                    + hash
+                    + " balance of account "
+                    + address
+                    + " ("
+                    + actBalance.toDecimalString()
+                    + ") does not match expected value ("
+                    + expBalance.toDecimalString()
+                    + ")");
+          }
+          // Check nonce
+          long expNonce = expAccount.nonce();
+          long actNonce = actAccount.getNonce();
+          if (expNonce != actNonce) {
+            failTransaction(
+                "tx "
+                    + hash
+                    + " nonce of account "
+                    + address
+                    + " ("
+                    + actNonce
+                    + ") does not match expected value ("
+                    + expNonce
+                    + ")");
+          }
+          // Check code
+          Bytes expCode = Bytes.fromHexString(expAccount.code());
+          Bytes actCode = actAccount.getCode();
+          if (!expCode.equals(actCode)) {
+            failTransaction(
+                "tx "
+                    + hash
+                    + " code of account "
+                    + address
+                    + " ("
+                    + actCode
+                    + ") does not match expected value ("
+                    + expCode
+                    + ")");
+          }
+        }
+        // Check each storage location
+        for (StorageSnapshot expStorage : TransactionResultSnapshot.this.storage()) {
+          Address address = Address.fromHexString(expStorage.address());
+          UInt256 key = UInt256.fromHexString(expStorage.key());
+          UInt256 expValue = UInt256.fromHexString(expStorage.value());
+          Account actAccount = world.get(address);
+          UInt256 actValue = actAccount.getStorageValue(key);
+          if (!actValue.equals(expValue)) {
+            failTransaction(
+                "tx "
+                    + hash
+                    + " storage at "
+                    + address
+                    + ":"
+                    + key
+                    + "("
+                    + actValue
+                    + ") does not match expected value ("
+                    + expValue
+                    + ")");
+          }
         }
       }
     }
@@ -171,6 +197,16 @@ public record TransactionResultSnapshot(
     @Override
     public void traceEndConflation(WorldView state) {
       throw new UnsupportedOperationException();
+    }
+
+    private void failTransaction(String msg) {
+      // Mark transaction as failed in order to prevent the true failing reason from being hidden .
+      // This is necessary because MainnetTransactionProcessor re-executes
+      // <code>traceEndTransaction()</code>
+      // upon receiving a <code>RuntimeException</code>.
+      this.failure = msg;
+      //
+      throw new RuntimeException(msg);
     }
   }
 }
