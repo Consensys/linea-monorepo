@@ -89,7 +89,7 @@ public class ReplayTests {
     replay("start-vs-prepare-tx.json.gz");
   }
 
-  @Disabled // Currently disabled due to #1014
+  @Disabled("see  #1014")
   @Test
   void fatMxp() {
     replay("2492975-2492977.json.gz");
@@ -146,5 +146,12 @@ public class ReplayTests {
   @Test
   void blockHash2() {
     replay("8718330.json.gz");
+  }
+
+  // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
+  // instruction
+  @Test
+  void negativeNumberOfMmioInstruction() {
+    replay("6029454-6029459.json.gz");
   }
 }
