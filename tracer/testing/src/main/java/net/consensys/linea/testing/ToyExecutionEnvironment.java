@@ -158,19 +158,19 @@ public class ToyExecutionEnvironment {
     tracer.traceStartConflation(conflation.blocks().size());
 
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
-      BlockHeader header = blockSnapshot.header().toBlockHeader();
+      final BlockHeader header = blockSnapshot.header().toBlockHeader();
 
-      BlockBody body =
+      final BlockBody body =
           new BlockBody(
               blockSnapshot.txs().stream().map(TransactionSnapshot::toTransaction).toList(),
               new ArrayList<>());
       tracer.traceStartBlock(header, body);
 
       for (TransactionSnapshot txs : blockSnapshot.txs()) {
-        Transaction tx = txs.toTransaction();
-        WorldUpdater updater = overridenToyWorld.updater();
+        final Transaction tx = txs.toTransaction();
+        final WorldUpdater updater = overridenToyWorld.updater();
         // Process transaction leading to expected outcome
-        TransactionProcessingResult outcome =
+        final TransactionProcessingResult outcome =
             transactionProcessor.processTransaction(
                 updater,
                 (ProcessableBlockHeader) header,

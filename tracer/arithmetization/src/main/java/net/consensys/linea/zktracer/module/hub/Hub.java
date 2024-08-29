@@ -309,34 +309,34 @@ public class Hub implements Module {
             // Modules
             Stream.of(
                 this,
-                this.add,
-                this.bin,
-                this.blakeModexpData,
-                this.ecData,
-                this.blockdata,
-                this.blockhash,
-                this.ext,
-                this.euc,
-                this.exp,
-                this.logData,
-                this.logInfo,
-                this.mmu, // WARN: must be called before the MMIO
-                this.mmio,
-                this.mod,
-                this.mul,
-                this.mxp,
-                this.oob,
-                this.rlpAddr,
-                this.rlpTxn,
-                this.rlpTxnRcpt,
-                this.rom,
-                this.romLex,
-                this.shakiraData,
-                this.shf,
-                this.stp,
-                this.trm,
-                this.txnData,
-                this.wcp))
+                add,
+                bin,
+                blakeModexpData,
+                ecData,
+                blockdata,
+                blockhash,
+                ext,
+                euc,
+                exp,
+                logData,
+                logInfo,
+                mmu, // WARN: must be called before the MMIO
+                mmio,
+                mod,
+                mul,
+                mxp,
+                oob,
+                rlpAddr,
+                rlpTxn,
+                rlpTxnRcpt,
+                rom,
+                romLex,
+                shakiraData,
+                shf,
+                stp,
+                trm,
+                txnData,
+                wcp))
         .toList();
   }
 
@@ -350,33 +350,33 @@ public class Hub implements Module {
     return Stream.concat(
             Stream.of(
                 this,
-                this.romLex,
-                this.add,
-                this.bin,
-                this.blockdata,
-                this.blockhash,
-                this.ext,
-                this.ecData,
-                this.euc,
-                this.mmu,
-                this.mmio,
-                this.logData,
-                this.logInfo,
-                this.mod,
-                this.mul,
-                this.mxp,
-                this.oob,
-                this.exp,
-                this.rlpAddr,
-                this.rlpTxn,
-                this.rlpTxnRcpt,
-                this.rom,
-                this.shf,
-                this.trm,
-                this.txnData,
-                this.wcp,
-                this.l2Block),
-            this.precompileLimitModules().stream())
+                romLex,
+                add,
+                bin,
+                blockdata,
+                blockhash,
+                ext,
+                ecData,
+                euc,
+                mmu,
+                mmio,
+                logData,
+                logInfo,
+                mod,
+                mul,
+                mxp,
+                oob,
+                exp,
+                rlpAddr,
+                rlpTxn,
+                rlpTxnRcpt,
+                rom,
+                shf,
+                trm,
+                txnData,
+                wcp,
+                l2Block),
+            precompileLimitModules().stream())
         .toList();
   }
 
@@ -385,7 +385,7 @@ public class Hub implements Module {
     this.l2L1Logs = new L2L1Logs(l2Block); // TODO: we never use it, to delete ?
     this.keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
     this.shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
-    this.blockdata = new Blockdata(this.wcp, this.txnData, this.rlpTxn);
+    this.blockdata = new Blockdata(wcp, txnData, rlpTxn);
     this.mmu = new Mmu(euc, wcp);
     this.mmio = new Mmio(mmu);
 
@@ -394,36 +394,36 @@ public class Hub implements Module {
     this.modules =
         Stream.concat(
                 Stream.of(
-                    this.add,
-                    this.bin,
-                    this.blakeModexpData,
-                    this.blockhash,
-                    this.ecData,
-                    this.euc,
-                    this.ext,
-                    this.gas,
-                    this.logData,
-                    this.logInfo,
-                    this.mmio,
-                    this.mmu,
-                    this.mod,
-                    this.mul,
-                    this.mxp,
-                    this.oob,
-                    this.exp,
-                    this.rlpAddr,
-                    this.rlpTxn,
-                    this.rlpTxnRcpt,
-                    this.rom,
-                    this.romLex,
-                    this.shakiraData,
-                    this.shf,
-                    this.stp,
-                    this.trm,
-                    this.wcp, /* WARN: must be called BEFORE txnData */
-                    this.txnData,
-                    this.blockdata /* WARN: must be called AFTER txnData */),
-                this.precompileLimitModules().stream())
+                    add,
+                    bin,
+                    blakeModexpData,
+                    blockhash,
+                    ecData,
+                    euc,
+                    ext,
+                    gas,
+                    logData,
+                    logInfo,
+                    mmio,
+                    mmu,
+                    mod,
+                    mul,
+                    mxp,
+                    oob,
+                    exp,
+                    rlpAddr,
+                    rlpTxn,
+                    rlpTxnRcpt,
+                    rom,
+                    romLex,
+                    shakiraData,
+                    shf,
+                    stp,
+                    trm,
+                    wcp, /* WARN: must be called BEFORE txnData */
+                    txnData,
+                    blockdata /* WARN: must be called AFTER txnData */),
+                precompileLimitModules().stream())
             .toList();
   }
 
@@ -524,7 +524,7 @@ public class Hub implements Module {
 
     this.txStack.current().completeLineaTransaction(this, isSuccessful, logs, selfDestructs);
 
-    for (Module m : this.modules) {
+    for (Module m : modules) {
       m.traceEndTx(txStack.current());
     }
 

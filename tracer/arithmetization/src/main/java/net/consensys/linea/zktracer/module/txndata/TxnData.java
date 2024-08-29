@@ -37,7 +37,7 @@ public class TxnData implements Module {
   private final Euc euc;
 
   private final List<BlockSnapshot> blocks = new ArrayList<>();
-  private final StackedList<TxndataOperation> txs = new StackedList<>();
+  private final StackedList<TxndataOperation> transactions = new StackedList<>();
 
   @Override
   public String moduleKey() {
@@ -46,48 +46,48 @@ public class TxnData implements Module {
 
   @Override
   public void enterTransaction() {
-    this.txs.enter();
+    transactions.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.txs.pop();
+    transactions.pop();
   }
 
   @Override
   public void traceStartConflation(final long blockCount) {
-    this.wcp.additionalRows.push(
-        this.wcp.additionalRows.pop() + 4); /* 4 = byte length of LINEA_BLOCK_GAS_LIMIT */
+    wcp.additionalRows.push(
+        wcp.additionalRows.pop() + 4); /* 4 = byte length of LINEA_BLOCK_GAS_LIMIT */
   }
 
   @Override
   public final void traceStartBlock(final ProcessableBlockHeader blockHeader) {
-    this.blocks.add(new BlockSnapshot(blockHeader));
+    blocks.add(new BlockSnapshot(blockHeader));
   }
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    this.txs.add(new TxndataOperation(wcp, euc, tx));
+    transactions.add(new TxndataOperation(wcp, euc, tx));
   }
 
   @Override
   public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-    this.currentBlock().setNbOfTxsInBlock(this.currentTx().tx.getRelativeTransactionNumber());
-    this.currentTx().setCallWcpLastTxOfBlock(this.currentBlock().getBlockGasLimit());
+    currentBlock().setNbOfTxsInBlock(currentTx().tx.getRelativeTransactionNumber());
+    currentTx().setCallWcpLastTxOfBlock(currentBlock().getBlockGasLimit());
   }
 
   @Override
   public int lineCount() {
     // The last tx of each block has one more rows
-    return this.txs.lineCount() + this.blocks.size();
+    return transactions.lineCount() + blocks.size();
   }
 
   public BlockSnapshot currentBlock() {
-    return this.blocks.get(this.blocks.size() - 1);
+    return blocks.getLast();
   }
 
   private TxndataOperation currentTx() {
-    return this.txs.getLast();
+    return transactions.getLast();
   }
 
   @Override
@@ -99,10 +99,10 @@ public class TxnData implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
 
-    final int absTxNumMax = this.txs.size();
+    final int absTxNumMax = transactions.size();
 
-    for (TxndataOperation tx : this.txs) {
-      tx.traceTx(trace, this.blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
+    for (TxndataOperation tx : transactions) {
+      tx.traceTx(trace, blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
     }
   }
 }
