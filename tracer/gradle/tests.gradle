@@ -98,10 +98,10 @@ test {
     showFailed true
 
     // enable to see standard out and error streams inline with the test results
-    showStandardStreams false
+    showStandardStreams true
 
     // set to false to hide passed standard out and error streams
-    showPassedStandardStreams true
+    showPassedStandardStreams false
 
     // set to false to hide skipped standard out and error streams
     showSkippedStandardStreams true
