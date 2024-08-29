@@ -65,8 +65,14 @@ ______________________________________________________________________
 # Run only acceptance tests
 ./gradlew clean acceptanceTests
 
+# Generate EVM test suite BlockchainTests
+./gradlew :reference-tests:generateBlockchainReferenceTests 
+
 # Run EVM test suite BlockchainTests
 ./gradlew clean referenceBlockchainTests
+
+# Generate EVM test suite GeneralStateTests
+./gradlew :reference-tests:generateGeneralStateReferenceTests 
 
 # Run EVM test suite GeneralStateTests
 ./gradlew clean referenceGeneralStateTests
