@@ -68,7 +68,7 @@ public final class CommonFragment implements TraceFragment {
     final boolean isExec = commonFragmentValues.hubProcessingPhase == TX_EXEC;
     return trace
         .absoluteTransactionNumber(tx.getAbsoluteTransactionNumber())
-        .batchNumber(tx.getRelativeBlockNumber())
+        .relativeBlockNumber(tx.getRelativeBlockNumber())
         .txSkip(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_SKIP)
         .txWarm(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_WARM)
         .txInit(commonFragmentValues.hubProcessingPhase == HubProcessingPhase.TX_INIT)
