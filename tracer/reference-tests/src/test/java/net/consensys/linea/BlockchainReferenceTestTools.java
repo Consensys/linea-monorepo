@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.ethereum.MainnetBlockValidator;
@@ -40,6 +41,7 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestProtocolSchedul
 import org.hyperledger.besu.ethereum.rlp.RLPException;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 
+@Slf4j
 public class BlockchainReferenceTestTools {
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
@@ -88,6 +90,7 @@ public class BlockchainReferenceTestTools {
   }
 
   public static Collection<Object[]> generateTestParametersForConfig(final String[] filePath) {
+    Arrays.stream(filePath).forEach(f -> log.info("checking file: {}", f));
     return PARAMS.generate(
         Arrays.stream(filePath)
             .map(f -> Paths.get("src/test/resources/ethereum-tests/" + f).toFile())
@@ -100,6 +103,8 @@ public class BlockchainReferenceTestTools {
         spec.getWorldStateArchive()
             .getMutable(genesisBlockHeader.getStateRoot(), genesisBlockHeader.getHash())
             .get();
+    log.info(
+        "checking roothash {} is {}", worldState.rootHash(), genesisBlockHeader.getStateRoot());
     assertThat(worldState.rootHash()).isEqualTo(genesisBlockHeader.getStateRoot());
 
     final ProtocolSchedule schedule =
@@ -130,13 +135,18 @@ public class BlockchainReferenceTestTools {
 
         final BlockImportResult importResult =
             blockImporter.importBlock(context, block, validationMode, validationMode);
-
+        log.info(
+            "checking block is imported {} equals {}",
+            importResult.isImported(),
+            candidateBlock.isValid());
         assertThat(importResult.isImported()).isEqualTo(candidateBlock.isValid());
       } catch (final RLPException e) {
+        log.info("caugh RLP exception, checking it's invalid {}", candidateBlock.isValid());
         assertThat(candidateBlock.isValid()).isFalse();
       }
-
-      assertThat(corsetValidator.validate(zkTracer.writeToTmpFile()).isValid()).isTrue();
+      CorsetValidator.Result corsetResult = corsetValidator.validate(zkTracer.writeToTmpFile());
+      log.info("Corset result {}", corsetResult);
+      assertThat(corsetResult.isValid()).isTrue();
     }
 
     assertThat(blockchain.getChainHeadHash()).isEqualTo(spec.getLastBlockHash());

@@ -15,8 +15,8 @@
 
 package net.consensys.linea.generated.generalstate;
 
-import static net.consensys.linea.testing.GeneralStateReferenceTestTools.executeTest;
-import static net.consensys.linea.testing.GeneralStateReferenceTestTools.generateTestParametersForConfig;
+import static net.consensys.linea.GeneralStateReferenceTestTools.executeTest;
+import static net.consensys.linea.GeneralStateReferenceTestTools.generateTestParametersForConfig;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.stream.Stream;

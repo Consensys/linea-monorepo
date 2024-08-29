@@ -43,6 +43,7 @@ apply plugin: 'com.adarshr.test-logger'
 test {
   minHeapSize = "4g"
   maxHeapSize = "8g"
+  maxParallelForks = Runtime.getRuntime().availableProcessors().intdiv(2) ?: 1
   jvmArgs = [
     '-XX:-UseGCOverheadLimit',
     // Mockito and jackson-databind do some strange reflection during tests.
@@ -120,6 +121,7 @@ tasks.register('unitTests', Test) {
 
   minHeapSize = "4g"
   maxHeapSize = "8g"
+  maxParallelForks = Runtime.getRuntime().availableProcessors().intdiv(2) ?: 1
 
   useJUnitPlatform {
     excludeTags("AcceptanceTest")
