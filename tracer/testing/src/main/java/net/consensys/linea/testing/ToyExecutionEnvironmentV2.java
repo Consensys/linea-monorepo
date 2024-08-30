@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.runtime.stack.Stack.MAX_STACK_SIZE;
 
 import java.math.BigInteger;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,7 @@ import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -39,6 +41,7 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
 import org.hyperledger.besu.ethereum.mainnet.TransactionValidatorFactory;
 import org.hyperledger.besu.ethereum.mainnet.feemarket.FeeMarket;
 import org.hyperledger.besu.ethereum.mainnet.feemarket.LondonFeeMarket;
+import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.EVM;
@@ -66,13 +69,34 @@ public class ToyExecutionEnvironmentV2 {
   private static final FeeMarket feeMarket = FeeMarket.london(-1);
 
   @Builder.Default private BigInteger chainId = CHAIN_ID;
+
   private final ToyWorld toyWorld;
+
   @Singular private final List<Transaction> transactions;
+
+  /**
+   * A function applied to the {@link TransactionProcessingResult} of each transaction; by default,
+   * asserts that the transaction is successful.
+   */
+  @Builder.Default private final Consumer<TransactionProcessingResult> testValidator = x -> {};
+
+  @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
+
+  private final ZkTracer tracer = new ZkTracer();
 
   public void run() {
     final EVM evm = MainnetEVMs.london(this.chainId, EvmConfiguration.DEFAULT);
     GeneralStateReferenceTestTools.executeTest(
-        this.buildGeneralStateTestCaseSpec(evm), getMainnetTransactionProcessor(evm), feeMarket);
+        this.buildGeneralStateTestCaseSpec(evm),
+        tracer,
+        getMainnetTransactionProcessor(evm),
+        feeMarket,
+        testValidator,
+        zkTracerValidator);
+  }
+
+  public Hub getHub() {
+    return tracer.getHub();
   }
 
   public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec(EVM evm) {

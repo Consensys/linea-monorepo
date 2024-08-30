@@ -21,12 +21,10 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class BlockhashTest {
 
-  @Disabled("Not possible to test yet, ToyWorld issue, see #934")
   @Test
   void someBlockhash() {
     BytecodeRunner.of(
@@ -141,6 +139,7 @@ public class BlockhashTest {
                 // TODO: add test with different block in the conflated batch
 
                 .compile())
+        .useToyExecutionEnvironmentV2(true)
         .run();
   }
 }
