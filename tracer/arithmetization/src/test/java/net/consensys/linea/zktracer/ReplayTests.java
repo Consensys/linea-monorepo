@@ -96,17 +96,17 @@ public class ReplayTests {
 
   @Test
   void leoFailingRange() {
-    replay("5389571-5389577.json.gz", false);
+    replay("5389571-5389577.json.gz");
   }
 
   @Test
   void failingMmuModexp() {
-    replay("5995162.json.gz", false);
+    replay("5995162.json.gz");
   }
 
   @Test
   void failRlpAddress() {
-    replay("5995097.json.gz", false);
+    replay("5995097.json.gz");
   }
 
   @Test
@@ -116,12 +116,12 @@ public class ReplayTests {
 
   @Test
   void multipleFailingCallToEcrecover() {
-    replay("5000544.json.gz", false);
+    replay("5000544.json.gz");
   }
 
   @Test
   void incident777zkGethMainnet() {
-    replay("7461019-7461030.json.gz", false);
+    replay("7461019-7461030.json.gz");
   }
 
   @Test
@@ -139,7 +139,7 @@ public class ReplayTests {
     // The purpose of this test is to check the mechanism for spotting divergence between the replay
     // tests and mainnet.  Specifically, this replay has transaction result information embedded
     // within it.
-    replay("6110045.json.gz", false);
+    replay("6110045.json.gz");
   }
 
   @Test
@@ -149,18 +149,18 @@ public class ReplayTests {
 
   @Test
   void blockHash1() {
-    replay("8718090.json.gz", false);
+    replay("8718090.json.gz");
   }
 
   @Test
   void blockHash2() {
-    replay("8718330.json.gz", false);
+    replay("8718330.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
   // instruction
   @Test
   void negativeNumberOfMmioInstruction() {
-    replay("6029454-6029459.json.gz", false);
+    replay("6029454-6029459.json.gz");
   }
 }
