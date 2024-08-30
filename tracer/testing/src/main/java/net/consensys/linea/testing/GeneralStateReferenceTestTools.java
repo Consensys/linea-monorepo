@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -60,8 +61,11 @@ public class GeneralStateReferenceTestTools {
   @SneakyThrows
   public static void executeTest(
       final GeneralStateTestCaseEipSpec spec,
+      final ZkTracer tracer,
       final MainnetTransactionProcessor processor,
-      final FeeMarket feeMarket) {
+      final FeeMarket feeMarket,
+      final Consumer<TransactionProcessingResult> transactionProcessingResultValidator,
+      final Consumer<ZkTracer> zkTracerValidator) {
     final BlockHeader blockHeader = spec.getBlockHeader();
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
     final List<Transaction> transactions = new ArrayList<>();
@@ -89,8 +93,6 @@ public class GeneralStateReferenceTestTools {
     final Wei blobGasPrice =
         feeMarket.blobGasPricePerGas(blockHeader.getExcessBlobGas().orElse(BlobGas.ZERO));
 
-    final ZkTracer tracer = new ZkTracer();
-
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(blockHeader, blockBody);
     TransactionProcessingResult result = null;
@@ -114,6 +116,9 @@ public class GeneralStateReferenceTestTools {
               false,
               TransactionValidationParams.processingBlock(),
               blobGasPrice);
+
+      transactionProcessingResultValidator.accept(result);
+      zkTracerValidator.accept(tracer);
 
       if (result.isInvalid()) {
         final TransactionProcessingResult finalResult = result;

@@ -43,6 +43,9 @@ public final class BytecodeRunner {
   public static final long DEFAULT_GAS_LIMIT = 25_000_000L;
   private final Bytes byteCode;
   ToyExecutionEnvironment toyExecutionEnvironment;
+  ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
+
+  @Setter private boolean useToyExecutionEnvironmentV2 = false;
 
   /**
    * @param byteCode the byte code to test
@@ -112,18 +115,33 @@ public final class BytecodeRunner {
 
     final ToyWorld toyWorld = ToyWorld.builder().accounts(accounts).build();
 
-    toyExecutionEnvironment =
-        ToyExecutionEnvironment.builder()
-            .testValidator(x -> {})
-            .toyWorld(toyWorld)
-            .zkTracerValidator(zkTracerValidator)
-            .transaction(tx)
-            .build();
+    if (useToyExecutionEnvironmentV2) {
+      toyExecutionEnvironmentV2 =
+          ToyExecutionEnvironmentV2.builder()
+              .testValidator(x -> {})
+              .toyWorld(toyWorld)
+              .zkTracerValidator(zkTracerValidator)
+              .transaction(tx)
+              .build();
+      toyExecutionEnvironmentV2.run();
 
-    toyExecutionEnvironment.run();
+    } else {
+      toyExecutionEnvironment =
+          ToyExecutionEnvironment.builder()
+              .testValidator(x -> {})
+              .toyWorld(toyWorld)
+              .zkTracerValidator(zkTracerValidator)
+              .transaction(tx)
+              .build();
+      toyExecutionEnvironment.run();
+    }
   }
 
   public Hub getHub() {
-    return toyExecutionEnvironment.getHub();
+    if (useToyExecutionEnvironmentV2) {
+      return toyExecutionEnvironmentV2.getHub();
+    } else {
+      return toyExecutionEnvironment.getHub();
+    }
   }
 }
