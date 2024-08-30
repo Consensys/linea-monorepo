@@ -96,7 +96,7 @@ public class PrecompileSubsection
     fragments = new ArrayList<>(maxNumberOfLines());
 
     hub.defers().scheduleForImmediateContextEntry(this); // gas & input data, ...
-    hub.defers().scheduleForContextExit(this, exoModuleOperationId());
+    hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
     hub.defers().scheduleForContextReEntry(this, hub.currentFrame()); // success bit & return data
 
     final PrecompileScenarioFragment.PrecompileFlag precompileFlag =
@@ -142,14 +142,6 @@ public class PrecompileSubsection
     callerGas = hub.callStack().parent().frame().getRemainingGas();
     calleeGas = hub.messageFrame().getRemainingGas();
     parentReturnDataTarget = hub.currentFrame().returnDataTargetInCaller();
-
-    // TODO: @françois: I've added this here as I believe that we will want
-    //  to resolve at context exit in all cases and my impression is that
-    //  we weren't doing so currently.
-    //  This actually raises the question if we should pre-emptively schedule
-    //  everything for ContextExit as soon as it has been scheduled for
-    //  ContextEntry ...
-    hub.defers().scheduleForContextExit(this, hub.currentFrame().id());
   }
 
   public void resolveUponExitingContext(Hub hub, CallFrame callFrame) {
