@@ -1,0 +1,80 @@
+plugins {
+    id 'net.consensys.zkevm.kotlin-application-conventions'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+dependencies {
+  implementation project(':transaction-exclusion-api:core')
+  implementation project(':jvm-libs:json-rpc')
+  implementation project(':jvm-libs:metrics:micrometer')
+  implementation project(':jvm-libs:kotlin-extensions')
+  implementation project(':jvm-libs:future-extensions')
+  implementation project(':jvm-libs:vertx-helper')
+  implementation project(':jvm-libs:core:long-running-service')
+  implementation project(':coordinator:persistence:db')
+  implementation project(':coordinator:persistence:rejectedtransaction')
+
+  implementation "com.github.ben-manes.caffeine:caffeine:${libs.versions.caffeine.get()}"
+  implementation "io.vertx:vertx-core"
+  implementation "io.vertx:vertx-web"
+  implementation "io.vertx:vertx-health-check"
+  implementation "io.vertx:vertx-lang-kotlin"
+  implementation "io.vertx:vertx-config"
+  implementation "io.vertx:vertx-micrometer-metrics"
+  implementation "info.picocli:picocli:${libs.versions.picoli.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-core:${libs.versions.hoplite.get()}"
+  implementation "com.sksamuel.hoplite:hoplite-toml:${libs.versions.hoplite.get()}"
+  implementation "io.micrometer:micrometer-registry-prometheus:${libs.versions.micrometer.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+
+  implementation "org.hyperledger.besu:besu-datatypes:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu:evm:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu.internal:rlp:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu.internal:core:${libs.versions.besu.get()}"
+  implementation "org.hyperledger.besu.internal:crypto:${libs.versions.besu.get()}"
+
+  api("io.netty:netty-transport-native-epoll:${libs.versions.netty.get()}:linux-x86_64") {
+    because "It enables native transport for Linux."
+    // Note that its version should match netty version used in Vertx
+  }
+  api("io.netty:netty-transport-native-kqueue:${libs.versions.netty.get()}:osx-x86_64") {
+    because "It enables native transport for Mac OSX."
+    // Note that its version should match netty version used in Vertx
+  }
+
+  testImplementation "io.vertx:vertx-junit5"
+  testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
+  testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
+}
+
+application {
+    mainClass = 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain'
+}
+
+jar {
+  manifest {
+    attributes(
+      'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
+      'Main-Class': 'net.consensys.linea.traces.app.TransactionExclusionAppMain',
+      'Multi-Release': 'true'
+    )
+  }
+}
+
+run {
+  workingDir = rootProject.projectDir
+  jvmArgs = [
+    "-Dvertx.configurationFile=config/transaction-exclusion-api/vertx.json",
+    "-Dlog4j2.configurationFile=config/transaction-exclusion-api/log4j2-dev.xml"
+  ] + System.properties.entrySet()
+    .findAll { it.key.startsWith("config") }
+    .collect { "-D${it.key}=${it.value}" }
+  args = ["config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml",
+          "config/transaction-exclusion-api/transaction-exclusion-app-local-dev.config.overrides.toml"]
+}
+
+test {
+  systemProperty "vertx.configurationFile", "vertx-options.json"
+}

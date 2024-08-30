@@ -330,7 +330,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       PGDATA: /data/postgres
-      POSTGRES_DB: ${POSTGRES_DB:-coordinator}
+      # POSTGRES_DB: ${POSTGRES_DB:-coordinator}
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
     # uncomment command below if you need to log and debug queries to PG
     #    command:
