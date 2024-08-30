@@ -26,6 +26,7 @@ import java.io.Reader;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -118,9 +119,26 @@ public class ToyExecutionEnvironment {
     }
   }
 
+  public void checkTracer(String inputFilePath) {
+
+    // Generate the output file path based on the input file path
+    Path inputPath = Paths.get(inputFilePath);
+    String outputFileName = inputPath.getFileName().toString().replace(".json.gz", ".lt");
+    Path outputPath = inputPath.getParent().resolve(outputFileName);
+    this.tracer.writeToFile(outputPath);
+    log.info("trace written to `{}`", outputPath);
+    // validation is disabled by default for replayBulk
+    // assertThat(CORSET_VALIDATOR.validate(outputPath).isValid()).isTrue();
+  }
+
   public void run() {
     this.execute();
     this.checkTracer();
+  }
+
+  public void run(String inputFilePath) {
+    this.execute();
+    this.checkTracer(inputFilePath);
   }
 
   /**
@@ -140,6 +158,19 @@ public class ToyExecutionEnvironment {
     }
     this.executeFrom(conflation);
     this.checkTracer();
+  }
+
+  public void replay(final Reader replayFile, String inputFilePath) {
+    Gson gson = new Gson();
+    ConflationSnapshot conflation;
+    try {
+      conflation = gson.fromJson(replayFile, ConflationSnapshot.class);
+    } catch (Exception e) {
+      log.error(e.getMessage());
+      return;
+    }
+    this.executeFrom(conflation);
+    this.checkTracer(inputFilePath);
   }
 
   /**
