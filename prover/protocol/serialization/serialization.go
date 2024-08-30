@@ -69,7 +69,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[i] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Interface:
 
@@ -94,7 +94,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			"value": rawValue,
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Map:
 
@@ -113,7 +113,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[keyString] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Pointer:
 
@@ -133,7 +133,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// is enough.
 		if mode == ReferenceMode && typeOfV == naturalType {
 			colID := v.Interface().(column.Natural).ID
-			return serializeAnyWithJSONPkg(colID), nil
+			return serializeAnyWithCborPkg(colID), nil
 		}
 
 		// Note that this is the same handling as in the interface-level
@@ -153,7 +153,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// to include it in the serialized object. The ID is enough.
 		if mode == ReferenceMode && typeOfV.Implements(queryType) {
 			queryID := v.Interface().(ifaces.Query).Name()
-			return serializeAnyWithJSONPkg(queryID), nil
+			return serializeAnyWithCborPkg(queryID), nil
 		}
 
 		// If 'v' implements query or column, it may be the case that its
@@ -181,7 +181,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[rawFieldName] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 	}
 
 	panic(fmt.Sprintf("unreachable: v=%++v", v))
@@ -229,7 +229,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			subType = t.Elem()
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize to a `%v` value: %w", t.Name(), err)
 		}
 
@@ -272,7 +272,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			return reflect.Value{}, fmt.Errorf("cannot deserialize a map whose keys are not string-like: `%v`", t.Name())
 		}
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize to a `%v` value: %w", t.Name(), err)
 		}
 
@@ -328,7 +328,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			}{}
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize interface `%v`: %w", t.Name(), err)
 		}
 
@@ -363,7 +363,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// deserialized before we deserialize the references to these columns.
 		if mode == ReferenceMode && t == naturalType {
 			var colID ifaces.ColID
-			if err := deserializeAnyWithJSONPkg(data, &colID); err != nil {
+			if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
 				return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
 			}
 
@@ -378,7 +378,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// to include it in the serialized object. The ID is enough.
 		if mode == ReferenceMode && t.Implements(queryType) {
 			var queryID ifaces.QueryID
-			if err := deserializeAnyWithJSONPkg(data, &queryID); err != nil {
+			if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
 				return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
 			}
 
@@ -435,7 +435,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			v         = reflect.New(t).Elem()
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("could note deserialize struct type `%v` : %w", t.Name(), err)
 		}
 

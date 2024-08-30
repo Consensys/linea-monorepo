@@ -4,14 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+
+	"github.com/fxamacker/cbor/v2"
 )
 
-// serializeAnyWithJSONPkg serializes an interface{} object into JSON using the
+// serializeAnyWithCborPkg serializes an interface{} object into JSON using the
 // standard reflection-based [json] package. It will panic on failure
 // and is meant to be used on data and types that controlled by the current
 // package.
-func serializeAnyWithJSONPkg(x any) json.RawMessage {
-	res, err := json.Marshal(x)
+func serializeAnyWithCborPkg(x any) json.RawMessage {
+
+	var (
+		opts  = cbor.CoreDetEncOptions() // use preset options as a starting point
+		em, _ = opts.EncMode()           // create an immutable encoding mode
+	)
+
+	res, err := em.Marshal(x)
 	if err != nil {
 		// that would be unexpected for primitive types
 		panic(err)
@@ -19,10 +27,10 @@ func serializeAnyWithJSONPkg(x any) json.RawMessage {
 	return res
 }
 
-// deserializeAnyWithJSONPkg calls [json.Unmarshal] and wraps the error if any.
-func deserializeAnyWithJSONPkg(data json.RawMessage, x any) error {
-	if err := json.Unmarshal(data, x); err != nil {
-		return fmt.Errorf("json.Unmarshal failed: %w", err)
+// deserializeAnyWithCborPkg calls [json.Unmarshal] and wraps the error if any.
+func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
+	if err := cbor.Unmarshal(data, x); err != nil {
+		return fmt.Errorf("cbor.Unmarshal failed: %w", err)
 	}
 	return nil
 }
@@ -46,7 +54,7 @@ func deserializeValueWithJSONPkg(data json.RawMessage, v reflect.Value) error {
 		v = v.Addr()
 	}
 
-	return deserializeAnyWithJSONPkg(data, v.Interface())
+	return deserializeAnyWithCborPkg(data, v.Interface())
 }
 
 // serializeValueWithJSONPkg serializes a [reflect.Value] using the [json]
@@ -56,7 +64,7 @@ func serializeValueWithJSONPkg(v reflect.Value) (json.RawMessage, error) {
 	if !v.CanInterface() {
 		return nil, fmt.Errorf("could not serialize value of type `%s` because it's an unexported field", v.Type().String())
 	}
-	return serializeAnyWithJSONPkg(v.Interface()), nil
+	return serializeAnyWithCborPkg(v.Interface()), nil
 }
 
 // castAsString returns the string value of a [reflect.String] kind

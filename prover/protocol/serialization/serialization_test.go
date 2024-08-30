@@ -40,12 +40,12 @@ func TestSerializeValue(t *testing.T) {
 	}{
 		{
 			V:        "someRandomString",
-			Expected: `"someRandomString"`,
+			Expected: "psomeRandomString",
 			Mode:     DeclarationMode,
 		},
 		{
 			V:        "someRandomString",
-			Expected: `"someRandomString"`,
+			Expected: "psomeRandomString",
 			Mode:     DeclarationMode,
 		},
 		{
@@ -53,7 +53,7 @@ func TestSerializeValue(t *testing.T) {
 				var s = ifaces.ColID("someIndirectedString")
 				return &s
 			}(),
-			Expected: `"someIndirectedString"`,
+			Expected: "tsomeIndirectedString",
 			Mode:     DeclarationMode,
 		},
 		{
@@ -63,7 +63,7 @@ func TestSerializeValue(t *testing.T) {
 				var s any = string("someStringUnderIface")
 				return &s
 			}(),
-			Expected: `{"type":"#string#0","value":"someStringUnderIface"}`,
+			Expected: "\xa2dtypei#string#0evalueUtsomeStringUnderIface",
 			Mode:     DeclarationMode,
 		},
 		{
@@ -72,11 +72,11 @@ func TestSerializeValue(t *testing.T) {
 				var s any = &id
 				return &s
 			}(),
-			Expected: `{"type":"/protocol/ifaces#ColID#1","value":"newTypeUnderIface"}`,
+			Expected: "\xa2dtypex\x18/protocol/ifaces#ColID#1evalueRqnewTypeUnderIface",
 		},
 		{
 			V:        ifaces.QueryID("QueryID"),
-			Expected: `"QueryID"`,
+			Expected: "gQueryID",
 			Mode:     DeclarationMode,
 		},
 		func() struct {
@@ -97,7 +97,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
-				Expected:    "{\"type\":\"/protocol/column#Natural#0\",\"value\":\"myNaturalColumn\"}",
+				Expected:    "\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
@@ -121,7 +121,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
-				Expected:    "{\"type\":\"/protocol/column#Shifted#0\",\"value\":{\"offset\":2,\"parent\":{\"type\":\"/protocol/column#Natural#0\",\"value\":\"myNaturalColumn\"}}}",
+				Expected:    "\xa2dtypex\x1a/protocol/column#Shifted#0evalueXL\xa2foffsetA\x02fparentX9\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
@@ -151,7 +151,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &col,
-				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"a\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}},{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"c\",\"pos\":0}}],\"padding\":[0,0,0,0],\"round\":0,\"size\":8}}",
+				Expected:    "\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueX\xfe\xa4dsizeA\beroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXЃXC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaacposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaccposA\x00",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
@@ -180,7 +180,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &univ,
-				Expected:    "{\"type\":\"/protocol/query#UnivariateEval#0\",\"value\":{\"pols\":[{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"},{\"type\":\"/protocol/column#Shifted#0\",\"value\":{\"offset\":2,\"parent\":{\"type\":\"/protocol/column#Natural#0\",\"value\":\"a\"}}},{\"type\":\"/protocol/column/verifiercol#FromAccessors#0\",\"value\":{\"accessors\":[{\"type\":\"/protocol/accessors#FromPublicColumn#1\",\"value\":{\"col\":\"b\",\"pos\":0}}],\"padding\":[0,0,0,0],\"round\":0,\"size\":4}}],\"queryId\":\"univ\"}}",
+				Expected:    "\xa2dtypex /protocol/query#UnivariateEval#0evalueY\x01a\xa2dpolsY\x01J\x83X+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaXh\xa2dtypex\x1a/protocol/column#Shifted#0evalueX>\xa2foffsetA\x02fparentX+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaX\xb0\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueXt\xa4dsizeA\x04eroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXF\x81XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00gqueryIdEduniv",
 				Mode:        DeclarationMode,
 				CompiledIOP: comp,
 			}
@@ -210,14 +210,14 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &fromYs,
-				Expected:    "{\"type\":\"/protocol/column/verifiercol#FromYs#0\",\"value\":{\"query\":\"univ\",\"ranges\":[\"a\",\"SHIFT_2_16_a\",\"b\",\"FROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4\"],\"round\":0}}",
+				Expected:    "\xa2dtypex%/protocol/column/verifiercol#FromYs#0evalueXx\xa3equeryEduniveroundA\x00frangesXZ\x84BaaMlSHIFT_2_16_aBabXCxAFROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		{
 			V:           coin.Info{Type: coin.IntegerVec, Size: 16, UpperBound: 16, Name: "foo", Round: 1},
-			Expected:    "{\"name\":\"foo\",\"round\":1,\"size\":16,\"type\":1,\"upperBound\":16}",
+			Expected:    "\xa5dnameDcfoodsizeA\x10dtypeA\x01eroundA\x01jupperBoundA\x10",
 			Mode:        ReferenceMode,
 			CompiledIOP: nil,
 		},
