@@ -28,7 +28,7 @@ class RejectedTransactionCleanupService(
     return this.repository.deleteRejectedTransaction(
       Clock.System.now().minus(config.storagePeriod)
     ).thenPeek {
-      log.info("Number of deleted rows = $it")
+      log.debug("Number of deleted rows = $it")
     }
   }
 
