@@ -27,7 +27,8 @@ object Db {
     database: String,
     target: String,
     username: String,
-    password: String
+    password: String,
+    migrationLocations: String = "classpath:db/"
   ) {
     val dataSource =
       PGSimpleDataSource().apply {
@@ -37,7 +38,7 @@ object Db {
         this.password = password
         this.databaseName = database
       }
-    applyDbMigrations(dataSource, target)
+    applyDbMigrations(dataSource, target, migrationLocations)
   }
 
   /**
@@ -45,11 +46,15 @@ object Db {
    *
    * @param dataSource datasource
    */
-  fun applyDbMigrations(dataSource: DataSource, target: String) {
+  fun applyDbMigrations(
+    dataSource: DataSource,
+    target: String,
+    migrationLocations: String = "classpath:db/"
+  ) {
     LOG.info("Migrating coordinator database")
     Flyway.configure()
       .dataSource(dataSource)
-      .locations("classpath:db/")
+      .locations(migrationLocations)
       .baselineDescription("Migration baseline from legacy database generated ${Instant.now()}")
       .table("schema_version")
       .target(target)

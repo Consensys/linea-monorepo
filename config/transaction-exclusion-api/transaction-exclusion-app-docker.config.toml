@@ -1,0 +1,20 @@
+db-storage-period="PT24H"
+db-cleanup-polling-interval="PT4S"
+
+[database]
+host="postgres"
+port="5432"
+username="postgres"
+password="postgres"
+schema="linea_transaction_exclusion"
+read_pool_size=10
+read_pipelining_limit=10
+transactional_pool_size=10
+migration_dir_location="config/transaction-exclusion-api/db/migration/"
+
+[api]
+port=8080
+path="/"
+# if =0, it will create one verticle per core (or hyperthread if supported)
+number-of-verticles=0
+observability-port=8090

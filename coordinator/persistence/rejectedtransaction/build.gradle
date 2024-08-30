@@ -1,0 +1,64 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
+plugins {
+  id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'java-test-fixtures'
+}
+
+dependencies {
+  api(project(":coordinator:core"))
+  api project(':coordinator:clients:prover-client:serialization')
+  implementation(project(":coordinator:persistence:db"))
+
+  testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
+  testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
+  testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
+  testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
+  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(testFixtures(project(":coordinator:core")))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation("io.vertx:vertx-junit5")
+
+  testFixturesImplementation('tech.pegasys.teku.internal:async:23.1.1')
+  testFixturesImplementation('org.apache.tuweni:tuweni-units:2.3.1')
+  testFixturesImplementation('com.michael-bull.kotlin-result:kotlin-result:1.1.16')
+  testFixturesImplementation('org.mockito.kotlin:mockito-kotlin:5.1.0')
+  testFixturesApi(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
+  testFixturesApi("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+task integrationTest(type: Test) {
+  test ->
+    testLogging {
+      events TestLogEvent.FAILED,
+        TestLogEvent.SKIPPED,
+        TestLogEvent.STANDARD_ERROR,
+        TestLogEvent.STANDARD_OUT
+      exceptionFormat TestExceptionFormat.FULL
+      showCauses true
+      showExceptions true
+      showStackTraces true
+      showStandardStreams false
+    }
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackComposeUp")
+}
+

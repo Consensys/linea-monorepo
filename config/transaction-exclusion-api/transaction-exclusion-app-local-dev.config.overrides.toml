@@ -1,0 +1,8 @@
+[database]
+host="localhost"
+
+[api]
+port=8082
+number-of-verticles=1
+
+
