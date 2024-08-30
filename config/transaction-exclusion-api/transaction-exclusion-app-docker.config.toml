@@ -1,5 +1,5 @@
 db-storage-period="PT24H"
-db-cleanup-polling-interval="PT4S"
+db-cleanup-polling-interval="PT60S"
 
 [database]
 host="postgres"
