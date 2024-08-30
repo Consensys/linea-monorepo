@@ -50,7 +50,7 @@ private fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequest, Json
     } else if (request.params is List<*>) {
       val jsonRpcRequest = request as JsonRpcRequestListParams
       if (jsonRpcRequest.params.isEmpty()) {
-        Err(
+        return Err(
           JsonRpcErrorResponse.invalidParams(
             request.id,
             "Parameters list is empty!"
@@ -58,7 +58,7 @@ private fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequest, Json
         )
       }
     }
-    return Ok(request)
+    Ok(request)
   } catch (e: Exception) {
     Err(JsonRpcErrorResponse.invalidRequest())
   }

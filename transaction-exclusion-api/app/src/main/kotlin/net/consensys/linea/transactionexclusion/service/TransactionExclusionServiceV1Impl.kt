@@ -38,8 +38,6 @@ class TransactionExclusionServiceV1Impl(
       }
     }
 
-    log.info("RejectedTransactionWithInfo: $rejectedTransactionWithTxInfo")
-
     return this.repository.saveRejectedTransaction(rejectedTransactionWithTxInfo)
       .handleComposed { _, error ->
         if (error == null) {
@@ -71,10 +69,7 @@ class TransactionExclusionServiceV1Impl(
   override fun getTransactionExclusionStatus(
     txHash: ByteArray
   ): SafeFuture<Result<RejectedTransaction, TransactionExclusionError>> {
-    log.info("txHash: ${txHash.encodeHex()}")
-
     return this.repository.findRejectedTransaction(txHash).thenApply {
-      log.info("foundRejectedTransactionWithInfo: $it")
       if (it == null) {
         Err(
           TransactionExclusionError(
