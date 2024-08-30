@@ -4,11 +4,11 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import net.consensys.encodeHex
-import net.consensys.linea.ErrorType
+import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.RejectedTransactionsRepository
-import net.consensys.linea.TransactionExclusionError
-import net.consensys.linea.TransactionExclusionServiceV1
+import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
+import net.consensys.linea.transactionexclusion.TransactionExclusionError
+import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.TransactionInfo
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import org.apache.logging.log4j.LogManager

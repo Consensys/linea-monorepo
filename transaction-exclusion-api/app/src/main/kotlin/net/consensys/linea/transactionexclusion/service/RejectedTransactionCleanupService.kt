@@ -2,7 +2,7 @@ package net.consensys.linea.transactionexclusion.service
 
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
-import net.consensys.linea.RejectedTransactionsRepository
+import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

@@ -2,7 +2,7 @@ package net.consensys.linea.transactionexclusion.repository
 
 import kotlinx.datetime.Instant
 import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.RejectedTransactionsRepository
+import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
