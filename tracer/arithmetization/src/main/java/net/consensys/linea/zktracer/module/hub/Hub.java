@@ -145,6 +145,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Slf4j
 @Accessors(fluent = true)
 public class Hub implements Module {
+
   public static final GasProjector GAS_PROJECTOR = new GasProjector();
 
   /** accumulate the trace information for the Hub */
@@ -484,6 +485,8 @@ public class Hub implements Module {
     state.enter();
     txStack.enterTransaction(world, tx, transients.block());
 
+    defers.scheduleForPostTransaction(txStack.current());
+
     this.enterTransaction();
 
     if (!txStack.current().requiresEvmExecution()) {
@@ -560,11 +563,11 @@ public class Hub implements Module {
             Wei.of(this.transients.tx().getBesuTransaction().getValue().getAsBigInteger()),
             this.transients.tx().getBesuTransaction().getGasLimit(),
             this.transients.tx().getBesuTransaction().getData().orElse(Bytes.EMPTY),
-            this.transients.conflation().deploymentInfo().number(toAddress),
+            this.transients.conflation().deploymentInfo().deploymentNumber(toAddress),
             toAddress.isEmpty()
                 ? 0
-                : this.transients.conflation().deploymentInfo().number(toAddress),
-            this.transients.conflation().deploymentInfo().isDeploying(toAddress));
+                : this.transients.conflation().deploymentInfo().deploymentNumber(toAddress),
+            this.transients.conflation().deploymentInfo().getDeploymentStatus(toAddress));
       } else {
         this.callStack.newBedrock(
             this.state.stamps().hub(),
@@ -580,11 +583,11 @@ public class Hub implements Module {
             Wei.of(this.transients.tx().getBesuTransaction().getValue().getAsBigInteger()),
             this.transients.tx().getBesuTransaction().getGasLimit(),
             this.transients.tx().getBesuTransaction().getData().orElse(Bytes.EMPTY),
-            this.transients.conflation().deploymentInfo().number(toAddress),
+            this.transients.conflation().deploymentInfo().deploymentNumber(toAddress),
             toAddress.isEmpty()
                 ? 0
-                : this.transients.conflation().deploymentInfo().number(toAddress),
-            this.transients.conflation().deploymentInfo().isDeploying(toAddress));
+                : this.transients.conflation().deploymentInfo().deploymentNumber(toAddress),
+            this.transients.conflation().deploymentInfo().getDeploymentStatus(toAddress));
       }
     } else {
       // ...or CALL or CREATE
@@ -594,10 +597,10 @@ public class Hub implements Module {
       final CallFrameType frameType =
           frame.isStatic() ? CallFrameType.STATIC : CallFrameType.STANDARD;
       if (isDeployment) {
-        this.transients.conflation().deploymentInfo().markDeploying(codeAddress);
+        this.transients.conflation().deploymentInfo().newDeploymentAt(codeAddress);
       }
       final int codeDeploymentNumber =
-          this.transients.conflation().deploymentInfo().number(codeAddress);
+          this.transients.conflation().deploymentInfo().deploymentNumber(codeAddress);
 
       final long callDataOffset =
           isDeployment
@@ -632,7 +635,7 @@ public class Hub implements Module {
           callDataOffset,
           callDataSize,
           callDataContextNumber,
-          this.transients.conflation().deploymentInfo().number(codeAddress),
+          this.transients.conflation().deploymentInfo().deploymentNumber(codeAddress),
           codeDeploymentNumber,
           isDeployment);
       this.currentFrame().initializeFrame(frame); // TODO should be done in enter
@@ -655,11 +658,11 @@ public class Hub implements Module {
   @Override
   public void traceContextExit(MessageFrame frame) {
     this.currentFrame().initializeFrame(frame); // TODO: is it needed ?
+
+    exitDeploymentFromDeploymentInfoPointOfView();
+
+    // TODO: why only do this at positive depth ?
     if (frame.getDepth() > 0) {
-      this.transients
-          .conflation()
-          .deploymentInfo()
-          .unmarkDeploying(this.currentFrame().byteCodeAddress());
 
       DeploymentExceptions contextExceptions =
           DeploymentExceptions.fromFrame(this.currentFrame(), frame);
@@ -668,24 +671,20 @@ public class Hub implements Module {
       if (contextExceptions.any()) {
         this.callStack.revert(this.state.stamps().hub()); // TODO: Duplicate s?
       }
-
-      for (Module m : this.modules) {
-        m.traceContextExit(frame);
-      }
     }
 
     // We take a snapshot before exiting the transaction
     if (frame.getDepth() == 0) {
       final long leftOverGas = frame.getRemainingGas();
       final long gasRefund = frame.getGasRefund();
-      final boolean minerIsWarm = frame.isAddressWarm(txStack.current().getCoinbase());
+      final boolean coinbaseIsWarm = frame.isAddressWarm(txStack.current().getCoinbase());
 
       txStack
           .current()
           .setPreFinalisationValues(
               leftOverGas,
               gasRefund,
-              minerIsWarm,
+              coinbaseIsWarm,
               this.txStack.getAccumulativeGasUsedInBlockBeforeTxStart());
 
       if (this.state.getProcessingPhase() != TX_SKIP) {
@@ -702,6 +701,25 @@ public class Hub implements Module {
 
     if (frame.getDepth() > 0) {
       this.callStack.exit();
+    }
+  }
+
+  /**
+   * If the current execution context is a deployment context the present method "exits" that
+   * deployment in the sense that it updates the relevant deployment information.
+   */
+  private void exitDeploymentFromDeploymentInfoPointOfView() {
+
+    // sanity check
+    Preconditions.checkArgument(
+        deploymentStatusOfBytecodeAddress()
+            == (messageFrame().getType() == MessageFrame.Type.CONTRACT_CREATION));
+
+    if (deploymentStatusOfBytecodeAddress()) {
+      transients
+          .conflation()
+          .deploymentInfo()
+          .markAsNotUnderDeployment(this.currentFrame().byteCodeAddress());
     }
   }
 
@@ -797,7 +815,7 @@ public class Hub implements Module {
   }
 
   private void handleCreate(Address target) {
-    this.transients.conflation().deploymentInfo().deploy(target);
+    this.transients.conflation().deploymentInfo().newDeploymentAt(target);
   }
 
   public int getCfiByMetaData(
@@ -968,6 +986,7 @@ public class Hub implements Module {
   }
 
   void traceOpcode(MessageFrame frame) {
+
     switch (this.opCodeData().instructionFamily()) {
       case ADD,
           MOD,
@@ -1071,5 +1090,42 @@ public class Hub implements Module {
 
   public CallFrame getLastChildCallFrame(final CallFrame parentFrame) {
     return this.callStack.getById(parentFrame.childFramesId().getLast());
+  }
+
+  public final int deploymentNumberOf(Address address) {
+    return transients.conflation().deploymentInfo().deploymentNumber(address);
+  }
+
+  public final boolean deploymentStatusOf(Address address) {
+    return transients.conflation().deploymentInfo().getDeploymentStatus(address);
+  }
+
+  // methods related to the byte code address
+  // (c in the definition of \Theta in the EYP)
+  public final Address bytecodeAddress() {
+    return this.messageFrame().getContractAddress();
+  }
+
+  public final int deploymentNumberOfBytecodeAddress() {
+    return deploymentNumberOf(bytecodeAddress());
+  }
+
+  public final boolean deploymentStatusOfBytecodeAddress() {
+    return deploymentStatusOf(bytecodeAddress());
+  }
+
+  // methods related to the account address
+  // (r in the definition of \Theta in the EYP)
+  // (also I_a in the EYP)
+  public final Address accountAddress() {
+    return this.messageFrame().getRecipientAddress();
+  }
+
+  public final int deploymentNumberOfAccountAddress() {
+    return deploymentNumberOf(this.accountAddress());
+  }
+
+  public final boolean deploymentStatusOfAccountAddress() {
+    return deploymentStatusOf(this.accountAddress());
   }
 }

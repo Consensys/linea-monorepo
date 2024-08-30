@@ -26,7 +26,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Getter
 public class Block {
   private int blockNumber = 0;
-  private Address minerAddress;
+  private Address coinbaseAddress;
   private Wei baseFee;
 
   /**
@@ -36,7 +36,7 @@ public class Block {
    */
   public void update(final ProcessableBlockHeader processableBlockHeader) {
     this.blockNumber++;
-    this.minerAddress = processableBlockHeader.getCoinbase();
+    this.coinbaseAddress = processableBlockHeader.getCoinbase();
     this.baseFee = Wei.fromQuantity(processableBlockHeader.getBaseFee().orElseThrow());
   }
 }

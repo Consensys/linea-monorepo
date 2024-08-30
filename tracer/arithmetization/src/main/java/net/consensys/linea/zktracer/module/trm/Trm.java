@@ -67,7 +67,7 @@ public class Trm implements Module {
   @Override
   public void traceStartTx(WorldView world, TransactionProcessingMetadata txMetaData) {
     // Add effective receiver Address
-    operations.add(new TrmOperation(EWord.of(txMetaData.getEffectiveTo())));
+    operations.add(new TrmOperation(EWord.of(txMetaData.getEffectiveRecipient())));
 
     // Add Address in AccessList to warm
     final Transaction tx = txMetaData.getBesuTransaction();

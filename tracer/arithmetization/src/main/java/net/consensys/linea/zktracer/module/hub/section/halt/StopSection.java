@@ -50,12 +50,12 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
     hub.defers().scheduleForPostTransaction(this); // always
 
     hubStamp = hub.stamp();
-    address = hub.currentFrame().accountAddress();
+    address = hub.messageFrame().getContractAddress();
     contextNumber = hub.currentFrame().contextNumber();
     {
       DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
-      deploymentNumber = deploymentInfo.number(address);
-      deploymentStatus = deploymentInfo.isDeploying(address);
+      deploymentNumber = deploymentInfo.deploymentNumber(address);
+      deploymentStatus = deploymentInfo.getDeploymentStatus(address);
     }
     parentContextReturnDataReset = executionProvidesEmptyReturnData(hub);
 
@@ -78,7 +78,9 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
   public void deploymentStopSection(Hub hub) {
 
     AccountSnapshot priorEmptyDeployment = AccountSnapshot.canonical(hub, address);
-    AccountSnapshot afterEmptyDeployment = priorEmptyDeployment.deployByteCode(Bytecode.EMPTY);
+    AccountSnapshot afterEmptyDeployment =
+        priorEmptyDeployment.deployByteCode(
+            Bytecode.EMPTY); // TODO: this should be deferred to ContextExit
     AccountFragment doingAccountFragment =
         hub.factories()
             .accountFragment()

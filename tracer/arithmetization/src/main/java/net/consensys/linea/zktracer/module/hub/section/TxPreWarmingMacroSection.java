@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.PRE_WARMING;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.precompileAddress;
 
@@ -62,10 +63,10 @@ public class TxPreWarmingMacroSection {
                   final DeploymentInfo deploymentInfo =
                       hub.transients().conflation().deploymentInfo();
 
-                  final int deploymentNumber = deploymentInfo.number(address);
+                  final int deploymentNumber = deploymentInfo.deploymentNumber(address);
                   Preconditions.checkArgument(
-                      !deploymentInfo.isDeploying(address),
-                      "Deployment status during TX_INIT phase of any address should always be false");
+                      !deploymentInfo.getDeploymentStatus(address),
+                      "Deployment status during TX_INIT phase of any accountAddress should always be false");
 
                   final boolean isAccountWarm = seenAddresses.contains(address);
 
@@ -104,20 +105,21 @@ public class TxPreWarmingMacroSection {
 
                     final State.StorageSlotIdentifier storageSlotIdentifier =
                         new State.StorageSlotIdentifier(
-                            address, deploymentInfo.number(address), EWord.of(k));
+                            address, deploymentInfo.deploymentNumber(address), EWord.of(k));
 
                     final StorageFragment storageFragment =
                         new StorageFragment(
                             hub.state,
                             new State.StorageSlotIdentifier(
-                                address, deploymentInfo.number(address), EWord.of(key)),
+                                address, deploymentInfo.deploymentNumber(address), EWord.of(key)),
                             value,
                             value,
                             value,
                             seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
                             true,
                             DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
-                            hub.state.firstAndLastStorageSlotOccurrences.size());
+                            hub.state.firstAndLastStorageSlotOccurrences.size(),
+                            PRE_WARMING);
 
                     new TxPrewarmingSection(hub, storageFragment);
                     hub.state.updateOrInsertStorageSlotOccurrence(
@@ -129,9 +131,9 @@ public class TxPreWarmingMacroSection {
 
                 final Transaction besuTx = currentTxMetadata.getBesuTransaction();
                 final Address senderAddress = besuTx.getSender();
-                final Address receiverAddress = effectiveToAddress(besuTx);
+                final Address recipientAddress = effectiveToAddress(besuTx);
                 currentTxMetadata.isSenderPreWarmed(seenAddresses.contains(senderAddress));
-                currentTxMetadata.isReceiverPreWarmed(seenAddresses.contains(receiverAddress));
+                currentTxMetadata.isRecipientPreWarmed(seenAddresses.contains(recipientAddress));
               }
             });
   }

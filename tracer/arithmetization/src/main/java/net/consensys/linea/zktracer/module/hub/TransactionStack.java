@@ -66,13 +66,14 @@ public class TransactionStack implements StackedContainer {
     final TransactionProcessingMetadata newTx =
         new TransactionProcessingMetadata(
             world, tx, block, relativeTransactionNumber, currentAbsNumber);
+
     this.txs.add(newTx);
   }
 
   public void setCodeFragmentIndex(Hub hub) {
     for (TransactionProcessingMetadata tx : this.txs) {
       final int cfi =
-          tx.requiresCfiUpdate() ? hub.getCfiByMetaData(tx.getEffectiveTo(), 1, true) : 0;
+          tx.requiresCfiUpdate() ? hub.getCfiByMetaData(tx.getEffectiveRecipient(), 1, true) : 0;
       tx.setCodeFragmentIndex(cfi);
     }
   }

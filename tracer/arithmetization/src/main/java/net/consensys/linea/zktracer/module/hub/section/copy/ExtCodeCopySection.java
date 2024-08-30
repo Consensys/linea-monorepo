@@ -54,8 +54,8 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final MessageFrame frame = hub.messageFrame();
     rawAddress = frame.getStackItem(0);
     address = Address.extract(Bytes32.leftPad(rawAddress));
-    incomingDeploymentNumber = hub.transients().conflation().deploymentInfo().number(address);
-    incomingDeploymentStatus = hub.transients().conflation().deploymentInfo().isDeploying(address);
+    incomingDeploymentNumber = hub.deploymentNumberOf(address);
+    incomingDeploymentStatus = hub.deploymentStatusOf(address);
     incomingWarmth = frame.isAddressWarm(address);
     final ImcFragment imcFragment = ImcFragment.empty(hub);
 
@@ -114,15 +114,18 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     final boolean foreignAccountHasCode = foreignAccount != null && foreignAccount.hasCode();
     final boolean triggerCfi = triggerMmu && foreignAccountHasCode;
 
-    accountAfter = accountBefore.turnOnWarmth();
+    accountAfter = accountBefore.deepCopy();
+    accountAfter.turnOnWarmth();
 
     final AccountFragment accountDoingFragment =
         hub.factories()
             .accountFragment()
             .makeWithTrm(accountBefore, accountAfter, rawAddress, doingDomSubStamps);
     accountDoingFragment.requiresRomlex(triggerCfi);
+    if (triggerCfi) {
+      hub.romLex().callRomLex(hub.messageFrame());
+    }
     this.addFragment(accountDoingFragment);
-    hub.romLex().callRomLex(hub.messageFrame());
 
     // an EXTCODECOPY section is only scheduled
     // for rollback if it is unexceptional

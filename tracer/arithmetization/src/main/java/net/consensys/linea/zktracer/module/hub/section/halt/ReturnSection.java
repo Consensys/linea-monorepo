@@ -80,7 +80,7 @@ public class ReturnSection extends TraceSection
             == hub.transients()
                 .conflation()
                 .deploymentInfo()
-                .isDeploying(frame.getContractAddress()));
+                .getDeploymentStatus(frame.getContractAddress()));
 
     returnScenarioFragment = new ReturnScenarioFragment();
     final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);

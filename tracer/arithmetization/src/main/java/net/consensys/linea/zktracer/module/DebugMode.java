@@ -167,7 +167,7 @@ public class DebugMode {
         "== Enter block {} ({} txs.)",
         processableBlockHeader.getNumber(),
         body.getTransactions().size());
-    log.info("    miner:     {}", processableBlockHeader.getCoinbase());
+    log.info("    coinbase:  {}", processableBlockHeader.getCoinbase());
     log.info("    gas limit: {}", processableBlockHeader.getGasLimit());
     log.info(
         "    base fee:  {}",
