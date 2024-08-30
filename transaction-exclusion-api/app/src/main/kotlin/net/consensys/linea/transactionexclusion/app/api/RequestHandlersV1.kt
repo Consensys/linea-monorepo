@@ -15,7 +15,7 @@ import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.linea.ModuleOverflow
 import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.TransactionExclusionServiceV1
+import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
