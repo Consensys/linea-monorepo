@@ -178,8 +178,8 @@ public class TxndataOperation extends ModuleOperation {
     valuesToRlptxn.add(
         RlptxnOutgoing.set(
             (short) COMMON_RLP_TXN_PHASE_NUMBER_1,
-            tx.isDeployment() ? Bytes.EMPTY : tx.getEffectiveTo().slice(0, 4),
-            tx.isDeployment() ? Bytes.EMPTY : lowPart(tx.getEffectiveTo())));
+            tx.isDeployment() ? Bytes.EMPTY : tx.getEffectiveRecipient().slice(0, 4),
+            tx.isDeployment() ? Bytes.EMPTY : lowPart(tx.getEffectiveRecipient())));
 
     // i+2
     valuesToRlptxn.add(
@@ -315,12 +315,12 @@ public class TxndataOperation extends ModuleOperation {
     final Bytes nonce = Bytes.ofUnsignedLong(tx.getBesuTransaction().getNonce());
     final Bytes initialBalance = bigIntegerToBytes(tx.getInitialBalance());
     final Bytes value = bigIntegerToBytes(tx.getBesuTransaction().getValue().getAsBigInteger());
-    final long toHi = highPart(tx.getEffectiveTo());
-    final Bytes toLo = lowPart(tx.getEffectiveTo());
+    final long toHi = highPart(tx.getEffectiveRecipient());
+    final Bytes toLo = lowPart(tx.getEffectiveRecipient());
     final Bytes gasLimit = Bytes.minimalBytes(tx.getBesuTransaction().getGasLimit());
     final Bytes gasInitiallyAvailable = Bytes.minimalBytes(tx.getInitiallyAvailableGas());
     final Bytes gasPrice = Bytes.minimalBytes(tx.getEffectiveGasPrice());
-    final Bytes priorityFeePerGas = Bytes.minimalBytes(tx.weiPerGasForMiner());
+    final Bytes priorityFeePerGas = Bytes.minimalBytes(tx.feeRateForCoinbase());
     final Bytes baseFee = block.getBaseFee().get().toMinimalBytes();
     final long coinbaseHi = highPart(block.getCoinbaseAddress());
     final Bytes coinbaseLo = lowPart(block.getCoinbaseAddress());

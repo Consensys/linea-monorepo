@@ -44,9 +44,9 @@ public final class TransactionFragment implements TraceFragment {
   @Override
   public Trace trace(Trace trace) {
     final Transaction tx = transactionProcessingMetadata.getBesuTransaction();
-    final Address to = transactionProcessingMetadata.getEffectiveTo();
+    final Address to = transactionProcessingMetadata.getEffectiveRecipient();
     final Address from = transactionProcessingMetadata.getSender();
-    final Address miner = transactionProcessingMetadata.getCoinbase();
+    final Address coinbase = transactionProcessingMetadata.getCoinbase();
 
     return trace
         .peekAtTransaction(true)
@@ -69,7 +69,7 @@ public final class TransactionFragment implements TraceFragment {
         .pTransactionGasPrice(
             Bytes.minimalBytes(transactionProcessingMetadata.getEffectiveGasPrice()))
         .pTransactionPriorityFeePerGas(
-            Bytes.minimalBytes(transactionProcessingMetadata.weiPerGasForMiner()))
+            Bytes.minimalBytes(transactionProcessingMetadata.feeRateForCoinbase()))
         .pTransactionBasefee(Bytes.minimalBytes(transactionProcessingMetadata.getBaseFee()))
         .pTransactionCallDataSize(tx.getData().map(Bytes::size).orElse(0))
         .pTransactionInitCodeSize(tx.getInit().map(Bytes::size).orElse(0))
@@ -79,7 +79,7 @@ public final class TransactionFragment implements TraceFragment {
             Bytes.minimalBytes(transactionProcessingMetadata.getRefundCounterMax()))
         .pTransactionRefundEffective(
             Bytes.minimalBytes(transactionProcessingMetadata.getGasRefunded()))
-        .pTransactionCoinbaseAddressHi(highPart(miner))
-        .pTransactionCoinbaseAddressLo(lowPart(miner));
+        .pTransactionCoinbaseAddressHi(highPart(coinbase))
+        .pTransactionCoinbaseAddressLo(lowPart(coinbase));
   }
 }

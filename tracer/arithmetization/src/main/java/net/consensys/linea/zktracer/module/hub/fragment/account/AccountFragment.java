@@ -188,8 +188,7 @@ public final class AccountFragment
 
   @Override
   public void resolvePostConflation(Hub hub, WorldView world) {
-    deploymentNumberInfinity =
-        hub.transients().conflation().deploymentInfo().number(oldState.address());
+    deploymentNumberInfinity = hub.deploymentNumberOf(oldState.address());
     existsInfinity = world.get(oldState.address()) != null;
     codeFragmentIndex =
         requiresRomlex

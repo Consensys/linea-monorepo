@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.testing.ToyExecutionEnvironment.DEFAULT_MINER_ADDRESS;
+import static net.consensys.linea.testing.ToyExecutionEnvironment.DEFAULT_COINBASE_ADDRESS;
 
 import java.util.List;
 
@@ -46,9 +46,9 @@ public class TxSkip {
             .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
             .build();
 
-    final ToyAccount minerAccount =
+    final ToyAccount coinbaseAccount =
         ToyAccount.builder()
-            .address(DEFAULT_MINER_ADDRESS)
+            .address(DEFAULT_COINBASE_ADDRESS)
             .balance(Wei.fromEth(2))
             .nonce(5)
             .build();
@@ -184,7 +184,7 @@ public class TxSkip {
         ToyWorld.builder()
             .accounts(
                 List.of(
-                    minerAccount,
+                    coinbaseAccount,
                     senderAccount1,
                     senderAccount2,
                     senderAccount3,

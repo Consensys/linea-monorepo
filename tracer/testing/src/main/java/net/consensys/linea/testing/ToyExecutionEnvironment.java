@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import lombok.Builder;
@@ -53,6 +54,7 @@ import org.hyperledger.besu.ethereum.mainnet.TransactionValidatorFactory;
 import org.hyperledger.besu.ethereum.mainnet.feemarket.FeeMarket;
 import org.hyperledger.besu.ethereum.mainnet.feemarket.LondonFeeMarket;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
+import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.EVM;
 import org.hyperledger.besu.evm.MainnetEVMs;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
@@ -81,7 +83,7 @@ public class ToyExecutionEnvironment {
   private static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   private static final GasCalculator gasCalculator = ZkTracer.gasCalculator;
-  public static final Address DEFAULT_MINER_ADDRESS =
+  public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   private static final long DEFAULT_BLOCK_NUMBER = 6678980;
   private static final long DEFAULT_TIME_STAMP = 14071789;
@@ -148,13 +150,25 @@ public class ToyExecutionEnvironment {
    * @param conflation the conflation to replay
    */
   private void executeFrom(final ConflationSnapshot conflation) {
-    final ToyWorld overridenToyWorld = ToyWorld.of(conflation);
+    final ToyWorld toyWorld = ToyWorld.of(conflation);
+    //
+    Map<String, ReferenceTestWorldState.AccountMock> accountMockMap =
+        toyWorld.getAddressAccountMap().entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    entry -> entry.getKey().toHexString(),
+                    entry -> entry.getValue().toAccountMock()));
+
+    ReferenceTestWorldState world =
+        ReferenceTestWorldState.create(accountMockMap, EvmConfiguration.DEFAULT);
+
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
       for (TransactionSnapshot tx : blockSnapshot.txs()) {
         this.chainId = tx.getChainId();
       }
     }
     final MainnetTransactionProcessor transactionProcessor = getMainnetTransactionProcessor();
+
     tracer.traceStartConflation(conflation.blocks().size());
 
     for (BlockSnapshot blockSnapshot : conflation.blocks()) {
@@ -168,7 +182,7 @@ public class ToyExecutionEnvironment {
 
       for (TransactionSnapshot txs : blockSnapshot.txs()) {
         final Transaction tx = txs.toTransaction();
-        final WorldUpdater updater = overridenToyWorld.updater();
+        final WorldUpdater updater = world.updater();
         // Process transaction leading to expected outcome
         final TransactionProcessingResult outcome =
             transactionProcessor.processTransaction(
@@ -177,7 +191,7 @@ public class ToyExecutionEnvironment {
                 tx,
                 header.getCoinbase(),
                 buildOperationTracer(tx, txs.getOutcome()),
-                overridenToyWorld::blockHash,
+                toyWorld::blockHash,
                 false,
                 Wei.ZERO);
         // Commit transaction
@@ -185,7 +199,7 @@ public class ToyExecutionEnvironment {
       }
       tracer.traceEndBlock(header, body);
     }
-    tracer.traceEndConflation(overridenToyWorld.updater());
+    tracer.traceEndConflation(world.updater());
   }
 
   private void execute() {
@@ -195,7 +209,7 @@ public class ToyExecutionEnvironment {
             .gasLimit(LINEA_BLOCK_GAS_LIMIT)
             .difficulty(Difficulty.of(LINEA_DIFFICULTY))
             .number(DEFAULT_BLOCK_NUMBER)
-            .coinbase(DEFAULT_MINER_ADDRESS)
+            .coinbase(DEFAULT_COINBASE_ADDRESS)
             .timestamp(DEFAULT_TIME_STAMP)
             .parentHash(DEFAULT_HASH)
             .buildBlockHeader();

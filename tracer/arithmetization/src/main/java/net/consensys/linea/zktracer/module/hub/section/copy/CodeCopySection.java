@@ -75,8 +75,8 @@ public class CodeCopySection extends TraceSection {
         AccountSnapshot.fromAccount(
             codeAccount,
             warmth,
-            hub.transients().conflation().deploymentInfo().number(codeAddress),
-            hub.transients().conflation().deploymentInfo().isDeploying(codeAddress));
+            hub.deploymentNumberOf(codeAddress),
+            hub.deploymentStatusOf(codeAddress));
 
     final DomSubStampsSubFragment doingDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0); // Specifics for CODECOPY

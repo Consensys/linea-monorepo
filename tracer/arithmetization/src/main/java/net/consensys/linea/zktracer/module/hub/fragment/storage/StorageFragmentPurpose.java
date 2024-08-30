@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys Inc.
+ * Copyright Consensys Software Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,10 +12,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 package net.consensys.linea.zktracer.module.hub.fragment.storage;
 
-public enum StorageFragmentType {
-  STANDARD,
-  REVERT_WITH_CURRENT
-}
+public enum StorageFragmentPurpose {
+  SLOAD_DOING,
+  SLOAD_UNDOING,
+
+  SSTORE_DOING,
+  SSTORE_UNDOING,
+
+  PRE_WARMING
+};

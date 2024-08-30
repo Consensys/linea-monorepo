@@ -22,6 +22,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
@@ -35,9 +36,9 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public class TxSkippedSection extends TraceSection implements PostTransactionDefer {
   final TransactionProcessingMetadata txMetadata;
-  final AccountSnapshot oldFromAccount;
-  final AccountSnapshot oldToAccount;
-  final AccountSnapshot oldMinerAccount;
+  final AccountSnapshot senderAccountSnapshotBefore;
+  final AccountSnapshot recipientAccountSnapshotBefore;
+  final AccountSnapshot coinbaseAccountSnapshotBefore;
 
   public TxSkippedSection(
       Hub hub, WorldView world, TransactionProcessingMetadata txMetadata, Transients transients) {
@@ -46,93 +47,107 @@ public class TxSkippedSection extends TraceSection implements PostTransactionDef
     hub.defers().scheduleForPostTransaction(this);
 
     // From account information
-    final Address fromAddress = txMetadata.getBesuTransaction().getSender();
-    oldFromAccount =
+    final Address senderAddress = txMetadata.getBesuTransaction().getSender();
+    senderAccountSnapshotBefore =
         AccountSnapshot.fromAccount(
-            world.get(fromAddress),
-            isPrecompile(fromAddress),
-            transients.conflation().deploymentInfo().number(fromAddress),
+            world.get(senderAddress),
+            isPrecompile(senderAddress),
+            transients.conflation().deploymentInfo().deploymentNumber(senderAddress),
             false);
 
-    // To account information
-    final Address toAddress = txMetadata.getEffectiveTo();
+    // Recipiet account information
+    final Address recipientAddress = txMetadata.getEffectiveRecipient();
+    recipientAccountSnapshotBefore =
+        AccountSnapshot.fromAccount(
+            world.get(recipientAddress),
+            isPrecompile(recipientAddress),
+            transients.conflation().deploymentInfo().deploymentNumber(recipientAddress),
+            false);
+
+    // the updated deployment info appears in the "updated" account fragment
     if (txMetadata.isDeployment()) {
-      transients.conflation().deploymentInfo().deploy(toAddress);
+      transients.conflation().deploymentInfo().newDeploymentAtForTxSkip(recipientAddress);
     }
-    oldToAccount =
-        AccountSnapshot.fromAccount(
-            world.get(toAddress),
-            isPrecompile(toAddress),
-            transients.conflation().deploymentInfo().number(toAddress),
-            false);
 
-    // Miner account information
-    final Address minerAddress = txMetadata.getCoinbase();
-    oldMinerAccount =
+    // Coinbase account information
+    final Address coinbaseAddress = txMetadata.getCoinbase();
+    coinbaseAccountSnapshotBefore =
         AccountSnapshot.fromAccount(
-            world.get(minerAddress),
-            isPrecompile(minerAddress),
-            transients.conflation().deploymentInfo().number(transients.block().minerAddress()),
+            world.get(coinbaseAddress),
+            isPrecompile(coinbaseAddress),
+            transients
+                .conflation()
+                .deploymentInfo()
+                .deploymentNumber(transients.block().coinbaseAddress()),
             false);
   }
 
   @Override
   public void resolvePostTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
-    final Address fromAddress = this.oldFromAccount.address();
-    final Address toAddress = this.oldToAccount.address();
-    final Address minerAddress = this.txMetadata.getCoinbase();
-    hub.transients().conflation().deploymentInfo().unmarkDeploying(toAddress);
+    final Address senderAddress = this.senderAccountSnapshotBefore.address();
+    final Address recipientAddress = this.recipientAccountSnapshotBefore.address();
+    final Address coinbaseAddress = this.txMetadata.getCoinbase();
 
-    final AccountSnapshot newFromAccount =
+    // TODO: @François: it seems to me this doesn't take into account the
+    //  "sender = recipient, recipient = coinbase, coinbase = sender"
+    //  shenanigans.
+    final AccountSnapshot senderAccountSnapshotAfter =
         AccountSnapshot.fromAccount(
-            state.get(fromAddress),
-            this.oldFromAccount.isWarm(),
-            hub.transients().conflation().deploymentInfo().number(fromAddress),
+            state.get(senderAddress),
+            this.senderAccountSnapshotBefore.isWarm(),
+            hub.transients().conflation().deploymentInfo().deploymentNumber(senderAddress),
             false);
 
-    final AccountSnapshot newToAccount =
+    final AccountSnapshot recipientAccountSnapshotAfter =
         AccountSnapshot.fromAccount(
-            state.get(toAddress),
-            this.oldToAccount.isWarm(),
-            hub.transients().conflation().deploymentInfo().number(toAddress),
+            state.get(recipientAddress),
+            this.recipientAccountSnapshotBefore.isWarm(),
+            hub.transients().conflation().deploymentInfo().deploymentNumber(recipientAddress),
             false);
 
-    final AccountSnapshot newMinerAccount =
+    final AccountSnapshot coinbaseAccountSnapshotAfter =
         AccountSnapshot.fromAccount(
-            state.get(minerAddress),
-            this.oldMinerAccount.isWarm(),
-            hub.transients().conflation().deploymentInfo().number(minerAddress),
+            state.get(coinbaseAddress),
+            this.coinbaseAccountSnapshotBefore.isWarm(),
+            hub.transients().conflation().deploymentInfo().deploymentNumber(coinbaseAddress),
             false);
 
-    // From
-    this.addFragment(
+    // sender account fragment
+    final AccountFragment senderAccountFragment =
         hub.factories()
             .accountFragment()
             .make(
-                oldFromAccount,
-                newFromAccount,
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0)));
+                senderAccountSnapshotBefore,
+                senderAccountSnapshotAfter,
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0));
 
-    // To
-    this.addFragment(
+    // recipient account fragment
+    final AccountFragment recipientAccountFragment =
         hub.factories()
             .accountFragment()
             .make(
-                oldToAccount,
-                newToAccount,
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1)));
+                recipientAccountSnapshotBefore,
+                recipientAccountSnapshotAfter,
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1));
 
-    // Miner
-    this.addFragment(
+    // coinbase account fragment
+    final AccountFragment coinbaseAccountFragment =
         hub.factories()
             .accountFragment()
             .make(
-                oldMinerAccount,
-                newMinerAccount,
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2)));
+                coinbaseAccountSnapshotBefore,
+                coinbaseAccountSnapshotAfter,
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
-    // Transaction data
-    this.addFragment(TransactionFragment.prepare(hub.txStack().current()));
+    // transaction fragment
+    final TransactionFragment transactionFragment =
+        TransactionFragment.prepare(hub.txStack().current());
+
+    this.addFragments(
+        senderAccountFragment,
+        recipientAccountFragment,
+        coinbaseAccountFragment,
+        transactionFragment);
   }
 }

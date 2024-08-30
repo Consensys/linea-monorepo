@@ -68,8 +68,11 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
         };
 
     final AccountSnapshot accountSnapshotBefore = AccountSnapshot.canonical(hub, targetAddress);
-    final AccountSnapshot accountSnapshotAfter =
-        accountSnapshotBefore.deepCopy().turnOnWarmth(); // TODO: at postExecDefers ?
+    final AccountSnapshot accountSnapshotAfter = accountSnapshotBefore.deepCopy();
+
+    if (Exceptions.none(exceptions)) {
+      accountSnapshotAfter.turnOnWarmth(); // TODO: use canonical instead at postExecDefers ?
+    }
 
     final DomSubStampsSubFragment doingDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0);
@@ -102,9 +105,9 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
 
     // sanity check
     final int deploymentNumberAtRollback =
-        hub.transients().conflation().deploymentInfo().number(targetAddress);
+        hub.transients().conflation().deploymentInfo().deploymentNumber(targetAddress);
     final boolean deploymentStatusAtRollback =
-        hub.transients().conflation().deploymentInfo().isDeploying(targetAddress);
+        hub.transients().conflation().deploymentInfo().getDeploymentStatus(targetAddress);
     Preconditions.checkArgument(
         deploymentNumberAtRollback == postRollBackAccountSnapshot.deploymentNumber());
     Preconditions.checkArgument(

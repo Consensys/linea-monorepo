@@ -61,7 +61,7 @@ public class ToyExecutionEnvironmentV2 {
   private static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   private static final GasCalculator gasCalculator = ZkTracer.gasCalculator;
-  private static final Address minerAddress = Address.fromHexString("0x1234532342");
+  private static final Address coinbaseAddress = Address.fromHexString("0x1234532342");
   private static final long DEFAULT_BLOCK_NUMBER = 6678980;
   private static final long DEFAULT_TIME_STAMP = 1347310;
   private static final Hash DEFAULT_HASH =
@@ -114,7 +114,7 @@ public class ToyExecutionEnvironmentV2 {
             .gasLimit(LINEA_BLOCK_GAS_LIMIT)
             .difficulty(Difficulty.of(LINEA_DIFFICULTY))
             .number(DEFAULT_BLOCK_NUMBER)
-            .coinbase(minerAddress)
+            .coinbase(coinbaseAddress)
             .timestamp(DEFAULT_TIME_STAMP)
             .parentHash(DEFAULT_HASH)
             .buildBlockHeader();

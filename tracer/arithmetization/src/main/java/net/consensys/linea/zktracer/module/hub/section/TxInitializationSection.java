@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
@@ -39,7 +40,7 @@ public class TxInitializationSection extends TraceSection {
 
     final TransactionProcessingMetadata tx = hub.txStack().current();
     final boolean isDeployment = tx.isDeployment();
-    final Address toAddress = tx.getEffectiveTo();
+    final Address recipientAddress = tx.getEffectiveRecipient();
     final DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
 
     final Address senderAddress = tx.getSender();
@@ -48,8 +49,8 @@ public class TxInitializationSection extends TraceSection {
         AccountSnapshot.fromAccount(
             senderAccount,
             tx.isSenderPreWarmed(),
-            deploymentInfo.number(senderAddress),
-            deploymentInfo.isDeploying(senderAddress));
+            deploymentInfo.deploymentNumber(senderAddress),
+            deploymentInfo.getDeploymentStatus(senderAddress));
     final DomSubStampsSubFragment senderDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0);
 
@@ -57,12 +58,17 @@ public class TxInitializationSection extends TraceSection {
     final Wei value = (Wei) tx.getBesuTransaction().getValue();
     final Wei valueAndGasCost =
         transactionGasPrice.multiply(tx.getBesuTransaction().getGasLimit()).add(value);
+
     final AccountSnapshot senderAfterPayingForTransaction =
-        senderBeforePayingForTransaction.debit(valueAndGasCost).turnOnWarmth().raiseNonce();
+        senderBeforePayingForTransaction.deepCopy();
+    senderAfterPayingForTransaction
+        .decrementBalanceBy(valueAndGasCost)
+        .turnOnWarmth()
+        .raiseNonceByOne();
 
-    final boolean isSelfCredit = toAddress.equals(senderAddress);
+    final boolean isSelfCredit = recipientAddress.equals(senderAddress);
 
-    final Account recipientAccount = world.get(toAddress);
+    final Account recipientAccount = world.get(recipientAddress);
 
     AccountSnapshot recipientBeforeValueTransfer;
 
@@ -70,31 +76,42 @@ public class TxInitializationSection extends TraceSection {
       recipientBeforeValueTransfer =
           isSelfCredit
               ? senderAfterPayingForTransaction
-              : AccountSnapshot.fromAccount(
-                  recipientAccount,
-                  tx.isReceiverPreWarmed(),
-                  deploymentInfo.number(toAddress),
-                  deploymentInfo.isDeploying(toAddress));
+              : AccountSnapshot.canonical(hub, world, recipientAddress, tx.isRecipientPreWarmed())
+                  .setWarmthTo(tx.isRecipientPreWarmed());
     } else {
       recipientBeforeValueTransfer =
           AccountSnapshot.fromAddress(
-              toAddress,
-              tx.isReceiverPreWarmed(),
-              deploymentInfo.number(toAddress),
-              deploymentInfo.isDeploying(toAddress));
+              recipientAddress,
+              tx.isRecipientPreWarmed(),
+              deploymentInfo.deploymentNumber(recipientAddress),
+              deploymentInfo.getDeploymentStatus(recipientAddress));
     }
 
     if (isDeployment) {
-      deploymentInfo.deploy(toAddress);
+      deploymentInfo.newDeploymentAt(recipientAddress);
     }
 
-    final Bytecode initBytecode =
-        new Bytecode(tx.getBesuTransaction().getInit().orElse(Bytes.EMPTY));
-    final AccountSnapshot recipientAfterValueTransfer =
-        isDeployment
-            ? recipientBeforeValueTransfer.initiateDeployment(
-                value, initBytecode, deploymentInfo.getDeploymentNumber(toAddress))
-            : recipientBeforeValueTransfer.credit(value).turnOnWarmth();
+    final Bytecode initCode = new Bytecode(tx.getBesuTransaction().getInit().orElse(Bytes.EMPTY));
+
+    final AccountSnapshot recipientAfterValueTransfer = recipientBeforeValueTransfer.deepCopy();
+    if (isDeployment) {
+      Preconditions.checkState(
+          !recipientBeforeValueTransfer.deploymentStatus()
+              && deploymentInfo.getDeploymentStatus(recipientAddress)
+              && recipientBeforeValueTransfer.deploymentNumber() + 1
+                  == deploymentInfo.deploymentNumber(recipientAddress),
+          "Deployment status should be true and deployment number should be positive");
+
+      recipientAfterValueTransfer
+          .raiseNonceByOne()
+          .incrementBalanceBy(value)
+          .code(initCode)
+          .turnOnWarmth()
+          .setDeploymentInfo(deploymentInfo);
+    } else {
+      recipientAfterValueTransfer.incrementBalanceBy(value).turnOnWarmth();
+    }
+
     final DomSubStampsSubFragment recipientDomSubStamps =
         DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1);
 
@@ -111,7 +128,7 @@ public class TxInitializationSection extends TraceSection {
             .makeWithTrm(
                 recipientBeforeValueTransfer,
                 recipientAfterValueTransfer,
-                toAddress,
+                recipientAddress,
                 recipientDomSubStamps)
             .requiresRomlex(true));
     this.addFragments(
