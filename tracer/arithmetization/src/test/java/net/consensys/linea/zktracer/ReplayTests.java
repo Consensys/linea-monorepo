@@ -91,7 +91,7 @@ public class ReplayTests {
 
   @Test
   void fatMxp() {
-    replay("2492975-2492977.json.gz", false);
+    replay("2492975-2492977.json.gz");
   }
 
   @Test
@@ -126,7 +126,7 @@ public class ReplayTests {
 
   @Test
   void issue1006() {
-    replay("6032696-6032699.json.gz", false);
+    replay("6032696-6032699.json.gz");
   }
 
   @Test
@@ -144,7 +144,7 @@ public class ReplayTests {
 
   @Test
   void failingCreate2() {
-    replay("2250197-2250197.json.gz", false);
+    replay("2250197-2250197.json.gz");
   }
 
   @Test
