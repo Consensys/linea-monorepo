@@ -40,12 +40,22 @@ class Web3JLogsClient(
   ): SafeFuture<List<Log>> {
     return SafeFuture
       .of(web3jClient.ethGetLogs(ethFilter).sendAsync())
-      .thenApply {
-        if (it.logs != null) {
-          @Suppress("UNCHECKED_CAST")
-          (it.logs as List<EthLog.LogResult<Log>>).map { logResult -> logResult.get() }
+      .thenCompose {
+        if (it.hasError()) {
+          SafeFuture.failedFuture<List<Log>>(
+            RuntimeException(
+              "json-rpc error: code=${it.error.code} message=${it.error.message} " +
+                "data=${it.error.data}"
+            )
+          )
         } else {
-          emptyList()
+          val logs = if (it.logs != null) {
+            @Suppress("UNCHECKED_CAST")
+            (it.logs as List<EthLog.LogResult<Log>>).map { logResult -> logResult.get() }
+          } else {
+            emptyList()
+          }
+          SafeFuture.completedFuture(logs)
         }
       }
   }
