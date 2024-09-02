@@ -6,10 +6,10 @@ import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import io.vertx.sqlclient.SqlClient
-import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
-import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.async.toVertxFuture
+import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
+import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.app.api.Api
 import net.consensys.linea.transactionexclusion.app.api.ApiConfig
 import net.consensys.linea.transactionexclusion.repository.RejectedTransactionsRepositoryImpl
