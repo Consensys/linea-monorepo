@@ -61,6 +61,7 @@ func init() {
 	RegisterImplementation(accessors.FromUnivXAccessor{})
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
+	RegisterImplementation(symbolic.StringVar(""))
 }
 
 // In order to save some space, we trim the prefix of the package path as this

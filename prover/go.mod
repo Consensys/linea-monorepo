@@ -11,6 +11,7 @@ require (
 	github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/icza/bitio v1.1.0
@@ -48,7 +49,6 @@ require (
 	github.com/ethereum/go-verkle v0.1.1-0.20240306133620-7d920df305f0 // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
 	github.com/getsentry/sentry-go v0.28.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
