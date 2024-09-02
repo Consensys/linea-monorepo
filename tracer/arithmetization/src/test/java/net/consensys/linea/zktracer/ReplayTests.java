@@ -273,4 +273,10 @@ public class ReplayTests {
   void simpleSelfDestruct() {
     replay("50020-50029.json.gz");
   }
+
+  // TODO: should be replaced by a unit test triggering a failed CREATE2
+  @Test
+  void failedCreate2() {
+    replay("41640-41649.json.gz");
+  }
 }

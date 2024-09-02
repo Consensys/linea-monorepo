@@ -59,7 +59,7 @@ public class Create2 extends MmuCall implements RomLexDefer {
 
   @Override
   public int targetId() {
-    return this.hub.romLex().getCodeFragmentIndexByMetadata(this.contract);
+    return exoIsRom ? hub.romLex().getCodeFragmentIndexByMetadata(contract) : 0;
   }
 
   @Override
