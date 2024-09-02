@@ -92,6 +92,6 @@ public class Mmu implements Module {
     final MmuInstructions mmuInstructions = new MmuInstructions(euc, wcp);
     mmuData = mmuInstructions.compute(mmuData);
 
-    this.mmuOperations.add(new MmuOperation(mmuData));
+    mmuOperations.add(new MmuOperation(mmuData));
   }
 }
