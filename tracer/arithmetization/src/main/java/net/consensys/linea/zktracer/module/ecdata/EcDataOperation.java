@@ -117,13 +117,15 @@ public class EcDataOperation extends ModuleOperation {
   private boolean circuitSelectorEcmul;
 
   // pairing-specific
-  private final int totalPairings;
+  @Getter private final int totalPairings;
+  @Getter private int circuitSelectorEcPairingCounter;
+  @Getter private int circuitSelectorG2MembershipCounter;
 
   private final List<Boolean> notOnG2; // counter-constant
   private final List<Boolean> notOnG2Acc; // counter-constant
-  private boolean notOnG2AccMax; // index-constant
+  @Getter private boolean notOnG2AccMax; // index-constant
   private final List<Boolean> isInfinity; // counter-constant
-  private final List<Boolean> overallTrivialPairing; // counter-constant
+  @Getter private final List<Boolean> overallTrivialPairing; // counter-constant
 
   private EcDataOperation(
       Wcp wcp,
@@ -651,17 +653,19 @@ public class EcDataOperation extends ModuleOperation {
       // = 1
       // && conditions is necessary since we want IS_ECPAIRING_DATA
       // We care about G2 membership only if ICP = 1
-      boolean g2MembershipTestRequired =
+      final boolean g2MembershipTestRequired =
           (notOnG2AccMax
                   ? isLargePoint && !largePointIsAtInfinity && notOnG2.get(i)
                   : isLargePoint && !largePointIsAtInfinity && smallPointIsAtInfinity)
               && internalChecksPassed;
-      boolean acceptablePairOfPointsForPairingCircuit =
+      final boolean acceptablePairOfPointsForPairingCircuit =
           precompileFlag == PRC_ECPAIRING
               && successBit
               && !notOnG2AccMax
               && !largePointIsAtInfinity
               && !smallPointIsAtInfinity;
+      circuitSelectorEcPairingCounter += acceptablePairOfPointsForPairingCircuit ? 1 : 0;
+      circuitSelectorG2MembershipCounter += g2MembershipTestRequired ? 1 : 0;
 
       if (precompileFlag != PRC_ECPAIRING || !isData) {
         Preconditions.checkArgument(ct == 0);
@@ -716,8 +720,9 @@ public class EcDataOperation extends ModuleOperation {
           .circuitSelectorEcrecover(circuitSelectorEcrecover)
           .circuitSelectorEcadd(circuitSelectorEcadd)
           .circuitSelectorEcmul(circuitSelectorEcmul)
-          .circuitSelectorEcpairing(acceptablePairOfPointsForPairingCircuit)
-          .circuitSelectorG2Membership(g2MembershipTestRequired)
+          .circuitSelectorEcpairing(
+              acceptablePairOfPointsForPairingCircuit) // = circuitSelectorEcPairing
+          .circuitSelectorG2Membership(g2MembershipTestRequired) // = circuitSelectorG2Membership
           .wcpFlag(wcpFlag.get(i))
           .wcpArg1Hi(wcpArg1Hi.get(i))
           .wcpArg1Lo(wcpArg1Lo.get(i))
