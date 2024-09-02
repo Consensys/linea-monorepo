@@ -21,7 +21,7 @@ import java.util.List;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -78,7 +78,7 @@ public class CallEmptyNoStopTest {
             .accounts(List.of(senderAccount, receiverAccount, emptyCodeAccount))
             .build();
 
-    ToyExecutionEnvironment.builder()
+    ToyExecutionEnvironmentV2.builder()
         .toyWorld(toyWorld)
         .transaction(tx)
         .zkTracerValidator(

@@ -139,7 +139,6 @@ public class BlockhashTest {
                 // TODO: add test with different block in the conflated batch
 
                 .compile())
-        .useToyExecutionEnvironmentV2(true)
         .run();
   }
 }
