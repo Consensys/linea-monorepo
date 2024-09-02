@@ -4,17 +4,14 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import net.consensys.encodeHex
-import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.RejectedTransaction
+import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
-import net.consensys.linea.TransactionInfo
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class TransactionExclusionServiceV1Impl(
@@ -25,23 +22,10 @@ class TransactionExclusionServiceV1Impl(
   override fun saveRejectedTransaction(
     rejectedTransaction: RejectedTransaction
   ): SafeFuture<Result<RejectedTransaction, TransactionExclusionError>> {
-    val rejectedTransactionWithTxInfo = rejectedTransaction.also {
-      TransactionDecoder.decodeOpaqueBytes(
-        Bytes.wrap(it.transactionRLP)
-      ).run {
-        it.transactionInfo = TransactionInfo(
-          hash = this.hash.toArray(),
-          to = this.to.get().toArray(),
-          from = this.sender.toArray(),
-          nonce = this.nonce.toULong()
-        )
-      }
-    }
-
-    return this.repository.saveRejectedTransaction(rejectedTransactionWithTxInfo)
+    return this.repository.saveRejectedTransaction(rejectedTransaction)
       .handleComposed { _, error ->
         if (error == null) {
-          SafeFuture.completedFuture(Ok(rejectedTransactionWithTxInfo))
+          SafeFuture.completedFuture(Ok(rejectedTransaction))
         } else {
           if (error is DuplicatedRecordException) {
             SafeFuture.completedFuture(
