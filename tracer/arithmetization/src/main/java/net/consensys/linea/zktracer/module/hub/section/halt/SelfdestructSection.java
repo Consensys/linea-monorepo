@@ -83,7 +83,7 @@ public class SelfdestructSection extends TraceSection
 
     // Recipient
     recipientRawAddress = frame.getStackItem(0);
-    recipientAddress = Address.extract((Bytes32) recipientRawAddress);
+    recipientAddress = Address.extract(Bytes32.leftPad(recipientRawAddress));
 
     selfDestructTargetsItself = address.equals(recipientAddress);
 

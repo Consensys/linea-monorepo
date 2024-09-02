@@ -268,4 +268,9 @@ public class ReplayTests {
   void negativeNumberOfMmioInstruction() {
     replay("6029454-6029459.json.gz");
   }
+
+  @Test
+  void simpleSelfDestruct() {
+    replay("50020-50029.json.gz");
+  }
 }
