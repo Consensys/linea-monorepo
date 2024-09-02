@@ -10,12 +10,8 @@ import com.github.michaelbull.result.mapError
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
-import kotlinx.datetime.Instant
-import net.consensys.decodeHex
 import net.consensys.encodeHex
-import net.consensys.linea.ModuleOverflow
 import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
@@ -23,9 +19,8 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
+import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.toHexString
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 
 private fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequest, JsonRpcErrorResponse> {
   if (request.params !is Map<*, *> && request.params !is List<*>) {
@@ -64,43 +59,82 @@ private fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequest, Json
   }
 }
 
-private fun parseMapParamsToRejectedTransaction(validatedRequest: JsonRpcRequestMapParams): RejectedTransaction {
-  return RejectedTransaction(
-    stage = ArgumentParser.geRejectedTransactionStage(validatedRequest.params["stage"].toString()),
-    timestamp = Instant.parse(validatedRequest.params["timestamp"].toString()),
-    blockNumber = validatedRequest.params["blockNumber"].toString().toULong(),
-    transactionRLP = validatedRequest.params["transactionRLP"].toString().decodeHex(),
-    reasonMessage = validatedRequest.params["reasonMessage"].toString(),
-    overflows = ModuleOverflow.parseListFromJsonString(
-      ModuleOverflow.parseToJsonString(validatedRequest.params["overflows"]!!)
-    )
-  )
-}
-
-private fun parseListParamsToRejectedTransaction(validatedRequest: JsonRpcRequestListParams): RejectedTransaction {
-  return RejectedTransaction(
-    stage = ArgumentParser.geRejectedTransactionStage(validatedRequest.params[0].toString()),
-    timestamp = Instant.parse(validatedRequest.params[1].toString()),
-    blockNumber = validatedRequest.params[2].toString().toULong(),
-    transactionRLP = validatedRequest.params[3].toString().decodeHex(),
-    reasonMessage = validatedRequest.params[4].toString(),
-    overflows = ModuleOverflow.parseListFromJsonString(
-      ModuleOverflow.parseToJsonString(validatedRequest.params[5]!!)
-    )
-  )
-}
-
-private fun parseMapParamsToTxHash(validatedRequest: JsonRpcRequestMapParams): ByteArray {
-  return (validatedRequest.params["txHash"] as String).decodeHex()
-}
-
-private fun parseListParamsToTxHash(validatedRequest: JsonRpcRequestListParams): ByteArray {
-  return (validatedRequest.params[0] as String).decodeHex()
-}
-
 class SaveRejectedTransactionRequestHandlerV1(
   private val transactionExclusionService: TransactionExclusionServiceV1
 ) : JsonRpcRequestHandler {
+  private fun validateMapParamsPresence(requestMapParams: JsonRpcRequestMapParams) {
+    val missingParam = if (requestMapParams.params["stage"] == null) {
+      "stage"
+    } else if (requestMapParams.params["timestamp"] == null) {
+      "timestamp"
+    } else if (requestMapParams.params["blockNumber"] == null) {
+      "blockNumber"
+    } else if (requestMapParams.params["transactionRLP"] == null) {
+      "transactionRLP"
+    } else if (requestMapParams.params["reasonMessage"] == null) {
+      "reasonMessage"
+    } else if (requestMapParams.params["overflows"] == null) {
+      "overflows"
+    } else {
+      ""
+    }
+    if (missingParam.isNotEmpty()) {
+      throw IllegalArgumentException("\"$missingParam\" is missing from the given params")
+    }
+  }
+
+  private fun validateListParamsPresence(requestListParams: JsonRpcRequestListParams) {
+    if (requestListParams.params.size < 6) {
+      throw IllegalArgumentException("The size of the given params list is less than 6")
+    }
+  }
+
+  private fun parseAndGetRejectedTransaction(
+    stage: String,
+    timestamp: String,
+    blockNumber: String,
+    transactionRLP: String,
+    reasonMessage: String,
+    overflows: Any
+  ): RejectedTransaction {
+    return RejectedTransaction(
+      stage = ArgumentParser.geRejectedTransactionStage(stage),
+      timestamp = ArgumentParser.getTimestampFromISO8601(timestamp),
+      blockNumber = ArgumentParser.getBlockNumber(blockNumber),
+      transactionRLP = ArgumentParser.getTransactionRLPInRawBytes(transactionRLP),
+      reasonMessage = ArgumentParser.getReasonMessage(reasonMessage),
+      overflows = ArgumentParser.getOverflows(overflows)
+    ).also {
+      it.transactionInfo = ArgumentParser.getTransactionInfoFromRLP(it.transactionRLP)
+    }
+  }
+
+  private fun parseMapParamsToRejectedTransaction(validatedRequest: JsonRpcRequestMapParams): RejectedTransaction {
+    return validateMapParamsPresence(validatedRequest)
+      .run {
+        parseAndGetRejectedTransaction(
+          validatedRequest.params["stage"].toString(),
+          validatedRequest.params["timestamp"].toString(),
+          validatedRequest.params["blockNumber"].toString(),
+          validatedRequest.params["transactionRLP"].toString(),
+          validatedRequest.params["reasonMessage"].toString(),
+          validatedRequest.params["overflows"]!!
+        )
+      }
+  }
+
+  private fun parseListParamsToRejectedTransaction(validatedRequest: JsonRpcRequestListParams): RejectedTransaction {
+    return validateListParamsPresence(validatedRequest).run {
+      parseAndGetRejectedTransaction(
+        validatedRequest.params[0].toString(),
+        validatedRequest.params[1].toString(),
+        validatedRequest.params[2].toString(),
+        validatedRequest.params[3].toString(),
+        validatedRequest.params[4].toString(),
+        validatedRequest.params[5]!!
+      )
+    }
+  }
   override fun invoke(
     user: User?,
     request: JsonRpcRequest,
@@ -150,7 +184,22 @@ class SaveRejectedTransactionRequestHandlerV1(
 class GetTransactionExclusionStatusRequestHandlerV1(
   private val transactionExclusionService: TransactionExclusionServiceV1
 ) : JsonRpcRequestHandler {
-  private val log: Logger = LogManager.getLogger(this::class.java)
+  private fun validateMapParamsPresence(requestMapParams: JsonRpcRequestMapParams) {
+    val missingParam = if (requestMapParams.params["txHash"] == null) "txHash" else ""
+    if (missingParam.isNotEmpty()) {
+      throw IllegalArgumentException("\"$missingParam\" is missing from the given params")
+    }
+  }
+
+  private fun parseMapParamsToTxHash(validatedRequest: JsonRpcRequestMapParams): ByteArray {
+    return validateMapParamsPresence(validatedRequest).run {
+      ArgumentParser.getTxHashInRawBytes(validatedRequest.params["txHash"].toString())
+    }
+  }
+
+  private fun parseListParamsToTxHash(validatedRequest: JsonRpcRequestListParams): ByteArray {
+    return ArgumentParser.getTxHashInRawBytes(validatedRequest.params[0].toString())
+  }
 
   override fun invoke(
     user: User?,

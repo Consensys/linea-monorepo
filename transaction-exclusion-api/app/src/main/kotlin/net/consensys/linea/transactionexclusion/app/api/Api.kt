@@ -4,11 +4,11 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.Vertx
-import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.jsonrpc.HttpRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageHandler
 import net.consensys.linea.jsonrpc.JsonRpcMessageProcessor
 import net.consensys.linea.jsonrpc.JsonRpcRequestRouter
+import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.vertx.ObservabilityServer
 
 data class ApiConfig(

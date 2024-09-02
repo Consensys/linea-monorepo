@@ -1,8 +1,8 @@
 package net.consensys.linea.transactionexclusion.app.api
 
+import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
-import net.consensys.linea.jsonrpc.JsonRpcError
 
 enum class TransactionExclusionErrorCodes(val code: Int, val message: String) {
   // User' error codes
