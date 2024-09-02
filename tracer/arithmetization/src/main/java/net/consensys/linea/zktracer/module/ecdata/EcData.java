@@ -102,14 +102,62 @@ public class EcData implements Module {
     this.operations.add(ecDataOperation);
 
     switch (ecDataOperation.precompileFlag()) {
-      case PRC_ECADD -> ecAddEffectiveCall.addPrecompileLimit(1);
-      case PRC_ECMUL -> ecMulEffectiveCall.addPrecompileLimit(1);
-      case PRC_ECRECOVER -> ecRecoverEffectiveCall.addPrecompileLimit(1);
+      case PRC_ECADD -> ecAddEffectiveCall.addPrecompileLimit(
+          ecDataOperation.internalChecksPassed() ? 1 : 0);
+      case PRC_ECMUL -> ecMulEffectiveCall.addPrecompileLimit(
+          ecDataOperation.internalChecksPassed() ? 1 : 0);
+      case PRC_ECRECOVER -> ecRecoverEffectiveCall.addPrecompileLimit(
+          ecDataOperation.internalChecksPassed() ? 1 : 0);
       case PRC_ECPAIRING -> {
-        // TODO: @Lorenzo @Olivier complete
-        //  ecPairingG2MembershipCalls.addPrecompileLimit();
-        //  ecPairingMillerLoops.addPrecompileLimit();
-        //  ecPairingFinalExponentiations.addPrecompileLimit();
+        // ecPairingG2MembershipCalls case
+        // NOTE: the other precompile limits are managed below
+        // NOTE: see EC_DATA specs Figure 3.5 for a graphical representation of this case analysis
+        if (!ecDataOperation.internalChecksPassed()) {
+          ecPairingG2MembershipCalls.addPrecompileLimit(0);
+          // The circuit is never invoked in the case of internal checks failing
+        }
+        // NOTE: the && of the conditions may seem not necessary since in the specs
+        // !internalChecksPassed => !notOnG2AccMax
+        // however, in EcDataOperation implementation the notOnG2AccMax takes into consideration
+        // only large points G2 membership
+        // , and it has to be && with internalChecksPassed to compute the actual
+        // NOT_ON_G2_ACC_MAX to trace
+        if (ecDataOperation.internalChecksPassed() && ecDataOperation.notOnG2AccMax()) {
+          ecPairingG2MembershipCalls.addPrecompileLimit(1);
+          // The circuit is invoked only once if there is at least one point predicted to be not on
+          // G2
+        }
+        if (ecDataOperation.internalChecksPassed()
+            && !ecDataOperation.notOnG2AccMax()
+            && ecDataOperation.overallTrivialPairing().getLast()) {
+          ecPairingG2MembershipCalls.addPrecompileLimit(0);
+          // The circuit is never invoked in the case of a trivial pairing
+        }
+        if (ecDataOperation.internalChecksPassed()
+            && !ecDataOperation.notOnG2AccMax()
+            && !ecDataOperation.overallTrivialPairing().getLast()) {
+          ecPairingG2MembershipCalls.addPrecompileLimit(
+              ecDataOperation.circuitSelectorG2MembershipCounter());
+          // The circuit is invoked as many times as there are points predicted to be on G2
+        }
+
+        // NOTE: a similar case analysis to the one above may be done for the other
+        // precompile limits. However, circuitSelectorEcPairingCounter already takes
+        // it into consideration and what follows is enough
+
+        // ecPairingMillerLoops case
+        // NOTE: the pairings that require Miller Loops are the valid ones where
+        // the small point is on C_1, the large point is on G_2, and they are not
+        // points at infinity (valid trivial pairings and valid pairings with the
+        // small point at infinity are excluded from this counting)
+        ecPairingMillerLoops.addPrecompileLimit(ecDataOperation.circuitSelectorEcPairingCounter());
+
+        // ecPairingFinalExponentiation case
+        // NOTE: if at least one Miller Loop is computed, the final exponentiation is 1
+        ecPairingFinalExponentiations.addPrecompileLimit(
+            ecDataOperation.circuitSelectorEcPairingCounter() > 0
+                ? 1
+                : 0); // See https://eprint.iacr.org/2008/490.pdf
       }
       default -> throw new IllegalArgumentException("Operation not supported by EcData");
     }
