@@ -19,7 +19,7 @@ import java.util.List;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -143,7 +143,7 @@ public class SimpleStorageConsistency {
             .accounts(List.of(receiverAccount, senderAccount1, senderAccount2, senderAccount3))
             .build();
 
-    ToyExecutionEnvironment.builder()
+    ToyExecutionEnvironmentV2.builder()
         .toyWorld(toyWorld)
         .transactions(txs)
         .zkTracerValidator(zkTracer -> {})

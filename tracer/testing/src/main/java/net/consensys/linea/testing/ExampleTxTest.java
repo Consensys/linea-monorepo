@@ -55,6 +55,6 @@ class ExampleTxTest {
     ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(senderAccount, receiverAccount)).build();
 
-    ToyExecutionEnvironment.builder().toyWorld(toyWorld).transaction(tx).build().run();
+    ToyExecutionEnvironmentV2.builder().toyWorld(toyWorld).transaction(tx).build().run();
   }
 }

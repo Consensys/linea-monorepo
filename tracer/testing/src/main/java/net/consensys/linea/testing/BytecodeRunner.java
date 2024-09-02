@@ -45,7 +45,7 @@ public final class BytecodeRunner {
   ToyExecutionEnvironment toyExecutionEnvironment;
   ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
 
-  @Setter private boolean useToyExecutionEnvironmentV2 = false;
+  @Setter private boolean useToyExecutionEnvironmentV2 = true;
 
   /**
    * @param byteCode the byte code to test
