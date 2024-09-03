@@ -272,6 +272,7 @@ func allocateCircuit(c config.PublicInput) Circuit {
 		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            c.MaxNbCircuits,
+		UseGkrMimc:               true,
 	}
 }
 
