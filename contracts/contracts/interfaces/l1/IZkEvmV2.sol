@@ -25,22 +25,27 @@ interface IZkEvmV2 {
   event BlocksVerificationDone(uint256 indexed lastBlockFinalized, bytes32 startingRootHash, bytes32 finalRootHash);
 
   /**
-   * @dev Thrown when the starting rootHash does not match the existing state
+   * @dev Thrown when the starting rootHash does not match the existing state.
    */
   error StartingRootHashDoesNotMatch();
 
   /**
-   * @dev Thrown when zk proof is empty bytes
+   * @dev Thrown when zk proof is empty bytes.
    */
   error ProofIsEmpty();
 
   /**
-   * @dev Thrown when zk proof type is invalid
+   * @dev Thrown when zk proof type is invalid.
    */
   error InvalidProofType();
 
   /**
-   * @dev Thrown when zk proof is invalid
+   * @dev Thrown when zk proof is invalid.
    */
   error InvalidProof();
+
+  /**
+   * @dev Thrown when the call to the verifier runs out of gas or reverts internally.
+   */
+  error VerificationFailedOrRanOutOfGas(string errorReason);
 }
