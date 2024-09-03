@@ -15,13 +15,21 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_STIPEND;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_VALUE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CREATE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_NEW_ACCOUNT;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_WARM_ACCESS;
+import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
+import static net.consensys.linea.zktracer.types.EWord.ZERO;
+
 import java.math.BigInteger;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
@@ -65,13 +73,13 @@ public class StpCall implements TraceSubFragment {
   }
 
   private void stpCallForCalls(Hub hub) {
-    MessageFrame frame = hub.messageFrame();
+    final MessageFrame frame = hub.messageFrame();
 
-    final boolean callCanTransferValue = this.opCode.callCanTransferValue();
+    final boolean callCanTransferValue = opCode.callCanTransferValue();
     final Address to = Words.toAddress(frame.getStackItem(1));
-    Account toAccount = frame.getWorldUpdater().getAccount(to);
+    final Account toAccount = frame.getWorldUpdater().getAccount(to);
     this.gas = EWord.of(frame.getStackItem(0));
-    this.value = (callCanTransferValue) ? EWord.of(frame.getStackItem(2)) : EWord.ZERO;
+    this.value = (callCanTransferValue) ? EWord.of(frame.getStackItem(2)) : ZERO;
     this.exists =
         switch (hub.opCode()) {
           case CALL, STATICCALL -> toAccount != null
@@ -88,16 +96,15 @@ public class StpCall implements TraceSubFragment {
           default -> throw new IllegalArgumentException(
               "STP module triggered for a non CALL-type instruction");
         };
-    this.warm = frame.isAddressWarm(to);
+    this.warm = isAddressWarm(frame, to);
 
-    final boolean isCALL = this.opCode.equals(OpCode.CALL);
+    final boolean isCALL = opCode.equals(OpCode.CALL);
     final boolean nonzeroValueTransfer = !value.isZero();
 
     this.upfrontGasCost = upfrontGasCostForCalls(isCALL, nonzeroValueTransfer);
-    this.outOfGasException = this.gasActual < this.upfrontGasCost;
-    this.gasPaidOutOfPocket = this.gasPaidOutOfPocketForCalls();
-    this.stipend =
-        !outOfGasException && nonzeroValueTransfer ? GlobalConstants.GAS_CONST_G_CALL_STIPEND : 0;
+    this.outOfGasException = gasActual < upfrontGasCost;
+    this.gasPaidOutOfPocket = gasPaidOutOfPocketForCalls();
+    this.stipend = !outOfGasException && nonzeroValueTransfer ? GAS_CONST_G_CALL_STIPEND : 0;
   }
 
   private long gasPaidOutOfPocketForCalls() {
@@ -116,13 +123,13 @@ public class StpCall implements TraceSubFragment {
   private void stpCallForCreates(Hub hub) {
     MessageFrame frame = hub.messageFrame();
 
-    this.gas = EWord.ZERO; // irrelevant
+    this.gas = ZERO; // irrelevant
     this.value = EWord.of(frame.getStackItem(0));
     this.exists = false; // irrelevant
     this.warm = false; // irrelevant
-    this.upfrontGasCost = GlobalConstants.GAS_CONST_G_CREATE + this.memoryExpansionGas;
-    this.outOfGasException = this.gasActual < this.upfrontGasCost;
-    this.gasPaidOutOfPocket = this.computeGasPaidOutOfPocketForCreates();
+    this.upfrontGasCost = GAS_CONST_G_CREATE + memoryExpansionGas;
+    this.outOfGasException = gasActual < upfrontGasCost;
+    this.gasPaidOutOfPocket = computeGasPaidOutOfPocketForCreates();
     this.stipend = 0; // irrelevant
   }
 
@@ -137,13 +144,13 @@ public class StpCall implements TraceSubFragment {
 
   private long upfrontGasCostForCalls(boolean isCALL, boolean nonzeroValueTransfer) {
 
-    boolean toIsWarm = this.warm();
-    long upfrontGasCost = this.memoryExpansionGas;
-    final boolean callWouldLeadToAccountCreation = isCALL && nonzeroValueTransfer && !this.exists;
-    if (nonzeroValueTransfer) upfrontGasCost += GlobalConstants.GAS_CONST_G_CALL_VALUE;
-    if (toIsWarm) upfrontGasCost += GlobalConstants.GAS_CONST_G_WARM_ACCESS;
-    else upfrontGasCost += GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
-    if (callWouldLeadToAccountCreation) upfrontGasCost += GlobalConstants.GAS_CONST_G_NEW_ACCOUNT;
+    boolean toIsWarm = warm;
+    long upfrontGasCost = memoryExpansionGas;
+    final boolean callWouldLeadToAccountCreation = isCALL && nonzeroValueTransfer && !exists;
+    if (nonzeroValueTransfer) upfrontGasCost += GAS_CONST_G_CALL_VALUE;
+    if (toIsWarm) upfrontGasCost += GAS_CONST_G_WARM_ACCESS;
+    else upfrontGasCost += GAS_CONST_G_COLD_ACCOUNT_ACCESS;
+    if (callWouldLeadToAccountCreation) upfrontGasCost += GAS_CONST_G_NEW_ACCOUNT;
 
     return upfrontGasCost;
   }
