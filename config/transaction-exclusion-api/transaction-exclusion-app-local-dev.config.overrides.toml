@@ -1,5 +1,6 @@
 [database]
 host="localhost"
+migration_dir_location="config/transaction-exclusion-api/db/migration/"
 
 [api]
 port=8082
