@@ -1,0 +1,51 @@
+name: transaction-exclusion-api-testing
+
+on:
+  workflow_call:
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: To generate test report
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    name: Transaction exclusion api tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+      - name: Run tests with coverage
+        uses: nick-fields/retry@v2
+        if: ${{ inputs.coverage }}
+        with:
+          max_attempts: 2
+          retry_on: error
+          timeout_minutes: 20
+          command: |
+            ./gradlew transaction-exclusion-api:app:buildNeeded jacocoRootReport
+      - name: Run tests without coverage
+        uses: nick-fields/retry@v2
+        if: ${{ !inputs.coverage }}
+        with:
+          max_attempts: 2
+          retry_on: error
+          timeout_minutes: 20
+          command: |
+            ./gradlew transaction-exclusion-api:app:buildNeeded
