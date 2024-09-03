@@ -3,18 +3,22 @@ package pi_interconnection_test
 import (
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
-	"testing"
 )
 
 func TestMerkle(t *testing.T) {
@@ -96,4 +100,25 @@ func (c *testMerkleCircuit) Define(api frontend.API) error {
 	}
 
 	return nil
+}
+
+func TestMaxNbCircuitsSum(t *testing.T) {
+	cfg := config.PublicInput{
+		MaxNbDecompression: test_utils.RandIntN(10),
+		MaxNbExecution:     test_utils.RandIntN(10),
+		MaxNbCircuits:      20,
+		MaxNbKeccakF:       200,
+		ExecutionMaxNbMsg:  2,
+		L2MsgMerkleDepth:   5,
+		L2MsgMaxNbMerkle:   2,
+		MockKeccakWizard:   true,
+	}
+
+	c, err := pi_interconnection.Compile(cfg)
+	assert.NoError(t, err)
+
+	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cfg.MaxNbDecompression+cfg.MaxNbExecution, pi_interconnection.GetMaxNbCircuitsSum(cs))
 }
