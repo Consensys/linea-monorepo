@@ -31,9 +31,6 @@ public class TxTrace {
   /** The {@link TraceSection} of which this transaction trace is made of */
   @Getter private final List<TraceSection> trace = new ArrayList<>();
 
-  /** A cache for the line count of this transaction */
-  private int cachedLineCount = 0;
-
   public int size() {
     return this.trace.size();
   }
@@ -89,11 +86,10 @@ public class TxTrace {
    * @return the line count in this transaction trace
    */
   public int lineCount() {
-    if (this.cachedLineCount == 0) {
-      for (TraceSection s : trace) {
-        this.cachedLineCount += s.fragments().size();
-      }
+    int lineCount = 0;
+    for (TraceSection s : trace) {
+      lineCount += s.fragments().size();
     }
-    return this.cachedLineCount;
+    return lineCount;
   }
 }

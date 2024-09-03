@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 
-public final class Sha256Blocks extends CountingOnlyModule {
+public final class Sha256Blocks implements CountingOnlyModule {
 
   private static final int PRECOMPILE_BASE_GAS_FEE = 60;
   private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 12;
@@ -32,9 +32,9 @@ public final class Sha256Blocks extends CountingOnlyModule {
   }
 
   @Override
-  public void addPrecompileLimit(final int input) {
-    final int blockCount = numberOfSha256Blocks(input);
-    this.counts.add(blockCount);
+  public void addPrecompileLimit(final int count) {
+    final int blockCount = numberOfSha256Blocks(count);
+    counts.add(blockCount);
   }
 
   private static int numberOfSha256Blocks(final int dataByteLength) {

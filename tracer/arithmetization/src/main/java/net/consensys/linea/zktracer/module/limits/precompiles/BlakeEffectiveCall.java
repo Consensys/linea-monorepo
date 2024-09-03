@@ -16,9 +16,9 @@
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import com.google.common.base.Preconditions;
-import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 
-public final class BlakeEffectiveCall extends CountingOnlyModule {
+public final class BlakeEffectiveCall implements CountingOnlyModule {
 
   @Override
   public String moduleKey() {
@@ -26,9 +26,9 @@ public final class BlakeEffectiveCall extends CountingOnlyModule {
   }
 
   @Override
-  public void addPrecompileLimit(final int numberEffectiveCall) {
+  public void addPrecompileLimit(final int count) {
     Preconditions.checkArgument(
-        numberEffectiveCall == 1, "can't add more than one effective precompile call at a time");
-    counts.add(numberEffectiveCall);
+        count == 1, "can't add more than one effective precompile call at a time");
+    counts.add(count);
   }
 }

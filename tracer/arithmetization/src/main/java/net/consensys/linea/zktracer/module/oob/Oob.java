@@ -23,9 +23,10 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.list.StackedList;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationListModule;
+import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -34,19 +35,18 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-@RequiredArgsConstructor
 /** Implementation of a {@link Module} for out of bounds. */
-public class Oob implements Module {
-
-  /** A list of the operations to trace */
-  @Getter private final StackedList<OobOperation> oobOperations = new StackedList<>();
+@RequiredArgsConstructor
+@Accessors(fluent = true)
+public class Oob implements OperationListModule<OobOperation> {
+  // TODO @Lorenzo why it's not a StateLess module ?
 
   private final Hub hub;
   private final Add add;
   private final Mod mod;
   private final Wcp wcp;
 
-  private OobOperation oobOperation;
+  @Getter private final StackedList<OobOperation> operations = new StackedList<>();
 
   @Override
   public String moduleKey() {
@@ -54,10 +54,12 @@ public class Oob implements Module {
   }
 
   public void call(OobCall oobCall) {
-    OobOperation oobOperation = new OobOperation(oobCall, hub.messageFrame(), add, mod, wcp, hub);
-    this.oobOperations.add(oobOperation);
+    final OobOperation oobOperation =
+        new OobOperation(oobCall, hub.messageFrame(), add, mod, wcp, hub);
+    operations.add(oobOperation);
   }
 
+  // TODO: to delete @Lorenzo ?
   @Override
   public void tracePreOpcode(MessageFrame frame) { // TODO: maybe move in the hub
     /*
@@ -143,25 +145,11 @@ public class Oob implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.oobOperations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.oobOperations.pop();
-  }
-
-  @Override
-  public int lineCount() {
-    return this.oobOperations.stream().mapToInt(OobOperation::nRows).sum();
-  }
-
-  @Override
   public void commit(List<MappedByteBuffer> buffers) {
     Trace trace = new Trace(buffers);
-    for (int i = 0; i < this.oobOperations.size(); i++) {
-      this.traceChunk(this.oobOperations.get(i), i + 1, trace);
+    int stamp = 0;
+    for (OobOperation op : operations.getAll()) {
+      traceChunk(op, ++stamp, trace);
     }
   }
 

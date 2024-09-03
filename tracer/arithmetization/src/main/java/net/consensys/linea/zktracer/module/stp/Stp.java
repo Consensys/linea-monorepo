@@ -21,48 +21,51 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes32;
 
 @RequiredArgsConstructor
-public class Stp implements Module {
-
-  private final StackedSet<StpOperation> operations = new StackedSet<>();
+@Accessors(fluent = true)
+public class Stp implements OperationSetModule<StpOperation> {
 
   private final Wcp wcp;
   private final Mod mod;
 
+  @Getter private final StackedSet<StpOperation> operations = new StackedSet<>();
+
   public void call(StpCall stpCall) {
     final StpOperation stpOperation = new StpOperation(stpCall);
-    this.operations.add(stpOperation);
+    operations.add(stpOperation);
 
     Preconditions.checkArgument(
         stpCall.opCode().isCall() || stpCall.opCode().isCreate(),
         "STP handles only Calls and CREATEs");
 
     if (stpCall.opCode().isCreate()) {
-      this.wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
-      this.wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));
+      wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
+      wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));
       if (!stpCall.outOfGasException()) {
-        this.mod.callDIV(longToBytes32(stpOperation.getGDiff()), longToBytes32(64L));
+        mod.callDIV(longToBytes32(stpOperation.getGDiff()), longToBytes32(64L));
       }
     }
 
     if (stpCall.opCode().isCall()) {
-      this.wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
+      wcp.callLT(longToBytes32(stpCall.gasActual()), Bytes32.ZERO);
       if (stpCall.opCode().callCanTransferValue()) {
-        this.wcp.callISZERO(Bytes32.leftPad(stpCall.value()));
+        wcp.callISZERO(Bytes32.leftPad(stpCall.value()));
       }
-      this.wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));
+      wcp.callLT(longToBytes32(stpCall.gasActual()), longToBytes32(stpCall.upfrontGasCost()));
       if (!stpCall.outOfGasException()) {
-        this.mod.callDIV(longToBytes32(stpOperation.getGDiff()), longToBytes32(64L));
-        this.wcp.callLT(stpCall.gas(), longToBytes32(stpOperation.get63of64GDiff()));
+        mod.callDIV(longToBytes32(stpOperation.getGDiff()), longToBytes32(64L));
+        wcp.callLT(stpCall.gas(), longToBytes32(stpOperation.get63of64GDiff()));
       }
     }
   }
@@ -70,21 +73,6 @@ public class Stp implements Module {
   @Override
   public String moduleKey() {
     return "STP";
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
-  public int lineCount() {
-    return this.operations.lineCount();
   }
 
   @Override
@@ -97,9 +85,8 @@ public class Stp implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (StpOperation chunk : operations) {
-      stamp++;
-      chunk.trace(trace, stamp);
+    for (StpOperation operation : operations.getAll()) {
+      operation.trace(trace, ++stamp);
     }
   }
 }

@@ -22,7 +22,7 @@ import java.util.Random;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.mod.Mod;

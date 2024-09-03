@@ -36,8 +36,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.DebugMode;
-import net.consensys.linea.zktracer.module.Module;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.Utils;
@@ -128,14 +128,14 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   public void writeToFile(final Path filename) {
     maybeThrowTracingExceptions();
 
-    final List<Module> modules = this.hub.getModulesToTrace();
+    final List<Module> modules = hub.getModulesToTrace();
     final List<ColumnHeader> traceMap =
         modules.stream().flatMap(m -> m.columnsHeaders().stream()).toList();
     final int headerSize = traceMap.stream().mapToInt(ColumnHeader::headerSize).sum() + 4;
 
     try (RandomAccessFile file = new RandomAccessFile(filename.toString(), "rw")) {
       file.setLength(traceMap.stream().mapToLong(ColumnHeader::cumulatedSize).sum());
-      MappedByteBuffer header =
+      final MappedByteBuffer header =
           file.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, headerSize);
 
       header.putInt(traceMap.size());
@@ -148,7 +148,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       }
       long offset = headerSize;
       for (Module m : modules) {
-        List<MappedByteBuffer> buffers = new ArrayList<>();
+        final List<MappedByteBuffer> buffers = new ArrayList<>();
         for (ColumnHeader columnHeader : m.columnsHeaders()) {
           final int columnLength = columnHeader.dataSize();
           buffers.add(file.getChannel().map(FileChannel.MapMode.READ_WRITE, offset, columnLength));

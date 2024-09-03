@@ -18,10 +18,12 @@ package net.consensys.linea.zktracer.module.ext;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -30,11 +32,11 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @RequiredArgsConstructor
-public class Ext implements Module {
+@Accessors(fluent = true)
+public class Ext implements OperationSetModule<ExtOperation> {
   private final Hub hub;
 
-  /** A set of the operations to trace */
-  private final StackedSet<ExtOperation> operations = new StackedSet<>();
+  @Getter private final StackedSet<ExtOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
@@ -42,19 +44,9 @@ public class Ext implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
   public void tracePreOpcode(final MessageFrame frame) {
     final OpCodeData opCode = hub.opCodeData();
-    this.operations.add(
+    operations.add(
         new ExtOperation(
             opCode.mnemonic(),
             Bytes32.leftPad(frame.getStackItem(0)),
@@ -68,7 +60,7 @@ public class Ext implements Module {
     final Bytes32 arg3 = Bytes32.leftPad(_arg3);
     final ExtOperation op = new ExtOperation(opCode, arg1, arg2, arg3);
     final Bytes result = op.compute();
-    this.operations.add(op);
+    operations.add(op);
     return result;
   }
 
@@ -90,14 +82,8 @@ public class Ext implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (ExtOperation operation : this.operations) {
-      stamp++;
-      operation.trace(trace, stamp);
+    for (ExtOperation operation : operations.getAll()) {
+      operation.trace(trace, ++stamp);
     }
-  }
-
-  @Override
-  public int lineCount() {
-    return this.operations.lineCount();
   }
 }

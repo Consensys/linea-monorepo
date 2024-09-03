@@ -18,14 +18,19 @@ package net.consensys.linea.zktracer.module.shf;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class Shf implements Module {
+@Getter
+@Accessors(fluent = true)
+public class Shf implements OperationSetModule<ShfOperation> {
+
   private final StackedSet<ShfOperation> operations = new StackedSet<>();
 
   @Override
@@ -34,20 +39,10 @@ public class Shf implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
   public void tracePreOpcode(MessageFrame frame) {
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
-    this.operations.add(
+    operations.add(
         new ShfOperation(OpCode.of(frame.getCurrentOperation().getOpcode()), arg1, arg2));
   }
 
@@ -61,14 +56,13 @@ public class Shf implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (ShfOperation op : this.operations) {
-      stamp++;
-      op.trace(trace, stamp);
+    for (ShfOperation op : operations.getAll()) {
+      op.trace(trace, ++stamp);
     }
   }
 
   @Override
-  public int lineCount() {
-    return this.operations.lineCount();
+  public StackedSet<ShfOperation> operations() {
+    return operations;
   }
 }

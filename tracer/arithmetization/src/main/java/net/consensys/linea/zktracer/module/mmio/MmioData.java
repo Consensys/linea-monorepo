@@ -171,7 +171,7 @@ public class MmioData {
         .contains(mmioInstruction);
   }
 
-  public static int numberOfRowOfMmioInstruction(final int mmioInstruction) {
+  public static int lineCountOfMmioInstruction(final int mmioInstruction) {
     return isFastOperation(mmioInstruction) ? 1 : LLARGE;
   }
 

@@ -81,8 +81,7 @@ public class EcRecoverTest {
 
     // Retrieve recoveredAddress, internalChecksPassed, successBit
     // Assert internalChecksPassed and successBit are what expected
-    EcDataOperation ecDataOperation =
-        bytecodeRunner.getHub().ecData().getOperations().stream().toList().get(0);
+    EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().operations().get(0);
     EWord recoveredAddress =
         EWord.of(
             ecDataOperation.limb().get(8).toUnsignedBigInteger(),

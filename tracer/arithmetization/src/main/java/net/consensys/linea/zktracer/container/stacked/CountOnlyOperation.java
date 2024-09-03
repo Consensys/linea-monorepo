@@ -15,34 +15,40 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
+import com.google.common.base.Preconditions;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+
+@Accessors(fluent = true)
 public class CountOnlyOperation {
 
-  private int countSinceBeginningOfTheConflation;
-  private int thisTransactionCount;
-
-  public CountOnlyOperation() {
-    this.countSinceBeginningOfTheConflation = 0;
-    this.thisTransactionCount = 0;
-  }
+  private int countCommitedToTheConflation = 0;
+  @Getter private int countInTransaction = 0;
 
   /**
    * when we enter a transaction, the previous transaction is definitely added to the block and
    * can't be pop
    */
-  public void enterTransaction() {
-    countSinceBeginningOfTheConflation += thisTransactionCount;
-    thisTransactionCount = 0;
+  public void enter() {
+    countCommitedToTheConflation += countInTransaction;
+    countInTransaction = 0;
   }
 
-  public void popTransaction() {
-    thisTransactionCount = 0;
+  public void pop() {
+    countInTransaction = 0;
   }
 
   public void add(final int operationCount) {
-    thisTransactionCount += operationCount;
+    Preconditions.checkArgument(operationCount >= 0, "operationCount must be positive");
+    countInTransaction += operationCount;
   }
 
   public int lineCount() {
-    return countSinceBeginningOfTheConflation + thisTransactionCount;
+    return countCommitedToTheConflation + countInTransaction;
+  }
+
+  public void clear() {
+    countCommitedToTheConflation = 0;
+    countInTransaction = 0;
   }
 }

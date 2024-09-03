@@ -37,10 +37,12 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.list.StackedList;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
@@ -57,7 +59,10 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
-public class RlpAddr implements Module {
+@Accessors(fluent = true)
+public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
+  @Getter private final StackedSet<RlpAddrOperation> operations = new StackedSet<>();
+
   private static final Bytes CREATE2_SHIFT = Bytes.minimalBytes(GlobalConstants.CREATE2_SHIFT);
   private static final Bytes INT_SHORT = Bytes.minimalBytes(RLP_PREFIX_INT_SHORT);
   private static final UnsignedByte BYTES_LLARGE = UnsignedByte.of(LLARGE);
@@ -65,21 +70,10 @@ public class RlpAddr implements Module {
 
   private final Hub hub;
   private final Trm trm;
-  private final StackedList<RlpAddrOperation> chunkList = new StackedList<>();
 
   @Override
   public String moduleKey() {
     return "RLP_ADDR";
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.chunkList.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.chunkList.pop();
   }
 
   @Override
@@ -92,14 +86,14 @@ public class RlpAddr implements Module {
       RlpAddrOperation chunk =
           new RlpAddrOperation(
               rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
-      this.chunkList.add(chunk);
-      this.trm.callTrimming(rawTo);
+      operations.add(chunk);
+      trm.callTrimming(rawTo);
     }
   }
 
   @Override
   public void tracePreOpcode(MessageFrame frame) {
-    final OpCode opcode = this.hub.opCode();
+    final OpCode opcode = hub.opCode();
     switch (opcode) {
       case CREATE -> {
         final Address currentAddress = frame.getRecipientAddress();
@@ -110,7 +104,7 @@ public class RlpAddr implements Module {
                 OpCode.CREATE,
                 longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
                 currentAddress);
-        this.chunkList.add(chunk);
+        this.operations.add(chunk);
         this.trm.callTrimming(rawCreateAddress);
       }
       case CREATE2 -> {
@@ -127,8 +121,8 @@ public class RlpAddr implements Module {
 
         final RlpAddrOperation chunk =
             new RlpAddrOperation(rawCreate2Address, OpCode.CREATE2, sender, salt, hash);
-        this.chunkList.add(chunk);
-        this.trm.callTrimming(rawCreate2Address);
+        operations.add(chunk);
+        trm.callTrimming(rawCreate2Address);
       }
     }
   }
@@ -306,17 +300,12 @@ public class RlpAddr implements Module {
     }
   }
 
-  private void traceChunks(RlpAddrOperation chunk, int stamp, Trace trace) {
-    if (chunk.opCode().equals(OpCode.CREATE)) {
-      traceCreate(stamp, chunk, trace);
+  private void traceOperation(RlpAddrOperation operation, int stamp, Trace trace) {
+    if (operation.opCode().equals(OpCode.CREATE)) {
+      traceCreate(stamp, operation, trace);
     } else {
-      traceCreate2(stamp, chunk, trace);
+      traceCreate2(stamp, operation, trace);
     }
-  }
-
-  @Override
-  public int lineCount() {
-    return this.chunkList.lineCount();
   }
 
   @Override
@@ -327,9 +316,9 @@ public class RlpAddr implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-
-    for (int i = 0; i < this.chunkList.size(); i++) {
-      traceChunks(chunkList.get(i), i + 1, trace);
+    int stamp = 0;
+    for (RlpAddrOperation op : operations.getAll()) {
+      traceOperation(op, ++stamp, trace);
     }
   }
 }

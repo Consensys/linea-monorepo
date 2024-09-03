@@ -27,7 +27,7 @@ import org.hyperledger.besu.evm.log.Log;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 @Getter
-public final class RlpTxrcptChunk extends ModuleOperation {
+public final class RlpTxrcptOperation extends ModuleOperation {
   private final TransactionType txType;
   private final Boolean status;
   private final int gasUsed;

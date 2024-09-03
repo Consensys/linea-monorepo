@@ -18,49 +18,26 @@ package net.consensys.linea.zktracer.module.mxp;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.list.StackedList;
-import net.consensys.linea.zktracer.module.Module;
-import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationListModule;
+import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for memory expansion. */
-public class Mxp implements Module {
-  /** A list of the operations to trace */
-  private final StackedList<MxpOperation> mxpOperations = new StackedList<>();
+@Getter
+@Accessors(fluent = true)
+@RequiredArgsConstructor
+public class Mxp implements OperationListModule<MxpOperation> {
 
-  private Hub hub;
+  private final StackedList<MxpOperation> operations = new StackedList<>();
 
   @Override
   public String moduleKey() {
     return "MXP";
-  }
-
-  public Mxp(Hub hub) {
-    this.hub = hub;
-  }
-
-  // TODO: update tests and eliminate this constructor
-  public Mxp() {}
-
-  @Override
-  public void tracePreOpcode(MessageFrame frame) { // This will be renamed to tracePreOp
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.mxpOperations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.mxpOperations.pop();
-  }
-
-  @Override
-  public int lineCount() {
-    return this.mxpOperations.lineCount();
   }
 
   @Override
@@ -71,12 +48,13 @@ public class Mxp implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    for (int i = 0; i < this.mxpOperations.size(); i++) {
-      this.mxpOperations.get(i).trace(i + 1, trace);
+    int stamp = 0;
+    for (MxpOperation op : operations.getAll()) {
+      op.trace(++stamp, trace);
     }
   }
 
   public void call(MxpCall mxpCall) {
-    this.mxpOperations.add(new MxpOperation(mxpCall));
+    operations.add(new MxpOperation(mxpCall));
   }
 }

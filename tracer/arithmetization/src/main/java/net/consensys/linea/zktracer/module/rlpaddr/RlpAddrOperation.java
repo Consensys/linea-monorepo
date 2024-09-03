@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE2;
 import java.math.BigInteger;
 import java.util.Optional;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -32,6 +33,7 @@ import org.hyperledger.besu.datatypes.Address;
 @RequiredArgsConstructor
 @Getter
 @Accessors(fluent = true)
+@EqualsAndHashCode(callSuper = false)
 public final class RlpAddrOperation extends ModuleOperation {
   private final Bytes32 rawHash;
   private final OpCode opCode;
