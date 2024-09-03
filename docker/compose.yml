@@ -255,6 +255,29 @@ services:
       linea:
         ipv4_address: 11.11.11.105
 
+  transaction-exclusion-api:
+    hostname: transaction-exclusion-api
+    container_name: transaction-exclusion-api
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-local}
+    platform: linux/amd64
+    profiles: [ "l2", "debug" ]
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8082:8080"
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    volumes:
+      - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
+      - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
+      - ../config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
+      - ../config/transaction-exclusion-api/db/migration:/opt/consensys/linea/transaction-exclusion-api/config/db/migration:ro
+      - local-dev:/data/
+    networks:
+      linea:
+        ipv4_address: 11.11.11.110
+
   coordinator:
     hostname: coordinator
     container_name: coordinator

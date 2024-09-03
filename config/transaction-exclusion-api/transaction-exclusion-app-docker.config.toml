@@ -10,7 +10,7 @@ schema="linea_transaction_exclusion"
 read_pool_size=10
 read_pipelining_limit=10
 transactional_pool_size=10
-migration_dir_location="config/transaction-exclusion-api/db/migration/"
+migration_dir_location="config/db/migration/"
 
 [api]
 port=8080
