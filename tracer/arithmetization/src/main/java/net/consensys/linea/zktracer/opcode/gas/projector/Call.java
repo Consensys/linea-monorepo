@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
@@ -72,7 +72,7 @@ public class Call extends GasProjection {
       return 0;
     }
 
-    if (frame.isAddressWarm(to) || isPrecompile(to)) {
+    if (isAddressWarm(frame, to)) {
       return GlobalConstants.GAS_CONST_G_WARM_ACCESS;
     } else {
       return GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;

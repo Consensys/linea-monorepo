@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
+
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -48,7 +50,7 @@ public final class SelfDestruct extends GasProjection {
       return 0;
     }
 
-    if (frame.isAddressWarm(this.beneficiaryAddress)) {
+    if (isAddressWarm(frame, beneficiaryAddress)) {
       return 0L;
     } else {
       return GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;

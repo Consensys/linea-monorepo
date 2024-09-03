@@ -132,4 +132,8 @@ public class AddressUtils {
   public static Bytes lowPart(Address address) {
     return address.slice(4, LLARGE);
   }
+
+  public static boolean isAddressWarm(final MessageFrame messageFrame, final Address address) {
+    return messageFrame.isAddressWarm(address) || isPrecompile(address);
+  }
 }

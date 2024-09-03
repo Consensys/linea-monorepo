@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.section.copy;
 
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.outOfGasException;
+import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
@@ -56,7 +57,7 @@ public class ExtCodeCopySection extends TraceSection implements PostRollbackDefe
     address = Address.extract(Bytes32.leftPad(rawAddress));
     incomingDeploymentNumber = hub.deploymentNumberOf(address);
     incomingDeploymentStatus = hub.deploymentStatusOf(address);
-    incomingWarmth = frame.isAddressWarm(address);
+    incomingWarmth = isAddressWarm(frame, address);
     final ImcFragment imcFragment = ImcFragment.empty(hub);
 
     this.addStack(hub);
