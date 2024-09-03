@@ -31,7 +31,7 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
-import static net.consensys.linea.zktracer.module.mmio.MmioData.numberOfRowOfMmioInstruction;
+import static net.consensys.linea.zktracer.module.mmio.MmioData.lineCountOfMmioInstruction;
 import static net.consensys.linea.zktracer.types.Bytecodes.readBytes;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
@@ -40,6 +40,7 @@ import java.util.List;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
@@ -54,6 +55,7 @@ import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class MmuOperation extends ModuleOperation {
   @Getter private final MmuData mmuData;
 
@@ -71,34 +73,22 @@ public class MmuOperation extends ModuleOperation {
   private boolean isModexpData;
   private boolean isBlake;
 
-  private int mmioLineCount = -1;
-
-  MmuOperation(MmuData mmuData) {
-    this.mmuData = mmuData;
-  }
-
   public boolean traceMe() {
     return mmuData.mmuCall().traceMe();
   }
 
   @Override
   protected int computeLineCount() {
-    return traceMe()
-        ? 1 + mmuData.numberMmuPreprocessingRows() + mmuData.numberMmioInstructions()
-        : 0;
+    Preconditions.checkState(traceMe(), "Cannot compute if traceMe is false");
+    return 1 + mmuData.numberMmuPreprocessingRows() + mmuData.numberMmioInstructions();
   }
 
-  public int computeMmioLineCount() {
-    if (mmioLineCount != -1) {
-      return mmioLineCount;
-    }
-
-    mmioLineCount = 0;
-    if (traceMe()) {
-      for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
-        mmioLineCount +=
-            numberOfRowOfMmioInstruction(mmuData.mmuToMmioInstructions().get(i).mmioInstruction());
-      }
+  public int mmioLineCount() {
+    Preconditions.checkState(traceMe(), "Cannot compute if traceMe is false");
+    int mmioLineCount = 0;
+    for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
+      mmioLineCount +=
+          lineCountOfMmioInstruction(mmuData.mmuToMmioInstructions().get(i).mmioInstruction());
     }
     return mmioLineCount;
   }

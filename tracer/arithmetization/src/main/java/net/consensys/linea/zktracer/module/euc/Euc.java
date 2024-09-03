@@ -21,36 +21,24 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
 @RequiredArgsConstructor
-public class Euc implements Module {
+@Accessors(fluent = true)
+public class Euc implements OperationSetModule<EucOperation> {
   private final Wcp wcp;
-  private final StackedSet<EucOperation> operations = new StackedSet<>();
+  @Getter private final StackedSet<EucOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
     return "EUC";
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
-  public int lineCount() {
-    return this.operations.lineCount();
   }
 
   @Override
@@ -61,7 +49,7 @@ public class Euc implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    for (EucOperation eucOperation : this.operations) {
+    for (EucOperation eucOperation : operations.getAll()) {
       eucOperation.trace(trace);
     }
   }
@@ -72,11 +60,11 @@ public class Euc implements Module {
     final Bytes quotient = bigIntegerToBytes(dividendBI.divide(divisorBI));
     final Bytes remainder = bigIntegerToBytes(dividendBI.remainder(divisorBI));
 
-    EucOperation operation = new EucOperation(dividend, divisor, quotient, remainder);
+    final EucOperation operation = new EucOperation(dividend, divisor, quotient, remainder);
 
-    final boolean isNew = this.operations.add(operation);
+    final boolean isNew = operations.add(operation);
     if (isNew) {
-      this.wcp.callLT(operation.remainder(), operation.divisor());
+      wcp.callLT(operation.remainder(), operation.divisor());
     }
 
     return operation;

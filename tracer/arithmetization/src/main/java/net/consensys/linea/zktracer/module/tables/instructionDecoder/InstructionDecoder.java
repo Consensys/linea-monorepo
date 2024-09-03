@@ -19,7 +19,7 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;

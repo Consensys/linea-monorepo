@@ -310,7 +310,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -332,7 +332,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -353,7 +353,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -374,7 +374,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -395,7 +395,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -420,7 +420,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -441,7 +441,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -462,7 +462,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -485,7 +485,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -507,7 +507,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -528,7 +528,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -549,7 +549,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -570,7 +570,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -590,7 +590,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -611,7 +611,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -632,7 +632,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -653,7 +653,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -674,7 +674,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -695,7 +695,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 
@@ -716,7 +716,7 @@ public class OobRdcTest {
     // precompileCost = (5 + ceil) * 3 where ceil = 1
     // cds is trivially 0 in initReturnDataCopyProgramUsingIdentityPrecompile
     assertEquals(
-        bytecodeRunner.getHub().oob().getOobOperations().get(1).getPrecompileCost(),
+        bytecodeRunner.getHub().oob().operations().get(1).getPrecompileCost(),
         BigInteger.valueOf(18));
   }
 

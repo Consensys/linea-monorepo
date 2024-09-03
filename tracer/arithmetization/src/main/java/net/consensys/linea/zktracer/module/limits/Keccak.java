@@ -19,12 +19,13 @@ import java.util.List;
 
 import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 
 @RequiredArgsConstructor
-public class Keccak extends CountingOnlyModule {
+public class Keccak implements CountingOnlyModule {
   private static final int ADDRESS_BYTES = Address.SIZE;
   private static final int HASH_BYTES = Hash.SIZE;
   private static final int L1_MSG_INDICES_BYTES = 8;
@@ -42,9 +43,9 @@ public class Keccak extends CountingOnlyModule {
   }
 
   @Override
-  public void addPrecompileLimit(final int dataByteLength) {
-    final int blockCount = numberOfKeccakBloc(dataByteLength);
-    this.counts.add(blockCount);
+  public void addPrecompileLimit(final int count) {
+    final int blockCount = numberOfKeccakBloc(count);
+    counts.add(blockCount);
   }
 
   @Override

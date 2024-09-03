@@ -20,13 +20,15 @@ import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.list.StackedList;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.stacked.StackedList;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Gas implements Module {
   /** A list of the operations to trace */
-  private final StackedList<GasOperation> chunks = new StackedList<>();
+  private final StackedList<GasOperation> operations = new StackedList<>();
+
+  // TODO: why a stackedList of GasOperation? It should be a StateLess module no ?
 
   @Override
   public String moduleKey() {
@@ -35,17 +37,17 @@ public class Gas implements Module {
 
   @Override
   public void enterTransaction() {
-    this.chunks.enter();
+    this.operations.enter();
   }
 
   @Override
   public void popTransaction() {
-    this.chunks.pop();
+    this.operations.pop();
   }
 
   @Override
   public int lineCount() {
-    return this.chunks.lineCount();
+    return this.operations.lineCount();
   }
 
   @Override
@@ -56,7 +58,7 @@ public class Gas implements Module {
   @Override
   public void tracePreOpcode(MessageFrame frame) {
     GasParameters gasParameters = extractGasParameters(frame);
-    this.chunks.add(new GasOperation(gasParameters));
+    this.operations.add(new GasOperation(gasParameters));
   }
 
   private GasParameters extractGasParameters(MessageFrame frame) {
@@ -67,9 +69,11 @@ public class Gas implements Module {
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
-    for (int i = 0; i < this.chunks.size(); i++) {
-      GasOperation gasOperation = this.chunks.get(i);
-      gasOperation.trace(i + 1, trace);
+    int stamp = 0;
+    for (GasOperation gasOperation : this.operations.getAll()) {
+      // TODO: I thought we don't have stamp for gas anymore ?
+      stamp++;
+      gasOperation.trace(stamp, trace);
     }
   }
 }

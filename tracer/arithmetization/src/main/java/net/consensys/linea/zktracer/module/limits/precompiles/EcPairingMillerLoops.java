@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
-import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 
-public final class EcPairingMillerLoops extends CountingOnlyModule {
+public final class EcPairingMillerLoops implements CountingOnlyModule {
 
   @Override
   public String moduleKey() {

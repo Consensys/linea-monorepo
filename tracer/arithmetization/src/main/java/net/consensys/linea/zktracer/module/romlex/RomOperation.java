@@ -38,7 +38,7 @@ import org.apache.tuweni.bytes.Bytes;
 @Accessors(fluent = true)
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-public final class RomChunk extends ModuleOperation {
+public final class RomOperation extends ModuleOperation {
   private static final UnsignedByte UB_LLARGE = UnsignedByte.of(LLARGE);
   private static final UnsignedByte UB_LLARGE_MO = UnsignedByte.of(LLARGEMO);
   private static final UnsignedByte UB_EVW_WORD_MO = UnsignedByte.of(WORD_SIZE_MO);

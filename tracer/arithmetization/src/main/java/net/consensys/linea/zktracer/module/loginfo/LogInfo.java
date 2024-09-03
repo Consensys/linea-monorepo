@@ -15,26 +15,28 @@
 
 package net.consensys.linea.zktracer.module.loginfo;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LOG0;
+
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import com.google.common.base.Preconditions;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
-import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptChunk;
+import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptOperation;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.log.Log;
 
+@RequiredArgsConstructor
 public class LogInfo implements Module {
   private final RlpTxnRcpt rlpTxnRcpt;
-
-  public LogInfo(RlpTxnRcpt rlpTxnRcpt) {
-    this.rlpTxnRcpt = rlpTxnRcpt;
-  }
-
-  private static final int LOG0 = 0xa0; // TODO why I don't get it from the .lisp ?
+  private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {
@@ -42,18 +44,27 @@ public class LogInfo implements Module {
   }
 
   @Override
-  public void enterTransaction() {}
+  public void enterTransaction() {
+    lineCounter.enter();
+  }
 
   @Override
-  public void popTransaction() {}
+  public void popTransaction() {
+    lineCounter.pop();
+  }
+
+  /* WARN: make sure this is called after rlpTxnRcpt as we need the operation of the current transaction */
+  @Override
+  public void traceEndTx(TransactionProcessingMetadata tx) {
+    Preconditions.checkArgument(
+        rlpTxnRcpt.operations().operationsInTransaction().size() == 1,
+        "We should have only one transaction receipt operation per transaction");
+    lineCounter.add(lineCountForLogInfo(rlpTxnRcpt.operations().getLast()));
+  }
 
   @Override
   public int lineCount() {
-    int rowSize = 0;
-    for (RlpTxrcptChunk chunk : this.rlpTxnRcpt.getChunkList()) {
-      rowSize += txRowSize(chunk);
-    }
-    return rowSize;
+    return lineCounter.lineCount();
   }
 
   @Override
@@ -66,13 +77,13 @@ public class LogInfo implements Module {
     final Trace trace = new Trace(buffers);
 
     int absLogNumMax = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
+    for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absLogNumMax += tx.logs().size();
     }
 
     int absTxNum = 0;
     int absLogNum = 0;
-    for (RlpTxrcptChunk tx : this.rlpTxnRcpt.chunkList) {
+    for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absTxNum += 1;
       if (tx.logs().isEmpty()) {
         traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace);
@@ -85,7 +96,7 @@ public class LogInfo implements Module {
     }
   }
 
-  private int txRowSize(RlpTxrcptChunk tx) {
+  private int lineCountForLogInfo(RlpTxrcptOperation tx) {
     int txRowSize = 0;
     if (tx.logs().isEmpty()) {
       return 1;
@@ -100,7 +111,7 @@ public class LogInfo implements Module {
   public void traceTxWoLog(
       final int absTxNum, final int absLogNum, final int absLogNumMax, Trace trace) {
     trace
-        .absTxnNumMax(this.rlpTxnRcpt.chunkList.size())
+        .absTxnNumMax(rlpTxnRcpt.operations().size())
         .absTxnNum(absTxNum)
         .txnEmitsLogs(false)
         .absLogNumMax(absLogNumMax)
@@ -140,7 +151,7 @@ public class LogInfo implements Module {
     final Bytes32 topic4 = nbTopic >= 4 ? log.getTopics().get(3) : Bytes32.ZERO;
     for (int ct = 0; ct < ctMax + 1; ct++) {
       trace
-          .absTxnNumMax(this.rlpTxnRcpt.chunkList.size())
+          .absTxnNumMax(this.rlpTxnRcpt.operations().size())
           .absTxnNum(absTxNum)
           .txnEmitsLogs(true)
           .absLogNumMax(absLogNumMax)
@@ -158,7 +169,7 @@ public class LogInfo implements Module {
           .topicHi4(topic4.slice(0, 16))
           .topicLo4(topic4.slice(16, 16))
           .dataSize(log.getData().size())
-          .inst(UnsignedByte.of(LOG0 + nbTopic))
+          .inst(UnsignedByte.of(EVM_INST_LOG0 + nbTopic))
           .isLogX0(nbTopic == 0)
           .isLogX1(nbTopic == 1)
           .isLogX2(nbTopic == 2)

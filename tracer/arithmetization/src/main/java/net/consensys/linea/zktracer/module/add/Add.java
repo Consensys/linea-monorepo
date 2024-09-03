@@ -19,20 +19,24 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for addition/subtraction. */
 @RequiredArgsConstructor
-public class Add implements Module {
+@Getter
+@Accessors(fluent = true)
+public class Add implements OperationSetModule<AddOperation> {
 
-  /** A set of the operations to trace */
-  private final StackedSet<AddOperation> chunks = new StackedSet<>();
+  private final StackedSet<AddOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
@@ -40,18 +44,8 @@ public class Add implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.chunks.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.chunks.pop();
-  }
-
-  @Override
   public void tracePreOpcode(MessageFrame frame) {
-    this.chunks.add(
+    operations.add(
         new AddOperation(
             OpCode.of(frame.getCurrentOperation().getOpcode()),
             frame.getStackItem(0),
@@ -67,19 +61,13 @@ public class Add implements Module {
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (AddOperation op : this.chunks) {
-      stamp++;
-      op.trace(stamp, trace);
+    for (AddOperation op : operations.getAll()) {
+      op.trace(++stamp, trace);
     }
   }
 
-  @Override
-  public int lineCount() {
-    return this.chunks.lineCount();
-  }
-
   public BigInteger callADD(Bytes32 arg1, Bytes32 arg2) {
-    this.chunks.add(new AddOperation(OpCode.ADD, arg1, arg2));
+    operations.add(new AddOperation(OpCode.ADD, arg1, arg2));
     return arg1.toUnsignedBigInteger().add(arg2.toUnsignedBigInteger());
   }
 }

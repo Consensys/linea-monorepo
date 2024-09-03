@@ -27,11 +27,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ImmediateContextEntryDefer;
@@ -50,14 +52,17 @@ import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class RomLex
-    implements Module, PostOpcodeDefer, ImmediateContextEntryDefer, ContextExitDefer {
-  private static final RomChunkComparator ROM_CHUNK_COMPARATOR = new RomChunkComparator();
+    implements OperationSetModule<RomOperation>,
+        PostOpcodeDefer,
+        ImmediateContextEntryDefer,
+        ContextExitDefer {
 
   private final Hub hub;
 
-  @Getter private final StackedSet<RomChunk> chunks = new StackedSet<>();
-  @Getter private final List<RomChunk> sortedChunks = new ArrayList<>();
+  @Getter private final StackedSet<RomOperation> operations = new StackedSet<>();
+  @Getter private List<RomOperation> sortedOperations;
   private Bytes byteCode = Bytes.EMPTY;
   private Address address = Address.ZERO;
 
@@ -68,20 +73,6 @@ public class RomLex
     return "ROM_LEX";
   }
 
-  public RomLex(Hub hub) {
-    this.hub = hub;
-  }
-
-  @Override
-  public void enterTransaction() {
-    chunks.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    chunks.pop();
-  }
-
   public int getCodeFragmentIndexByMetadata(
       final Address address, final int deploymentNumber, final boolean depStatus) {
     return getCodeFragmentIndexByMetadata(
@@ -89,12 +80,12 @@ public class RomLex
   }
 
   public int getCodeFragmentIndexByMetadata(final ContractMetadata metadata) {
-    if (sortedChunks.isEmpty()) {
+    if (sortedOperations.isEmpty()) {
       throw new RuntimeException("Chunks have not been sorted yet");
     }
 
-    for (int i = 0; i < sortedChunks.size(); i++) {
-      final RomChunk c = sortedChunks.get(i);
+    for (int i = 0; i < sortedOperations.size(); i++) {
+      final RomOperation c = sortedOperations.get(i);
       if (c.metadata().equals(metadata)) {
         return i + 1;
       }
@@ -106,8 +97,16 @@ public class RomLex
             metadata.address(), metadata.deploymentNumber(), metadata.underDeployment()));
   }
 
-  public Optional<RomChunk> getChunkByMetadata(final ContractMetadata metadata) {
-    for (RomChunk c : chunks) {
+  public Optional<RomOperation> getChunkByMetadata(final ContractMetadata metadata) {
+    // First search in the chunk added in the current transaction
+    for (RomOperation c : operations.operationsInTransaction()) {
+      if (c.metadata().equals(metadata)) {
+        return Optional.of(c);
+      }
+    }
+
+    // If not found, search in the chunk added since the beginning of the conflation
+    for (RomOperation c : operations.operationsCommitedToTheConflation()) {
       if (c.metadata().equals(metadata)) {
         return Optional.of(c);
       }
@@ -117,7 +116,7 @@ public class RomLex
   }
 
   public Bytes getCodeByMetadata(final ContractMetadata metadata) {
-    return getChunkByMetadata(metadata).map(RomChunk::byteCode).orElse(Bytes.EMPTY);
+    return getChunkByMetadata(metadata).map(RomOperation::byteCode).orElse(Bytes.EMPTY);
   }
 
   @Override
@@ -126,11 +125,11 @@ public class RomLex
     // Contract creation with InitCode
     if (tx.getInit().isPresent() && !tx.getInit().get().isEmpty()) {
       final Address calledAddress = Address.contractAddress(tx.getSender(), tx.getNonce());
-      final RomChunk chunk =
-          new RomChunk(
+      final RomOperation chunk =
+          new RomOperation(
               ContractMetadata.underDeployment(calledAddress, 1), false, false, tx.getInit().get());
 
-      chunks.add(chunk);
+      operations.add(chunk);
     }
 
     // Call to an account with bytecode
@@ -145,14 +144,14 @@ public class RomLex
                 final int depNumber = hub.deploymentNumberOf(calledAddress);
                 final boolean depStatus = hub.deploymentStatusOf(calledAddress);
 
-                final RomChunk chunk =
-                    new RomChunk(
+                final RomOperation chunk =
+                    new RomOperation(
                         ContractMetadata.make(calledAddress, depNumber, depStatus),
                         true,
                         false,
                         code);
 
-                chunks.add(chunk);
+                operations.add(chunk);
               }
             });
   }
@@ -196,13 +195,13 @@ public class RomLex
             .ifPresent(
                 byteCode -> {
                   if (!byteCode.isEmpty()) {
-                    final RomChunk chunk =
-                        new RomChunk(
+                    final RomOperation chunk =
+                        new RomOperation(
                             ContractMetadata.make(calledAddress, depNumber, depStatus),
                             true,
                             false,
                             byteCode);
-                    chunks.add(chunk);
+                    operations.add(chunk);
                   }
                 });
       }
@@ -229,15 +228,15 @@ public class RomLex
             .ifPresent(
                 byteCode -> {
                   if (!byteCode.isEmpty()) {
-                    final RomChunk chunk =
-                        new RomChunk(
+                    final RomOperation chunk =
+                        new RomOperation(
                             ContractMetadata.make(
                                 foreignCodeAddress, foreignDeploymentNumber, false),
                             true,
                             false,
                             byteCode);
 
-                    chunks.add(chunk);
+                    operations.add(chunk);
                   }
                 });
       }
@@ -259,14 +258,14 @@ public class RomLex
 
     checkArgument(deploymentStatus, "After a CREATE the deployment status should be true");
 
-    final RomChunk chunk = new RomChunk(contractMetadata, true, false, byteCode);
-    chunks.add(chunk);
+    final RomOperation chunk = new RomOperation(contractMetadata, true, false, byteCode);
+    operations.add(chunk);
     createDefers.trigger(contractMetadata);
   }
 
   // This is the tracing for ROMLEX module
   private void traceChunk(
-      final RomChunk chunk, final int cfi, final int codeFragmentIndexInfinity, Trace trace) {
+      final RomOperation chunk, final int cfi, final int codeFragmentIndexInfinity, Trace trace) {
     final Hash codeHash =
         chunk.metadata().underDeployment() ? Hash.EMPTY : Hash.hash(chunk.byteCode());
     trace
@@ -285,15 +284,23 @@ public class RomLex
   }
 
   public void determineCodeFragmentIndex() {
-    sortedChunks.addAll(chunks);
-    sortedChunks.sort(ROM_CHUNK_COMPARATOR);
+    operations.finishConflation();
+    sortedOperations = new ArrayList<>(operations.getAll());
+    final RomOperationComparator ROM_CHUNK_COMPARATOR = new RomOperationComparator();
+    sortedOperations.sort(ROM_CHUNK_COMPARATOR);
   }
 
   @Override
   public int lineCount() {
     // WARN: the line count for the RomLex is the *number of code fragments*, not their actual line
     // count – that's for the ROM.
-    return chunks.size();
+    return operations.size();
+  }
+
+  @Override
+  public void traceEndConflation(final WorldView state) {
+    Preconditions.checkArgument(
+        operations.conflationFinished(), "Conflation is done before traceEndConflation for RomLex");
   }
 
   @Override
@@ -305,12 +312,11 @@ public class RomLex
   public void commit(List<MappedByteBuffer> buffers) {
 
     final Trace trace = new Trace(buffers);
-    final int codeFragmentIndexInfinity = chunks.size();
+    final int codeFragmentIndexInfinity = operations.size();
 
     int cfi = 0;
-    for (RomChunk chunk : sortedChunks) {
-      cfi += 1;
-      traceChunk(chunk, cfi, codeFragmentIndexInfinity, trace);
+    for (RomOperation chunk : sortedOperations) {
+      traceChunk(chunk, ++cfi, codeFragmentIndexInfinity, trace);
     }
   }
 
@@ -327,7 +333,7 @@ public class RomLex
 
     checkArgument(!hub.deploymentStatusOfBytecodeAddress());
 
-    final RomChunk chunk = new RomChunk(contractMetadata, false, true, byteCode);
-    chunks.add(chunk);
+    final RomOperation chunk = new RomOperation(contractMetadata, false, true, byteCode);
+    operations.add(chunk);
   }
 }

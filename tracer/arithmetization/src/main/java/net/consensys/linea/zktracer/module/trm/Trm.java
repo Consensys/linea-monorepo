@@ -20,9 +20,11 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLAR
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -33,25 +35,17 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class Trm implements Module {
+@Getter
+@Accessors(fluent = true)
+public class Trm implements OperationSetModule<TrmOperation> {
+  private final StackedSet<TrmOperation> operations = new StackedSet<>();
+
   static final int MAX_CT = LLARGE;
   static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
-
-  private final StackedSet<TrmOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
     return "TRM";
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
   }
 
   public Address callTrimming(Bytes32 rawHash) {
@@ -100,14 +94,8 @@ public class Trm implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (TrmOperation operation : this.operations) {
-      stamp++;
-      operation.trace(trace, stamp);
+    for (TrmOperation operation : operations.getAll()) {
+      operation.trace(trace, ++stamp);
     }
-  }
-
-  @Override
-  public int lineCount() {
-    return this.operations.lineCount();
   }
 }

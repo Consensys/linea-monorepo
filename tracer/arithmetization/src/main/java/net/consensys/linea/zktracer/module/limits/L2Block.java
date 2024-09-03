@@ -24,7 +24,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.log.Log;

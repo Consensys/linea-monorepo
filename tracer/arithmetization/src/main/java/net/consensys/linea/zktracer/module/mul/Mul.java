@@ -18,21 +18,23 @@ package net.consensys.linea.zktracer.module.mul;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @RequiredArgsConstructor
-public class Mul implements Module {
+@Accessors(fluent = true)
+public class Mul implements OperationSetModule<MulOperation> {
   private final Hub hub;
 
-  /** A set of the operations to trace */
-  private final StackedSet<MulOperation> operations = new StackedSet<>();
+  @Getter private final StackedSet<MulOperation> operations = new StackedSet<>();
 
   @Override
   public String moduleKey() {
@@ -49,18 +51,8 @@ public class Mul implements Module {
   }
 
   @Override
-  public void enterTransaction() {
-    this.operations.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.operations.pop();
-  }
-
-  @Override
   public int lineCount() {
-    return 1 + this.operations.lineCount();
+    return 1 + operations.lineCount();
   }
 
   @Override
@@ -73,9 +65,8 @@ public class Mul implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (var op : this.operations) {
-      stamp++;
-      op.trace(trace, stamp);
+    for (MulOperation op : operations.getAll()) {
+      op.trace(trace, ++stamp);
     }
     (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace, stamp + 1);
   }

@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.testing.DynamicTests;
 import net.consensys.linea.testing.OpcodeCall;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;

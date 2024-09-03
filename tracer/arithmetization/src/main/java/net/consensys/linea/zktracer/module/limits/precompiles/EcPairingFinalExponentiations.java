@@ -21,12 +21,12 @@ import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 
 @Slf4j
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public final class EcPairingFinalExponentiations extends CountingOnlyModule {
+public final class EcPairingFinalExponentiations implements CountingOnlyModule {
 
   private static final int PRECOMPILE_BASE_GAS_FEE = 45_000; // cf EIP-1108
   private static final int PRECOMPILE_MILLER_LOOP_GAS_FEE = 34_000; // cf EIP-1108

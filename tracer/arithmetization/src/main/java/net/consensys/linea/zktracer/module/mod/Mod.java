@@ -19,22 +19,26 @@ import java.math.BigInteger;
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.OperationSetModule;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
-public class Mod implements Module {
+@Getter
+@Accessors(fluent = true)
+public class Mod implements OperationSetModule<ModOperation> {
+  private final StackedSet<ModOperation> operations = new StackedSet<>();
+
   @Override
   public String moduleKey() {
     return "MOD";
   }
-
-  private final StackedSet<ModOperation> chunks = new StackedSet<>();
 
   @Override
   public void tracePreOpcode(final MessageFrame frame) {
@@ -42,32 +46,16 @@ public class Mod implements Module {
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-    this.chunks.add(new ModOperation(opCodeData, arg1, arg2));
-  }
-
-  @Override
-  public void enterTransaction() {
-    this.chunks.enter();
-  }
-
-  @Override
-  public void popTransaction() {
-    this.chunks.pop();
+    operations.add(new ModOperation(opCodeData, arg1, arg2));
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     final Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (ModOperation op : this.chunks) {
-      stamp++;
-      op.trace(trace, stamp);
+    for (ModOperation op : operations.getAll()) {
+      op.trace(trace, ++stamp);
     }
-  }
-
-  @Override
-  public int lineCount() {
-    return this.chunks.lineCount();
   }
 
   @Override
@@ -82,7 +70,7 @@ public class Mod implements Module {
    * @param arg2 the dividend
    */
   public BigInteger callDIV(Bytes32 arg1, Bytes32 arg2) {
-    this.chunks.add(new ModOperation(OpCode.DIV, arg1, arg2));
+    this.operations.add(new ModOperation(OpCode.DIV, arg1, arg2));
     return arg1.toUnsignedBigInteger().divide(arg2.toUnsignedBigInteger());
   }
 
@@ -93,7 +81,7 @@ public class Mod implements Module {
    * @param arg2 the module
    */
   public BigInteger callMOD(Bytes32 arg1, Bytes32 arg2) {
-    this.chunks.add(new ModOperation(OpCode.MOD, arg1, arg2));
+    this.operations.add(new ModOperation(OpCode.MOD, arg1, arg2));
     return arg1.toUnsignedBigInteger().mod(arg2.toUnsignedBigInteger());
   }
 }

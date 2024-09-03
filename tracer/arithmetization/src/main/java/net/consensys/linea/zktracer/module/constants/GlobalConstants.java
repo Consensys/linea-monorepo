@@ -237,6 +237,7 @@ public class GlobalConstants {
   public static final int LINEA_CHAIN_ID = 0xe708;
   public static final int LINEA_DIFFICULTY = 0x2;
   public static final int LINEA_GOERLI_CHAIN_ID = 0xe704;
+  public static final int LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH = 0xc8;
   public static final int LINEA_SEPOLIA_CHAIN_ID = 0xe705;
   public static final int LLARGE = 0x10;
   public static final int LLARGEMO = 0xf;

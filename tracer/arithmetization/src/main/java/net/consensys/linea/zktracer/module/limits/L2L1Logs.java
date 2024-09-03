@@ -19,7 +19,7 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
 
 @RequiredArgsConstructor
 public class L2L1Logs implements Module {

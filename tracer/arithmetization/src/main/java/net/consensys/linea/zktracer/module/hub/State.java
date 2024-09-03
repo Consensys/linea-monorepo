@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.StackedContainer;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.hub.State.TxState.Stamps;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.types.EWord;
@@ -30,6 +31,10 @@ import org.hyperledger.besu.datatypes.Address;
 
 public class State implements StackedContainer {
   private final Deque<TxState> state = new ArrayDeque<>();
+
+  @Getter
+  @Accessors(fluent = true)
+  private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
   State() {}
 
@@ -86,7 +91,7 @@ public class State implements StackedContainer {
    * @return the current transaction trace elements
    */
   TxTrace currentTxTrace() {
-    return this.current().txTrace;
+    return current().txTrace;
   }
 
   /**
@@ -105,17 +110,6 @@ public class State implements StackedContainer {
 
   int txCount() {
     return this.state.size();
-  }
-
-  /**
-   * @return the cumulated line numbers for all currently traced transactions
-   */
-  int lineCount() {
-    int sum = 0;
-    for (TxState s : this.state) {
-      sum += s.txTrace.lineCount();
-    }
-    return sum;
   }
 
   @Override
@@ -185,8 +179,8 @@ public class State implements StackedContainer {
         this.mxp++;
       }
 
-      public int incrementLogStamp() {
-        return this.log++;
+      public void incrementLogStamp() {
+        this.log++;
       }
     }
   }

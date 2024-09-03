@@ -17,8 +17,7 @@ package net.consensys.linea.zktracer.containers;
 
 import java.math.BigInteger;
 
-import com.google.common.collect.ImmutableList;
-import net.consensys.linea.zktracer.container.stacked.set.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -66,6 +65,6 @@ public class StackedSetTests {
     chunks.add(ONE_PLUS_TWO);
     Assertions.assertEquals(2, chunks.size());
     chunks.pop();
-    Assertions.assertEquals(1, ImmutableList.copyOf(chunks.iterator()).size());
+    Assertions.assertEquals(1, chunks.size());
   }
 }

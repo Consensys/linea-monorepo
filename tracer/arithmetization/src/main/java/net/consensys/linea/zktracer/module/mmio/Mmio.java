@@ -29,25 +29,26 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_RAM_TWO_TARGET;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_VANISHES;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.isFastOperation;
-import static net.consensys.linea.zktracer.module.mmio.MmioData.numberOfRowOfMmioInstruction;
+import static net.consensys.linea.zktracer.module.mmio.MmioData.lineCountOfMmioInstruction;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
-import net.consensys.linea.zktracer.module.Module;
+import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.mmu.Mmu;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.module.mmu.MmuOperation;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
+@RequiredArgsConstructor
 public class Mmio implements Module {
   private final Mmu mmu;
-
-  public Mmio(Mmu mmu) {
-    this.mmu = mmu;
-  }
+  private final CountOnlyOperation lineCounter = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {
@@ -55,31 +56,37 @@ public class Mmio implements Module {
   }
 
   @Override
-  public void enterTransaction() {}
+  public void enterTransaction() {
+    lineCounter.enter();
+  }
 
   @Override
-  public void popTransaction() {}
+  public void popTransaction() {
+    lineCounter.pop();
+  }
+
+  @Override
+  public void traceEndTx(TransactionProcessingMetadata tx) {
+    for (MmuOperation o : mmu.operations().operationsInTransaction()) {
+      lineCounter.add(o.mmioLineCount());
+    }
+  }
 
   @Override
   public int lineCount() {
-    int sum = 0;
-    for (MmuOperation o : mmu.mmuOperations()) {
-      sum += o.computeMmioLineCount();
-    }
-
-    return sum;
+    return lineCounter.lineCount();
   }
 
   @Override
   public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+    return Trace.headers(lineCount());
   }
 
   @Override
   public void commit(List<MappedByteBuffer> buffers) {
     Trace trace = new Trace(buffers);
     int stamp = 0;
-    for (MmuOperation mmuOperation : mmu.mmuOperations()) {
+    for (MmuOperation mmuOperation : mmu.operations().getAll()) {
       if (mmuOperation.traceMe()) {
 
         final MmuData currentMmuData = mmuOperation.mmuData();
@@ -138,7 +145,7 @@ public class Mmio implements Module {
     final boolean isRamToRamTwoTarget = (mmioData.instruction() == MMIO_INST_RAM_TO_RAM_TWO_TARGET);
     final boolean isRamVanishes = (mmioData.instruction() == MMIO_INST_RAM_VANISHES);
 
-    for (short ct = 0; ct < numberOfRowOfMmioInstruction(mmioData.instruction()); ct++) {
+    for (short ct = 0; ct < lineCountOfMmioInstruction(mmioData.instruction()); ct++) {
       trace
           .cnA(Bytes.minimalBytes(mmioData.cnA()))
           .cnB(Bytes.minimalBytes(mmioData.cnB()))

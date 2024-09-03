@@ -27,11 +27,11 @@ import org.hyperledger.besu.datatypes.Transaction;
 
 @Accessors(fluent = true)
 @Getter
-public final class RlpTxnChunk extends ModuleOperation {
+public final class RlpTxnOperation extends ModuleOperation {
   private final Transaction tx;
   private final boolean requireEvmExecution;
 
-  public RlpTxnChunk(Transaction tx, boolean requireEvmExecution) {
+  public RlpTxnOperation(Transaction tx, boolean requireEvmExecution) {
     this.tx = tx;
     this.requireEvmExecution = requireEvmExecution;
   }

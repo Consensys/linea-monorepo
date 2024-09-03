@@ -13,49 +13,46 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.limits;
+package net.consensys.linea.zktracer.container.module;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.module.Module;
 
-public class CountingOnlyModule implements Module {
-  public final CountOnlyOperation counts = new CountOnlyOperation();
+/** A {@link CountingOnlyModule} is a {@link Module} that only counts certain outcomes. */
+public interface CountingOnlyModule extends Module {
+  CountOnlyOperation counts = new CountOnlyOperation();
 
   @Override
-  public String moduleKey() {
-    throw new IllegalStateException("must have been implemented by the extended class");
+  default void enterTransaction() {
+    counts.enter();
   }
 
   @Override
-  public void enterTransaction() {
-    counts.enterTransaction();
+  default void popTransaction() {
+    counts.pop();
   }
 
   @Override
-  public void popTransaction() {
-    counts.popTransaction();
-  }
-
-  @Override
-  public int lineCount() {
+  default int lineCount() {
     return counts.lineCount();
   }
 
-  public void addPrecompileLimit(final int input) {
-    throw new IllegalStateException("must have been implemented by the extended class");
+  default void addPrecompileLimit(final int count) {
+    Preconditions.checkArgument(count >= 0, "Must be positive");
+    counts.add(count);
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
+  default List<ColumnHeader> columnsHeaders() {
     throw new IllegalStateException("should never be called");
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
+  default void commit(List<MappedByteBuffer> buffers) {
     throw new IllegalStateException("should never be called");
   }
 }

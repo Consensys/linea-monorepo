@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.containers;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import java.math.BigInteger;
 
-import com.google.common.collect.ImmutableList;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.container.stacked.list.StackedList;
+import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -95,6 +94,6 @@ public class StackedListTests {
     chunks.add(ONE_PLUS_TWO);
     Assertions.assertEquals(4, chunks.size());
     chunks.pop();
-    Assertions.assertEquals(2, ImmutableList.copyOf(chunks.iterator()).size());
+    Assertions.assertEquals(2, chunks.size());
   }
 }

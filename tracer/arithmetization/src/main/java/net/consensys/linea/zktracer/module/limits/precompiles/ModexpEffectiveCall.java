@@ -15,15 +15,16 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import com.google.common.base.Preconditions;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.module.limits.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
 
 @Slf4j
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public class ModexpEffectiveCall extends CountingOnlyModule {
+public class ModexpEffectiveCall implements CountingOnlyModule {
 
   public static final int PROVER_MAX_INPUT_BYTE_SIZE = 4096 / 8;
 
@@ -33,7 +34,9 @@ public class ModexpEffectiveCall extends CountingOnlyModule {
   }
 
   @Override
-  public void addPrecompileLimit(final int numberEffectiveCall) {
-    this.counts.add(numberEffectiveCall);
+  public void addPrecompileLimit(final int count) {
+    Preconditions.checkArgument(
+        count == 1, "can't add more than one effective precompile call at a time");
+    counts.add(count);
   }
 }
