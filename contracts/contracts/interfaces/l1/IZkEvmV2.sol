@@ -47,5 +47,5 @@ interface IZkEvmV2 {
   /**
    * @dev Thrown when the call to the verifier runs out of gas or reverts internally.
    */
-  error VerificationFailedOrRanOutOfGas(string errorReason);
+  error InvalidProofOrProofVerificationRanOutOfGas(string errorReason);
 }

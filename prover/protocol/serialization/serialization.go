@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/iancoleman/strcase"
 )
@@ -26,13 +27,19 @@ const (
 const (
 	DeclarationMode mode = iota
 	ReferenceMode
+	// pureExprMode is meant to serialize symbolic expression. All references to
+	// a compiled IOP are stripped out from the serialized expression. It allows
+	// deserializing without the complexity of the underlying CompiledIOP if
+	// there is one. It is used for generating/reading test-case expressions.
+	pureExprMode
 )
 
 // Types that necessitate special handling by the de/serializer
 var (
-	columnType  = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	queryType   = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	naturalType = reflect.TypeOf(column.Natural{})
+	columnType   = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
+	queryType    = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	naturalType  = reflect.TypeOf(column.Natural{})
+	metadataType = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
 )
 
 // SerializeValue recursively serializes `v` into JSON. This function is
@@ -72,6 +79,18 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Interface:
+
+		if mode == pureExprMode && v.Type() == metadataType {
+
+			var (
+				m              = v.Interface().(symbolic.Metadata)
+				mString        = m.String()
+				stringVar      = symbolic.StringVar(mString)
+				stringVarValue = reflect.ValueOf(stringVar)
+			)
+
+			return SerializeValue(stringVarValue, mode)
+		}
 
 		if mode == DeclarationMode && v.Type() == columnType {
 			// Only natural columns can be expected in this case.
@@ -298,6 +317,11 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// Value actually bears the requested interface type and not the
 		// concrete type.
 		ifaceValue := reflect.New(t).Elem()
+
+		if mode == pureExprMode && t == metadataType {
+			var stringVar symbolic.StringVar
+			return DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+		}
 
 		if mode == DeclarationMode && t == columnType {
 			// Only natural columns can be expected in this case.

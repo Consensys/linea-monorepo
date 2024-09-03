@@ -165,6 +165,7 @@ class CoordinatorConfigTest {
         "db246dde" to "IsPaused",
         "b015579f" to "IsNotPaused",
         "3b174434" to "MessageHashesListLengthHigherThanOneHundred",
+        "ca389c44" to "InvalidProofOrProofVerificationRanOutOfGas",
         // L2 Message Service
         "d39e75f9" to "L1MessageNumberSynchronizationWrong",
         "7557a60a" to "L1RollingHashSynchronizationWrong",
