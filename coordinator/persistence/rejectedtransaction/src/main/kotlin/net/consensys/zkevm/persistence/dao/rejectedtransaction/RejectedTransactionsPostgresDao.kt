@@ -27,28 +27,28 @@ class RejectedTransactionsPostgresDao(
 
   companion object {
     // Public instead of internal to allow usage in integrationTest source set
-    fun rejectedStageToDbValue(stage: RejectedTransaction.Stage): String {
-      return when (stage) {
-        RejectedTransaction.Stage.Sequencer -> "SEQ"
-        RejectedTransaction.Stage.Rpc -> "RPC"
-        RejectedTransaction.Stage.P2p -> "P2P"
+    fun rejectedStageToDbValue(txRejectionStage: RejectedTransaction.Stage): String {
+      return when (txRejectionStage) {
+        RejectedTransaction.Stage.SEQUENCER -> "SEQ"
+        RejectedTransaction.Stage.RPC -> "RPC"
+        RejectedTransaction.Stage.P2P -> "P2P"
       }
     }
 
     fun dbValueToRejectedStage(value: String): RejectedTransaction.Stage {
       return when (value) {
-        "SEQ" -> RejectedTransaction.Stage.Sequencer
-        "RPC" -> RejectedTransaction.Stage.Rpc
-        "P2P" -> RejectedTransaction.Stage.P2p
+        "SEQ" -> RejectedTransaction.Stage.SEQUENCER
+        "RPC" -> RejectedTransaction.Stage.RPC
+        "P2P" -> RejectedTransaction.Stage.P2P
         else -> throw IllegalStateException()
       }
     }
 
     fun parseRecord(record: Row): RejectedTransaction {
       return RejectedTransaction(
-        stage = record.getString("reject_stage").run(::dbValueToRejectedStage),
+        txRejectionStage = record.getString("reject_stage").run(::dbValueToRejectedStage),
         timestamp = Instant.fromEpochMilliseconds(record.getLong("timestamp")),
-        blockNumber = record.getLong("block_number").toULong(),
+        blockNumber = record.getLong("block_number")?.toULong(),
         transactionRLP = record.getBuffer("tx_rlp").bytes,
         reasonMessage = record.getString("reject_reason"),
         overflows = record.getJsonArray("overflows").let { jsonArray ->
@@ -77,11 +77,11 @@ class RejectedTransactionsPostgresDao(
         (created_epoch_milli, tx_hash, tx_from, tx_to, tx_nonce,
         reject_stage, reject_reason, timestamp, block_number, overflows)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CAST($10::text as jsonb))
-        RETURNING tx_hash
+        RETURNING tx_hash, reject_reason
       )
       insert into $fullTransactionsTable
-      (tx_hash, tx_rlp)
-      SELECT x.tx_hash, $11
+      (tx_hash, reject_reason, tx_rlp)
+      SELECT x.tx_hash, x.reject_reason, $11
       FROM x
     """
       .trimIndent()
@@ -93,7 +93,9 @@ class RejectedTransactionsPostgresDao(
         $fullTransactionsTable.tx_rlp as tx_rlp
       from $rejectedTransactionsTable
       join $fullTransactionsTable on $rejectedTransactionsTable.tx_hash = $fullTransactionsTable.tx_hash
+        and $rejectedTransactionsTable.reject_reason = $fullTransactionsTable.reject_reason
       where $fullTransactionsTable.tx_hash = $1
+      order by $rejectedTransactionsTable.timestamp desc
       limit 1
     """
       .trimIndent()
@@ -117,10 +119,10 @@ class RejectedTransactionsPostgresDao(
         rejectedTransaction.transactionInfo!!.from,
         rejectedTransaction.transactionInfo!!.to,
         rejectedTransaction.transactionInfo!!.nonce.toLong(),
-        rejectedStageToDbValue(rejectedTransaction.stage),
+        rejectedStageToDbValue(rejectedTransaction.txRejectionStage),
         rejectedTransaction.reasonMessage,
         rejectedTransaction.timestamp.toEpochMilliseconds(),
-        rejectedTransaction.blockNumber.toLong(),
+        rejectedTransaction.blockNumber?.toLong(),
         ModuleOverflow.parseToJsonString(rejectedTransaction.overflows),
         rejectedTransaction.transactionRLP
       )
