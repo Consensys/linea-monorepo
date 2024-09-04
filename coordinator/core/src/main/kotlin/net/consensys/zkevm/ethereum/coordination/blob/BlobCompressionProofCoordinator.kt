@@ -1,14 +1,13 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClient
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
@@ -28,7 +27,7 @@ import kotlin.time.Duration
 class BlobCompressionProofCoordinator(
   private val vertx: Vertx,
   private val blobsRepository: BlobsRepository,
-  private val blobCompressionProverClient: BlobCompressionProverClient,
+  private val blobCompressionProverClient: BlobCompressionProverClientV2,
   private val rollingBlobShnarfCalculator: RollingBlobShnarfCalculator,
   private val blobZkStateProvider: BlobZkStateProvider,
   private val config: Config,
@@ -61,10 +60,10 @@ class BlobCompressionProofCoordinator(
 
   @Synchronized
   private fun sendBlobToCompressionProver(blob: Blob): SafeFuture<Unit> {
-    log.debug(
-      "Going to create the blob compression proof for ${blob.intervalString()}"
-    )
-    val blobZkSateAndRollingShnarfFuture = blobZkStateProvider.getBlobZKState(blob.blocksRange)
+    log.debug("Preparing compression proof request for blob={}", blob.intervalString())
+
+    val blobZkSateAndRollingShnarfFuture = blobZkStateProvider
+      .getBlobZKState(blob.blocksRange)
       .thenCompose { blobZkState ->
         rollingBlobShnarfCalculator.calculateShnarf(
           compressedData = blob.compressedData,
@@ -121,7 +120,7 @@ class BlobCompressionProofCoordinator(
     blobStartBlockTime: Instant,
     blobEndBlockTime: Instant
   ): SafeFuture<Unit> {
-    return blobCompressionProverClient.requestBlobCompressionProof(
+    val proofRequest = BlobCompressionProofRequest(
       compressedData = compressedData,
       conflations = conflations,
       parentStateRootHash = parentStateRootHash,
@@ -132,11 +131,9 @@ class BlobCompressionProofCoordinator(
       commitment = commitment,
       kzgProofContract = kzgProofContract,
       kzgProofSideCar = kzgProofSideCar
-    ).thenCompose { result ->
-      if (result is Err) {
-        SafeFuture.failedFuture(result.error.asException())
-      } else {
-        val blobCompressionProof = (result as Ok).value
+    )
+    return blobCompressionProverClient.requestProof(proofRequest)
+      .thenCompose { blobCompressionProof ->
         val blobRecord = BlobRecord(
           startBlockNumber = conflations.first().startBlockNumber,
           endBlockNumber = conflations.last().endBlockNumber,
@@ -161,7 +158,6 @@ class BlobCompressionProofCoordinator(
           )
         ).thenApply {}
       }
-    }
   }
 
   @Synchronized

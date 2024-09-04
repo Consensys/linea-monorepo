@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.app
+package net.consensys.zkevm.coordinator.app.config
 
 import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.Masked
@@ -17,6 +17,7 @@ import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.web3j.SmartContractErrors
+import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import java.math.BigInteger
 import java.net.URL
@@ -75,15 +76,6 @@ data class ZkTraces(
   val newBlockPollingInterval: Duration
 )
 
-data class ProverConfig(
-  val fsRequestsDirectory: Path,
-  val fsResponsesDirectory: Path,
-  val fsPollingInterval: Duration,
-  val fsPollingTimeout: Duration,
-  val fsInprogressProvingSuffixPattern: String,
-  val fsInprogressRequestWritingSuffix: String
-)
-
 interface RetryConfig {
   val maxRetries: Int?
   val timeout: Duration?
@@ -138,8 +130,7 @@ data class BlobCompressionConfig(
   val blobSizeLimit: Int,
   @ConfigAlias("batches-limit")
   private val _batchesLimit: Int? = null,
-  val handlerPollingInterval: Duration,
-  val prover: ProverConfig
+  val handlerPollingInterval: Duration
 ) {
   init {
     _batchesLimit?.also {
@@ -156,12 +147,12 @@ data class AggregationConfig(
   val aggregationDeadline: Duration,
   val aggregationCoordinatorPollingInterval: Duration,
   val deadlineCheckInterval: Duration,
-  val prover: ProverConfig,
   val aggregationSizeMultipleOf: Int = 1,
   @ConfigAlias("target-end-blocks")
   private val _targetEndBlocks: List<Long> = emptyList()
 ) {
   val targetEndBlocks: List<ULong> = _targetEndBlocks.map { it.toULong() }
+
   init {
     require(aggregationSizeMultipleOf > 0) { "aggregationSizeMultipleOf should be greater than 0" }
   }
@@ -557,11 +548,14 @@ data class Type2StateProofProviderConfig(
 data class TracesLimitsV1ConfigFile(val tracesLimits: Map<TracingModuleV1, UInt>)
 data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>)
 
-data class CoordinatorConfig(
+//
+// CoordinatorConfigTomlDto class to parse from toml
+// CoordinatorConfig class with reified configs
+// separation between Toml representation and domain representation
+// otherwise it's hard to test the configuration is loaded properly
+data class CoordinatorConfigTomlDto(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val duplicatedLogsDebounceTime: Duration = Duration.ofSeconds(10),
   val zkTraces: ZkTraces,
-  val prover: ProverConfig,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
@@ -581,7 +575,60 @@ data class CoordinatorConfig(
   val messageAnchoringService: MessageAnchoringServiceConfig,
   val dynamicGasPriceService: DynamicGasPriceServiceConfig,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
-  val testL1Disabled: Boolean = false
+  val testL1Disabled: Boolean = false,
+  val prover: ProverConfigTomlDto
+) {
+  fun reified(): CoordinatorConfig = CoordinatorConfig(
+    l2InclusiveBlockNumberToStopAndFlushAggregation = l2InclusiveBlockNumberToStopAndFlushAggregation,
+    zkTraces = zkTraces,
+    blobCompression = blobCompression,
+    proofAggregation = proofAggregation,
+    traces = traces,
+    type2StateProofProvider = type2StateProofProvider,
+    l1 = l1,
+    l2 = l2,
+    finalizationSigner = finalizationSigner,
+    dataSubmissionSigner = dataSubmissionSigner,
+    blobSubmission = blobSubmission,
+    aggregationFinalization = aggregationFinalization,
+    database = database,
+    persistenceRetry = persistenceRetry,
+    stateManager = stateManager,
+    conflation = conflation,
+    api = api,
+    l2Signer = l2Signer,
+    messageAnchoringService = messageAnchoringService,
+    dynamicGasPriceService = dynamicGasPriceService,
+    l1DynamicGasPriceCapService = l1DynamicGasPriceCapService,
+    testL1Disabled = testL1Disabled,
+    proversConfig = prover.reified()
+  )
+}
+
+data class CoordinatorConfig(
+  val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
+  val zkTraces: ZkTraces,
+  val blobCompression: BlobCompressionConfig,
+  val proofAggregation: AggregationConfig,
+  val traces: TracesConfig,
+  val type2StateProofProvider: Type2StateProofProviderConfig,
+  val l1: L1Config,
+  val l2: L2Config,
+  val finalizationSigner: SignerConfig,
+  val dataSubmissionSigner: SignerConfig,
+  val blobSubmission: BlobSubmissionConfig,
+  val aggregationFinalization: AggregationFinalizationConfig,
+  val database: DatabaseConfig,
+  val persistenceRetry: PersistenceRetryConfig,
+  val stateManager: StateManagerClientConfig,
+  val conflation: ConflationConfig,
+  val api: ApiConfig,
+  val l2Signer: SignerConfig,
+  val messageAnchoringService: MessageAnchoringServiceConfig,
+  val dynamicGasPriceService: DynamicGasPriceServiceConfig,
+  val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
+  val testL1Disabled: Boolean = false,
+  val proversConfig: ProversConfig
 ) {
   init {
     if (l2InclusiveBlockNumberToStopAndFlushAggregation != null) {

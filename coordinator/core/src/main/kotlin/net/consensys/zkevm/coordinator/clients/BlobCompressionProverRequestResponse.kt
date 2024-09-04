@@ -1,11 +1,61 @@
 package net.consensys.zkevm.coordinator.clients
 
-import com.github.michaelbull.result.Result
-import net.consensys.linea.errors.ErrorResponse
+import net.consensys.zkevm.domain.BlockInterval
 import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.ethereum.coordination.blob.ShnarfResult
-import tech.pegasys.teku.infrastructure.async.SafeFuture
+
+data class BlobCompressionProofRequest(
+  val compressedData: ByteArray,
+  val conflations: List<ConflationCalculationResult>,
+  val parentStateRootHash: ByteArray,
+  val finalStateRootHash: ByteArray,
+  val parentDataHash: ByteArray,
+  val prevShnarf: ByteArray,
+  val expectedShnarfResult: ShnarfResult,
+  val commitment: ByteArray,
+  val kzgProofContract: ByteArray,
+  val kzgProofSideCar: ByteArray
+) : BlockInterval {
+  override val startBlockNumber: ULong
+    get() = conflations.first().startBlockNumber
+  override val endBlockNumber: ULong
+    get() = conflations.last().endBlockNumber
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as BlobCompressionProofRequest
+
+    if (!compressedData.contentEquals(other.compressedData)) return false
+    if (conflations != other.conflations) return false
+    if (!parentStateRootHash.contentEquals(other.parentStateRootHash)) return false
+    if (!finalStateRootHash.contentEquals(other.finalStateRootHash)) return false
+    if (!parentDataHash.contentEquals(other.parentDataHash)) return false
+    if (!prevShnarf.contentEquals(other.prevShnarf)) return false
+    if (expectedShnarfResult != other.expectedShnarfResult) return false
+    if (!commitment.contentEquals(other.commitment)) return false
+    if (!kzgProofContract.contentEquals(other.kzgProofContract)) return false
+    if (!kzgProofSideCar.contentEquals(other.kzgProofSideCar)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = compressedData.contentHashCode()
+    result = 31 * result + conflations.hashCode()
+    result = 31 * result + parentStateRootHash.contentHashCode()
+    result = 31 * result + finalStateRootHash.contentHashCode()
+    result = 31 * result + parentDataHash.contentHashCode()
+    result = 31 * result + prevShnarf.contentHashCode()
+    result = 31 * result + expectedShnarfResult.hashCode()
+    result = 31 * result + commitment.contentHashCode()
+    result = 31 * result + kzgProofContract.contentHashCode()
+    result = 31 * result + kzgProofSideCar.contentHashCode()
+    return result
+  }
+}
 
 // It only needs to parse a subset of the data to send to L1 or populate the DB.
 data class BlobCompressionProof(
@@ -76,19 +126,4 @@ data class BlobCompressionProof(
 
     return result
   }
-}
-
-interface BlobCompressionProverClient {
-  fun requestBlobCompressionProof(
-    compressedData: ByteArray,
-    conflations: List<ConflationCalculationResult>,
-    parentStateRootHash: ByteArray,
-    finalStateRootHash: ByteArray,
-    parentDataHash: ByteArray,
-    prevShnarf: ByteArray,
-    expectedShnarfResult: ShnarfResult,
-    commitment: ByteArray,
-    kzgProofContract: ByteArray,
-    kzgProofSideCar: ByteArray
-  ): SafeFuture<Result<BlobCompressionProof, ErrorResponse<ProverErrorType>>>
 }

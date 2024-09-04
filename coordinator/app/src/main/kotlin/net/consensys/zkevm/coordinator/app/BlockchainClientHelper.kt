@@ -14,6 +14,9 @@ import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.WMAGasProvider
 import net.consensys.linea.httprest.client.VertxHttpRestClient
 import net.consensys.linea.web3j.SmartContractErrors
+import net.consensys.zkevm.coordinator.app.config.L1Config
+import net.consensys.zkevm.coordinator.app.config.L2Config
+import net.consensys.zkevm.coordinator.app.config.SignerConfig
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerTxSignService

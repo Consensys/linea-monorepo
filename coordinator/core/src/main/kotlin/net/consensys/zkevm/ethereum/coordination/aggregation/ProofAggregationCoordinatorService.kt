@@ -1,14 +1,12 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.L2MessageServiceClient
-import net.consensys.zkevm.coordinator.clients.ProofAggregationClient
+import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
@@ -33,7 +31,7 @@ class ProofAggregationCoordinatorService(
   private val aggregationCalculator: AggregationCalculator,
   private val aggregationsRepository: AggregationsRepository,
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
-  private val proofAggregationClient: ProofAggregationClient,
+  private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
   private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
   private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
@@ -167,9 +165,7 @@ class ProofAggregationCoordinatorService(
           parentAggregationLastL1RollingHash = rollingInfo.parentAggregationLastL1RollingHash
         )
       }
-      .thenCompose { proofsToAggregate ->
-        proofAggregationClient.getAggregatedProof(proofsToAggregate)
-      }
+      .thenCompose(proofAggregationClient::requestProof)
       .whenException {
         log.error(
           "Error getting aggregation proof: aggregation={} errorMessage={}",
@@ -178,34 +174,27 @@ class ProofAggregationCoordinatorService(
           it
         )
       }
-      .thenCompose {
-        when (it) {
-          is Ok -> {
-            val aggregation = Aggregation(
-              startBlockNumber = blobsToAggregate.startBlockNumber,
-              endBlockNumber = blobsToAggregate.endBlockNumber,
-              status = Aggregation.Status.Proven,
-              batchCount = batchCount.toULong(),
-              aggregationProof = it.value
+      .thenCompose { aggregationProof ->
+        val aggregation = Aggregation(
+          startBlockNumber = blobsToAggregate.startBlockNumber,
+          endBlockNumber = blobsToAggregate.endBlockNumber,
+          status = Aggregation.Status.Proven,
+          batchCount = batchCount.toULong(),
+          aggregationProof = aggregationProof
+        )
+        aggregationsRepository
+          .saveNewAggregation(aggregation = aggregation)
+          .thenPeek {
+            provenAggregationEndBlockNumberConsumer.accept(aggregation.endBlockNumber)
+          }
+          .whenException {
+            log.error(
+              "Error saving proven aggregation to DB: aggregation={} errorMessage={}",
+              blobsToAggregate.intervalString(),
+              it.message,
+              it
             )
-            aggregationsRepository.saveNewAggregation(aggregation = aggregation)
-              .thenPeek {
-                provenAggregationEndBlockNumberConsumer.accept(aggregation.endBlockNumber)
-              }
-              .whenException {
-                log.error(
-                  "Error saving proven aggregation to DB: aggregation={} errorMessage={}",
-                  blobsToAggregate.intervalString(),
-                  it.message,
-                  it
-                )
-              }
           }
-          is Err -> {
-            log.error(it.error)
-            SafeFuture.failedFuture(it.error.asException())
-          }
-        }
       }
   }
 
@@ -220,7 +209,7 @@ class ProofAggregationCoordinatorService(
       startBlockNumberInclusive: ULong,
       aggregationsRepository: AggregationsRepository,
       consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
-      proofAggregationClient: ProofAggregationClient,
+      proofAggregationClient: ProofAggregationProverClientV2,
       l2web3jClient: Web3j,
       l2MessageServiceClient: L2MessageServiceClient,
       aggregationDeadlineDelay: Duration,

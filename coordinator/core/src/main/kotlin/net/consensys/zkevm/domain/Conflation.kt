@@ -4,6 +4,7 @@ import kotlinx.datetime.Instant
 import net.consensys.isSortedBy
 import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.traces.TracesCounters
+import net.consensys.zkevm.toULong
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 
 /**
@@ -53,10 +54,15 @@ fun assertConsecutiveIntervals(intervals: List<BlockInterval>) {
 data class BlocksConflation(
   val blocks: List<ExecutionPayloadV1>,
   val conflationResult: ConflationCalculationResult
-) {
+) : BlockInterval {
   init {
     require(blocks.isSortedBy { it.blockNumber }) { "Blocks list must be sorted by blockNumber" }
   }
+
+  override val startBlockNumber: ULong
+    get() = blocks.first().blockNumber.toULong()
+  override val endBlockNumber: ULong
+    get() = blocks.last().blockNumber.toULong()
 }
 
 data class Batch(

@@ -1,11 +1,10 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
-import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.trimToSecondPrecision
-import net.consensys.zkevm.coordinator.clients.ProofAggregationClient
+import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobCounters
@@ -72,7 +71,7 @@ class ProofAggregationCoordinatorServiceTest {
     // FIXME this it's only happy path, with should cover other scenarios
     val mockAggregationCalculator = mock<AggregationCalculator>()
     val mockAggregationsRepository = mock<AggregationsRepository>()
-    val mockProofAggregationClient = mock<ProofAggregationClient>()
+    val mockProofAggregationClient = mock<ProofAggregationProverClientV2>()
     val aggregationL2StateProvider = mock<AggregationL2StateProvider>()
 
     val config = ProofAggregationCoordinatorService.Config(
@@ -197,24 +196,16 @@ class ProofAggregationCoordinatorServiceTest {
       aggregationProof = aggregationProof2
     )
 
-    val proofAggregationResponse1 = Ok(aggregationProof1)
-    val proofAggregationResponse2 = Ok(aggregationProof2)
-
-    whenever(
-      mockProofAggregationClient.getAggregatedProof(
-        argThat<ProofsToAggregate> {
-          this == proofsToAggregate1 || this == proofsToAggregate2
+    whenever(mockProofAggregationClient.requestProof(any()))
+      .thenAnswer {
+        if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate1) {
+          SafeFuture.completedFuture(aggregationProof1)
+        } else if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate2) {
+          SafeFuture.completedFuture(aggregationProof2)
+        } else {
+          throw IllegalStateException()
         }
-      )
-    ).thenAnswer {
-      if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate1) {
-        SafeFuture.completedFuture(proofAggregationResponse1)
-      } else if (it.getArgument<ProofsToAggregate>(0) == proofsToAggregate2) {
-        SafeFuture.completedFuture(proofAggregationResponse2)
-      } else {
-        throw IllegalStateException()
       }
-    }
 
     whenever(
       mockAggregationsRepository.saveNewAggregation(
@@ -228,14 +219,14 @@ class ProofAggregationCoordinatorServiceTest {
     // First aggregation should Trigger
     proofAggregationCoordinatorService.action().get()
 
-    verify(mockProofAggregationClient).getAggregatedProof(proofsToAggregate1)
+    verify(mockProofAggregationClient).requestProof(proofsToAggregate1)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation1)
     assertThat(provenAggregation).isEqualTo(aggregation1.endBlockNumber)
 
     // Second aggregation should Trigger
     proofAggregationCoordinatorService.action().get()
 
-    verify(mockProofAggregationClient).getAggregatedProof(proofsToAggregate2)
+    verify(mockProofAggregationClient).requestProof(proofsToAggregate2)
     verify(mockAggregationsRepository).saveNewAggregation(aggregation2)
 
     assertThat(provenAggregation).isEqualTo(aggregation2.endBlockNumber)

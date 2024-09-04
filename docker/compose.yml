@@ -75,7 +75,7 @@ services:
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
-  
+
   linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
     image: badouralix/curl-jq
     command: [ "sh", "/finalized-tag-updater-jar-downloader.sh", "${GITHUB_TOKEN}", "0.0.1", "/linea-besu-sequencer" ]
@@ -257,7 +257,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-5a6fdf3}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-8a5690e}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:

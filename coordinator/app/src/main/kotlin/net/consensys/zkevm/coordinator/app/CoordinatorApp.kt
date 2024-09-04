@@ -7,15 +7,15 @@ import io.vertx.core.json.jackson.DatabindCodec
 import io.vertx.micrometer.backends.BackendRegistries
 import io.vertx.sqlclient.SqlClient
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
-import net.consensys.linea.contract.Web3JLogsClient
 import net.consensys.linea.jsonrpc.client.LoadBalancingJsonRpcClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.vertx.loadVertxConfig
 import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.coordinator.api.Api
-import net.consensys.zkevm.coordinator.clients.prover.FileBasedExecutionProverClient
+import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
+import net.consensys.zkevm.coordinator.app.config.DatabaseConfig
+import net.consensys.zkevm.fileio.DirectoryCleaner
 import net.consensys.zkevm.persistence.dao.aggregation.AggregationsRepositoryImpl
 import net.consensys.zkevm.persistence.dao.aggregation.PostgresAggregationsDao
 import net.consensys.zkevm.persistence.dao.aggregation.RetryingPostgresAggregationsDao
@@ -78,28 +78,6 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
       1000,
       Async.defaultExecutorService()
     )
-
-  private fun createExecutionProverClient(config: ProverConfig): FileBasedExecutionProverClient {
-    return FileBasedExecutionProverClient(
-      config = FileBasedExecutionProverClient.Config(
-        requestDirectory = config.fsRequestsDirectory,
-        responseDirectory = config.fsResponsesDirectory,
-        inprogressProvingSuffixPattern = config.fsInprogressProvingSuffixPattern,
-        pollingInterval = config.fsPollingInterval.toKotlinDuration(),
-        timeout = config.fsPollingTimeout.toKotlinDuration(),
-        tracesVersion = configs.traces.rawExecutionTracesVersion,
-        stateManagerVersion = configs.stateManager.version
-      ),
-      l2MessageServiceLogsClient = Web3JL2MessageServiceLogsClient(
-        logsClient = Web3JLogsClient(vertx, l2Web3jClient),
-        l2MessageServiceAddress = configs.l2.messageServiceAddress
-      ),
-      vertx = vertx,
-      l2Web3jClient = l2Web3jClient
-    )
-  }
-
-  private val proverClient: FileBasedExecutionProverClient = createExecutionProverClient(configs.prover)
 
   private val persistenceRetryer = PersistenceRetryer(
     vertx = vertx,
@@ -164,7 +142,6 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     vertx = vertx,
     l2Web3jClient = l2Web3jClient,
     httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-    proverClientV2 = proverClient,
     batchesRepository = batchesRepository,
     blobsRepository = blobsRepository,
     aggregationsRepository = aggregationsRepository,
@@ -175,16 +152,22 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
 
   private val requestFileCleanup = DirectoryCleaner(
     vertx = vertx,
-    directories = listOf(
-      configs.prover.fsRequestsDirectory, // Execution proof request directory
-      configs.blobCompression.prover.fsRequestsDirectory, // Compression proof request directory
-      configs.proofAggregation.prover.fsRequestsDirectory // Aggregation proof request directory
+    directories = listOfNotNull(
+      configs.proversConfig.proverA.execution.requestsDirectory,
+      configs.proversConfig.proverA.blobCompression.requestsDirectory,
+      configs.proversConfig.proverA.proofAggregation.requestsDirectory,
+      configs.proversConfig.proverB?.execution?.requestsDirectory,
+      configs.proversConfig.proverB?.blobCompression?.requestsDirectory,
+      configs.proversConfig.proverB?.proofAggregation?.requestsDirectory
     ),
     fileFilters = DirectoryCleaner.getSuffixFileFilters(
-      listOf(
-        configs.prover.fsInprogressRequestWritingSuffix,
-        configs.blobCompression.prover.fsInprogressRequestWritingSuffix,
-        configs.proofAggregation.prover.fsInprogressRequestWritingSuffix
+      listOfNotNull(
+        configs.proversConfig.proverA.execution.inprogressRequestWritingSuffix,
+        configs.proversConfig.proverA.blobCompression.inprogressRequestWritingSuffix,
+        configs.proversConfig.proverA.proofAggregation.inprogressRequestWritingSuffix,
+        configs.proversConfig.proverB?.execution?.inprogressRequestWritingSuffix,
+        configs.proversConfig.proverB?.blobCompression?.inprogressRequestWritingSuffix,
+        configs.proversConfig.proverB?.proofAggregation?.inprogressRequestWritingSuffix
       )
     ) + DirectoryCleaner.JSON_FILE_FILTER
   )
@@ -203,20 +186,25 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
   }
 
   fun stop(): Int {
-    SafeFuture.allOf(
-      l1App.stop(),
-      SafeFuture.fromRunnable { l2Web3jClient.shutdown() },
-      api.stop().toSafeFuture()
-    ).thenApply {
-      LoadBalancingJsonRpcClient.stop()
-    }.thenCompose {
-      requestFileCleanup.cleanup()
-    }.thenCompose {
-      vertx.close().toSafeFuture().thenApply { log.info("vertx Stopped") }
-    }.thenApply {
-      log.info("CoordinatorApp Stopped")
-    }.get()
-    return 0
+    return kotlin.runCatching {
+      SafeFuture.allOf(
+        l1App.stop(),
+        SafeFuture.fromRunnable { l2Web3jClient.shutdown() },
+        api.stop().toSafeFuture()
+      ).thenApply {
+        LoadBalancingJsonRpcClient.stop()
+      }.thenCompose {
+        requestFileCleanup.cleanup()
+      }.thenCompose {
+        vertx.close().toSafeFuture().thenApply { log.info("vertx Stopped") }
+      }.thenApply {
+        log.info("CoordinatorApp Stopped")
+      }.get()
+      0
+    }.recover { e ->
+      log.error("CoordinatorApp Stopped with error: errorMessage={}", e.message, e)
+      1
+    }.getOrThrow()
   }
 
   private fun initDb(dbConfig: DatabaseConfig): SqlClient {

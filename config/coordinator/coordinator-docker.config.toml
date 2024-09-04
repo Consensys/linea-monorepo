@@ -5,12 +5,30 @@ duplicated-logs-debounce-time="PT15S"
 eip4844-switch-l2-block-number=0
 
 [prover]
-fs-requests-directory="/data/prover-execution/v2/requests"
-fs-responses-directory="/data/prover-execution/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT1S"
-fs-polling-timeout="PT10M"
+fs-inprogress-request-writing-suffix = ".inprogress_coordinator_writing"
+fs-inprogress-proving-suffix-pattern = ".*\\.inprogress\\.prover.*"
+fs-polling-interval = "PT1S"
+fs-polling-timeout = "PT10M"
+[prover.execution]
+fs-requests-directory = "/data/prover/v2/execution/requests"
+fs-responses-directory = "/data/prover/v2/execution/responses"
+[prover.blob-compression]
+fs-requests-directory = "/data/prover/v2/compression/requests"
+fs-responses-directory = "/data/prover/v2/compression/responses"
+[prover.proof-aggregation]
+fs-requests-directory = "/data/prover/v2/aggregation/requests"
+fs-responses-directory = "/data/prover/v2/aggregation/responses"
+#[prover.new]
+#switch-block-number-inclusive=1000
+#[prover.new.execution]
+#fs-requests-directory = "/data/prover/v3/execution/requests"
+#fs-responses-directory = "/data/prover/v3/execution/responses"
+#[prover.new.blob-compression]
+#fs-requests-directory = "/data/prover/v3/compression/requests"
+#fs-responses-directory = "/data/prover/v3/compression/responses"
+#[prover.new.proof-aggregation]
+#fs-requests-directory = "/data/prover/v3/aggregation/requests"
+#fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [blob-compression]
 blob-size-limit=102400 # 100KB
@@ -18,13 +36,6 @@ handler-polling-interval="PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit=1
-[blob-compression.prover]
-fs-requests-directory="/data/prover-compression/v2/requests"
-fs-responses-directory="/data/prover-compression/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT1S"
-fs-polling-timeout="PT10M"
 
 [zk-traces]
 eth-api="http://traces-node:8545"
@@ -149,14 +160,6 @@ aggregation-deadline="PT1M"
 aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
 target-end-blocks=[]
-
-[proof-aggregation.prover]
-fs-requests-directory="/data/prover-aggregation/v2/requests"
-fs-responses-directory="/data/prover-aggregation/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT20S"
-fs-polling-timeout="PT20M"
 
 [finalization-signer]
 # Web3j/Web3signer

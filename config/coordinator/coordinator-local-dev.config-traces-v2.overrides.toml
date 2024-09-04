@@ -1,3 +1,14 @@
+[prover]
+[prover.execution]
+fs-requests-directory = "/data/prover/v3/execution/requests"
+fs-responses-directory = "/data/prover/v3/execution/responses"
+[prover.blob-compression]
+fs-requests-directory = "/data/prover/v3/compression/requests"
+fs-responses-directory = "/data/prover/v3/compression/responses"
+[prover.proof-aggregation]
+fs-requests-directory = "/data/prover/v3/aggregation/requests"
+fs-responses-directory = "/data/prover/v3/aggregation/responses"
+
 [zk-traces]
 eth-api="http://127.0.0.1:8745"
 

@@ -14,7 +14,10 @@ data class ProofsToAggregate(
   val parentAggregationLastBlockTimestamp: Instant,
   val parentAggregationLastL1RollingHashMessageNumber: ULong,
   val parentAggregationLastL1RollingHash: ByteArray
-) {
+) : BlockInterval {
+  override val startBlockNumber = compressionProofIndexes.first().startBlockNumber
+  override val endBlockNumber = compressionProofIndexes.last().endBlockNumber
+
   fun getStartEndBlockInterval(): BlockInterval {
     val startBlockNumber = compressionProofIndexes.first().startBlockNumber
     val endBlockNumber = compressionProofIndexes.last().endBlockNumber

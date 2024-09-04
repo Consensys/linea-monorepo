@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import net.consensys.decodeHex
 import net.consensys.encodeHex
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
 import net.consensys.zkevm.domain.BlockIntervals
 
 internal class ByteArrayDeserializer : JsonDeserializer<ByteArray>() {
@@ -66,7 +67,33 @@ data class BlobCompressionProofJsonRequest(
   @JsonProperty("kzgProofSidecar")
   @JsonSerialize(using = ByteArraySerializer::class)
   val kzgProofSidecar: ByteArray
-)
+) {
+  companion object {
+    fun fromDomainObject(
+      request: BlobCompressionProofRequest
+    ): BlobCompressionProofJsonRequest {
+      return BlobCompressionProofJsonRequest(
+        compressedData = request.compressedData,
+        conflationOrder = BlockIntervals(
+          startingBlockNumber = request.conflations.first().startBlockNumber,
+          upperBoundaries = request.conflations.map { it.endBlockNumber }
+        ),
+        prevShnarf = request.prevShnarf,
+        parentStateRootHash = request.parentStateRootHash,
+        finalStateRootHash = request.finalStateRootHash,
+        parentDataHash = request.parentDataHash,
+        dataHash = request.expectedShnarfResult.dataHash,
+        snarkHash = request.expectedShnarfResult.snarkHash,
+        expectedX = request.expectedShnarfResult.expectedX,
+        expectedY = request.expectedShnarfResult.expectedY,
+        expectedShnarf = request.expectedShnarfResult.expectedShnarf,
+        commitment = request.commitment,
+        kzgProofContract = request.kzgProofContract,
+        kzgProofSidecar = request.kzgProofSideCar
+      )
+    }
+  }
+}
 
 data class BlobCompressionProofJsonResponse(
   val compressedData: ByteArray, // The data that are explicitly sent in the blob (i.e. after compression)
