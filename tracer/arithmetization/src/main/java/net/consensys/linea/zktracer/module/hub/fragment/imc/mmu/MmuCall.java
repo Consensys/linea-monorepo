@@ -88,6 +88,7 @@ import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.PrecompileSubsection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.LogData;
+import net.consensys.linea.zktracer.runtime.callstack.CallDataInfo;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemorySpan;
@@ -195,14 +196,11 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
   }
 
   public static MmuCall callDataCopy(final Hub hub) {
-    final MemorySpan callDataSegment = hub.currentFrame().callDataInfo().memorySpan();
-
-    final int callDataContextNumber = callDataContextNumber(hub);
-    final CallFrame callFrame = hub.callStack().getByContextNumber(callDataContextNumber);
+    final CallDataInfo callDataInfo = hub.currentFrame().callDataInfo();
 
     return new MmuCall(hub, MMU_INST_ANY_TO_RAM_WITH_PADDING)
-        .sourceId(callDataContextNumber)
-        .sourceRamBytes(Optional.of(callFrame.callDataInfo().data()))
+        .sourceId((int) callDataInfo.callDataContextNumber())
+        .sourceRamBytes(Optional.ofNullable(callDataInfo.data()))
         .targetId(hub.currentFrame().contextNumber())
         .targetRamBytes(
             Optional.of(
@@ -212,16 +210,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
         .sourceOffset(EWord.of(hub.messageFrame().getStackItem(1)))
         .targetOffset(EWord.of(hub.messageFrame().getStackItem(0)))
         .size(Words.clampedToLong(hub.messageFrame().getStackItem(2)))
-        .referenceOffset(callDataSegment.offset())
-        .referenceSize(callDataSegment.length());
-  }
-
-  public static int callDataContextNumber(final Hub hub) {
-    final CallFrame currentFrame = hub.callStack().current();
-
-    return currentFrame.isRoot()
-        ? currentFrame.contextNumber() - 1
-        : hub.callStack().parent().contextNumber();
+        .referenceOffset(callDataInfo.memorySpan().offset())
+        .referenceSize(callDataInfo.memorySpan().length());
   }
 
   public static MmuCall LogX(final Hub hub, final LogData logData) {
