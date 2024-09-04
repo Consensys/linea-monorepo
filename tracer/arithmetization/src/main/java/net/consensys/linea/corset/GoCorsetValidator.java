@@ -17,6 +17,7 @@ package net.consensys.linea.corset;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import lombok.Getter;
@@ -93,14 +94,14 @@ public class GoCorsetValidator extends AbstractExecutable {
    */
   private List<String> buildCommandLine(Path traceFile, String zkEvmBin) {
     ArrayList<String> options = new ArrayList<>();
+    // Determine options to use (either default or override)
+    String flags = System.getenv().getOrDefault("GOCORSET_FLAGS", "-w --air");
     // Specify corset binary
     options.add("go-corset");
     // Specify corset "check" command.
     options.add("check");
-    // -w Report non-critical errors as warnings.
-    options.add("-w");
-    // Perform validation at AIR level only.
-    options.add("--air");
+    // Add all options
+    options.addAll(Arrays.asList(flags.split(" ")));
     // Specify trace file to use
     options.add(traceFile.toAbsolutePath().toString());
     // Specify the zkevm.bin file.

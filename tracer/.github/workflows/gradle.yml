@@ -139,7 +139,8 @@ jobs:
           go install github.com/consensys/go-corset/cmd/go-corset@latest
 
       - name: Run unit tests
-        run: ./gradlew :arithmetization:test
+        run: GOMEMLIMIT=196GiB ./gradlew :arithmetization:test
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
+          GOCORSET_FLAGS: -wd -b1024 --air
