@@ -156,7 +156,7 @@ public class AccountSnapshot {
   public AccountSnapshot decrementBalanceBy(Wei quantity) {
     Preconditions.checkState(
         balance.greaterOrEqualThan(quantity),
-        "Insufficient balance\n     Address: %s\n     Balance: %s\n     Value: %s"
+        "Insufficient balance\n\t\tAddress: %s\n\t\tBalance: %s\n\t\tValue: %s"
             .formatted(address, balance, quantity));
 
     balance = balance.subtract(quantity);

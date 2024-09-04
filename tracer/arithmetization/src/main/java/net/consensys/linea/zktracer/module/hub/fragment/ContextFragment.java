@@ -93,7 +93,7 @@ public class ContextFragment implements TraceFragment {
 
   public static ContextFragment executionProvidesEmptyReturnData(final Hub hub, int contextNumber) {
     CallStack callStack = hub.callStack();
-    int parentId = callStack.getByContextNumber(contextNumber).parentFrameId();
+    int parentId = callStack.getByContextNumber(contextNumber).callerId();
     return new ContextFragment(
         hub, callStack, Either.left(parentId), contextNumber, MemorySpan.empty(), true);
   }
@@ -166,7 +166,7 @@ public class ContextFragment implements TraceFragment {
         .pContextAccountDeploymentNumber(callFrame.accountDeploymentNumber())
         .pContextByteCodeAddressHi(highPart(codeAddress))
         .pContextByteCodeAddressLo(lowPart(codeAddress))
-        .pContextByteCodeDeploymentNumber(callFrame.codeDeploymentNumber())
+        .pContextByteCodeDeploymentNumber(callFrame.byteCodeDeploymentNumber())
         .pContextByteCodeDeploymentStatus(callFrame.isDeployment() ? 1 : 0)
         .pContextByteCodeCodeFragmentIndex(callFrame.getCodeFragmentIndex(hub))
         .pContextCallerAddressHi(highPart(callerAddress))

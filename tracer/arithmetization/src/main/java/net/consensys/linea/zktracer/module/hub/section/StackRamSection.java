@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE8;
@@ -23,7 +24,6 @@ import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractCo
 
 import java.util.Optional;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
@@ -51,8 +51,7 @@ public class StackRamSection extends TraceSection {
     final MxpCall mxpCall = new MxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
-    Preconditions.checkArgument(
-        mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
 
     // MXPX or OOGX case
     if (mxpCall.isMxpx() || Exceptions.outOfGasException(exceptions)) {
@@ -60,7 +59,7 @@ public class StackRamSection extends TraceSection {
     }
 
     // the unexceptional case
-    Preconditions.checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions));
 
     final EWord offset = EWord.of(hub.currentFrame().frame().getStackItem(0));
     final long longOffset = Words.clampedToLong(offset);

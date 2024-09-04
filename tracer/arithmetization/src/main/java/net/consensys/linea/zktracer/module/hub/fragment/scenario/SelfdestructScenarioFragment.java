@@ -14,9 +14,9 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment.SelfdestructScenario.UNDEFINED;
 
-import com.google.common.base.Preconditions;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
@@ -40,7 +40,7 @@ public class SelfdestructScenarioFragment implements TraceFragment {
 
   @Override
   public Trace trace(Trace trace) {
-    Preconditions.checkArgument(!this.scenario.equals(UNDEFINED));
+    checkArgument(!this.scenario.equals(UNDEFINED));
     return trace
         .peekAtScenario(true)
         // // SELFDESTRUCT scenarios

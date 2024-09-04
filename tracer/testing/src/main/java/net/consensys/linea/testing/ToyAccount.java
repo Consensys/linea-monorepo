@@ -16,12 +16,13 @@
 
 package net.consensys.linea.testing;
 
+import static com.google.common.base.Preconditions.*;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.function.Supplier;
 
-import com.google.common.base.Preconditions;
 import com.google.common.base.Suppliers;
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
@@ -56,7 +57,7 @@ public class ToyAccount implements MutableAccount {
       final long nonce,
       final Wei balance,
       final Bytes code) {
-    Preconditions.checkArgument(nonce >= 0);
+    checkArgument(nonce >= 0);
     this.parent = parent;
     this.address = address;
     this.nonce = nonce;

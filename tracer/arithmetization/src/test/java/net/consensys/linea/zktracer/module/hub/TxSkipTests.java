@@ -34,7 +34,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class TxSkip {
+public class TxSkipTests {
   final int nbOfRowsTxSkip = 4;
 
   @Test

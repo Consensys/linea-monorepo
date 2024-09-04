@@ -14,9 +14,11 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
+import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
+
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -27,11 +29,11 @@ public class CallScenarioFragment implements TraceFragment {
   @Setter @Getter CallScenario scenario;
 
   public CallScenarioFragment() {
-    this.scenario = CallScenario.UNDEFINED;
+    scenario = UNDEFINED;
   }
 
-  public CallScenarioFragment(final CallScenario scenario) {
-    this.scenario = scenario;
+  public CallScenarioFragment(final CallScenario callScenario) {
+    scenario = callScenario;
   }
 
   public enum CallScenario {
@@ -66,35 +68,25 @@ public class CallScenarioFragment implements TraceFragment {
   }
 
   private static final List<CallScenario> illegalTracingScenario =
-      List.of(
-          CallScenario.UNDEFINED, CallScenario.CALL_SMC_UNDEFINED, CallScenario.CALL_PRC_UNDEFINED);
+      List.of(UNDEFINED, CALL_SMC_UNDEFINED, CALL_PRC_UNDEFINED);
 
   public Trace trace(Trace trace) {
-    Preconditions.checkArgument(
-        this.scenario.noLongerUndefined(), "Final Scenario hasn't been set");
+    checkArgument(scenario.noLongerUndefined(), "Final Scenario hasn't been set");
     return trace
         .peekAtScenario(true)
         // // CALL scenarios
         ////////////////////
-        .pScenarioCallException(this.scenario.equals(CallScenario.CALL_EXCEPTION))
-        .pScenarioCallAbortWillRevert(this.scenario.equals(CallScenario.CALL_ABORT_WILL_REVERT))
-        .pScenarioCallAbortWontRevert(this.scenario.equals(CallScenario.CALL_ABORT_WONT_REVERT))
-        .pScenarioCallPrcFailure(this.scenario.equals(CallScenario.CALL_PRC_FAILURE))
-        .pScenarioCallPrcSuccessCallerWillRevert(
-            this.scenario.equals(CallScenario.CALL_PRC_SUCCESS_WILL_REVERT))
-        .pScenarioCallPrcSuccessCallerWontRevert(
-            this.scenario.equals(CallScenario.CALL_PRC_SUCCESS_WONT_REVERT))
-        .pScenarioCallSmcFailureCallerWillRevert(
-            this.scenario.equals(CallScenario.CALL_SMC_FAILURE_WILL_REVERT))
-        .pScenarioCallSmcFailureCallerWontRevert(
-            this.scenario.equals(CallScenario.CALL_SMC_FAILURE_WONT_REVERT))
-        .pScenarioCallSmcSuccessCallerWillRevert(
-            this.scenario.equals(CallScenario.CALL_SMC_SUCCESS_WILL_REVERT))
-        .pScenarioCallSmcSuccessCallerWontRevert(
-            this.scenario.equals(CallScenario.CALL_SMC_SUCCESS_WONT_REVERT))
-        .pScenarioCallEoaSuccessCallerWillRevert(
-            this.scenario.equals(CallScenario.CALL_EOA_SUCCESS_WILL_REVERT))
-        .pScenarioCallEoaSuccessCallerWontRevert(
-            this.scenario.equals(CallScenario.CALL_EOA_SUCCESS_WONT_REVERT));
+        .pScenarioCallException(scenario.equals(CALL_EXCEPTION))
+        .pScenarioCallAbortWillRevert(scenario.equals(CALL_ABORT_WILL_REVERT))
+        .pScenarioCallAbortWontRevert(scenario.equals(CALL_ABORT_WONT_REVERT))
+        .pScenarioCallPrcFailure(scenario.equals(CALL_PRC_FAILURE))
+        .pScenarioCallPrcSuccessCallerWillRevert(scenario.equals(CALL_PRC_SUCCESS_WILL_REVERT))
+        .pScenarioCallPrcSuccessCallerWontRevert(scenario.equals(CALL_PRC_SUCCESS_WONT_REVERT))
+        .pScenarioCallSmcFailureCallerWillRevert(scenario.equals(CALL_SMC_FAILURE_WILL_REVERT))
+        .pScenarioCallSmcFailureCallerWontRevert(scenario.equals(CALL_SMC_FAILURE_WONT_REVERT))
+        .pScenarioCallSmcSuccessCallerWillRevert(scenario.equals(CALL_SMC_SUCCESS_WILL_REVERT))
+        .pScenarioCallSmcSuccessCallerWontRevert(scenario.equals(CALL_SMC_SUCCESS_WONT_REVERT))
+        .pScenarioCallEoaSuccessCallerWillRevert(scenario.equals(CALL_EOA_SUCCESS_WILL_REVERT))
+        .pScenarioCallEoaSuccessCallerWontRevert(scenario.equals(CALL_EOA_SUCCESS_WONT_REVERT));
   }
 }

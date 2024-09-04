@@ -18,12 +18,14 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.Getter;
 import net.consensys.linea.zktracer.container.StackedContainer;
 import net.consensys.linea.zktracer.module.hub.transients.Block;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+@Getter
 public class TransactionStack implements StackedContainer {
   private final List<TransactionProcessingMetadata> txs =
       new ArrayList<>(200); // TODO: write the allocated memory from .toml file

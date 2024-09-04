@@ -62,10 +62,13 @@ public class TestRlpAddress {
             .sender(senderAccount)
             .keyPair(keyPair)
             .transactionType(TransactionType.FRONTIER)
+            .value(Wei.ONE)
             .gasLimit(1000000L)
             .gasPrice(Wei.of(10L))
             .payload(initCode)
             .build();
+
+    Address deploymentAddress = Address.contractAddress(senderAddress, senderAccount.getNonce());
 
     ToyExecutionEnvironmentV2.builder().toyWorld(world.build()).transaction(tx).build().run();
   }

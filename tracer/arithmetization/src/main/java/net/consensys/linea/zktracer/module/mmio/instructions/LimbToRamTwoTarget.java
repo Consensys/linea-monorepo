@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.mmio.instructions;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.onePartialToTwoOutputOne;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.onePartialToTwoOutputTwo;
 import static net.consensys.linea.zktracer.module.mmio.MmioPatterns.updateTemporaryTargetRam;
 import static net.consensys.linea.zktracer.types.Bytecodes.readLimb;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.mmio.MmioData;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -35,7 +35,7 @@ public class LimbToRamTwoTarget extends MmioInstruction {
   public MmioData execute() {
     final MmioData mmioData = super.execute();
 
-    Preconditions.checkArgument(
+    checkArgument(
         mmioData.targetLimbIsTouchedTwice(),
         "The MMIO instruction LimbToRamTwoTarget must temporary update the target limb");
 

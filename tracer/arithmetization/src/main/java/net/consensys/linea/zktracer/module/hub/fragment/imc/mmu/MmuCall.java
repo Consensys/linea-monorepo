@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.Util.slice;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EMPTY_RIPEMD_HI;
@@ -66,7 +67,6 @@ import static org.apache.tuweni.bytes.Bytes.minimalBytes;
 
 import java.util.Optional;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -390,7 +390,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
 
     final PrecompileScenarioFragment.PrecompileFlag flag =
         precompileSubsection.precompileScenarioFragment().flag;
-    Preconditions.checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
+    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
 
     return new MmuCall(hub, MMU_INST_RAM_TO_EXO_WITH_PADDING)
         .sourceId(hub.currentFrame().contextNumber())
@@ -409,7 +409,7 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
 
     final PrecompileScenarioFragment.PrecompileFlag flag =
         precompileSubsection.precompileScenarioFragment().flag;
-    Preconditions.checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
+    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
 
     final boolean isShaTwo = flag == PRC_SHA2_256;
 
@@ -437,8 +437,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     final PrecompileScenarioFragment.PrecompileFlag flag =
         precompileSubsection.precompileScenarioFragment().flag;
 
-    Preconditions.checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
-    Preconditions.checkArgument(!precompileSubsection.parentReturnDataTarget.isEmpty());
+    checkArgument(flag.isAnyOf(PRC_SHA2_256, PRC_RIPEMD_160));
+    checkArgument(!precompileSubsection.parentReturnDataTarget.isEmpty());
 
     return new MmuCall(hub, MMU_INST_RAM_TO_RAM_SANS_PADDING)
         .sourceId(precompileSubsection.returnDataContextNumber())

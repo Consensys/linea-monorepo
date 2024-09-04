@@ -14,9 +14,9 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.ReturnScenarioFragment.ReturnScenario.*;
 
-import com.google.common.base.Preconditions;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
@@ -27,7 +27,7 @@ public class ReturnScenarioFragment implements TraceFragment {
   ReturnScenario scenario;
 
   public ReturnScenarioFragment() {
-    this.scenario = UNDEFINED;
+    scenario = UNDEFINED;
   }
 
   public enum ReturnScenario {
@@ -43,23 +43,23 @@ public class ReturnScenarioFragment implements TraceFragment {
 
   @Override
   public Trace trace(Trace trace) {
-    Preconditions.checkArgument(!this.scenario.equals(UNDEFINED));
+    checkArgument(!scenario.equals(UNDEFINED));
     return trace
         .peekAtScenario(true)
-        // // RETURN scenarios
-        ////////////////////
-        .pScenarioReturnException(this.scenario.equals(RETURN_EXCEPTION))
+        // RETURN scenarios
+        ///////////////////
+        .pScenarioReturnException(scenario.equals(RETURN_EXCEPTION))
         .pScenarioReturnFromMessageCallWillTouchRam(
-            this.scenario.equals(RETURN_FROM_MESSAGE_CALL_WILL_TOUCH_RAM))
+            scenario.equals(RETURN_FROM_MESSAGE_CALL_WILL_TOUCH_RAM))
         .pScenarioReturnFromMessageCallWontTouchRam(
-            this.scenario.equals(RETURN_FROM_MESSAGE_CALL_WONT_TOUCH_RAM))
+            scenario.equals(RETURN_FROM_MESSAGE_CALL_WONT_TOUCH_RAM))
         .pScenarioReturnFromDeploymentEmptyCodeWillRevert(
-            this.scenario.equals(RETURN_FROM_DEPLOYMENT_EMPTY_CODE_WILL_REVERT))
+            scenario.equals(RETURN_FROM_DEPLOYMENT_EMPTY_CODE_WILL_REVERT))
         .pScenarioReturnFromDeploymentEmptyCodeWontRevert(
-            this.scenario.equals(RETURN_FROM_DEPLOYMENT_EMPTY_CODE_WONT_REVERT))
+            scenario.equals(RETURN_FROM_DEPLOYMENT_EMPTY_CODE_WONT_REVERT))
         .pScenarioReturnFromDeploymentNonemptyCodeWillRevert(
-            this.scenario.equals(RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WILL_REVERT))
+            scenario.equals(RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WILL_REVERT))
         .pScenarioReturnFromDeploymentNonemptyCodeWontRevert(
-            this.scenario.equals(RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WONT_REVERT));
+            scenario.equals(RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WONT_REVERT));
   }
 }

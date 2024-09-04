@@ -65,105 +65,92 @@ public final class CallStack {
 
     final CallFrame newFrame =
         new CallFrame(
-            -1,
-            -1,
-            false,
+            CallFrameType.PRECOMPILE_RETURN_DATA,
             this.callFrames.size(),
             hubStamp,
-            precompileAddress,
-            precompileAddress,
-            precompileAddress,
-            Bytecode.EMPTY,
-            CallFrameType.PRECOMPILE_RETURN_DATA,
-            this.current,
+            this.depth,
+            false,
             Wei.ZERO,
             0,
+            precompileAddress,
+            -1,
+            precompileAddress,
+            -1,
+            Bytecode.EMPTY,
+            precompileAddress,
+            -1,
+            this.current,
             precompileResult,
             returnDataOffset,
-            precompileResult.size(),
-            -1,
-            this.depth);
+            precompileResult.size());
 
     this.callFrames.add(newFrame);
   }
 
-  public void newBedrock(
-      int hubStamp,
+  public void newRootContext(
+      int contextNumber,
       Address from,
       Address to,
-      CallFrameType type,
       Bytecode toCode,
       Wei value,
       long gas,
+      int callDataContextNumber,
       Bytes callData,
       int accountDeploymentNumber,
       int codeDeploymentNumber,
       boolean codeDeploymentStatus) {
     this.depth = -1;
     this.enter(
-        hubStamp,
-        to,
-        to,
-        from,
-        toCode == null ? Bytecode.EMPTY : toCode,
-        type,
+        CallFrameType.ROOT,
+        contextNumber,
+        codeDeploymentStatus,
         value,
         gas,
+        to,
+        accountDeploymentNumber,
+        to,
+        codeDeploymentNumber,
+        toCode == null ? Bytecode.EMPTY : toCode,
+        from,
         callData,
         0,
         callData.size(),
-        hubStamp,
-        accountDeploymentNumber,
-        codeDeploymentNumber,
-        codeDeploymentStatus);
+        callDataContextNumber);
     this.current = this.callFrames.size() - 1;
   }
 
   /**
    * A “mantle” {@link CallFrame} holds the call data for a message call with a non-empty call data
    *
-   * @param hubStamp
-   * @param from
-   * @param to
-   * @param type
-   * @param toCode
-   * @param value
-   * @param gas
+   * @param transactionCallDataContextNumber
    * @param callData
-   * @param accountDeploymentNumber
-   * @param codeDeploymentNumber
-   * @param codeDeploymentStatus
    */
-  public void newMantleAndBedrock(
-      int hubStamp,
-      Address from,
-      Address to,
-      CallFrameType type,
-      Bytecode toCode,
-      Wei value,
-      long gas,
-      Bytes callData,
-      int accountDeploymentNumber,
-      int codeDeploymentNumber,
-      boolean codeDeploymentStatus) {
+  public void newTransactionCallDataContext(int transactionCallDataContextNumber, Bytes callData) {
     this.depth = -1;
-    this.callFrames.add(new CallFrame(from, callData, hubStamp));
+    this.callFrames.add(new CallFrame(Address.ZERO, callData, transactionCallDataContextNumber));
     this.enter(
-        hubStamp,
-        to,
-        to,
-        from,
-        toCode == null ? Bytecode.EMPTY : toCode,
-        CallFrameType.ROOT,
-        value,
-        gas,
+        CallFrameType.TRANSACTION_CALL_DATA_HOLDER,
+        transactionCallDataContextNumber,
+        false,
+        Wei.ZERO,
+        0,
+        Address.ZERO, // useless
+        0,
+        Address.ZERO, // useless
+        0,
+        Bytecode.EMPTY,
+        Address.ZERO, // useless
+        // useless
+        // useless
+        // useless
         callData,
         0,
         callData.size(),
-        hubStamp,
-        accountDeploymentNumber,
-        codeDeploymentNumber,
-        codeDeploymentStatus);
+        transactionCallDataContextNumber
+        // useless
+        // useless
+        // useless
+        );
     this.current = this.callFrames.size() - 1;
   }
 
@@ -186,8 +173,8 @@ public final class CallStack {
    * @return the parent {@link CallFrame} of the current frame
    */
   public CallFrame parent() {
-    if (this.current().parentFrameId() != -1) {
-      return this.callFrames.get(this.current().parentFrameId());
+    if (this.current().callerId() != -1) {
+      return this.callFrames.get(this.current().callerId());
     } else {
       return CallFrame.EMPTY;
     }
@@ -200,67 +187,67 @@ public final class CallStack {
   /**
    * Creates a new call frame.
    *
-   * @param hubStamp the hub stamp at the time of entry in the new frame
-   * @param accountAddress the {@link Address} of the bytecode being executed
-   * @param code the {@link Code} being executed
    * @param type the execution type of call frame
-   * @param value the value given to this call frame
-   * @param gas the gas provided to this call frame
-   * @param input the call data sent to this call frame
-   * @param accountDeploymentNumber
-   * @param codeDeploymentNumber
+   * @param newContextNumber the context number of the new (call) frame
    * @param isDeployment
+   * @param value the value given to this call frame
+   * @param gasStipend the gasStipend provided to this call frame
+   * @param accountAddress the {@link Address} of the bytecode being executed
+   * @param accountDeploymentNumber
+   * @param byteCodeDeploymentNumber
+   * @param byteCode the {@link Code} being executed
+   * @param inputData the call data sent to this call frame
    */
   public void enter(
-      int hubStamp,
-      Address accountAddress,
-      Address byteCodeAddress,
-      Address callerAddress,
-      Bytecode code,
       CallFrameType type,
+      int newContextNumber,
+      boolean isDeployment,
       Wei value,
-      long gas,
-      Bytes input,
+      long gasStipend,
+      Address accountAddress,
+      int accountDeploymentNumber,
+      Address byteCodeAddress,
+      int byteCodeDeploymentNumber,
+      Bytecode byteCode,
+      Address callerAddress,
+      Bytes inputData,
       long callDataOffset,
       long callDataSize,
-      long callDataContextNumber,
-      int accountDeploymentNumber,
-      int codeDeploymentNumber,
-      boolean isDeployment) {
-    final int caller = this.depth == -1 ? -1 : this.current;
-    final int newTop = this.callFrames.size();
+      long callDataContextNumber) {
+    final int callerId = this.depth == -1 ? -1 : this.current;
+    final int newCallFrameId = this.callFrames.size();
     this.depth += 1;
 
     Bytes callData = Bytes.EMPTY;
     if (type != CallFrameType.INIT_CODE) {
-      callData = input;
+      callData = inputData;
     }
     final CallFrame newFrame =
         new CallFrame(
-            accountDeploymentNumber,
-            codeDeploymentNumber,
-            isDeployment,
-            newTop,
-            hubStamp,
-            accountAddress,
-            callerAddress,
-            byteCodeAddress,
-            code,
             type,
-            caller,
+            newCallFrameId,
+            newContextNumber,
+            this.depth,
+            isDeployment,
             value,
-            gas,
+            gasStipend,
+            accountAddress,
+            accountDeploymentNumber,
+            byteCodeAddress,
+            byteCodeDeploymentNumber,
+            byteCode,
+            callerAddress,
+            callDataContextNumber,
+            callerId,
             callData,
             callDataOffset,
-            callDataSize,
-            callDataContextNumber,
-            this.depth);
+            callDataSize);
 
     this.callFrames.add(newFrame);
-    this.current = newTop;
-    if (caller != -1) {
-      this.callFrames.get(caller).returnData(Bytes.EMPTY);
-      this.callFrames.get(caller).childFramesId().add(newTop);
+    this.current = newCallFrameId;
+    if (callerId != -1) {
+      this.callFrames.get(callerId).returnData(Bytes.EMPTY);
+      this.callFrames.get(callerId).childFramesId().add(newCallFrameId);
     }
   }
 
@@ -271,7 +258,7 @@ public final class CallStack {
   public void exit() {
     this.depth -= 1;
     Preconditions.checkState(this.depth >= 0);
-    this.current = this.current().parentFrameId();
+    this.current = this.current().callerId();
   }
 
   /**
@@ -301,7 +288,7 @@ public final class CallStack {
    * @return the caller of the current frame
    */
   public CallFrame caller() {
-    return this.callFrames.get(this.current().parentFrameId());
+    return this.callFrames.get(this.current().callerId());
   }
 
   /**
@@ -347,7 +334,7 @@ public final class CallStack {
       return CallFrame.EMPTY;
     }
 
-    return this.getById(this.callFrames.get(id).parentFrameId());
+    return this.getById(this.callFrames.get(id).callerId());
   }
 
   /**

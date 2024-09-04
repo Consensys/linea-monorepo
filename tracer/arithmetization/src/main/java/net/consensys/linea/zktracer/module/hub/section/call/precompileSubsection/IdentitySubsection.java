@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forIdentityExtractCallData;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forIdentityReturnData;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_IDENTITY;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
@@ -48,7 +48,7 @@ public class IdentitySubsection extends PrecompileSubsection {
     super.resolveAtContextReEntry(hub, callFrame);
 
     // sanity check
-    Preconditions.checkArgument(callSuccess == oobCall.isHubSuccess());
+    checkArgument(callSuccess == oobCall.isHubSuccess());
 
     if (!callSuccess) {
       precompileScenarioFragment.scenario(PRC_FAILURE_KNOWN_TO_HUB);

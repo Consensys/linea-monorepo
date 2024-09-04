@@ -147,7 +147,7 @@ public class ToyExecutionEnvironmentV2 {
         new MessageCallProcessor(evm, precompileContractRegistry);
 
     final ContractCreationProcessor contractCreationProcessor =
-        new ContractCreationProcessor(evm, false, List.of(), 0);
+        new ContractCreationProcessor(evm, false, List.of(), 1);
 
     return new MainnetTransactionProcessor(
         gasCalculator,

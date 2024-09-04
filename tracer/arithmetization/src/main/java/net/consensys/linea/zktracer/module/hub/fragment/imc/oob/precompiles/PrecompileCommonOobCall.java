@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.Trace;
@@ -41,7 +41,7 @@ public class PrecompileCommonOobCall extends OobCall {
 
   public PrecompileCommonOobCall(OobInstruction oobInstruction) {
     super(oobInstruction);
-    Preconditions.checkArgument(oobInstruction.isCommonPrecompile());
+    checkArgument(oobInstruction.isCommonPrecompile());
   }
 
   public boolean getExtractCallData() {

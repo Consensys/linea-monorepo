@@ -14,7 +14,8 @@
  */
 package net.consensys.linea.zktracer.module.hub.section.halt;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.*;
+
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
@@ -43,7 +44,7 @@ public class RevertSection extends TraceSection {
     // triggerMxp = true
     MxpCall mxpCall = new MxpCall(hub);
     imcFragment.callMxp(mxpCall);
-    Preconditions.checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
 
     // The XAHOY case
     /////////////////

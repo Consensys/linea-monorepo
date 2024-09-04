@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.stp;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
 import java.nio.MappedByteBuffer;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -45,7 +45,7 @@ public class Stp implements OperationSetModule<StpOperation> {
     final StpOperation stpOperation = new StpOperation(stpCall);
     operations.add(stpOperation);
 
-    Preconditions.checkArgument(
+    checkArgument(
         stpCall.opCode().isCall() || stpCall.opCode().isCreate(),
         "STP handles only Calls and CREATEs");
 

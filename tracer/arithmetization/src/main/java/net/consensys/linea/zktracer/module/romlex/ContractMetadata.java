@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
+import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.Address;
 
 /**
@@ -25,13 +26,14 @@ import org.hyperledger.besu.datatypes.Address;
  * @param underDeployment whether this contract is being deployed
  */
 public record ContractMetadata(Address address, int deploymentNumber, boolean underDeployment) {
+  public static ContractMetadata canonical(Hub hub, Address address) {
+    return new ContractMetadata(
+        address, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address));
+  }
+
   public static ContractMetadata make(
       final Address address, int deploymentNumber, boolean underDeployment) {
     return new ContractMetadata(address, deploymentNumber, underDeployment);
-  }
-
-  public static ContractMetadata deployed(final Address address, int deploymentNumber) {
-    return new ContractMetadata(address, deploymentNumber, false);
   }
 
   public static ContractMetadata underDeployment(final Address address, int deploymentNumber) {

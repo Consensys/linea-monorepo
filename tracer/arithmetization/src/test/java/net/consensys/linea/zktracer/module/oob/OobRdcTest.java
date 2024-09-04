@@ -48,7 +48,6 @@ public class OobRdcTest {
     assertFalse(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
   }
 
-  // @Disabled("This test is temporary disabled because of issue with CREATE")
   @Test
   void TestReturnDataCopyMaxPosRds() {
     // maxPos = offset + size = 12 + 20 = rds = 32
@@ -62,7 +61,6 @@ public class OobRdcTest {
     assertFalse(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
   }
 
-  // @Disabled("This test is temporary disabled because of issue with CREATE")
   @Test
   void TestReturnDataCopyMaxPosSmallerThanRds() {
     // maxPos = offset + size = 3 + 4 < rds = 32
@@ -76,7 +74,6 @@ public class OobRdcTest {
     assertFalse(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
   }
 
-  // @Disabled("This test is temporary disabled because of issue with CREATE")
   @Test
   void TestReturnDataCopyMaxPosSmallerThanRdsAndOffsetZero() {
     // maxPos = offset + size = 0 + 4 < rds = 32
@@ -90,7 +87,6 @@ public class OobRdcTest {
     assertFalse(Exceptions.returnDataCopyFault(hub.pch().exceptions()));
   }
 
-  // @Disabled("This test is temporary disabled because of issue with CREATE")
   @Test
   void TestReturnDataCopyMaxPosSmallerThanRdsAndSizeZero() {
     // maxPos = offset + size = 3 + 0 < rds = 32

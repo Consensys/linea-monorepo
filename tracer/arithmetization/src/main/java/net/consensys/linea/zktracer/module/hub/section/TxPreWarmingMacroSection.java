@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.PRE_WARMING;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.precompileAddress;
@@ -25,7 +26,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.State;
@@ -64,7 +64,7 @@ public class TxPreWarmingMacroSection {
                       hub.transients().conflation().deploymentInfo();
 
                   final int deploymentNumber = deploymentInfo.deploymentNumber(address);
-                  Preconditions.checkArgument(
+                  checkArgument(
                       !deploymentInfo.getDeploymentStatus(address),
                       "Deployment status during TX_INIT phase of any accountAddress should always be false");
 
