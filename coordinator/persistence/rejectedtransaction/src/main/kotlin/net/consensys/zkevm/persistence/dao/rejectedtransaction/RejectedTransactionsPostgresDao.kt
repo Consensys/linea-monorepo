@@ -17,13 +17,20 @@ import net.consensys.zkevm.persistence.db.isDuplicateKeyException
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration
 
 class RejectedTransactionsPostgresDao(
-  connection: SqlClient,
+  private val readConnection: SqlClient,
+  private val writeConnection: SqlClient,
+  private val config: Config,
   private val clock: Clock = Clock.System
 ) : RejectedTransactionsDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
+
+  data class Config(
+    val queryableWindowSinceRejectTimestamp: Duration
+  )
 
   companion object {
     // Public instead of internal to allow usage in integrationTest source set
@@ -94,7 +101,7 @@ class RejectedTransactionsPostgresDao(
       from $rejectedTransactionsTable
       join $fullTransactionsTable on $rejectedTransactionsTable.tx_hash = $fullTransactionsTable.tx_hash
         and $rejectedTransactionsTable.reject_reason = $fullTransactionsTable.reject_reason
-      where $fullTransactionsTable.tx_hash = $1
+      where $fullTransactionsTable.tx_hash = $1 and $rejectedTransactionsTable.timestamp >= $2
       order by $rejectedTransactionsTable.timestamp desc
       limit 1
     """
@@ -107,9 +114,9 @@ class RejectedTransactionsPostgresDao(
     """
       .trimIndent()
 
-  private val insertSqlQuery = connection.preparedQuery(insertSql)
-  private val selectSqlQuery = connection.preparedQuery(selectSql)
-  private val deleteSqlQuery = connection.preparedQuery(deleteSql)
+  private val insertSqlQuery = writeConnection.preparedQuery(insertSql)
+  private val selectSqlQuery = readConnection.preparedQuery(selectSql)
+  private val deleteSqlQuery = writeConnection.preparedQuery(deleteSql)
 
   override fun saveNewRejectedTransaction(rejectedTransaction: RejectedTransaction): SafeFuture<Unit> {
     val params: List<Any?> =
@@ -147,7 +154,12 @@ class RejectedTransactionsPostgresDao(
 
   override fun findRejectedTransactionByTxHash(txHash: ByteArray): SafeFuture<RejectedTransaction?> {
     return selectSqlQuery
-      .execute(Tuple.of(txHash))
+      .execute(
+        Tuple.of(
+          txHash,
+          clock.now().minus(config.queryableWindowSinceRejectTimestamp).toEpochMilliseconds()
+        )
+      )
       .toSafeFuture()
       .thenApply { rowSet -> rowSet.map(::parseRecord) }
       .thenApply { rejectedTxRecords -> rejectedTxRecords.firstOrNull() }

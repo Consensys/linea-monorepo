@@ -22,11 +22,16 @@ import org.apache.logging.log4j.LogManager
 import java.time.Duration
 import kotlin.time.toKotlinDuration
 
-data class DatabaseConfig(
+data class DbConnectionConfig(
   val host: String,
   val port: Int,
   val username: String,
-  val password: Masked,
+  val password: Masked
+)
+
+data class DatabaseConfig(
+  val read: DbConnectionConfig,
+  val write: DbConnectionConfig,
   val schema: String,
   val readPoolSize: Int,
   val readPipeliningLimit: Int,
@@ -38,7 +43,8 @@ data class AppConfig(
   val api: ApiConfig,
   val database: DatabaseConfig,
   val dbStoragePeriod: Duration,
-  val dbCleanupPollingInterval: Duration
+  val dbCleanupPollingInterval: Duration,
+  val dbQueryableWindowSinceRejectTimestamp: Duration
 )
 
 class TransactionExclusionApp(config: AppConfig) {
@@ -46,7 +52,8 @@ class TransactionExclusionApp(config: AppConfig) {
   private val meterRegistry: MeterRegistry
   private val vertx: Vertx
   private val api: Api
-  private val sqlClient: SqlClient
+  private val sqlReadClient: SqlClient
+  private val sqlWriteClient: SqlClient
   private val rejectedTransactionsRepository: RejectedTransactionsRepository
   private val transactionExclusionService: TransactionExclusionServiceV1
   private val rejectedTransactionCleanupService: RejectedTransactionCleanupService
@@ -58,10 +65,27 @@ class TransactionExclusionApp(config: AppConfig) {
     log.info("App configs: {}", config)
     this.vertx = Vertx.vertx(vertxConfig)
     this.meterRegistry = BackendRegistries.getDefaultNow()
-    this.sqlClient = initDb(config.database)
+    this.sqlReadClient = initDb(
+      connectionConfig = config.database.read,
+      schema = config.database.schema,
+      migrationDirLocation = config.database.migrationDirLocation,
+      transactionalPoolSize = config.database.transactionalPoolSize,
+      readPipeliningLimit = config.database.readPipeliningLimit
+    )
+    this.sqlWriteClient = initDb(
+      connectionConfig = config.database.write,
+      schema = config.database.schema,
+      migrationDirLocation = config.database.migrationDirLocation,
+      transactionalPoolSize = config.database.transactionalPoolSize,
+      readPipeliningLimit = config.database.readPipeliningLimit
+    )
     this.rejectedTransactionsRepository = RejectedTransactionsRepositoryImpl(
       rejectedTransactionsDao = RejectedTransactionsPostgresDao(
-        connection = this.sqlClient
+        readConnection = this.sqlReadClient,
+        writeConnection = this.sqlWriteClient,
+        config = RejectedTransactionsPostgresDao.Config(
+          queryableWindowSinceRejectTimestamp = config.dbQueryableWindowSinceRejectTimestamp.toKotlinDuration()
+        )
       )
     )
     this.transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -102,26 +126,32 @@ class TransactionExclusionApp(config: AppConfig) {
       }.toVertxFuture()
   }
 
-  private fun initDb(dbConfig: DatabaseConfig): SqlClient {
-    val dbVersion = "1"
+  private fun initDb(
+    connectionConfig: DbConnectionConfig,
+    schema: String,
+    migrationDirLocation: String,
+    transactionalPoolSize: Int,
+    readPipeliningLimit: Int,
+    version: String? = "1"
+  ): SqlClient {
     Db.applyDbMigrations(
-      host = dbConfig.host,
-      port = dbConfig.port,
-      database = dbConfig.schema,
-      target = dbVersion,
-      username = dbConfig.username,
-      password = dbConfig.password.value,
-      migrationLocations = "filesystem:${dbConfig.migrationDirLocation}"
+      host = connectionConfig.host,
+      port = connectionConfig.port,
+      database = schema,
+      target = version!!,
+      username = connectionConfig.username,
+      password = connectionConfig.password.value,
+      migrationLocations = "filesystem:$migrationDirLocation"
     )
     return Db.vertxSqlClient(
       vertx = vertx,
-      host = dbConfig.host,
-      port = dbConfig.port,
-      database = dbConfig.schema,
-      username = dbConfig.username,
-      password = dbConfig.password.value,
-      maxPoolSize = dbConfig.transactionalPoolSize,
-      pipeliningLimit = dbConfig.readPipeliningLimit
+      host = connectionConfig.host,
+      port = connectionConfig.port,
+      database = schema,
+      username = connectionConfig.username,
+      password = connectionConfig.password.value,
+      maxPoolSize = transactionalPoolSize,
+      pipeliningLimit = readPipeliningLimit
     )
   }
 }
