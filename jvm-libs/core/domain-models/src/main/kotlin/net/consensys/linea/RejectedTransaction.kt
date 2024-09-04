@@ -70,18 +70,18 @@ data class TransactionInfo(
 }
 
 data class RejectedTransaction(
-  val stage: Stage,
+  val txRejectionStage: Stage,
   val timestamp: Instant,
-  val blockNumber: ULong,
+  val blockNumber: ULong?,
   val transactionRLP: ByteArray,
   val reasonMessage: String,
   val overflows: List<ModuleOverflow>,
   var transactionInfo: TransactionInfo? = null
 ) {
   enum class Stage {
-    Sequencer,
-    Rpc,
-    P2p
+    SEQUENCER,
+    RPC,
+    P2P
   }
 
   override fun equals(other: Any?): Boolean {
@@ -90,7 +90,7 @@ data class RejectedTransaction(
 
     other as RejectedTransaction
 
-    if (stage != other.stage) return false
+    if (txRejectionStage != other.txRejectionStage) return false
     if (timestamp != other.timestamp) return false
     if (blockNumber != other.blockNumber) return false
     if (!transactionRLP.contentEquals(other.transactionRLP)) return false
@@ -99,7 +99,7 @@ data class RejectedTransaction(
   }
 
   override fun hashCode(): Int {
-    var result = stage.hashCode()
+    var result = txRejectionStage.hashCode()
     result = 31 * result + timestamp.hashCode()
     result = 31 * result + blockNumber.hashCode()
     result = 31 * result + transactionRLP.contentHashCode()
@@ -109,7 +109,7 @@ data class RejectedTransaction(
   }
 
   override fun toString(): String {
-    return "stage=$stage timestamp=${timestamp.toEpochMilliseconds()} blockNumber=$blockNumber" +
+    return "txRejectionStage=$txRejectionStage timestamp=${timestamp.toEpochMilliseconds()} blockNumber=$blockNumber" +
       " transactionRLP=${transactionRLP.encodeHex()}" +
       " transactionInfo=$transactionInfo" +
       " reasonMessage=\"$reasonMessage\"" +
