@@ -1,4 +1,41 @@
 # Changelog
+## 0.5.2-beta
+* fix(callDataCopy): source ID ([#1081](https://github.com/Consensys/linea-tracer/pull/1081))
+* add a binary search script ([#1073](https://github.com/Consensys/linea-tracer/pull/1073))
+* chore: add more description for bulkReplay ([#1058](https://github.com/Consensys/linea-tracer/pull/1058))
+* Leo's new ranges ([#1051](https://github.com/Consensys/linea-tracer/pull/1051))
+* fix: precompiles are considered COLD when using BESU frame method ([#1079](https://github.com/Consensys/linea-tracer/pull/1079))
+* perf: more efficient data storage structure ([#1034](https://github.com/Consensys/linea-tracer/pull/1034))
+* [997] Migrate most of the tests to ToyExecutionEnviromentV2 ([#1066](https://github.com/Consensys/linea-tracer/pull/1066))
+* Feat/issue 975/ec data add relevant limits for ecpairing ([#993](https://github.com/Consensys/linea-tracer/pull/993))
+* fix(mmu call): need CFI for failed CREATE2 that doesn't trigger the ROM ([#1070](https://github.com/Consensys/linea-tracer/pull/1070))
+* fix(selfdestruct): wrap ([#1074](https://github.com/Consensys/linea-tracer/pull/1074))
+* Feat: bulk capture and bulk replay ([#1001](https://github.com/Consensys/linea-tracer/pull/1001))
+* Fix initial contract nonce ([#1056](https://github.com/Consensys/linea-tracer/pull/1056))
+* fix(precompile): defers with wrong id ([#1055](https://github.com/Consensys/linea-tracer/pull/1055))
+* Use `ReferenceTestWorldState` instead of `ToyWorld` ([#1045](https://github.com/Consensys/linea-tracer/pull/1045))
+* fix: many things ... ([#1027](https://github.com/Consensys/linea-tracer/pull/1027))
+* [934] Use ToyExecutionEnvironmentV2 for blockhash test ([#1040](https://github.com/Consensys/linea-tracer/pull/1040))
+* fix: update `Trace.java` file for Hub ([#1037](https://github.com/Consensys/linea-tracer/pull/1037))
+* Tests/ethereum ([#1012](https://github.com/Consensys/linea-tracer/pull/1012))
+* Expose true output from tx result failure ([#1030](https://github.com/Consensys/linea-tracer/pull/1030))
+* format(txndata): ras ([#1032](https://github.com/Consensys/linea-tracer/pull/1032))
+* feat: update gradle test config to show better output ([#1021](https://github.com/Consensys/linea-tracer/pull/1021))
+* fix(mmu): anyToRamWithPadding mixed subcase ([#1016](https://github.com/Consensys/linea-tracer/pull/1016))
+* Fix for `BLOCKHASH` conversion error ([#1025](https://github.com/Consensys/linea-tracer/pull/1025))
+* perf(MMU): discard CallStackReader ([#988](https://github.com/Consensys/linea-tracer/pull/988))
+* feat: capture block hashes in `BlockCapturer` for replay ([#1019](https://github.com/Consensys/linea-tracer/pull/1019))
+* add tests for exceptions. ([#1007](https://github.com/Consensys/linea-tracer/pull/1007))
+* Fix #998 ([#1015](https://github.com/Consensys/linea-tracer/pull/1015))
+* Update Linea-Besu dependency to 24.8-develop-915fcb01 (delivery-29) ([#1011](https://github.com/Consensys/linea-tracer/pull/1011))
+* feat: update blockcapturer to capture outcomes ([#982](https://github.com/Consensys/linea-tracer/pull/982))
+* Fix stp fix ([#1003](https://github.com/Consensys/linea-tracer/pull/1003))
+* Make `ReturnSection`'s `resolveAtContextReEntry` method use the createe frame ([#992](https://github.com/Consensys/linea-tracer/pull/992))
+* feat(corset): enable `go-corset` in `gradle` action ([#938](https://github.com/Consensys/linea-tracer/pull/938))
+* fix(STP): fixed exists
+* fix(StpCall): made STP fillers private
+* fix(CallSection): removed redundant stpCallForCalls call
+* fix(CreateSection): removed redundant stpCallForCreates call
 
 ## 0.5.1-beta
 * fix: removed old documentation files ([#995](https://github.com/Consensys/linea-tracer/pull/995))
