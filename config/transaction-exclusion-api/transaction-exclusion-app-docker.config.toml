@@ -1,16 +1,23 @@
-db-storage-period="PT24H"
+db-storage-period="P7D"
+db-queryable-window-since-reject-timestamp="PT24H"
 db-cleanup-polling-interval="PT60S"
 
 [database]
-host="postgres"
-port="5432"
-username="postgres"
-password="postgres"
 schema="linea_transaction_exclusion"
 read_pool_size=10
 read_pipelining_limit=10
 transactional_pool_size=10
 migration_dir_location="config/db/migration/"
+[database.read]
+host="postgres"
+port="5432"
+username="postgres"
+password="postgres"
+[database.write]
+host="postgres"
+port="5432"
+username="postgres"
+password="postgres"
 
 [api]
 port=8080

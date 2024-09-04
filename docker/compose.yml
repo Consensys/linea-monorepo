@@ -259,7 +259,6 @@ services:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
     image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-local}
-    platform: linux/amd64
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
