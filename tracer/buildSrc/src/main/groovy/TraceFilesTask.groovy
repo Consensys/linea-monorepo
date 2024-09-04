@@ -22,7 +22,7 @@ abstract class TraceFilesTask extends Exec {
                      "-P", module.get(),
                      "-o", "${project.projectDir}/src/main/java/net/consensys/linea/zktracer/module/${moduleDir.getOrElse(module.get())}"
     ]
-    arguments.addAll(files.get().collect({"zkevm-constraints/${it}"}))
+    arguments.addAll(files.get().collect({"linea-constraints/${it}"}))
 
     workingDir project.rootDir
     executable "corset"

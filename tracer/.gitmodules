@@ -1,6 +1,6 @@
-[submodule "zkevm-constraints"]
-	path = zkevm-constraints
-	url = git@github.com:Consensys/zkevm-constraints.git
+[submodule "linea-constraints"]
+	path = linea-constraints
+	url = https://github.com/Consensys/linea-constraints
 [submodule "reference-tests/src/test/resources/ethereum-tests"]
 	path = reference-tests/src/test/resources/ethereum-tests
 	url = https://github.com/ethereum/tests.git

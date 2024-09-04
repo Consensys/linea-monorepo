@@ -1,4 +1,4 @@
-name: gradle
+name: reference tests
 
 on:
   schedule:
@@ -52,11 +52,11 @@ jobs:
       - name: Generate block chain reference tests
         run:  ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
         env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false -DZKEVM_BIN_ORIGINAL_PATH="zkevm-constraints/zkevm.bin"
+          JAVA_OPTS: -Dorg.gradle.daemon=false -DZKEVM_BIN_ORIGINAL_PATH="linea-constraints/zkevm.bin"
           CORSET_FLAGS: fields,expand,expand,expand
 
       - name: generate zkevm.bin
-        run: cd ./zkevm-constraints; make zkevm.bin -B; cd ..
+        run: cd ./linea-constraints; make zkevm.bin -B; cd ..
 
       - name: Run general reference tests
         run: ./gradlew referenceGeneralStateTests
