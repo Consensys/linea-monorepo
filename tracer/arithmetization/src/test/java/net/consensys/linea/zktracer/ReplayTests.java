@@ -117,7 +117,7 @@ public class ReplayTests {
     }
   }
 
-  public static void replayBulk(String directory) {
+  public static void bulkReplay(String directory) {
     Path dirPath = Paths.get(directory);
     Path conflatedDirPath = Paths.get(directory, "../conflated");
     Path replayedDirPath = Paths.get(directory, "../replayed");
@@ -192,14 +192,15 @@ public class ReplayTests {
   }
 
   /**
-   * Run a bulk replay of multiple replay files specified by a directory. The conflated traces will
-   * be moved to "conflated" directory once replayed. The replay files will be moved to "replayed"
+   * bulk-replay of multiple replay files specified by a directory. The conflated traces will be
+   * moved to "conflated" directory once replayed. The replay files will be moved to "replayed"
    * directory once completed. Note: CORSET_VALIDATOR.validate() is disabled by default for
-   * replayBulk Usage: replayBulk("/path/to/your/directory");
+   * bulkReplay. Usage: bulkReplay("/path/to/your/directory");
    */
   @Test
-  void replayMultipleReplayFiles() {
-    replayBulk("");
+  void bulkReplay() {
+    // bulkReplay("./src/test/resources/replays");
+    bulkReplay("");
   }
 
   // @Disabled
