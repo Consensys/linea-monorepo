@@ -88,7 +88,7 @@ public class TxInitializationSection extends TraceSection {
     }
 
     if (isDeployment) {
-      deploymentInfo.newDeploymentAt(recipientAddress);
+      deploymentInfo.newDeploymentWithExecutionAt(recipientAddress);
     }
 
     final Bytecode initCode = new Bytecode(tx.getBesuTransaction().getInit().orElse(Bytes.EMPTY));

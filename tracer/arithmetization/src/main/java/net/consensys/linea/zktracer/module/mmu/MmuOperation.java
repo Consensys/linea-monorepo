@@ -18,6 +18,7 @@ the License for the
 
 package net.consensys.linea.zktracer.module.mmu;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
@@ -38,7 +39,6 @@ import static net.consensys.linea.zktracer.types.Conversions.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -79,12 +79,12 @@ public class MmuOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    Preconditions.checkState(traceMe(), "Cannot compute if traceMe is false");
+    checkState(traceMe(), "Cannot compute if traceMe is false");
     return 1 + mmuData.numberMmuPreprocessingRows() + mmuData.numberMmioInstructions();
   }
 
   public int mmioLineCount() {
-    Preconditions.checkState(traceMe(), "Cannot compute if traceMe is false");
+    checkState(traceMe(), "Cannot compute if traceMe is false");
     int mmioLineCount = 0;
     for (int i = 0; i < mmuData().numberMmioInstructions(); i++) {
       mmioLineCount +=
@@ -157,8 +157,7 @@ public class MmuOperation extends ModuleOperation {
     if (!mmuData.exoBytes().isEmpty()) {
       final boolean exoIsSource = mmuData.exoLimbIsSource();
       final boolean exoIsTarget = mmuData.exoLimbIsTarget();
-      Preconditions.checkArgument(
-          exoIsSource == !exoIsTarget, "ExoLimb is either the source or the target");
+      checkArgument(exoIsSource == !exoIsTarget, "ExoLimb is either the source or the target");
 
       for (MmuToMmioInstruction mmioInst : this.mmuData.mmuToMmioInstructions()) {
         final int offset =

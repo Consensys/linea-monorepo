@@ -15,13 +15,14 @@
 
 package net.consensys.linea.zktracer.types;
 
+import static com.google.common.base.Preconditions.*;
+
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.common.base.Preconditions;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlTable;
@@ -37,14 +38,12 @@ public class Utils {
    * @return
    */
   public static Bytes leftPadTo(Bytes input, int wantedSize) {
-    Preconditions.checkArgument(
-        wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
+    checkArgument(wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
     return Bytes.concatenate(Bytes.repeat((byte) 0, wantedSize - input.size()), input);
   }
 
   public static Bytes rightPadTo(Bytes input, int wantedSize) {
-    Preconditions.checkArgument(
-        wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
+    checkArgument(wantedSize >= input.size(), "wantedSize can't be shorter than the input size");
     return Bytes.concatenate(input, Bytes.repeat((byte) 0, wantedSize - input.size()));
   }
 
@@ -57,8 +56,7 @@ public class Utils {
    */
   public static BitDecOutput bitDecomposition(int input, int nbStep) {
     final int nbStepMin = 8;
-    Preconditions.checkArgument(
-        nbStep >= nbStepMin, "Number of steps must be at least " + nbStepMin);
+    checkArgument(nbStep >= nbStepMin, "Number of steps must be at least " + nbStepMin);
 
     ArrayList<Boolean> bit = new ArrayList<>(nbStep);
     ArrayList<Integer> acc = new ArrayList<>(nbStep);

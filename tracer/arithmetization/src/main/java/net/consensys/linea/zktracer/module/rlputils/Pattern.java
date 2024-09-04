@@ -15,10 +15,11 @@
 
 package net.consensys.linea.zktracer.module.rlputils;
 
+import static com.google.common.base.Preconditions.*;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 
-import com.google.common.base.Preconditions;
 import org.apache.tuweni.bytes.Bytes;
 
 public class Pattern {
@@ -41,7 +42,7 @@ public class Pattern {
 
   public static int innerRlpSize(int rlpSize) {
     // If rlpSize >1, return size(something) where rlpSize = size(RLP(something)).
-    Preconditions.checkArgument(rlpSize >= 2, "rlpSize should be at least 2 to get its inner size");
+    checkArgument(rlpSize >= 2, "rlpSize should be at least 2 to get its inner size");
     int output = rlpSize;
 
     if (rlpSize < 57) {

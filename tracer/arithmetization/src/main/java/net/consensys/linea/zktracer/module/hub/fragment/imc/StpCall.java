@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_STIPEND;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_VALUE;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
@@ -26,7 +27,6 @@ import static net.consensys.linea.zktracer.types.EWord.ZERO;
 
 import java.math.BigInteger;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -63,7 +63,7 @@ public class StpCall implements TraceSubFragment {
     this.memoryExpansionGas = memoryExpansionGas;
     this.opCode = hub.opCode();
     this.gasActual = hub.messageFrame().getRemainingGas();
-    Preconditions.checkArgument(this.opCode.isCall() || this.opCode.isCreate());
+    checkArgument(this.opCode.isCall() || this.opCode.isCreate());
 
     if (this.opCode.isCall()) {
       this.stpCallForCalls(hub);

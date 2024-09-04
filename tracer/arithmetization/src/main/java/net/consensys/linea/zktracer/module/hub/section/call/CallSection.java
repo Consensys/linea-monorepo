@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section.call;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
@@ -25,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
-import com.google.common.base.Preconditions;
 import lombok.Setter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Factories;
@@ -140,7 +140,7 @@ public class CallSection extends TraceSection
 
     final MxpCall mxpCall = new MxpCall(hub);
     firstImcFragment.callMxp(mxpCall);
-    Preconditions.checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
 
     // MXPX case
     if (Exceptions.memoryExpansionException(exceptions)) {
@@ -149,13 +149,13 @@ public class CallSection extends TraceSection
 
     final StpCall stpCall = new StpCall(hub, mxpCall.gasMxp);
     firstImcFragment.callStp(stpCall);
-    Preconditions.checkArgument(
+    checkArgument(
         stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions),
         String.format(
             "The STP and the HUB have conflicting predictions of an OOGX\n\t\tHUB_STAMP = %s",
             hubStamp()));
 
-    final Address callerAddress = hub.currentFrame().callerAddress();
+    final Address callerAddress = hub.messageFrame().getRecipientAddress();
     preOpcodeCallerSnapshot = canonical(hub, callerAddress);
 
     rawCalleeAddress = hub.currentFrame().frame().getStackItem(1);
@@ -169,14 +169,19 @@ public class CallSection extends TraceSection
     }
 
     // The CALL is now unexceptional
-    Preconditions.checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions));
     hub.currentFrame().childSpanningSection(this);
+
+    value =
+        hub.opCode().callCanTransferValue()
+            ? Wei.of(hub.messageFrame().getStackItem(2).toUnsignedBigInteger())
+            : Wei.ZERO;
 
     final CallOobCall oobCall = new CallOobCall();
     firstImcFragment.callOob(oobCall);
 
     final boolean aborts = hub.pch().abortingConditions().any();
-    Preconditions.checkArgument(oobCall.isAbortingCondition() == aborts);
+    checkArgument(oobCall.isAbortingCondition() == aborts);
 
     hub.defers().scheduleForPostRollback(this, hub.currentFrame());
     hub.defers().scheduleForPostTransaction(this);
@@ -217,10 +222,8 @@ public class CallSection extends TraceSection
 
     if (scenarioFragment.getScenario() == CALL_SMC_UNDEFINED) {
       finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
-      final boolean callCanTransferValue = hub.currentFrame().opCode().callCanTransferValue();
       final boolean isSelfCall = callerAddress.equals(calleeAddress);
-      value = Wei.of(hub.messageFrame().getStackItem(2).toUnsignedBigInteger());
-      selfCallWithNonzeroValueTransfer = isSelfCall && callCanTransferValue && !value.isZero();
+      selfCallWithNonzeroValueTransfer = isSelfCall && !value.isZero();
       hub.romLex().callRomLex(hub.currentFrame().frame());
       hub.defers().scheduleForContextExit(this, hub.callStack().futureId());
     }
@@ -272,13 +275,13 @@ public class CallSection extends TraceSection
   @Override
   public void resolvePostExecution(
       Hub hub, MessageFrame frame, Operation.OperationResult operationResult) {
-    Preconditions.checkArgument(scenarioFragment.getScenario() == CALL_ABORT_WONT_REVERT);
+    checkArgument(scenarioFragment.getScenario() == CALL_ABORT_WONT_REVERT);
     postOpcodeCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
     postOpcodeCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
   }
 
   @Override
-  public void resolveUponImmediateContextEntry(Hub hub) {
+  public void resolveUponContextEntry(Hub hub) {
     postOpcodeCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
     postOpcodeCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
 
@@ -329,8 +332,8 @@ public class CallSection extends TraceSection
 
   /** Resolution happens as the child context is about to terminate. */
   @Override
-  public void resolveUponExitingContext(Hub hub, CallFrame frame) {
-    Preconditions.checkArgument(scenarioFragment.getScenario() == CALL_SMC_UNDEFINED);
+  public void resolveUponContextExit(Hub hub, CallFrame frame) {
+    checkArgument(scenarioFragment.getScenario() == CALL_SMC_UNDEFINED);
 
     childContextExitCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
     childContextExitCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
@@ -438,7 +441,11 @@ public class CallSection extends TraceSection
 
     final CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
 
-    Preconditions.checkArgument(scenario.noLongerUndefined());
+    checkArgument(
+        scenario.noLongerUndefined(),
+        String.format(
+            "Call scenario = %s, HUB_STAMP = %s, successBit = %s",
+            scenarioFragment.getScenario(), this.hubStamp(), isSuccessful));
 
     if (scenario.isPrecompileScenario()) {
       this.addFragments(precompileSubsection.fragments());

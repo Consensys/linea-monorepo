@@ -34,7 +34,6 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.transients.Block;
-import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.module.hub.transients.StorageInitialValues;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.hyperledger.besu.datatypes.Address;
@@ -185,9 +184,11 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
     this.hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
-      DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
-      deploymentInfo.newDeploymentAt(address); // depNum += 1 and depStatus <- true
-      deploymentInfo.markAsNotUnderDeployment(address); // depStatus <- false
+      hub.transients()
+          .conflation()
+          .deploymentInfo()
+          .freshDeploymentNumberFinishingSelfdestruct(
+              address); // depNum += 1 and depStatus <- false
       this.destructedAccountsSnapshot.add(
           AccountSnapshot.fromAddress(
               address, true, hub.deploymentNumberOf(address), hub.deploymentStatusOf(address)));

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
+import static com.google.common.base.Preconditions.*;
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
@@ -33,7 +34,6 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 
-import com.google.common.base.Preconditions;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -96,14 +96,14 @@ public class ExpOperation extends ModuleOperation {
       // Execute preprocessing
       preComputeForExplog(explogExpCall);
     } else if (expCall.expInstruction() == EXP_INST_MODEXPLOG) {
-      this.isExpLog = false;
+      isExpLog = false;
       ModexpLogExpCall modexplogExpCall = (ModexpLogExpCall) expCall;
 
       // Extract inputs
       ModexpMetadata modexpMetadata = modexplogExpCall.getModexpMetadata();
       final int bbsInt = modexpMetadata.bbs().toUnsignedBigInteger().intValueExact();
       final int ebsInt = modexpMetadata.ebs().toUnsignedBigInteger().intValueExact();
-      Preconditions.checkArgument(modexpMetadata.callData().size() - 96 - bbsInt >= 0);
+      checkArgument(modexpMetadata.callData().size() - 96 - bbsInt >= 0);
       EWord rawLead = modexpMetadata.rawLeadingWord();
       int cdsCutoff = Math.min(modexpMetadata.callData().size() - 96 - bbsInt, 32);
       int ebsCutoff = Math.min(ebsInt, 32);

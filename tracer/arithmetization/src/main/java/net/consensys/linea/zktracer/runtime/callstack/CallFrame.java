@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.runtime.callstack;
 
+import static com.google.common.base.Preconditions.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -62,7 +63,7 @@ public class CallFrame {
   }
 
   /** the ID of this {@link CallFrame} parent in the {@link CallStack}. */
-  @Getter private int parentFrameId;
+  @Getter private int callerId;
 
   /** all the {@link CallFrame} that have been called by this frame. */
   @Getter private final List<Integer> childFramesId = new ArrayList<>();
@@ -78,7 +79,7 @@ public class CallFrame {
   /** the {@link Address} of the code executed in this {@link CallFrame}. */
   @Getter private Address byteCodeAddress = Address.ZERO;
 
-  @Getter private int codeDeploymentNumber;
+  @Getter private int byteCodeDeploymentNumber;
 
   /** the {@link Bytecode} executing within this frame. */
   @Getter private Bytecode code = Bytecode.EMPTY;
@@ -95,9 +96,9 @@ public class CallFrame {
   @Getter private final CallFrameType type;
 
   public int getCodeFragmentIndex(Hub hub) {
-    return this == CallFrame.EMPTY || this.type() == CallFrameType.TRANSACTION_CALL_DATA_HOLDER
+    return this == CallFrame.EMPTY || type == CallFrameType.TRANSACTION_CALL_DATA_HOLDER
         ? 0
-        : hub.getCfiByMetaData(byteCodeAddress, codeDeploymentNumber, isDeployment);
+        : hub.getCfiByMetaData(byteCodeAddress, byteCodeDeploymentNumber, isDeployment);
   }
 
   @Getter @Setter private int pc;
@@ -109,7 +110,7 @@ public class CallFrame {
   @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging
 
   /** the gas given to this frame. */
-  @Getter private long gasEndowment;
+  @Getter private long gasStipend;
 
   /** the call data given to this frame. */
   @Getter CallDataInfo callDataInfo;
@@ -160,10 +161,10 @@ public class CallFrame {
 
   /** Create a MANTLE call frame. */
   CallFrame(final Address origin, final Bytes callData, final int contextNumber) {
-    this.type = CallFrameType.TRANSACTION_CALL_DATA_HOLDER;
+    type = CallFrameType.TRANSACTION_CALL_DATA_HOLDER;
     this.contextNumber = contextNumber;
-    this.accountAddress = origin;
-    this.callDataInfo = new CallDataInfo(callData, 0, callData.size(), contextNumber);
+    accountAddress = origin;
+    callDataInfo = new CallDataInfo(callData, 0, callData.size(), contextNumber);
   }
 
   // TODO: should die ?
@@ -173,78 +174,85 @@ public class CallFrame {
       final Bytes precompileResult,
       final int returnDataOffset,
       final Address precompileAddress) {
-    Preconditions.checkArgument(
+    checkArgument(
         returnDataOffset == 0 || precompileAddress == Address.MODEXP,
         "ReturnDataOffset is 0 for all precompile except Modexp");
-    this.type = CallFrameType.PRECOMPILE_RETURN_DATA;
+    type = CallFrameType.PRECOMPILE_RETURN_DATA;
     this.contextNumber = contextNumber;
-    this.outputData = precompileResult;
-    this.outputDataSpan = new MemorySpan(returnDataOffset, precompileResult.size());
-    this.accountAddress = precompileAddress;
+    outputData = precompileResult;
+    outputDataSpan = new MemorySpan(returnDataOffset, precompileResult.size());
+    accountAddress = precompileAddress;
   }
 
   /** Create an empty call frame. */
   CallFrame() {
-    this.type = CallFrameType.EMPTY;
-    this.contextNumber = 0;
-    this.accountAddress = Address.ZERO;
-    this.parentFrameId = -1;
-    this.callDataInfo = new CallDataInfo(Bytes.EMPTY, 0, 0, 0);
+    type = CallFrameType.EMPTY;
+    contextNumber = 0;
+    accountAddress = Address.ZERO;
+    callerId = -1;
+    callDataInfo = new CallDataInfo(Bytes.EMPTY, 0, 0, 0);
   }
 
   /**
-   * Create a normal (non-root) call frame.
+   * Create a non-root call frame. Below we abbreviate Context Number to CN
    *
-   * @param accountDeploymentNumber the DN of this frame in the {@link Hub}
-   * @param codeDeploymentNumber the DN of this frame in the {@link Hub}
-   * @param isDeployment whether the executing code is initcode
-   * @param id the ID of this frame in the {@link CallStack}
-   * @param hubStamp the hub stamp at the frame creation
-   * @param accountAddress the {@link Address} of this frame executor
    * @param type the {@link CallFrameType} of this frame
-   * @param caller the ID of this frame caller in the {@link CallStack}
+   * @param id ID of this frame in the {@link CallStack}
+   * @param contextNumber of this call frame
+   * @param depth call stack depth of the current execution context
+   * @param isDeployment whether the executing byteCode is initcode
    * @param value how much ether was given to this frame
-   * @param gas how much gas was given to this frame
-   * @param callData {@link Bytes} containing this frame call data
+   * @param gasStipend how much gasStipend was given to this frame
+   * @param accountAddress {@link Address} of this frame executor
+   * @param accountDeploymentNumber DN of the account address
+   * @param byteCodeAddress address whose byteCode executes in the present frame
+   * @param byteCodeDeploymentNumber DN of this call frame in the {@link Hub}
+   * @param byteCode byteCode that executes in the present context
+   * @param callerAddress either account address of the caller/creator context
+   * @param callDataContextNumber CN of the RAM segment wherein the call data lives
+   * @param callerId ID of the caller frame in the {@link CallStack}
+   * @param callData {@link Bytes} containing this frame's call data
+   * @param callDataOffset offset of call data in the caller's RAM (if applicable)
+   * @param callDataSize size (in bytes) of the call data
    */
   CallFrame(
-      int accountDeploymentNumber,
-      int codeDeploymentNumber,
-      boolean isDeployment,
-      int id,
-      int hubStamp,
-      Address accountAddress,
-      Address callerAddress,
-      Address byteCodeAddress,
-      Bytecode code,
       CallFrameType type,
-      int caller,
+      int id,
+      int contextNumber,
+      int depth,
+      boolean isDeployment,
       Wei value,
-      long gas,
+      long gasStipend,
+      Address accountAddress,
+      int accountDeploymentNumber,
+      Address byteCodeAddress,
+      int byteCodeDeploymentNumber,
+      Bytecode byteCode,
+      Address callerAddress,
+      long callDataContextNumber,
+      int callerId,
       Bytes callData,
       long callDataOffset,
-      long callDataSize,
-      long callDataContextNumber,
-      int depth) {
-    this.accountDeploymentNumber = accountDeploymentNumber;
-    this.codeDeploymentNumber = codeDeploymentNumber;
-    this.isDeployment = isDeployment;
-    this.id = id;
-    this.contextNumber = hubStamp + 1;
-    this.accountAddress = accountAddress;
-    this.byteCodeAddress = byteCodeAddress;
-    this.callerAddress = callerAddress;
-    this.code = code;
+      long callDataSize) {
     this.type = type;
-    this.parentFrameId = caller;
+    this.id = id;
+    this.contextNumber = contextNumber;
+    this.isDeployment = isDeployment;
     this.value = value;
-    this.gasEndowment = gas;
+    this.gasStipend = gasStipend;
+    this.depth = depth;
+    this.accountAddress = accountAddress;
+    this.accountDeploymentNumber = accountDeploymentNumber;
+    this.byteCodeAddress = byteCodeAddress;
+    this.byteCodeDeploymentNumber = byteCodeDeploymentNumber;
+    this.code = byteCode;
+    this.callerAddress = callerAddress;
+    this.callerId = callerId;
     this.callDataInfo =
         new CallDataInfo(callData, callDataOffset, callDataSize, callDataContextNumber);
-    this.depth = depth;
     this.outputDataSpan = MemorySpan.empty();
     this.returnDataSpan = MemorySpan.empty();
-    this.returnDataTargetInCaller = MemorySpan.empty(); // TODO: fix me Franklin
+    this.returnDataTargetInCaller = MemorySpan.empty();
   }
 
   public boolean isRoot() {
@@ -294,12 +302,11 @@ public class CallFrame {
    * @return the executed contract metadata
    */
   public ContractMetadata metadata() {
-    return ContractMetadata.make(
-        this.byteCodeAddress, this.codeDeploymentNumber, this.isDeployment);
+    return ContractMetadata.make(byteCodeAddress, byteCodeDeploymentNumber, isDeployment);
   }
 
   private void revertChildren(CallStack callStack, int parentRevertStamp) {
-    this.childFramesId.stream()
+    childFramesId.stream()
         .map(callStack::getById)
         .forEach(
             frame -> {
@@ -312,11 +319,11 @@ public class CallFrame {
   }
 
   public void revert(CallStack callStack, int revertStamp) {
-    if (this.selfReverts) {
+    if (selfReverts) {
       throw new IllegalStateException("a context can not self-revert twice");
     }
-    this.selfReverts = true;
-    this.revertStamp = revertStamp;
+    selfReverts = true;
+    revertStamp = revertStamp;
     this.revertChildren(callStack, revertStamp);
   }
 
@@ -325,7 +332,7 @@ public class CallFrame {
   }
 
   public boolean hasReverted() {
-    return this.selfReverts || this.getsReverted;
+    return selfReverts || getsReverted;
   }
 
   public void initializeFrame(final MessageFrame frame) {
@@ -334,9 +341,9 @@ public class CallFrame {
 
   public void frame(MessageFrame frame) {
     this.frame = frame;
-    this.opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-    this.opCodeData = OpCodes.of(this.opCode);
-    this.pc = frame.getPC();
+    opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    opCodeData = OpCodes.of(opCode);
+    pc = frame.getPC();
   }
 
   public static Bytes extractContiguousLimbsFromMemory(

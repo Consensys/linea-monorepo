@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
@@ -24,7 +25,6 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -69,7 +69,7 @@ public class TraceSection {
    * @param fragment the fragment to insert
    */
   public final void addFragment(TraceFragment fragment) {
-    Preconditions.checkArgument(!(fragment instanceof CommonFragment));
+    checkArgument(!(fragment instanceof CommonFragment));
     fragments.add(fragment);
   }
 
@@ -120,45 +120,45 @@ public class TraceSection {
 
   /** This method is called at commit time, to build required information post-hoc. */
   public void seal() {
-    final HubProcessingPhase currentPhase = this.commonValues.hubProcessingPhase;
+    final HubProcessingPhase currentPhase = commonValues.hubProcessingPhase;
 
     commonValues.numberOfNonStackRows(
-        (int) this.fragments.stream().filter(l -> !(l instanceof StackFragment)).count());
+        (int) fragments.stream().filter(l -> !(l instanceof StackFragment)).count());
     commonValues.TLI(
-        (int) this.fragments.stream().filter(l -> (l instanceof StackFragment)).count() == 2);
+        (int) fragments.stream().filter(l -> (l instanceof StackFragment)).count() == 2);
     commonValues.codeFragmentIndex(
         currentPhase == TX_EXEC
-            ? this.hub.getCfiByMetaData(
-                this.commonValues.callFrame().byteCodeAddress(),
-                this.commonValues.callFrame().codeDeploymentNumber(),
-                this.commonValues.callFrame().isDeployment())
+            ? hub.getCfiByMetaData(
+                commonValues.callFrame().byteCodeAddress(),
+                commonValues.callFrame().byteCodeDeploymentNumber(),
+                commonValues.callFrame().isDeployment())
             : 0);
     commonValues.contextNumberNew(computeContextNumberNew());
 
     commonValues.gasRefund(
         currentPhase == TX_SKIP || currentPhase == TX_WARM || currentPhase == TX_INIT
             ? 0
-            : this.previousSection.commonValues.gasRefundNew);
+            : previousSection.commonValues.gasRefundNew);
     commonValues.gasRefundNew(commonValues.gasRefund + commonValues.refundDelta);
 
     /* If the logStamp hasn't been set (either by being first section of the tx, or by the LogSection), set it to the previous section logStamp */
     if (commonValues.logStamp == -1) {
-      commonValues.logStamp(this.previousSection.commonValues.logStamp);
+      commonValues.logStamp(previousSection.commonValues.logStamp);
     }
   }
 
   private int computeContextNumberNew() {
-    final HubProcessingPhase currentPhase = this.commonValues.hubProcessingPhase;
+    final HubProcessingPhase currentPhase = commonValues.hubProcessingPhase;
     if (currentPhase == TX_WARM || currentPhase == TX_FINL || currentPhase == TX_SKIP) {
       return 0;
     }
-    return this.nextSection.commonValues.hubProcessingPhase == TX_EXEC
-        ? this.nextSection.commonValues.callFrame().contextNumber()
+    return nextSection.commonValues.hubProcessingPhase == TX_EXEC
+        ? nextSection.commonValues.callFrame().contextNumber()
         : 0;
   }
 
   public final boolean hasReverted() {
-    return this.commonValues.callFrame().hasReverted();
+    return commonValues.callFrame().hasReverted();
   }
 
   /**
@@ -167,7 +167,7 @@ public class TraceSection {
    * @param contEx the computed exceptions
    */
   public void setContextExceptions(DeploymentExceptions contEx) {
-    for (TraceFragment fragment : this.fragments) {
+    for (TraceFragment fragment : fragments) {
       if (fragment instanceof StackFragment) {
         ((StackFragment) fragment).contextExceptions(contEx);
       }

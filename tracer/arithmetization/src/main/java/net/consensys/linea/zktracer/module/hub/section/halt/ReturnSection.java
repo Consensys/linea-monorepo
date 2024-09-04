@@ -14,12 +14,13 @@
  */
 package net.consensys.linea.zktracer.module.hub.section.halt;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.ReturnScenarioFragment.ReturnScenario.*;
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.OUT_OF_GAS_EXCEPTION;
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.memoryExpansionException;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
+import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -69,18 +70,25 @@ public class ReturnSection extends TraceSection
   public ReturnSection(Hub hub) {
     super(hub, maxNumberOfRows(hub));
 
-    final CallFrame currentFrame = hub.currentFrame();
-    final MessageFrame frame = hub.messageFrame();
+    final CallFrame callFrame = hub.currentFrame();
+    final MessageFrame messageFrame = hub.messageFrame();
 
-    returnFromMessageCall = currentFrame.isMessageCall();
-    returnFromDeployment = currentFrame.isDeployment();
+    returnFromMessageCall = callFrame.isMessageCall();
+    returnFromDeployment = callFrame.isDeployment();
 
-    Preconditions.checkArgument(
+    checkArgument(callFrame.isDeployment() == (messageFrame.getType().equals(CONTRACT_CREATION)));
+
+    checkArgument(
         returnFromDeployment
             == hub.transients()
                 .conflation()
                 .deploymentInfo()
-                .getDeploymentStatus(frame.getContractAddress()));
+                .getDeploymentStatus(messageFrame.getContractAddress()),
+        String.format(
+            "ReturnSection check argument\n\t\tHUB_STAMP = %s\n\t\tMessageFrame.contractAddress = %s\n\t\tCallFrame.byteCodeAddress = %s",
+            hub.stamp(),
+            hub.messageFrame().getContractAddress(),
+            hub.currentFrame().byteCodeAddress()));
 
     returnScenarioFragment = new ReturnScenarioFragment();
     final ContextFragment currentContextFragment = ContextFragment.readCurrentContextData(hub);
@@ -99,14 +107,14 @@ public class ReturnSection extends TraceSection
       returnScenarioFragment.setScenario(RETURN_EXCEPTION);
     }
 
-    Preconditions.checkArgument(mxpCall.mxpx == memoryExpansionException(exceptions));
+    checkArgument(mxpCall.mxpx == memoryExpansionException(exceptions));
 
     if (mxpCall.mxpx) {
       return;
     }
 
     if (Exceptions.outOfGasException(exceptions) && returnFromMessageCall) {
-      Preconditions.checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
+      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
       return;
     }
 
@@ -114,7 +122,7 @@ public class ReturnSection extends TraceSection
       // exceptional message calls are dealt with;
       // if exceptions remain they must be related
       // to deployments:
-      Preconditions.checkArgument(returnFromDeployment);
+      checkArgument(returnFromDeployment);
     }
 
     // maxCodeSizeException case
@@ -129,12 +137,12 @@ public class ReturnSection extends TraceSection
     final boolean nontrivialMmuOperation = mxpCall.mayTriggerNontrivialMmuOperation;
     final boolean triggerMmuForInvalidCodePrefix = Exceptions.invalidCodePrefix(exceptions);
     if (triggerMmuForInvalidCodePrefix) {
-      Preconditions.checkArgument(returnFromDeployment && nontrivialMmuOperation);
+      checkArgument(returnFromDeployment && nontrivialMmuOperation);
 
       final MmuCall actuallyInvalidCodePrefixMmuCall = MmuCall.invalidCodePrefix(hub);
       firstImcFragment.callMmu(actuallyInvalidCodePrefixMmuCall);
 
-      Preconditions.checkArgument(!actuallyInvalidCodePrefixMmuCall.successBit());
+      checkArgument(!actuallyInvalidCodePrefixMmuCall.successBit());
       return;
     }
 
@@ -142,15 +150,15 @@ public class ReturnSection extends TraceSection
     // (we have exceptions ≡ ∅ by the checkArgument)
     ////////////////////////////////////////////////
 
-    Preconditions.checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions));
 
     // RETURN_FROM_MESSAGE_CALL cases
     if (returnFromMessageCall) {
       successfulMessageCallExpected = true;
       final boolean messageCallReturnTouchesRam =
-          !currentFrame.isRoot()
+          !callFrame.isRoot()
               && nontrivialMmuOperation // [size ≠ 0] ∧ ¬MXPX
-              && !currentFrame.returnDataTargetInCaller().isEmpty(); // [r@c ≠ 0]
+              && !callFrame.returnDataTargetInCaller().isEmpty(); // [r@c ≠ 0]
 
       returnScenarioFragment.setScenario(
           messageCallReturnTouchesRam
@@ -165,8 +173,8 @@ public class ReturnSection extends TraceSection
       final ContextFragment updateCallerReturnData =
           ContextFragment.executionProvidesReturnData(
               hub,
-              hub.callStack().getById(currentFrame.parentFrameId()).contextNumber(),
-              currentFrame.contextNumber());
+              hub.callStack().getById(callFrame.callerId()).contextNumber(),
+              callFrame.contextNumber());
       this.addFragment(updateCallerReturnData);
 
       return;
@@ -182,11 +190,11 @@ public class ReturnSection extends TraceSection
       hub.defers()
           .scheduleForContextReEntry(
               this, hub.callStack().parent()); // post deployment account snapshot
-      hub.defers().scheduleForPostRollback(this, currentFrame); // undo deployment
+      hub.defers().scheduleForPostRollback(this, callFrame); // undo deployment
       hub.defers().scheduleForPostTransaction(this); // inserting the final context row;
 
       squashParentContextReturnData = ContextFragment.executionProvidesEmptyReturnData(hub);
-      deploymentAddress = frame.getRecipientAddress();
+      deploymentAddress = messageFrame.getRecipientAddress();
       nonemptyByteCode = mxpCall.mayTriggerNontrivialMmuOperation;
       preDeploymentAccountSnapshot = AccountSnapshot.canonical(hub, deploymentAddress);
       returnScenarioFragment.setScenario(
@@ -194,15 +202,15 @@ public class ReturnSection extends TraceSection
               ? RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WONT_REVERT
               : RETURN_FROM_DEPLOYMENT_EMPTY_CODE_WONT_REVERT);
 
-      final Bytes byteCodeSize = frame.getStackItem(1);
-      Preconditions.checkArgument(nonemptyByteCode == (!byteCodeSize.isZero()));
+      final Bytes byteCodeSize = messageFrame.getStackItem(1);
+      checkArgument(nonemptyByteCode == (!byteCodeSize.isZero()));
 
       // Empty deployments
       if (!nonemptyByteCode) {
         return;
       }
 
-      hub.romLex().callRomLex(frame);
+      hub.romLex().callRomLex(messageFrame);
 
       final MmuCall invalidCodePrefixCheckMmuCall = MmuCall.invalidCodePrefix(hub);
       firstImcFragment.callMmu(invalidCodePrefixCheckMmuCall);
@@ -211,8 +219,8 @@ public class ReturnSection extends TraceSection
       firstImcFragment.callOob(maxCodeSizeOobCall);
 
       // sanity checks
-      Preconditions.checkArgument(invalidCodePrefixCheckMmuCall.successBit());
-      Preconditions.checkArgument(!maxCodeSizeOobCall.isMaxCodeSizeException());
+      checkArgument(invalidCodePrefixCheckMmuCall.successBit());
+      checkArgument(!maxCodeSizeOobCall.isMaxCodeSizeException());
 
       final ImcFragment secondImcFragment = ImcFragment.empty(hub);
       this.addFragment(secondImcFragment);
@@ -229,14 +237,14 @@ public class ReturnSection extends TraceSection
     if (returnFromMessageCall) {
       Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
       boolean messageCallWasSuccessful = bytesToBoolean(topOfTheStack);
-      Preconditions.checkArgument(messageCallWasSuccessful == successfulMessageCallExpected);
+      checkArgument(messageCallWasSuccessful == successfulMessageCallExpected);
     }
 
     // TODO: optional sanity check that may be removed
     if (returnFromDeployment) {
       Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
       boolean deploymentWasSuccess = !topOfTheStack.isZero();
-      Preconditions.checkArgument(deploymentWasSuccess == successfulDeploymentExpected);
+      checkArgument(deploymentWasSuccess == successfulDeploymentExpected);
     }
 
     postDeploymentAccountSnapshot = AccountSnapshot.canonical(hub, deploymentAddress);
@@ -261,7 +269,7 @@ public class ReturnSection extends TraceSection
   @Override
   public void resolvePostRollback(Hub hub, MessageFrame messageFrame, CallFrame callFrame) {
 
-    Preconditions.checkArgument(returnFromDeployment);
+    checkArgument(returnFromDeployment);
     returnScenarioFragment.setScenario(
         nonemptyByteCode
             ? RETURN_FROM_DEPLOYMENT_NONEMPTY_CODE_WILL_REVERT
@@ -288,7 +296,7 @@ public class ReturnSection extends TraceSection
   public void resolvePostTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
-    Preconditions.checkArgument(returnFromDeployment);
+    checkArgument(returnFromDeployment);
     this.addFragment(squashParentContextReturnData);
   }
 

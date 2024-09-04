@@ -1133,7 +1133,7 @@ public class Trace {
     }
 
     if (b >= 4294967296L) {
-      throw new IllegalArgumentException("hubStamp has invalid value (" + b + ")");
+      throw new IllegalArgumentException("hub has invalid value (" + b + ")");
     }
     hubStamp.put((byte) (b >> 24));
     hubStamp.put((byte) (b >> 16));

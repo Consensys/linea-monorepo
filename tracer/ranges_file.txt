@@ -1,0 +1,194 @@
+5389571-5389577
+5389582-5389584
+5389585-5389593
+5389621-5389629
+5389686-5389694
+5389747-5389756
+5389757-5389764
+5389876-5389884
+5389893-5389904
+5390137-5390139
+5390140-5390148
+5390149-5390154
+5390256-5390263
+5390409-5390414
+5390448-5390458
+5390488-5390500
+5390505-5390513
+5390563-5390572
+5390595-5390605
+5390848-5390851
+5390892-5390901
+
+5390137-5390139
+6110035-6110064
+6111922-6111931
+6114760-6114781
+6115029-6115049
+6116187-6116202
+6117562-6117577
+
+// Leo's new ranges 30.08.2024
+5104800-5104883
+5105646-5105728
+5106538-5106638
+5118361-5118389
+
+// Leo's range split up 5104800-5104883
+
+5104800-5104809
+5104810-5104819
+5104820-5104829
+5104830-5104839
+5104840-5104849
+5104850-5104859
+5104860-5104869
+5104870-5104879
+5104880-5104883
+
+
+// Leo's range split up 5105646-5105728
+
+5105646-5105649
+5105650-5105659
+5105660-5105669
+5105670-5105679
+5105680-5105689
+5105690-5105699
+5105700-5105709
+5105710-5105719
+5105720-5105728
+
+
+// Leo's range split up 5106538-5106638
+
+5106538-5106539
+5106540-5106549
+5106550-5106559
+5106560-5106569
+5106570-5106579
+5106580-5106589
+5106590-5106599
+5106600-5106609
+5106610-5106619
+5106620-5106629
+5106630-5106638
+
+
+// Leo's range split up 5118361-5118389
+
+5118361-5118369
+5118370-5118379
+5118380-5118389
+
+// Florian's ranges
+6871261-6871263
+6930360-6930360
+7040245-7040246
+7037321-7037321
+7037237-7037243
+7037244-7037244
+7032685-7032688
+7032397-7032402
+
+
+// commands
+
+
+
+scripts/capture.pl --start 5104800 --end 5104809
+scripts/capture.pl --start 5104810 --end 5104819
+scripts/capture.pl --start 5104820 --end 5104829
+scripts/capture.pl --start 5104830 --end 5104839
+scripts/capture.pl --start 5104840 --end 5104849
+scripts/capture.pl --start 5104850 --end 5104859
+scripts/capture.pl --start 5104860 --end 5104869
+scripts/capture.pl --start 5104870 --end 5104879
+scripts/capture.pl --start 5104880 --end 5104883
+
+scripts/capture.pl --start 5105646 --end 5105649
+scripts/capture.pl --start 5105650 --end 5105659
+scripts/capture.pl --start 5105660 --end 5105669
+scripts/capture.pl --start 5105670 --end 5105679
+scripts/capture.pl --start 5105680 --end 5105689
+scripts/capture.pl --start 5105690 --end 5105699
+scripts/capture.pl --start 5105700 --end 5105709
+scripts/capture.pl --start 5105710 --end 5105719
+scripts/capture.pl --start 5105720 --end 5105728
+
+scripts/capture.pl --start 5106538 --end 5106539
+scripts/capture.pl --start 5106540 --end 5106549
+scripts/capture.pl --start 5106550 --end 5106559
+scripts/capture.pl --start 5106560 --end 5106569
+scripts/capture.pl --start 5106570 --end 5106579
+scripts/capture.pl --start 5106580 --end 5106589
+scripts/capture.pl --start 5106590 --end 5106599
+scripts/capture.pl --start 5106600 --end 5106609
+scripts/capture.pl --start 5106610 --end 5106619
+scripts/capture.pl --start 5106620 --end 5106629
+scripts/capture.pl --start 5106630 --end 5106638
+
+scripts/capture.pl --start 5118361 --end 5118369
+scripts/capture.pl --start 5118370 --end 5118379
+scripts/capture.pl --start 5118380 --end 5118389
+
+scripts/capture.pl --start 6871261 --end 6871263
+scripts/capture.pl --start 6930360 --end 6930360
+scripts/capture.pl --start 7040245 --end 7040246
+scripts/capture.pl --start 7037321 --end 7037321
+scripts/capture.pl --start 7037237 --end 7037243
+scripts/capture.pl --start 7037244 --end 7037244
+scripts/capture.pl --start 7032685 --end 7032688
+scripts/capture.pl --start 7032397 --end 7032402
+
+
+// Leo's range split up 5104800-5104883
+@Test void test_5104800_5104809() { replay("5104800-5104809.json.gz", false); }
+@Test void test_5104810_5104819() { replay("5104810-5104819.json.gz", false); }
+@Test void test_5104820_5104829() { replay("5104820-5104829.json.gz", false); }
+@Test void test_5104830_5104839() { replay("5104830-5104839.json.gz", false); }
+@Test void test_5104840_5104849() { replay("5104840-5104849.json.gz", false); }
+@Test void test_5104850_5104859() { replay("5104850-5104859.json.gz", false); }
+@Test void test_5104860_5104869() { replay("5104860-5104869.json.gz", false); }
+@Test void test_5104870_5104879() { replay("5104870-5104879.json.gz", false); }
+@Test void test_5104880_5104883() { replay("5104880-5104883.json.gz", false); }
+
+// Leo's range split up 5105646-5105728
+@Test void test_5105646_5105649() { replay("5105646-5105649.json.gz", false); }
+@Test void test_5105650_5105659() { replay("5105650-5105659.json.gz", false); }
+@Test void test_5105660_5105669() { replay("5105660-5105669.json.gz", false); }
+@Test void test_5105670_5105679() { replay("5105670-5105679.json.gz", false); }
+@Test void test_5105680_5105689() { replay("5105680-5105689.json.gz", false); }
+@Test void test_5105690_5105699() { replay("5105690-5105699.json.gz", false); }
+@Test void test_5105700_5105709() { replay("5105700-5105709.json.gz", false); }
+@Test void test_5105710_5105719() { replay("5105710-5105719.json.gz", false); }
+@Test void test_5105720_5105728() { replay("5105720-5105728.json.gz", false); }
+
+// Leo's range split up 5106538-5106638
+@Test void test_5106538_5106539() { replay("5106538-5106539.json.gz", false); }
+@Test void test_5106540_5106549() { replay("5106540-5106549.json.gz", false); }
+@Test void test_5106550_5106559() { replay("5106550-5106559.json.gz", false); }
+@Test void test_5106560_5106569() { replay("5106560-5106569.json.gz", false); }
+@Test void test_5106570_5106579() { replay("5106570-5106579.json.gz", false); }
+@Test void test_5106580_5106589() { replay("5106580-5106589.json.gz", false); }
+@Test void test_5106590_5106599() { replay("5106590-5106599.json.gz", false); }
+@Test void test_5106600_5106609() { replay("5106600-5106609.json.gz", false); }
+@Test void test_5106610_5106619() { replay("5106610-5106619.json.gz", false); }
+@Test void test_5106620_5106629() { replay("5106620-5106629.json.gz", false); }
+@Test void test_5106630_5106638() { replay("5106630-5106638.json.gz", false); }
+
+// Leo's range split up 5118361-5118389
+@Test void test_5118361_5118369() { replay("5118361-5118369.json.gz", false); }
+@Test void test_5118370_5118379() { replay("5118370-5118379.json.gz", false); }
+@Test void test_5118380_5118389() { replay("5118380-5118389.json.gz", false); }
+
+// Florian's ranges
+@Test void test_6871261_6871263() { replay("6871261-6871263.json.gz", false); }
+@Test void test_6930360_6930360() { replay("6930360-6930360.json.gz", false); }
+@Test void test_7040245_7040246() { replay("7040245-7040246.json.gz", false); }
+@Test void test_7037321_7037321() { replay("7037321-7037321.json.gz", false); }
+@Test void test_7037237_7037243() { replay("7037237-7037243.json.gz", false); }
+@Test void test_7037244_7037244() { replay("7037244-7037244.json.gz", false); }
+@Test void test_7032685_7032688() { replay("7032685-7032688.json.gz", false); }
+@Test void test_7032397_7032402() { replay("7032397-7032402.json.gz", false); }
+

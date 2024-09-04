@@ -19,5 +19,5 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public interface ContextExitDefer {
-  void resolveUponExitingContext(Hub hub, CallFrame frame);
+  void resolveUponContextExit(Hub hub, CallFrame frame);
 }

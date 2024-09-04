@@ -41,12 +41,8 @@ public class ExtCodeCopy extends MmuCall implements PostConflationDefer {
     this.hub = hub;
     hub.defers().scheduleForPostConflation(this);
 
-    final Address sourceAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
-    this.contract =
-        ContractMetadata.make(
-            sourceAddress,
-            hub.deploymentNumberOf(sourceAddress),
-            hub.deploymentStatusOf(sourceAddress));
+    final Address foreignCodeAddress = Words.toAddress(hub.messageFrame().getStackItem(0));
+    this.contract = ContractMetadata.canonical(hub, foreignCodeAddress);
 
     this.exoBytes(Optional.of(hub.romLex().getCodeByMetadata(contract)))
         .targetId(hub.currentFrame().contextNumber())

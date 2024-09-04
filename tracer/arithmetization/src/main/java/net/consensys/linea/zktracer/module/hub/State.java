@@ -39,7 +39,7 @@ public class State implements StackedContainer {
   State() {}
 
   public TxState current() {
-    return this.state.peek();
+    return state.peek();
   }
 
   public Stamps stamps() {
@@ -101,7 +101,7 @@ public class State implements StackedContainer {
    * @return the trace builder
    */
   Trace commit(Trace hubTrace) {
-    for (Iterator<TxState> it = this.state.descendingIterator(); it.hasNext(); ) {
+    for (Iterator<TxState> it = state.descendingIterator(); it.hasNext(); ) {
       final TxState txState = it.next();
       txState.txTrace().commit(hubTrace);
     }
@@ -109,21 +109,21 @@ public class State implements StackedContainer {
   }
 
   int txCount() {
-    return this.state.size();
+    return state.size();
   }
 
   @Override
   public void enter() {
-    if (this.state.isEmpty()) {
-      this.state.push(new TxState());
+    if (state.isEmpty()) {
+      state.push(new TxState());
     } else {
-      this.state.push(this.current().spinOff());
+      state.push(this.current().spinOff());
     }
   }
 
   @Override
   public void pop() {
-    this.state.pop();
+    state.pop();
   }
 
   /** Describes the Hub state during a given transaction. */
@@ -134,17 +134,17 @@ public class State implements StackedContainer {
     TxTrace txTrace;
 
     TxState() {
-      this.stamps = new Stamps();
-      this.txTrace = new TxTrace();
+      stamps = new Stamps();
+      txTrace = new TxTrace();
     }
 
     public TxState(Stamps stamps) {
       this.stamps = stamps;
-      this.txTrace = new TxTrace();
+      txTrace = new TxTrace();
     }
 
     TxState spinOff() {
-      return new TxState(this.stamps.snapshot());
+      return new TxState(stamps.snapshot());
     }
 
     /** Stores all the stamps associated to the tracing of a transaction. */
@@ -159,28 +159,28 @@ public class State implements StackedContainer {
       public Stamps() {}
 
       public Stamps(final int hubStamp, final int logStamp) {
-        this.hub = hubStamp;
-        this.log = logStamp;
+        hub = hubStamp;
+        log = logStamp;
       }
 
       public Stamps snapshot() {
-        return new Stamps(this.hub, this.log);
+        return new Stamps(hub, log);
       }
 
       public void incrementHubStamp() {
-        this.hub++;
+        hub++;
       }
 
       public void incrementMmuStamp() {
-        this.mmu++;
+        mmu++;
       }
 
       public void incrementMxpStamp() {
-        this.mxp++;
+        mxp++;
       }
 
       public void incrementLogStamp() {
-        this.log++;
+        log++;
       }
     }
   }

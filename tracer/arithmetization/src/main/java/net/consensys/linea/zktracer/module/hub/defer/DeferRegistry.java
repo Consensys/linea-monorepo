@@ -160,21 +160,6 @@ public class DeferRegistry
   }
 
   /**
-   * Trigger the execution of the actions deferred to the re-entry in the current context.
-   *
-   * @param hub the {@link Hub} context
-   * @param callFrame the {@link CallFrame} of the transaction
-   */
-  public void resolveAtContextReEntry(Hub hub, CallFrame callFrame) {
-    if (contextReEntryDefers.containsKey(callFrame)) {
-      for (ContextReEntryDefer defer : contextReEntryDefers.get(callFrame)) {
-        defer.resolveAtContextReEntry(hub, callFrame);
-      }
-      contextReEntryDefers.remove(callFrame);
-    }
-  }
-
-  /**
    * Should be invoked when precisely after a rollback was acted upon in terms of rolling back
    * modifications to WORLD STATE and ACCRUED STATE but the caller (or creator), if present, hasn't
    * resumed execution yet, and if there isn't one because this is the root context of the
@@ -203,21 +188,36 @@ public class DeferRegistry
   }
 
   @Override
-  public void resolveUponImmediateContextEntry(Hub hub) {
+  public void resolveUponContextEntry(Hub hub) {
     for (ImmediateContextEntryDefer defer : immediateContextEntryDefers) {
-      defer.resolveUponImmediateContextEntry(hub);
+      defer.resolveUponContextEntry(hub);
     }
     immediateContextEntryDefers.clear();
   }
 
   @Override
-  public void resolveUponExitingContext(Hub hub, CallFrame callFrame) {
+  public void resolveUponContextExit(Hub hub, CallFrame callFrame) {
     final Integer frameId = callFrame.id();
     if (contextExitDefers.containsKey(frameId)) {
       for (ContextExitDefer defers : contextExitDefers.get(frameId)) {
-        defers.resolveUponExitingContext(hub, callFrame);
+        defers.resolveUponContextExit(hub, callFrame);
       }
       contextExitDefers.remove(frameId);
+    }
+  }
+
+  /**
+   * Trigger the execution of the actions deferred to the re-entry in the current context.
+   *
+   * @param hub the {@link Hub} context
+   * @param callFrame the {@link CallFrame} of the transaction
+   */
+  public void resolveUponContextReEntry(Hub hub, CallFrame callFrame) {
+    if (contextReEntryDefers.containsKey(callFrame)) {
+      for (ContextReEntryDefer defer : contextReEntryDefers.get(callFrame)) {
+        defer.resolveAtContextReEntry(hub, callFrame);
+      }
+      contextReEntryDefers.remove(callFrame);
     }
   }
 }

@@ -15,7 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.*;
+
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /** Represents the entire set of opcodes that are required by the arithmetization process. */
@@ -238,12 +239,12 @@ public enum OpCode {
   }
 
   public boolean callMayNotTransferValue() {
-    Preconditions.checkArgument(isCall());
+    checkArgument(isCall());
     return this == OpCode.DELEGATECALL || this == OpCode.STATICCALL;
   }
 
   public boolean callCanTransferValue() {
-    Preconditions.checkArgument(isCall());
+    checkArgument(isCall());
     return this == OpCode.CALL || this == OpCode.CALLCODE;
   }
 

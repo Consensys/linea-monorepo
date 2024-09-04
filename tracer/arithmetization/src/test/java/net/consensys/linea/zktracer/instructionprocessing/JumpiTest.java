@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.Utils.addOffsetToHexString;
 
 import java.math.BigInteger;
@@ -21,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -44,7 +44,7 @@ public class JumpiTest {
   @ParameterizedTest
   @MethodSource("provideJumpiScenario")
   void jumpiScenarioTest(String description, String jumpiCondition, String pcNew) {
-    Preconditions.checkArgument(pcNew.length() <= 64, "pcNew must be at most 32 bytes long");
+    checkArgument(pcNew.length() <= 64, "pcNew must be at most 32 bytes long");
     final Bytes bytecode =
         BytecodeCompiler.newProgram()
             .push(jumpiCondition)

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_RIPEMD;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_SHA2;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
@@ -22,7 +23,6 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.Precompi
 import static net.consensys.linea.zktracer.module.shakiradata.HashType.RIPEMD;
 import static net.consensys.linea.zktracer.module.shakiradata.HashType.SHA256;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
@@ -57,7 +57,7 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     super.resolveAtContextReEntry(hub, callFrame);
 
     // sanity check
-    Preconditions.checkArgument(callSuccess == oobCall.isHubSuccess());
+    checkArgument(callSuccess == oobCall.isHubSuccess());
 
     if (!callSuccess) {
       return;

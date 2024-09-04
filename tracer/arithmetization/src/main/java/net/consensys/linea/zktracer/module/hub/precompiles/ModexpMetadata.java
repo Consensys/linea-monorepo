@@ -15,10 +15,10 @@
 
 package net.consensys.linea.zktracer.module.hub.precompiles;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.txndata.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -117,7 +117,7 @@ public class ModexpMetadata {
 
   public EWord rawLeadingWord() {
     // TODO: is this precaution useless / dangerous ?
-    Preconditions.checkArgument(loadRawLeadingWord());
+    checkArgument(loadRawLeadingWord());
     return this.rawLeadingWord;
   }
 

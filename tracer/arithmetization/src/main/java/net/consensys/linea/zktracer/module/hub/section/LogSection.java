@@ -15,7 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.*;
+
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostTransactionDefer;
@@ -47,7 +48,7 @@ public class LogSection extends TraceSection implements PostRollbackDefer, PostT
 
     // Static Case
     if (hub.currentFrame().frame().isStatic()) {
-      Preconditions.checkArgument(Exceptions.staticFault(exceptions));
+      checkArgument(Exceptions.staticFault(exceptions));
       return;
     }
 
@@ -57,8 +58,7 @@ public class LogSection extends TraceSection implements PostRollbackDefer, PostT
     final MxpCall mxpCall = new MxpCall(hub);
     imcFragment.callMxp(mxpCall);
 
-    Preconditions.checkArgument(
-        mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
+    checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
 
     // MXPX case
     if (mxpCall.isMxpx()) {
@@ -71,13 +71,12 @@ public class LogSection extends TraceSection implements PostRollbackDefer, PostT
     }
 
     // the unexceptional case
-    Preconditions.checkArgument(Exceptions.none(exceptions));
+    checkArgument(Exceptions.none(exceptions));
 
     hub.defers().scheduleForPostTransaction(this);
 
     final LogData logData = new LogData(hub);
-    Preconditions.checkArgument(
-        logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation);
+    checkArgument(logData.nontrivialLog() == mxpCall.mayTriggerNontrivialMmuOperation);
     mmuCall = (logData.nontrivialLog()) ? MmuCall.LogX(hub, logData) : null;
 
     if (mmuCall != null) {

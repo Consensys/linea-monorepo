@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.account;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -22,7 +23,6 @@ import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import java.util.Map;
 import java.util.Optional;
 
-import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -96,7 +96,7 @@ public final class AccountFragment
       AccountSnapshot newState,
       Optional<Bytes> addressToTrim,
       DomSubStampsSubFragment domSubStampsSubFragment) {
-    Preconditions.checkArgument(oldState.address().equals(newState.address()));
+    checkArgument(oldState.address().equals(newState.address()));
 
     transactionProcessingMetadata = hub.txStack().current();
     hubStamp = hub.stamp();

@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
-import com.google.common.base.Preconditions;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
@@ -108,10 +108,8 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
         hub.transients().conflation().deploymentInfo().deploymentNumber(targetAddress);
     final boolean deploymentStatusAtRollback =
         hub.transients().conflation().deploymentInfo().getDeploymentStatus(targetAddress);
-    Preconditions.checkArgument(
-        deploymentNumberAtRollback == postRollBackAccountSnapshot.deploymentNumber());
-    Preconditions.checkArgument(
-        deploymentStatusAtRollback == postRollBackAccountSnapshot.deploymentStatus());
+    checkArgument(deploymentNumberAtRollback == postRollBackAccountSnapshot.deploymentNumber());
+    checkArgument(deploymentStatusAtRollback == postRollBackAccountSnapshot.deploymentStatus());
 
     this.addFragment(
         hub.factories()
