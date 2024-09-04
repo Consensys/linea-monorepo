@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
+import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
@@ -35,60 +36,67 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * proving of a pure transaction.
  */
 public class TxSkippedSection extends TraceSection implements PostTransactionDefer {
+
   final TransactionProcessingMetadata txMetadata;
   final AccountSnapshot senderAccountSnapshotBefore;
   final AccountSnapshot recipientAccountSnapshotBefore;
   final AccountSnapshot coinbaseAccountSnapshotBefore;
 
   public TxSkippedSection(
-      Hub hub, WorldView world, TransactionProcessingMetadata txMetadata, Transients transients) {
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata transactionProcessingMetadata,
+      Transients transients) {
     super(hub, (short) 4);
-    this.txMetadata = txMetadata;
     hub.defers().scheduleForPostTransaction(this);
 
-    // From account information
+    txMetadata = transactionProcessingMetadata;
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
-    senderAccountSnapshotBefore =
-        AccountSnapshot.fromAccount(
-            world.get(senderAddress),
-            isPrecompile(senderAddress),
-            hub.deploymentNumberOf(senderAddress),
-            false);
-
-    // Recipiet account information
     final Address recipientAddress = txMetadata.getEffectiveRecipient();
+    final Address coinbaseAddress = txMetadata.getCoinbase();
+
+    senderAccountSnapshotBefore =
+        AccountSnapshot.canonical(hub, world, senderAddress, isPrecompile(senderAddress));
     recipientAccountSnapshotBefore =
-        AccountSnapshot.fromAccount(
-            world.get(recipientAddress),
-            isPrecompile(recipientAddress),
-            hub.deploymentNumberOf(recipientAddress),
-            false);
+        AccountSnapshot.canonical(hub, world, recipientAddress, isPrecompile(recipientAddress));
+    coinbaseAccountSnapshotBefore =
+        AccountSnapshot.canonical(hub, world, coinbaseAddress, isPrecompile(coinbaseAddress));
+
+    // arithmetization restriction
+    checkArgument(!isPrecompile(recipientAddress));
+
+    // sanity check + EIP-3607
+    checkArgument(world.get(senderAddress) != null);
+    checkArgument(!world.get(senderAddress).hasCode());
+
+    // deployments are local to a transaction, every address should have deploymentStatus == false
+    // at the start of every transaction
+    checkArgument(!hub.deploymentStatusOf(senderAddress));
+    checkArgument(!hub.deploymentStatusOf(recipientAddress));
+    checkArgument(!hub.deploymentStatusOf(coinbaseAddress));
 
     // the updated deployment info appears in the "updated" account fragment
     if (txMetadata.isDeployment()) {
       transients.conflation().deploymentInfo().newDeploymentSansExecutionAt(recipientAddress);
     }
-
-    // Coinbase account information
-    final Address coinbaseAddress = txMetadata.getCoinbase();
-    coinbaseAccountSnapshotBefore =
-        AccountSnapshot.fromAccount(
-            world.get(coinbaseAddress),
-            isPrecompile(coinbaseAddress),
-            hub.deploymentNumberOf(transients.block().coinbaseAddress()),
-            false);
   }
 
   @Override
-  public void resolvePostTransaction(
-      Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
-    final Address senderAddress = this.senderAccountSnapshotBefore.address();
-    final Address recipientAddress = this.recipientAccountSnapshotBefore.address();
-    final Address coinbaseAddress = this.txMetadata.getCoinbase();
+  /**
+   * This doesn't take into account the "sender = recipient, recipient = coinbase, coinbase =
+   * sender" shenanigans.
+   *
+   * <p>TODO: issue #1018, {@link https://github.com/Consensys/linea-tracer/issues/1018}
+   */
+  public void resolvePostTransaction(Hub hub, WorldView state, Transaction tx, boolean statusCode) {
+    final Address senderAddress = txMetadata.getBesuTransaction().getSender();
+    final Address recipientAddress = txMetadata.getEffectiveRecipient();
+    final Address coinbaseAddress = txMetadata.getCoinbase();
 
-    // TODO: @François: it seems to me this doesn't take into account the
-    //  "sender = recipient, recipient = coinbase, coinbase = sender"
-    //  shenanigans.
+    checkArgument(statusCode, "TX_SKIP transactions should be successful");
+    checkArgument(
+        statusCode == txMetadata.statusCode(), "meta data suggests an unsuccessful TX_SKIP");
+
     final AccountSnapshot senderAccountSnapshotAfter =
         AccountSnapshot.fromAccount(
             state.get(senderAddress),

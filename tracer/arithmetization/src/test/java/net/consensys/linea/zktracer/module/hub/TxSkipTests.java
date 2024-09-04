@@ -35,7 +35,6 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
 public class TxSkipTests {
-  final int nbOfRowsTxSkip = 4;
 
   @Test
   void test() {
