@@ -25,10 +25,6 @@ public class DeploymentInfo {
   private final Map<Address, Integer> deploymentNumber = new HashMap<>();
   private final Map<Address, Boolean> deploymentStatus = new HashMap<>();
 
-  public int statusSize() {
-    return deploymentStatus.size();
-  }
-
   /**
    * Returns the deployment number of the given address; sets it to zero if it is the first
    * deployment of this address.
@@ -50,8 +46,6 @@ public class DeploymentInfo {
     this.markAsNotUnderDeployment(address);
   }
 
-  // TODO: @Lorenzo: we will have to use this method in the row that
-  //  "actually self destructs" the account
   public void freshDeploymentNumberFinishingSelfdestruct(Address address) {
     this.incrementDeploymentNumber(address);
     this.markAsNotUnderDeployment(address);
