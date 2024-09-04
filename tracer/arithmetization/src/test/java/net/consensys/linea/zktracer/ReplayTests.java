@@ -554,4 +554,11 @@ public class ReplayTests {
   void hotOrColdPrecompile() {
     replay("2019510-2019519.json.gz");
   }
+
+  // TODO: should be replace by a unit test triggering a CALLDATACOPY in a ROOT context of a
+  // deployment transaction
+  @Test
+  void callDataCopyCnNotFound() {
+    replay("67050-67059.json.gz");
+  }
 }

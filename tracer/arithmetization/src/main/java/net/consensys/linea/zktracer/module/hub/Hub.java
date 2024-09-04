@@ -560,18 +560,17 @@ public class Hub implements Module {
 
       checkArgument(
           recipientAddress.equals(effectiveToAddress(currentTransaction.getBesuTransaction())));
-      checkArgument(senderAddress.equals(txStack.current().getBesuTransaction().getSender()));
-      checkArgument(isDeployment == transients.tx().getBesuTransaction().getTo().isEmpty());
+      checkArgument(senderAddress.equals(currentTransaction.getBesuTransaction().getSender()));
+      checkArgument(isDeployment == currentTransaction.getBesuTransaction().getTo().isEmpty());
       checkArgument(
-          value.equals(Wei.of(transients.tx().getBesuTransaction().getValue().getAsBigInteger())));
-      checkArgument(frame.getRemainingGas() == transients.tx().getInitiallyAvailableGas());
+          value.equals(
+              Wei.of(currentTransaction.getBesuTransaction().getValue().getAsBigInteger())));
+      checkArgument(frame.getRemainingGas() == currentTransaction.getInitiallyAvailableGas());
 
-      final boolean copyTransactionCallData =
-          !isDeployment && currentTransaction.requiresEvmExecution();
+      final boolean copyTransactionCallData = currentTransaction.copyTransactionCallData();
       if (copyTransactionCallData) {
         callStack.newTransactionCallDataContext(
-            callDataContextNumber(copyTransactionCallData),
-            transients.tx().getBesuTransaction().getData().orElse(Bytes.EMPTY));
+            callDataContextNumber(true), currentTransaction.getBesuTransaction().getData().get());
       }
 
       callStack.newRootContext(
@@ -579,8 +578,8 @@ public class Hub implements Module {
           senderAddress,
           recipientAddress,
           new Bytecode(
-              recipientAddress == null
-                  ? transients.tx().getBesuTransaction().getData().orElse(Bytes.EMPTY)
+              currentTransaction.isDeployment()
+                  ? currentTransaction.getBesuTransaction().getInit().orElse(Bytes.EMPTY)
                   : Optional.ofNullable(frame.getWorldUpdater().get(recipientAddress))
                       .map(AccountState::getCode)
                       .orElse(Bytes.EMPTY)),
@@ -601,11 +600,6 @@ public class Hub implements Module {
       final boolean isDeployment = frame.getType() == CONTRACT_CREATION;
       final CallFrameType frameType =
           frame.isStatic() ? CallFrameType.STATIC : CallFrameType.STANDARD;
-
-      // Now done (with more care) in the CREATE section
-      // if (isDeployment) {
-      //   transients.conflation().deploymentInfo().newDeploymentWithExecutionAt(codeAddress);
-      // }
 
       final long callDataOffset =
           isDeployment
