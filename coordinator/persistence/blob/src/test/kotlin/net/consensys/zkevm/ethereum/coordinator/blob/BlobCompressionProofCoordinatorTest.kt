@@ -1,12 +1,12 @@
 package net.consensys.zkevm.ethereum.coordinator.blob
 
-import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClient
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
@@ -25,7 +25,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -47,7 +46,7 @@ class BlobCompressionProofCoordinatorTest {
 
   private val expectedStartBlock = 1UL
   private val expectedEndBlock = 100UL
-  private val blobCompressionProverClient = mock<BlobCompressionProverClient>().also {
+  private val blobCompressionProverClient = mock<BlobCompressionProverClientV2>().also {
     val expectedBlobCompressionProofResponse = BlobCompressionProof(
       compressedData = Random.nextBytes(32),
       conflationOrder = BlockIntervals(
@@ -73,10 +72,8 @@ class BlobCompressionProofCoordinatorTest {
       kzgProofSidecar = Random.nextBytes(48)
     )
 
-    whenever(
-      it.requestBlobCompressionProof(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-    )
-      .thenReturn(SafeFuture.completedFuture(Ok(expectedBlobCompressionProofResponse)))
+    whenever(it.requestProof(any()))
+      .thenReturn(SafeFuture.completedFuture(expectedBlobCompressionProofResponse))
   }
   private val blobZkStateProvider = mock<BlobZkStateProvider>()
   private val blobsRepository = mock<BlobsRepository>()
@@ -157,17 +154,19 @@ class BlobCompressionProofCoordinatorTest {
     await()
       .untilAsserted {
         verify(blobCompressionProverClient)
-          .requestBlobCompressionProof(
-            compressedData = eq(blob.compressedData),
-            conflations = eq(blob.conflations),
-            parentStateRootHash = eq(parentStateRootHash),
-            finalStateRootHash = eq(finalStateRootHash),
-            parentDataHash = eq(expectedParentDataHash),
-            prevShnarf = eq(expectedPrevShnarf),
-            expectedShnarfResult = eq(shnarfResult),
-            commitment = eq(shnarfResult.commitment),
-            kzgProofContract = eq(shnarfResult.kzgProofContract),
-            kzgProofSideCar = eq(shnarfResult.kzgProofSideCar)
+          .requestProof(
+            BlobCompressionProofRequest(
+              compressedData = blob.compressedData,
+              conflations = blob.conflations,
+              parentStateRootHash = parentStateRootHash,
+              finalStateRootHash = finalStateRootHash,
+              parentDataHash = expectedParentDataHash,
+              prevShnarf = expectedPrevShnarf,
+              expectedShnarfResult = shnarfResult,
+              commitment = shnarfResult.commitment,
+              kzgProofContract = shnarfResult.kzgProofContract,
+              kzgProofSideCar = shnarfResult.kzgProofSideCar
+            )
           )
       }
   }
@@ -253,30 +252,34 @@ class BlobCompressionProofCoordinatorTest {
     await()
       .untilAsserted {
         verify(blobCompressionProverClient, times(1))
-          .requestBlobCompressionProof(
-            compressedData = eq(blob1.compressedData),
-            conflations = eq(blob1.conflations),
-            parentStateRootHash = eq(parentStateRootHash),
-            finalStateRootHash = eq(finalStateRootHash),
-            parentDataHash = eq(expectedParentDataHash),
-            prevShnarf = eq(expectedPrevShnarf),
-            expectedShnarfResult = eq(shnarfResult),
-            commitment = eq(shnarfResult.commitment),
-            kzgProofContract = eq(shnarfResult.kzgProofContract),
-            kzgProofSideCar = eq(shnarfResult.kzgProofSideCar)
+          .requestProof(
+            BlobCompressionProofRequest(
+              compressedData = blob1.compressedData,
+              conflations = blob1.conflations,
+              parentStateRootHash = parentStateRootHash,
+              finalStateRootHash = finalStateRootHash,
+              parentDataHash = expectedParentDataHash,
+              prevShnarf = expectedPrevShnarf,
+              expectedShnarfResult = shnarfResult,
+              commitment = shnarfResult.commitment,
+              kzgProofContract = shnarfResult.kzgProofContract,
+              kzgProofSideCar = shnarfResult.kzgProofSideCar
+            )
           )
         verify(blobCompressionProverClient, times(1))
-          .requestBlobCompressionProof(
-            compressedData = eq(blob2.compressedData),
-            conflations = eq(blob2.conflations),
-            parentStateRootHash = eq(parentStateRootHash),
-            finalStateRootHash = eq(finalStateRootHash),
-            parentDataHash = eq(expectedParentDataHash),
-            prevShnarf = eq(expectedPrevShnarf),
-            expectedShnarfResult = eq(shnarfResult),
-            commitment = eq(shnarfResult.commitment),
-            kzgProofContract = eq(shnarfResult.kzgProofContract),
-            kzgProofSideCar = eq(shnarfResult.kzgProofSideCar)
+          .requestProof(
+            BlobCompressionProofRequest(
+              compressedData = blob2.compressedData,
+              conflations = blob2.conflations,
+              parentStateRootHash = parentStateRootHash,
+              finalStateRootHash = finalStateRootHash,
+              parentDataHash = expectedParentDataHash,
+              prevShnarf = expectedPrevShnarf,
+              expectedShnarfResult = shnarfResult,
+              commitment = shnarfResult.commitment,
+              kzgProofContract = shnarfResult.kzgProofContract,
+              kzgProofSideCar = shnarfResult.kzgProofSideCar
+            )
           )
       }
   }

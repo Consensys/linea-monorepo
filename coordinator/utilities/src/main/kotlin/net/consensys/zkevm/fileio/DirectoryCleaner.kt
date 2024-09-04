@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.app
+package net.consensys.zkevm.fileio
 
 import io.vertx.core.Vertx
 import net.consensys.linea.async.toSafeFuture

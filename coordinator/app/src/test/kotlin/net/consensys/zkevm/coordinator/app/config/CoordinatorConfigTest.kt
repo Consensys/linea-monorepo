@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.app
+package net.consensys.zkevm.coordinator.app.config
 
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getError
@@ -10,6 +10,10 @@ import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.web3j.SmartContractErrors
+import net.consensys.zkevm.coordinator.app.CoordinatorAppCli
+import net.consensys.zkevm.coordinator.clients.prover.FileBasedProverConfig
+import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
+import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -22,6 +26,7 @@ import java.math.BigInteger
 import java.net.URI
 import java.nio.file.Path
 import java.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -178,42 +183,48 @@ class CoordinatorConfigTest {
       Duration.parse("PT1S")
     )
 
-    private val proverConfig = ProverConfig(
-      fsRequestsDirectory = Path.of("/data/prover-execution/v2/requests"),
-      fsResponsesDirectory = Path.of("/data/prover-execution/v2/responses"),
-      fsPollingInterval = Duration.parse("PT1S"),
-      fsPollingTimeout = Duration.parse("PT10M"),
-      fsInprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
-      fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
+    private val proversConfig = ProversConfig(
+      proverA = ProverConfig(
+        execution = FileBasedProverConfig(
+          requestsDirectory = Path.of("/data/prover/v2/execution/requests"),
+          responsesDirectory = Path.of("/data/prover/v2/execution/responses"),
+          pollingInterval = 1.seconds,
+          pollingTimeout = 10.minutes,
+          inprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
+          inprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
+        ),
+        blobCompression = FileBasedProverConfig(
+          requestsDirectory = Path.of("/data/prover/v2/compression/requests"),
+          responsesDirectory = Path.of("/data/prover/v2/compression/responses"),
+          pollingInterval = 1.seconds,
+          pollingTimeout = 10.minutes,
+          inprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
+          inprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
+        ),
+        proofAggregation = FileBasedProverConfig(
+          requestsDirectory = Path.of("/data/prover/v2/aggregation/requests"),
+          responsesDirectory = Path.of("/data/prover/v2/aggregation/responses"),
+          pollingInterval = 1.seconds,
+          pollingTimeout = 10.minutes,
+          inprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
+          inprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
+        )
+      ),
+      switchBlockNumberInclusive = null,
+      proverB = null
     )
 
     private val blobCompressionConfig = BlobCompressionConfig(
       blobSizeLimit = 100 * 1024,
       handlerPollingInterval = Duration.parse("PT1S"),
-      _batchesLimit = 1,
-      prover = ProverConfig(
-        fsRequestsDirectory = Path.of("/data/prover-compression/v2/requests"),
-        fsResponsesDirectory = Path.of("/data/prover-compression/v2/responses"),
-        fsPollingInterval = Duration.parse("PT1S"),
-        fsPollingTimeout = Duration.parse("PT10M"),
-        fsInprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
-        fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
-      )
+      _batchesLimit = 1
     )
 
     private val aggregationConfig = AggregationConfig(
       aggregationProofsLimit = 3,
       aggregationDeadline = Duration.parse("PT1M"),
       aggregationCoordinatorPollingInterval = Duration.parse("PT2S"),
-      deadlineCheckInterval = Duration.parse("PT8S"),
-      prover = ProverConfig(
-        fsRequestsDirectory = Path.of("/data/prover-aggregation/v2/requests"),
-        fsResponsesDirectory = Path.of("/data/prover-aggregation/v2/responses"),
-        fsPollingInterval = Duration.parse("PT20S"),
-        fsPollingTimeout = Duration.parse("PT20M"),
-        fsInprogressProvingSuffixPattern = ".*\\.inprogress\\.prover.*",
-        fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing"
-      )
+      deadlineCheckInterval = Duration.parse("PT8S")
     )
 
     private val tracesConfig = TracesConfig(
@@ -619,9 +630,7 @@ class CoordinatorConfigTest {
     )
 
     private val coordinatorConfig = CoordinatorConfig(
-      duplicatedLogsDebounceTime = Duration.parse("PT15S"),
       zkTraces = zkTracesConfig,
-      prover = proverConfig,
       blobCompression = blobCompressionConfig,
       proofAggregation = aggregationConfig,
       traces = tracesConfig,
@@ -640,7 +649,8 @@ class CoordinatorConfigTest {
       l2Signer = l2SignerConfig,
       messageAnchoringService = messageAnchoringServiceConfig,
       dynamicGasPriceService = dynamicGasPriceServiceConfig,
-      l1DynamicGasPriceCapService = l1DynamicGasPriceCapServiceConfig
+      l1DynamicGasPriceCapService = l1DynamicGasPriceCapServiceConfig,
+      proversConfig = proversConfig
     )
   }
 
@@ -664,11 +674,11 @@ class CoordinatorConfigTest {
       CoordinatorAppCli.loadConfigsOrError<TracesLimitsV2ConfigFile>(
         listOf(File("../../config/common/traces-limits-v2.toml"))
       )
-    CoordinatorAppCli.loadConfigsOrError<CoordinatorConfig>(
+    CoordinatorAppCli.loadConfigsOrError<CoordinatorConfigTomlDto>(
       listOf(File("../../config/coordinator/coordinator-docker.config.toml"))
     )
       .onFailure { error: String -> fail(error) }
-      .onSuccess { config: CoordinatorConfig ->
+      .onSuccess { config: CoordinatorConfigTomlDto ->
         val configs = config.copy(
           conflation = config.conflation.copy(
             _tracesLimitsV1 = tracesLimitsConfigs.get()?.tracesLimits?.let { TracesCountersV1(it) },
@@ -681,7 +691,7 @@ class CoordinatorConfigTest {
             )
           )
         )
-        assertEquals(coordinatorConfig, configs)
+        assertEquals(coordinatorConfig, configs.reified())
         assertEquals(coordinatorConfig.l1.rpcEndpoint, coordinatorConfig.l1.ethFeeHistoryEndpoint)
       }
   }
@@ -705,7 +715,7 @@ class CoordinatorConfigTest {
         listOf(File("../../config/common/traces-limits-v2.toml"))
       )
 
-    CoordinatorAppCli.loadConfigsOrError<CoordinatorConfig>(
+    CoordinatorAppCli.loadConfigsOrError<CoordinatorConfigTomlDto>(
       listOf(
         File("../../config/coordinator/coordinator-docker.config.toml"),
         File("../../config/coordinator/coordinator-docker-web3signer-override.config.toml")
@@ -733,7 +743,7 @@ class CoordinatorConfigTest {
             l2Signer = l2SignerConfig.copy(type = SignerConfig.Type.Web3Signer)
           )
 
-        assertEquals(expectedConfig, configs)
+        assertEquals(expectedConfig, configs.reified())
       }
   }
 

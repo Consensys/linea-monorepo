@@ -17,6 +17,7 @@ import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.web3j.Web3jBlobExtended
 import net.consensys.toKWeiUInt
 import net.consensys.zkevm.LongRunningService
+import net.consensys.zkevm.coordinator.app.config.DynamicGasPriceServiceConfig
 import org.apache.logging.log4j.LogManager
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
