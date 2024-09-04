@@ -44,7 +44,7 @@ public class CorsetValidator {
   public record Result(boolean isValid, File traceFile, String corsetOutput) {}
 
   /** */
-  private static final String ZK_EVM_RELATIVE_PATH = "/zkevm-constraints/zkevm.bin";
+  private static final String ZK_EVM_RELATIVE_PATH = "/linea-constraints/zkevm.bin";
 
   /** Specifies the default zkEVM.bin file to use (including its path). */
   private String defaultZkEvm = null;
