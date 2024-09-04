@@ -360,4 +360,73 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
       }
     testContext.completeNow()
   }
+
+  @Test
+  fun `test blob handle failures re-queue's the blob`(
+    testContext: VertxTestContext
+  ) {
+    val prevBlobRecord = createBlobRecord(
+      startBlockNumber = expectedStartBlock,
+      endBlockNumber = expectedEndBlock,
+      startBlockTime = expectedStartBlockTime
+    )
+    timeToReturn = Clock.System.now()
+    blobsPostgresDao.saveNewBlob(prevBlobRecord).get()
+
+    val blobs = createConsecutiveBlobs(
+      numberOfBlobs = maxBlobsToReturn.toInt() - 1,
+      startBlockNumber = expectedEndBlock + 1UL,
+      startBlockTime = prevBlobRecord.endBlockTime.plus(12.seconds)
+    )
+    val maxMockedBlobZkStateFailures = 10
+    var blobZkStateFailures = 0
+    var blobZkStateCount = 0
+
+    Mockito.reset(blobZkStateProvider)
+    whenever(blobZkStateProvider.getBlobZKState(any())).thenAnswer {
+      blobZkStateCount += 1
+      if (blobZkStateFailures <= maxMockedBlobZkStateFailures && blobZkStateCount % 2 == 0) {
+        blobZkStateFailures += 1
+        SafeFuture.failedFuture(RuntimeException("Forced mock blobZkStateProvider failure"))
+      } else {
+        SafeFuture.completedFuture(
+          BlobZkState(
+            parentStateRootHash = Bytes32.random().toArray(),
+            finalStateRootHash = Bytes32.random().toArray()
+          )
+        )
+      }
+    }
+
+    timeToReturn = Clock.System.now()
+    SafeFuture.allOf(
+      blobs.map {
+        blobCompressionProofCoordinator.handleBlob(it)
+      }.stream()
+    ).get()
+
+    waitAtMost(100.seconds.toJavaDuration())
+      .pollInterval(200.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
+          expectedStartBlock,
+          blobs.last().endBlockTime.plus(1.seconds)
+        ).get()
+
+        assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
+        verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(any())
+        verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(eq(expectedEndBlock.toLong()))
+
+        var previousBlob = actualBlobs.first()
+        actualBlobs.drop(1).forEach { blobRecord ->
+          val blobCompressionProof = blobRecord.blobCompressionProof!!
+          testContext.verify {
+            assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
+            assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
+          }
+          previousBlob = blobRecord
+        }
+      }
+    testContext.completeNow()
+  }
 }
