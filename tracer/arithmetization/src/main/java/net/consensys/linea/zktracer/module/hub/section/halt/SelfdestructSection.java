@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.SelfdestructScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata.AttemptedSelfDestruct;
@@ -51,7 +52,7 @@ public class SelfdestructSection extends TraceSection
 
   SelfdestructScenarioFragment selfdestructScenarioFragment;
 
-  final Address address;
+  final Address addressWhichMaySelfDestruct;
   AccountSnapshot selfdestructorAccountBefore;
   AccountSnapshot selfdestructorAccountAfter;
 
@@ -78,14 +79,14 @@ public class SelfdestructSection extends TraceSection
     final MessageFrame frame = hub.messageFrame();
 
     // Account
-    address = frame.getRecipientAddress();
-    selfdestructorAccountBefore = AccountSnapshot.canonical(hub, address);
+    addressWhichMaySelfDestruct = frame.getRecipientAddress();
+    selfdestructorAccountBefore = AccountSnapshot.canonical(hub, addressWhichMaySelfDestruct);
 
     // Recipient
     recipientRawAddress = frame.getStackItem(0);
     recipientAddress = Address.extract(Bytes32.leftPad(recipientRawAddress));
 
-    selfDestructTargetsItself = address.equals(recipientAddress);
+    selfDestructTargetsItself = addressWhichMaySelfDestruct.equals(recipientAddress);
 
     recipientAccountBefore =
         selfDestructTargetsItself
@@ -142,18 +143,18 @@ public class SelfdestructSection extends TraceSection
         hub.txStack().current().getUnexceptionalSelfDestructMap();
 
     EphemeralAccount ephemeralAccount =
-        new EphemeralAccount(address, selfdestructorAccountBefore.deploymentNumber());
+        new EphemeralAccount(
+            addressWhichMaySelfDestruct, selfdestructorAccountBefore.deploymentNumber());
 
     if (unexceptionalSelfDestructMap.containsKey(ephemeralAccount)) {
       List<AttemptedSelfDestruct> attemptedSelfDestructs =
           unexceptionalSelfDestructMap.get(ephemeralAccount);
       attemptedSelfDestructs.add(new AttemptedSelfDestruct(hubStamp, hub.currentFrame()));
-      // TODO: double check that re-adding the list to the map is not necessary, as the list is a
-      //  reference
-      //  unexceptionalSelfDestructMap.put(addressDeploymentNumberKey, hubStampCallFrameValues);
+      // We do not need to put again the list in the map, as it is a reference
     } else {
       unexceptionalSelfDestructMap.put(
-          new EphemeralAccount(address, selfdestructorAccountBefore.deploymentNumber()),
+          new EphemeralAccount(
+              addressWhichMaySelfDestruct, selfdestructorAccountBefore.deploymentNumber()),
           List.of(new AttemptedSelfDestruct(hubStamp, hub.currentFrame())));
     }
 
@@ -247,7 +248,8 @@ public class SelfdestructSection extends TraceSection
     Map<EphemeralAccount, Integer> effectiveSelfDestructMap =
         transactionProcessingMetadata.getEffectiveSelfDestructMap();
     EphemeralAccount ephemeralAccount =
-        new EphemeralAccount(address, selfdestructorAccountAfter.deploymentNumber());
+        new EphemeralAccount(
+            addressWhichMaySelfDestruct, selfdestructorAccountAfter.deploymentNumber());
 
     checkArgument(effectiveSelfDestructMap.containsKey(ephemeralAccount));
 
@@ -259,7 +261,8 @@ public class SelfdestructSection extends TraceSection
 
     AccountSnapshot accountBeforeSelfDestruct =
         transactionProcessingMetadata.getDestructedAccountsSnapshot().stream()
-            .filter(accountSnapshot -> accountSnapshot.address().equals(address))
+            .filter(
+                accountSnapshot -> accountSnapshot.address().equals(addressWhichMaySelfDestruct))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException("Account not found"));
 
@@ -275,6 +278,10 @@ public class SelfdestructSection extends TraceSection
                   accountBeforeSelfDestruct,
                   selfdestructorAccountAfter.wipe(),
                   DomSubStampsSubFragment.selfdestructDomSubStamps(hub));
+
+      final DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
+      deploymentInfo.freshDeploymentNumberFinishingSelfdestruct(addressWhichMaySelfDestruct);
+
       this.addFragment(accountWipingFragment);
     } else {
       selfdestructScenarioFragment.setScenario(
