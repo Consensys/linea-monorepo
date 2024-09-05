@@ -147,8 +147,8 @@ public class ReturnSection extends TraceSection
     }
 
     // Unexceptional RETURN's
-    // (we have exceptions ≡ ∅ by the checkArgument)
-    ////////////////////////////////////////////////
+    // (we have exceptions ≡ ∅ by the checkArgument below)
+    //////////////////////////////////////////////////////
 
     checkArgument(Exceptions.none(exceptions));
 
@@ -287,7 +287,7 @@ public class ReturnSection extends TraceSection
                 postDeploymentAccountSnapshot,
                 undoingDeploymentAccountSnapshot,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), hub.callStack().current().revertStamp(), 1));
+                    this.hubStamp(), hub.callStack().currentCallFrame().revertStamp(), 1));
 
     this.addFragment(undoingDeploymentAccountFragment);
   }

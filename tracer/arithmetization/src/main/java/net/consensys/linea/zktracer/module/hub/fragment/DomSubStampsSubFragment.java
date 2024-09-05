@@ -52,7 +52,7 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
         hub.stamp(),
         0,
         subOffset,
-        hub.callStack().current().revertStamp(),
+        hub.callStack().currentCallFrame().revertStamp(),
         0,
         0);
   }
