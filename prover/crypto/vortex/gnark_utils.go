@@ -110,7 +110,7 @@ func gnarkInterpolate(api frontend.API, p []frontend.Variable, z frontend.Variab
 	res = 0
 
 	lagranges := gnarkComputeLagrangeAtZ(api, z, gen, cardinality)
-	for i := 0; i < int(cardinality); i++ {
+	for i := uint64(0); i < cardinality; i++ {
 		tmp := api.Mul(lagranges[i], p[i])
 		res = api.Add(res, tmp)
 	}
@@ -147,7 +147,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen fr.Eleme
 	var accOmega fr.Element
 	accOmega.SetOne()
 
-	for i := 1; i < int(cardinality); i++ {
+	for i := uint64(1); i < cardinality; i++ {
 		res[i] = api.Mul(res[i-1], gen)              // res[i] <- ω * res[i-1]
 		res[i] = api.Mul(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
 		accOmega.Mul(&accOmega, &gen)                // accOmega <- accOmega * ω

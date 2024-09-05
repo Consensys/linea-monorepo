@@ -31,13 +31,22 @@ func MustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
 
 // MustBeActivationColumns constrains all the columns of the form "IsActive" to have
 // the correct form: the column is binary and it cannot transition from 0 to 1.
-func MustBeActivationColumns(comp *wizard.CompiledIOP, c ifaces.Column) {
+func MustBeActivationColumns(comp *wizard.CompiledIOP, c ifaces.Column, option ...any) {
 	MustBeBinary(comp, c)
+
+	// must have activation form where option is not zero.
+	var res *sym.Expression
+	if len(option) > 0 {
+		res = sym.Mul(column.Shift(c, 1), option[0])
+	} else {
+		res = ifaces.ColumnAsVariable(column.Shift(c, 1))
+	}
 
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("%v_CANNOT_TRANSITION_FROM_0_TO_1", c.GetColID()),
-		sym.Sub(sym.Mul(column.Shift(c, -1), c), c),
+		sym.Sub(res,
+			sym.Mul(c, column.Shift(c, 1))),
 	)
 }
 

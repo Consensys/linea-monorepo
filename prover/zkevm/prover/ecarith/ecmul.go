@@ -23,9 +23,8 @@ const (
 	nbRowsPerEcMul = 10
 )
 
-// EcMulIntegration integrated EC_MUL precompile call verification inside a
-// gnark circuit.
-type EcMulIntegration struct {
+// EcMul integrated EC_MUL precompile call verification inside a gnark circuit.
+type EcMul struct {
 	*EcDataMulSource
 	AlignedGnarkData *plonk.Alignment
 
@@ -33,8 +32,23 @@ type EcMulIntegration struct {
 	*Limits
 }
 
-// NewEcMulIntegration creates a new EC_MUL integration.
-func NewEcMulIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, plonkOptions []plonk.Option) *EcMulIntegration {
+func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcMul {
+	return newEcMul(
+		comp,
+		limits,
+		&EcDataMulSource{
+			CsEcMul: comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECMUL"),
+			Limb:    comp.Columns.GetHandle("ecdata.LIMB"),
+			Index:   comp.Columns.GetHandle("ecdata.INDEX"),
+			IsData:  comp.Columns.GetHandle("ecdata.IS_ECMUL_DATA"),
+			IsRes:   comp.Columns.GetHandle("ecdata.IS_ECMUL_RESULT"),
+		},
+		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+	)
+}
+
+// newEcMul creates a new EC_MUL integration.
+func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, plonkOptions []plonk.Option) *EcMul {
 	size := limits.sizeEcMulIntegration()
 
 	toAlign := &plonk.CircuitAlignmentInput{
@@ -47,7 +61,7 @@ func NewEcMulIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMu
 		PlonkOptions:       plonkOptions,
 		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
 	}
-	res := &EcMulIntegration{
+	res := &EcMul{
 		EcDataMulSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
 		size:             size,
@@ -57,7 +71,7 @@ func NewEcMulIntegration(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMu
 }
 
 // Assign assigns the data from the trace to the gnark inputs.
-func (em *EcMulIntegration) Assign(run *wizard.ProverRuntime, src *EcDataMulSource) {
+func (em *EcMul) Assign(run *wizard.ProverRuntime) {
 	em.AlignedGnarkData.Assign(run)
 }
 

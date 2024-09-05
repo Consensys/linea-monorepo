@@ -150,7 +150,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 		numRcR                           = smartvectors.Sum(rcRValue)
 		numRcO                           = smartvectors.Sum(rcOValue)
 		totalNumRangeCheckedValues       = numRcL.Uint64() + numRcR.Uint64() + numRcO.Uint64()
-		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(int(totalNumRangeCheckedValues))
+		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(totalNumRangeCheckedValues)
 	)
 
 	if totalNumRangeCheckedValues == 0 {
@@ -169,7 +169,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 			l            = ctx.Columns.L[i]
 			r            = ctx.Columns.R[i]
 			o            = ctx.Columns.O[i]
-			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), totalNumRangeCheckedValuesPadded)
+			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
 		)
 
 		ctx.Columns.RangeChecked[i] = rangeChecked
@@ -222,34 +222,43 @@ func (ctx *compilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 	)
 
 	parallel.Execute(len(ctx.Columns.RangeChecked), func(start, stop int) {
-		for i := range ctx.Columns.RangeChecked {
+		for i := start; i < stop; i++ {
 
 			var (
-				l      = ctx.Columns.L[i].GetColAssignment(run)
-				r      = ctx.Columns.R[i].GetColAssignment(run)
-				o      = ctx.Columns.O[i].GetColAssignment(run)
-				rcSize = ctx.Columns.RangeChecked[i].Size()
-				rc     = make([]field.Element, 0, rcSize)
+				activated = ctx.Columns.Activators[i].GetColAssignment(run).Get(0)
+				l         = ctx.Columns.L[i].GetColAssignment(run)
+				r         = ctx.Columns.R[i].GetColAssignment(run)
+				o         = ctx.Columns.O[i].GetColAssignment(run)
+				rcSize    = ctx.Columns.RangeChecked[i].Size()
+				rc        = make([]field.Element, 0, rcSize)
 			)
 
-			for i := range rcLValue {
-				if rcLValue[i].IsOne() {
-					rc = append(rc, l.Get(i))
+			if activated.IsZero() {
+				run.AssignColumn(
+					ctx.Columns.RangeChecked[i].GetColID(),
+					smartvectors.NewConstant(field.Zero(), rcSize),
+				)
+			} else {
+
+				for i := range rcLValue {
+					if rcLValue[i].IsOne() {
+						rc = append(rc, l.Get(i))
+					}
+
+					if rcRValue[i].IsOne() {
+						rc = append(rc, r.Get(i))
+					}
+
+					if rcOValue[i].IsOne() {
+						rc = append(rc, o.Get(i))
+					}
 				}
 
-				if rcRValue[i].IsOne() {
-					rc = append(rc, r.Get(i))
-				}
-
-				if rcOValue[i].IsOne() {
-					rc = append(rc, o.Get(i))
-				}
+				run.AssignColumn(
+					ctx.Columns.RangeChecked[i].GetColID(),
+					smartvectors.RightZeroPadded(rc, rcSize),
+				)
 			}
-
-			run.AssignColumn(
-				ctx.Columns.RangeChecked[i].GetColID(),
-				smartvectors.RightZeroPadded(rc, rcSize),
-			)
 
 			ctx.RangeCheck.limbDecomposition[i].Run(run)
 		}

@@ -2,25 +2,89 @@ package execution
 
 import (
 	"encoding/binary"
+	"hash"
+	"slices"
+
 	"github.com/consensys/gnark/frontend"
 	gnarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"hash"
-	"slices"
 )
 
-// FunctionalPublicInputQSnark the information on this execution that cannot be extracted from other input in the same aggregation batch
+// FunctionalPublicInputQSnark the information on this execution that cannot be
+// extracted from other input in the same aggregation batch
 type FunctionalPublicInputQSnark struct {
 	DataChecksum           frontend.Variable
-	L2MessageHashes        internal.Var32Slice // TODO range check
+	L2MessageHashes        L2MessageHashes
 	FinalStateRootHash     frontend.Variable
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
-	FinalRollingHash       [32]frontend.Variable // TODO range check
+	FinalRollingHash       [32]frontend.Variable
 	FinalRollingHashNumber frontend.Variable
+}
+
+// L2MessageHashes is a wrapper for [Var32Slice] it is use to instantiate the
+// sequence of L2MessageHash that we extract from the arithmetization. The
+// reason we need a wrapper here is because we hash the L2MessageHashes in a
+// specific way.
+type L2MessageHashes internal.Var32Slice
+
+// NewL2MessageHashes constructs a new var slice
+func NewL2MessageHashes(v [][32]frontend.Variable, max int) L2MessageHashes {
+	return L2MessageHashes(internal.NewSliceOf32Array(v, max))
+}
+
+// CheckSum returns the hash of the [L2MessageHashes]. The encoding is done as
+// follows:
+//
+//   - each L2 hash is decomposed in a hi and lo part: each over 16 bytes
+//   - they are sequentially hashed in the following order: (hi_0, lo_0, hi_1, lo_1 ...)
+//
+// The function also performs a consistency check to ensure that the length of
+// the slice if consistent with the number of non-zero elements. And the function
+// also ensures that the non-zero elements are all packed at the beginning of the
+// struct. The function returns zero if the slice encodes zero message hashes
+// (this is what happens if no L2 message events are emitted during the present
+// execution frame).
+//
+// @alex: it would be nice to make that function compatible with the GKR hasher
+// factory though in practice this function will only create 32 calls to the
+// MiMC permutation which makes it a non-issue.
+func (l *L2MessageHashes) CheckSumMiMC(api frontend.API) frontend.Variable {
+
+	var (
+		// sumIsUsed is used to count the number of non-zero hashes that we
+		// found in l. It is to be tested against l.Length.
+		sumIsUsed = frontend.Variable(0)
+		res       = frontend.Variable(0)
+	)
+
+	for i := range l.Values {
+		var (
+			hi     = internal.Pack(api, l.Values[i][:16], 128, 8)[0]
+			lo     = internal.Pack(api, l.Values[i][16:], 128, 8)[0]
+			isUsed = api.Sub(
+				1,
+				api.Mul(
+					api.IsZero(hi),
+					api.IsZero(lo),
+				),
+			)
+		)
+
+		tmpRes := mimc.GnarkBlockCompression(api, res, hi)
+		tmpRes = mimc.GnarkBlockCompression(api, tmpRes, lo)
+
+		res = api.Select(isUsed, tmpRes, res)
+		sumIsUsed = api.Add(sumIsUsed, isUsed)
+	}
+
+	api.AssertIsEqual(sumIsUsed, l.Length)
+	return res
 }
 
 type FunctionalPublicInputSnark struct {
@@ -67,15 +131,12 @@ func (pi *FunctionalPublicInputQSnark) RangeCheck(api frontend.API) {
 }
 
 func (pi *FunctionalPublicInputSnark) Sum(api frontend.API, hsh gnarkHash.FieldHasher) frontend.Variable {
-	finalRollingHash := internal.CombineBytesIntoElements(api, pi.FinalRollingHash)
-	initialRollingHash := internal.CombineBytesIntoElements(api, pi.InitialRollingHash)
 
-	hsh.Reset()
-	for _, v := range pi.L2MessageHashes.Values { // it has to be zero padded
-		vc := internal.CombineBytesIntoElements(api, v)
-		hsh.Write(vc[0], vc[1])
-	}
-	l2MessagesSum := hsh.Sum()
+	var (
+		finalRollingHash   = internal.CombineBytesIntoElements(api, pi.FinalRollingHash)
+		initialRollingHash = internal.CombineBytesIntoElements(api, pi.InitialRollingHash)
+		l2MessagesSum      = pi.L2MessageHashes.CheckSumMiMC(api)
+	)
 
 	hsh.Reset()
 	hsh.Write(pi.DataChecksum, l2MessagesSum,
@@ -90,7 +151,7 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 	res := FunctionalPublicInputSnark{
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			DataChecksum:           slices.Clone(pi.DataChecksum[:]),
-			L2MessageHashes:        internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes),
+			L2MessageHashes:        L2MessageHashes(internal.NewSliceOf32Array(pi.L2MessageHashes, pi.MaxNbL2MessageHashes)),
 			FinalStateRootHash:     slices.Clone(pi.FinalStateRootHash[:]),
 			FinalBlockNumber:       pi.FinalBlockNumber,
 			FinalBlockTimestamp:    pi.FinalBlockTimestamp,
@@ -103,28 +164,18 @@ func (pi *FunctionalPublicInput) ToSnarkType() FunctionalPublicInputSnark {
 		ChainID:                  pi.ChainID,
 		L2MessageServiceAddr:     slices.Clone(pi.L2MessageServiceAddr[:]),
 	}
-	internal.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
-	internal.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
+	utils.Copy(res.FinalRollingHash[:], pi.FinalRollingHash[:])
+	utils.Copy(res.InitialRollingHash[:], pi.InitialRollingHash[:])
 
 	return res
 }
 
 func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide a keccak hasher
 	hsh := mimc.NewMiMC()
-	// TODO incorporate length too? Technically not necessary
 
-	var zero [1]byte
 	for i := range pi.L2MessageHashes {
 		hsh.Write(pi.L2MessageHashes[i][:16])
 		hsh.Write(pi.L2MessageHashes[i][16:])
-	}
-	nbZeros := pi.MaxNbL2MessageHashes - len(pi.L2MessageHashes)
-	if nbZeros < 0 {
-		panic("too many L2 messages")
-	}
-	for i := 0; i < nbZeros; i++ {
-		hsh.Write(zero[:])
-		hsh.Write(zero[:])
 	}
 	l2MessagesSum := hsh.Sum(nil)
 
@@ -150,6 +201,16 @@ func (pi *FunctionalPublicInput) Sum() []byte { // all mimc; no need to provide 
 
 	return hsh.Sum(nil)
 
+}
+
+func (pi *FunctionalPublicInput) SumAsField() field.Element {
+
+	var (
+		sumBytes = pi.Sum()
+		sum      = new(field.Element).SetBytes(sumBytes)
+	)
+
+	return *sum
 }
 
 func writeNum(hsh hash.Hash, n uint64) {

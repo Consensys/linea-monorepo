@@ -156,7 +156,8 @@ func assertBatchesConsistent(t *testing.T, raw, decoded [][]byte) {
 				from = decodedTx[4]
 			}
 
-			assert.Equal(t, ethereum.GetFrom(tx).Bytes(), from, "tx from should match")
+			txFrom := ethereum.GetFrom(tx)
+			assert.Equal(t, txFrom[:], from, "tx from should match")
 
 			var decodedTxLen writeCounter
 			assert.NoError(t, EncodeTxForCompression(tx, &decodedTxLen))

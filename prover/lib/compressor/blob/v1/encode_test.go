@@ -6,14 +6,16 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"testing"
+
 	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"testing"
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 
 	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +28,7 @@ func TestEncodeDecode(t *testing.T) {
 	for i, rlpBlock := range testBlocks {
 		t.Run(fmt.Sprintf("block-#%v", i), func(t *testing.T) {
 
-			var block types.Block
+			var block ethtypes.Block
 			if err := rlp.Decode(bytes.NewReader(rlpBlock), &block); err != nil {
 				t.Fatalf("could not decode test RLP block: %s", err.Error())
 			}
@@ -35,7 +37,7 @@ func TestEncodeDecode(t *testing.T) {
 				buf      = &bytes.Buffer{}
 				expected = test_utils.DecodedBlockData{
 					BlockHash: block.Hash(),
-					Txs:       make([]types.Transaction, len(block.Transactions())),
+					Txs:       make([]ethtypes.Transaction, len(block.Transactions())),
 					Timestamp: block.Time(),
 				}
 			)
@@ -74,13 +76,13 @@ func TestEncodeDecode(t *testing.T) {
 
 }
 
-func checkSameTx(t *testing.T, orig, decoded *types.Transaction, from common.Address) {
+func checkSameTx(t *testing.T, orig, decoded *ethtypes.Transaction, from common.Address) {
 	assert.Equal(t, orig.To(), decoded.To())
 	assert.Equal(t, orig.Nonce(), decoded.Nonce())
 	assert.Equal(t, orig.Data(), decoded.Data())
 	assert.Equal(t, orig.Value(), decoded.Value())
 	assert.Equal(t, orig.Cost(), decoded.Cost())
-	assert.Equal(t, ethereum.GetFrom(orig), from)
+	assert.Equal(t, ethereum.GetFrom(orig), types.EthAddress(from))
 }
 
 func TestPassRlpList(t *testing.T) {

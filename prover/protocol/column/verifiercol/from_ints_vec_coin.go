@@ -41,13 +41,10 @@ func NewFromIntVecCoin(comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) 
 	}
 
 	if settings.padding.IsPadded {
-		fullLen := utils.NextPowerOfTwo(len(access))
-		for len(access) < fullLen {
-			access = append(access, accessors.NewConstant(field.Zero()))
-		}
+		return NewFromAccessors(access, field.Zero(), utils.NextPowerOfTwo(len(access)))
 	}
 
-	return NewFromAccessors(access)
+	return NewFromAccessors(access, field.Zero(), len(access))
 }
 
 // Passes a padding value to the Fivc

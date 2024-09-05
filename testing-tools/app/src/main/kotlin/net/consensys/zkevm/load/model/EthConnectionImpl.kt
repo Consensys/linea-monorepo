@@ -28,9 +28,15 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 import java.util.stream.Collectors
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 class EthConnectionImpl(url: String?) : EthConnection {
-  private val httpService: HttpService = HttpService(url)
+  private val httpService: HttpService = run {
+    val builder = HttpService.getOkHttpClientBuilder()
+    builder.readTimeout(5.minutes.toJavaDuration())
+    HttpService(url, builder.build())
+  }
   private val web3: Web3j = Web3j.build(httpService)
   private val logger = LoggerFactory.getLogger(EthConnectionImpl::class.java)
 
@@ -63,7 +69,16 @@ class EthConnectionImpl(url: String?) : EthConnection {
   }
 
   override fun estimateGas(transaction: Transaction): BigInteger {
-    return web3.ethEstimateGas(transaction).send().amountUsed
+    val estimationResponse = web3.ethEstimateGas(transaction).send()
+    try {
+      return estimationResponse.amountUsed
+    } catch (e: Exception) {
+      if (estimationResponse.error != null) {
+        throw RuntimeException(estimationResponse.error.message, e)
+      } else {
+        throw e
+      }
+    }
   }
 
   @Throws(IOException::class)

@@ -5,11 +5,11 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	wKeccak "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
 )
 
 type module struct {
-	keccak wKeccak.CustomizedkeccakHash
+	keccak keccak.KeccakOverBlocks
 }
 
 // NewCustomizedKeccak declares the columns and the constraints for proving hash over EXPECTED blocks.
@@ -19,15 +19,15 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, maxNbKeccakF int) *module {
 	var (
 		size = utils.NextPowerOfTwo(generic.KeccakUsecase.NbOfLanesPerBlock() * maxNbKeccakF)
 
-		inp = wKeccak.CustomizedKeccakInputs{
-			LaneInfo: wKeccak.LaneInfo{
+		inp = keccak.KeccakOverBlockInputs{
+			LaneInfo: keccak.LaneInfo{
 				Lanes:                comp.InsertCommit(0, "Lane", size),
 				IsFirstLaneOfNewHash: comp.InsertCommit(0, "IsFirstLaneOfNewHash", size),
 				IsLaneActive:         comp.InsertCommit(0, "IsLaneActive", size),
 			},
 			MaxNumKeccakF: maxNbKeccakF,
 		}
-		m = wKeccak.NewCustomizedKeccak(comp, inp)
+		m = keccak.NewKeccakOverBlocks(comp, inp)
 	)
 	return &module{
 		keccak: *m,
@@ -38,7 +38,7 @@ func NewCustomizedKeccak(comp *wizard.CompiledIOP, maxNbKeccakF int) *module {
 func (m *module) AssignCustomizedKeccak(run *wizard.ProverRuntime, providers [][]byte) {
 
 	//assign Lane-Info
-	wKeccak.AssignLaneInfo(run, &m.keccak.Inputs.LaneInfo, providers)
+	keccak.AssignLaneInfo(run, &m.keccak.Inputs.LaneInfo, providers)
 	// assign keccak
 	m.keccak.Inputs.Provider = providers
 	m.keccak.Run(run)

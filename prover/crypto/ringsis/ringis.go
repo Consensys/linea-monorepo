@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math"
 	"runtime"
 	"sync"
 
@@ -67,8 +68,22 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 	}
 
 	// Optimization for these specific parameters
-	if params.LogTwoBound == 8 && params.LogTwoDegree == 6 {
-		res.twiddleCosets = sis.PrecomputeTwiddlesCoset(
+	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 64 {
+		res.twiddleCosets = ringsis_64_8.PrecomputeTwiddlesCoset(
+			rsis.Domain.Generator,
+			rsis.Domain.FrMultiplicativeGen,
+		)
+	}
+
+	if params.LogTwoBound == 16 && 1<<params.LogTwoDegree == 64 {
+		res.twiddleCosets = ringsis_64_16.PrecomputeTwiddlesCoset(
+			rsis.Domain.Generator,
+			rsis.Domain.FrMultiplicativeGen,
+		)
+	}
+
+	if params.LogTwoBound == 8 && 1<<params.LogTwoDegree == 32 {
+		res.twiddleCosets = ringsis_32_8.PrecomputeTwiddlesCoset(
 			rsis.Domain.Generator,
 			rsis.Domain.FrMultiplicativeGen,
 		)
@@ -106,7 +121,10 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 
 	// unmarshal the result
 	var rlen [4]byte
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes))
+	if len(sum) > math.MaxUint32*fr.Bytes {
+		panic("slice too long")
+	}
+	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
 	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
 	var result fr.Vector
 	_, err := result.ReadFrom(reader)

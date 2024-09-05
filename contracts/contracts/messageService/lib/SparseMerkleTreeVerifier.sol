@@ -18,7 +18,7 @@ library SparseMerkleTreeVerifier {
    * @param _proof Sparse merkle tree proof.
    * @param _leafIndex Index of the leaf.
    * @param _root Merkle root.
-   * @dev The depth of the tree is validated elsewhere beforehand
+   * @dev The depth of the tree is expected to be validated elsewhere beforehand.
    */
   function _verifyMerkleProof(
     bytes32 _leafHash,

@@ -1,6 +1,7 @@
 package plonk
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop"
@@ -9,12 +10,14 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 )
 
 // PlonkCheck adds a PLONK circuit in the wizard. Namely, the function takes a
@@ -46,6 +49,8 @@ func PlonkCheck(
 	options ...Option,
 ) compilationCtx {
 
+	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
+
 	// Create the ctx
 	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)
 
@@ -62,6 +67,8 @@ func PlonkCheck(
 	if ctx.HasCommitment() {
 		comp.RegisterProverAction(round+1, lroCommitProverAction{compilationCtx: ctx, proverStateLock: &sync.Mutex{}})
 	}
+
+	comp.RegisterVerifierAction(round, checkingActivators(ctx.Columns.Activators))
 
 	return ctx
 }
@@ -86,6 +93,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 	ctx.Columns.L = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.R = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.O = make([]ifaces.Column, ctx.maxNbInstances)
+	ctx.Columns.Activators = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.PI = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.TinyPI = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.Cp = make([]ifaces.Column, ctx.maxNbInstances)
@@ -103,6 +111,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), ctx.DomainSize())
 			}
 			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("Cp_%v", i), ctx.DomainSize())
+			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1)
 		}
 
 		// Second rounds, after sampling HCP
@@ -126,6 +135,7 @@ func (ctx *compilationCtx) commitGateColumns() {
 			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("L_%v", i), ctx.DomainSize())
 			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("R_%v", i), ctx.DomainSize())
 			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("O_%v", i), ctx.DomainSize())
+			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
 		}
 	}
 }
@@ -216,9 +226,18 @@ func (ctx *compilationCtx) addGateConstraint() {
 			// increase the LRO
 			roundLRO++
 		}
-
 		// And registers the gate expression as a global variable
-		ctx.comp.InsertGlobal(roundLRO, ctx.queryIDf("GATE_CS_INSTANCE_%v", i), exp)
+		ctx.comp.InsertGlobal(
+			roundLRO,
+			ctx.queryIDf("GATE_CS_INSTANCE_%v", i),
+			sym.Mul(
+				exp,
+				// The conversion into an activator is required for the system
+				// to understand that the expression is multiplied by a scalar
+				// and not by a wrongly-sized constructed column
+				accessors.NewFromPublicColumn(ctx.Columns.Activators[i], 0),
+			),
+		)
 	}
 }
 
@@ -276,4 +295,42 @@ func (ctx *compilationCtx) addCopyConstraint() {
 		[]ifaces.Column{l, r, o},
 		[]ifaces.Column{l, r, o},
 	)
+}
+
+// checkingActivators implements the [wizard.VerifierAction] interface and
+// checks that the [Activators] columns are correctly assigned
+type checkingActivators []ifaces.Column
+
+var _ wizard.VerifierAction = checkingActivators{}
+
+func (ca checkingActivators) Run(run *wizard.VerifierRuntime) error {
+	for i := range ca {
+
+		curr := ca[i].GetColAssignmentAt(run, 0)
+		if !curr.IsOne() && !curr.IsZero() {
+			return fmt.Errorf("error the activators must be 0 or 1")
+		}
+
+		if i+1 < len(ca) {
+			next := ca[i+1].GetColAssignmentAt(run, 0)
+			if curr.IsZero() && !next.IsZero() {
+				return fmt.Errorf("the activators must never go from 0 to 1")
+			}
+		}
+	}
+
+	return nil
+}
+
+func (ca checkingActivators) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	for i := range ca {
+
+		curr := ca[i].GetColAssignmentGnarkAt(run, 0)
+		api.AssertIsBoolean(curr)
+
+		if i+1 < len(ca) {
+			next := ca[i+1].GetColAssignmentGnarkAt(run, 0)
+			api.AssertIsEqual(next, api.Mul(curr, next))
+		}
+	}
 }

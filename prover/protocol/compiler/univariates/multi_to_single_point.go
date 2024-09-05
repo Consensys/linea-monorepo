@@ -28,6 +28,10 @@ Reduce all the univariate queries into a unique single point evaluation
 See : https://eprint.iacr.org/2020/081.pdf (Section 3)
 */
 func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
+
+	logrus.Trace("started multi-point to single-point compiler")
+	defer logrus.Trace("finished multi-point to single-point compiler")
+
 	return func(comp *wizard.CompiledIOP) {
 
 		ctx := createMptsCtx(comp, targetSize)

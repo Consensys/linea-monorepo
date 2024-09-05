@@ -2,6 +2,8 @@ package aggregation
 
 import (
 	"fmt"
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
+	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"math"
 	"path/filepath"
 
@@ -43,7 +45,12 @@ func makeProof(
 		return makeDummyProof(cfg, publicInput, circuits.MockCircuitIDEmulation), nil
 	}
 
-	proofBW6, circuitID, err := makeBw6Proof(cfg, cf, publicInput)
+	piProof, err := makePiProof(cfg, cf)
+	if err != nil {
+		return "", fmt.Errorf("could not create the public input proof: %w", err)
+	}
+
+	proofBW6, circuitID, err := makeBw6Proof(cfg, cf, piProof, publicInput)
 	if err != nil {
 		return "", fmt.Errorf("error when running the BW6 proof: %w", err)
 	}
@@ -54,6 +61,43 @@ func makeProof(
 	}
 
 	return circuits.SerializeProofSolidityBn254(proofBn254), nil
+}
+
+func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, error) {
+
+	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
+	if err != nil {
+		return nil, fmt.Errorf("could not create the public-input circuit: %w", err)
+	}
+
+	assignment, err := c.Assign(pi_interconnection.Request{
+		Decompressions: cf.DecompressionPI,
+		Executions:     cf.ExecutionPI,
+		Aggregation: public_input.Aggregation{
+			FinalShnarf:                             cf.FinalShnarf,
+			ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
+			ParentStateRootHash:                     cf.ParentStateRootHash,
+			ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
+			FinalTimestamp:                          cf.FinalTimestamp,
+			LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
+			FinalBlockNumber:                        cf.FinalBlockNumber,
+			LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
+			L1RollingHash:                           cf.L1RollingHash,
+			LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
+			L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+			L2MsgRootHashes:                         cf.L2MsgRootHashes,
+			L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not assign the public input circuit: %w", err)
+	}
+
+	setup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
+	if err != nil {
+		return nil, fmt.Errorf("could not load the setup: %w", err)
+	}
+	return circuits.ProveCheck(&setup, &assignment)
 }
 
 // Generates a fake proof. The public input is given in hex string format.
@@ -86,6 +130,7 @@ func makeDummyProof(cfg *config.Config, input string, circID circuits.MockCircui
 func makeBw6Proof(
 	cfg *config.Config,
 	cf *CollectedFields,
+	piProof plonk.Proof,
 	publicInput string,
 ) (proof plonk.Proof, circuitID int, err error) {
 
@@ -156,7 +201,7 @@ func makeBw6Proof(
 	assignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
 
 	// Although the public input is restrained to fit on the BN254 scalar field,
-	// the BW6 field is larger. This allow us representing the public input as a
+	// the BW6 field is larger. This allows us to represent the public input as a
 	// single field element.
 
 	var piBW6 frBW6.Element
@@ -166,7 +211,7 @@ func makeBw6Proof(
 	}
 
 	logrus.Infof("running the BW6 prover")
-	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piBW6)
+	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piProof, piBW6)
 	if err != nil {
 		return nil, 0, fmt.Errorf("could not create BW6 proof: %w", err)
 	}

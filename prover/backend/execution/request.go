@@ -68,11 +68,11 @@ func RlpTransactions(block *ethtypes.Block) []string {
 
 // Returns the list of the From addresses for each
 // transaction in the block
-func FromAddresses(block *ethtypes.Block) []string {
-	froms := []string{}
+func FromAddresses(block *ethtypes.Block) []types.EthAddress {
+	froms := []types.EthAddress{}
 	for _, tx := range block.Transactions() {
 		from := ethereum.GetFrom(tx)
-		froms = append(froms, hexutil.Encode(from[:]))
+		froms = append(froms, from)
 	}
 	return froms
 }

@@ -275,7 +275,7 @@ func (c *piChiIota) assign(
 						pos := aIotaBaseBSliced[x][y][k][r].Uint64()
 						// Coincidentally, the values of base2Dirty are 0, 1, 3
 						// so we can us the bear value to perform the lookup.
-						lookedUp := base1Clean.Get(int(pos))
+						lookedUp := base1Clean.Get(utils.ToInt(pos))
 						// Sanity-check : are we getting the same value with the
 						// conversion
 						{

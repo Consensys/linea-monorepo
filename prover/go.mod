@@ -5,11 +5,13 @@ go 1.21.0
 toolchain go1.22.5
 
 require (
+	github.com/consensys/bavard v0.1.13
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.10.1-0.20240718124136-c2da0b070eb1
-	github.com/consensys/gnark-crypto v0.13.0
+	github.com/consensys/gnark v0.10.1-0.20240823145956-fdb2b0de422b
+	github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/icza/bitio v1.1.0
@@ -41,14 +43,12 @@ require (
 	github.com/cockroachdb/pebble v1.1.1 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
 	github.com/ethereum/go-verkle v0.1.1-0.20240306133620-7d920df305f0 // indirect
 	github.com/felixge/fgprof v0.9.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
 	github.com/getsentry/sentry-go v0.28.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -60,7 +60,7 @@ require (
 	github.com/google/pprof v0.0.0-20240711041743-f6c9dda6c6da // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.3.0 // indirect
+	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ingonyama-zk/icicle v0.0.0-20230928131117-97f0079e5c71 // indirect
 	github.com/ingonyama-zk/iciclegnark v0.1.0 // indirect
@@ -105,7 +105,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/ethereum/go-ethereum v1.14.7
+	github.com/ethereum/go-ethereum v1.14.8
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

@@ -585,14 +585,13 @@ func (stitcher *Stitcher) Finalize(sampleType int) *StateManagerVectors {
 					stateManagerVectors.LastAOCBlock = append(stateManagerVectors.LastAOCBlock, dummyVector...)
 					minDeplBlockFragment := make([]field.Element, len(stoHist.addressHI))
 					for index := range minDeplBlockFragment {
-						block := stoHist.blockNumber[index].Uint64()
-						minDeplBlockFragment[index].SetInt64(int64(accHist.minDeplBlock[int(block)]))
+						minDeplBlock := accHist.minDeplBlock[field.ToInt(&stoHist.blockNumber[index])]
+						minDeplBlockFragment[index].SetInt64(int64(minDeplBlock))
 					}
 					stateManagerVectors.MinDeploymentBlock = append(stateManagerVectors.MinDeploymentBlock, minDeplBlockFragment...)
 					maxDeplBlockFragment := make([]field.Element, len(stoHist.addressHI))
 					for index := range maxDeplBlockFragment {
-						block := stoHist.blockNumber[index].Uint64()
-						maxDeplBlockFragment[index].SetInt64(int64(accHist.maxDeplBlock[int(block)]))
+						maxDeplBlockFragment[index].SetInt64(int64(accHist.maxDeplBlock[field.ToInt(&stoHist.blockNumber[index])]))
 					}
 					stateManagerVectors.MaxDeploymentBlock = append(stateManagerVectors.MaxDeploymentBlock, maxDeplBlockFragment...)
 				}
