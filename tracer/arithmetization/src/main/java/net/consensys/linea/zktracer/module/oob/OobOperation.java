@@ -1074,16 +1074,14 @@ public class OobOperation extends ModuleOperation {
         callToISZERO(1, BigInteger.ZERO, prcModexpPricingOobCall.getExponentLog());
 
     // row i + 2
-    final BigInteger fOfMax =
+    final BigInteger ceilingOfMaxDividedBy8 =
         callToDIV(
             2,
             BigInteger.ZERO,
-            BigInteger.valueOf(
-                (long) prcModexpPricingOobCall.getMaxMbsBbs()
-                        * prcModexpPricingOobCall.getMaxMbsBbs()
-                    + 7),
+            BigInteger.valueOf((long) prcModexpPricingOobCall.getMaxMbsBbs() + 7),
             BigInteger.ZERO,
             BigInteger.valueOf(8));
+    final BigInteger fOfMax = ceilingOfMaxDividedBy8.multiply(ceilingOfMaxDividedBy8);
 
     // row i + 3
     BigInteger bigNumerator;
