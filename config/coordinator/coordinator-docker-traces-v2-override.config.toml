@@ -1,14 +1,13 @@
 [prover]
-fs-requests-directory="/data/prover-execution/v3/requests"
-fs-responses-directory="/data/prover-execution/v3/responses"
-
-[blob-compression.prover]
-fs-requests-directory="/data/prover-compression/v3/requests"
-fs-responses-directory="/data/prover-compression/v3/responses"
-
-[proof-aggregation.prover]
-fs-requests-directory="/data/prover-aggregation/v3/requests"
-fs-responses-directory="/data/prover-aggregation/v3/responses"
+[prover.execution]
+fs-requests-directory = "/data/prover/v3/execution/requests"
+fs-responses-directory = "/data/prover/v3/execution/responses"
+[prover.blob-compression]
+fs-requests-directory = "/data/prover/v3/compression/requests"
+fs-responses-directory = "/data/prover/v3/compression/responses"
+[prover.proof-aggregation]
+fs-requests-directory = "/data/prover/v3/aggregation/requests"
+fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [zk-traces]
 eth-api="http://traces-node-v2:8545"

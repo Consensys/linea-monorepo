@@ -3,14 +3,15 @@ package pi_interconnection
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"slices"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/zkevm-monorepo/prover/circuits"
 	"github.com/consensys/zkevm-monorepo/prover/config"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
-	"math/big"
-	"slices"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -43,8 +44,9 @@ type Circuit struct {
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
 
-	MaxNbCircuits int // possibly useless TODO consider removing
-	UseGkrMimc    bool
+	MaxNbCircuits    int // possibly useless TODO consider removing
+	UseGkrMimc       bool
+	MockKeccakWizard bool // for testing purposes, bypass expensive keccak verification
 }
 
 func (c *Circuit) Define(api frontend.API) error {
@@ -192,7 +194,11 @@ func (c *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
 	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
-	return hshK.Finalize()
+	if c.MockKeccakWizard {
+		return nil
+	} else {
+		return hshK.Finalize()
+	}
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
@@ -272,6 +278,8 @@ func allocateCircuit(c config.PublicInput) Circuit {
 		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            c.MaxNbCircuits,
+		MockKeccakWizard:         c.MockKeccakWizard,
+		UseGkrMimc:               true,
 	}
 }
 
@@ -319,5 +327,10 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	panic("implement me")
+	panic("implement me") // TODO @alexandre.belling
+}
+
+// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
+	return cs.GetNbPublicVariables() - 2
 }

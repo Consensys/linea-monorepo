@@ -1,14 +1,13 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClient
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobStatus
@@ -21,14 +20,14 @@ import net.consensys.zkevm.persistence.blob.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.LinkedBlockingDeque
 import kotlin.time.Duration
 
 class BlobCompressionProofCoordinator(
   private val vertx: Vertx,
   private val blobsRepository: BlobsRepository,
-  private val blobCompressionProverClient: BlobCompressionProverClient,
+  private val blobCompressionProverClient: BlobCompressionProverClientV2,
   private val rollingBlobShnarfCalculator: RollingBlobShnarfCalculator,
   private val blobZkStateProvider: BlobZkStateProvider,
   private val config: Config,
@@ -37,7 +36,7 @@ class BlobCompressionProofCoordinator(
 ) : BlobCreationHandler, LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val defaultQueueCapacity = 1000 // Should be more than blob submission limit
-  private val blobsToHandle = ArrayBlockingQueue<Blob>(defaultQueueCapacity)
+  private val blobsToHandle = LinkedBlockingDeque<Blob>(defaultQueueCapacity)
   private var timerId: Long? = null
   private lateinit var blobPollingAction: Handler<Long>
   private val blobsCounter = metricsFacade.createCounter(
@@ -61,10 +60,10 @@ class BlobCompressionProofCoordinator(
 
   @Synchronized
   private fun sendBlobToCompressionProver(blob: Blob): SafeFuture<Unit> {
-    log.debug(
-      "Going to create the blob compression proof for ${blob.intervalString()}"
-    )
-    val blobZkSateAndRollingShnarfFuture = blobZkStateProvider.getBlobZKState(blob.blocksRange)
+    log.debug("Preparing compression proof request for blob={}", blob.intervalString())
+
+    val blobZkSateAndRollingShnarfFuture = blobZkStateProvider
+      .getBlobZKState(blob.blocksRange)
       .thenCompose { blobZkState ->
         rollingBlobShnarfCalculator.calculateShnarf(
           compressedData = blob.compressedData,
@@ -121,7 +120,7 @@ class BlobCompressionProofCoordinator(
     blobStartBlockTime: Instant,
     blobEndBlockTime: Instant
   ): SafeFuture<Unit> {
-    return blobCompressionProverClient.requestBlobCompressionProof(
+    val proofRequest = BlobCompressionProofRequest(
       compressedData = compressedData,
       conflations = conflations,
       parentStateRootHash = parentStateRootHash,
@@ -132,11 +131,9 @@ class BlobCompressionProofCoordinator(
       commitment = commitment,
       kzgProofContract = kzgProofContract,
       kzgProofSideCar = kzgProofSideCar
-    ).thenCompose { result ->
-      if (result is Err) {
-        SafeFuture.failedFuture(result.error.asException())
-      } else {
-        val blobCompressionProof = (result as Ok).value
+    )
+    return blobCompressionProverClient.requestProof(proofRequest)
+      .thenCompose { blobCompressionProof ->
         val blobRecord = BlobRecord(
           startBlockNumber = conflations.first().startBlockNumber,
           endBlockNumber = conflations.last().endBlockNumber,
@@ -161,7 +158,6 @@ class BlobCompressionProofCoordinator(
           )
         ).thenApply {}
       }
-    }
   }
 
   @Synchronized
@@ -181,10 +177,7 @@ class BlobCompressionProofCoordinator(
   override fun start(): CompletableFuture<Unit> {
     if (timerId == null) {
       blobPollingAction = Handler<Long> {
-        handleBlobsFromTheQueue().whenComplete { _, error ->
-          error?.let {
-            log.error("Error polling blobs for aggregation: errorMessage={}", error.message, error)
-          }
+        handleBlobFromTheQueue().whenComplete { _, _ ->
           timerId = vertx.setTimer(config.pollingInterval.inWholeMilliseconds, blobPollingAction)
         }
       }
@@ -193,22 +186,22 @@ class BlobCompressionProofCoordinator(
     return SafeFuture.completedFuture(Unit)
   }
 
-  private fun handleBlobsFromTheQueue(): SafeFuture<Unit> {
-    var blobsHandlingFuture = SafeFuture.completedFuture(Unit)
-    if (blobsToHandle.isNotEmpty()) {
+  private fun handleBlobFromTheQueue(): SafeFuture<Unit> {
+    return if (blobsToHandle.isNotEmpty()) {
       val blobToHandle = blobsToHandle.poll()
-      blobsHandlingFuture = blobsHandlingFuture.thenCompose {
-        sendBlobToCompressionProver(blobToHandle).whenException { exception ->
-          log.error(
-            "Error in sending blob to compression prover: blob={} errorMessage={} ",
+      sendBlobToCompressionProver(blobToHandle)
+        .whenException { exception ->
+          blobsToHandle.putFirst(blobToHandle)
+          log.warn(
+            "Error handling blob from BlobCompressionProofCoordinator queue: blob={} errorMessage={}",
             blobToHandle.intervalString(),
             exception.message,
             exception
           )
         }
-      }
+    } else {
+      SafeFuture.completedFuture(Unit)
     }
-    return blobsHandlingFuture
   }
 
   override fun stop(): CompletableFuture<Unit> {

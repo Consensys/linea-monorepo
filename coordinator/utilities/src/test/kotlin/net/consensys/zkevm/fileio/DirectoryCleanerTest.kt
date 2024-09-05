@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.app
+package net.consensys.zkevm.fileio
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
