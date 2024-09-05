@@ -154,6 +154,22 @@ func mustProveAndPass(
 
 		// TODO: implements the collection of the functional inputs from the prover response
 		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
+
+	case config.ProverModeBench:
+
+		// Run the full prover to obtain the intermediate proof
+		logrus.Info("Get Full IOP")
+		fullZkEvm := zkevm.FullZkEvm(traces)
+
+		// Generates the inner-proof and sanity-check it so that we ensure that
+		// the prover nevers outputs invalid proofs.
+		proof := fullZkEvm.ProveInner(w.ZkEVM)
+
+		logrus.Info("Sanity-checking the inner-proof")
+		if err := fullZkEvm.VerifyInner(proof); err != nil {
+			utils.Panic("The prover did not pass: %v", err)
+		}
+		return "", ""
 	default:
 		panic("not implemented")
 	}

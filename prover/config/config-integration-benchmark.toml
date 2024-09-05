@@ -1,13 +1,14 @@
 environment = "integration-full"
 version = "3.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
-log_level = 4                                  # TODO @gbotrel will be refactored with new logger. 
+log_level = 1                                  # TODO @gbotrel will be refactored with new logger. 
 
 [controller]
 retry_delays = [0, 1]
 
 [execution]
-prover_mode = "full"
+prover_mode = "bench"
+conflated_traces_dir = "./prover-v2/conflated"
 
 [blob_decompression]
 prover_mode = "dev"
