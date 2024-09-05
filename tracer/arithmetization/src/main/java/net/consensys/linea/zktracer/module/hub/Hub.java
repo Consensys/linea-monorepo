@@ -864,8 +864,12 @@ public class Hub implements Module {
     return shouldCopyTxCallData ? this.stamp() : 0;
   }
 
+  public static int newIdentifierFromStamp(int h) {
+    return 1 + h;
+  }
+
   public int newChildContextNumber() {
-    return 1 + this.stamp();
+    return newIdentifierFromStamp(this.stamp());
   }
 
   public CallFrame currentFrame() {
