@@ -84,11 +84,6 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*me
 	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	var resvec []field.Element
-	if hasPool {
-		resvec = *pool.Alloc()
-	} else {
-		resvec = make([]field.Element, length)
-	}
 
 	isFirst := true
 	numMatches = 0
@@ -108,6 +103,12 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*me
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
+				if hasPool {
+					resvec = *pool.Alloc()
+				} else {
+					resvec = make([]field.Element, length)
+				}
+
 				isFirst = false
 				op.vecIntoTerm(resvec, *reg, coeffs[i])
 				continue
@@ -117,10 +118,6 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*me
 	}
 
 	if numMatches == 0 {
-		if hasPool {
-			// we did not need it, so we can give it back directly
-			pool.Free(&resvec)
-		}
 		return nil, 0
 	}
 
