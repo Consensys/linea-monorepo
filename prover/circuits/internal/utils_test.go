@@ -65,7 +65,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 		if err != nil {
 			panic(err)
 		}
-		return internal.ChecksumSubSlices(api, &hsh, internal.ToVariableSlice(bigSliceInts),
+		return internal.ChecksumSubSlices(api, &hsh, utils.ToVariableSlice(bigSliceInts),
 			internal.VarSlice{
 				Values: endPointsSnark,
 				Length: len(lengths),
@@ -104,10 +104,10 @@ func TestReduceBytes(t *testing.T) {
 
 	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		for i := range cases {
-			got := utils.ReduceBytes[emulated.BN254Fr](api, internal.ToVariableSlice(cases[i]))
+			got := utils.ReduceBytes[emulated.BN254Fr](api, utils.ToVariableSlice(cases[i]))
 			internal.AssertSliceEquals(api,
 				got,
-				internal.ToVariableSlice(reduced[i]),
+				utils.ToVariableSlice(reduced[i]),
 			)
 		}
 
@@ -145,7 +145,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 			return elementsToEmulated(field, append(s, make([]fr381.Element, cap(s)-len(s))...)) // pad with zeros to see if padding is done correctly
 		}, subs...)
 
-		subsEmulated := internal.PartitionSliceEmulated(api, sEmulated, internal.ToVariableSlice(selectors), internal.MapSlice(func(s []fr381.Element) int { return cap(s) }, subs...)...)
+		subsEmulated := internal.PartitionSliceEmulated(api, sEmulated, utils.ToVariableSlice(selectors), internal.MapSlice(func(s []fr381.Element) int { return cap(s) }, subs...)...)
 
 		assert.Equal(t, len(subsEmulatedExpected), len(subsEmulated))
 		for i := range subsEmulated {
@@ -185,15 +185,15 @@ func TestPartitionSlice(t *testing.T) {
 		}
 
 		for j := range subs {
-			subs[j] = append(subs[j], internal.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
+			subs[j] = append(subs[j], utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
 		}
 
 		return test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 
-			slice := internal.ToVariableSlice(slice)
+			slice := utils.ToVariableSlice(slice)
 
 			subsEncountered := internal.MapSlice(func(s []frontend.Variable) []frontend.Variable { return make([]frontend.Variable, len(s)) }, subs...)
-			internal.PartitionSlice(api, slice, internal.ToVariableSlice(selectors), subsEncountered...)
+			internal.PartitionSlice(api, slice, utils.ToVariableSlice(selectors), subsEncountered...)
 
 			assert.Equal(t, len(subs), len(subsEncountered))
 			for j := range subsEncountered {
@@ -206,7 +206,7 @@ func TestPartitionSlice(t *testing.T) {
 
 	test([]frontend.Variable{5}, []int{2}, []int{1, 0, 0})(t)
 	test([]frontend.Variable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
-	test(internal.ToVariableSlice(test_utils.Range[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
+	test(utils.ToVariableSlice(test_utils.Range[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
 
 	for i := 0; i < 200; i++ {
 

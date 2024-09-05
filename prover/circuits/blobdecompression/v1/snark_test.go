@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"testing"
 
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1/test_utils"
@@ -154,7 +155,7 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 		}
 
 		assignment := testChecksumCircuit{
-			Blob:      internal.ToVariableSlice(blob),
+			Blob:      utils.ToVariableSlice(blob),
 			Lengths:   lengths,
 			Sums:      sums,
 			NbBatches: len(batchEnds),
@@ -231,8 +232,8 @@ func TestUnpackCircuit(t *testing.T) {
 		}
 
 		assignment := unpackCircuit{
-			PackedBytes: internal.ToVariableSlice(packedBuf.Bytes()),
-			Bytes:       internal.ToVariableSlice(b),
+			PackedBytes: utils.ToVariableSlice(packedBuf.Bytes()),
+			Bytes:       utils.ToVariableSlice(b),
 			NbUsedBytes: len(b),
 		}
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
@@ -292,7 +293,7 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 
 	var dataPadded [maxLenBytesPadded]byte
 	copy(dataPadded[:], data[:minLenBytes])
-	dataVarsPadded := internal.ToVariableSlice(dataPadded[:])
+	dataVarsPadded := utils.ToVariableSlice(dataPadded[:])
 	for n := minLenBytes; n <= maxLenBytes; n++ {
 		nPadded := (n + fr381.Bytes - 1) / fr381.Bytes * fr381.Bytes
 
@@ -345,7 +346,7 @@ func TestDictHash(t *testing.T) {
 		DictBytes: make([]frontend.Variable, len(dict)),
 	}
 	assignment := testDataDictHashCircuit{
-		DictBytes: internal.ToVariableSlice(dict),
+		DictBytes: utils.ToVariableSlice(dict),
 		Checksum:  header.DictChecksum[:],
 	}
 

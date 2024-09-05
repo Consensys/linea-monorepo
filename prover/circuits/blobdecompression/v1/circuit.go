@@ -293,8 +293,8 @@ func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Ele
 	}
 
 	assignment = &Circuit{
-		Dict:        internal.ToVariableSlice(dict),
-		BlobBytes:   internal.ToVariableSlice(blobBytes),
+		Dict:        utils.ToVariableSlice(dict),
+		BlobBytes:   utils.ToVariableSlice(blobBytes),
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}

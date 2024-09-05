@@ -1,12 +1,28 @@
-package aggregation
+package aggregation_test
 
 import (
+	"context"
+	"github.com/consensys/gnark-crypto/ecc"
+	frBls "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
+	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
+	"github.com/consensys/gnark/test"
+	"github.com/consensys/zkevm-monorepo/prover/circuits"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -51,4 +67,158 @@ func TestPublicInput(t *testing.T) {
 			return sum[:]
 		}, res[:]...)(t)
 	}
+}
+
+func TestAggregationOneInner(t *testing.T) {
+	testAggregation(t, 2, 1)
+}
+
+func TestAggregationFewDifferentInners(t *testing.T) {
+	testAggregation(t, 1, 5)
+	testAggregation(t, 2, 5)
+	testAggregation(t, 3, 2, 6, 10)
+}
+
+func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
+
+	// Mock circuits to aggregate
+	var innerSetups []circuits.Setup
+	logrus.Infof("Initializing many inner-circuits of %v\n", nCircuits)
+	srsProvider := circuits.NewUnsafeSRSProvider() // This is a dummy SRS provider, not to use in prod.
+	for i := 0; i < nCircuits; i++ {
+		logrus.Infof("\t%d/%d\n", i+1, nCircuits)
+		pp, _ := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitID(i), ecc.BLS12_377.ScalarField())
+		innerSetups = append(innerSetups, pp)
+	}
+
+	// This collects the verifying keys from the public parameters
+	var vkeys []plonk.VerifyingKey
+	for _, setup := range innerSetups {
+		vkeys = append(vkeys, setup.VerifyingKey)
+	}
+
+	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+	var aggregationPI fr.Element
+	aggregationPI.SetBytes(aggregationPIBytes)
+
+	logrus.Infof("Compiling interconnection circuit")
+	maxNC := utils.Max(ncs...)
+
+	piConfig := config.PublicInput{
+		MaxNbDecompression: maxNC,
+		MaxNbExecution:     maxNC,
+	}
+
+	piCircuit := pi_interconnection.DummyCircuit{
+		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
+		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+	}
+
+	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
+	assert.NoError(t, err)
+
+	piSetup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionCircuitID, piCs, srsProvider, nil)
+	assert.NoError(t, err)
+
+	for _, nc := range ncs {
+
+		// Building aggregation circuit for max `nc` proofs
+		logrus.Infof("Building aggregation circuit for size of %v\n", nc)
+		aggrCircuit, err := aggregation.AllocateCircuit(nc, piSetup, vkeys)
+		require.NoError(t, err)
+
+		// Generate proofs claims to aggregate
+		nProofs := internal.Ite(nc == 0, 0, utils.Max(nc-3, 1))
+		logrus.Infof("Generating a witness, %v dummy-proofs to aggregates", nProofs)
+		innerProofClaims := make([]aggregation.ProofClaimAssignment, nProofs)
+		innerPI := make([]frBls.Element, nc)
+		for i := range innerProofClaims {
+
+			// Assign the dummy circuit for a random value
+			circID := i % nCircuits
+			_, err = innerPI[i].SetRandom()
+			assert.NoError(t, err)
+			a := dummy.Assign(circuits.MockCircuitID(circID), innerPI[i])
+
+			// Stores the inner-proofs for later
+			proof, err := circuits.ProveCheck(
+				&innerSetups[circID], a,
+				emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+				emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			)
+			assert.NoError(t, err)
+
+			innerProofClaims[i] = aggregation.ProofClaimAssignment{
+				CircuitID:   circID,
+				Proof:       proof,
+				PublicInput: innerPI[i],
+			}
+		}
+
+		logrus.Info("generating witness for the interconnection circuit")
+		// assign public input circuit
+		circuitTypes := make([]pi_interconnection.InnerCircuitType, nc)
+		for i := range circuitTypes {
+			circuitTypes[i] = pi_interconnection.InnerCircuitType(test_utils.RandIntN(2)) // #nosec G115 -- value already constrained
+		}
+
+		innerPiPartition := utils.RightPad(utils.Partition(innerPI, circuitTypes), 2)
+		execPI := utils.RightPad(innerPiPartition[typeExec], len(piCircuit.ExecutionPublicInput))
+		decompPI := utils.RightPad(innerPiPartition[typeDecomp], len(piCircuit.DecompressionPublicInput))
+
+		piAssignment := pi_interconnection.DummyCircuit{
+			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
+			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
+			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
+			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),
+			ExecutionFPI:             utils.ToVariableSlice(pow5(execPI)),
+			NbExecution:              len(innerPiPartition[typeExec]),
+			NbDecompression:          len(innerPiPartition[typeDecomp]),
+		}
+
+		logrus.Infof("Generating PI proof")
+		piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		piProof, err := circuits.ProveCheck(
+			&piSetup, &piAssignment,
+			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		)
+		assert.NoError(t, err)
+		piPubW, err := piW.Public()
+		assert.NoError(t, err)
+		piInfo := aggregation.PiInfo{
+			Proof:         piProof,
+			PublicWitness: piPubW,
+			ActualIndexes: pi_interconnection.InnerCircuitTypesToIndexes(&piConfig, circuitTypes),
+		}
+
+		// Assigning the BW6 circuit
+		logrus.Infof("Generating the aggregation proof for arity %v", nc)
+
+		aggrAssignment, err := aggregation.AssignAggregationCircuit(nc, innerProofClaims, piInfo, aggregationPI)
+		assert.NoError(t, err)
+
+		assert.NoError(t, test.IsSolved(aggrCircuit, aggrAssignment, ecc.BW6_761.ScalarField()))
+	}
+
+}
+
+const (
+	typeExec   = pi_interconnection.Execution
+	typeDecomp = pi_interconnection.Decompression
+)
+
+func pow5(s []frBls.Element) []frBls.Element {
+	res := make([]frBls.Element, len(s))
+	for i := range s {
+		res[i].
+			Mul(&s[i], &s[i]).
+			Mul(&res[i], &res[i]).
+			Mul(&res[i], &s[i])
+
+	}
+	return res
 }

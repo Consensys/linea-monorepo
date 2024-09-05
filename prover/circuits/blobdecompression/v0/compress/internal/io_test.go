@@ -3,7 +3,7 @@ package internal_test
 import (
 	"bytes"
 	"crypto/rand"
-	cInternal "github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -50,9 +50,9 @@ func TestRecombineBytes(t *testing.T) {
 	}
 
 	assignment := recombineBytesCircuit{
-		Bytes:      cInternal.ToVariableSlice(_bytes),
-		Bits:       cInternal.ToVariableSlice(bits),
-		Recombined: cInternal.ToVariableSlice(recombined),
+		Bytes:      utils.ToVariableSlice(_bytes),
+		Bits:       utils.ToVariableSlice(bits),
+		Recombined: utils.ToVariableSlice(recombined),
 	}
 
 	lzss.RegisterHints()

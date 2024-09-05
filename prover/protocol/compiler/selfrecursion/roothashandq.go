@@ -51,7 +51,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Length of MerkleRoots = numActiveRoot + padding
 	totalRoots := ctx.Columns.MerkleRoots.Size()
 
-	rootHashVecParts := utils.RightPad(
+	rootHashVecParts := utils.RightPadWith(
 		rootHashesClean,
 		utils.NextPowerOfTwo(len(rootHashesClean)),
 		verifiercol.NewConstantCol(field.Zero(), 1),

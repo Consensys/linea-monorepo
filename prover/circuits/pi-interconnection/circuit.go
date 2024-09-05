@@ -3,6 +3,7 @@ package pi_interconnection
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	"math/big"
 	"slices"
 
@@ -331,6 +332,21 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
+}
+
+type InnerCircuitType uint8
+
+const (
+	Execution     InnerCircuitType = 0
+	Decompression InnerCircuitType = 1
+)
+
+func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
+	indexes := utils.RightPad(utils.Partition(test_utils.Range[int](len(types)), types), 2)
+	return utils.RightPad(
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
+
 }

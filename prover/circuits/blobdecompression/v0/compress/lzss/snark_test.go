@@ -3,7 +3,7 @@ package lzss
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"os"
 	"testing"
 
@@ -53,7 +53,7 @@ func TestNoCompression(t *testing.T) {
 		Level:            decompressorLevel,
 	}
 	assignment := &DecompressionTestCircuit{
-		C:       internal.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
+		C:       utils.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
 		CBegin:  0,
 		CLength: len(c),
 	}
@@ -96,7 +96,7 @@ func Test3c2943withHeader(t *testing.T) {
 		Level:            decompressorLevel,
 	}
 	assignment := &DecompressionTestCircuit{
-		C:       internal.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
+		C:       utils.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
 		CBegin:  10,
 		CLength: len(c) - 10,
 	}
@@ -119,9 +119,9 @@ func TestOutBufTooShort(t *testing.T) {
 	}
 
 	assignment := decompressionLengthTestCircuit{
-		C:               internal.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
+		C:               utils.ToVariableSlice(append(c, make([]byte, inputExtraBytes)...)),
 		CLength:         len(c),
-		D:               internal.ToVariableSlice(d[:len(d)-truncationAmount]),
+		D:               utils.ToVariableSlice(d[:len(d)-truncationAmount]),
 		ExpectedDLength: -1,
 	}
 
@@ -214,7 +214,7 @@ func testCompressionRoundTrip(t *testing.T, d, dict []byte, options ...testCompr
 		Level:            s.level,
 	}
 	assignment := &DecompressionTestCircuit{
-		C:       internal.ToVariableSlice(append(s.compressed, make([]byte, s.compressedPaddingLen)...)),
+		C:       utils.ToVariableSlice(append(s.compressed, make([]byte, s.compressedPaddingLen)...)),
 		CBegin:  s.cBegin,
 		CLength: len(s.compressed),
 	}
@@ -242,7 +242,7 @@ type decompressionLengthTestCircuit struct {
 }
 
 func (c *decompressionLengthTestCircuit) Define(api frontend.API) error {
-	dict := internal.ToVariableSlice(lzss.AugmentDict(nil))
+	dict := utils.ToVariableSlice(lzss.AugmentDict(nil))
 	if dLength, err := Decompress(api, c.C, c.CLength, c.D, dict, lzss.BestCompression); err != nil {
 		return err
 	} else {

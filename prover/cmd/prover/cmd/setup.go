@@ -228,7 +228,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
-		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup.VerifyingKey, allowedVkForAggregation)
+		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup, allowedVkForAggregation)
 		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}
