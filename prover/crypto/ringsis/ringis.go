@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math"
 	"runtime"
 	"sync"
 
@@ -120,7 +121,10 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 
 	// unmarshal the result
 	var rlen [4]byte
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes))
+	if len(sum) > math.MaxUint32*fr.Bytes {
+		panic("slice too long")
+	}
+	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
 	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
 	var result fr.Vector
 	_, err := result.ReadFrom(reader)

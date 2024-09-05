@@ -28,6 +28,8 @@ services:
     depends_on:
       linea-besu-sequencer-plugin-downloader:
         condition: service_completed_successfully
+      linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
+        condition: service_completed_successfully
     ports:
       - "8545:8545"
       - "8546:8546"
@@ -49,7 +51,10 @@ services:
       - |
         /opt/besu/bin/besu \
         --config-file=/var/lib/besu/sequencer.config.toml \
-        --node-private-key-file="/var/lib/besu/key"
+        --node-private-key-file="/var/lib/besu/key" \
+        --plugin-linea-l1-polling-interval="PT12S" \
+        --plugin-linea-l1-smart-contract-address="0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9" \
+        --plugin-linea-l1-rpc-endpoint="http://l1-el-node:8545"
     volumes:
       - ./config/linea-besu-sequencer/sequencer.config.toml:/var/lib/besu/sequencer.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
@@ -59,6 +64,7 @@ services:
       - ../config/common/traces-limits-besu-v1.toml:/var/lib/besu/traces-limits.toml:ro
       - ../tmp/linea-besu-sequencer/plugins:/opt/besu/plugins/
     networks:
+      l1-network:
       linea:
         ipv4_address: 11.11.11.101
 
@@ -68,6 +74,13 @@ services:
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test32/besu-sequencer-plugins-v0.1.4-test32.jar",  "/linea-besu-sequencer" ]
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
+      - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
+
+  linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
+    image: badouralix/curl-jq
+    command: [ "sh", "/finalized-tag-updater-jar-downloader.sh", "${GITHUB_TOKEN}", "0.0.1", "/linea-besu-sequencer" ]
+    volumes:
+      - ./scripts/finalized-tag-updater-jar-downloader.sh:/finalized-tag-updater-jar-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
 
   l2-node:
@@ -166,7 +179,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-02a601f}
+    image: consensys/linea-postman:${POSTMAN_TAG:-5a6fdf3}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     depends_on:
@@ -223,7 +236,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-aceafcf}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-e9f2bcc}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -244,7 +257,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-87c1bd2}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-8a5690e}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:

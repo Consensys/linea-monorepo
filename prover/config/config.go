@@ -55,7 +55,7 @@ func NewConfigFromFile(path string) (*Config, error) {
 	}
 
 	// Set the logging level
-	logrus.SetLevel(logrus.Level(cfg.LogLevel))
+	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
@@ -252,11 +252,12 @@ func (cfg *WithRequestDir) DirDone() string {
 }
 
 type PublicInput struct {
-	MaxNbDecompression int `mapstructure:"max_nb_decompression" validate:"gte=0"`
-	MaxNbExecution     int `mapstructure:"max_nb_execution" validate:"gte=0"`
-	MaxNbCircuits      int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
-	MaxNbKeccakF       int `mapstructure:"max_nb_keccakf" validate:"gte=0"`
-	ExecutionMaxNbMsg  int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
-	L2MsgMerkleDepth   int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
-	L2MsgMaxNbMerkle   int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MaxNbDecompression int  `mapstructure:"max_nb_decompression" validate:"gte=0"`
+	MaxNbExecution     int  `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits      int  `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
+	MaxNbKeccakF       int  `mapstructure:"max_nb_keccakf" validate:"gte=0"`
+	ExecutionMaxNbMsg  int  `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth   int  `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle   int  `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MockKeccakWizard   bool // for testing purposes only
 }

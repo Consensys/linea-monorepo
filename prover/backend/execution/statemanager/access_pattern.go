@@ -3,6 +3,8 @@ package statemanager
 import (
 	"errors"
 	"fmt"
+
+	"github.com/consensys/zkevm-monorepo/prover/utils/types"
 )
 
 /*
@@ -101,7 +103,10 @@ func isAccCreation(traces []DecodedTrace) (ok bool, err error) {
 			// we must return the error outside of the loop. We only keep
 			// the first error.
 			if err != nil {
-				err = fmt.Errorf("invalid trace : found %T in an insertion trace", t)
+				err = errors.Join(
+					err,
+					fmt.Errorf("invalid trace : found %T in an insertion trace", t),
+				)
 			}
 		}
 	}
@@ -109,6 +114,10 @@ func isAccCreation(traces []DecodedTrace) (ok bool, err error) {
 	// Now, look for error. The only acceptable
 	if err != nil {
 		return false, err
+	}
+
+	if err = checkStorageTraceOrder(traces[:len(traces)-1]); err != nil {
+		return false, fmt.Errorf("in account-creation segment: %w", err)
 	}
 
 	return true, nil
@@ -154,6 +163,10 @@ func isAccDeletion(traces []DecodedTrace) (ok bool, err error) {
 		return false, err
 	}
 
+	if err = checkStorageTraceOrder(traces[:len(traces)-1]); err != nil {
+		return false, fmt.Errorf("in account-deletion segment: %w", err)
+	}
+
 	return true, nil
 }
 
@@ -179,6 +192,10 @@ func isAccUpdate(traces []DecodedTrace) (ok bool, err error) {
 		}
 
 		// All ST traces are allowed
+	}
+
+	if err = checkStorageTraceOrder(traces[:len(traces)-1]); err != nil {
+		return false, fmt.Errorf("in account-update segment: %w", err)
 	}
 
 	return true, nil
@@ -246,6 +263,10 @@ func isAccRead(traces []DecodedTrace) (ok bool, err error) {
 		traces[0], traces[len(traces)-1] = traces[len(traces)-1], traces[0]
 	}
 
+	if err = checkStorageTraceOrder(traces[:len(traces)-1]); err != nil {
+		return false, fmt.Errorf("in acc-read segment: %w", err)
+	}
+
 	return true, nil
 }
 
@@ -262,7 +283,10 @@ func isAccRedeploy(traces []DecodedTrace) (ok bool, err error) {
 		return false, nil
 	}
 
-	var foundDeletion bool
+	var (
+		foundDeletion bool
+		posDeletion   int
+	)
 
 	// Then, wheck that there are no more ws_traces in the list
 	for i := 0; i < len(traces)-1; i++ {
@@ -278,6 +302,7 @@ func isAccRedeploy(traces []DecodedTrace) (ok bool, err error) {
 		// Else set the foundDeletionFlag to true
 		if isDeletion {
 			foundDeletion = isDeletion
+			posDeletion = i
 			continue
 		}
 
@@ -296,7 +321,10 @@ func isAccRedeploy(traces []DecodedTrace) (ok bool, err error) {
 				// we must return the error outside of the loop. We only keep
 				// the first error.
 				if err != nil {
-					err = fmt.Errorf("invalid trace : found %T in an deletion trace", t)
+					err = errors.Join(
+						err,
+						fmt.Errorf("invalid trace : found %T in an deletion trace", t),
+					)
 				}
 			}
 		}
@@ -310,7 +338,10 @@ func isAccRedeploy(traces []DecodedTrace) (ok bool, err error) {
 				// we must return the error outside of the loop. We only keep
 				// the first error.
 				if err != nil {
-					err = fmt.Errorf("invalid trace : found %T in an deletion trace", t)
+					err = errors.Join(
+						err,
+						fmt.Errorf("invalid trace : found %T in an deletion trace", t),
+					)
 				}
 			}
 		}
@@ -321,5 +352,48 @@ func isAccRedeploy(traces []DecodedTrace) (ok bool, err error) {
 		return false, err
 	}
 
+	err = errors.Join(
+		checkStorageTraceOrder(traces[:posDeletion]),
+		checkStorageTraceOrder(traces[posDeletion+1:len(traces)-1]),
+	)
+
+	if err != nil {
+		return false, fmt.Errorf("in redeploy acc segment: %w", err)
+	}
+
 	return true, nil
+}
+
+func checkStorageTraceOrder(traces []DecodedTrace) (err error) {
+
+	// Check that the storage slots are sorted in the correct order (by R/W then
+	// by Hkey).
+	for i := 0; i < len(traces)-2; i++ {
+
+		var (
+			curr     = traces[i].Underlying
+			next     = traces[i+1].Underlying
+			currRW   = curr.RWInt()
+			nextRW   = next.RWInt()
+			currHKey = curr.HKey(MIMC_CONFIG)
+			nextHKey = next.HKey(MIMC_CONFIG)
+		)
+
+		if currRW > nextRW {
+			err = errors.Join(
+				err,
+				fmt.Errorf("trace %v is a write but followed by a read", i),
+			)
+		}
+
+		if currRW == nextRW && types.Bytes32Cmp(currHKey, nextHKey) >= 0 {
+			fmt.Printf("currRW=%v nextRW=%v currT=%T nextT=%T\n", currRW, nextRW, curr, next)
+			err = errors.Join(
+				err,
+				fmt.Errorf("storage trace %v has an HKey larger or equal than the next one `%x` >= `%x`", i, currHKey, nextHKey),
+			)
+		}
+	}
+
+	return err
 }

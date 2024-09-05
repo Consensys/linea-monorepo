@@ -9,13 +9,13 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateCols(t *testing.T) {
@@ -52,8 +52,8 @@ func TestCreateCols(t *testing.T) {
 			In:                in,
 			InLength:          make([]frontend.Variable, len(c.in)),
 			Lanes:             make([]frontend.Variable, len(c.lanes)),
-			IsFirstLaneOfHash: test_vector_utils.ToVariableSlice(c.isFirstLaneOfHash),
-			IsLaneActive:      test_vector_utils.ToVariableSlice(c.isLaneActive),
+			IsFirstLaneOfHash: internal.ToVariableSlice(c.isFirstLaneOfHash),
+			IsLaneActive:      internal.ToVariableSlice(c.isLaneActive),
 			Hash:              hash,
 		}
 
@@ -158,8 +158,6 @@ func (c *testCreateColsCircuit) Define(api frontend.API) error {
 func TestE2E(t *testing.T) {
 
 	wizardComponent := NewWizardVerifierSubCircuit(3, dummy.Compile) // increase maxNbKeccakF as needed when introducing longer test vectors
-	wizardSubCircuit, err := wizardComponent.Compile()
-	assert.NoError(t, err)
 
 	for i, c := range getTestCases(t) {
 
@@ -176,6 +174,9 @@ func TestE2E(t *testing.T) {
 				hash[j][k] = c.hash[j][k]
 			}
 		}
+
+		wizardSubCircuit, err := wizardComponent.Compile()
+		require.NoError(t, err)
 
 		circuit := testE2ECircuit{
 			In:             make([][][32]frontend.Variable, len(c.in)),
@@ -263,7 +264,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 		t.Run(fmt.Sprintf("%d-%s", i, internal.Ite(fail, "fail", "pass")), func(t *testing.T) {
 
 			assignment := testCreateColsBoundaryChecks{
-				InLength: test_vector_utils.ToVariableSlice(c.inLength),
+				InLength: internal.ToVariableSlice(c.inLength),
 			}
 
 			err := test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField())

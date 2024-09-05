@@ -2,17 +2,18 @@
 
 ### Requirements:
 
-- Node.js v18
-- Docker v24
+- Node.js v20 or higher
+- Docker v24 or higher
 - Docker Compose version v2.19+
 - Make v3.81+
-- Pnpm >=v9.0.6 (https://pnpm.io/installation)
+- Pnpm >=v9.1.1 (https://pnpm.io/installation)
 
 ### Run stack locally
 
 #### Install Node dependencies
+
 ```
-make npm-install
+make pnpm-install
 ```
 
 #### Start stack & run E2E tests
@@ -25,11 +26,13 @@ pnpm run test:e2e:local
 ```
 
 To stop that stack run:
+
 ```
 make clean-enviroment
 ```
 
 While running the end2end tests, you should observe files being generated in `tmp/local/` directory.
+
 ```
 ├── local
 │  ├── prover
@@ -60,6 +63,7 @@ While running the end2end tests, you should observe files being generated in `tm
 ```
 
 #### Troubleshooting
+
 - Docker: Sometimes restarting the stack several times may lead to network/state issues. The following commands may help. **Note:** Please be aware that this will permanently remove all docker images, containers and **docker volumes** and any data saved it them.
 
 ```
@@ -68,7 +72,8 @@ docker system prune --volumes
 ```
 
 ## Tuning in conflation
-For local testing and development conflation deadline is set to 6s `conflation-deadline=PT6S` in `config/coordinator/coordinator-docker.config.toml` file. Hence, only 2 blocks conflation.  If you want bigger conflations, increase the deadline accordingly.
+
+For local testing and development conflation deadline is set to 6s `conflation-deadline=PT6S` in `config/coordinator/coordinator-docker.config.toml` file. Hence, only 2 blocks conflation. If you want bigger conflations, increase the deadline accordingly.
 
 ## Next steps
 

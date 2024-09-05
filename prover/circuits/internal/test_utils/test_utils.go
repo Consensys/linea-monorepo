@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/constraints"
+	"math"
 	"math/big"
 	"os"
 	"strings"
@@ -187,7 +188,10 @@ func RandIntN(n int) int {
 	if err != nil {
 		panic(err)
 	}
-	return int(binary.BigEndian.Uint64(b[:]) % uint64(n))
+	if n > math.MaxInt {
+		panic("RandIntN: n too large")
+	}
+	return int(binary.BigEndian.Uint64(b[:]) % uint64(n)) // #nosec G115 -- Above check precludes an overflow
 }
 
 func RandIntSliceN(length, n int) []int {

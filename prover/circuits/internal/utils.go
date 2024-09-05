@@ -445,7 +445,7 @@ func checksumSubSlicesHint(_ *big.Int, ins, outs []*big.Int) error {
 	subLastPoints := ins[:len(outs)]
 	slice := ins[len(outs):]
 
-	sliceAt := func(i uint64) []byte {
+	sliceAt := func(i int64) []byte {
 		res := slice[i].Bytes()
 		if len(res) == 0 {
 			return []byte{0} // the mimc hash impl ignores empty input
@@ -455,12 +455,12 @@ func checksumSubSlicesHint(_ *big.Int, ins, outs []*big.Int) error {
 
 	hsh := hash.MIMC_BLS12_377.New()
 	var (
-		first uint64
+		first int64
 		i     int
 	)
 	for ; i < len(outs); i++ {
-		last := subLastPoints[i].Uint64()
-		if int(last) >= len(slice) {
+		last := subLastPoints[i].Int64()
+		if last >= int64(len(slice)) {
 			break
 		}
 
@@ -795,8 +795,8 @@ func partitionSliceHint(_ *big.Int, ins, outs []*big.Int) error {
 	}
 
 	for i := range s {
-		b := int(indicators[i].Uint64())
-		if b < 0 || b >= len(subs) || !indicators[i].IsUint64() {
+		b := indicators[i].Int64()
+		if b < 0 || b >= int64(len(subs)) || !indicators[i].IsUint64() {
 			return errors.New("indicator out of range")
 		}
 		subs[b][0] = s[i]
@@ -870,5 +870,11 @@ func InnerProd(api frontend.API, x, y []frontend.Variable) frontend.Variable {
 	for i := range x {
 		res = api.Add(res, api.Mul(x[i], y[i]))
 	}
+	return res
+}
+
+func ToVariableSlice[X any](s []X) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
+	utils.Copy(res, s)
 	return res
 }
