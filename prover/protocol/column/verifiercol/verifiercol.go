@@ -76,9 +76,5 @@ func NewConcatTinyColumns(
 		utils.Panic("the target length (=%v) is smaller than the given columns (=%v)", paddedSize, len(cols))
 	}
 
-	for len(access) < paddedSize {
-		access = append(access, accessors.NewConstant(paddingVal))
-	}
-
-	return NewFromAccessors(access)
+	return NewFromAccessors(access, paddingVal, paddedSize)
 }

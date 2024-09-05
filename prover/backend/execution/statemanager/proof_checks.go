@@ -1,6 +1,7 @@
 package statemanager
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -83,7 +84,6 @@ func checkProofsForAccount(traces []DecodedTrace) error {
 							return fmt.Errorf("deletion : but the deleted account storage hash does not match the old value")
 						}
 					}
-					logrus.Errorf("cannot inspect that the deleted account is consistent with ST accesses")
 				}
 
 				// And start a new splice
@@ -110,41 +110,58 @@ func checkProofsWorldState(traces []DecodedTrace) (oldRootHash, newRootHash Dige
 		panic("unexpected empty slice")
 	}
 
-	// what we return in case of error
-	digestErr := Digest{}
-
 	// uses the first trace to bootstrap the verifier
 	vs := bootstrapVerifierStateFromWS(traces[0])
 	oldRootHash = vs.TopRoot()
 
-	for _, trace := range traces {
+	for i, trace := range traces {
+
+		if i < len(traces)-1 {
+
+			var (
+				currHKey = traces[i].Underlying.HKey(MIMC_CONFIG)
+				nextHKey = traces[i+1].Underlying.HKey(MIMC_CONFIG)
+			)
+
+			if types.Bytes32Cmp(currHKey, nextHKey) > 0 {
+				err = errors.Join(
+					err,
+					fmt.Errorf("the account segment are not well-ordered `%x` >= `%x`", currHKey, nextHKey),
+				)
+			}
+		}
+
 		switch t := trace.Underlying.(type) {
 		case ReadNonZeroTraceWS:
 			// this update the storage verifier if this passes
-			if err := vs.ReadNonZeroVerify(t); err != nil {
-				return digestErr, digestErr, err
+			if errA := vs.ReadNonZeroVerify(t); errA != nil {
+				errors.Join(err, fmt.Errorf("error verifying ws trace %v: %w", i, errA))
 			}
 		case ReadZeroTraceWS:
 			// this update the storage verifier if this passes
-			if err := vs.ReadZeroVerify(t); err != nil {
-				return digestErr, digestErr, err
+			if errA := vs.ReadZeroVerify(t); errA != nil {
+				errors.Join(err, fmt.Errorf("error verifying ws trace %v: %w", i, errA))
 			}
 		case InsertionTraceWS:
 			// this updates the storage verifier if this passes
-			if err := vs.VerifyInsertion(t); err != nil {
-				return digestErr, digestErr, err
+			if errA := vs.VerifyInsertion(t); errA != nil {
+				errors.Join(err, fmt.Errorf("error verifying ws trace %v: %w", i, errA))
 			}
 		case UpdateTraceWS:
 			// this updates the storage verifier if this passes
-			if err := vs.UpdateVerify(t); err != nil {
-				return digestErr, digestErr, err
+			if errA := vs.UpdateVerify(t); errA != nil {
+				errors.Join(err, fmt.Errorf("error verifying ws trace %v: %w", i, errA))
 			}
 		case DeletionTraceWS:
 			// this updates the storage verifier if this passes
-			if err := vs.VerifyDeletion(t); err != nil {
-				return digestErr, digestErr, err
+			if errA := vs.VerifyDeletion(t); errA != nil {
+				errors.Join(err, fmt.Errorf("error verifying ws trace %v: %w", i, errA))
 			}
 		}
+	}
+
+	if err != nil {
+		return Digest{}, Digest{}, err
 	}
 
 	newRootHash = vs.TopRoot()

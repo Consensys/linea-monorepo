@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -15,10 +17,10 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"math/big"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
 
 	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
 )
@@ -111,11 +113,11 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 			NbBatches:      len(i.BatchSums),
 		},
 	}
-	internal.Copy(res.X[:], i.X[:])
+	utils.Copy(res.X[:], i.X[:])
 	if len(i.BatchSums) > len(res.BatchSums) {
 		return res, errors.New("batches do not fit in circuit")
 	}
-	for n := internal.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
+	for n := utils.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
 		res.BatchSums[n] = 0
 	}
 	return res, nil
@@ -291,8 +293,8 @@ func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Ele
 	}
 
 	assignment = &Circuit{
-		Dict:        test_vector_utils.ToVariableSlice(dict),
-		BlobBytes:   test_vector_utils.ToVariableSlice(blobBytes),
+		Dict:        internal.ToVariableSlice(dict),
+		BlobBytes:   internal.ToVariableSlice(blobBytes),
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}
@@ -315,7 +317,7 @@ func BatchesChecksumAssign(ends []int, payload []byte) [][]byte {
 
 	batchStart := 0
 	for i := range res {
-		ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
+		gnarkutil.ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
 		res[i] = bytes.Clone(buf[:])
 		batchStart = ends[i]
 	}

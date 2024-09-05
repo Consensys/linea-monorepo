@@ -49,10 +49,22 @@ type (
 // Run implements the [wizard.ProverAction] interface.
 func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssigner) {
 
-	ctx := compilationCtx(pa.compilationCtx)
+	var (
+		ctx             = compilationCtx(pa.compilationCtx)
+		numEffInstances = wa.NumEffWitnesses(run)
+	)
+
+	// Store the information
 
 	parallel.Execute(pa.maxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
+
+			if i >= numEffInstances {
+				run.AssignColumn(ctx.Columns.TinyPI[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.TinyPI[i].Size()))
+				run.AssignColumn(ctx.Columns.Cp[i].GetColID(), smartvectors.NewConstant(field.Zero(), ctx.Columns.Cp[i].Size()))
+				run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.Zero(), 1))
+				continue
+			}
 
 			// Initialize the channels
 			solSync := solverSync{
@@ -96,6 +108,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, wa WitnessAssign
 
 			// And assign it in the runtime
 			run.AssignColumn(ctx.Columns.Cp[i].GetColID(), smartvectors.NewRegular(com))
+			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
 	})
 }
@@ -107,14 +120,24 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	parallel.Execute(ctx.maxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
-			// Retrive the solsync
 
+			// Retrieve the solsync. Not finding it means the instance is not
+			// used.
 			pa.proverStateLock.Lock()
-			solsync := run.State.MustGet(ctx.Sprintf("SOLSYNC_%v", i)).(solverSync)
+			solsync_, foundSolSync := run.State.TryGet(ctx.Sprintf("SOLSYNC_%v", i))
 			run.State.TryDel(ctx.Sprintf("SOLSYNC_%v", i))
 			pa.proverStateLock.Unlock()
 
+			if !foundSolSync {
+				zeroCol := smartvectors.NewConstant(field.Zero(), ctx.Columns.L[i].Size())
+				run.AssignColumn(ctx.Columns.L[i].GetColID(), zeroCol)
+				run.AssignColumn(ctx.Columns.R[i].GetColID(), zeroCol)
+				run.AssignColumn(ctx.Columns.O[i].GetColID(), zeroCol)
+				continue
+			}
+
 			// Inject the coin which will be assigned to the randomness
+			solsync := solsync_.(solverSync)
 			solsync.randChan <- run.GetRandomCoinField(ctx.Columns.Hcp.Name)
 			close(solsync.randChan)
 
@@ -128,11 +151,11 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
 		}
 
-		if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
-			ctx.assignRangeChecked(run)
-		}
-
 	})
+
+	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+		ctx.assignRangeChecked(run)
+	}
 }
 
 // Run the gnark solver and put the result in solSync.solChan

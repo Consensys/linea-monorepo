@@ -32,7 +32,7 @@ func TestPublicInput(t *testing.T) {
 
 	for i := range testCases {
 
-		fpi, err := NewFunctionalPublicInput(&testCases[i])
+		fpi, err := public_input.NewAggregationFPI(&testCases[i])
 		assert.NoError(t, err)
 
 		sfpi := fpi.ToSnarkType()

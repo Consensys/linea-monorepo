@@ -89,7 +89,7 @@ func TestEcMulIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ecMul *EcMulIntegration
+	var ecMul *EcMul
 	var ecMulSource *EcDataMulSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
@@ -100,7 +100,7 @@ func TestEcMulIntegration(t *testing.T) {
 				IsData:  ct.GetCommit(b, "IS_DATA"),
 				IsRes:   ct.GetCommit(b, "IS_RES"),
 			}
-			ecMul = NewEcMulIntegration(b.CompiledIOP, limits, ecMulSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			ecMul = newEcMul(b.CompiledIOP, limits, ecMulSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
 		},
 		dummy.Compile,
 	)
@@ -108,7 +108,7 @@ func TestEcMulIntegration(t *testing.T) {
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
 			ct.Assign(run, "CS_MUL", "LIMB", "INDEX", "IS_DATA", "IS_RES")
-			ecMul.Assign(run, ecMulSource)
+			ecMul.Assign(run)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {

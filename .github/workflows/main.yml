@@ -15,6 +15,7 @@ jobs:
       postman: ${{ steps.filter.outputs.postman }}
       prover: ${{ steps.filter.outputs.prover }}
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
+      finalized-tag-updater: ${{ steps.filter.outputs.finalized-tag-updater }}
       no-changes: ${{ steps.filter.outputs.coordinator == 'false' && steps.filter.outputs.postman == 'false' && steps.filter.outputs.prover == 'false' && steps.filter.outputs.traces-api-facade == 'false' }}
     steps:
       - name: Checkout
@@ -75,6 +76,10 @@ jobs:
               - 'build.gradle'
               - 'gradle.properties'
               - 'settings.gradle'
+            finalized-tag-updater:
+              - 'finalized-tag-updater/**'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/finalized-tag-updater-github-release.yml'
 
   check-and-tag-images:
     needs: [ store-image-name-and-tags, filter-commit-changes ]
@@ -109,6 +114,15 @@ jobs:
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
       traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
     secrets: inherit
+  
+  # Comment out the auto build and release step below as the plugin release should be
+  # by manual Github action for versioning control
+  # finalized-tag-updater-jar-build-release:
+  #   needs: [ filter-commit-changes ]
+  #   if: ${{ always() && needs.filter-commit-changes.outputs.finalized-tag-updater == 'true' }}
+  #   uses: ./.github/workflows/finalized-tag-updater-github-release.yml
+  #   with:
+  #     version: '0.0.1'
 
   testing:
     needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
@@ -119,8 +133,10 @@ jobs:
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
     secrets: inherit
 
   run-e2e-tests-geth-tracing:

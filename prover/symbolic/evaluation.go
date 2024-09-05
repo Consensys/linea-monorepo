@@ -109,104 +109,31 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 // vector or scalars. The vector's input length should be smaller than a chunk.
 func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
 
-	length := inputs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalSoft(length, p...)
+	var (
+		length         = inputs[0].Len()
+		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
+		nodeAssignment = b.prepareNodeAssignments(inputs)
+	)
 
-	/*
-		First, build a buffer to store the intermediate results
-	*/
-	intermediateRes := make([][]sv.SmartVector, len(b.Nodes))
-	parentCount := make([][]int, len(b.Nodes))
-	for level := range b.Nodes {
-		intermediateRes[level] = make([]sv.SmartVector, len(b.Nodes[level]))
-		parentCount[level] = make([]int, len(b.Nodes[level]))
-	}
+	// Then computes the levels one by one
+	for level := 1; level < len(nodeAssignment); level++ {
+		for pil := range nodeAssignment[level] {
 
-	/*
-		Then, store the initial values in the level entries of the vector
-	*/
-	inputCursor := 0
-
-	for i := range b.Nodes[0] {
-		switch op := b.Nodes[0][i].Operator.(type) {
-		case Constant:
-			// The constants are identified to constant vectors
-			intermediateRes[0][i] = sv.NewConstant(op.Val, length)
-			parentCount[0][i] = -1 // that way it never reaches zero
-		case Variable:
-			// Sanity-check the input should have the correct length
-			if inputs[inputCursor].Len() != length {
-				utils.Panic("Subvector failed, subvector should have size %v but size is %v", length, inputs[inputCursor].Len())
-			}
-			intermediateRes[0][i] = inputs[inputCursor]
-			// track the number of time the node will be used
-			parentCount[0][i] = len(b.Nodes[0][i].Parents)
-			inputCursor++
-		}
-	}
-
-	/*
-		Then computes the levels one by one
-	*/
-	for level := 1; level < len(b.Nodes); level++ {
-		for pos, node := range b.Nodes[level] {
-			/*
-				Collect the inputs of the current node from the intermediateRes
-			*/
-			nodeInputs := make([]sv.SmartVector, len(node.Children))
-			for i, childID := range node.Children {
-				lvl, pil := childID.level(), childID.posInLevel()
-				nodeInputs[i] = intermediateRes[lvl][pil]
-			}
-
-			/*
-				Run the evaluation
-			*/
-			res := node.Operator.Evaluate(nodeInputs, pool)
-			if res.Len() != length {
-				utils.Panic("Subvector failed, subvector should have size %v but size is %v", length, inputs[inputCursor].Len())
-			}
-
-			// If the pool is used, free the childre
-			for i, childID := range node.Children {
-				lvl, pil := childID.level(), childID.posInLevel()
-
-				// bar the node input to used again. We won't need it.
-				nodeInputs[i] = nil
-
-				// beside, if all its parents have been computed. We can
-				// remove it from the intermediate result (and possibly
-				// pool it).
-				parentCount[lvl][pil]--
-				if parentCount[lvl][pil] == 0 {
-
-					reg, isRegular := intermediateRes[lvl][pil].(*sv.Regular)
-					// remove the pooled slice from the structure to ensure
-					// it is not used anymore.
-					intermediateRes[lvl][pil] = nil
-
-					// And pool it if relevant
-					if hasPool && isRegular && lvl > 0 {
-						v := []field.Element(*reg)
-						pool.Free(&v)
-					}
-				}
-			}
-
-			/*
-				Registers the result in the intermediate results
-			*/
-			intermediateRes[level][pos] = res
-			parentCount[level][pos] = len(node.Parents)
+			node := &nodeAssignment[level][pil]
+			nodeAssignment.eval(node, pool)
 		}
 	}
 
 	// Assertion, the last level contains only one node (the final result)
-	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
+	if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
 		panic("multiple heads")
 	}
 
-	resBuf := intermediateRes[len(b.Nodes)-1][0]
+	resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
+
+	if resBuf == nil {
+		panic("resbuf is nil")
+	}
 
 	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
 	// that way.

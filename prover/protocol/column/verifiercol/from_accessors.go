@@ -20,6 +20,8 @@ var _ VerifierCol = FromAccessors{}
 type FromAccessors struct {
 	// Accessors stores the list of accessors building the column.
 	Accessors []ifaces.Accessor
+	Padding   field.Element
+	Size_     int
 	// Round_ caches the round value of the column.
 	Round_ int
 }
@@ -30,15 +32,15 @@ type FromAccessors struct {
 // You should not pass accessors of type [expressionAsAccessor] as their
 // evaluation within a gnark circuit requires using the frontend.API which we
 // can't access in the context currently.
-func NewFromAccessors(accessors []ifaces.Accessor) ifaces.Column {
-	if !utils.IsPowerOfTwo(len(accessors)) {
-		panic("the column must be a power of two")
+func NewFromAccessors(accessors []ifaces.Accessor, padding field.Element, size int) ifaces.Column {
+	if !utils.IsPowerOfTwo(size) {
+		utils.Panic("the column must be a power of two (size=%v)", size)
 	}
 	round := 0
 	for i := range accessors {
 		round = max(round, accessors[i].Round())
 	}
-	return FromAccessors{Accessors: accessors, Round_: round}
+	return FromAccessors{Accessors: accessors, Round_: round, Padding: padding, Size_: size}
 }
 
 // Round returns the round ID of the column and implements the [ifaces.Column]
@@ -53,7 +55,7 @@ func (f FromAccessors) GetColID() ifaces.ColID {
 	for i := range f.Accessors {
 		accessorNames[i] = f.Accessors[i].Name()
 	}
-	return ifaces.ColIDf("FROM_ACCESSORS_%v", strings.Join(accessorNames, "_"))
+	return ifaces.ColIDf("FROM_ACCESSORS_%v_PADDING=%v_SIZE=%v", strings.Join(accessorNames, "_"), f.Padding.String(), f.Size_)
 }
 
 // MustExists implements the [ifaces.Column] interface and always returns true.
@@ -62,7 +64,7 @@ func (f FromAccessors) MustExists() {}
 // Size returns the size of the colum and implements the [ifaces.Column]
 // interface.
 func (f FromAccessors) Size() int {
-	return len(f.Accessors)
+	return f.Size_
 }
 
 // GetColAssignment returns the assignment of the current column
@@ -71,25 +73,48 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 	for i := range res {
 		res[i] = f.Accessors[i].GetVal(run)
 	}
-	return smartvectors.NewRegular(res)
+	return smartvectors.RightPadded(res, f.Padding, f.Size_)
 }
 
 // GetColAssignment returns a gnark assignment of the current column
 func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	res := make([]frontend.Variable, len(f.Accessors))
-	for i := range res {
+
+	res := make([]frontend.Variable, f.Size_)
+	for i := range f.Accessors {
 		res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
 	}
+
+	for i := len(f.Accessors); i < f.Size_; i++ {
+		res[i] = f.Padding
+	}
+
 	return res
 }
 
 // GetColAssignmentAt returns a particular position of the column
 func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
+
+	if pos >= f.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+	}
+
+	if pos >= len(f.Accessors) {
+		return f.Padding
+	}
+
 	return f.Accessors[pos].GetVal(run)
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
 func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+	if pos >= f.Size_ {
+		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+	}
+
+	if pos >= len(f.Accessors) {
+		return f.Padding
+	}
+
 	return f.Accessors[pos].GetFrontendVariable(nil, run)
 }
 
@@ -105,10 +130,23 @@ func (f FromAccessors) String() string {
 
 // Split implements the [VerifierCol] interface
 func (f FromAccessors) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column {
+
+	if from >= len(f.Accessors) {
+		return NewConstantCol(f.Padding, to-from)
+	}
+
+	var subAccessors = f.Accessors[from:]
+
+	if to < len(f.Accessors) {
+		subAccessors = f.Accessors[from:to]
+	}
+
 	// We don't call the accessor to ensure that the segment has the same round
 	// definition as the original column.
 	return FromAccessors{
-		Accessors: f.Accessors[from:to],
+		Accessors: subAccessors,
 		Round_:    f.Round_,
+		Padding:   f.Padding,
+		Size_:     to - from,
 	}
 }

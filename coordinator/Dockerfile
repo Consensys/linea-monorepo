@@ -2,13 +2,15 @@ FROM openjdk:22-ea-17-slim-bookworm
 
 RUN apt-get update \
 	&& apt-get install curl -y \
+  && apt-get install unzip -y \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/consensys/linea/coordinator
 
 # copy application
-COPY --from=jar ./app-all.jar /opt/consensys/linea/coordinator/libs/
+COPY --from=zip ./coordinator.zip /opt/consensys/linea/coordinator/libs/
+RUN unzip libs/coordinator.zip -d libs/ && mv libs/coordinator/lib/** libs/ && rm -R libs/coordinator/
 
 RUN mkdir -p /opt/consensys/linea/coordinator/logs
 RUN mkdir -p /opt/consensys/linea/coordinator/tmp/prover/request

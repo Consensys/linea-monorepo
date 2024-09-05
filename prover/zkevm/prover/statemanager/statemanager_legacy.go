@@ -90,7 +90,7 @@ func (sm *StateManagerLegacy) Assign(
 	for _, blockTrace := range traces {
 		for _, trace := range blockTrace {
 			switch t := trace.Underlying.(type) {
-			case accumulator.DeferableCheck:
+			case accumulator.Trace:
 				provedClaims = t.DeferMerkleChecks(mtConfig, provedClaims)
 			default:
 				utils.Panic("Unexpected type : %T", t)

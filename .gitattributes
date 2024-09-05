@@ -17,7 +17,9 @@
 *.ssz binary
 *.ssz_snappy binary
 *.png binary
+*.cbor binary
 
+prover/symbolic/testdata/**/*.cbor binary
 prover/prover-assets/**/**/**/*.bin binary
 prover/prover-assets/**/**/**/**/*.bin binary
 prover/prover-assets/kzgsrs/* binary
