@@ -5,9 +5,14 @@ import net.consensys.linea.RejectedTransaction
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface TransactionExclusionServiceV1 {
+  enum class SaveRejectedTransactionStatus {
+    SAVED,
+    DUPLICATE_ALREADY_SAVED_BEFORE
+  }
+
   fun saveRejectedTransaction(
     rejectedTransaction: RejectedTransaction
-  ): SafeFuture<Result<RejectedTransaction, TransactionExclusionError>>
+  ): SafeFuture<Result<SaveRejectedTransactionStatus, TransactionExclusionError>>
 
   fun getTransactionExclusionStatus(
     txHash: ByteArray
