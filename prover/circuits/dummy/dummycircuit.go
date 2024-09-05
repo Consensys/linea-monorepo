@@ -27,7 +27,7 @@ type CircuitDummy struct {
 	X5 frontend.Variable `gnark:",secret"`
 
 	// Optional field, changes the circuit so that X5 = X^5 + ID. This
-	// functionality allows generated different incompabible versions of the
+	// functionality allows generated different incompatible versions of the
 	// dummy circuit.
 	ID int `gnark:"-"`
 }

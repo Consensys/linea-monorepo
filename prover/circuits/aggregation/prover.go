@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/backend/plonk"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/zkevm-monorepo/prover/circuits"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -16,7 +17,7 @@ func MakeProof(
 	setup *circuits.Setup,
 	maxNbProof int,
 	proofClaims []ProofClaimAssignment,
-	piProof plonk.Proof,
+	piInfo PiInfo,
 	publicInput fr.Element,
 ) (
 	plonk.Proof,
@@ -27,7 +28,7 @@ func MakeProof(
 	assignment, err := AssignAggregationCircuit(
 		maxNbProof,
 		proofClaims,
-		piProof,
+		piInfo,
 		publicInput,
 	)
 
@@ -45,11 +46,16 @@ func MakeProof(
 }
 
 // Assigns the proof using placeholders
-func AssignAggregationCircuit(maxNbProof int, proofClaims []ProofClaimAssignment, publicInputProof plonk.Proof, publicInput fr.Element) (c *Circuit, err error) {
+func AssignAggregationCircuit(maxNbProof int, proofClaims []ProofClaimAssignment, piInfo PiInfo, publicInput fr.Element) (c *Circuit, err error) {
 
 	c = &Circuit{
-		ProofClaims: make([]proofClaim, maxNbProof),
-		PublicInput: publicInput,
+		ProofClaims:                    make([]proofClaim, maxNbProof),
+		PublicInputWitnessClaimIndexes: utils.ToVariableSlice(piInfo.ActualIndexes),
+		PublicInput:                    publicInput,
+	}
+
+	if c.PublicInputProof, c.PublicInputWitness, err = piInfo.claim(); err != nil {
+		return nil, fmt.Errorf("while emulating the PI proof claim: %w", err)
 	}
 
 	for i := range c.ProofClaims {

@@ -14,7 +14,6 @@ import (
 	"golang.org/x/exp/constraints"
 	"math"
 	"math/big"
-	"os"
 	"strings"
 	"testing"
 )
@@ -170,16 +169,6 @@ func BlocksToHex(b ...[][32]byte) []string {
 		}
 	}
 	return res
-}
-
-type FakeTestingT struct{}
-
-func (FakeTestingT) Errorf(format string, args ...interface{}) {
-	panic(fmt.Sprintf(format+"\n", args...))
-}
-
-func (FakeTestingT) FailNow() {
-	os.Exit(-1)
 }
 
 func RandIntN(n int) int {

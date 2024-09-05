@@ -52,8 +52,8 @@ func TestCreateCols(t *testing.T) {
 			In:                in,
 			InLength:          make([]frontend.Variable, len(c.in)),
 			Lanes:             make([]frontend.Variable, len(c.lanes)),
-			IsFirstLaneOfHash: internal.ToVariableSlice(c.isFirstLaneOfHash),
-			IsLaneActive:      internal.ToVariableSlice(c.isLaneActive),
+			IsFirstLaneOfHash: utils.ToVariableSlice(c.isFirstLaneOfHash),
+			IsLaneActive:      utils.ToVariableSlice(c.isLaneActive),
 			Hash:              hash,
 		}
 
@@ -264,7 +264,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 		t.Run(fmt.Sprintf("%d-%s", i, internal.Ite(fail, "fail", "pass")), func(t *testing.T) {
 
 			assignment := testCreateColsBoundaryChecks{
-				InLength: internal.ToVariableSlice(c.inLength),
+				InLength: utils.ToVariableSlice(c.inLength),
 			}
 
 			err := test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField())
