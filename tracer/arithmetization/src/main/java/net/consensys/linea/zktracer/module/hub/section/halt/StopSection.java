@@ -46,7 +46,7 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
   public StopSection(Hub hub) {
     // 3 = 1 + max_NON_STACK_ROWS in message call case
     // 5 = 1 + max_NON_STACK_ROWS in deployment case
-    super(hub, hub.callStack().current().isMessageCall() ? (short) 3 : (short) 5);
+    super(hub, hub.callStack().currentCallFrame().isMessageCall() ? (short) 3 : (short) 5);
     hub.defers().scheduleForPostTransaction(this); // always
 
     hubStamp = hub.stamp();
@@ -111,7 +111,7 @@ public class StopSection extends TraceSection implements PostRollbackDefer, Post
     AccountFragment lastAccountFragment = (AccountFragment) this.fragments().getLast();
     DomSubStampsSubFragment undoingDomSubStamps =
         DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-            hubStamp, hub.callStack().current().revertStamp(), 1);
+            hubStamp, hub.callStack().currentCallFrame().revertStamp(), 1);
 
     this.addFragments(
         hub.factories()

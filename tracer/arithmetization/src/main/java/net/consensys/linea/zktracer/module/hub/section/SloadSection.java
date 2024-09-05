@@ -114,7 +114,7 @@ public class SloadSection extends TraceSection implements PostRollbackDefer {
     //  so that we can use its revert stamp ()
     final DomSubStampsSubFragment undoingDomSubStamps =
         DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-            this.hubStamp(), hub.callStack().current().revertStamp(), 0);
+            this.hubStamp(), hub.callStack().currentCallFrame().revertStamp(), 0);
 
     final StorageFragment undoingSloadStorageFragment =
         new StorageFragment(

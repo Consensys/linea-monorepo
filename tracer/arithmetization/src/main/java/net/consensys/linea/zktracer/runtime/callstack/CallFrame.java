@@ -104,7 +104,7 @@ public class CallFrame {
   @Getter @Setter private int pc;
   @Getter @Setter private OpCode opCode = OpCode.STOP;
   @Getter @Setter private OpCodeData opCodeData = OpCodes.of(OpCode.STOP);
-  @Getter private MessageFrame frame;
+  @Getter private MessageFrame frame; // TODO: can we make this final ?
 
   /** the ether amount given to this frame. */
   @Getter private Wei value = Wei.fromHexString("0xBadF00d"); // Marker for debugging

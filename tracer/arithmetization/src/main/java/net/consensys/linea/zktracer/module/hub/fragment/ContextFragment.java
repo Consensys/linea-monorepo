@@ -51,7 +51,7 @@ public class ContextFragment implements TraceFragment {
         callStack,
         Either.right(contextNumber),
         callStack.getByContextNumber(contextNumber).returnDataContextNumber(),
-        callStack.current().returnDataSpan().snapshot(),
+        callStack.currentCallFrame().returnDataSpan().snapshot(),
         false);
   }
 
@@ -62,12 +62,12 @@ public class ContextFragment implements TraceFragment {
         callStack,
         Either.left(contextId),
         callStack.getById(contextId).returnDataContextNumber(),
-        callStack.current().returnDataSpan().snapshot(),
+        callStack.currentCallFrame().returnDataSpan().snapshot(),
         false);
   }
 
   public static ContextFragment readCurrentContextData(final Hub hub) {
-    return readContextDataById(hub, hub.callStack().current().id());
+    return readContextDataById(hub, hub.callStack().currentCallFrame().id());
   }
 
   public static ContextFragment initializeNewExecutionContext(final Hub hub) {
@@ -86,7 +86,7 @@ public class ContextFragment implements TraceFragment {
         hub,
         callStack,
         Either.left(callStack.parent().id()),
-        hub.callStack().current().contextNumber(),
+        hub.callStack().currentCallFrame().contextNumber(),
         MemorySpan.empty(),
         true);
   }
@@ -103,7 +103,7 @@ public class ContextFragment implements TraceFragment {
     return new ContextFragment(
         hub,
         callStack,
-        Either.left(callStack.current().id()),
+        Either.left(callStack.currentCallFrame().id()),
         hub.newChildContextNumber(),
         MemorySpan.empty(),
         true);
@@ -116,7 +116,7 @@ public class ContextFragment implements TraceFragment {
         callStack,
         Either.left(callStack.parent().id()),
         hub.currentFrame().contextNumber(),
-        callStack.current().outputDataSpan(),
+        callStack.currentCallFrame().outputDataSpan(),
         true);
   }
 
@@ -128,7 +128,7 @@ public class ContextFragment implements TraceFragment {
         callStack,
         Either.right(receiverContextNumber),
         providerContextNumber,
-        callStack.current().returnDataSpan().snapshot(),
+        callStack.currentCallFrame().returnDataSpan().snapshot(),
         true);
     // TODO: is this what we want ?
     //  also: will the latestReturnData have been updated ?
@@ -139,7 +139,7 @@ public class ContextFragment implements TraceFragment {
     return new ContextFragment(
         hub,
         hub.callStack(),
-        Either.right(hub.callStack().current().contextNumber()),
+        Either.right(hub.callStack().currentCallFrame().contextNumber()),
         returnDataContextNumber,
         returnDataMetaInfo,
         true);

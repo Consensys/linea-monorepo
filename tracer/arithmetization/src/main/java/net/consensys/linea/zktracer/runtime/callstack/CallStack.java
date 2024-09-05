@@ -54,8 +54,8 @@ public final class CallStack {
   /** the current depth of the call stack. */
   @Getter private int depth;
 
-  /** a "pointer" to the current {@link CallFrame} in <code>frames</code>. */
-  private int current;
+  /** a "pointer" to the currentId {@link CallFrame} in <code>frames</code>. */
+  private int currentId;
 
   public void newPrecompileResult(
       final int hubStamp,
@@ -79,7 +79,7 @@ public final class CallStack {
             Bytecode.EMPTY,
             precompileAddress,
             -1,
-            this.current,
+            this.currentId,
             precompileResult,
             returnDataOffset,
             precompileResult.size());
@@ -116,7 +116,7 @@ public final class CallStack {
         0,
         callData.size(),
         callDataContextNumber);
-    this.current = this.callFrames.size() - 1;
+    this.currentId = this.callFrames.size() - 1;
   }
 
   /**
@@ -151,14 +151,14 @@ public final class CallStack {
         // useless
         // useless
         );
-    this.current = this.callFrames.size() - 1;
+    this.currentId = this.callFrames.size() - 1;
   }
 
   /**
    * @return the currently executing {@link CallFrame}
    */
-  public CallFrame current() {
-    return this.callFrames.get(this.current);
+  public CallFrame currentCallFrame() {
+    return this.callFrames.get(this.currentId);
   }
 
   public boolean isEmpty() {
@@ -173,15 +173,15 @@ public final class CallStack {
    * @return the parent {@link CallFrame} of the current frame
    */
   public CallFrame parent() {
-    if (this.current().callerId() != -1) {
-      return this.callFrames.get(this.current().callerId());
+    if (this.currentCallFrame().callerId() != -1) {
+      return this.callFrames.get(this.currentCallFrame().callerId());
     } else {
       return CallFrame.EMPTY;
     }
   }
 
   public Optional<CallFrame> maybeCurrent() {
-    return this.callFrames.isEmpty() ? Optional.empty() : Optional.of(this.current());
+    return this.callFrames.isEmpty() ? Optional.empty() : Optional.of(this.currentCallFrame());
   }
 
   /**
@@ -214,7 +214,7 @@ public final class CallStack {
       long callDataOffset,
       long callDataSize,
       long callDataContextNumber) {
-    final int callerId = this.depth == -1 ? -1 : this.current;
+    final int callerId = this.depth == -1 ? -1 : this.currentId;
     final int newCallFrameId = this.callFrames.size();
     this.depth += 1;
 
@@ -244,7 +244,7 @@ public final class CallStack {
             callDataSize);
 
     this.callFrames.add(newFrame);
-    this.current = newCallFrameId;
+    this.currentId = newCallFrameId;
     if (callerId != -1) {
       this.callFrames.get(callerId).returnData(Bytes.EMPTY);
       this.callFrames.get(callerId).childFramesId().add(newCallFrameId);
@@ -258,7 +258,7 @@ public final class CallStack {
   public void exit() {
     this.depth -= 1;
     Preconditions.checkState(this.depth >= 0);
-    this.current = this.current().callerId();
+    this.currentId = this.currentCallFrame().callerId();
   }
 
   /**
@@ -279,7 +279,7 @@ public final class CallStack {
    * @return whether the current frame is a static context
    */
   public boolean isStatic() {
-    return this.current().type() == CallFrameType.STATIC;
+    return this.currentCallFrame().type() == CallFrameType.STATIC;
   }
 
   /**
@@ -288,7 +288,7 @@ public final class CallStack {
    * @return the caller of the current frame
    */
   public CallFrame caller() {
-    return this.callFrames.get(this.current().callerId());
+    return this.callFrames.get(this.currentCallFrame().callerId());
   }
 
   /**
@@ -350,6 +350,6 @@ public final class CallStack {
   }
 
   public void revert(int stamp) {
-    this.current().revert(this, stamp);
+    this.currentCallFrame().revert(this, stamp);
   }
 }
