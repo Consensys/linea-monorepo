@@ -1,4 +1,16 @@
 # Changelog
+
+## 0.5.3-beta
+* fix(return): OOGX for return for deployment + call SHAKIRA for return + cleaning ([#1105](https://github.com/Consensys/linea-tracer/pull/1105))
+* Failing tests file ([#1098](https://github.com/Consensys/linea-tracer/pull/1098))
+* fix(oob): inst modexp pircing f of max ([#1107](https://github.com/Consensys/linea-tracer/pull/1107))
+* chore: add validation and usage for bulk capture ([#1096](https://github.com/Consensys/linea-tracer/pull/1096))
+* TX_SKIP: canonical snapshots + preconditions ([#1094](https://github.com/Consensys/linea-tracer/pull/1094))
+* feat: update replay tests with tx outcomes ([#1091](https://github.com/Consensys/linea-tracer/pull/1091))
+* Tweak Memory Settings for Go Corset
+* fix(selfdestruct): invoke selfDestructAtTransactionEnd ([#1022](https://github.com/Consensys/linea-tracer/pull/1022))
+* Renaming zkevm-constraints to linea-constraints + .gitmodules update ([#1083](https://github.com/Consensys/linea-tracer/pull/1083))
+
 ## 0.5.2-beta
 * fix(callDataCopy): source ID ([#1081](https://github.com/Consensys/linea-tracer/pull/1081))
 * add a binary search script ([#1073](https://github.com/Consensys/linea-tracer/pull/1073))
