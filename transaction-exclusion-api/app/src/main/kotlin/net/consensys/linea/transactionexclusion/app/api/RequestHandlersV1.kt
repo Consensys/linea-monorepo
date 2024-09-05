@@ -65,7 +65,7 @@ class SaveRejectedTransactionRequestHandlerV1(
   enum class RequestParams(val paramName: String) {
     TX_REJECTION_STAGE("txRejectionStage"),
     TIMESTAMP("timestamp"),
-    REASON_MESSAGE("reasonMessage"),
+    REASON("reason"),
     TRANSACTION_RLP("transactionRLP"),
     BLOCK_NUMBER("blockNumber"),
     OVERFLOWS("overflows")
@@ -127,7 +127,7 @@ class SaveRejectedTransactionRequestHandlerV1(
           transactionRLP = validatedRequest
             .params[RequestParams.TRANSACTION_RLP.paramName].toString(),
           reasonMessage = validatedRequest
-            .params[RequestParams.REASON_MESSAGE.paramName].toString(),
+            .params[RequestParams.REASON.paramName].toString(),
           overflows = validatedRequest
             .params[RequestParams.OVERFLOWS.paramName]!!
         )
@@ -183,7 +183,9 @@ class SaveRejectedTransactionRequestHandlerV1(
         result.map {
           val rpcResult =
             JsonObject()
+              .put("status", it.name)
               .put("txHash", rejectedTransaction.transactionInfo!!.hash.encodeHex())
+              .put("reason", rejectedTransaction.reasonMessage)
           JsonRpcSuccessResponse(request.id, rpcResult)
         }.mapError { error ->
           JsonRpcErrorResponse(request.id, jsonRpcError(error))

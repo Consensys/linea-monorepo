@@ -9,7 +9,8 @@ enum class LineaMetricsCategory {
   BATCH,
   BLOB,
   AGGREGATION,
-  GAS_PRICE_CAP;
+  GAS_PRICE_CAP,
+  TX_EXCLUSION_API;
 
   override fun toString(): String {
     return this.name.replace('_', '.').lowercase()

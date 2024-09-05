@@ -8,6 +8,7 @@ import io.vertx.micrometer.backends.BackendRegistries
 import io.vertx.sqlclient.SqlClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.async.toVertxFuture
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.app.api.Api
@@ -57,6 +58,7 @@ class TransactionExclusionApp(config: AppConfig) {
   private val rejectedTransactionsRepository: RejectedTransactionsRepository
   private val transactionExclusionService: TransactionExclusionServiceV1
   private val rejectedTransactionCleanupService: RejectedTransactionCleanupService
+  private val micrometerMetricsFacade: MicrometerMetricsFacade
 
   init {
     log.debug("System properties: {}", System.getProperties())
@@ -65,6 +67,7 @@ class TransactionExclusionApp(config: AppConfig) {
     log.info("App configs: {}", config)
     this.vertx = Vertx.vertx(vertxConfig)
     this.meterRegistry = BackendRegistries.getDefaultNow()
+    this.micrometerMetricsFacade = MicrometerMetricsFacade(meterRegistry, "linea")
     this.sqlReadClient = initDb(
       connectionConfig = config.database.read,
       schema = config.database.schema,
@@ -89,7 +92,8 @@ class TransactionExclusionApp(config: AppConfig) {
       )
     )
     this.transactionExclusionService = TransactionExclusionServiceV1Impl(
-      repository = this.rejectedTransactionsRepository
+      repository = this.rejectedTransactionsRepository,
+      metricsFacade = this.micrometerMetricsFacade
     )
     this.rejectedTransactionCleanupService = RejectedTransactionCleanupService(
       config = RejectedTransactionCleanupService.Config(
