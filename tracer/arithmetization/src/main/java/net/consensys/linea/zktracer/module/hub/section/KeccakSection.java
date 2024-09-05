@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.KECCAK;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.PostOpcodeDefer;

@@ -24,11 +24,13 @@ import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHAS
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_DATA;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_RESULT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.KECCAK;
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.RIPEMD;
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.SHA256;
+import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.RIPEMD;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.SHA256;
 import static net.consensys.linea.zktracer.module.shakiradata.Trace.INDEX_MAX_RESULT;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+import static org.hyperledger.besu.crypto.Hash.keccak256;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -36,12 +38,11 @@ import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.crypto.Hash;
 
 @Accessors(fluent = true)
 public class ShakiraDataOperation extends ModuleOperation {
 
-  @Getter private final HashType hashType;
+  @Getter private final HashFunction hashType;
   private final Bytes hashInput;
   @Getter private final long ID;
   @Getter private final int inputSize;
@@ -49,31 +50,30 @@ public class ShakiraDataOperation extends ModuleOperation {
   private final int indexMaxData;
   private Bytes32 result;
 
-  // TODO: deprecate in favour of the version with the return data argument
   public ShakiraDataOperation(
-      final long hubStamp, final HashType precompileType, final Bytes hashInput) {
-    this.hashType = precompileType;
-    this.ID = hubStamp + 1;
-    this.hashInput = hashInput;
-    this.inputSize = hashInput.size();
-    this.lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
+      final int hubStamp, final HashFunction hashFunction, final Bytes input) {
+    final Bytes32 hash = keccak256(input);
+
+    hashType = hashFunction;
+    ID = newIdentifierFromStamp(hubStamp);
+    hashInput = input;
+    inputSize = input.size();
+    lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
     // this.indexMaxData = Math.ceilDiv(inputSize, LLARGE) - 1;
-    this.indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
+    indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
+    result = Bytes32.leftPad(hash);
   }
 
   public ShakiraDataOperation(
-      final int hubStamp,
-      final HashType precompileType,
-      final Bytes hashInput,
-      final Bytes result) {
-    this.hashType = precompileType;
-    this.ID = hubStamp + 1;
-    this.hashInput = hashInput;
-    this.inputSize = hashInput.size();
-    this.lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
+      final int hubStamp, final HashFunction hashFunction, final Bytes input, final Bytes hash) {
+    hashType = hashFunction;
+    ID = newIdentifierFromStamp(hubStamp);
+    hashInput = input;
+    inputSize = input.size();
+    lastNBytes = (short) (inputSize % LLARGE == 0 ? LLARGE : inputSize % LLARGE);
     // this.indexMaxData = Math.ceilDiv(inputSize, LLARGE) - 1;
-    this.indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
-    this.result = Bytes32.leftPad(result);
+    indexMaxData = (inputSize + LLARGEMO) / LLARGE - 1;
+    result = Bytes32.leftPad(hash);
   }
 
   @Override
@@ -82,8 +82,6 @@ public class ShakiraDataOperation extends ModuleOperation {
   }
 
   void trace(Trace trace, final int stamp) {
-
-    this.result = Bytes32.leftPad(this.computeResult());
     traceData(trace, stamp);
     traceResult(trace, stamp);
   }
@@ -171,14 +169,5 @@ public class ShakiraDataOperation extends ModuleOperation {
             .validateRow();
       }
     }
-  }
-
-  // TODO: this should die, we should use teh result from BESU
-  private Bytes computeResult() {
-    return switch (hashType) {
-      case SHA256 -> Hash.sha256(hashInput);
-      case KECCAK -> Hash.keccak256(hashInput);
-      case RIPEMD -> Hash.ripemd160(hashInput);
-    };
   }
 }

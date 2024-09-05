@@ -20,8 +20,8 @@ import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstru
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_SHA2;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.RIPEMD;
-import static net.consensys.linea.zktracer.module.shakiradata.HashType.SHA256;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.RIPEMD;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.SHA256;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;

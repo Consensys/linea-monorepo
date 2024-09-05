@@ -16,12 +16,14 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
 
 import java.util.Optional;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
@@ -39,10 +41,14 @@ public class ReturnFromDeployment extends MmuCall {
 
     this.hub = hub;
 
-    // TODO: get the metaData directly from the hub
     final Address contractAddress = hub.messageFrame().getContractAddress();
     final int depNumber = hub.deploymentNumberOf(contractAddress);
-    this.contract = ContractMetadata.underDeployment(contractAddress, depNumber);
+    contract = ContractMetadata.underDeployment(contractAddress, depNumber);
+
+    final ShakiraDataOperation shakiraDataOperation =
+        new ShakiraDataOperation(hub.stamp(), KECCAK, hub.romLex().getCodeByMetadata(contract));
+
+    hub.shakiraData().call(shakiraDataOperation);
 
     this.sourceId(hub.currentFrame().contextNumber())
         .sourceRamBytes(

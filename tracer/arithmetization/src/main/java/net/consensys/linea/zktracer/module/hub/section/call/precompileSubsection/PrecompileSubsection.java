@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.*;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
@@ -182,7 +183,7 @@ public class PrecompileSubsection
   }
 
   public int exoModuleOperationId() {
-    return callSection.hubStamp() + 1;
+    return newIdentifierFromStamp(callSection.hubStamp());
   }
 
   public int returnDataContextNumber() {
