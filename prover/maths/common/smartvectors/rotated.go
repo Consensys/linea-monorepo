@@ -61,6 +61,12 @@ func (r *Rotated) Get(n int) field.Element {
 // Returns a particular element. The subvector is taken at indices
 // [start, stop). (stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
+
+	if stop+r.offset < len(r.v) && start+r.offset > 0 {
+		res := Regular(r.v[start+r.offset : stop+r.offset])
+		return &res
+	}
+
 	res := make([]field.Element, stop-start)
 	size := r.Len()
 	spanSize := stop - start
