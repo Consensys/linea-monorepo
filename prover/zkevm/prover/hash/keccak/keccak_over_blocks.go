@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/base_conversion.go"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )

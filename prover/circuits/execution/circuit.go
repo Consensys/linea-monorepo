@@ -4,11 +4,9 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm"
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
@@ -103,7 +101,6 @@ func MakeProof(
 		setup.Circuit,
 		setup.ProvingKey,
 		witness,
-		backend.WithSolverOptions(gkrmimc.SolverOpts(setup.Circuit)...),
 		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
 	)
 	if err != nil {

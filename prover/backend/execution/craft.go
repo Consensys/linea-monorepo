@@ -87,7 +87,7 @@ func CraftProverOutput(
 	inspectStateManagerTraces(req, &rsp)
 
 	// Value of the first blocks
-	rsp.FirstBlockNumber = int(blocks[0].NumberU64())
+	rsp.FirstBlockNumber = utils.ToInt(blocks[0].NumberU64())
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
