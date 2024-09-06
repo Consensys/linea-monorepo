@@ -20,7 +20,7 @@ import static net.consensys.linea.testing.ToyExecutionEnvironment.DEFAULT_COINBA
 import java.util.List;
 
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import org.apache.tuweni.bytes.Bytes;
@@ -194,7 +194,7 @@ public class TxSkipTests {
                     receiverAccount))
             .build();
 
-    ToyExecutionEnvironment.builder()
+    ToyExecutionEnvironmentV2.builder()
         .toyWorld(toyWorld)
         .transactions(txs)
         .zkTracerValidator(
