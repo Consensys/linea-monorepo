@@ -15,10 +15,15 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
+@Getter
+@Accessors(fluent = true)
 public final class Sha256Blocks implements CountingOnlyModule {
-
+  private final CountOnlyOperation counts = new CountOnlyOperation();
   private static final int PRECOMPILE_BASE_GAS_FEE = 60;
   private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 12;
   private static final int SHA256_BLOCKSIZE = 64 * 8;

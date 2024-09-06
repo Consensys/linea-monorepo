@@ -17,9 +17,15 @@ package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import static com.google.common.base.Preconditions.*;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
+@Getter
+@Accessors(fluent = true)
 public final class BlakeEffectiveCall implements CountingOnlyModule {
+  private final CountOnlyOperation counts = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {

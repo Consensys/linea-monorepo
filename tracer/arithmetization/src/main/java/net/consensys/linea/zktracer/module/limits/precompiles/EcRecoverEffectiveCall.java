@@ -17,11 +17,17 @@ package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import static com.google.common.base.Preconditions.*;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
 @RequiredArgsConstructor
+@Getter
+@Accessors(fluent = true)
 public final class EcRecoverEffectiveCall implements CountingOnlyModule {
+  private final CountOnlyOperation counts = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {

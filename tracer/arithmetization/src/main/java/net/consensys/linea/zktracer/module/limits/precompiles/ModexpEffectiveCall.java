@@ -16,16 +16,19 @@
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
+@Getter
 @Slf4j
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class ModexpEffectiveCall implements CountingOnlyModule {
-
+  private final CountOnlyOperation counts = new CountOnlyOperation();
   public static final int PROVER_MAX_INPUT_BYTE_SIZE = 4096 / 8;
 
   @Override
