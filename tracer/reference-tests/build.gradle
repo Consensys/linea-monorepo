@@ -84,7 +84,6 @@ tasks.register('referenceTests', Test) {
 
 
 dependencies {
-  testImplementation project(":arithmetization")
   testImplementation "${besuArtifactGroup}:besu-datatypes"
   testImplementation "${besuArtifactGroup}:evm"
   testImplementation "${besuArtifactGroup}.internal:config:${besuVersion}"
@@ -103,4 +102,7 @@ dependencies {
 
   testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
   testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+
+  implementation project(":arithmetization")
+  implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
 }
