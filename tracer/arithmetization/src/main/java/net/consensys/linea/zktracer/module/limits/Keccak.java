@@ -18,14 +18,20 @@ package net.consensys.linea.zktracer.module.limits;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcRecoverEffectiveCall;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 
 @RequiredArgsConstructor
+@Getter
+@Accessors(fluent = true)
 public class Keccak implements CountingOnlyModule {
+  private final CountOnlyOperation counts = new CountOnlyOperation();
   private static final int ADDRESS_BYTES = Address.SIZE;
   private static final int HASH_BYTES = Hash.SIZE;
   private static final int L1_MSG_INDICES_BYTES = 8;

@@ -18,16 +18,19 @@ package net.consensys.linea.zktracer.module.limits.precompiles;
 import static net.consensys.linea.zktracer.CurveOperations.*;
 
 import com.google.common.base.Preconditions;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
 @Slf4j
 @RequiredArgsConstructor
 @Accessors(fluent = true)
+@Getter
 public final class EcPairingFinalExponentiations implements CountingOnlyModule {
-
+  private final CountOnlyOperation counts = new CountOnlyOperation();
   private static final int PRECOMPILE_BASE_GAS_FEE = 45_000; // cf EIP-1108
   private static final int PRECOMPILE_MILLER_LOOP_GAS_FEE = 34_000; // cf EIP-1108
   private static final int ECPAIRING_NB_BYTES_PER_MILLER_LOOP = 192;

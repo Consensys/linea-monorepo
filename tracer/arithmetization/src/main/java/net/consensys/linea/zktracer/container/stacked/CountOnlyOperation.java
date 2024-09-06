@@ -17,9 +17,11 @@ package net.consensys.linea.zktracer.container.stacked;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class CountOnlyOperation {
 
   private int countCommitedToTheConflation = 0;

@@ -24,26 +24,26 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
 /** A {@link CountingOnlyModule} is a {@link Module} that only counts certain outcomes. */
 public interface CountingOnlyModule extends Module {
-  CountOnlyOperation counts = new CountOnlyOperation();
+  CountOnlyOperation counts();
 
   @Override
   default void enterTransaction() {
-    counts.enter();
+    counts().enter();
   }
 
   @Override
   default void popTransaction() {
-    counts.pop();
+    counts().pop();
   }
 
   @Override
   default int lineCount() {
-    return counts.lineCount();
+    return counts().lineCount();
   }
 
   default void addPrecompileLimit(final int count) {
     Preconditions.checkArgument(count >= 0, "Must be positive");
-    counts.add(count);
+    counts().add(count);
   }
 
   @Override

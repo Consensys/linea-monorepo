@@ -15,11 +15,17 @@
 
 package net.consensys.linea.zktracer.module.limits.precompiles;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
 @RequiredArgsConstructor
+@Getter
+@Accessors(fluent = true)
 public final class RipemdBlocks implements CountingOnlyModule {
+  private final CountOnlyOperation counts = new CountOnlyOperation();
   private static final int PRECOMPILE_BASE_GAS_FEE = 600;
   private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 120;
   private static final int RIPEMD160_BLOCKSIZE = 64 * 8;
