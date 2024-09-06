@@ -133,7 +133,7 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		arithmetization.Assign(run, input.ExecTracesFPath)
+		z.arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
 		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
@@ -153,5 +153,5 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 // Limits returns the configuration limits used to instantiate the current
 // zk-EVM.
 func (z *ZkEvm) Limits() *config.TracesLimits {
-	return z.arithmetization.Settings.Traces
+	return z.arithmetization.Settings.Limits
 }

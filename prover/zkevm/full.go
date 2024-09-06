@@ -113,7 +113,7 @@ func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 		// actually feature-gated.
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Traces: tl,
+				Limits: tl,
 			},
 			Statemanager: statemanager.Settings{
 				AccSettings: accumulator.Settings{
