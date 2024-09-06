@@ -34,7 +34,5 @@ func getParamsFromCLI() (cfg *config.Config, traceFPath string, err error) {
 		return nil, "", fmt.Errorf("could not parse the config: %w", err)
 	}
 
-	fmt.Printf("the file = %v\n", traceFPath)
-
 	return cfg, traceFPathCLI, nil
 }

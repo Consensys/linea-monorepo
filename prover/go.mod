@@ -1,6 +1,6 @@
 module github.com/consensys/zkevm-monorepo/prover
 
-go 1.22
+go 1.22.1
 
 toolchain go1.23.0
 
@@ -9,6 +9,7 @@ require (
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.10.1-0.20240904184047-9db0eff0e5d3
 	github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef
+	github.com/consensys/go-corset v0.0.0-20240905174341-c6d9a8f65e0d
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/fxamacker/cbor/v2 v2.7.0

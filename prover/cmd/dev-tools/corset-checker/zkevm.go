@@ -6,17 +6,17 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
 )
 
+var globalArith *arithmetization.Arithmetization
+
 func MakeDefine(cfg *config.Config) wizard.DefineFunc {
-	return func(b *wizard.Builder) {
-		_ = arithmetization.NewArithmetization(
-			b,
-			arithmetization.Settings{Traces: &cfg.TracesLimits},
-		)
+	return func(build *wizard.Builder) {
+		globalArith = arithmetization.NewArithmetization(build, arithmetization.Settings{Limits: &cfg.TracesLimits})
+
 	}
 }
 
 func MakeProver(traceFile string) wizard.ProverStep {
 	return func(run *wizard.ProverRuntime) {
-		arithmetization.Assign(run, traceFile)
+		globalArith.Assign(run, traceFile)
 	}
 }

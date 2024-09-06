@@ -1,23 +1,26 @@
 linters:
   disable-all: true
+  # @alex: we will need to sort out the linters because they take too much time
+  # and memory to run practically since we merged go-corset. We shall revise
+  # our toolset.
   enable:
     - gofmt
-    - staticcheck
+    # - staticcheck
     - gosec
-    - gosimple
-    - govet
+    # - gosimple
+    # - govet
     - ineffassign
 
 run:
   issues-exit-code: 1
   # List of build tags, all linters use it.
   # Default: [].
-  build-tags:
-    - nocorset
+  # build-tags:
 
 issues:
   exclude-dirs:
     - compressor
+    - zkevm/arithmetization
   exclude:
     # Only appears on CI
     - '.*printf: non-constant format string in call to.*'
