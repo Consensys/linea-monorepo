@@ -51,12 +51,7 @@ class TransactionExclusionServiceV1Impl(
                 )
               } else {
                 SafeFuture.completedFuture(
-                  Err(
-                    TransactionExclusionError(
-                      ErrorType.OTHER_ERROR,
-                      error.message ?: ""
-                    )
-                  )
+                  Err(TransactionExclusionError(ErrorType.OTHER_ERROR, error.message ?: ""))
                 )
               }
             }
@@ -67,17 +62,26 @@ class TransactionExclusionServiceV1Impl(
   override fun getTransactionExclusionStatus(
     txHash: ByteArray
   ): SafeFuture<Result<RejectedTransaction, TransactionExclusionError>> {
-    return this.repository.findRejectedTransaction(txHash).thenApply {
-      if (it == null) {
-        Err(
-          TransactionExclusionError(
-            ErrorType.TRANSACTION_UNAVAILABLE,
-            "Cannot find the rejected transaction with hash=${txHash.encodeHex()}"
+    return this.repository.findRejectedTransaction(txHash)
+      .handleComposed { result, error ->
+        if (error != null) {
+          SafeFuture.completedFuture(
+            Err(TransactionExclusionError(ErrorType.OTHER_ERROR, error.message ?: ""))
           )
-        )
-      } else {
-        Ok(it)
+        } else {
+          if (result == null) {
+            SafeFuture.completedFuture(
+              Err(
+                TransactionExclusionError(
+                  ErrorType.TRANSACTION_UNAVAILABLE,
+                  "Cannot find the rejected transaction with hash=${txHash.encodeHex()}"
+                )
+              )
+            )
+          } else {
+            SafeFuture.completedFuture(Ok(result))
+          }
+        }
       }
-    }
   }
 }
