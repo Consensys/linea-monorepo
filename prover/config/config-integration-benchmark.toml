@@ -1,4 +1,4 @@
-environment = "integration-full"
+environment = "integration-benchmark"
 version = "3.0.0"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 1                                  # TODO @gbotrel will be refactored with new logger. 
