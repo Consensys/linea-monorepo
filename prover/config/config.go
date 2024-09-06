@@ -87,7 +87,7 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 type Config struct {
 	// Environment stores the environment in which the application is running.
 	// It enables us have a clear domain separation for generated assets.
-	Environment string `validate:"required,oneof=mainnet sepolia devnet integration-development integration-full"`
+	Environment string `validate:"required,oneof=mainnet sepolia devnet integration-development integration-full integration-benchmark"`
 
 	// TODO @gbotrel define explicitly where we use that and for why;
 	// if we supply as is to coordinator in responses, coordinator should parse semver
