@@ -65,7 +65,7 @@ class SaveRejectedTransactionRequestHandlerV1(
   enum class RequestParams(val paramName: String) {
     TX_REJECTION_STAGE("txRejectionStage"),
     TIMESTAMP("timestamp"),
-    REASON("reason"),
+    REASON_MESSAGE("reasonMessage"),
     TRANSACTION_RLP("transactionRLP"),
     BLOCK_NUMBER("blockNumber"),
     OVERFLOWS("overflows")
@@ -127,7 +127,7 @@ class SaveRejectedTransactionRequestHandlerV1(
           transactionRLP = validatedRequest
             .params[RequestParams.TRANSACTION_RLP.paramName].toString(),
           reasonMessage = validatedRequest
-            .params[RequestParams.REASON.paramName].toString(),
+            .params[RequestParams.REASON_MESSAGE.paramName].toString(),
           overflows = validatedRequest
             .params[RequestParams.OVERFLOWS.paramName]!!
         )
@@ -185,7 +185,7 @@ class SaveRejectedTransactionRequestHandlerV1(
             JsonObject()
               .put("status", it.name)
               .put("txHash", rejectedTransaction.transactionInfo!!.hash.encodeHex())
-              .put("reason", rejectedTransaction.reasonMessage)
+              .put("reasonMessage", rejectedTransaction.reasonMessage)
           JsonRpcSuccessResponse(request.id, rpcResult)
         }.mapError { error ->
           JsonRpcErrorResponse(request.id, jsonRpcError(error))
@@ -254,7 +254,7 @@ class GetTransactionExclusionStatusRequestHandlerV1(
               .put("from", it.transactionInfo!!.from.encodeHex())
               .put("nonce", it.transactionInfo!!.nonce.toHexString())
               .put("txRejectionStage", it.txRejectionStage.name)
-              .put("reason", it.reasonMessage)
+              .put("reasonMessage", it.reasonMessage)
               .put("timestamp", it.timestamp.toString())
               .also { jsonObject ->
                 if (it.blockNumber != null) {

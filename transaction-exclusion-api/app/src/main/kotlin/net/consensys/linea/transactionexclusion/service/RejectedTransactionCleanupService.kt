@@ -10,9 +10,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 
 class RejectedTransactionCleanupService(
-  private val config: Config,
   vertx: Vertx,
+  private val config: Config,
   private val repository: RejectedTransactionsRepository,
+  private val clock: Clock = Clock.System,
   private val log: Logger = LogManager.getLogger(RejectedTransactionCleanupService::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
@@ -26,7 +27,7 @@ class RejectedTransactionCleanupService(
 
   override fun action(): SafeFuture<*> {
     return this.repository.deleteRejectedTransaction(
-      Clock.System.now().minus(config.storagePeriod)
+      clock.now().minus(config.storagePeriod)
     ).thenPeek {
       log.debug("Number of deleted rows = $it")
     }

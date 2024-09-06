@@ -6,15 +6,18 @@ import kotlinx.datetime.Instant
 import net.consensys.encodeHex
 
 data class ModuleOverflow(
-  @JsonProperty("module")
-  val module: String,
+  // The new property needs to be placed in
+  // alphabetical order; otherwise the integration
+  // test would fail due to object to json string function
   @JsonProperty("count")
   val count: Long,
   @JsonProperty("limit")
-  val limit: Long
+  val limit: Long,
+  @JsonProperty("module")
+  val module: String
 ) {
   // Jackson ObjectMapper requires a default constructor
-  constructor() : this("", 0L, 0L)
+  constructor() : this(0L, 0L, "")
 
   override fun toString(): String {
     return "module=$module count=$count limit=$limit"
