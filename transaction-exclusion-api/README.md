@@ -10,13 +10,13 @@ curl -H 'content-type:application/json' --data '{
     "id": "1",
     "jsonrpc": "2.0",
     "method": "linea_saveRejectedTransactionV1",
-    "params": [
-        "SEQUENCER",
-        "2024-08-22T09:18:51Z",
-        "12345",
-        "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8,
-        "Transaction line count for module ADD=402 is above the limit 70",
-        [
+    "params": {
+        "txRejectionStage": "SEQUENCER",
+        "timestamp": "2024-08-22T09:18:51Z",
+        "blockNumber": "12345",
+        "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
+        "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
+        "overflows": [
             {
                 "module": "ADD",
                 "count": 402,
@@ -28,7 +28,7 @@ curl -H 'content-type:application/json' --data '{
                 "limit": 400
             }
         ]
-    ]
+    }
 }' http://127.0.0.1:8082
 ```
 
@@ -52,8 +52,19 @@ curl -H 'content-type:application/json' --data '{
     "jsonrpc": "2.0",
     "id": "1",
     "result": {
+        "status": "SAVED",
         "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"
     }
+}
+```
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "result": {
+    "status": "DUPLICATE_ALREADY_SAVED_BEFORE",
+    "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"
+  }
 }
 ```
 
@@ -66,7 +77,8 @@ curl -H 'content-type:application/json' --data '{
         "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7",
         "from": "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2",
         "nonce": "0x64",
-        "reason": "Transaction line count for module ADD=402 is above the limit 70",
+        "txRejectionStage": "SEQUENCER",
+        "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "blockNumber": "0x3039",
         "timestamp": "2024-08-22T09:18:51Z"
     }
