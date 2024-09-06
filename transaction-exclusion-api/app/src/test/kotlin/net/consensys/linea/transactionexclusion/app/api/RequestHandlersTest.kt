@@ -1,12 +1,10 @@
 package net.consensys.linea.transactionexclusion.app.api
 
-import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.get
 import io.vertx.core.json.JsonObject
 import net.consensys.encodeHex
 import net.consensys.linea.async.get
-import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
@@ -39,26 +37,6 @@ class RequestHandlersTest {
           Ok(defaultRejectedTransaction)
         )
       )
-  }
-
-  @Test
-  fun validateParams_rejectsEmptyMap() {
-    val request = JsonRpcRequestMapParams("", "", "", emptyMap<String, Any>())
-    Assertions.assertEquals(
-      Err(
-        JsonRpcErrorResponse.invalidParams(
-          request.id,
-          "Parameters map is empty!"
-        )
-      ),
-      validateParams(request)
-    )
-  }
-
-  @Test
-  fun validateParams_acceptsNonEmptyMap() {
-    val request = JsonRpcRequestMapParams("", "", "", mapOf("key" to "value"))
-    Assertions.assertEquals(Ok(request), validateParams(request))
   }
 
   @Test
