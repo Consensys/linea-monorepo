@@ -15,13 +15,14 @@ import javax.sql.DataSource
 abstract class CleanDbTestSuiteParallel {
   private val host = "localhost"
   private val port = 5432
-  abstract val databaseName: String
   private val username = "postgres"
   private val password = "postgres"
+  abstract val databaseName: String
   private lateinit var dataSource: DataSource
   lateinit var pool: Pool
   lateinit var sqlClient: SqlClient
-  val target: String = "4"
+  var target: String = "4"
+  var migrationLocations: String = "classpath:db/"
 
   private fun createDataSource(databaseName: String): DataSource {
     return PGSimpleDataSource().also {
@@ -43,7 +44,7 @@ abstract class CleanDbTestSuiteParallel {
     sqlClient = vertxSqlClient(vertx, host, port, databaseName, username, password)
     // drop flyway db metadata table as well
     // to recreate new db tables;
-    Db.applyDbMigrations(dataSource, target)
+    Db.applyDbMigrations(dataSource, target, migrationLocations)
   }
 
   @AfterEach
