@@ -22,7 +22,7 @@ import java.util.List;
 
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -93,10 +93,8 @@ public class OobCallTest {
   @Test
   void TestRecursiveCallsWithBytecode() {
     final BytecodeRunner bytecodeRunner =
-        BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af1"))
-            .useToyExecutionEnvironmentV2(false);
-
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFFFL);
+        BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af1"));
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -155,7 +153,7 @@ public class OobCallTest {
                     "0xff277a62000000000000000000000000d8b934580fce35a11b58c6d73adee468a2833fa8"
                         + amountToSend.toString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
-            .gasLimit(0xffffffffL)
+            .gasLimit(0xffffffL)
             .value(Wei.ZERO)
             .keyPair(keyPair)
             .build();
@@ -165,16 +163,16 @@ public class OobCallTest {
             .accounts(List.of(userAccount, contractCallerAccount, contractCalleeAccount))
             .build();
 
-    final ToyExecutionEnvironment toyExecutionEnvironment =
-        ToyExecutionEnvironment.builder()
+    final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder()
             .toyWorld(toyWorld)
             .transaction(tx)
             .testValidator(x -> {})
             .build();
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironmentV2.run();
 
-    final Hub hub = toyExecutionEnvironment.getHub();
+    final Hub hub = toyExecutionEnvironmentV2.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
 
@@ -215,7 +213,7 @@ public class OobCallTest {
             .to(contractCallerAccount)
             .payload(Bytes.fromHexString("0x63acac8e" + iterations.toString().substring(2)))
             .transactionType(TransactionType.FRONTIER)
-            .gasLimit(0xFFFFFFFFL)
+            .gasLimit(0xFFFFFFL)
             .value(Wei.ZERO)
             .keyPair(keyPair)
             .build();
@@ -223,16 +221,16 @@ public class OobCallTest {
     final ToyWorld toyWorld =
         ToyWorld.builder().accounts(List.of(userAccount, contractCallerAccount)).build();
 
-    final ToyExecutionEnvironment toyExecutionEnvironment =
-        ToyExecutionEnvironment.builder()
+    final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder()
             .toyWorld(toyWorld)
             .transaction(tx)
             .testValidator(x -> {})
             .build();
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironmentV2.run();
 
-    final Hub hub = toyExecutionEnvironment.getHub();
+    final Hub hub = toyExecutionEnvironmentV2.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
 
