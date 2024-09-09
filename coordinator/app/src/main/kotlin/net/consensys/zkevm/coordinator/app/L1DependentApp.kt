@@ -89,12 +89,14 @@ import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalc
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import net.consensys.zkevm.ethereum.finalization.AggregationFinalizationCoordinator
+import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
 import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
 import org.apache.logging.log4j.LogManager
@@ -966,25 +968,17 @@ class L1DependentApp(
     }
 
   private val blockFinalizationHandlerMap = mapOf(
-    "finalized records cleanup" to { update: FinalizationMonitor.FinalizationUpdate ->
-      val batchesCleanup = batchesRepository.deleteBatchesUpToEndBlockNumber(update.blockNumber.toLong())
-      // Subtract 1 from block number because we do not want to delete the last blob as BlobCompressionProofCoordinator
-      // needs the shnarf from the previous blob
-      val blobsCleanup = blobsRepository.deleteBlobsUpToEndBlockNumber(
-        endBlockNumberInclusive = update.blockNumber - 2u
-      )
-      // Subtract 1 from block number because we do not want to delete the last aggregation
-      val aggregationsCleanup = aggregationsRepository
-        .deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive = update.blockNumber.toLong() - 2L)
-
-      SafeFuture.allOf(batchesCleanup, blobsCleanup, aggregationsCleanup)
-    },
-    "type 2 state proof provider finalization updates" to {
+    "finalized records cleanup" to RecordsCleanupFinalizationHandler(
+      batchesRepository = batchesRepository,
+      blobsRepository = blobsRepository,
+      aggregationsRepository = aggregationsRepository
+    ),
+    "type 2 state proof provider finalization updates" to FinalizationHandler {
       finalizedBlockNotifier.updateFinalizedBlock(
         BlockNumberAndHash(it.blockNumber, it.blockHash)
       )
     },
-    "last_proven_block_provider" to { update: FinalizationMonitor.FinalizationUpdate ->
+    "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
       lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
     }
   )
@@ -995,16 +989,13 @@ class L1DependentApp(
     }
   }
 
-  private fun cleanupDbDataAfterConflationResumeFromBlock(resumeConflationFrom: ULong): SafeFuture<*> {
-    val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(resumeConflationFrom.toLong())
-    val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(resumeConflationFrom)
-    val cleanupAggregations = aggregationsRepository.deleteAggregationsAfterBlockNumber(resumeConflationFrom.toLong())
-
-    return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
-  }
-
   override fun start(): CompletableFuture<Unit> {
-    return cleanupDbDataAfterConflationResumeFromBlock(lastProcessedBlockNumber + 1U)
+    return cleanupDbDataAfterLastProcessedBlock(
+      lastProcessedBlockNumber = lastProcessedBlockNumber,
+      batchesRepository = batchesRepository,
+      blobsRepository = blobsRepository,
+      aggregationsRepository = aggregationsRepository
+    )
       .thenCompose { l1FinalizationMonitor.start() }
       .thenCompose { blobSubmissionCoordinator.start() }
       .thenCompose { aggregationFinalizationCoordinator.start() }
@@ -1040,6 +1031,26 @@ class L1DependentApp(
   }
 
   companion object {
+
+    fun cleanupDbDataAfterLastProcessedBlock(
+      lastProcessedBlockNumber: ULong,
+      batchesRepository: BatchesRepository,
+      blobsRepository: BlobsRepository,
+      aggregationsRepository: AggregationsRepository
+    ): SafeFuture<*> {
+      val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
+      val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
+      val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(blockNumberInclusiveToDeleteFrom)
+      val cleanupAggregations = aggregationsRepository
+        .deleteAggregationsAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
+
+      return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
+    }
+
+    /**
+     * Returns the last block number inclusive upto which we have consecutive proven blobs or the last finalized block
+     * number inclusive
+     */
     fun resumeConflationFrom(
       aggregationsRepository: AggregationsRepository,
       lastFinalizedBlock: ULong

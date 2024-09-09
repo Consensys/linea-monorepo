@@ -11,6 +11,10 @@ interface FinalizationMonitor {
   )
 
   fun getLastFinalizationUpdate(): FinalizationUpdate
-  fun addFinalizationHandler(handlerName: String, handler: (FinalizationUpdate) -> SafeFuture<*>)
+  fun addFinalizationHandler(handlerName: String, handler: FinalizationHandler)
   fun removeFinalizationHandler(handlerName: String)
+}
+
+fun interface FinalizationHandler {
+  fun handleUpdate(update: FinalizationMonitor.FinalizationUpdate): SafeFuture<*>
 }
