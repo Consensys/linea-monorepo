@@ -209,7 +209,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
       assertThat(executionException.cause!!.message)
         .isEqualTo(
           "RejectedTransaction ${duplicatedRejectedTransaction.transactionInfo!!.hash.encodeHex()} " +
-            "was already persisted!"
+            "is already persisted!"
         )
     }
 
@@ -279,7 +279,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
-  fun `deleteRejectedTransactionsAfterTimestamp returns 2 row deleted as timestamp exceeds storage window`() {
+  fun `deleteRejectedTransactionsBeforeTimestamp returns 2 row deleted as timestamp exceeds storage window`() {
     // insert a new rejected transaction with timestamp within the 10-hours storage window
     performInsertTest(
       createRejectedTransaction(
@@ -288,7 +288,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     )
 
     // insert another rejected transaction with same txHash but different reason and
-    // with timestamp just exceeds the 10-hours storage window
+    // with timestamp just within the 10-hours storage window
     performInsertTest(
       createRejectedTransaction(
         reasonMessage = "Transaction line count for module EXP=9000 is above the limit 8192",
@@ -317,17 +317,17 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     assertThat(fullTransactionsTotalRows()).isEqualTo(3)
 
     // delete the rejected transactions with storage window as 10 hours from now
-    val deletedRows = rejectedTransactionsPostgresDao.deleteRejectedTransactionsAfterTimestamp(
+    val deletedRows = rejectedTransactionsPostgresDao.deleteRejectedTransactionsBeforeTimestamp(
       fakeClock.now().minus(10.hours)
     ).get()
 
-    // assert that number of total deleted rows is two
-    assertThat(deletedRows).isEqualTo(2)
+    // assert that number of total deleted rows is just one
+    assertThat(deletedRows).isEqualTo(1)
 
-    // assert that the total number of rows in the two tables are both one which
-    // implies the two rejected transactions with timestamp exceeds the storage
-    // window were deleted
-    assertThat(rejectedTransactionsTotalRows()).isEqualTo(1)
-    assertThat(fullTransactionsTotalRows()).isEqualTo(1)
+    // assert that the total number of rows in the two tables are both two which
+    // implies only the rejected transactions with timestamp exceeds the storage
+    // window was deleted
+    assertThat(rejectedTransactionsTotalRows()).isEqualTo(2)
+    assertThat(fullTransactionsTotalRows()).isEqualTo(2)
   }
 }

@@ -110,7 +110,7 @@ class RejectedTransactionsPostgresDao(
   private val deleteSql =
     """
       delete from $rejectedTransactionsTable
-      where timestamp <= $1
+      where timestamp < $1
     """
       .trimIndent()
 
@@ -141,7 +141,7 @@ class RejectedTransactionsPostgresDao(
         if (isDuplicateKeyException(th)) {
           Future.failedFuture(
             DuplicatedRecordException(
-              "RejectedTransaction ${rejectedTransaction.transactionInfo!!.hash.encodeHex()} was already persisted!",
+              "RejectedTransaction ${rejectedTransaction.transactionInfo!!.hash.encodeHex()} is already persisted!",
               th
             )
           )
@@ -165,7 +165,7 @@ class RejectedTransactionsPostgresDao(
       .thenApply { rejectedTxRecords -> rejectedTxRecords.firstOrNull() }
   }
 
-  override fun deleteRejectedTransactionsAfterTimestamp(timestamp: Instant): SafeFuture<Int> {
+  override fun deleteRejectedTransactionsBeforeTimestamp(timestamp: Instant): SafeFuture<Int> {
     return deleteSqlQuery
       .execute(Tuple.of(timestamp.toEpochMilliseconds()))
       .map { rowSet -> rowSet.rowCount() }

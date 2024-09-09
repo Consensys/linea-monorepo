@@ -18,6 +18,6 @@ class RejectedTransactionsRepositoryImpl(
   }
 
   override fun deleteRejectedTransaction(timestamp: Instant): SafeFuture<Int> {
-    return rejectedTransactionsDao.deleteRejectedTransactionsAfterTimestamp(timestamp)
+    return rejectedTransactionsDao.deleteRejectedTransactionsBeforeTimestamp(timestamp)
   }
 }
