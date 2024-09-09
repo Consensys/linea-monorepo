@@ -261,7 +261,7 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 
 		fail := nbNeededLanes > c.maxNbLanes
 
-		t.Run(fmt.Sprintf("%d-%s", i, internal.Ite(fail, "fail", "pass")), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d-%s", i, utils.Ite(fail, "fail", "pass")), func(t *testing.T) {
 
 			assignment := testCreateColsBoundaryChecks{
 				InLength: utils.ToVariableSlice(c.inLength),

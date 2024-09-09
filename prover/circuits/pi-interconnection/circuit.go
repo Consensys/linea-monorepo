@@ -3,7 +3,6 @@ package pi_interconnection
 import (
 	"errors"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	"math/big"
 	"slices"
 
@@ -345,7 +344,7 @@ const (
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
-	indexes := utils.RightPad(utils.Partition(test_utils.Range[int](len(types)), types), 2)
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
 	return utils.RightPad(
 		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
 

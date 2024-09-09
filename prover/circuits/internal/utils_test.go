@@ -3,6 +3,8 @@ package internal_test
 import (
 	"crypto/rand"
 	"fmt"
+	"testing"
+
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -10,15 +12,15 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	snarkTestUtils "github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestChecksumSlice(t *testing.T) {
 	sum := internal.ChecksumSlice([][]byte{{0}, {1}, {2}})
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		s := internal.VarSlice{
 			Values: []frontend.Variable{0, 1, 2, 3},
 			Length: 3,
@@ -41,7 +43,7 @@ func TestChecksumSubSlices(t *testing.T) {
 }
 
 func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int, lengths ...int) {
-	bigSliceInts := test_utils.Range[uint64](bigSliceLength)
+	bigSliceInts := utils.RangeSlice[uint64](bigSliceLength)
 
 	bigSliceBytes := internal.MapSlice(internal.Uint64To32Bytes, bigSliceInts...)
 	endPoints := internal.PartialSumsInt(lengths)
@@ -60,7 +62,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 		endPointsSnark[n] = n * 234
 	}
 
-	t.Run(fmt.Sprintf("%d,%d,%v", bigSliceLength, lengthsSliceLength, lengths), test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	t.Run(fmt.Sprintf("%d,%d,%v", bigSliceLength, lengthsSliceLength, lengths), snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		hsh, err := mimc.NewMiMC(api)
 		if err != nil {
 			panic(err)
@@ -74,7 +76,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 }
 
 func TestConcat(t *testing.T) {
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		res := internal.Concat(api, 3, internal.VarSlice{[]frontend.Variable{2}, 1}, internal.VarSlice{[]frontend.Variable{3}, 0})
 		return append(res.Values, res.Length)
 	}, 2, 0, 0, 1)(t)
@@ -102,7 +104,7 @@ func TestReduceBytes(t *testing.T) {
 		reduced[i] = reducedI[:]
 	}
 
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		for i := range cases {
 			got := utils.ReduceBytes[emulated.BN254Fr](api, utils.ToVariableSlice(cases[i]))
 			internal.AssertSliceEquals(api,
@@ -133,7 +135,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 		subs[selectors[i]] = append(subs[selectors[i]], s[i])
 	}
 
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 
 		field, err := emulated.NewField[emulated.BLS12381Fr](api)
 		assert.NoError(t, err)
@@ -188,7 +190,7 @@ func TestPartitionSlice(t *testing.T) {
 			subs[j] = append(subs[j], utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
 		}
 
-		return test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		return snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 
 			slice := utils.ToVariableSlice(slice)
 
@@ -206,7 +208,7 @@ func TestPartitionSlice(t *testing.T) {
 
 	test([]frontend.Variable{5}, []int{2}, []int{1, 0, 0})(t)
 	test([]frontend.Variable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
-	test(utils.ToVariableSlice(test_utils.Range[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
+	test(utils.ToVariableSlice(utils.RangeSlice[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
 
 	for i := 0; i < 200; i++ {
 
