@@ -231,6 +231,7 @@ public class RustCorsetValidator extends AbstractExecutable {
    * @return
    */
   private String determineNumberOfThreads() {
-    return Optional.ofNullable(System.getenv("CORSET_THREADS")).orElse("2");
+    int ncpus = Runtime.getRuntime().availableProcessors();
+    return Optional.ofNullable(System.getenv("CORSET_THREADS")).orElse(Integer.toString(ncpus));
   }
 }
