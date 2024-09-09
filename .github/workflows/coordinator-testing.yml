@@ -94,5 +94,12 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message-path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/coverageDeltaReports/DeltaSummary.md
-
-
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/coverageReports/*.md
+          flags: kotlin
+          name: codecov-coordinator
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
