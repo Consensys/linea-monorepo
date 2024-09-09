@@ -13,7 +13,7 @@ curl -H 'content-type:application/json' --data '{
     "params": {
         "txRejectionStage": "SEQUENCER",
         "timestamp": "2024-08-22T09:18:51Z",
-        "blockNumber": "12345",
+        "blockNumber": 12345,
         "transactionRLP": "0x02f8388204d2648203e88203e88203e8941195cf65f83b3a5768f3c496d3a05ad6412c64b38203e88c666d93e9cc5f73748162cea9c0017b8201c8",
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "overflows": [
