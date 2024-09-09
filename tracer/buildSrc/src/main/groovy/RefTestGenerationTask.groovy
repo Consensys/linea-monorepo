@@ -38,6 +38,14 @@ abstract class RefTestGenerationTask extends DefaultTask {
   @Input
   abstract Property<String> getRefTestJsonParamsDirectory();
 
+  @Input
+  abstract Property<String> getFailedModule();
+
+  @Input
+  abstract Property<String> getFailedConstraint();
+
+  @Input
+  abstract Property<String> getFailedTestsFilePath();
 
   @TaskAction
   def generateTests() {
@@ -47,6 +55,9 @@ abstract class RefTestGenerationTask extends DefaultTask {
     def generatedTestsFilePath = getGeneratedRefTestsOutput().get()
     def refTestNamePrefix = getRefTestNamePrefix().get()
     def excludedPath = getRefTestJsonParamsExcludedPath().get() // exclude test for test filling tool
+    def failedTestsFilePath = getFailedTestsFilePath().get()
+    def failedModule = getFailedModule().get()
+    def failedConstraint = getFailedConstraint().get()
 
     // Delete directory with generated tests from previous run.
     project.delete(generatedTestsFilePath)
@@ -76,6 +87,9 @@ abstract class RefTestGenerationTask extends DefaultTask {
       def testFileContents = referenceTestTemplate
         .replaceAll("%%TESTS_FILE%%", allPaths)
         .replaceAll("%%TESTS_NAME%%", refTestNamePrefix + "_" + idx)
+        .replaceAll("%%FAILED_TEST_FILE_PATH%%", failedTestsFilePath)
+        .replaceAll("%%FAILED_MODULE%%", failedModule)
+        .replaceAll("%%FAILED_CONSTRAINT%%", failedConstraint)
       testFile.newWriter().withWriter { w -> w << testFileContents }
     }
   }

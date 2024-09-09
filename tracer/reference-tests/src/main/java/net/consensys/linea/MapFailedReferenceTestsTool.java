@@ -14,11 +14,9 @@
  */
 package net.consensys.linea;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
+import static net.consensys.linea.FailedTestJson.writeToJsonFile;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,10 +35,11 @@ import org.jetbrains.annotations.NotNull;
 @Slf4j
 public class MapFailedReferenceTestsTool {
 
+  @Synchronized
   public static void mapAndStoreFailedReferenceTest(
-      String testName, List<String> logEventMessages, String jsonOutputPath) {
+      String testName, List<String> logEventMessages, String jsonOutputFilename) {
     Set<String> failedConstraints = getFailedConstraints(logEventMessages);
-    String jsonString = readFailedTestsOutput(jsonOutputPath);
+    String jsonString = readFailedTestsOutput(jsonOutputFilename);
     JsonConverter jsonConverter = JsonConverter.builder().build();
 
     List<ModuleToConstraints> modulesToConstraints =
@@ -49,7 +48,7 @@ public class MapFailedReferenceTestsTool {
     mapFailedConstraintsToTestsToModule(modulesToConstraints, failedConstraints, testName);
 
     jsonString = jsonConverter.toJson(modulesToConstraints);
-    writeToJsonFile(jsonString, jsonOutputPath);
+    writeToJsonFile(jsonString, jsonOutputFilename);
   }
 
   private static void mapFailedConstraintsToTestsToModule(
@@ -66,7 +65,7 @@ public class MapFailedReferenceTestsTool {
       Set<String> failedTests =
           aggregateFailedTestsForModuleConstraintPair(
               testName, moduleMapping, cleanedConstraintName);
-      moduleMapping.constraints().put(cleanedConstraintName, failedTests.stream().toList());
+      moduleMapping.constraints().put(cleanedConstraintName, failedTests);
     }
   }
 
@@ -76,7 +75,7 @@ public class MapFailedReferenceTestsTool {
         new HashSet<>(
             moduleMapping
                 .constraints()
-                .getOrDefault(cleanedConstraintName, Collections.emptyList()));
+                .getOrDefault(cleanedConstraintName, Collections.emptySet()));
     failedTests.add(testName);
     return failedTests;
   }
@@ -89,7 +88,7 @@ public class MapFailedReferenceTestsTool {
     return cleanedConstraintName;
   }
 
-  private static ModuleToConstraints getModule(
+  public static ModuleToConstraints getModule(
       List<ModuleToConstraints> constraintToFailingTests, String moduleName) {
     return constraintToFailingTests.stream()
         .filter(mapping -> mapping.equals(moduleName))
@@ -125,34 +124,6 @@ public class MapFailedReferenceTestsTool {
           extractFailedConstraintsFromException(eventMessage.replaceAll("\u001B\\[[;\\d]*m", "")));
     }
     return failedConstraints;
-  }
-
-  @Synchronized
-  public static String readFailedTestsOutput(String filePath) {
-    Path path = Paths.get(filePath);
-    String jsonString = "";
-    try {
-      jsonString = new String(Files.readAllBytes(path));
-    } catch (IOException e) {
-      log.info(
-          "Failed to read json output, could be first time running: %s".formatted(e.getMessage()));
-      try {
-        Files.createFile(path);
-        log.info("Created a new file at: %s".formatted(filePath));
-      } catch (IOException ex) {
-        log.error("Failed to create a new file at: %s".formatted(filePath), ex);
-      }
-    }
-    return jsonString;
-  }
-
-  @Synchronized
-  public static void writeToJsonFile(String jsonString, String filePath) {
-    try (FileWriter file = new FileWriter(filePath)) {
-      file.write(jsonString);
-    } catch (Exception e) {
-      log.error("Error - Failed to write failed test output: %s".formatted(e.getMessage()));
-    }
   }
 
   private static List<String> extractFailedConstraintsFromException(String message) {

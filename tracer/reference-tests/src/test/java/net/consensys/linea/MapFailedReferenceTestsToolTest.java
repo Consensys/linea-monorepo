@@ -14,14 +14,15 @@
  */
 package net.consensys.linea;
 
+import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
 import static net.consensys.linea.MapFailedReferenceTestsTool.getModulesToConstraints;
 import static net.consensys.linea.MapFailedReferenceTestsTool.mapAndStoreFailedReferenceTest;
-import static net.consensys.linea.MapFailedReferenceTestsTool.readFailedTestsOutput;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import net.consensys.linea.zktracer.json.JsonConverter;
@@ -88,10 +89,10 @@ public class MapFailedReferenceTestsToolTest {
 
     assertThat(modulesToConstraints.size()).isEqualTo(1);
 
-    Map<String, List<String>> failedConstraints = modulesToConstraints.getFirst().constraints();
+    Map<String, Set<String>> failedConstraints = modulesToConstraints.getFirst().constraints();
     assertThat(failedConstraints.size()).isEqualTo(constraints.size());
-    assertThat(failedConstraints.get("value-constraints")).isEqualTo(List.of("test1"));
-    assertThat(failedConstraints.get("horizontal-byte-dec")).isEqualTo(List.of("test1"));
+    assertThat(failedConstraints.get("value-constraints")).isEqualTo(Set.of("test1"));
+    assertThat(failedConstraints.get("horizontal-byte-dec")).isEqualTo(Set.of("test1"));
   }
 
   @Test
@@ -120,7 +121,7 @@ public class MapFailedReferenceTestsToolTest {
         getModulesToConstraints(jsonString, jsonConverter);
 
     assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
-    List<String> failedTests =
+    Set<String> failedTests =
         modulesToConstraints.getFirst().constraints().get("value-constraints");
     assertThat(failedTests.size()).isEqualTo(tests.size());
   }

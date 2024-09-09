@@ -15,16 +15,24 @@
 
 package net.consensys.linea;
 
+import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
+import static net.consensys.linea.MapFailedReferenceTestsTool.getModule;
+import static net.consensys.linea.MapFailedReferenceTestsTool.getModulesToConstraints;
+import static net.consensys.linea.ReferenceTestWatcher.JSON_OUTPUT_FILENAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.ethereum.MainnetBlockValidator;
 import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
@@ -89,12 +97,77 @@ public class BlockchainReferenceTestTools {
     // utility class
   }
 
+  public static Set<String> getRecordedFailedTestsFromJson(
+      String failedModule, String failedConstraint) {
+    Set<String> failedTests = new HashSet<>();
+    String jsonString = readFailedTestsOutput(JSON_OUTPUT_FILENAME);
+    JsonConverter jsonConverter = JsonConverter.builder().build();
+    List<ModuleToConstraints> modulesToConstraints =
+        getModulesToConstraints(jsonString, jsonConverter);
+
+    if (failedModule.isEmpty()) {
+      return failedTests;
+    } else {
+      ModuleToConstraints filteredFailedTests = getModule(modulesToConstraints, failedModule);
+      if (!failedConstraint.isEmpty()) {
+        return filteredFailedTests.getFailedTests(failedConstraint);
+      }
+      return filteredFailedTests.getFailedTests();
+    }
+  }
+
+  public static Set<String> getRecordedFailedTestsFromJson(
+      String failedTestsOutput, String failedModule, String failedConstraint) {
+    if (!failedTestsOutput.isEmpty()) {
+      Set<String> failedTests = new HashSet<>();
+      String jsonString = readFailedTestsOutput(failedTestsOutput);
+      JsonConverter jsonConverter = JsonConverter.builder().build();
+      List<ModuleToConstraints> modulesToConstraints =
+          getModulesToConstraints(jsonString, jsonConverter);
+
+      if (failedModule.isEmpty()) {
+        return failedTests;
+      } else {
+        ModuleToConstraints filteredFailedTests = getModule(modulesToConstraints, failedModule);
+        if (!failedConstraint.isEmpty()) {
+          return filteredFailedTests.getFailedTests(failedConstraint);
+        }
+        return filteredFailedTests.getFailedTests();
+      }
+    }
+    return Collections.emptySet();
+  }
+
   public static Collection<Object[]> generateTestParametersForConfig(final String[] filePath) {
     Arrays.stream(filePath).forEach(f -> log.info("checking file: {}", f));
     return PARAMS.generate(
         Arrays.stream(filePath)
             .map(f -> Paths.get("src/test/resources/ethereum-tests/" + f).toFile())
             .toList());
+  }
+
+  public static Collection<Object[]> generateTestParametersForConfig(
+      final String[] filePath,
+      String failedTestsFilePath,
+      String failedModule,
+      String failedConstraint) {
+    Arrays.stream(filePath).forEach(f -> log.info("checking file: {}", f));
+    Collection<Object[]> params =
+        PARAMS.generate(
+            Arrays.stream(filePath)
+                .map(f -> Paths.get("src/test/resources/ethereum-tests/" + f).toFile())
+                .toList());
+
+    Set<String> failedTests =
+        getRecordedFailedTestsFromJson(failedTestsFilePath, failedModule, failedConstraint);
+    params.forEach(param -> markTestToRun(param, failedTests));
+
+    return params;
+  }
+
+  public static void markTestToRun(Object[] params, Set<String> failedTests) {
+    String testName = (String) params[0];
+    params[2] = failedTests.contains(testName);
   }
 
   public static void executeTest(final BlockchainReferenceTestCaseSpec spec) {

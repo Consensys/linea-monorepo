@@ -37,12 +37,22 @@ public class %%TESTS_NAME%% {
 
   public ReferenceTestWatcher testWatcher = new ReferenceTestWatcher();
 
+  private static final String FAILED_MODULE = "%%FAILED_MODULE%%";
+  private static final String FAILED_CONSTRAINT = "%%FAILED_CONSTRAINT%%";
+
   private static final String[] TEST_CONFIG_FILE_DIR_PATH = new String[] {%%TESTS_FILE%%};
+  private static final String FAILED_TESTS_FILE_PATH = "%%FAILED_TEST_FILE_PATH%%";
 
   public static Stream<Arguments> getTestParametersForConfig() {
+    if (FAILED_MODULE.isEmpty()) {
     return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH).stream().map(params ->
         Arguments.of(params[0], params[1], params[2])
         );
+    } else {
+      return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH, FAILED_TESTS_FILE_PATH, FAILED_MODULE, FAILED_CONSTRAINT).stream().map(params ->
+          Arguments.of(params[0], params[1], params[2])
+      );
+    }
   }
 
   @ParameterizedTest(name = "Name: {0}")

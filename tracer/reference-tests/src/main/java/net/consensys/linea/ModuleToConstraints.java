@@ -14,17 +14,20 @@
  */
 package net.consensys.linea;
 
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public record ModuleToConstraints(String moduleName, Map<String, List<String>> constraints) {
+public record ModuleToConstraints(String moduleName, Map<String, Set<String>> constraints) {
 
   public ModuleToConstraints(
       @JsonProperty("moduleName") String moduleName,
-      @JsonProperty("constraints") Map<String, List<String>> constraints) {
+      @JsonProperty("constraints") Map<String, Set<String>> constraints) {
     this.moduleName = moduleName;
     this.constraints = constraints;
   }
@@ -43,5 +46,19 @@ public record ModuleToConstraints(String moduleName, Map<String, List<String>> c
   @Override
   public int hashCode() {
     return Objects.hash(moduleName);
+  }
+
+  @JsonIgnore
+  public Set<String> getFailedTests() {
+    return constraints.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+  }
+
+  @JsonIgnore
+  public Set<String> getFailedTests(String failedConstraint) {
+    Set<String> failedTests = constraints.get(failedConstraint);
+    if (failedTests == null) {
+      return Collections.emptySet();
+    }
+    return failedTests;
   }
 }
