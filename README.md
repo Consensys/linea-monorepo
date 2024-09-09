@@ -1,66 +1,26 @@
-## Foundry
+## StakeManager
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+The rewardIndex is a crucial part of the reward distribution mechanism.
 
-Foundry consists of:
+It represents the accumulated rewards per staked token since the beginning of the contract's operation.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Here's how it works:
 
-## Documentation
+1 - Initial state: When the contract starts, rewardIndex is 0.
+2 - Whenever new rewards are added to the contract (detected in updateRewardIndex()), the rewardIndex increases.
+    The increase is calculated as:
+    `rewardIndex += (newRewards * SCALE_FACTOR) / totalStaked`
+    This calculation distributes the new rewards evenly across all staked tokens.
+3 - Each user has their own userRewardIndex, which represents the global rewardIndex at the time
+    of their last interaction (stake, unstake, or reward claim).
+4 - When a user wants to claim rewards, we calculate the difference between the current rewardIndex
+    and the user's userRewardIndex, multiply it by their staked balance, and divide by SCALE_FACTOR
+5 - After a user stakes, unstakes, or claims rewards, their userRewardIndex is updated to the current
+    global rewardIndex. This "resets" their reward accumulation for the next period.
 
-https://book.getfoundry.sh/
+Instead of updating each user's rewards every time new rewards are added, we only need to update a
+single global variable (rewardIndex).
 
-## Usage
+User-specific calculations are done only when a user interacts with the contract.
 
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+SCALE_FACTOR is used to maintain precision in calculations.
