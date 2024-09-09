@@ -170,6 +170,15 @@ func mustProveAndPass(
 			utils.Panic("The prover did not pass: %v", err)
 		}
 		return "", ""
+
+	case config.ProverModeCheckOnly:
+
+		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces)
+		// this will panic to alert errors, so there is no need to handle or
+		// sanity-check anything.
+		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		return "", ""
+
 	default:
 		panic("not implemented")
 	}

@@ -25,4 +25,6 @@ const (
 	// ProverModeBench is used to only run the inner-proof. This is convenient
 	// in a context where it is simpler to not have to deal with the setup.
 	ProverModeBench ProverMode = "bench"
+	// ProverModeCheckOnly is used to test the constraints of the whole system
+	ProverModeCheckOnly ProverMode = "check-only"
 )

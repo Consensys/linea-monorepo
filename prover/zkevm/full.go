@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
@@ -34,8 +35,10 @@ const (
 )
 
 var (
-	fullZkEvm     *ZkEvm
-	onceFullZkEvm = sync.Once{}
+	fullZkEvm              *ZkEvm
+	fullZkEvmCheckOnly     *ZkEvm
+	onceFullZkEvm          = sync.Once{}
+	onceFullZkEvmCheckOnly = sync.Once{}
 
 	// This is the SIS instance, that has been found to minimize the overhead of
 	// recursion. It is changed w.r.t to the estimated because the estimated one
@@ -44,6 +47,8 @@ var (
 	// power of two, we go with this one although it overshoots our security
 	// level target.
 	sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+	dummyCompilationSuite = compilationSuite{dummy.CompileAtProverLvl}
 
 	// This is the compilation suite in use for the full prover
 	fullCompilationSuite = compilationSuite{
@@ -108,68 +113,81 @@ var (
 func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
-
-		// @Alex: only set mandatory parameters here. aka, the one that are not
-		// actually feature-gated.
-		settings := Settings{
-			Arithmetization: arithmetization.Settings{
-				Limits: tl,
-			},
-			Statemanager: statemanager.Settings{
-				AccSettings: accumulator.Settings{
-					MaxNumProofs:    merkleProofLimit,
-					Name:            "SM_ACCUMULATOR",
-					MerkleTreeDepth: 40,
-				},
-				MiMCCodeHashSize: tl.Rom,
-			},
-			// The compilation suite itself is hard-coded and reflects the
-			// actual full proof system.
-			CompilationSuite: fullCompilationSuite,
-			Metadata: wizard.VersionMetadata{
-				Title:   "linea/evm-execution/full",
-				Version: "beta-v1",
-			},
-			Keccak: keccak.Settings{
-				MaxNumKeccakf: keccakLimit,
-			},
-			Ecdsa: ecdsa.Settings{
-				MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls,
-				MaxNbTx:            tl.BlockTransactions,
-				NbInputInstance:    4,
-				NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls+tl.BlockTransactions, 4),
-			},
-			Modexp: modexp.Settings{
-				MaxNbInstance256:  tl.PrecompileModexpEffectiveCalls,
-				MaxNbInstance4096: 1,
-			},
-			Ecadd: ecarith.Limits{
-				// 14 was found the right number to have just under 2^19 constraints
-				// per circuit.
-				NbInputInstances:   utils.DivCeil(tl.PrecompileEcaddEffectiveCalls, 28),
-				NbCircuitInstances: 28,
-			},
-			Ecmul: ecarith.Limits{
-				NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls, 6),
-				NbInputInstances:   6,
-			},
-			Ecpair: ecpair.Limits{
-				NbMillerLoopInputInstances:   1,
-				NbMillerLoopCircuits:         tl.PrecompileEcpairingMillerLoops,
-				NbFinalExpInputInstances:     1,
-				NbFinalExpCircuits:           tl.PrecompileEcpairingEffectiveCalls,
-				NbG2MembershipInputInstances: 6,
-				NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls, 6),
-			},
-			Sha2: sha2.Settings{
-				MaxNumSha2F: tl.PrecompileSha2Blocks,
-			},
-		}
-
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = NewZkEVM(settings)
-
+		fullZkEvm = fullZKEVMWithSuite(tl, fullCompilationSuite)
 	})
 
+	return fullZkEvm
+}
+
+func FullZkEVMCheckOnly(tl *config.TracesLimits) *ZkEvm {
+
+	onceFullZkEvmCheckOnly.Do(func() {
+		// Initialize the Full zkEVM arithmetization
+		fullZkEvmCheckOnly = fullZKEVMWithSuite(tl, dummyCompilationSuite)
+	})
+
+	return fullZkEvmCheckOnly
+}
+
+func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm {
+
+	// @Alex: only set mandatory parameters here. aka, the one that are not
+	// actually feature-gated.
+	settings := Settings{
+		CompilationSuite: suite,
+		Arithmetization: arithmetization.Settings{
+			Limits: tl,
+		},
+		Statemanager: statemanager.Settings{
+			AccSettings: accumulator.Settings{
+				MaxNumProofs:    merkleProofLimit,
+				Name:            "SM_ACCUMULATOR",
+				MerkleTreeDepth: 40,
+			},
+			MiMCCodeHashSize: tl.Rom,
+		},
+		Metadata: wizard.VersionMetadata{
+			Title:   "linea/evm-execution/full",
+			Version: "beta-v1",
+		},
+		Keccak: keccak.Settings{
+			MaxNumKeccakf: keccakLimit,
+		},
+		Ecdsa: ecdsa.Settings{
+			MaxNbEcRecover:     tl.PrecompileEcrecoverEffectiveCalls,
+			MaxNbTx:            tl.BlockTransactions,
+			NbInputInstance:    4,
+			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcrecoverEffectiveCalls+tl.BlockTransactions, 4),
+		},
+		Modexp: modexp.Settings{
+			MaxNbInstance256:  tl.PrecompileModexpEffectiveCalls,
+			MaxNbInstance4096: 1,
+		},
+		Ecadd: ecarith.Limits{
+			// 14 was found the right number to have just under 2^19 constraints
+			// per circuit.
+			NbInputInstances:   utils.DivCeil(tl.PrecompileEcaddEffectiveCalls, 28),
+			NbCircuitInstances: 28,
+		},
+		Ecmul: ecarith.Limits{
+			NbCircuitInstances: utils.DivCeil(tl.PrecompileEcmulEffectiveCalls, 6),
+			NbInputInstances:   6,
+		},
+		Ecpair: ecpair.Limits{
+			NbMillerLoopInputInstances:   1,
+			NbMillerLoopCircuits:         tl.PrecompileEcpairingMillerLoops,
+			NbFinalExpInputInstances:     1,
+			NbFinalExpCircuits:           tl.PrecompileEcpairingEffectiveCalls,
+			NbG2MembershipInputInstances: 6,
+			NbG2MembershipCircuits:       utils.DivCeil(tl.PrecompileEcpairingG2MembershipCalls, 6),
+		},
+		Sha2: sha2.Settings{
+			MaxNumSha2F: tl.PrecompileSha2Blocks,
+		},
+	}
+
+	// Initialize the Full zkEVM arithmetization
+	fullZkEvm = NewZkEVM(settings)
 	return fullZkEvm
 }
