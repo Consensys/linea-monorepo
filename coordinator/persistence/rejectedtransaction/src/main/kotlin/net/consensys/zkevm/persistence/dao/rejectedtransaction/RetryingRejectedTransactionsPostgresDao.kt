@@ -17,7 +17,7 @@ class RetryingRejectedTransactionsPostgresDao(
     return persistenceRetryer.retryQuery({ delegate.findRejectedTransactionByTxHash(txHash) })
   }
 
-  override fun deleteRejectedTransactionsAfterTimestamp(timestamp: Instant): SafeFuture<Int> {
-    return persistenceRetryer.retryQuery({ delegate.deleteRejectedTransactionsAfterTimestamp(timestamp) })
+  override fun deleteRejectedTransactionsBeforeTimestamp(timestamp: Instant): SafeFuture<Int> {
+    return persistenceRetryer.retryQuery({ delegate.deleteRejectedTransactionsBeforeTimestamp(timestamp) })
   }
 }

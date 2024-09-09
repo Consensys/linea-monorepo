@@ -11,7 +11,7 @@ interface RejectedTransactionsDao {
     txHash: ByteArray
   ): SafeFuture<RejectedTransaction?>
 
-  fun deleteRejectedTransactionsAfterTimestamp(
+  fun deleteRejectedTransactionsBeforeTimestamp(
     timestamp: Instant
   ): SafeFuture<Int>
 }
