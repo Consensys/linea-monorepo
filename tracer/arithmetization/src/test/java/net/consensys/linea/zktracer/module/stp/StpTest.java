@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.stp;
 
-import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randBigInt;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 
@@ -26,7 +25,7 @@ import java.util.Random;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.testing.ToyExecutionEnvironment;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -46,6 +45,8 @@ public class StpTest {
   final int NB_CALL = 200;
   final int NB_CREATE = 200;
 
+  final long SENDER_BALANCE = 0xFFFFFFFFFFFFL;
+
   @Test
   void testCall() {
     ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
@@ -55,7 +56,7 @@ public class StpTest {
       final OpCode opcode = randOpCodeCall();
       final boolean toExists = RAND.nextBoolean();
       final boolean toWarm = toExists && RAND.nextBoolean();
-      final Wei balance = Wei.of(randBigInt(true));
+      final Wei balance = Wei.of(SENDER_BALANCE);
       final long gasCall = RAND.nextLong(0, 100000L);
       final BigInteger value = BigInteger.valueOf(RAND.nextLong(0, 100000L));
       final long gasLimit = RAND.nextLong(23400, 1000000L);
@@ -63,7 +64,7 @@ public class StpTest {
       txList.add(txCall(opcode, toExists, toWarm, balance, value, gasCall, gasLimit, world));
     }
 
-    ToyExecutionEnvironment.builder()
+    ToyExecutionEnvironmentV2.builder()
         .toyWorld(world.build())
         .transactions(txList)
         .testValidator(x -> {})
@@ -86,7 +87,7 @@ public class StpTest {
       }
     }
 
-    ToyExecutionEnvironment.builder()
+    ToyExecutionEnvironmentV2.builder()
         .toyWorld(world.build())
         .transactions(txList)
         .testValidator(x -> {})
@@ -200,7 +201,7 @@ public class StpTest {
     final long value = RAND.nextLong();
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(randBigInt(true)))
+            .balance(Wei.of(SENDER_BALANCE))
             .nonce(Math.abs(RAND.nextInt()))
             .address(senderAddress)
             .build();
@@ -242,7 +243,7 @@ public class StpTest {
     final long value = RAND.nextLong();
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(randBigInt(true)))
+            .balance(Wei.of(SENDER_BALANCE))
             .nonce(Math.abs(RAND.nextInt()))
             .address(senderAddress)
             .build();
