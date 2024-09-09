@@ -12,7 +12,7 @@ contract StakeManagerScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        stakeManager = new StakeManager();
+        // stakeManager = new StakeManager();
 
         vm.stopBroadcast();
     }

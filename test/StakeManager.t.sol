@@ -8,6 +8,6 @@ contract StakeManagerTest is Test {
     StakeManager public stakeManager;
 
     function setUp() public {
-        stakeManager = new StakeManager();
+        // stakeManager = new StakeManager();
     }
 }
