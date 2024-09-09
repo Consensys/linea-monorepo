@@ -6,16 +6,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/constraints"
-	"math"
-	"math/big"
-	"strings"
-	"testing"
 )
 
 func printAsHexHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -144,49 +143,12 @@ func SnarkFunctionTest(f func(frontend.API) []frontend.Variable, outs ...fronten
 	}
 }
 
-func Range[T constraints.Integer](length int, startingPoints ...T) []T {
-	if len(startingPoints) == 0 {
-		startingPoints = []T{0}
-	}
-	res := make([]T, length*len(startingPoints))
-	for i := range startingPoints {
-		FillRange(res[i*length:(i+1)*length], startingPoints[i])
-	}
-	return res
-}
-
-func FillRange[T constraints.Integer](dst []T, start T) {
-	for l := range dst {
-		dst[l] = T(l) + start
-	}
-}
-
 func BlocksToHex(b ...[][32]byte) []string {
 	res := make([]string, 0)
 	for i := range b {
 		for j := range b[i] {
 			res = append(res, utils.HexEncodeToString(b[i][j][:]))
 		}
-	}
-	return res
-}
-
-func RandIntN(n int) int {
-	var b [8]byte
-	_, err := rand.Read(b[:])
-	if err != nil {
-		panic(err)
-	}
-	if n > math.MaxInt {
-		panic("RandIntN: n too large")
-	}
-	return int(binary.BigEndian.Uint64(b[:]) % uint64(n)) // #nosec G115 -- Above check precludes an overflow
-}
-
-func RandIntSliceN(length, n int) []int {
-	res := make([]int, length)
-	for i := range res {
-		res[i] = RandIntN(n)
 	}
 	return res
 }

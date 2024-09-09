@@ -109,7 +109,7 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			Y:              [2]frontend.Variable{i.Y[0], i.Y[1]},
 			SnarkHash:      i.SnarkHash,
-			Eip4844Enabled: internal.Ite(i.Eip4844Enabled, 1, 0),
+			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
 			NbBatches:      len(i.BatchSums),
 		},
 	}
@@ -149,7 +149,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 	hsh.Write(i.Y[0])
 	hsh.Write(i.Y[1])
 	hsh.Write(i.SnarkHash)
-	hsh.Write(internal.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
+	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(batchesSum)
 	return hsh.Sum(nil), nil
 }
