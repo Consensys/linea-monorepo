@@ -14,6 +14,7 @@
  */
 package net.consensys.linea;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import ch.qos.logback.classic.Logger;
@@ -24,7 +25,8 @@ import org.junit.jupiter.api.extension.TestWatcher;
 
 public class ReferenceTestWatcher implements TestWatcher {
 
-  public static final String JSON_OUTPUT_PATH = "failedTests.json";
+  public static final String JSON_OUTPUT_FILENAME =
+      "failedBlockchainReferenceTests-%s.json".formatted(LocalDate.now().toString());
   ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
 
   public ReferenceTestWatcher() {
@@ -41,6 +43,6 @@ public class ReferenceTestWatcher implements TestWatcher {
         listAppender.list.stream().map(ILoggingEvent::getMessage).toList();
 
     MapFailedReferenceTestsTool.mapAndStoreFailedReferenceTest(
-        testName, logEventMessages, JSON_OUTPUT_PATH);
+        testName, logEventMessages, JSON_OUTPUT_FILENAME);
   }
 }
