@@ -65,12 +65,65 @@ export class RollupGetZkEVMBlockNumberClient {
   }
 }
 
-export async function getBlockByNumberOrBlockTag(
-  rpcUrl: URL,
-  blockTag: BlockTag
-): Promise<ethers.providers.Block> {
+export class TransactionExclusionClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async getTransactionExclusionStatusV1(txHash: String): Promise<any> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_getTransactionExclusionStatusV1",
+        params: [txHash],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+
+  public async saveRejectedTransactionV1(
+    txRejectionStage: String,
+    timestamp: String, // ISO-8601
+    blockNumber: Number | null,
+    transactionRLP: String,
+    reasonMessage: String,
+    overflows: { module: String; count: Number; limit: Number }[],
+  ): Promise<any> {
+    let params: any = {
+      txRejectionStage,
+      timestamp,
+      transactionRLP,
+      reasonMessage,
+      overflows,
+    };
+    if (blockNumber != null) {
+      params = {
+        ...params,
+        blockNumber,
+      };
+    }
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_saveRejectedTransactionV1",
+        params: params,
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    return await response.json();
+  }
+}
+
+export async function getBlockByNumberOrBlockTag(rpcUrl: URL, blockTag: BlockTag): Promise<ethers.providers.Block> {
   const provider = new ethers.providers.JsonRpcProvider(rpcUrl.href);
-  return provider.getBlock(blockTag)
+  return provider.getBlock(blockTag);
 }
 
 export async function getEvents<TContract extends LineaRollup | L2MessageService, TEvent extends TypedEvent>(

@@ -19,7 +19,7 @@ class RejectedTransactionsRepositoryTest {
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(it.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(Unit))
-    whenever(it.deleteRejectedTransactionsAfterTimestamp(any()))
+    whenever(it.deleteRejectedTransactionsBeforeTimestamp(any()))
       .thenReturn(SafeFuture.completedFuture(1))
   }
   private val rejectedTransactionsRepository = RejectedTransactionsRepositoryImpl(

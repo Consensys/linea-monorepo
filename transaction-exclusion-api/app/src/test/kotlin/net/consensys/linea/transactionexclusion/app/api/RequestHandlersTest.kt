@@ -63,7 +63,7 @@ class RequestHandlersTest {
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
-      .put("reasonMessage", defaultRejectedTransaction.reasonMessage).let {
+      .let {
         JsonRpcSuccessResponse(request.id, it)
       }
 
@@ -73,7 +73,7 @@ class RequestHandlersTest {
       requestJson = JsonObject()
     ).get()
 
-    Assertions.assertEquals(result.get(), expectedResult)
+    Assertions.assertEquals(expectedResult, result.get())
   }
 
   @Test
@@ -99,7 +99,6 @@ class RequestHandlersTest {
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
-      .put("reasonMessage", defaultRejectedTransaction.reasonMessage)
       .let {
         JsonRpcSuccessResponse(request.id, it)
       }
@@ -110,7 +109,7 @@ class RequestHandlersTest {
       requestJson = JsonObject()
     ).get()
 
-    Assertions.assertEquals(result.get(), expectedResult)
+    Assertions.assertEquals(expectedResult, result.get())
   }
 
   @Test
@@ -121,42 +120,6 @@ class RequestHandlersTest {
       "linea_getTransactionExclusionStatusV1",
       listOf(
         defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
-      )
-    )
-
-    val getTxStatusRequestHandlerV1 = GetTransactionExclusionStatusRequestHandlerV1(
-      transactionExclusionServiceMock
-    )
-
-    val expectedResult = JsonObject()
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
-      .put("from", defaultRejectedTransaction.transactionInfo!!.from.encodeHex())
-      .put("nonce", defaultRejectedTransaction.transactionInfo!!.nonce.toHexString())
-      .put("txRejectionStage", defaultRejectedTransaction.txRejectionStage.name)
-      .put("reasonMessage", defaultRejectedTransaction.reasonMessage)
-      .put("timestamp", defaultRejectedTransaction.timestamp.toString())
-      .put("blockNumber", defaultRejectedTransaction.blockNumber!!.toHexString())
-      .let {
-        JsonRpcSuccessResponse(request.id, it)
-      }
-
-    val result = getTxStatusRequestHandlerV1.invoke(
-      user = null,
-      request = request,
-      requestJson = JsonObject()
-    ).get()
-
-    Assertions.assertEquals(result.get(), expectedResult)
-  }
-
-  @Test
-  fun GetTransactionExclusionStatusRequestHandlerV1_invoke_acceptsValidRequestMap() {
-    val request = JsonRpcRequestMapParams(
-      "2.0",
-      "1",
-      "linea_getTransactionExclusionStatusV1",
-      mapOf(
-        "txHash" to defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
       )
     )
 

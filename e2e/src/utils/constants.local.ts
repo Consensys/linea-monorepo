@@ -55,6 +55,7 @@ export const MESSAGE_SERVICE_ADDRESS = "0xe537D669CA013d86EBeF1D64e40fC74CADC919
 
 export const SHOMEI_ENDPOINT = new URL("http://localhost:8998");
 export const SHOMEI_FRONTEND_ENDPOINT = new URL("http://localhost:8889");
-export const SEQUENCER_ENDPOINT = new URL("http://localhost:8545")
+export const SEQUENCER_ENDPOINT = new URL("http://localhost:8545");
+export const TRANSACTION_EXCLUSION_ENDPOINT = new URL("http://localhost:8082");
 
 export const CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK = 12;

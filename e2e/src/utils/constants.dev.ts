@@ -42,3 +42,4 @@ export const DUMMY_CONTRACT_ADDRESS = "";
 
 export const SHOMEI_ENDPOINT = null;
 export const SHOMEI_FRONTEND_ENDPOINT = null;
+export const TRANSACTION_EXCLUSION_ENDPOINT = null;
