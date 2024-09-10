@@ -23,9 +23,9 @@ single global variable (rewardIndex).
 
 User-specific calculations are done only when a user interacts with the contract.
 
-SCALE_FACTOR is used to maintain precision in calculations.
+`SCALE_FACTOR` is used to maintain precision in calculations.
 
-### Example
+### StakeManager Example
 
 Initial setup:
 
