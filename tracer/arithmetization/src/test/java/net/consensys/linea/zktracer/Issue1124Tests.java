@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
 import static net.consensys.linea.zktracer.ReplayTests.replay;
 
 import org.junit.jupiter.api.Tag;
@@ -27,12 +28,12 @@ public class Issue1124Tests {
   // @Disabled
   @Test
   void issue_1124_range_4323962_4324012() {
-    replay("4323962-4324012.json.gz", false);
+    replay(LINEA_MAINNET, "4323962-4324012.json.gz", false);
   }
 
   // @Disabled
   @Test
   void issue_1124_range_4343434_4343473() {
-    replay("4343434-4343473.json.gz", false);
+    replay(LINEA_MAINNET, "4343434-4343473.json.gz", false);
   }
 }

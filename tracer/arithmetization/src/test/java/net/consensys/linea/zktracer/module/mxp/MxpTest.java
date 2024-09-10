@@ -28,7 +28,6 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.EWord;
@@ -283,20 +282,17 @@ public class MxpTest {
             .keyPair(keyPair)
             .build();
 
-    ToyWorld toyWorld =
-        ToyWorld.builder()
-            .accounts(
-                List.of(
-                    userAccount,
-                    contractAAccount,
-                    contractBAccount,
-                    contractCAccount,
-                    contractDAccount,
-                    contractMO1Account,
-                    contractMO2Account))
-            .build();
+    List<ToyAccount> accounts =
+        List.of(
+            userAccount,
+            contractAAccount,
+            contractBAccount,
+            contractCAccount,
+            contractDAccount,
+            contractMO1Account,
+            contractMO2Account);
 
-    ToyExecutionEnvironmentV2.builder().toyWorld(toyWorld).transaction(tx).build().run();
+    ToyExecutionEnvironmentV2.builder().accounts(accounts).transaction(tx).build().run();
   }
 
   // Support methods

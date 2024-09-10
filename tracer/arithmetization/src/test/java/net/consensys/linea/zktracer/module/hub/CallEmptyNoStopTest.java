@@ -23,7 +23,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -73,13 +72,8 @@ public class CallEmptyNoStopTest {
     Transaction tx =
         ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
 
-    ToyWorld toyWorld =
-        ToyWorld.builder()
-            .accounts(List.of(senderAccount, receiverAccount, emptyCodeAccount))
-            .build();
-
     ToyExecutionEnvironmentV2.builder()
-        .toyWorld(toyWorld)
+        .accounts(List.of(senderAccount, receiverAccount, emptyCodeAccount))
         .transaction(tx)
         .zkTracerValidator(
             zkTracer -> {

@@ -17,13 +17,13 @@ package net.consensys.linea.zktracer.module.rlpaddr;
 
 import static net.consensys.linea.zktracer.module.rlpcommon.RlpRandEdgeCase.randLong;
 
+import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -40,7 +40,7 @@ public class TestRlpAddress {
 
   @Test
   void randDeployment() {
-    final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
+    // final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -55,8 +55,6 @@ public class TestRlpAddress {
 
     final Bytes initCode = BytecodeCompiler.newProgram().push(1).push(1).op(OpCode.SLT).compile();
 
-    world.account(senderAccount);
-
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -70,13 +68,15 @@ public class TestRlpAddress {
 
     Address deploymentAddress = Address.contractAddress(senderAddress, senderAccount.getNonce());
 
-    ToyExecutionEnvironmentV2.builder().toyWorld(world.build()).transaction(tx).build().run();
+    ToyExecutionEnvironmentV2.builder()
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .build()
+        .run();
   }
 
   @Test
   void create() {
-    final ToyWorld.ToyWorldBuilder world = ToyWorld.builder();
-
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
@@ -87,7 +87,6 @@ public class TestRlpAddress {
             .nonce(randLong())
             .address(senderAddress)
             .build();
-    world.account(senderAccount);
 
     final Address contractAddress = Address.fromHexString("0x000bad000000b077000");
     final ToyAccount contractAccount =
@@ -110,7 +109,6 @@ public class TestRlpAddress {
                     .op(OpCode.STOP)
                     .compile())
             .build();
-    world.account(contractAccount);
 
     final Bytes initCodeReturnContractCode =
         BytecodeCompiler.newProgram()
@@ -137,7 +135,7 @@ public class TestRlpAddress {
             .build();
 
     ToyExecutionEnvironmentV2.builder()
-        .toyWorld(world.build())
+        .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .testValidator(x -> {})
         .build()
