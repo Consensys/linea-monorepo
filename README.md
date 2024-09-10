@@ -40,17 +40,17 @@ Initial setup:
 * accountedRewards: 0
 * Rewards in contract: 0
 
-Step 1: Alice stakes 10 tokens
+T1: Alice stakes 10 tokens
 
 * Alice's userRewardIndex: 0
 * totalStaked: 10 tokens
 
-Step 2: Bob stakes 30 tokens
+T2: Bob stakes 30 tokens
 
 * Bob's userRewardIndex: 0
 * totalStaked: 40 tokens
 
-Step 3: 1000 Rewards arrive
+T3: 1000 Rewards arrive
 
 New rewardIndex calculation:
 
@@ -72,7 +72,7 @@ For Bob:
 * Staked amount: 30 tokens
 * Potential Rewards: 30 * (25 - 0) = 750
 
-Step 4: Alice withdraws her stake and Rewards
+T4: Alice withdraws her stake and Rewards
 
 Alice's withdrawal:
 
@@ -84,12 +84,12 @@ Update state:
 * totalStaked = 40 - 10 = 30 tokens
 * Rewards in contract = 1000 - 250 = 750
 
-Step 5: Charlie stakes 30 tokens
+T5: Charlie stakes 30 tokens
 
 * Charlie's userRewardIndex: 25
 * totalStaked = 30 + 30 = 60 tokens
 
-Step 6: Another 1000 Rewards arrive
+T6: Another 1000 Rewards arrive
 
 New rewardIndex calculation:
 
