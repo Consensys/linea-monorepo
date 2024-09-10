@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"runtime"
 	"sync"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
 	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
@@ -109,6 +111,8 @@ type mptsCtx struct {
 	// maxSize      int
 	quotientSize int
 	targetSize   int
+	// maxSize is the size of the largest column being processed by the compiler
+	maxSize int
 	// Number of rounds in the original protocol
 	numRound int
 	// Various indentifiers created in the protocol
@@ -129,7 +133,7 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 	xPoly := make(map[ifaces.ColID][]int)
 	hs := []ifaces.QueryID{}
 	polys := []ifaces.Column{}
-	maxDeg := 0
+	maxSize := 0
 
 	/*
 		Adding coins in the protocol can add extra rounds,
@@ -182,7 +186,7 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 			if _, ok := xPoly[poly.GetColID()]; !ok {
 				polys = append(polys, poly)
 				xPoly[poly.GetColID()] = []int{}
-				maxDeg = utils.Max(maxDeg, poly.Size())
+				maxSize = utils.Max(maxSize, poly.Size())
 			}
 			xPoly[poly.GetColID()] = append(xPoly[poly.GetColID()], queryCount-1)
 		}
@@ -207,6 +211,7 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 		quotientSize:    quotientSize,
 		targetSize:      targetSize,
 		numRound:        numRound,
+		maxSize:         maxSize,
 		QuotientName:    deriveName[ifaces.ColID](comp, MPTS, "", MTSP_QUOTIENT_SUFFIX),
 		LinCombCoeff:    deriveName[coin.Name](comp, MPTS, "", MTSP_LIN_COMB),
 		EvaluationPoint: deriveName[coin.Name](comp, MPTS, "", MTSP_RAND_EVAL),
@@ -226,31 +231,48 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 	r := run.GetRandomCoinField(ctx.LinCombCoeff)
 
 	// Preallocate the value of the quotient
-	quotient := sv.AllocateRegular(ctx.quotientSize)
-	quoLock := sync.Mutex{}
-	ys, hs := ctx.getYsHs(run.GetUnivariateParams, run.GetUnivariateEval)
-	logrus.Tracef("computed Ys and Hs")
+	var (
+		quotient = sv.AllocateRegular(ctx.quotientSize)
+		quoLock  = sync.Mutex{}
+		ys, hs   = ctx.getYsHs(run.GetUnivariateParams, run.GetUnivariateEval)
 
-	// precompute the lagrange polynomials
-	lagranges := getLagrangesPolys(hs)
+		// precompute the lagrange polynomials
+		lagranges = getLagrangesPolys(hs)
+		pool      = mempool.CreateFromSyncPool(ctx.targetSize).Prewarm(runtime.NumCPU())
+		mainWg    = &sync.WaitGroup{}
+	)
 
-	parallel.Execute(len(ctx.polys), func(start, stop int) {
+	mainWg.Add(runtime.NumCPU())
 
-		maxSize := 0
-		for i := start; i < stop; i++ {
-			maxSize = utils.Max(maxSize, ctx.polys[i].Size())
-		}
+	parallel.ExecuteFromChan(len(ctx.polys), func(wg *sync.WaitGroup, indexChan chan int) {
 
-		// Preallocate the value of the quotient
-		subQuotient := sv.AllocateRegular(maxSize)
+		var (
+			pool = mempool.WrapsWithMemCache(pool)
 
-		for i := start; i < stop; i++ {
-			polHandle := ctx.polys[i]
-			/*
-				Get the coefficients of the witness polynomial
-			*/
-			polWitness := polHandle.GetColAssignment(run)
-			polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0)
+			// Preallocate the value of the quotient
+			subQuotientReg  = sv.AllocateRegular(ctx.maxSize)
+			subQuotientCnst = field.Zero()
+		)
+
+		defer pool.TearDown()
+
+		for i := range indexChan {
+
+			var (
+				polHandle  = ctx.polys[i]
+				polWitness = polHandle.GetColAssignment(run)
+				ri         field.Element
+			)
+
+			ri.Exp(r, big.NewInt(int64(i)))
+
+			if cnst, isCnst := polWitness.(*sv.Constant); isCnst {
+				polWitness = sv.NewRegular([]field.Element{cnst.Val()})
+			} else if pool.Size() == polWitness.Len() {
+				polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, pool)
+			} else {
+				polWitness = sv.FFTInverse(polWitness, fft.DIF, true, 0, 0, nil)
+			}
 
 			/*
 				Substract by the lagrange interpolator and get the quotient
@@ -298,31 +320,36 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 				}
 			}
 
-			/*
-				Then accumulate the subQuotient. The subQuotient is supposedly
-				larger than the pol,
-			*/
-			var ri field.Element
-			ri.Exp(r, big.NewInt(int64(i)))
-
 			// Should be very uncommon
-			if subQuotient.Len() < polWitness.Len() {
+			if subQuotientReg.Len() < polWitness.Len() {
 				logrus.Warnf("Warning reallocation of the subquotient for MPTS. If there are too many it's an issue")
 				// It's the only known use-case for concatenating smart-vectors
 				newSubquotient := make([]field.Element, polWitness.Len())
-				subQuotient.WriteInSlice(newSubquotient[:subQuotient.Len()])
-				subQuotient = sv.NewRegular(newSubquotient)
+				subQuotientReg.WriteInSlice(newSubquotient[:subQuotientReg.Len()])
+				subQuotientReg = sv.NewRegular(newSubquotient)
 			}
 
 			tmp := sv.ScalarMul(polWitness, ri)
-			subQuotient = sv.PolyAdd(tmp, subQuotient)
+			subQuotientReg = sv.PolyAdd(tmp, subQuotientReg)
+
+			if pooled, ok := polWitness.(*sv.Pooled); ok {
+				pooled.Free(pool)
+			}
+
+			wg.Done()
 		}
+
+		subQuotientReg = sv.PolyAdd(subQuotientReg, sv.NewConstant(subQuotientCnst, 1))
 
 		// This locking mechanism is completely subOptimal, but this should be good enough
 		quoLock.Lock()
-		quotient = sv.PolyAdd(quotient, subQuotient)
+		quotient = sv.PolyAdd(quotient, subQuotientReg)
 		quoLock.Unlock()
+
+		mainWg.Done()
 	})
+
+	mainWg.Wait()
 
 	if quotient.Len() < ctx.targetSize {
 		quo := sv.IntoRegVec(quotient)
@@ -332,7 +359,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 	for i := range ctx.Quotients {
 		// each subquotient is a slice of the original larger quotient
 		subQuotient := quotient.SubVector(i*ctx.targetSize, (i+1)*ctx.targetSize)
-		subQuotient = sv.FFT(subQuotient, fft.DIF, true, 0, 0)
+		subQuotient = sv.FFT(subQuotient, fft.DIF, true, 0, 0, nil)
 		run.AssignColumn(ctx.Quotients[i].GetColID(), subQuotient)
 	}
 

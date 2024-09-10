@@ -34,7 +34,7 @@ func (Variable) Degree([]int) int {
 }
 
 // Evaluate implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
+func (v Variable) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for variables")
 }
 

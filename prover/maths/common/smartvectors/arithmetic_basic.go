@@ -65,7 +65,7 @@ func InnerProduct(a, b SmartVector) field.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func PolyEval(vecs []SmartVector, x field.Element, p ...*mempool.Pool) (result SmartVector) {
+func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
@@ -80,10 +80,11 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...*mempool.Pool) (result S
 		resReg = make([]field.Element, length)
 		tmpVec = make([]field.Element, length)
 	} else {
-		a, b := pool.Alloc(), pool.Alloc()
-		resReg, tmpVec = *a, *b
+		a := AllocFromPool(pool)
+		b := AllocFromPool(pool)
+		resReg, tmpVec = a.Regular, b.Regular
 		vector.Fill(resReg, field.Zero())
-		defer pool.Free(b)
+		defer b.Free(pool)
 	}
 
 	var tmpF, resCon field.Element

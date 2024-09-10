@@ -22,7 +22,7 @@ func (Constant) Degree([]int) int {
 }
 
 // Evaluates implements the [Operator] interface
-func (c Constant) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
+func (c Constant) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for a constant")
 }
 

@@ -124,7 +124,7 @@ func (prod Product) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (prod Product) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (prod Product) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.Product(prod.Exponents, inputs, p...)
 }
 

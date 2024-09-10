@@ -96,7 +96,7 @@ func (LinComb) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.LinComb(lc.Coeffs, inputs, p...)
 }
 

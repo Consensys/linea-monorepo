@@ -11,7 +11,7 @@ import (
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func LinComb(coeffs []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
+func LinComb(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
 	// Sanity check : all svec should have the same length
 	length := svecs[0].Len()
 	for i := 0; i < len(svecs); i++ {
@@ -27,7 +27,7 @@ func LinComb(coeffs []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector 
 //   - The function panics if svecs is empty
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
-func Product(exponents []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
+func Product(exponents []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
 	return processOperator(productOp{}, exponents, svecs, p...)
 }
 
@@ -36,7 +36,7 @@ func Product(exponents []int, svecs []SmartVector, p ...*mempool.Pool) SmartVect
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...*mempool.Pool) SmartVector {
+func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {
@@ -114,13 +114,13 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...*mempo
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.constTermIntoVec(*regularRes, &constRes.val)
+		op.constTermIntoVec(regularRes.Regular, &constRes.val)
 		return regularRes
 	default:
 
 		// If windowRes is a regular (can happen if all windows arguments cover the full circle)
 		if w, ok := windowRes.(*Regular); ok {
-			op.vecTermIntoVec(*regularRes, *w)
+			op.vecTermIntoVec(regularRes.Regular, *w)
 			return regularRes
 		}
 
@@ -130,7 +130,7 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...*mempo
 		// In this case, the constant is already accumulated into the windowed.
 		// Thus, we just have to merge the windowed one into the regular one.
 		interval := windowRes.interval()
-		regvec := *regularRes
+		regvec := regularRes.Regular
 		length := len(regvec)
 
 		// The windows rolls over

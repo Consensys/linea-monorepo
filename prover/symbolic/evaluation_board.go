@@ -5,6 +5,7 @@ import (
 	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 type boardAssignment [][]nodeAssignment
@@ -66,7 +67,7 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 
 			if success {
 				for i := range inputs {
-					nodeAssignments.incParentKnownCountOf(&inputs[i], nil, true)
+					nodeAssignments.incParentKnownCountOf(inputs[i], nil, true)
 				}
 			}
 
@@ -77,7 +78,7 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 	return nodeAssignments
 }
 
-func (b boardAssignment) eval(na *nodeAssignment, pool *mempool.Pool) {
+func (b boardAssignment) eval(na *nodeAssignment, pool mempool.MemPool) {
 
 	if (na.allParentsKnown() && na.hasParents()) || na.hasAValue() {
 		return
@@ -99,11 +100,11 @@ func (b boardAssignment) eval(na *nodeAssignment, pool *mempool.Pool) {
 	na.Value = na.Node.Operator.Evaluate(smv, pool)
 
 	for i := range val {
-		b.incParentKnownCountOf(&val[i], pool, false)
+		b.incParentKnownCountOf(val[i], pool, false)
 	}
 }
 
-func (na *nodeAssignment) tryGuessEval(val []nodeAssignment) bool {
+func (na *nodeAssignment) tryGuessEval(val []*nodeAssignment) bool {
 
 	if na.hasAValue() {
 		return true
@@ -146,6 +147,7 @@ func (na *nodeAssignment) tryGuessEval(val []nodeAssignment) bool {
 			return true
 		}
 		return false
+
 	default:
 		panic("unexpected type")
 	}
@@ -176,13 +178,13 @@ func (na *nodeAssignment) constValue() (*sv.Constant, bool) {
 	return nil, false
 }
 
-func (b boardAssignment) inputOf(na *nodeAssignment) []nodeAssignment {
+func (b boardAssignment) inputOf(na *nodeAssignment) []*nodeAssignment {
 
 	if na.Node == nil {
 		panic("na has a nil node")
 	}
 
-	nodeInputs := make([]nodeAssignment, len(na.Node.Children))
+	nodeInputs := make([]*nodeAssignment, len(na.Node.Children))
 
 	for i, childID := range na.Node.Children {
 		var (
@@ -190,25 +192,31 @@ func (b boardAssignment) inputOf(na *nodeAssignment) []nodeAssignment {
 			pil = childID.posInLevel()
 		)
 
-		nodeInputs[i] = b[lvl][pil]
+		nodeInputs[i] = &b[lvl][pil]
 	}
 	return nodeInputs
 }
 
-func (b boardAssignment) incParentKnownCountOf(na *nodeAssignment, pool *mempool.Pool, recursive bool) (wasDeleted bool) {
+func (b boardAssignment) incParentKnownCountOf(na *nodeAssignment, pool mempool.MemPool, recursive bool) (wasDeleted bool) {
+
 	na.NumKnownParents++
 
 	// Sanity-checking that this function is not called too many time
 	if na.NumKnownParents > len(na.Node.Parents) {
-		panic("invalid count: overflowing the total number of parent")
+		utils.Panic("invalid count: overflowing the total number of parent")
 	}
 
 	if na.allParentsKnown() {
 
-		if recursive {
+		// The recursive call to incParentKnownCount is needed only if the node
+		// that we "completed" by marking all its parent as known was completed
+		// **only** for that reason. It could also have been completed because
+		// all its children are constants. When that is the case, all the children
+		// will have been incremented already.
+		if recursive && na.Value == nil {
 			children := b.inputOf(na)
 			for i := range children {
-				b.incParentKnownCountOf(&children[i], pool, recursive)
+				b.incParentKnownCountOf(children[i], pool, recursive)
 			}
 		}
 
@@ -218,7 +226,7 @@ func (b boardAssignment) incParentKnownCountOf(na *nodeAssignment, pool *mempool
 	return false
 }
 
-func (na *nodeAssignment) tryFree(pool *mempool.Pool) bool {
+func (na *nodeAssignment) tryFree(pool mempool.MemPool) bool {
 	if pool == nil {
 		return false
 	}
@@ -236,12 +244,39 @@ func (na *nodeAssignment) tryFree(pool *mempool.Pool) bool {
 		return false
 	}
 
-	if reg, ok := na.Value.(*sv.Regular); ok {
+	if reg, ok := na.Value.(*sv.Pooled); ok {
 		na.Value = nil
-		v := []field.Element(*reg)
-		pool.Free(&v)
+		reg.Free(pool)
 		return true
 	}
 
 	return false
+}
+
+func (b boardAssignment) inspectCleaning() {
+
+	for lvl := 1; lvl < len(b); lvl++ {
+		for pil := range b[lvl] {
+			na := b[lvl][pil]
+			if na.NumKnownParents != len(na.Node.Parents) {
+				logrus.Errorf(
+					"the parent count was not updated till the end lvl=%v pil=%v parentCnt=%v nbParent=%v valueT=%T parents=%v",
+					lvl, pil, na.NumKnownParents, len(na.Node.Parents), na.Value, na.Node.Parents,
+				)
+			}
+
+			if na.Value == nil {
+				continue
+			}
+
+			p, ok := na.Value.(*sv.Pooled)
+			if !ok {
+				continue
+			}
+
+			if p.Regular != nil {
+				logrus.Errorf("the result of node [%v %v] was not cleaned", lvl, pil)
+			}
+		}
+	}
 }

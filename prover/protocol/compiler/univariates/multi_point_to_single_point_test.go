@@ -36,7 +36,7 @@ func TestMPTS(t *testing.T) {
 
 	hLProver := func(assi *wizard.ProverRuntime) {
 		p1 := smartvectors.Rand(PolSize)
-		p2 := smartvectors.Rand(PolSize)
+		p2 := smartvectors.NewConstant(field.NewElement(42), PolSize)
 
 		assi.AssignColumn(P1, p1)
 		assi.AssignColumn(P2, p2)

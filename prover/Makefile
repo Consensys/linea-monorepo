@@ -134,14 +134,14 @@ lib/compressor-and-shnarf-calculator-local: lib/compressor lib/shnarf_calculator
 ##
 ## Run all the unit-tests
 ##
-test: zkevm/arithmetization/zkevm.bin
-	$(CORSET_FLAGS) go test ./...
+test:
+	go test ./...
 
 ##
 ## Run the CI linting
 ##
 ci-lint: zkevm/arithmetization/zkevm.bin
-	$(CORSET_FLAGS) golangci-lint run --timeout 5m
+	golangci-lint run --timeout 5m
 
 ##
 ## Echo, the CGO flags. Usefull for testing manually
