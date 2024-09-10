@@ -37,7 +37,6 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.account.MutableAccount;
 import org.hyperledger.besu.evm.internal.Words;
-import org.hyperledger.besu.evm.worldstate.AuthorizedCodeService;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 public class ToyWorld implements WorldUpdater {
@@ -48,7 +47,6 @@ public class ToyWorld implements WorldUpdater {
   private final Map<Long, Hash> blockHashCache = new HashMap<>();
 
   private final ToyWorld parent;
-  private final AuthorizedCodeService authorizedCodeService;
   @Getter private Map<Address, ToyAccount> addressAccountMap;
 
   private ToyWorld() {
@@ -63,7 +61,6 @@ public class ToyWorld implements WorldUpdater {
   private ToyWorld(final ToyWorld parent, @Singular final List<ToyAccount> accounts) {
     this.parent = parent;
     this.addressAccountMap = new HashMap<>();
-    this.authorizedCodeService = new AuthorizedCodeService();
     // Initialise the account map
     for (ToyAccount account : accounts) {
       addressAccountMap.put(account.getAddress(), account);
@@ -99,11 +96,11 @@ public class ToyWorld implements WorldUpdater {
   @Override
   public Account get(final Address address) {
     if (addressAccountMap.containsKey(address)) {
-      return authorizedCodeService.processAccount(this, addressAccountMap.get(address), address);
+      return addressAccountMap.get(address);
     } else if (parent != null) {
-      return authorizedCodeService.processAccount(this, parent.get(address), address);
+      return parent.get(address);
     } else {
-      return authorizedCodeService.processAccount(this, null, address);
+      return null;
     }
   }
 
@@ -130,18 +127,17 @@ public class ToyWorld implements WorldUpdater {
 
     addressAccountMap.put(address, account);
 
-    return authorizedCodeService.processMutableAccount(this, account, address);
+    return account;
   }
 
   @Override
   public MutableAccount getAccount(final Address address) {
     if (addressAccountMap.containsKey(address)) {
-      return authorizedCodeService.processMutableAccount(
-          this, addressAccountMap.get(address), address);
+      return addressAccountMap.get(address);
     } else if (parent != null) {
       Account parentAccount = parent.getAccount(address);
       if (parentAccount == null) {
-        return authorizedCodeService.processMutableAccount(this, null, address);
+        return null;
       } else {
         return createAccount(
             parentAccount,
@@ -151,7 +147,7 @@ public class ToyWorld implements WorldUpdater {
             parentAccount.getCode());
       }
     } else {
-      return authorizedCodeService.processMutableAccount(this, null, address);
+      return null;
     }
   }
 
@@ -196,8 +192,8 @@ public class ToyWorld implements WorldUpdater {
   /**
    * Obtain the block hash for a given block.
    *
-   * @param blockNumber
-   * @return
+   * @param blockNumber The block number for which to obtain the hash.
+   * @return Hash The hash of the block.
    */
   public Hash blockHash(long blockNumber) {
     // Sanity check we found the hash
