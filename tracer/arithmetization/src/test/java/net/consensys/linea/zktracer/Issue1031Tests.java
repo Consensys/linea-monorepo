@@ -16,8 +16,10 @@ package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.ReplayTests.replay;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+@Tag("nightly")
 public class Issue1031Tests {
 
   // @Disabled

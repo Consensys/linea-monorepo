@@ -79,3 +79,27 @@ configurations {
 
 apply from: rootProject.file("gradle/dist.gradle")
 apply from: rootProject.file("gradle/publishing.gradle")
+
+tasks.test.configure {
+  useJUnitPlatform {
+    excludeTags("replay")
+  }
+}
+
+tasks.register("replayTests", Test) {
+  boolean isCiServer = System.getenv().containsKey("CI")
+  maxHeapSize = isCiServer ? "32g" : "8g"
+
+  if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
+    systemProperty("junit.jupiter.execution.parallel.enabled", true)
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+      System.getenv().get("REPLAY_TESTS_PARALLELISM").toInteger())
+  }
+
+  useJUnitPlatform {
+    includeTags("replay")
+  }
+}

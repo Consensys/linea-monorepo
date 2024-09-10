@@ -40,10 +40,12 @@ apply plugin: 'com.adarshr.test-logger'
   *   multiple variant of that test are run. The variant is a simple number.
   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
   */
-test {
+tasks.withType(Test).configureEach {
+  dependsOn(buildZkevmBin)
+
   minHeapSize = "4g"
   maxHeapSize = "8g"
-  maxParallelForks = Runtime.getRuntime().availableProcessors().intdiv(2) ?: 1
+
   jvmArgs = [
     '-XX:-UseGCOverheadLimit',
     // Mockito and jackson-databind do some strange reflection during tests.
@@ -66,7 +68,7 @@ test {
 
   testlogger {
     // pick a theme - mocha, standard, plain, mocha-parallel, standard-parallel or plain-parallel
-    theme 'standard'
+    theme 'standard-parallel'
 
     // set to false to disable detailed failure logs
     showExceptions true
@@ -75,7 +77,7 @@ test {
     showStackTraces true
 
     // set to true to remove any filtering applied to stack traces
-    showFullStackTraces false
+    showFullStackTraces true
 
     // set to false to hide exception causes
     showCauses true
@@ -102,7 +104,7 @@ test {
     showStandardStreams true
 
     // set to false to hide passed standard out and error streams
-    showPassedStandardStreams false
+    showPassedStandardStreams true
 
     // set to false to hide skipped standard out and error streams
     showSkippedStandardStreams true
@@ -114,21 +116,27 @@ test {
   useJUnitPlatform()
 }
 
-tasks.test.dependsOn(buildZkevmBin)
-
-tasks.register('unitTests', Test) {
-  description = 'Runs unit tests.'
-
-  minHeapSize = "4g"
-  maxHeapSize = "8g"
-  maxParallelForks = Runtime.getRuntime().availableProcessors().intdiv(2) ?: 1
-
+tasks.test.configure {
+  maxParallelForks = Runtime.getRuntime().availableProcessors()
   useJUnitPlatform {
-    excludeTags("AcceptanceTest")
-    exclude('**/**ReferenceTest*')
+    excludeTags("nightly")
   }
 }
 
-test {
-  exclude('**/**ReferenceTest*')
+tasks.register("nightlyTests", Test) {
+  boolean isCiServer = System.getenv().containsKey("CI")
+  maxHeapSize = isCiServer ? "32g" : "8g"
+
+  if (System.getenv().containsKey("NIGHTLY_TESTS_PARALLELISM")) {
+    systemProperty("junit.jupiter.execution.parallel.enabled", true)
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+            System.getenv().get("NIGHTLY_TESTS_PARALLELISM").toInteger())
+  }
+
+  useJUnitPlatform {
+    includeTags("nightly")
+  }
 }
