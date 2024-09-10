@@ -5,9 +5,10 @@ import { useFormContext } from "react-hook-form";
 import Image from "next/image";
 import { useAccount } from "wagmi";
 import { formatEther, parseUnits } from "viem";
-import { useBridge, useMessageService } from "@/hooks";
+import { useBridge } from "@/hooks";
 import { TokenType } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
+import useMinimumFee from "@/hooks/useMinimumFee";
 
 const MAX_AMOUNT_CHAR = 24;
 const FEES_MARGIN_PERCENT = 20;
@@ -35,7 +36,7 @@ export default function Amount({ tokensModalRef }: Props) {
   // Hooks
   const { isConnected } = useAccount();
   const { estimateGasBridge } = useBridge();
-  const { minimumFee } = useMessageService();
+  const { minimumFee } = useMinimumFee();
 
   const compareAmountBalance = useCallback(
     (_amount: string) => {

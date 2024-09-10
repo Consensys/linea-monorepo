@@ -4,12 +4,12 @@ import { useMemo, useState } from "react";
 import { isAddress, getAddress } from "viem";
 import TokenDetails from "./TokenDetails";
 import { NetworkType, TokenInfo, TokenType } from "@/config/config";
-import fetchTokenInfo from "@/services/fetchTokenInfo";
 import useERC20Storage from "@/hooks/useERC20Storage";
 import { safeGetAddress } from "@/utils/format";
 import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import { useTokenStore } from "@/stores/tokenStore";
+import { fetchTokenInfo } from "@/services";
 
 interface Props {
   tokensModalRef: React.RefObject<HTMLDialogElement>;
