@@ -7,10 +7,11 @@ import { MdInfoOutline } from "react-icons/md";
 import classNames from "classnames";
 import { formatEther, parseEther, parseUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
-import { useApprove, useMessageService, useExecutionFee } from "@/hooks";
+import { useApprove, useExecutionFee } from "@/hooks";
 import useBridge from "@/hooks/useBridge";
 import { NetworkLayer, TokenType } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
+import useMinimumFee from "@/hooks/useMinimumFee";
 
 export default function Fees() {
   const [estimatedGasFee, setEstimatedGasFee] = useState<bigint>();
@@ -41,7 +42,7 @@ export default function Fees() {
   const balance = watch("balance", false);
 
   // Hooks
-  const { minimumFee } = useMessageService();
+  const { minimumFee } = useMinimumFee();
   const { estimateGasBridge } = useBridge();
   const { estimateApprove } = useApprove();
   const minFees = useExecutionFee({

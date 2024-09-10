@@ -38,10 +38,8 @@ export default function SwitchNetwork() {
   if (!isConnected) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 md:left-10">
-      <button id="try-network-btn" className="btn btn-info uppercase" onClick={() => switchNetworkHandler()}>
-        Try {networkType === NetworkType.SEPOLIA ? "Mainnet" : "Testnet"}
-      </button>
-    </div>
+    <button id="try-network-btn" className="btn btn-info uppercase" onClick={() => switchNetworkHandler()}>
+      Try {networkType === NetworkType.SEPOLIA ? "Mainnet" : "Testnet"}
+    </button>
   );
 }

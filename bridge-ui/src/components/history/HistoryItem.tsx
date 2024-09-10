@@ -7,9 +7,9 @@ import { MdOutlineArrowRightAlt } from "react-icons/md";
 import { Address, formatUnits, zeroAddress } from "viem";
 
 import ChainLogo from "@/components/widgets/ChainLogo";
-import HistoryClaim from "./HistoryClaim";
 import { formatAddress, safeGetAddress } from "@/utils/format";
 import { TransactionHistory } from "@/models/history";
+import TransactionClaimButton from "../transactions/modals/TransactionClaimButton";
 
 interface Props {
   transaction: TransactionHistory;
@@ -112,7 +112,7 @@ export default function HistoryItem({ transaction, variants }: Props) {
         </Link>
       </li>
       {transaction.messages?.map((message) => {
-        return <HistoryClaim key={message.messageHash} message={message} transaction={transaction} />;
+        return <TransactionClaimButton key={message.messageHash} message={message} transaction={transaction} />;
       })}
       <li className="divider"></li>
     </motion.ul>

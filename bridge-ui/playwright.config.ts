@@ -7,11 +7,11 @@ export default defineConfig({
   maxFailures: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
-    ? [['html', { open: 'never', outputFolder: `playwright-report-${process.env.HEADLESS ? 'headless' : 'headful'}` }]]
-    : 'html',
+    ? [["html", { open: "never", outputFolder: `playwright-report-${process.env.HEADLESS ? "headless" : "headful"}` }]]
+    : "html",
   use: {
     baseURL: "http://localhost:3000",
-    trace: process.env.CI ? 'on' : 'retain-on-failure'
+    trace: process.env.CI ? "on" : "retain-on-failure",
   },
   projects: [
     {

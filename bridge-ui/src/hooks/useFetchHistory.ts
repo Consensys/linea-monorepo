@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useAccount } from "wagmi";
 import log from "loglevel";
 import { useChainStore } from "@/stores/chainStore";
@@ -11,9 +11,6 @@ import useFetchBridgeTransactions from "./useFetchBridgeTransactions";
 const DEFAULT_FIRST_BLOCK = BigInt(1000);
 
 const useFetchHistory = () => {
-  // Prevent double fetching
-  const [isFetching, setIsFetching] = useState<boolean>(false);
-
   // Wagmi
   const { address } = useAccount();
 
@@ -43,11 +40,11 @@ const useFetchHistory = () => {
     if (!l1Chain || !l2Chain || !address) {
       return;
     }
+
     // Prevent multiple call
-    if (isFetching) return;
+    if (isLoading) return;
 
     try {
-      setIsFetching(true);
       setIsLoading(true);
 
       // ToBlock: get last onchain block
@@ -75,11 +72,10 @@ const useFetchHistory = () => {
     } catch (error) {
       log.error(error);
     } finally {
-      setIsFetching(false);
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, currentNetworkType, isFetching, l1Chain, l2Chain]);
+  }, [address, currentNetworkType, l1Chain, l2Chain]);
 
   const clearHistory = useCallback(() => {
     // Clear local storage

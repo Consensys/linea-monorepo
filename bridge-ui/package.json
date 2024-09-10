@@ -30,7 +30,6 @@
     "compare-versions": "6.1.1",
     "date-fns": "3.6.0",
     "framer-motion": "11.3.17",
-    "gray-matter": "4.0.3",
     "joi": "17.13.3",
     "loglevel": "1.9.1",
     "next": "14.2.5",
@@ -50,6 +49,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.45.3",
+    "@svgr/webpack": "^8.1.0",
     "@synthetixio/synpress": "4.0.0-alpha.7",
     "@types/fs-extra": "11.0.4",
     "@types/react": "18.3.3",

@@ -3,34 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-
   /* toastify */
   --toastify-color-success: #7adffd;
   --toastify-color-progress-success: #7adffd;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
-/*
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-}
-*/
 
 body {
   background: #121212;
@@ -44,16 +20,5 @@ body {
 
   .btn-custom {
     @apply min-h-[2.5rem] h-[2.5rem] px-6;
-  }
-
-
-  .shortcut-card {
-    @apply rounded-sm relative transition-all duration-300 ease-in-out px-4 py-5 flex flex-col;
-    @apply hover:after:bg-primary hover:border-primary hover:-translate-y-0.5 bg-cardBg border border-card;
-    
-    &::after {
-      @apply absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-card rounded-full z-10 transition-all duration-300 ease-in-out;
-      content: "";
-    }
   }
 }

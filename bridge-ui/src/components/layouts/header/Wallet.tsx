@@ -4,20 +4,14 @@ import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { useAccount, useDisconnect } from "wagmi";
 import { MdLogout } from "react-icons/md";
-import classNames from "classnames";
 import { formatAddress } from "@/utils/format";
-import { useWeb3Modal } from "@web3modal/wagmi/react";
+import ConnectButton from "@/components/ConnectButton";
 
-type Props = {
-  className?: string;
-};
-
-export default function Wallet({ className = "" }: Props) {
+export default function Wallet() {
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
-  const { open } = useWeb3Modal();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -59,15 +53,7 @@ export default function Wallet({ className = "" }: Props) {
 
   return (
     <div className="p-0">
-      <button
-        id="wallet-connect-btn"
-        className={classNames(className, {
-          "btn btn-primary rounded-full uppercase text-sm md:text-[0.9375rem] font-semibold": !className,
-        })}
-        onClick={() => open()}
-      >
-        Connect Wallet
-      </button>
+      <ConnectButton />
     </div>
   );
 }

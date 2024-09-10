@@ -6,4 +6,4 @@ sgr0 := $(shell tput sgr0)
 
 .PHONY: dev
 dev:
-	npm run dev
+	pnpm run dev
