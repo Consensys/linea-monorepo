@@ -1,4 +1,9 @@
-## StakeManager
+# Staking Rewards
+
+- [Stake Manager](#stake-manager)
+- [Time-Weighted Boost Stake Manager](#time-weighted-boost-stake-manager)
+
+## Stake Manager
 
 The rewardIndex is a crucial part of the reward distribution mechanism.
 
@@ -21,11 +26,13 @@ Here's how it works:
 Instead of updating each user's rewards every time new rewards are added, we only need to update a
 single global variable (rewardIndex).
 
+We don't need to assign Rewards to epochs, so we don't need to finalize Rewords for each epoch and each user.
+
 User-specific calculations are done only when a user interacts with the contract.
 
 `SCALE_FACTOR` is used to maintain precision in calculations.
 
-### StakeManager Example
+### Stake Manager Example
 
 Initial setup:
 
@@ -125,3 +132,7 @@ Final state:
 * Charlie received: 30 tokens and 499.9 Rewards
 * Total Rewards distributed: 2000 Rewards
 * Rewards remaining in contract: 0
+
+## Time-Weighted Boost Stake Manager
+
+TODO
