@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
-import static net.consensys.linea.testing.ToyExecutionEnvironment.DEFAULT_COINBASE_ADDRESS;
+import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 
 import java.util.List;
 
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.ToyWorld;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -179,23 +178,18 @@ public class TxSkipTests {
             // TODO:  deploymentWithEmptyInitAndUselessAccessList
             );
 
-    ToyWorld toyWorld =
-        ToyWorld.builder()
-            .accounts(
-                List.of(
-                    coinbaseAccount,
-                    senderAccount1,
-                    senderAccount2,
-                    senderAccount3,
-                    senderAccount4,
-                    senderAccount5,
-                    senderAccount6,
-                    senderAccount7,
-                    receiverAccount))
-            .build();
-
     ToyExecutionEnvironmentV2.builder()
-        .toyWorld(toyWorld)
+        .accounts(
+            List.of(
+                coinbaseAccount,
+                senderAccount1,
+                senderAccount2,
+                senderAccount3,
+                senderAccount4,
+                senderAccount5,
+                senderAccount6,
+                senderAccount7,
+                receiverAccount))
         .transactions(txs)
         .zkTracerValidator(
             zkTracer -> {

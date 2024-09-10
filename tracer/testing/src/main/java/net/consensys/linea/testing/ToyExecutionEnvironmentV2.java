@@ -57,7 +57,8 @@ import org.hyperledger.besu.evm.processor.MessageCallProcessor;
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
-
+  public static final Address DEFAULT_COINBASE_ADDRESS =
+      Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   private static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
   private static final GasCalculator gasCalculator = ZkTracer.gasCalculator;
@@ -70,7 +71,7 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private BigInteger chainId = CHAIN_ID;
 
-  private final ToyWorld toyWorld;
+  @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
 
   @Singular private final List<Transaction> transactions;
 
@@ -101,11 +102,11 @@ public class ToyExecutionEnvironmentV2 {
 
   public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec(EVM evm) {
     Map<String, ReferenceTestWorldState.AccountMock> accountMockMap =
-        toyWorld.getAddressAccountMap().entrySet().stream()
+        accounts.stream()
             .collect(
                 Collectors.toMap(
-                    entry -> entry.getKey().toHexString(),
-                    entry -> entry.getValue().toAccountMock()));
+                    toyAccount -> toyAccount.getAddress().toHexString(),
+                    ToyAccount::toAccountMock));
     ReferenceTestWorldState referenceTestWorldState =
         ReferenceTestWorldState.create(accountMockMap, evm.getEvmConfiguration());
     BlockHeader blockHeader =

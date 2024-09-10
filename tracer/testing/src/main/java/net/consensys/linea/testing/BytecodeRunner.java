@@ -43,10 +43,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 public final class BytecodeRunner {
   public static final long DEFAULT_GAS_LIMIT = 25_000_000L;
   private final Bytes byteCode;
-  ToyExecutionEnvironment toyExecutionEnvironment;
   ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2;
-
-  @Setter private boolean useToyExecutionEnvironmentV2 = true;
 
   /**
    * @param byteCode the byte code to test
@@ -114,35 +111,17 @@ public final class BytecodeRunner {
     accounts.add(receiverAccount);
     accounts.addAll(additionalAccounts);
 
-    final ToyWorld toyWorld = ToyWorld.builder().accounts(accounts).build();
-
-    if (useToyExecutionEnvironmentV2) {
-      toyExecutionEnvironmentV2 =
-          ToyExecutionEnvironmentV2.builder()
-              .testValidator(x -> {})
-              .toyWorld(toyWorld)
-              .zkTracerValidator(zkTracerValidator)
-              .transaction(tx)
-              .build();
-      toyExecutionEnvironmentV2.run();
-
-    } else {
-      toyExecutionEnvironment =
-          ToyExecutionEnvironment.builder()
-              .testValidator(x -> {})
-              .toyWorld(toyWorld)
-              .zkTracerValidator(zkTracerValidator)
-              .transaction(tx)
-              .build();
-      toyExecutionEnvironment.run();
-    }
+    toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder()
+            .testValidator(x -> {})
+            .accounts(accounts)
+            .zkTracerValidator(zkTracerValidator)
+            .transaction(tx)
+            .build();
+    toyExecutionEnvironmentV2.run();
   }
 
   public Hub getHub() {
-    if (useToyExecutionEnvironmentV2) {
-      return toyExecutionEnvironmentV2.getHub();
-    } else {
-      return toyExecutionEnvironment.getHub();
-    }
+    return toyExecutionEnvironmentV2.getHub();
   }
 }

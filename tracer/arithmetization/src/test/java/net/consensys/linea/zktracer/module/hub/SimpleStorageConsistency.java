@@ -21,7 +21,6 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.ToyWorld;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -138,13 +137,8 @@ public class SimpleStorageConsistency {
 
     final List<Transaction> txs = List.of(simpleWarm, stupidWarm, noWarm);
 
-    ToyWorld toyWorld =
-        ToyWorld.builder()
-            .accounts(List.of(receiverAccount, senderAccount1, senderAccount2, senderAccount3))
-            .build();
-
     ToyExecutionEnvironmentV2.builder()
-        .toyWorld(toyWorld)
+        .accounts(List.of(receiverAccount, senderAccount1, senderAccount2, senderAccount3))
         .transactions(txs)
         .zkTracerValidator(zkTracer -> {})
         .build()
