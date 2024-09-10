@@ -156,8 +156,8 @@ func TestPeriodicSampleCoset(t *testing.T) {
 					for cosetID := 0; cosetID < ratio; cosetID++ {
 
 						testEval := sampling.EvalCoset(domain, cosetID, ratio, true)
-						testEval = smartvectors.FFTInverse(testEval, fft.DIF, true, ratio, cosetID)
-						testEval = smartvectors.FFT(testEval, fft.DIT, true, 0, 0)
+						testEval = smartvectors.FFTInverse(testEval, fft.DIF, true, ratio, cosetID, nil)
+						testEval = smartvectors.FFT(testEval, fft.DIT, true, 0, 0, nil)
 
 						require.Equal(t, vanillaEval.Pretty(), testEval.Pretty(),
 							"domain %v, period %v, offset %v, ratio %v, cosetID %v",

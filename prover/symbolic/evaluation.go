@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
@@ -35,18 +36,18 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 }
 
 // Evaluate the board for a batch  of inputs in parallel
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
 	/*
 		Find the size of the vector
 	*/
 	totalSize := 0
 	for i, inp := range inputs {
-
 		if totalSize > 0 && totalSize != inp.Len() {
 			// Expects that all vector inputs have the same size
 			utils.Panic("Mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
 		}
+
 		if totalSize == 0 {
 			totalSize = inp.Len()
 		}
@@ -58,6 +59,10 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 		utils.Panic("Either there is no input or the inputs all have size 0")
 	}
 
+	if len(p) > 0 && p[0].Size() != MaxChunkSize {
+		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", MaxChunkSize, p[0].Size())
+	}
+
 	/*
 		The is no vector input iff totalSize is 0
 		Thus the condition below catch the two cases where:
@@ -65,9 +70,18 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 			- The vectors are smaller than the min chunk size
 	*/
 
-	if totalSize <= MaxChunkSize {
-		// never pass the pool here
-		return b.evaluateSingleThread(inputs)
+	if totalSize < MaxChunkSize {
+		// never pass the pool here as the pool assumes that all vectors have a
+		// size of MaxChunkSize. Thus, it would not work here.
+		return b.evaluateSingleThread(inputs).DeepCopy()
+	}
+
+	// This is the code-path that is used for benchmarking when the size of the
+	// vectors is exactly MaxChunkSize. In production, it will rather use the
+	// multi-threaded option. The above condition cannot use the pool because we
+	// assume here that the pool has a vector size of exactly MaxChunkSize.
+	if totalSize == MaxChunkSize {
+		return b.evaluateSingleThread(inputs, p...).DeepCopy()
 	}
 
 	if totalSize%MaxChunkSize != 0 {
@@ -77,12 +91,23 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 	numChunks := totalSize / MaxChunkSize
 	res := make([]field.Element, totalSize)
 
-	parallel.ExecuteChunky(numChunks, func(start, stop int) {
-		for chunkID := start; chunkID < stop; chunkID++ {
+	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, idChan chan int) {
 
-			chunkStart := chunkID * MaxChunkSize
-			chunkStop := (chunkID + 1) * MaxChunkSize
-			chunkInputs := make([]sv.SmartVector, len(inputs))
+		var pool []mempool.MemPool
+		if len(p) > 0 {
+			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
+				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
+			}
+		}
+
+		chunkInputs := make([]sv.SmartVector, len(inputs))
+
+		for chunkID := range idChan {
+
+			var (
+				chunkStart = chunkID * MaxChunkSize
+				chunkStop  = (chunkID + 1) * MaxChunkSize
+			)
 
 			for i, inp := range inputs {
 				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
@@ -94,11 +119,19 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 
 			// We don't parallelize evaluations where the inputs are all scalars
 			// Therefore the cast is safe.
-			chunkRes := b.evaluateSingleThread(chunkInputs, p...)
+			chunkRes := b.evaluateSingleThread(chunkInputs, pool...)
 
 			// No race condition here as each call write to different places
 			// of vec.
 			chunkRes.WriteInSlice(res[chunkStart:chunkStop])
+
+			wg.Done()
+		}
+
+		if len(p) > 0 {
+			if sa, ok := pool[0].(*mempool.SliceArena); ok {
+				sa.TearDown()
+			}
 		}
 	})
 
@@ -107,7 +140,7 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 
 // evaluateSingleThread evaluates a boarded expression. The inputs can be either
 // vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
 	var (
 		length         = inputs[0].Len()
@@ -138,10 +171,9 @@ func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...*me
 	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
 	// that way.
 	if hasPool {
-		if reg, ok := resBuf.(*sv.Regular); ok {
+		if reg, ok := resBuf.(*sv.Pooled); ok {
 			resGC := reg.DeepCopy()
-			v := []field.Element(*reg)
-			pool.Free(&v)
+			reg.Free(pool)
 			resBuf = resGC
 		}
 	}
