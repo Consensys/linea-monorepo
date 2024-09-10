@@ -1,4 +1,4 @@
-package sticker_test
+package stitcher_test
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter/sticker"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter/stitcher"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -48,11 +48,12 @@ func TestLocalEval(t *testing.T) {
 		q12 = builder.LocalOpening("Q23", column.Shift(d, -1))
 	}
 
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("A").String())
 	assert.Equal(t, column.Ignored.String(), comp.Columns.Status("B").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("C").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("D").String())
+
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q1.ID))
 	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q2.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q3.ID))
@@ -119,7 +120,7 @@ func TestGlobalConstraintFibonacci(t *testing.T) {
 		q3 = builder.GlobalConstraint("Q2", fibo(c))
 	}
 
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
@@ -163,7 +164,7 @@ func TestLocalConstraintFibonacci(t *testing.T) {
 		q3 = builder.LocalConstraint("Q2", fibo(c))
 	}
 
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
@@ -205,7 +206,7 @@ func TestGlobalMixedRounds(t *testing.T) {
 		q2 = builder.LocalConstraint("Q2", ifaces.ColumnAsVariable(a2).Sub(ifaces.ColumnAsVariable(b2)))
 	}
 
-	comp := wizard.Compile(define, sticker.Sticker(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q0.ID), "q0 should be ignored")
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
