@@ -1,4 +1,4 @@
-package sticker
+package stitcher
 
 import (
 	"strings"
@@ -9,15 +9,18 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
 )
 
 type stitchingContex struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
-	// All columns under the minSize are ignored
-	// No stitching goes beyond MaxSize
+	// All columns under the minSize are ignored.
+	// No stitching goes beyond MaxSize.
 	MinSize, MaxSize int
 
 	// It collects the information about subColumns and their stitchings.
@@ -44,29 +47,34 @@ type stitching struct {
 	round int
 	// status of the sub columns
 	isPreComputed bool
+	//TBD: supporting verifierDefined via expansion
 }
 
-// newStitcher applies the stitching over the eligible sub columns and adjust the constraints accordingly.
+// Stitcher applies the stitching over the eligible sub columns and adjusts the constraints accordingly.
 func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 
 	return func(comp *wizard.CompiledIOP) {
 		// it creates stitchings from the eligible columns and commits to the them.
-		_ = newStitcher(comp, minSize, maxSize)
-		// it adjusts the constraints accordingly over the stitchings of the sub columns.
-		// ctx.Constraints(comp)
+		ctx := newStitcher(comp, minSize, maxSize)
 
-		/* // it assign the stitching columns and delete the assignment of the sub columns.
+		// ignore the constraints over the subColumns.
+		ctx.IgnoreConstraintsOverSubColumns()
+
+		//  adjust the constraints accordingly over the stitchings of the sub columns.
+		// ctx.newConstraintsOverStitchings()
+
+		// it assign the stitching columns and delete the assignment of the sub columns.
 		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for _, compRound := range ctx.CompiledColumns {
-				for _, list := range compRound.BySize {
-					for _, h := range list {
-						run.Columns.TryDel(h.GetColID())
-					}
+			for round := range comp.NumRounds() {
+				for subCol, _ := range ctx.Stitchings[round].BySubCol {
+					run.Columns.TryDel(subCol)
 				}
 			}
-		})*/
+		})
 	}
 }
+
+// it commits to the stitchings of the eligible sub columns.
 func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex {
 	numRounds := comp.NumRounds()
 	res := stitchingContex{
@@ -82,12 +90,12 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 			}
 		}, numRounds),
 	}
-	// it scans the compiler trace for the eligible columns, create stitchings from the sub columns and commits to the them.
+	// it scans the compiler trace for the eligible columns, creates stitchings from the sub columns and commits to the them.
 	res.ScanStitchCommit()
 	return res
 }
 
-// ScanAndStitch scans compiler trace and classifies the sub columns eligible to the stitching.
+// ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
 // It then stitches the sub columns, commits to them and update stitchingContext.
 // It also forces the compiler to set the status of the sub columns to 'ignored'.
 // since the sub columns are technically replaced with their stitching.
@@ -113,34 +121,59 @@ func (ctx *stitchingContex) ScanStitchCommit() {
 				}
 			}
 
-			var (
+			if len(precomputedCols) != 0 {
 				// classify the columns to the groups, each of size ctx.MaxSize
-				preComputedGroups = groupCols(precomputedCols, ctx.MaxSize/size)
-				normalGroups      = groupCols(normalCols, ctx.MaxSize/size)
-			)
+				preComputedGroups := groupCols(precomputedCols, ctx.MaxSize/size)
 
-			for _, group := range preComputedGroups {
-				// prepare a group for stitching
-				stitching := stitching{
-					subCol:        group,
-					round:         round,
-					isPreComputed: true,
+				for _, group := range preComputedGroups {
+					// prepare a group for stitching
+					stitching := stitching{
+						subCol:        group,
+						round:         round,
+						isPreComputed: true,
+					}
+					// stitch the group
+					ctx.stitchGroup(stitching)
 				}
-				// stitch the group
-				ctx.stitchGroup(stitching)
 			}
 
-			for _, group := range normalGroups {
-				stitching := stitching{
-					subCol:        group,
-					round:         round,
-					isPreComputed: false,
-				}
-				ctx.stitchGroup(stitching)
+			if len(normalCols) != 0 {
+				normalGroups := groupCols(normalCols, ctx.MaxSize/size)
 
+				for _, group := range normalGroups {
+					stitching := stitching{
+						subCol:        group,
+						round:         round,
+						isPreComputed: false,
+					}
+					ctx.stitchGroup(stitching)
+
+				}
 			}
 
 		}
+
+		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
+			stopTimer := profiling.LogTimer("stitching compiler")
+			defer stopTimer()
+			for id, subColumns := range ctx.Stitchings[round].ByStitching {
+				// Trick, in order to compute the assignment of newName we
+				// extract the witness of the interleaving of the grouped
+				// columns.
+				witnesses := make([]smartvectors.SmartVector, len(subColumns))
+				for i := range witnesses {
+					witnesses[i] = subColumns[i].GetColAssignment(run)
+				}
+				assignement := smartvectors.
+					AllocateRegular(len(subColumns) * witnesses[0].Len()).(*smartvectors.Regular)
+				for i := range subColumns {
+					for j := 0; j < witnesses[0].Len(); j++ {
+						(*assignement)[i+j*len(subColumns)] = witnesses[i].Get(j)
+					}
+				}
+				run.AssignColumn(id, assignement)
+			}
+		})
 	}
 }
 
@@ -153,13 +186,14 @@ func scanAndClassifyEligibleColumns(ctx stitchingContex, round int) map[int][]if
 		status := ctx.comp.Columns.Status(colName)
 		col := ctx.comp.Columns.GetHandle(colName)
 
-		// the columns, supposed to be ignored by the compiler, or the ones visible to the verifier,
-		// do not need stitching.
+		// 1. we expect no constraints over a mix of eligible columns and proof, thus ignore Proof columns
+		// 2. we expect no verifingKey column to fall withing the stitching interval (ctx.MinSize, ctx.MaxSize)
+		// 3. we expect no query over the ignored columns.
 		if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 			continue
 		}
 
-		// If the sizes are either too small or too large, sticker does not manipulate the column.
+		// If the sizes are either too small or too large, stitcher does not manipulate the column.
 		if ctx.MinSize > col.Size() || col.Size() >= ctx.MaxSize {
 			continue
 		}
@@ -178,7 +212,7 @@ func scanAndClassifyEligibleColumns(ctx stitchingContex, round int) map[int][]if
 	return columnsBySize
 }
 
-// The cols must have the same size
+// group the cols with the same size
 func groupCols(cols []ifaces.Column, numToStick int) (groups [][]ifaces.Column) {
 
 	numGroups := utils.DivCeil(len(cols), numToStick)
@@ -214,6 +248,7 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 	return ifaces.ColIDf("STICKER_%v", strings.Join(fmtted, "_"))
 }
 
+// for a group of sub columns it creates their stitching.
 func (ctx *stitchingContex) stitchGroup(s stitching) {
 	var (
 		group        = s.subCol
@@ -243,6 +278,7 @@ func (ctx *stitchingContex) stitchGroup(s stitching) {
 	ctx.insertNew(s)
 }
 
+// it inserts the new stitching to [stitchingContex]
 func (ctx *stitchingContex) insertNew(s stitching) {
 	// Initialize the bySubCol if necessary
 	if ctx.Stitchings[s.round].BySubCol == nil {
@@ -269,4 +305,85 @@ func (ctx *stitchingContex) insertNew(s stitching) {
 	}
 	//populate byStitching
 	ctx.Stitchings[s.round].ByStitching[s.stitchingRes.GetColID()] = s.subCol
+}
+
+// it checks if the column belongs to a stitching.
+func isColEligible(ctx stitchingContex, col ifaces.Column) bool {
+	natural := column.RootParents(col)[0]
+	_, found := ctx.Stitchings[col.Round()].BySubCol[natural.GetColID()]
+	return found
+}
+
+// If the query is valid (all columns are eligible), it marks the query as ignored.
+// Indeed, such query is replaced by the query over the stitching columns.
+func (ctx stitchingContex) IgnoreConstraintsOverSubColumns() {
+	// Ignore the LocalOpening queries over the subColumns.
+	for _, qName := range ctx.comp.QueriesParams.AllUnignoredKeys() {
+		// Filters out only the LocalOpening
+		q, ok := ctx.comp.QueriesParams.Data(qName).(query.LocalOpening)
+		if !ok {
+			utils.Panic("got an uncompilable query %v", qName)
+		}
+
+		if !isColEligible(ctx, q.Pol) {
+			continue
+		}
+		// mark the query as ignored
+		ctx.comp.QueriesParams.MarkAsIgnored(qName)
+	}
+	// Ignore the Local/Global queries over the subColumns.
+	for _, qName := range ctx.comp.QueriesNoParams.AllUnignoredKeys() {
+
+		q := ctx.comp.QueriesNoParams.Data(qName)
+
+		var board symbolic.ExpressionBoard
+
+		switch q := q.(type) {
+		case query.LocalConstraint:
+			board = q.Board()
+		case query.GlobalConstraint:
+			board = q.Board()
+		default:
+			utils.Panic("got an uncompilable query %++v", qName)
+		}
+
+		// detect if the expression is over the eligible columns.
+		if !isExprEligible(ctx, board) {
+			continue
+		}
+
+		// in all cases, mark it as ignored but make sure it is compiled by the stitching compiler.
+		ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+	}
+
+}
+
+// It checks if the expression is over a set of the columns eligible to the stitching.
+func isExprEligible(ctx stitchingContex, board symbolic.ExpressionBoard) bool {
+	metadata := board.ListVariableMetadata()
+	hasAtLeastOneEligible := false
+	allAreEligible := true
+	for i := range metadata {
+		switch m := metadata[i].(type) {
+		case ifaces.Column:
+			b := isColEligible(ctx, m)
+
+			hasAtLeastOneEligible = hasAtLeastOneEligible || b
+			allAreEligible = allAreEligible && b
+
+			if m.Size() == 0 {
+				panic("found no columns in the expression")
+			}
+		}
+
+	}
+
+	if hasAtLeastOneEligible && !allAreEligible {
+		// 1. we expect no expression including Proof columns
+		// 2. we expect no expression over ignored columns
+		// 3. we expect no VerifiyingKey withing the stitching range.
+		panic("the expression is not valid, it incudes a mix of eligible columns and invalid columns i.e., Ignored,Proof, VerifingKey")
+	}
+
+	return hasAtLeastOneEligible
 }
