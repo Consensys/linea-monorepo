@@ -94,11 +94,11 @@ import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j

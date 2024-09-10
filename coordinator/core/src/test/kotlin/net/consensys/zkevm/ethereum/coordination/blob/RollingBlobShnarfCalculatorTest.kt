@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.blob
 
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlockIntervals
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

@@ -9,7 +9,7 @@ import net.consensys.encodeHex
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlockInterval
 import net.consensys.zkevm.domain.BlockIntervals
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

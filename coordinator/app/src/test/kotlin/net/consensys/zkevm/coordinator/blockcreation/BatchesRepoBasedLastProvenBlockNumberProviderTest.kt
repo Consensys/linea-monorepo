@@ -1,6 +1,6 @@
 package net.consensys.zkevm.coordinator.blockcreation
 
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BatchesRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.anyOrNull

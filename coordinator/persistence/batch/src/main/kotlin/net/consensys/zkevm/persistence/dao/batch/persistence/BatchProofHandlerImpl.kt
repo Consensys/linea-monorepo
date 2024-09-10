@@ -2,6 +2,7 @@ package net.consensys.zkevm.persistence.dao.batch.persistence
 
 import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.ethereum.coordination.proofcreation.BatchProofHandler
+import net.consensys.zkevm.persistence.BatchesRepository
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture

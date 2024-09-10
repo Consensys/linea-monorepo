@@ -12,11 +12,11 @@ import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBatch
 import net.consensys.zkevm.domain.createBlobRecordFromBatches
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesDao
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesPostgresDao
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
 import net.consensys.zkevm.persistence.dao.batch.persistence.PostgresBatchesRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl

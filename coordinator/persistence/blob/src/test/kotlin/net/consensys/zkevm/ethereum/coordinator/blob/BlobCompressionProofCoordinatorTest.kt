@@ -17,7 +17,7 @@ import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfResult
 import net.consensys.zkevm.ethereum.coordination.blob.ShnarfResult
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

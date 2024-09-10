@@ -10,8 +10,8 @@ import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.createAggregation
 import net.consensys.zkevm.domain.createBlobRecords
 import net.consensys.zkevm.domain.toBlockIntervals
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.junit.jupiter.api.BeforeEach
