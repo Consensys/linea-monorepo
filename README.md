@@ -34,6 +34,8 @@ User-specific calculations are done only when a user interacts with the contract
 
 ### Stake Manager Example
 
+![z-Screenshot](https://github.com/user-attachments/assets/1c40a991-6096-46f2-9c28-0f95c9233374)
+
 Initial setup:
 
 * rewardIndex: 0
