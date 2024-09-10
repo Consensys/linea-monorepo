@@ -8,8 +8,8 @@ enum class TransactionExclusionErrorCodes(val code: Int, val message: String) {
   // User' error codes
   TRANSACTION_UNAVAILABLE(-4000, "Rejected transaction not available"),
 
-  // App/System' error codes
-  OTHER_ERROR(-5001, "Unidentified error was occurred");
+  // App/System/Server' error codes
+  SERVER_ERROR(-32000, "Server error");
 
   fun toErrorObject(data: Any? = null): JsonRpcError {
     return JsonRpcError(this.code, this.message, data)
@@ -21,6 +21,6 @@ fun jsonRpcError(appError: TransactionExclusionError): JsonRpcError {
     ErrorType.TRANSACTION_UNAVAILABLE ->
       TransactionExclusionErrorCodes.TRANSACTION_UNAVAILABLE.toErrorObject(appError.errorDetail)
     ErrorType.OTHER_ERROR ->
-      TransactionExclusionErrorCodes.OTHER_ERROR.toErrorObject(appError.errorDetail)
+      TransactionExclusionErrorCodes.SERVER_ERROR.toErrorObject(appError.errorDetail)
   }
 }
