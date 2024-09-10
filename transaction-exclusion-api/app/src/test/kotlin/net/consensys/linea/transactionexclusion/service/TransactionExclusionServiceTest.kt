@@ -67,7 +67,25 @@ class TransactionExclusionServiceTest {
   }
 
   @Test
-  fun saveRejectedTransaction_return_error_result() {
+  fun saveRejectedTransaction_return_error_result_when_findRejectedTransaction_failed() {
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+      .thenReturn(SafeFuture.failedFuture(RuntimeException()))
+    whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
+      .thenReturn(SafeFuture.completedFuture(Unit))
+
+    val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      repository = rejectedTransactionsRepositoryMock,
+      metricsFacade = metricsFacadeMock
+    )
+
+    Assertions.assertEquals(
+      Err(TransactionExclusionError(ErrorType.OTHER_ERROR, "")),
+      transactionExclusionService.saveRejectedTransaction(defaultRejectedTransaction).get()
+    )
+  }
+
+  @Test
+  fun saveRejectedTransaction_return_error_result_when_saveRejectedTransaction_failed() {
     whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))

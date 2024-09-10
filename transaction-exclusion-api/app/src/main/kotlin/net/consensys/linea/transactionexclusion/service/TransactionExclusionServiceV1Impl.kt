@@ -34,28 +34,28 @@ class TransactionExclusionServiceV1Impl(
     Result<SaveRejectedTransactionStatus, TransactionExclusionError>
     > {
     return this.repository.findRejectedTransaction(rejectedTransaction.transactionInfo!!.hash)
-      .thenApply {
+      .thenPeek {
         if (it == null) {
           txRejectionCounter.increment()
         }
       }
       .thenCompose {
         this.repository.saveRejectedTransaction(rejectedTransaction)
-          .handleComposed { _, error ->
-            if (error == null) {
-              SafeFuture.completedFuture(Ok(SaveRejectedTransactionStatus.SAVED))
-            } else {
-              if (error is DuplicatedRecordException) {
-                SafeFuture.completedFuture(
-                  Ok(SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE)
-                )
-              } else {
-                SafeFuture.completedFuture(
-                  Err(TransactionExclusionError(ErrorType.OTHER_ERROR, error.message ?: ""))
-                )
-              }
-            }
+      }
+      .handleComposed { _, error ->
+        if (error != null) {
+          if (error.cause is DuplicatedRecordException) {
+            SafeFuture.completedFuture(
+              Ok(SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE)
+            )
+          } else {
+            SafeFuture.completedFuture(
+              Err(TransactionExclusionError(ErrorType.OTHER_ERROR, error.cause?.message ?: ""))
+            )
           }
+        } else {
+          SafeFuture.completedFuture(Ok(SaveRejectedTransactionStatus.SAVED))
+        }
       }
   }
 

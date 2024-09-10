@@ -46,33 +46,69 @@ curl -H 'content-type:application/json' --data '{
 ```
 
 
-### linea_saveRejectedTransactionV1 Response Example
+### linea_saveRejectedTransactionV1 Response Examples:
+The rejected transaction was successfully saved:
 ```json
 {
     "jsonrpc": "2.0",
-    "id": "1",
+    "id": 1,
     "result": {
         "status": "SAVED",
         "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"
     }
 }
 ```
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "1",
-  "result": {
-    "status": "DUPLICATE_ALREADY_SAVED_BEFORE",
-    "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"
-  }
-}
-```
-
-### linea_getTransactionExclusionStatusV1 Response Example
+The rejected transaction with the same tx hash and reason message was saved before:
 ```json
 {
     "jsonrpc": "2.0",
-    "id": "53",
+    "id": 1,
+    "result": {
+        "status": "DUPLICATE_ALREADY_SAVED_BEFORE",
+        "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7"
+    }
+}
+```
+Invalid request params errors:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+        "code": -32602,
+        "message": "Missing [timestamp] from the given request params"
+    }
+}
+```
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+        "code": -32602,
+        "message": "Timestamp is not in ISO-8601: Text '2024-09-08T09:23:56Zdd' could not be parsed, unparsed text found at index 20"
+    }
+}
+```
+Other error:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+        "code": -32000,
+        "message": "Server error",
+        "data": "Database connection refused: localhost/127.0.0.1:5432"
+    }
+}
+```
+
+### linea_getTransactionExclusionStatusV1 Response Examples:
+The rejected transaction was successfully found:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 53,
     "result": {
         "txHash": "0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad7",
         "from": "0x4d144d7b9c96b26361d6ac74dd1d8267edca4fc2",
@@ -81,6 +117,51 @@ curl -H 'content-type:application/json' --data '{
         "reasonMessage": "Transaction line count for module ADD=402 is above the limit 70",
         "blockNumber": "0x3039",
         "timestamp": "2024-08-22T09:18:51Z"
+    }
+}
+```
+The rejected transaction was not found:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 53,
+    "error": {
+      "code": -4000,
+      "message": "Rejected transaction not available",
+      "data": "Cannot find the rejected transaction with hash=0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad8"
+  }
+}
+```
+Invalid request params errors:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 53,
+    "error": {
+        "code": -32602,
+        "message": "Hex string of transaction hash cannot be parsed:  expected to have 32 bytes, but got 33"
+    }
+}
+```
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 53,
+    "error": {
+        "code": -32602,
+        "message": "Hex string of transaction hash cannot be parsed: For input string: \"tt\" under radix 16"
+    }
+}
+```
+Other error:
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 53,
+    "error": {
+        "code": -32000,
+        "message": "Server error",
+        "data": "Database connection refused: localhost/127.0.0.1:5432"
     }
 }
 ```
