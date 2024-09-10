@@ -5,10 +5,10 @@ go 1.22.1
 toolchain go1.23.0
 
 require (
-	github.com/consensys/bavard v0.1.13
+	github.com/consensys/bavard v0.1.15
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.10.1-0.20240904184047-9db0eff0e5d3
-	github.com/consensys/gnark-crypto v0.13.1-0.20240802214859-ff4c0ddbe1ef
+	github.com/consensys/gnark v0.11.1-0.20240910135928-e8cb61d0be1d
+	github.com/consensys/gnark-crypto v0.14.1-0.20240909204211-78a6dc12799c
 	github.com/consensys/go-corset v0.0.0-20240905174341-c6d9a8f65e0d
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
