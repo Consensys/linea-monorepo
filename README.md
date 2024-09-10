@@ -45,11 +45,15 @@ User-specific calculations are done only when a user interacts with the contract
 **T1: Alice stakes 10 tokens**
 
 * Alice's userRewardIndex: 0
+* Alice's staked tokens: 10
 * totalStaked: 10 tokens
 
 **T2: Bob stakes 30 tokens**
 
+* Alice's userRewardIndex: 0
 * Bob's userRewardIndex: 0
+* Alice's staked tokens: 10
+* Bob's staked tokens: 30
 * totalStaked: 40 tokens
 
 **T3: 1000 Rewards arrive**
@@ -107,6 +111,11 @@ For Bob:
 
 * Staked amount: 30 tokens
 * Potential Rewards: 30 * (41.67 - 0) = 1250.1 // rounding error
+    * In bucket 1: 30 * (25 - 0) = 750
+    * In bucket 2: 30 * (16.67 - 0) = 500.1
+    * Total of b1 + b2: 750 + 500.1 = 1250.1
+    * Which is equal to
+        * 30 * ( (25 - 0) + (41.67 - 25) )
 
 For Charlie:
 
