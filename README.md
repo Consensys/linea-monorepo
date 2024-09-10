@@ -34,7 +34,7 @@ User-specific calculations are done only when a user interacts with the contract
 
 ### Stake Manager Example
 
-![z-Screenshot](https://github.com/user-attachments/assets/1c40a991-6096-46f2-9c28-0f95c9233374)
+![z-screenshot](https://github.com/user-attachments/assets/1b4853f5-03ff-4021-83a0-34c92ec9ce0b)
 
 **Initial setup:**
 
