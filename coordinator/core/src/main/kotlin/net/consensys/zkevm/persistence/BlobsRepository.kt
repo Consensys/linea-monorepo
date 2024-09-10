@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.blob
+package net.consensys.zkevm.persistence
 
 import kotlinx.datetime.Instant
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof

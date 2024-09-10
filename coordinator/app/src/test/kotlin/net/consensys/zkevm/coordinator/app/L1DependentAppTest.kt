@@ -1,8 +1,8 @@
 package net.consensys.zkevm.coordinator.app
 
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.anyLong

@@ -21,8 +21,8 @@ import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager
 import net.consensys.zkevm.ethereum.findFile
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.aggregation.AggregationsRepositoryImpl
 import net.consensys.zkevm.persistence.dao.aggregation.PostgresAggregationsDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao

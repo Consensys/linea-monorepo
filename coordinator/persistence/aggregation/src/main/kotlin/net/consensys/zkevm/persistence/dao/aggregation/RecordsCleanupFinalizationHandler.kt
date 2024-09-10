@@ -2,9 +2,9 @@ package net.consensys.zkevm.persistence.dao.aggregation
 
 import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RecordsCleanupFinalizationHandler(
