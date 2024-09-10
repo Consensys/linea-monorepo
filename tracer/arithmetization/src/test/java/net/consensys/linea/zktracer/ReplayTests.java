@@ -569,4 +569,9 @@ public class ReplayTests {
   void returnOogxForCodeDepositCost() {
     replay("1002387.json.gz");
   }
+
+  @Test
+  void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp() {
+    replay("3108622-3108633.json.gz", false);
+  }
 }
