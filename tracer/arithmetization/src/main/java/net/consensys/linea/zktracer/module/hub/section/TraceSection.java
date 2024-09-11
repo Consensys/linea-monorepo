@@ -157,10 +157,6 @@ public class TraceSection {
         : 0;
   }
 
-  public final boolean hasReverted() {
-    return commonValues.callFrame().hasReverted();
-  }
-
   /**
    * Update the stack fragments of the section with the provided {@link DeploymentExceptions}.
    *

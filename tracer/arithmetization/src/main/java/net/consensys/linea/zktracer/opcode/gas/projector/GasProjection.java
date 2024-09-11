@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.*;
 
 import net.consensys.linea.zktracer.ZkTracer;
@@ -25,7 +26,7 @@ public abstract class GasProjection {
   GasCalculator gc = ZkTracer.gasCalculator;
 
   long linearCost(long a, long x, long unit) {
-    checkArgument((unit == 1) || (unit == 32));
+    checkArgument((unit == 1) || (unit == WORD_SIZE));
     return clampedMultiply(a, (clampedAdd(x, unit) - 1) / unit);
   }
 

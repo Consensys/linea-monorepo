@@ -587,4 +587,13 @@ public class ReplayTests {
   void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp() {
     replay(LINEA_MAINNET, "3108622-3108633.json.gz", false);
   }
+
+  /**
+   * Not sure if we need to keep this replayTest. We were using a source offset instead of the dest
+   * Offset to compute the memory expansion cost, thus creating a fake OOGX
+   */
+  @Test
+  void mainnet1339346ContextRevertTwice() {
+    replay(LINEA_MAINNET, "1339346.json.gz", false);
+  }
 }

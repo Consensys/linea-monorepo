@@ -40,8 +40,4 @@ public class LogData {
   public boolean nontrivialLog() {
     return this.size != 0;
   }
-
-  public boolean reverted() {
-    return this.callFrame.hasReverted();
-  }
 }

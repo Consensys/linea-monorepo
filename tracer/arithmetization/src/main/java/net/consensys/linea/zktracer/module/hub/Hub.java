@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
 import static net.consensys.linea.zktracer.module.hub.Trace.MULTIPLIER___STACK_HEIGHT;
+import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
@@ -657,13 +658,9 @@ public class Hub implements Module {
     // TODO: why only do this at positive depth ?
     if (frame.getDepth() > 0) {
 
-      DeploymentExceptions contextExceptions =
+      final DeploymentExceptions contextExceptions =
           DeploymentExceptions.fromFrame(this.currentFrame(), frame);
       this.currentTraceSection().setContextExceptions(contextExceptions);
-
-      if (contextExceptions.any()) {
-        callStack.revert(state.stamps().hub()); // TODO: Duplicate s?
-      }
     }
 
     // We take a snapshot before exiting the transaction
@@ -688,7 +685,7 @@ public class Hub implements Module {
 
     defers.resolveUponContextExit(this, this.currentFrame());
     // TODO: verify me please @Olivier
-    if (this.currentFrame().opCode() == OpCode.REVERT || Exceptions.any(pch.exceptions())) {
+    if (this.currentFrame().opCode() == REVERT || Exceptions.any(pch.exceptions())) {
       defers.resolvePostRollback(this, frame, this.currentFrame());
     }
 
@@ -993,11 +990,7 @@ public class Hub implements Module {
     this.handleStack(frame);
     this.triggerModules(frame);
 
-    if (Exceptions.any(this.pch().exceptions()) || this.currentFrame().opCode() == OpCode.REVERT) {
-      callStack.revert(state.stamps().hub());
-    }
-
-    if (this.currentFrame().stack().isOk()) {
+    if (currentFrame().stack().isOk()) {
       this.traceOpcode(frame);
     } else {
 
@@ -1005,6 +998,10 @@ public class Hub implements Module {
       this.squashParentFrameReturnData();
 
       new StackOnlySection(this);
+    }
+
+    if (Exceptions.any(pch().exceptions()) || opCode() == REVERT) {
+      currentFrame().setRevertStamps(callStack, stamp());
     }
   }
 
@@ -1065,7 +1062,7 @@ public class Hub implements Module {
         // and in all other cases becomes return data of the caller iff the present
         // context is a message call context
         final boolean outputDataBecomesParentReturnData =
-            (this.opCode() == OpCode.REVERT || this.currentFrame().isMessageCall());
+            (this.opCode() == REVERT || this.currentFrame().isMessageCall());
 
         if (outputDataBecomesParentReturnData) {
           parentFrame.returnData(outputData);
