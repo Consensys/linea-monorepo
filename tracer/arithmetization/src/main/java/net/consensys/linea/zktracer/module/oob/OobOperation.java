@@ -288,7 +288,7 @@ public class OobOperation extends ModuleOperation {
       }
       case OOB_INST_DEPLOYMENT -> {
         final DeploymentOobCall deploymentOobCall = (DeploymentOobCall) oobCall;
-        deploymentOobCall.setSize(EWord.of(frame.getStackItem(0)));
+        deploymentOobCall.setSize(EWord.of(frame.getStackItem(1)));
         setDeployment(deploymentOobCall);
       }
     }
@@ -542,10 +542,11 @@ public class OobOperation extends ModuleOperation {
 
   private boolean callToLT(
       int k, BigInteger arg1Hi, BigInteger arg1Lo, BigInteger arg2Hi, BigInteger arg2Lo) {
-    checkArgument(arg1Hi.bitLength() / 8 <= 16);
-    checkArgument(arg1Lo.bitLength() / 8 <= 16);
-    checkArgument(arg2Hi.bitLength() / 8 <= 16);
-    checkArgument(arg2Lo.bitLength() / 8 <= 16);
+    // 128 = 8 * 16
+    checkArgument(arg1Hi.bitLength() <= 128);
+    checkArgument(arg1Lo.bitLength() <= 128);
+    checkArgument(arg2Hi.bitLength() <= 128);
+    checkArgument(arg2Lo.bitLength() <= 128);
     final EWord arg1 = EWord.of(arg1Hi, arg1Lo);
     final EWord arg2 = EWord.of(arg2Hi, arg2Lo);
     addFlag[k] = false;
