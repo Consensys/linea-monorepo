@@ -1,9 +1,9 @@
 # Rewards Streaming
 
-- [Stake Manager](#stake-manager)
-- [Time-Weighted Boost Stake Manager](#time-weighted-boost-stake-manager)
+- [Rewards Streamer](#rewards-streamer)
+- [Rewards Streamer with Multiplier Points](#rewards-streamer-with-multiplier-points)
 
-## Stake Manager
+## Rewards Streamer
 
 The rewardIndex is a crucial part of the reward distribution mechanism.
 
@@ -32,7 +32,7 @@ User-specific calculations are done only when a user interacts with the contract
 
 `SCALE_FACTOR` is used to maintain precision in calculations.
 
-### Stake Manager Example
+### Rewards Streamer Example
 
 ![example](https://github.com/user-attachments/assets/970dbb89-6163-494e-8276-358c5c405566)
 
@@ -144,6 +144,6 @@ Charlie's withdrawal:
 * Total Rewards distributed: 2000 Rewards
 * Rewards remaining in contract: 0
 
-## Time-Weighted Boost Stake Manager
+## Rewards Streamer with Multiplier Points
 
 TODO
