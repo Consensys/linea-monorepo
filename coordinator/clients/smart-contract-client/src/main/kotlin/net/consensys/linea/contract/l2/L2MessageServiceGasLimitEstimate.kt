@@ -115,8 +115,8 @@ class L2MessageServiceGasLimitEstimate(
       FUNC_ANCHORL1L2MESSAGEHASHES,
       listOf<Type<*>>(
         DynamicArray(
-          org.web3j.abi.datatypes.generated.Bytes32::class.java,
-          messageHashes.map { org.web3j.abi.datatypes.generated.Bytes32(it) }
+          Bytes32::class.java,
+          messageHashes.map { Bytes32(it) }
         ),
         Uint256(startingMessageNumber),
         Uint256(finalMessageNumber),
