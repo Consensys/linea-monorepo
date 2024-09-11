@@ -8,34 +8,19 @@ contract StakeManager is ReentrancyGuard {
     error StakingManager__AmountCannotBeZero();
     error StakingManager__TransferFailed();
     error StakingManager__InsufficientBalance();
-    error StakingManager__InvalidLockingPeriod();
-    error StakingManager__CannotRestakeWithLockedFunds();
 
     IERC20 public immutable stakingToken;
     IERC20 public immutable rewardToken;
 
     uint256 public constant SCALE_FACTOR = 1e18;
-    uint256 public constant MP_RATE_PER_YEAR = 1;
-
-    uint256 public constant MIN_LOCKING_PERIOD = 90 days;
-    uint256 public constant MAX_LOCKING_PERIOD = (365 days) * 4;
-    uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
     uint256 public rewardIndex;
     uint256 public accountedRewards;
 
-    uint256 totalMP;
-    uint256 potentialMP;
-    uint256 lastMPUpdatedTime;
-
     struct UserInfo {
         uint256 stakedBalance;
         uint256 userRewardIndex;
-        uint256 userMP;
-        uint256 userPotentialMP;
-        uint256 lastMPUpdateTime;
-        uint256 lockUntil;
     }
 
     mapping(address => UserInfo) public users;
@@ -45,24 +30,14 @@ contract StakeManager is ReentrancyGuard {
         rewardToken = IERC20(_rewardToken);
     }
 
-    function stake(uint256 amount, uint256 lockPeriod) external nonReentrant {
+    function stake(uint256 amount) external nonReentrant {
         if (amount == 0) {
             revert StakingManager__AmountCannotBeZero();
         }
 
-        if (lockPeriod != 0 && (lockPeriod < MIN_LOCKING_PERIOD || lockPeriod > MAX_LOCKING_PERIOD)) {
-            revert StakingManager__InvalidLockingPeriod();
-        }
-
         updateRewardIndex();
-        updateGlobalMP();
-        updateUserMP(msg.sender);
 
         UserInfo storage user = users[msg.sender];
-        if (user.lockUntil != 0 && user.lockUntil > block.timestamp) {
-            revert StakingManager__CannotRestakeWithLockedFunds();
-        }
-
         uint256 userRewards = calculateUserRewards(msg.sender);
         if (userRewards > 0) {
             safeRewardTransfer(msg.sender, userRewards);
@@ -76,28 +51,6 @@ contract StakeManager is ReentrancyGuard {
         user.stakedBalance += amount;
         totalStaked += amount;
         user.userRewardIndex = rewardIndex;
-
-        // TODO: revisit initialMP calculation
-        uint256 initialMP;
-        uint256 userPotentialMP;
-        if (lockPeriod == 0) {
-            initialMP = amount;
-            potentialMP = amount * 4;
-        } else {
-            uint256 maxAmount = amount * MAX_MULTIPLIER;
-            initialMP = amount + (lockPeriod * maxAmount) / MAX_LOCKING_PERIOD;
-            // TODO: this needs to be proportional,
-            // not 8 only because the funds are locked.
-            potentialMP = amount * 8;
-        }
-
-        user.userMP += initialMP;
-        totalMP += initialMP;
-
-        user.userPotentialMP = userPotentialMP;
-        potentialMP += userPotentialMP;
-
-        user.lastMPUpdateTime = block.timestamp;
     }
 
     function unstake(uint256 amount) external nonReentrant {
@@ -165,42 +118,5 @@ contract StakeManager is ReentrancyGuard {
                 revert StakingManager__TransferFailed();
             }
         }
-    }
-
-    function updateGlobalMP() internal {
-        if (potentialMP == 0) {
-            return;
-        }
-
-        uint256 currentTime = block.timestamp;
-        uint256 timeDiff = currentTime - lastMPUpdatedTime;
-        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / (365 days);
-
-        if (accruedMP > potentialMP) {
-            accruedMP = potentialMP;
-        }
-
-        potentialMP -= accruedMP;
-        totalMP += accruedMP;
-
-        lastMPUpdatedTime = currentTime;
-    }
-
-    function updateUserMP(address userAddress) internal {
-        UserInfo storage user = users[userAddress];
-        if (user.userMP == 0) {
-            return;
-        }
-
-        uint256 timeDiff = block.timestamp - user.lastMPUpdateTime;
-        uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days);
-
-        if (accruedMP > user.userPotentialMP) {
-            accruedMP = user.userPotentialMP;
-        }
-
-        user.userPotentialMP -= accruedMP;
-        user.userMP += accruedMP;
-        user.lastMPUpdateTime = block.timestamp;
     }
 }
