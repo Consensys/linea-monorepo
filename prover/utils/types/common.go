@@ -60,7 +60,8 @@ func ReadInt64On32Bytes(r io.Reader) (x, n_ int64, err error) {
 	if n < 0 {
 		panic("we are only reading 8 bits so this should not overflow")
 	}
-	return int64(xU64), 32, err
+	xU64 &= 0x7fffffffffffffff  // TODO delete this if negative numbers are allowed
+	return int64(xU64), 32, err // #nosec G115 -- above line precludes overflowing
 }
 
 // Big int are assumed to fit on 32 bytes and are written as a single

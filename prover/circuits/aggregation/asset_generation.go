@@ -8,23 +8,24 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/zkevm-monorepo/prover/circuits"
 )
 
 type builder struct {
 	maxNbProofs   int
 	vKeys         []plonk.VerifyingKey
 	allowedInputs []string
-	piVKey        plonk.VerifyingKey
+	pi            circuits.Setup
 }
 
 func NewBuilder(
 	maxNbProofs int,
 	allowedInputs []string,
-	piVKey plonk.VerifyingKey,
+	pi circuits.Setup,
 	vKeys []plonk.VerifyingKey,
 ) *builder {
 	return &builder{
-		piVKey:        piVKey,
+		pi:            pi,
 		allowedInputs: allowedInputs,
 		maxNbProofs:   maxNbProofs,
 		vKeys:         vKeys,
@@ -32,22 +33,20 @@ func NewBuilder(
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return MakeCS(b.maxNbProofs, b.allowedInputs, b.piVKey, b.vKeys)
+	return MakeCS(b.maxNbProofs, b.pi, b.vKeys)
 }
 
 // Initializes the bw6 aggregation circuit and returns a compiled constraint
 // system.
 func MakeCS(
 	maxNbProofs int,
-	allowedInputs []string,
-	piVKey plonk.VerifyingKey,
+	piSetup circuits.Setup,
 	vKeys []plonk.VerifyingKey,
 ) (constraint.ConstraintSystem, error) {
 
 	aggCircuit, err := AllocateCircuit(
 		maxNbProofs,
-		allowedInputs,
-		piVKey,
+		piSetup,
 		vKeys,
 	)
 

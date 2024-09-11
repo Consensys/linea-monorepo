@@ -3,6 +3,7 @@ package aggregation
 import (
 	"github.com/consensys/zkevm-monorepo/prover/backend/blobdecompression"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
+	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 )
 
@@ -15,7 +16,7 @@ type Request struct {
 
 	// List of the compression proofs prover responses containing the
 	// compression proofs to aggregate.
-	CompressionProofs []string `json:"compressionProofs"`
+	DecompressionProofs []string `json:"compressionProofs"`
 
 	// Non-serialized fields. Theses are used for testing but must not be
 	// used during the actual processing of the request. In particular, they
@@ -99,6 +100,7 @@ type CollectedFields struct {
 	// The proof claims for the execution prover
 	ProofClaims []aggregation.ProofClaimAssignment
 
-	ExecutionPI     []public_input.Execution
-	DecompressionPI []blobdecompression.Request
+	ExecutionPI       []public_input.Execution
+	DecompressionPI   []blobdecompression.Request
+	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
 }

@@ -13,40 +13,40 @@ import (
 // any changes in trace limits mean we'll need to run a new setup and update the verifier contracts
 // before deploying.
 type TracesLimits struct {
-	Add               int `mapstructure:"ADD" validate:"power_of_2"`
-	Bin               int `mapstructure:"BIN" validate:"power_of_2"`
-	Blake2Fmodexpdata int `mapstructure:"BLAKE_MODEXP_DATA" validate:"power_of_2"`
-	Blockdata         int `mapstructure:"BLOCK_DATA"`
-	Blockhash         int `mapstructure:"BLOCK_HASH" validate:"power_of_2"`
-	Ecdata            int `mapstructure:"EC_DATA" validate:"power_of_2"`
-	Euc               int `mapstructure:"EUC" validate:"power_of_2"`
-	Exp               int `mapstructure:"EXP" validate:"power_of_2"`
-	Ext               int `mapstructure:"EXT" validate:"power_of_2"`
-	Gas               int `mapstructure:"GAS" validate:"power_of_2"`
-	Hub               int `mapstructure:"HUB" validate:"power_of_2"`
-	Logdata           int `mapstructure:"LOG_DATA" validate:"power_of_2"`
-	Loginfo           int `mapstructure:"LOG_INFO" validate:"power_of_2"`
-	Mmio              int `mapstructure:"MMIO" validate:"power_of_2"`
-	Mmu               int `mapstructure:"MMU" validate:"power_of_2"`
-	Mod               int `mapstructure:"MOD" validate:"power_of_2"`
-	Mul               int `mapstructure:"MUL" validate:"power_of_2"`
-	Mxp               int `mapstructure:"MXP" validate:"power_of_2"`
-	Oob               int `mapstructure:"OOB" validate:"power_of_2"`
-	Rlpaddr           int `mapstructure:"RLP_ADDR" validate:"power_of_2"`
-	Rlptxn            int `mapstructure:"RLP_TXN" validate:"power_of_2"`
-	Rlptxrcpt         int `mapstructure:"RLP_TXN_RCPT" validate:"power_of_2"`
-	Rom               int `mapstructure:"ROM" validate:"power_of_2"`
-	Romlex            int `mapstructure:"ROM_LEX" validate:"power_of_2"`
-	Shakiradata       int `mapstructure:"SHAKIRA_DATA" validate:"power_of_2"`
-	Shf               int `mapstructure:"SHF" validate:"power_of_2"`
-	Stp               int `mapstructure:"STP" validate:"power_of_2"`
-	Trm               int `mapstructure:"TRM" validate:"power_of_2"`
-	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2"`
-	Wcp               int `mapstructure:"WCP" validate:"power_of_2"`
+	Add               int `mapstructure:"ADD" validate:"power_of_2" corset:"add"`
+	Bin               int `mapstructure:"BIN" validate:"power_of_2" corset:"bin"`
+	Blake2Fmodexpdata int `mapstructure:"BLAKE_MODEXP_DATA" validate:"power_of_2" corset:"blake2fmodexpdata"`
+	Blockdata         int `mapstructure:"BLOCK_DATA" corset:"blockdata"`
+	Blockhash         int `mapstructure:"BLOCK_HASH" validate:"power_of_2" corset:"blockhash"`
+	Ecdata            int `mapstructure:"EC_DATA" validate:"power_of_2" corset:"ecdata"`
+	Euc               int `mapstructure:"EUC" validate:"power_of_2" corset:"euc"`
+	Exp               int `mapstructure:"EXP" validate:"power_of_2" corset:"exp"`
+	Ext               int `mapstructure:"EXT" validate:"power_of_2" corset:"ext"`
+	Gas               int `mapstructure:"GAS" validate:"power_of_2" corset:"gas"`
+	Hub               int `mapstructure:"HUB" validate:"power_of_2" corset:"hub"`
+	Logdata           int `mapstructure:"LOG_DATA" validate:"power_of_2" corset:"logdata"`
+	Loginfo           int `mapstructure:"LOG_INFO" validate:"power_of_2" corset:"loginfo"`
+	Mmio              int `mapstructure:"MMIO" validate:"power_of_2" corset:"mmio"`
+	Mmu               int `mapstructure:"MMU" validate:"power_of_2" corset:"mmu"`
+	Mod               int `mapstructure:"MOD" validate:"power_of_2" corset:"mod"`
+	Mul               int `mapstructure:"MUL" validate:"power_of_2" corset:"mul"`
+	Mxp               int `mapstructure:"MXP" validate:"power_of_2" corset:"mxp"`
+	Oob               int `mapstructure:"OOB" validate:"power_of_2" corset:"oob"`
+	Rlpaddr           int `mapstructure:"RLP_ADDR" validate:"power_of_2" corset:"rlpaddr"`
+	Rlptxn            int `mapstructure:"RLP_TXN" validate:"power_of_2" corset:"rlptxn"`
+	Rlptxrcpt         int `mapstructure:"RLP_TXN_RCPT" validate:"power_of_2" corset:"rlptxrcpt"`
+	Rom               int `mapstructure:"ROM" validate:"power_of_2" corset:"rom"`
+	Romlex            int `mapstructure:"ROM_LEX" validate:"power_of_2" corset:"romlex"`
+	Shakiradata       int `mapstructure:"SHAKIRA_DATA" validate:"power_of_2" corset:"shakiradata"`
+	Shf               int `mapstructure:"SHF" validate:"power_of_2" corset:"shf"`
+	Stp               int `mapstructure:"STP" validate:"power_of_2" corset:"stp"`
+	Trm               int `mapstructure:"TRM" validate:"power_of_2" corset:"trm"`
+	Txndata           int `mapstructure:"TXN_DATA" validate:"power_of_2" corset:"txndata"`
+	Wcp               int `mapstructure:"WCP" validate:"power_of_2" corset:"wcp"`
 
-	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2"`
-	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2"`
-	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2"`
+	Binreftable int `mapstructure:"BIN_REFERENCE_TABLE" validate:"power_of_2" corset:"binreftable"`
+	Shfreftable int `mapstructure:"SHF_REFERENCE_TABLE" validate:"power_of_2" corset:"shfreftable"`
+	Instdecoder int `mapstructure:"INSTRUCTION_DECODER" validate:"power_of_2" corset:"instdecoder"`
 
 	PrecompileEcrecoverEffectiveCalls    int `mapstructure:"PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS"`
 	PrecompileSha2Blocks                 int `mapstructure:"PRECOMPILE_SHA2_BLOCKS"`

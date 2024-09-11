@@ -60,7 +60,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	})
 
 	linCombSV := smartvectors.NewRegular(linComb)
-	proof.LinearCombination = params.rsEncode(linCombSV)
+	proof.LinearCombination = params.rsEncode(linCombSV, nil)
 	return &proof
 }
 

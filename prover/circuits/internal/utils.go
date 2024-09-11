@@ -40,7 +40,7 @@ func SliceToTable(api frontend.API, slice []frontend.Variable) *logderivlookup.T
 }
 
 func AssertSliceEquals(api frontend.API, a, b []frontend.Variable) {
-	api.AssertIsEqual(len(a), len(b)) // TODO checked in compile time?
+	api.AssertIsEqual(len(a), len(b))
 	for i := range a {
 		api.AssertIsEqual(a[i], b[i])
 	}
@@ -58,12 +58,21 @@ func NoCheck(b *bool) {
 }
 
 func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOption) *Range {
+
+	if max < 0 {
+		panic("negative maximum not allowed")
+	}
+
 	check := true
 	for _, o := range opts {
 		o(&check)
 	}
-	if check {
-		api.AssertIsLessOrEqual(n, max)
+
+	if max == 0 {
+		if check {
+			api.AssertIsEqual(n, 0)
+		}
+		return &Range{api: api}
 	}
 
 	inRange := make([]frontend.Variable, max)
@@ -80,6 +89,12 @@ func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOp
 		}
 	}
 	isLast[max-1] = api.IsZero(api.Sub(max, n))
+
+	if check {
+		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise n > max
+		// if the last element is not in range, it already means n is in range and we don't need to check anything, but isLast = 0 = inRange will be the case anyway
+		api.AssertIsEqual(isLast[max-1], inRange[max-1])
+	}
 
 	return &Range{inRange, isLast, isFirstBeyond, api}
 }
@@ -445,7 +460,7 @@ func checksumSubSlicesHint(_ *big.Int, ins, outs []*big.Int) error {
 	subLastPoints := ins[:len(outs)]
 	slice := ins[len(outs):]
 
-	sliceAt := func(i uint64) []byte {
+	sliceAt := func(i int64) []byte {
 		res := slice[i].Bytes()
 		if len(res) == 0 {
 			return []byte{0} // the mimc hash impl ignores empty input
@@ -455,12 +470,12 @@ func checksumSubSlicesHint(_ *big.Int, ins, outs []*big.Int) error {
 
 	hsh := hash.MIMC_BLS12_377.New()
 	var (
-		first uint64
+		first int64
 		i     int
 	)
 	for ; i < len(outs); i++ {
-		last := subLastPoints[i].Uint64()
-		if int(last) >= len(slice) {
+		last := subLastPoints[i].Int64()
+		if last >= int64(len(slice)) {
 			break
 		}
 
@@ -597,13 +612,6 @@ func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
 	b[0] &= 0x0f
 	r[1] = b[:]
 	return
-}
-
-func Ite[T any](cond bool, ifSo, ifNot T) T {
-	if cond {
-		return ifSo
-	}
-	return ifNot
 }
 
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]
@@ -795,8 +803,8 @@ func partitionSliceHint(_ *big.Int, ins, outs []*big.Int) error {
 	}
 
 	for i := range s {
-		b := int(indicators[i].Uint64())
-		if b < 0 || b >= len(subs) || !indicators[i].IsUint64() {
+		b := indicators[i].Int64()
+		if b < 0 || b >= int64(len(subs)) || !indicators[i].IsUint64() {
 			return errors.New("indicator out of range")
 		}
 		subs[b][0] = s[i]

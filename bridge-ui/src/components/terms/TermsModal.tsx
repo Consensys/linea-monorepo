@@ -5,8 +5,10 @@ import { useConfigStore } from "@/stores/configStore";
 
 export default function TermsModal() {
   const termsModalRef = useRef<HTMLDivElement>(null);
-  const { agreeToTerms, setAgreeToTerms } = useConfigStore((state) => ({
+
+  const { agreeToTerms, rehydrated, setAgreeToTerms } = useConfigStore((state) => ({
     agreeToTerms: state.agreeToTerms,
+    rehydrated: state.rehydrated,
     setAgreeToTerms: state.setAgreeToTerms,
   }));
 
@@ -24,14 +26,18 @@ export default function TermsModal() {
   };
 
   useEffect(() => {
-    if (window && isFirstTime()) {
+    if (rehydrated && window && isFirstTime()) {
       setTimeout(() => {
         setOpen(true);
         setVideoEnabled(true);
       }, 1000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rehydrated]);
+
+  if (!rehydrated) {
+    return null;
+  }
 
   return (
     <div

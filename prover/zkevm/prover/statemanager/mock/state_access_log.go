@@ -301,7 +301,7 @@ func (b *StateLogBuilder) InitEoa() *StateLogBuilder {
 	return b.InitContract(
 		0,
 		types.AsFullBytes32(statemanager.LEGACY_KECCAK_EMPTY_CODEHASH),
-		statemanager.MIMC_EMPTY_STORAGE,
+		statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG),
 	)
 }
 

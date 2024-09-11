@@ -4,7 +4,6 @@ import React from "react";
 import { useAccount } from "wagmi";
 import WrongNetwork from "./WrongNetwork";
 import TermsModal from "../terms/TermsModal";
-import History from "@/components/history/History";
 import Bridge from "@/components/bridge/forms/Bridge";
 import { AnimatePresence, motion } from "framer-motion";
 import { NetworkType } from "@/config";
@@ -37,7 +36,6 @@ const BridgeUI: React.FC = () => {
           <div className="card w-full bg-base-100 shadow-xl md:w-[500px]">
             {networkType !== NetworkType.WRONG_NETWORK || !isConnected ? <Bridge /> : <WrongNetwork />}
           </div>
-          {isConnected && <History />}
           {/* <Debug /> */}
         </div>
       </motion.div>

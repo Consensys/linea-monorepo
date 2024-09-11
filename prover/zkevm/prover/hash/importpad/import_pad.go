@@ -261,10 +261,8 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 			iab.IsNewHash.PushZero()
 		}
 
-		var (
-			indexInt  = int(index[i].Uint64())
-			nBytesInt = int(nBytes[i].Uint64())
-		)
+		indexInt := field.ToInt(&index[i])
+		nBytesInt := field.ToInt(&nBytes[i])
 
 		currByteSize += nBytesInt
 

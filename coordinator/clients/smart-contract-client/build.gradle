@@ -14,8 +14,6 @@ dependencies {
   implementation "io.vertx:vertx-core"
   implementation project(path: ':coordinator:core')
   implementation project(path: ':coordinator:ethereum:common')
-  testImplementation project(':coordinator:ethereum:gas-pricing') {
-    description = "Necessary because of LineaRollupAsyncFriendlyTest, can be removed after"
-  }
   testImplementation "io.vertx:vertx-junit5"
+  testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
 }

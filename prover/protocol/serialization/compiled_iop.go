@@ -99,7 +99,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		raw.Coins = append(raw.Coins, rawCoins)
 	}
 
-	return serializeAnyWithJSONPkg(raw), nil
+	return serializeAnyWithCborPkg(raw), nil
 }
 
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns
@@ -110,7 +110,7 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	comp := newEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}
-	if err := deserializeAnyWithJSONPkg(data, raw); err != nil {
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
 		return nil, err
 	}
 

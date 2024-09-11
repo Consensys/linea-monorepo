@@ -106,7 +106,7 @@ func (b *block) Assign(run *wizard.ProverRuntime) {
 	accNumLane[size-1] = isActive[size-1]
 	// accNumLanes[i] = accNumLane[i+1]*(1-isBlockComplete[i+1]) + isLaneActive[i]
 	for row := size - 2; row >= 0; row-- {
-		if int(accNumLane[row+1].Uint64()) == nbOfLanesPerBlock {
+		if field.ToInt(&accNumLane[row+1]) == nbOfLanesPerBlock {
 			accNumLane[row] = field.One()
 		} else {
 			accNumLane[row].Add(&isActive[row], &accNumLane[row+1])

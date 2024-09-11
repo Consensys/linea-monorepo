@@ -5,6 +5,7 @@ package pi_interconnection_test
 import (
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -18,7 +19,6 @@ import (
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
@@ -30,7 +30,7 @@ import (
 
 // some of the execution data are faked
 func TestSingleBlockBlob(t *testing.T) {
-	testPI(t, 103, pitesting.AssignSingleBlockBlob(t))
+	testPI(t, 103, pitesting.AssignSingleBlockBlob(t), withSlack(0, 1, 2))
 }
 
 func TestSingleBlobBlobE2E(t *testing.T) {
@@ -63,7 +63,7 @@ func TestSingleBlobBlobE2E(t *testing.T) {
 			w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
 			assert.NoError(t, err)
 
-			assert.NoError(t, cs.IsSolved(w, gkrmimc.SolverOpts(cs)...))
+			assert.NoError(t, cs.IsSolved(w))
 		})
 	}
 }
@@ -124,7 +124,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		},
 	}
 
-	testPI(t, 100, req)
+	testPI(t, 100, req, withSlack(0, 1, 2))
 }
 
 func TestTwoTwoBatchBlobs(t *testing.T) {
@@ -205,16 +205,66 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		},
 	}
 
-	testPI(t, 101, req)
+	testPI(t, 101, req, withSlack(0, 1, 2))
 }
 
-func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request) {
+func TestEmpty(t *testing.T) {
+	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
+
+	testPI(t, 50, pi_interconnection.Request{
+		Aggregation: public_input.Aggregation{
+			FinalShnarf:                             hexZeroBlock,
+			ParentAggregationFinalShnarf:            hexZeroBlock,
+			ParentStateRootHash:                     hexZeroBlock,
+			ParentAggregationLastBlockTimestamp:     0,
+			FinalTimestamp:                          0,
+			LastFinalizedBlockNumber:                0,
+			FinalBlockNumber:                        0,
+			LastFinalizedL1RollingHash:              hexZeroBlock,
+			L1RollingHash:                           hexZeroBlock,
+			LastFinalizedL1RollingHashMessageNumber: 0,
+			L1RollingHashMessageNumber:              0,
+			L2MsgRootHashes:                         []string{},
+			L2MsgMerkleTreeDepth:                    1,
+		},
+	})
+}
+
+type testPIConfig struct {
+	slack []int
+}
+
+type testPIOption func(*testPIConfig)
+
+func withSlack(slack ...int) testPIOption {
+	return func(cfg *testPIConfig) {
+		cfg.slack = append(cfg.slack, slack...)
+	}
+}
+
+func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request, options ...testPIOption) {
+	var cfg testPIConfig
+	for _, o := range options {
+		o(&cfg)
+	}
+	slices.Sort(cfg.slack)
+	cfg.slack = slices.Compact(cfg.slack)
+	if len(cfg.slack) == 0 {
+		cfg.slack = []int{0}
+	}
+	slackIterationNum := len(cfg.slack) * len(cfg.slack)
+	slackIterationNum *= slackIterationNum
+
 	var slack [4]int
-	for i := 0; i < 81; i++ {
 
-		decomposeLittleEndian(t, slack[:], i, 3)
+	for i := 0; i < slackIterationNum; i++ {
 
-		config := config.PublicInput{
+		decomposeLittleEndian(t, slack[:], i, len(cfg.slack))
+		for j := range slack {
+			slack[j] = cfg.slack[slack[j]]
+		}
+
+		cfg := config.PublicInput{
 			MaxNbDecompression: len(req.Decompressions) + slack[0],
 			MaxNbExecution:     len(req.Executions) + slack[1],
 			MaxNbKeccakF:       maxNbKeccakF,
@@ -224,7 +274,7 @@ func testPI(t *testing.T, maxNbKeccakF int, req pi_interconnection.Request) {
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {
-			compiled, err := pi_interconnection.Compile(config, dummy.Compile)
+			compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 			assert.NoError(t, err)
 
 			a, err := compiled.Assign(req)

@@ -3,23 +3,24 @@ package internal_test
 import (
 	"crypto/rand"
 	"fmt"
+	"testing"
+
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	snarkTestUtils "github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestChecksumSlice(t *testing.T) {
 	sum := internal.ChecksumSlice([][]byte{{0}, {1}, {2}})
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		s := internal.VarSlice{
 			Values: []frontend.Variable{0, 1, 2, 3},
 			Length: 3,
@@ -42,7 +43,7 @@ func TestChecksumSubSlices(t *testing.T) {
 }
 
 func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int, lengths ...int) {
-	bigSliceInts := test_utils.Range[uint64](bigSliceLength)
+	bigSliceInts := utils.RangeSlice[uint64](bigSliceLength)
 
 	bigSliceBytes := internal.MapSlice(internal.Uint64To32Bytes, bigSliceInts...)
 	endPoints := internal.PartialSumsInt(lengths)
@@ -61,12 +62,12 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 		endPointsSnark[n] = n * 234
 	}
 
-	t.Run(fmt.Sprintf("%d,%d,%v", bigSliceLength, lengthsSliceLength, lengths), test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	t.Run(fmt.Sprintf("%d,%d,%v", bigSliceLength, lengthsSliceLength, lengths), snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		hsh, err := mimc.NewMiMC(api)
 		if err != nil {
 			panic(err)
 		}
-		return internal.ChecksumSubSlices(api, &hsh, test_vector_utils.ToVariableSlice(bigSliceInts),
+		return internal.ChecksumSubSlices(api, &hsh, utils.ToVariableSlice(bigSliceInts),
 			internal.VarSlice{
 				Values: endPointsSnark,
 				Length: len(lengths),
@@ -75,7 +76,7 @@ func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int,
 }
 
 func TestConcat(t *testing.T) {
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		res := internal.Concat(api, 3, internal.VarSlice{[]frontend.Variable{2}, 1}, internal.VarSlice{[]frontend.Variable{3}, 0})
 		return append(res.Values, res.Length)
 	}, 2, 0, 0, 1)(t)
@@ -103,12 +104,12 @@ func TestReduceBytes(t *testing.T) {
 		reduced[i] = reducedI[:]
 	}
 
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 		for i := range cases {
-			got := utils.ReduceBytes[emulated.BN254Fr](api, test_vector_utils.ToVariableSlice(cases[i]))
+			got := utils.ReduceBytes[emulated.BN254Fr](api, utils.ToVariableSlice(cases[i]))
 			internal.AssertSliceEquals(api,
 				got,
-				test_vector_utils.ToVariableSlice(reduced[i]),
+				utils.ToVariableSlice(reduced[i]),
 			)
 		}
 
@@ -134,7 +135,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 		subs[selectors[i]] = append(subs[selectors[i]], s[i])
 	}
 
-	test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 
 		field, err := emulated.NewField[emulated.BLS12381Fr](api)
 		assert.NoError(t, err)
@@ -146,7 +147,7 @@ func TestPartitionSliceEmulated(t *testing.T) {
 			return elementsToEmulated(field, append(s, make([]fr381.Element, cap(s)-len(s))...)) // pad with zeros to see if padding is done correctly
 		}, subs...)
 
-		subsEmulated := internal.PartitionSliceEmulated(api, sEmulated, test_vector_utils.ToVariableSlice(selectors), internal.MapSlice(func(s []fr381.Element) int { return cap(s) }, subs...)...)
+		subsEmulated := internal.PartitionSliceEmulated(api, sEmulated, utils.ToVariableSlice(selectors), internal.MapSlice(func(s []fr381.Element) int { return cap(s) }, subs...)...)
 
 		assert.Equal(t, len(subsEmulatedExpected), len(subsEmulated))
 		for i := range subsEmulated {
@@ -186,15 +187,15 @@ func TestPartitionSlice(t *testing.T) {
 		}
 
 		for j := range subs {
-			subs[j] = append(subs[j], test_vector_utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
+			subs[j] = append(subs[j], utils.ToVariableSlice(make([]int, subsSlack[j]))...) // add some padding
 		}
 
-		return test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		return snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 
-			slice := test_vector_utils.ToVariableSlice(slice)
+			slice := utils.ToVariableSlice(slice)
 
 			subsEncountered := internal.MapSlice(func(s []frontend.Variable) []frontend.Variable { return make([]frontend.Variable, len(s)) }, subs...)
-			internal.PartitionSlice(api, slice, test_vector_utils.ToVariableSlice(selectors), subsEncountered...)
+			internal.PartitionSlice(api, slice, utils.ToVariableSlice(selectors), subsEncountered...)
 
 			assert.Equal(t, len(subs), len(subsEncountered))
 			for j := range subsEncountered {
@@ -207,7 +208,7 @@ func TestPartitionSlice(t *testing.T) {
 
 	test([]frontend.Variable{5}, []int{2}, []int{1, 0, 0})(t)
 	test([]frontend.Variable{1, 2, 3}, []int{0, 1, 2}, []int{0, 0, 0})
-	test(test_vector_utils.ToVariableSlice(test_utils.Range[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
+	test(utils.ToVariableSlice(utils.RangeSlice[int](10)), []int{0, 1, 2, 0, 0, 0, 1, 1, 1, 2}, []int{0, 0, 0})
 
 	for i := 0; i < 200; i++ {
 

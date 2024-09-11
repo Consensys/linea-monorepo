@@ -49,6 +49,11 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 		hsh.Write(b[:])
 	}
 
+	writeUint := func(i uint) {
+		b := utils.FmtUint32Bytes(i)
+		hsh.Write(b[:])
+	}
+
 	hsh.Reset()
 
 	for _, hex := range p.L2MsgRootHashes {
@@ -60,14 +65,14 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	hsh.Reset()
 	writeHex(p.ParentAggregationFinalShnarf)
 	writeHex(p.FinalShnarf)
-	writeInt(int(p.ParentAggregationLastBlockTimestamp))
-	writeInt(int(p.FinalTimestamp))
-	writeInt(int(p.LastFinalizedBlockNumber))
-	writeInt(int(p.FinalBlockNumber))
+	writeUint(p.ParentAggregationLastBlockTimestamp)
+	writeUint(p.FinalTimestamp)
+	writeUint(p.LastFinalizedBlockNumber)
+	writeUint(p.FinalBlockNumber)
 	writeHex(p.LastFinalizedL1RollingHash)
 	writeHex(p.L1RollingHash)
-	writeInt(int(p.LastFinalizedL1RollingHashMessageNumber))
-	writeInt(int(p.L1RollingHashMessageNumber))
+	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
+	writeUint(p.L1RollingHashMessageNumber)
 	writeInt(p.L2MsgMerkleTreeDepth)
 	hsh.Write(l2Msgs)
 

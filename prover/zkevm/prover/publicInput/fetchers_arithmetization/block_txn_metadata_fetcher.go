@@ -163,9 +163,9 @@ func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td 
 			// set the absolute IDs, firstAbsTxId and lastAbsTxId for the block
 			firstAbsTxId[counter].SetInt64(ctAbsTxNum)
 			lastAbsTxId[counter].Set(&firstAbsTxId[counter])
-			integerNoOfTxBlock := int64(fetchTotalNoTxnBlock.Uint64())
+			integerNoOfTxBlock := int64(field.ToInt(&fetchTotalNoTxnBlock))
 			lastAbsTxId[counter].SetInt64(ctAbsTxNum + integerNoOfTxBlock - 1)
-			// increas ctAbsTxNum counter
+			// increase ctAbsTxNum counter
 			ctAbsTxNum += integerNoOfTxBlock
 			// set the counter
 			counter++

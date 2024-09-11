@@ -17,7 +17,6 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -110,7 +109,7 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			Y:              [2]frontend.Variable{i.Y[0], i.Y[1]},
 			SnarkHash:      i.SnarkHash,
-			Eip4844Enabled: internal.Ite(i.Eip4844Enabled, 1, 0),
+			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
 			NbBatches:      len(i.BatchSums),
 		},
 	}
@@ -150,7 +149,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 	hsh.Write(i.Y[0])
 	hsh.Write(i.Y[1])
 	hsh.Write(i.SnarkHash)
-	hsh.Write(internal.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
+	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(batchesSum)
 	return hsh.Sum(nil), nil
 }
@@ -294,8 +293,8 @@ func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Ele
 	}
 
 	assignment = &Circuit{
-		Dict:        test_vector_utils.ToVariableSlice(dict),
-		BlobBytes:   test_vector_utils.ToVariableSlice(blobBytes),
+		Dict:        utils.ToVariableSlice(dict),
+		BlobBytes:   utils.ToVariableSlice(blobBytes),
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}

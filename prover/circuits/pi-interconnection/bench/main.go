@@ -2,20 +2,18 @@ package main
 
 import (
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
+	"time"
+
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test/unsafekzg"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	pitesting "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"time"
 
-	//"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/stretchr/testify/assert"
 )
@@ -52,7 +50,7 @@ func main() {
 
 	w, err := frontend.NewWitness(&a, ecc.BLS12_377.ScalarField())
 	assert.NoError(b, err)
-	_, err = plonk.Prove(cs, pk, w, backend.WithSolverOptions(gkrmimc.SolverOpts(cs)...))
+	_, err = plonk.Prove(cs, pk, w)
 	assert.NoError(b, err)
 
 	fmt.Println(time.Now().Unix()-secondsStart, "seconds")

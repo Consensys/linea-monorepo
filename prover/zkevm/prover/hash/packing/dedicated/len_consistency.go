@@ -133,14 +133,15 @@ func (lc *lengthConsistency) Run(run *wizard.ProverRuntime) {
 
 // getZeroOnes receives n  and outputs the pattern  (0,..0,1,..,1) such that there are n elements 1.
 func getZeroOnes(n field.Element, max int) (a []field.Element) {
-	if n.Uint64() > uint64(max) {
-		utils.Panic("%v should be smaller than %v", n.Uint64(), max)
+	_n := field.ToInt(&n)
+	if _n > max {
+		utils.Panic("%v should be smaller than %v", _n, max)
 	}
-	for j := 0; j < max-int(n.Uint64()); j++ {
+	for j := 0; j < max-_n; j++ {
 		a = append(a, field.Zero())
 
 	}
-	for i := max - int(n.Uint64()); i < max; i++ {
+	for i := max - _n; i < max; i++ {
 		a = append(a, field.One())
 
 	}
