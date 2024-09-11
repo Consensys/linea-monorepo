@@ -1,4 +1,4 @@
-# Staking Rewards
+# Rewards Streaming
 
 - [Stake Manager](#stake-manager)
 - [Time-Weighted Boost Stake Manager](#time-weighted-boost-stake-manager)
@@ -34,7 +34,7 @@ User-specific calculations are done only when a user interacts with the contract
 
 ### Stake Manager Example
 
-![z](https://github.com/user-attachments/assets/970dbb89-6163-494e-8276-358c5c405566)
+![example](https://github.com/user-attachments/assets/970dbb89-6163-494e-8276-358c5c405566)
 
 **Initial setup:**
 
