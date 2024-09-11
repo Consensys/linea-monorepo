@@ -2,10 +2,10 @@
 pragma solidity ^0.8.26;
 
 import {Script, console} from "forge-std/Script.sol";
-import {StakeManager} from "../src/StakeManager.sol";
+import {RewardsStreamer} from "../src/RewardsStreamer.sol";
 
-contract StakeManagerScript is Script {
-    StakeManager public stakeManager;
+contract RewardsStreamerScript is Script {
+    RewardsStreamer public rewardsStreamer;
 
     function setUp() public {}
 
