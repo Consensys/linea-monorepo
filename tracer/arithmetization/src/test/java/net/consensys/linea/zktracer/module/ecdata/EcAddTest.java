@@ -76,7 +76,6 @@ public class EcAddTest {
 
   @Test
   void testEcAddSingleCase() {
-    // TODO: The same inputs in failingMmuModexp return 0x, debug it!
     BytecodeCompiler program =
         BytecodeCompiler.newProgram()
             // First place the parameters in memory
