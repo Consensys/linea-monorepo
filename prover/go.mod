@@ -1,4 +1,4 @@
-module github.com/consensys/linea-monorepo
+module github.com/consensys/linea-monorepo/prover
 
 go 1.22.1
 
