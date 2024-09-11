@@ -50,7 +50,6 @@ public final class TransactionFragment implements TraceFragment {
 
     return trace
         .peekAtTransaction(true)
-        .pTransactionBatchNum(transactionProcessingMetadata.getRelativeBlockNumber())
         .pTransactionFromAddressHi(highPart(from))
         .pTransactionFromAddressLo(lowPart(from))
         .pTransactionNonce(Bytes.ofUnsignedLong(tx.getNonce()))
