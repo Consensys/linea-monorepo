@@ -36,8 +36,8 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
+import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.mainnet.TransactionValidationParams;
-import org.hyperledger.besu.ethereum.mainnet.feemarket.FeeMarket;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestBlockchain;
@@ -61,9 +61,8 @@ public class GeneralStateReferenceTestTools {
   @SneakyThrows
   public static void executeTest(
       final GeneralStateTestCaseEipSpec spec,
+      final ProtocolSpec protocolSpec,
       final ZkTracer tracer,
-      final MainnetTransactionProcessor processor,
-      final FeeMarket feeMarket,
       final Consumer<TransactionProcessingResult> transactionProcessingResultValidator,
       final Consumer<ZkTracer> zkTracerValidator) {
     final BlockHeader blockHeader = spec.getBlockHeader();
@@ -89,9 +88,12 @@ public class GeneralStateReferenceTestTools {
     final MutableWorldState worldState = initialWorldState;
     //     final MutableWorldState worldState = initialWorldState.copy();
     final WorldUpdater worldStateUpdater = worldState.updater();
+    final MainnetTransactionProcessor processor = protocolSpec.getTransactionProcessor();
     final ReferenceTestBlockchain blockchain = new ReferenceTestBlockchain(blockHeader.getNumber());
     final Wei blobGasPrice =
-        feeMarket.blobGasPricePerGas(blockHeader.getExcessBlobGas().orElse(BlobGas.ZERO));
+        protocolSpec
+            .getFeeMarket()
+            .blobGasPricePerGas(blockHeader.getExcessBlobGas().orElse(BlobGas.ZERO));
 
     tracer.traceStartConflation(1);
     tracer.traceStartBlock(blockHeader, blockBody);

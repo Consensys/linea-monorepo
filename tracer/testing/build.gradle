@@ -13,7 +13,9 @@ dependencies {
   implementation project(path: ':arithmetization')
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
+  implementation "${besuArtifactGroup}.internal:config:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:core:${besuVersion}"
+  implementation "${besuArtifactGroup}.internal:metrics-core:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:referencetests:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:rlp:${besuVersion}"
   implementation "${besuArtifactGroup}.internal:testutil:${besuVersion}"

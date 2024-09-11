@@ -62,6 +62,7 @@ jobs:
 
 
   tests:
+    needs: [ build, spotless ]
     runs-on: ubuntu-latest-128
     steps:
       - name: Setup upterm session
@@ -128,6 +129,7 @@ jobs:
           path: arithmetization/build/reports/tests/**/*
 
   go-corset-tests:
+    needs: [ build, spotless ]
     runs-on: ubuntu-latest-128
     continue-on-error: true    
     steps:

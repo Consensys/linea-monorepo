@@ -40,17 +40,10 @@ import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
-import org.hyperledger.besu.config.GenesisConfigFile;
-import org.hyperledger.besu.config.GenesisConfigOptions;
 import org.hyperledger.besu.datatypes.*;
-import org.hyperledger.besu.ethereum.chain.BadBlockManager;
 import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSchedule;
-import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSpecFactory;
 import org.hyperledger.besu.ethereum.mainnet.MainnetTransactionProcessor;
-import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
-import org.hyperledger.besu.ethereum.mainnet.ProtocolSpecBuilder;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 import org.hyperledger.besu.evm.account.MutableAccount;
@@ -59,7 +52,6 @@ import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.BlockHashOperation;
 import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
-import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 /** Responsible for executing EVM transactions in replay tests. */
@@ -156,7 +148,7 @@ public class ReplayExecutionEnvironment {
     initWorld(world.updater(), conflation);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
-        getMainnetTransactionProcessor(chainId);
+        ExecutionEnvironment.getProtocolSpec(chainId).getTransactionProcessor();
     // Begin
     tracer.traceStartConflation(conflation.blocks().size());
     //
@@ -189,44 +181,6 @@ public class ReplayExecutionEnvironment {
       tracer.traceEndBlock(header, body);
     }
     tracer.traceEndConflation(world.updater());
-  }
-
-  /**
-   * Construct transaction processor a given chain (e.g. 59144 for mainnet, 59141 for sepolia, etc).
-   *
-   * @return
-   */
-  private MainnetTransactionProcessor getMainnetTransactionProcessor(BigInteger chainId) {
-    EvmConfiguration evmConfig = EvmConfiguration.DEFAULT;
-    // Read genesis config for linea
-    GenesisConfigFile configFile =
-        GenesisConfigFile.fromSource(GenesisConfigFile.class.getResource("/linea.json"));
-    GenesisConfigOptions options = configFile.getConfigOptions();
-    BadBlockManager badBlockManager = new BadBlockManager();
-    // Create the schedule
-    ProtocolSchedule schedule =
-        MainnetProtocolSchedule.fromConfig(
-            options,
-            MiningParameters.MINING_DISABLED,
-            badBlockManager,
-            false,
-            new NoOpMetricsSystem());
-    // Create
-    ProtocolSpecBuilder builder =
-        new MainnetProtocolSpecFactory(
-                Optional.of(chainId),
-                true,
-                OptionalLong.empty(),
-                evmConfig,
-                MiningParameters.MINING_DISABLED,
-                false,
-                new NoOpMetricsSystem())
-            .londonDefinition(options); // .lineaOpCodesDefinition(options);
-    //
-    builder.privacyParameters(PrivacyParameters.DEFAULT);
-    builder.badBlocksManager(badBlockManager);
-    //
-    return builder.build(schedule).getTransactionProcessor();
   }
 
   public Hub getHub() {
