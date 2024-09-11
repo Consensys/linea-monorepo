@@ -39,3 +39,17 @@ export const getChainNetworkType = (chain: Chain) => {
 
   return;
 };
+
+export const getChainLogoPath = (chainId: number) => {
+  switch (chainId) {
+    case linea.id:
+      return "/images/logo/linea-mainnet.svg";
+    case lineaSepolia.id:
+      return "/images/logo/linea-sepolia.svg";
+    case mainnet.id:
+    case sepolia.id:
+      return "/images/logo/ethereum-rounded.svg";
+    default:
+      return "";
+  }
+};

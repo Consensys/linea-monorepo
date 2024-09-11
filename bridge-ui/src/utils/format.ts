@@ -29,7 +29,7 @@ export const formatHex = (hexString: string | undefined, step = 5) => {
  * @param precision
  * @returns
  */
-export const formatBalance = (balance: string | undefined, precision = 4) => {
+export const formatBalance = (balance: string | 0n | undefined, precision = 4) => {
   if (!balance) return "";
   const [whole, fraction = ""] = balance.split(".");
   if (fraction.length > precision) {
