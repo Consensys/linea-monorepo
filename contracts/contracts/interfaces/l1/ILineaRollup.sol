@@ -120,26 +120,34 @@ interface ILineaRollup {
 
   /**
    * @notice Emitted when compressed data is being submitted and verified succesfully on L1.
-   * @param shnarf The indexed shnarf for the data being submitted.
+   * @dev The block range is indexed and parent shnarf included for state reconstruction simplicity.
    * @param startBlock The indexed L2 block number indicating which block the data starts from.
    * @param endBlock The indexed L2 block number indicating which block the data ends on.
-   * @dev Please note, shnarf was previously dataHash and points to the shnarfFinalBlockNumbers mapping.
+   * @param parentShnarf The parent shnarf for the data being submitted.
+   * @param shnarf The shnarf for the data being submitted.
    */
-  event DataSubmittedV2(bytes32 indexed shnarf, uint256 indexed startBlock, uint256 indexed endBlock);
+  event DataSubmittedV3(uint256 indexed startBlock, uint256 indexed endBlock, bytes32 parentShnarf, bytes32 shnarf);
 
   /**
    * @notice Emitted when L2 blocks have been finalized on L1.
-   * @param lastBlockFinalized The indexed last L2 block that is finalized in the finalization.
-   * @param startingRootHash The indexed initial (also last finalized) L2 state root hash that the finalization is from.
-   * @param finalRootHash The indexed L2 state root hash that the current finalization is up until.
-   * @param withProof Indicates if the finalization is proven or not.
+   * @param startBlockNumber The indexed L2 block number indicating which block the finalization the data starts from.
+   * @param endBlockNumber The indexed L2 block number indicating which block the finalization the data ends on.
+   * @param shnarf The shnarf being set as currentFinalizedShnarf in the current finalization.
+   * @param startingRootHash The indexed L2 state root hash that the current finalization starts from.
+   * @param finalRootHash The indexed L2 state root hash that the current finalization ends on.
    */
-  event DataFinalized(
-    uint256 indexed lastBlockFinalized,
-    bytes32 indexed startingRootHash,
-    bytes32 indexed finalRootHash,
-    bool withProof
+  event DataFinalizedV2(
+    uint256 indexed startBlockNumber,
+    uint256 indexed endBlockNumber,
+    bytes32 indexed shnarf,
+    bytes32 startingRootHash,
+    bytes32 finalRootHash
   );
+
+  /**
+   * @notice Emitted Finalization occurs without proof.
+   */
+  event FinalizationOccuredWithoutProof();
 
   /**
    * @dev Thrown when the point evaluation precompile call return data field(s) are wrong.

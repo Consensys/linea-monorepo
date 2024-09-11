@@ -3,7 +3,7 @@ import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-netwo
 import { expect } from "chai";
 import { config, ethers } from "hardhat";
 import { HardhatNetworkHDAccountsConfig } from "hardhat/types";
-import { HDNodeWallet, Transaction, Wallet } from "ethers";
+import { BaseContract, HDNodeWallet, Transaction, Wallet } from "ethers";
 import { TestLineaRollup } from "../typechain-types";
 import calldataAggregatedProof1To155 from "./testData/compressedData/aggregatedProof-1-155.json";
 import blobAggregatedProof1To155 from "./testData/compressedDataEip4844/aggregatedProof-1-155.json";
@@ -51,6 +51,7 @@ import {
   generateBlobDataSubmission,
   generateBlobParentShnarfData,
   ShnarfDataGenerator,
+  expectEventDirectFromReceiptData,
 } from "./utils/helpers";
 import { CalldataSubmissionData } from "./utils/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
@@ -384,9 +385,9 @@ describe("Linea Rollup contract", () => {
       const submitDataCall = lineaRollup
         .connect(operator)
         .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
-      const eventArgs = [expectedShnarf, 1, 46];
+      const eventArgs = [submissionData.firstBlockInData, submissionData.finalBlockInData, prevShnarf, expectedShnarf];
 
-      await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV2", eventArgs);
+      await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
     });
 
     it("Should fail if the stored shnarf block number + 1 does not match the starting submission numer", async () => {
@@ -592,7 +593,18 @@ describe("Linea Rollup contract", () => {
 
       const signedTx = await operatorHDSigner.signTransaction(transaction);
 
-      await ethers.provider.broadcastTransaction(signedTx);
+      const txResponse = await ethers.provider.broadcastTransaction(signedTx);
+      const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
+      expect(receipt).is.not.null;
+
+      const expectedEventArgs = [
+        blobDataSubmission[0].submissionData.firstBlockInData,
+        blobDataSubmission[0].submissionData.finalBlockInData,
+        parentShnarf,
+        finalShnarf,
+      ];
+
+      expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
 
       const finalBlockNumber = await lineaRollup.shnarfFinalBlockNumbers(finalShnarf);
       expect(finalBlockNumber).to.equal(blobDataSubmission[0].submissionData.finalBlockInData);
@@ -1316,14 +1328,16 @@ describe("Linea Rollup contract", () => {
         const finalizeCompressedCall = lineaRollup
           .connect(securityCouncil)
           .finalizeBlocksWithoutProof(finalizationData);
+
         const eventArgs = [
+          submissionDataBeforeFinalization[0].firstBlockInData,
           finalizationData.finalBlockInData,
+          secondExpectedShnarf,
           finalizationData.parentStateRootHash,
           finalizationData.shnarfData.finalStateRootHash,
-          false,
         ];
 
-        await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalized", eventArgs);
+        await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV2", eventArgs);
       });
 
       it("Should successfully finalize blocks and store the last state root hash, the final timestamp, the final block number", async () => {
@@ -1953,7 +1967,18 @@ describe("Linea Rollup contract", () => {
     });
 
     const signedTx = await operatorHDSigner.signTransaction(transaction);
-    await ethers.provider.broadcastTransaction(signedTx);
+    const txResponse = await ethers.provider.broadcastTransaction(signedTx);
+
+    const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
+
+    const expectedEventArgs = [
+      blobSubmission[0].submissionData.firstBlockInData,
+      blobSubmission[blobSubmission.length - 1].submissionData.finalBlockInData,
+      parentShnarf,
+      finalShnarf,
+    ];
+
+    expectEventDirectFromReceiptData(lineaRollup as BaseContract, receipt!, "DataSubmittedV3", expectedEventArgs);
   }
 
   async function expectSuccessfulFinalizeWithProof(
@@ -1989,9 +2014,16 @@ describe("Linea Rollup contract", () => {
     const finalizeCompressedCall = lineaRollup
       .connect(operator)
       .finalizeBlocksWithProof(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
-    const eventArgs = [BigInt(proofData.finalBlockNumber), finalizationData.parentStateRootHash, finalStateRootHash];
 
-    await expectEvent(lineaRollup, finalizeCompressedCall, "BlocksVerificationDone", eventArgs);
+    const eventArgs = [
+      BigInt(proofData.lastFinalizedBlockNumber) + 1n,
+      finalizationData.finalBlockInData,
+      proofData.finalShnarf,
+      finalizationData.parentStateRootHash,
+      finalStateRootHash,
+    ];
+
+    await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV2", eventArgs);
 
     const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
       lineaRollup.stateRootHashes(finalizationData.finalBlockInData),

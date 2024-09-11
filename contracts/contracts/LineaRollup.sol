@@ -250,7 +250,12 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
     shnarfFinalBlockNumbers[computedShnarf] = blobFinalBlockNumber;
 
-    emit DataSubmittedV2(computedShnarf, _blobSubmissionData[0].submissionData.firstBlockInData, blobFinalBlockNumber);
+    emit DataSubmittedV3(
+      _blobSubmissionData[0].submissionData.firstBlockInData,
+      blobFinalBlockNumber,
+      _parentShnarf,
+      computedShnarf
+    );
   }
 
   /**
@@ -299,7 +304,12 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     shnarfFinalBlockNumbers[computedShnarf] = _submissionData.finalBlockInData;
 
-    emit DataSubmittedV2(computedShnarf, _submissionData.firstBlockInData, _submissionData.finalBlockInData);
+    emit DataSubmittedV3(
+      _submissionData.firstBlockInData,
+      _submissionData.finalBlockInData,
+      _parentShnarf,
+      computedShnarf
+    );
   }
 
   /**
@@ -456,23 +466,14 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       revert LastFinalizedShnarfWrong(lastFinalizedShnarf, _finalizationData.lastFinalizedShnarf);
     }
 
-    bytes32 finalShnarf = _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber, true);
-
     uint256 publicInput = _computePublicInput(
       _finalizationData,
       lastFinalizedShnarf,
-      finalShnarf,
+      _finalizeBlocks(_finalizationData, lastFinalizedBlockNumber),
       lastFinalizedBlockNumber
     );
 
-    _verifyProof(
-      publicInput,
-      _proofType,
-      _aggregatedProof,
-      _finalizationData.parentStateRootHash,
-      _finalizationData.finalBlockInData,
-      _finalizationData.shnarfData.finalStateRootHash
-    );
+    _verifyProof(publicInput, _proofType, _aggregatedProof);
   }
 
   /**
@@ -483,20 +484,19 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   function finalizeBlocksWithoutProof(
     FinalizationDataV2 calldata _finalizationData
   ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(DEFAULT_ADMIN_ROLE) {
-    _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
+    _finalizeBlocks(_finalizationData, currentL2BlockNumber);
+    emit FinalizationOccuredWithoutProof();
   }
 
   /**
    * @notice Internal function to finalize compressed blocks.
    * @param _finalizationData The full finalization data.
    * @param _lastFinalizedBlock The last finalized block.
-   * @param _withProof If we are finalizing with a proof.
    * @return finalShnarf The final computed shnarf in finalizing.
    */
   function _finalizeBlocks(
     FinalizationDataV2 calldata _finalizationData,
-    uint256 _lastFinalizedBlock,
-    bool _withProof
+    uint256 _lastFinalizedBlock
   ) internal returns (bytes32 finalShnarf) {
     if (_finalizationData.finalBlockInData <= _lastFinalizedBlock) {
       revert FinalBlockNumberLessThanOrEqualToLastFinalizedBlock(
@@ -562,11 +562,13 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       _finalizationData.finalTimestamp
     );
 
-    emit DataFinalized(
+    emit DataFinalizedV2(
+      /// @dev incremented to cover the starting block of data being finalized
+      ++_lastFinalizedBlock,
       _finalizationData.finalBlockInData,
+      finalShnarf,
       _finalizationData.parentStateRootHash,
-      _finalizationData.shnarfData.finalStateRootHash,
-      _withProof
+      _finalizationData.shnarfData.finalStateRootHash
     );
   }
 

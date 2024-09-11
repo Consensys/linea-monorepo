@@ -36,7 +36,7 @@ const COMPRESSED_SUBMISSION_DATA = [
 const BLOB_SUBMISSION_DATA = [firstBlobDataContent, secondBlobDataContent, thirdBlobDataContent, fourthBlobDataContent];
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { AbiCoder, ethers } from "ethers";
+import { AbiCoder, BaseContract, TransactionReceipt, ethers } from "ethers";
 import firstCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-1-46.json";
 import secondCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-47-81.json";
 import thirdCompressedDataContent_multiple from "../testData/compressedData/multipleProofs/blocks-82-119.json";
@@ -495,4 +495,23 @@ export async function expectEvent(contract: any, asyncCall: Promise<any>, eventN
   await expect(asyncCall)
     .to.emit(contract, eventName)
     .withArgs(...eventArgs);
+}
+
+export function expectEventDirectFromReceiptData(
+  contract: BaseContract,
+  transactionReceipt: TransactionReceipt,
+  expectedEventName: string,
+  expectedEventArgs: any[] = [],
+) {
+  const logSnippet = {
+    topics: transactionReceipt?.logs[0].topics as ReadonlyArray<string>,
+    data: transactionReceipt!.logs[0].data,
+  };
+
+  const event = contract.interface.parseLog(logSnippet);
+  expect(event).is.not.null;
+  expect(expectedEventName).equal(event!.name);
+
+  // this is cast to array as the readonly is not compatible with deep
+  expect(event!.args.toArray()).to.have.deep.members(expectedEventArgs);
 }
