@@ -614,13 +614,6 @@ func Bls12381ScalarToBls12377Scalars(v interface{}) (r [2][]byte, err error) {
 	return
 }
 
-func Ite[T any](cond bool, ifSo, ifNot T) T {
-	if cond {
-		return ifSo
-	}
-	return ifNot
-}
-
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]
 func PartialSums(api frontend.API, s []frontend.Variable) []frontend.Variable {
 	res := make([]frontend.Variable, len(s))

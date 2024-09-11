@@ -4,12 +4,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/consensys/gnark/frontend"
-	"golang.org/x/exp/constraints"
 	"io"
 	"math"
 	"math/big"
 	"reflect"
+
+	"github.com/consensys/gnark/frontend"
+	"golang.org/x/exp/constraints"
 )
 
 /*
@@ -265,4 +266,28 @@ func Partition[T any, I constraints.Integer](s []T, index []I) [][]T {
 		partitions[index[i]] = append(partitions[index[i]], s[i])
 	}
 	return partitions
+}
+
+func Ite[T any](cond bool, ifSo, ifNot T) T {
+	if cond {
+		return ifSo
+	}
+	return ifNot
+}
+
+func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
+	if len(startingPoints) == 0 {
+		startingPoints = []T{0}
+	}
+	res := make([]T, length*len(startingPoints))
+	for i := range startingPoints {
+		FillRange(res[i*length:(i+1)*length], startingPoints[i])
+	}
+	return res
+}
+
+func FillRange[T constraints.Integer](dst []T, start T) {
+	for l := range dst {
+		dst[l] = T(l) + start
+	}
 }

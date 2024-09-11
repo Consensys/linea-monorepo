@@ -7,13 +7,13 @@ import log from "loglevel";
 import USDCBridge from "@/abis/USDCBridge.json";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
-import useMessageService from "./useMessageService";
 import { TokenInfo, TokenType, config } from "@/config/config";
 import { BridgeError, BridgeErrors, Transaction } from "@/models";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { FieldErrors, FieldValues } from "react-hook-form";
 import { wagmiConfig } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
+import useMinimumFee from "./useMinimumFee";
 
 type UseBridge = {
   hash: Address | undefined;
@@ -45,7 +45,7 @@ const useBridge = (): UseBridge => {
       toChain: state.toChain,
     }));
 
-  const { minimumFee } = useMessageService();
+  const { minimumFee } = useMinimumFee();
   const { address, isConnected } = useAccount();
 
   const queryClient = useQueryClient();

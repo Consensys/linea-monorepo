@@ -2,9 +2,11 @@ package aggregation_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	frBls "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
+	frBw6 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -14,7 +16,9 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	snarkTestUtils "github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
+
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/zkevm-monorepo/prover/config"
@@ -23,7 +27,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestPublicInput(t *testing.T) {
@@ -62,7 +65,7 @@ func TestPublicInput(t *testing.T) {
 		var res [32]frontend.Variable
 		assert.NoError(t, internal.CopyHexEncodedBytes(res[:], testCases[i].GetPublicInputHex()))
 
-		test_utils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
+		snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
 			sum := sfpi.Sum(api, keccak.NewHasher(api, 500))
 			return sum[:]
 		}, res[:]...)(t)
@@ -98,7 +101,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 	}
 
 	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
-	var aggregationPI fr.Element
+	var aggregationPI frBw6.Element
 	aggregationPI.SetBytes(aggregationPIBytes)
 
 	logrus.Infof("Compiling interconnection circuit")
@@ -130,7 +133,7 @@ func testAggregation(t *testing.T, nCircuits int, ncs ...int) {
 		require.NoError(t, err)
 
 		// Generate proofs claims to aggregate
-		nProofs := internal.Ite(nc == 0, 0, utils.Max(nc-3, 1))
+		nProofs := utils.Ite(nc == 0, 0, utils.Max(nc-3, 1))
 		logrus.Infof("Generating a witness, %v dummy-proofs to aggregates", nProofs)
 		innerProofClaims := make([]aggregation.ProofClaimAssignment, nProofs)
 		innerPI := make([]frBls.Element, nc)

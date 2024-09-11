@@ -1,14 +1,10 @@
 import BridgeLayout from "@/components/bridge/BridgeLayout";
-import { Shortcut } from "@/models/shortcut";
-import matter from "gray-matter";
-
-async function getShortcuts() {
-  const { data } = matter.read("src/data/shortcuts.md");
-  return data as Shortcut[];
-}
 
 export default async function Home() {
-  const shortcuts = await getShortcuts();
-
-  return <BridgeLayout shortcuts={shortcuts} />;
+  return (
+    <div className="min-w-min max-w-lg md:m-auto md:mt-32">
+      <h1 className="mb-6 text-4xl font-bold md:hidden">Bridge</h1>
+      <BridgeLayout />
+    </div>
+  );
 }

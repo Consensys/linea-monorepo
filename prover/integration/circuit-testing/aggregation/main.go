@@ -3,15 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	frBls "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	frBw6 "github.com/consensys/gnark-crypto/ecc/bw6-761/fr"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
@@ -21,25 +18,19 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits/emulation"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/zkevm-monorepo/prover/config"
-	dummyWizard "github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
-	"github.com/pkg/profile"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func main() {
 
-	p := profile.Start()
-	defer p.Stop()
-
 	var t test_utils.FakeTestingT
 
 	// Mock circuits to aggregate
 	var innerSetups []circuits.Setup
-	const nCircuits = 1 // TODO @Tabaie change to 10
+	const nCircuits = 10
 	logrus.Infof("Initializing many inner-circuits of %v\n", nCircuits)
 	srsProvider := circuits.NewUnsafeSRSProvider() // This is a dummy SRS provider, not to use in prod.
 	for i := 0; i < nCircuits; i++ {
@@ -61,53 +52,32 @@ func main() {
 		bw6Proofs []plonk.Proof
 	)
 
-	//ncs := []int{1, 5, 10, 20} TODO @Tabaie change back to this
-	ncs := []int{1}
+	ncs := []int{1, 5, 10, 20}
 
-	const hexZeroBlock = "0x0000000000000000000000000000000000000000000000000000000000000000"
-	aggregationFPIHex := public_input.Aggregation{
-		FinalShnarf:                             hexZeroBlock,
-		ParentAggregationFinalShnarf:            hexZeroBlock,
-		ParentStateRootHash:                     hexZeroBlock,
-		ParentAggregationLastBlockTimestamp:     0,
-		FinalTimestamp:                          0,
-		LastFinalizedBlockNumber:                0,
-		FinalBlockNumber:                        0,
-		LastFinalizedL1RollingHash:              hexZeroBlock,
-		L1RollingHash:                           hexZeroBlock,
-		LastFinalizedL1RollingHashMessageNumber: 0,
-		L1RollingHashMessageNumber:              0,
-		L2MsgRootHashes:                         []string{},
-		L2MsgMerkleTreeDepth:                    1,
-	}
-	aggregationPIBytes := aggregationFPIHex.Sum(nil)
+	aggregationPIBytes := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
 	var aggregationPI frBw6.Element
 	aggregationPI.SetBytes(aggregationPIBytes)
 
 	logrus.Infof("Compiling interconnection circuit")
-	piNbEachCircuit := utils.Max(ncs...)
-	piSetup := getPiInterconnectionSetup(srsProvider, piNbEachCircuit)
-	logrus.Infof("Assigning interconnection circuit")
-	piAssignment, err := piSetup.c.Assign(pi_interconnection.Request{
-		Decompressions: nil,
-		Executions:     nil,
-		Aggregation:    aggregationFPIHex,
-	})
+	maxNC := utils.Max(ncs...)
+
+	piConfig := config.PublicInput{
+		MaxNbDecompression: maxNC,
+		MaxNbExecution:     maxNC,
+	}
+
+	piCircuit := pi_interconnection.DummyCircuit{
+		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
+		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+	}
+
+	piCs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &piCircuit)
 	assert.NoError(t, err)
 
-	logrus.Infof("Generating PI proof")
-	piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField())
+	piSetup, err := circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionCircuitID, piCs, srsProvider, nil)
 	assert.NoError(t, err)
-	piProof, err := plonk.Prove(piSetup.Circuit, piSetup.ProvingKey, piW)
-	assert.NoError(t, err)
-	piPW, err := piW.Public()
-	assert.NoError(t, err)
-	piInfo := aggregation.PiInfo{
-		Proof:         piProof,
-		PublicWitness: piPW,
-		ActualIndexes: []int{},
-	}
-	fmt.Println("aggregationPIBytes", utils.HexEncodeToString(aggregationPIBytes))
 
 	for _, nc := range ncs {
 		// Compile PI Interconnection sub-circuit
@@ -116,26 +86,27 @@ func main() {
 		logrus.Infof("Building aggregation circuit for size of %v\n", nc)
 		ccs, err := aggregation.MakeCS(
 			nc,
-			piSetup.Setup,
+			piSetup,
 			vkeys)
 		assert.NoError(t, err)
 
-		// Generates the setup
+		// Generate the setup
 		logrus.Infof("Generating setup, will take a while to complete..")
 		ppBw6, err := circuits.MakeSetup(context.Background(), circuits.CircuitID(fmt.Sprintf("aggregation-%d", nc)), ccs, circuits.NewUnsafeSRSProvider(), nil)
 		assert.NoError(t, err)
 
 		// Generate proofs claims to aggregate
-		nProofs := utils.Max(nc-3, 1)
+		nProofs := utils.Ite(nc == 0, 0, utils.Max(nc-3, 1))
 		logrus.Infof("Generating a witness, %v dummy-proofs to aggregates", nProofs)
 		innerProofClaims := make([]aggregation.ProofClaimAssignment, nProofs)
+		innerPI := make([]frBls.Element, nc)
 		for i := range innerProofClaims {
 
 			// Assign the dummy circuit for a random value
 			circID := i % nCircuits
-			var x frBls.Element
-			x.SetRandom()
-			a := dummy.Assign(circuits.MockCircuitID(circID), x)
+			_, err = innerPI[i].SetRandom()
+			assert.NoError(t, err)
+			a := dummy.Assign(circuits.MockCircuitID(circID), innerPI[i])
 
 			// Stores the inner-proofs for later
 			proof, err := circuits.ProveCheck(
@@ -148,8 +119,46 @@ func main() {
 			innerProofClaims[i] = aggregation.ProofClaimAssignment{
 				CircuitID:   circID,
 				Proof:       proof,
-				PublicInput: x,
+				PublicInput: innerPI[i],
 			}
+		}
+
+		logrus.Info("generating witness for the interconnection circuit")
+		// assign public input circuit
+		circuitTypes := make([]pi_interconnection.InnerCircuitType, nc)
+		for i := range circuitTypes {
+			circuitTypes[i] = pi_interconnection.InnerCircuitType(test_utils.RandIntN(2)) // #nosec G115 -- value already constrained
+		}
+
+		innerPiPartition := utils.RightPad(utils.Partition(innerPI, circuitTypes), 2)
+		execPI := utils.RightPad(innerPiPartition[typeExec], len(piCircuit.ExecutionPublicInput))
+		decompPI := utils.RightPad(innerPiPartition[typeDecomp], len(piCircuit.DecompressionPublicInput))
+
+		piAssignment := pi_interconnection.DummyCircuit{
+			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
+			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
+			DecompressionPublicInput: utils.ToVariableSlice(decompPI),
+			DecompressionFPI:         utils.ToVariableSlice(pow5(decompPI)),
+			ExecutionFPI:             utils.ToVariableSlice(pow5(execPI)),
+			NbExecution:              len(innerPiPartition[typeExec]),
+			NbDecompression:          len(innerPiPartition[typeDecomp]),
+		}
+
+		logrus.Infof("Generating PI proof")
+		piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField())
+		assert.NoError(t, err)
+		piProof, err := circuits.ProveCheck(
+			&piSetup, &piAssignment,
+			emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+			emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), ecc.BLS12_377.ScalarField()),
+		)
+		assert.NoError(t, err)
+		piPubW, err := piW.Public()
+		assert.NoError(t, err)
+		piInfo := aggregation.PiInfo{
+			Proof:         piProof,
+			PublicWitness: piPubW,
+			ActualIndexes: pi_interconnection.InnerCircuitTypesToIndexes(&piConfig, circuitTypes),
 		}
 
 		// Assigning the BW6 circuit
@@ -171,75 +180,29 @@ func main() {
 	setupEmulation, err := circuits.MakeSetup(context.Background(), circuits.EmulationCircuitID, ccsEmulation, circuits.NewUnsafeSRSProvider(), nil)
 	assert.NoError(t, err)
 
+	var aggregationPiBn254 frBn254.Element
+	aggregationPiBn254.SetBytes(aggregationPIBytes)
 	for k := range bw6Proofs {
 		logrus.Infof("Generating the proof for the emulation circuit (BW6 Proof #%v)", k)
-		_, err = emulation.MakeProof(&setupEmulation, k, bw6Proofs[k], frBn254.NewElement(10))
+		_, err = emulation.MakeProof(&setupEmulation, k, bw6Proofs[k], aggregationPiBn254)
 		assert.NoError(t, err)
 	}
 
 }
 
-func getPiInterconnectionSetup(srsProvider circuits.SRSProvider, numCircuits int) piInterconnectionSetup {
-	var t test_utils.FakeTestingT
+const (
+	typeExec   = pi_interconnection.Execution
+	typeDecomp = pi_interconnection.Decompression
+)
 
-	circuit, err := pi_interconnection.Compile(config.PublicInput{
-		MaxNbDecompression: numCircuits,
-		MaxNbExecution:     numCircuits,
-		MaxNbKeccakF:       numCircuits * 10,
-		ExecutionMaxNbMsg:  1,
-		L2MsgMerkleDepth:   1,
-		L2MsgMaxNbMerkle:   1,
-	}, dummyWizard.Compile)
-	assert.NoError(t, err)
+func pow5(s []frBls.Element) []frBls.Element {
+	res := make([]frBls.Element, len(s))
+	for i := range s {
+		res[i].
+			Mul(&s[i], &s[i]).
+			Mul(&res[i], &res[i]).
+			Mul(&res[i], &s[i])
 
-	var (
-		cs            constraint.ConstraintSystem
-		csCompilation sync.Mutex
-	)
-	csCompilation.Lock()
-	go func() {
-		var err error
-		cs, err = frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit.Circuit) // always compiling the circuit in case it has changed
-		csCompilation.Unlock()
-		assert.NoError(t, err)
-	}()
-
-	cfg := config.Config{
-		AssetsDir: "integration/circuit-testing/aggregation/.assets",
 	}
-	logrus.Infof("Loading PI setup")
-	setup, err := circuits.LoadSetup(&cfg, circuits.PublicInputInterconnectionCircuitID)
-
-	logrus.Infof("Compiling PI circuit")
-	csCompilation.Lock()
-
-	if err != nil || !reflect.DeepEqual(cs, setup.Circuit) { // TODO make sure this is a good way to compare cs's
-		fmt.Println("commitment indexes", cs.GetCommitments().CommitmentIndexes())
-		logrus.Infof("Loading failed. Creating PI setup")
-		setup, err = circuits.MakeSetup(context.TODO(), circuits.PublicInputInterconnectionCircuitID, cs, srsProvider, nil)
-		assert.NoError(t, err)
-		logrus.Infof("Saving PI setup")
-		/* assert.NoError(t, setup.WriteTo(cfg.PathForSetup(string(circuits.PublicInputInterconnectionCircuitID)))) No use storing the setup unless we can store SRS, TODO fix
-		logrus.Infof("Copying SRS from gnark cache")	TODO Store SRS. Currently we're failing to load every time
-		dst, err := os.Create(cfg.PathForSRS())
-		assert.NoError(t, err)
-		defer assert.NoError(t, dst.Close())
-		homeDir, err := os.UserHomeDir()
-		assert.NoError(t, err)
-		src, err := os.Open(filepath.Join(homeDir, "."+"gnark", "kzg"))
-		assert.NoError(t, err)
-		defer assert.NoError(t, src.Close())
-		_, err = io.Copy(dst, src)
-		assert.NoError(t, err)*/
-	}
-
-	return piInterconnectionSetup{
-		c:     circuit,
-		Setup: setup,
-	}
-}
-
-type piInterconnectionSetup struct {
-	circuits.Setup
-	c *pi_interconnection.Compiled
+	return res
 }

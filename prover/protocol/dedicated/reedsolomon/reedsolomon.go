@@ -42,7 +42,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	//
 	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
 		witness := h.GetColAssignment(assi)
-		coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0).SubVector(0, codeDim)
+		coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, codeDim)
 		assi.AssignColumn(ifaces.ColIDf("%v_%v", REED_SOLOMON_COEFF, h.GetColID()), coeffs)
 	})
 

@@ -19,7 +19,7 @@ import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.createBlobRecord
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper

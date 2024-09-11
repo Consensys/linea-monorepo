@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.dao.batch.persistence
+package net.consensys.zkevm.persistence
 
 import net.consensys.zkevm.domain.Batch
 import tech.pegasys.teku.infrastructure.async.SafeFuture
