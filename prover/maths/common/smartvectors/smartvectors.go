@@ -151,7 +151,9 @@ func Density(v SmartVector) int {
 	case *Regular:
 		return len(*w)
 	case *Rotated:
-		return len(w.v)
+		return len(w.v.Regular)
+	case *Pooled:
+		return len(w.Regular)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}

@@ -81,6 +81,14 @@ func TransversalHash(
 					if pIsReg {
 						chunksFull[j] = (*pReg)[startFromCol:stopAtCol]
 						mask |= (1 << j)
+						continue
+					}
+
+					pPool, pIsPool := pols[row+j].(*smartvectors.Pooled)
+					if pIsPool {
+						chunksFull[j] = pPool.Regular[startFromCol:stopAtCol]
+						mask |= (1 << j)
+						continue
 					}
 				}
 
