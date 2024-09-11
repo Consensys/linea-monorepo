@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/dictionary"
 	"io"
 	"math/big"
 	"math/rand"
@@ -603,7 +604,11 @@ func decompressBlob(b []byte) ([][][]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't read dict: %w", err)
 	}
-	header, _, blocks, err := DecompressBlob(b, dict)
+	dictStore, err := dictionary.SingletonStore(dict, 0)
+	if err != nil {
+		return nil, err
+	}
+	header, _, blocks, err := DecompressBlob(b, dictStore)
 	if err != nil {
 		return nil, fmt.Errorf("can't decompress blob: %w", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/encode"
 	"testing"
 
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -33,29 +34,25 @@ func TestEncodeDecode(t *testing.T) {
 				t.Fatalf("could not decode test RLP block: %s", err.Error())
 			}
 
-			var (
-				buf      = &bytes.Buffer{}
-				expected = test_utils.DecodedBlockData{
-					BlockHash: block.Hash(),
-					Txs:       make([]ethtypes.Transaction, len(block.Transactions())),
-					Timestamp: block.Time(),
-				}
-			)
+			var buf bytes.Buffer
+			expected := encode.DecodedBlockData{
+				BlockHash: block.Hash(),
+				Txs:       make([]ethtypes.Transaction, len(block.Transactions())),
+				Timestamp: block.Time(),
+			}
 
 			for i := range expected.Txs {
 				expected.Txs[i] = *block.Transactions()[i]
 			}
 
-			if err := v1.EncodeBlockForCompression(&block, buf); err != nil {
+			if err := v1.EncodeBlockForCompression(&block, &buf); err != nil {
 				t.Fatalf("failed encoding the block: %s", err.Error())
 			}
 
-			var (
-				encoded       = buf.Bytes()
-				r             = bytes.NewReader(encoded)
-				decoded, err  = test_utils.DecodeBlockFromUncompressed(r)
-				size, errScan = v1.ScanBlockByteLen(encoded)
-			)
+			encoded := buf.Bytes()
+			r := bytes.NewReader(encoded)
+			decoded, err := v1.DecodeBlockFromUncompressed(r)
+			size, errScan := v1.ScanBlockByteLen(encoded)
 
 			assert.NoError(t, errScan, "error scanning the payload length")
 			assert.NotZero(t, size, "scanned a block size of zero")
@@ -138,7 +135,7 @@ func TestVectorDecode(t *testing.T) {
 		var (
 			postPadded = append(b, postPad[:]...)
 			r          = bytes.NewReader(b)
-			_, errDec  = test_utils.DecodeBlockFromUncompressed(r)
+			_, errDec  = v1.DecodeBlockFromUncompressed(r)
 			_, errScan = v1.ScanBlockByteLen(postPadded)
 		)
 

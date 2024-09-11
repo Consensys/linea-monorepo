@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/dictionary"
 	"io"
 	"os"
 	"strings"
@@ -39,6 +40,7 @@ type BlobMaker struct {
 	limit      int              // maximum size of the compressed data
 	compressor *lzss.Compressor // compressor used to compress the blob body
 	dict       []byte           // dictionary used for compression
+	dictStore  dictionary.Store
 
 	header Header
 
@@ -67,6 +69,10 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 	}
 	dict = lzss.AugmentDict(dict)
 	blobMaker.dict = dict
+	blobMaker.dictStore, err = dictionary.SingletonStore(dict, 0)
+	if err != nil {
+		return nil, err
+	}
 
 	dictChecksum := compress.ChecksumPaddedBytes(dict, len(dict), hash.MIMC_BLS12_377.New(), fr.Bits)
 	copy(blobMaker.header.DictChecksum[:], dictChecksum)
@@ -119,7 +125,7 @@ func (bm *BlobMaker) Written() int {
 func (bm *BlobMaker) Bytes() []byte {
 	if bm.currentBlobLength > 0 {
 		// sanity check that we can always decompress.
-		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dict)
+		header, rawBlocks, _, err := DecompressBlob(bm.currentBlob[:bm.currentBlobLength], bm.dictStore)
 		if err != nil {
 			var sbb strings.Builder
 			fmt.Fprintf(&sbb, "invalid blob: %v\n", err)
@@ -281,7 +287,7 @@ func (bm *BlobMaker) Equals(other *BlobMaker) bool {
 }
 
 // DecompressBlob decompresses a blob and returns the header and the blocks as they were compressed.
-func DecompressBlob(b, dict []byte) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
+func DecompressBlob(b []byte, dictStore dictionary.Store) (blobHeader *Header, rawBlocks []byte, blocks [][]byte, err error) {
 	// UnpackAlign the blob
 	b, err = UnpackAlign(b)
 	if err != nil {
@@ -295,11 +301,10 @@ func DecompressBlob(b, dict []byte) (blobHeader *Header, rawBlocks []byte, block
 		return nil, nil, nil, fmt.Errorf("failed to read blob header: %w", err)
 	}
 
-	// ensure the dict hash matches
-	{
-		if !bytes.Equal(compress.ChecksumPaddedBytes(dict, len(dict), hash.MIMC_BLS12_377.New(), fr.Bits), blobHeader.DictChecksum[:]) {
-			return nil, nil, nil, errors.New("invalid dict hash")
-		}
+	// retrieve dict
+	dict, err := dictStore.Get(blobHeader.DictChecksum[:], 0)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	b = b[read:]
