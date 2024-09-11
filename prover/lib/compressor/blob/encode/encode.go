@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/icza/bitio"
 	"io"
+	"math/big"
 )
 
 // UnpackAlign unpacks r (packed with PackAlign) and returns the unpacked data.
@@ -227,5 +228,47 @@ type DecodedBlockData struct {
 	// Froms stores the list of the sender address of every transaction
 	Froms []common.Address
 	// Txs stores the list of the decoded transactions.
-	Txs []types.Transaction
+	Txs []types.TxData
+}
+
+// ToStd converts the decoded block data into a standard
+// block object capable of being encoded in a way consumable
+// by existing decoders. The process involves some abuse,
+// whereby 1) the "from" address of a transaction is put in the
+// signature.R field, though the signature as a whole is invalid.
+// 2) the block hash is stored in the ParentHash field in the block
+// header.
+func (d *DecodedBlockData) ToStd() *types.Block {
+	header := types.Header{
+		ParentHash: d.BlockHash,
+		Time:       d.Timestamp,
+	}
+
+	body := types.Body{
+		Transactions: make([]*types.Transaction, len(d.Txs)),
+	}
+
+	for i := range d.Txs {
+		switch txData := d.Txs[i].(type) {
+		case *types.DynamicFeeTx:
+			tx := *txData
+			tx.R = new(big.Int)
+			tx.R.SetBytes(d.Froms[i][:])
+			body.Transactions[i] = types.NewTx(&tx)
+		case *types.AccessListTx:
+			tx := *txData
+			tx.R = new(big.Int)
+			tx.R.SetBytes(d.Froms[i][:])
+			body.Transactions[i] = types.NewTx(&tx)
+		case *types.LegacyTx:
+			tx := *txData
+			tx.R = new(big.Int)
+			tx.R.SetBytes(d.Froms[i][:])
+			body.Transactions[i] = types.NewTx(&tx)
+		default:
+			panic("unexpected transaction type")
+		}
+	}
+
+	return types.NewBlock(&header, &body, nil, nil)
 }

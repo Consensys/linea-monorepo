@@ -131,38 +131,34 @@ func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, erro
 
 	for r.Len() != 0 {
 		var (
-			tx   types.Transaction
 			from common.Address
 		)
-		if err := DecodeTxFromUncompressed(r, &tx, &from); err != nil {
+		if tx, err := DecodeTxFromUncompressed(r, &from); err != nil {
 			return encode.DecodedBlockData{}, fmt.Errorf("could not decode transaction #%v: %w", len(decodedBlk.Txs), err)
+		} else {
+			decodedBlk.Txs = append(decodedBlk.Txs, tx)
+			decodedBlk.Froms = append(decodedBlk.Froms, from)
 		}
-		decodedBlk.Froms = append(decodedBlk.Froms, from)
-		decodedBlk.Txs = append(decodedBlk.Txs, tx)
 	}
 
 	return decodedBlk, nil
 }
 
-func DecodeTxFromUncompressed(r *bytes.Reader, tx *types.Transaction, from *common.Address) error {
+func DecodeTxFromUncompressed(r *bytes.Reader, from *common.Address) (types.TxData, error) {
 	if _, err := r.Read(from[:]); err != nil {
-		return fmt.Errorf("could not read from address: %w", err)
-	}
-
-	if err := ethereum.DecodeTxFromBytes(r, tx); err != nil {
-		return fmt.Errorf("could not deserialize transaction")
+		return nil, fmt.Errorf("could not read from address: %w", err)
 	}
 
 	firstByte, err := r.ReadByte()
 	if err != nil {
-		return fmt.Errorf("could not read the first byte: %w", err)
+		return nil, fmt.Errorf("could not read the first byte: %w", err)
 	}
 
 	switch {
 	case firstByte == types.DynamicFeeTxType:
-		return decodeDynamicFeeTx(r, tx, from)
+		return decodeDynamicFeeTx(r, from)
 	case firstByte == types.AccessListTxType:
-		return decodeAccessListTx(r, tx, from)
+		return decodeAccessListTx(r, from)
 	// According to the RLP rule, `0xc0 + x` or `0xf7` indicates that the current
 	// item is a list and this is what's used to identify that the transaction is
 	// a legacy transaction or a EIP-155 transaction.
@@ -172,26 +168,24 @@ func DecodeTxFromUncompressed(r *bytes.Reader, tx *types.Transaction, from *comm
 		// Set the byte-reader backward so that we can apply the rlp-decoder
 		// over it.
 		r.UnreadByte()
-		return decodeLegacyTx(r, tx, from)
+		return decodeLegacyTx(r, from)
 	}
 
-	return fmt.Errorf("unexpected first byte: %x", firstByte)
-
-	return nil
+	return nil, fmt.Errorf("unexpected first byte: %x", firstByte)
 }
 
-func decodeLegacyTx(r *bytes.Reader, tx *types.Transaction, from *common.Address) (err error) {
-	decTx := []any{}
+func decodeLegacyTx(r *bytes.Reader, from *common.Address) (parsedTx *types.LegacyTx, err error) {
+	var decTx []any
 
-	if err := rlp.Decode(r, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+	if err = rlp.Decode(r, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != 7 {
-		return fmt.Errorf("unexpected number of field")
+		return nil, fmt.Errorf("unexpected number of field")
 	}
 
-	parsedTx := types.LegacyTx{}
+	parsedTx = new(types.LegacyTx)
 	err = errors.Join(
 		ethereum.TryCast(&parsedTx.Nonce, decTx[0], "nonce"),
 		ethereum.TryCast(&parsedTx.GasPrice, decTx[1], "gas-price"),
@@ -201,24 +195,22 @@ func decodeLegacyTx(r *bytes.Reader, tx *types.Transaction, from *common.Address
 		ethereum.TryCast(&parsedTx.Value, decTx[5], "value"),
 		ethereum.TryCast(&parsedTx.Data, decTx[6], "data"),
 	)
-
-	*tx = *types.NewTx(&parsedTx)
-	return err
+	return
 }
 
-func decodeAccessListTx(r *bytes.Reader, tx *types.Transaction, from *common.Address) (err error) {
+func decodeAccessListTx(r *bytes.Reader, from *common.Address) (parsedTx *types.AccessListTx, err error) {
 
-	decTx := []any{}
+	var decTx []any
 
-	if err := rlp.Decode(r, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+	if err = rlp.Decode(r, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != 8 {
-		return fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
 	}
 
-	parsedTx := types.AccessListTx{}
+	parsedTx = new(types.AccessListTx)
 	err = errors.Join(
 		ethereum.TryCast(&parsedTx.Nonce, decTx[0], "nonce"),
 		ethereum.TryCast(&parsedTx.GasPrice, decTx[1], "gas-price"),
@@ -230,23 +222,22 @@ func decodeAccessListTx(r *bytes.Reader, tx *types.Transaction, from *common.Add
 		ethereum.TryCast(&parsedTx.AccessList, decTx[7], "access-list"),
 	)
 
-	*tx = *types.NewTx(&parsedTx)
-	return err
+	return
 }
 
-func decodeDynamicFeeTx(r *bytes.Reader, tx *types.Transaction, from *common.Address) (err error) {
+func decodeDynamicFeeTx(r *bytes.Reader, from *common.Address) (parsedTx *types.DynamicFeeTx, err error) {
 
 	decTx := []any{}
 
-	if err := rlp.Decode(r, &decTx); err != nil {
-		return fmt.Errorf("could not rlp decode transaction: %w", err)
+	if err = rlp.Decode(r, &decTx); err != nil {
+		return nil, fmt.Errorf("could not rlp decode transaction: %w", err)
 	}
 
 	if len(decTx) != 9 {
-		return fmt.Errorf("invalid number of field for a dynamic transaction")
+		return nil, fmt.Errorf("invalid number of field for a dynamic transaction")
 	}
 
-	parsedTx := types.DynamicFeeTx{}
+	parsedTx = new(types.DynamicFeeTx)
 	err = errors.Join(
 		ethereum.TryCast(&parsedTx.Nonce, decTx[0], "nonce"),
 		ethereum.TryCast(&parsedTx.GasTipCap, decTx[1], "gas-tip-cap"),
@@ -258,7 +249,6 @@ func decodeDynamicFeeTx(r *bytes.Reader, tx *types.Transaction, from *common.Add
 		ethereum.TryCast(&parsedTx.Data, decTx[7], "data"),
 		ethereum.TryCast(&parsedTx.AccessList, decTx[8], "access-list"),
 	)
-	*tx = *types.NewTx(&parsedTx)
-	return err
 
+	return
 }

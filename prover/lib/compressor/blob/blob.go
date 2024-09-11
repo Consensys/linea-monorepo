@@ -72,7 +72,6 @@ func DecompressBlob(blob []byte, dictStore dictionary.Store) ([]byte, error) {
 	}
 	blockObjs := make([]encode.DecodedBlockData, len(blocks))
 	for i, block := range blocks {
-
 		blockObjs[i], err = blockDecoder(bytes.NewReader(block))
 		if err != nil {
 			return nil, err
