@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/encode"
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -186,13 +187,14 @@ func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, erro
 	numTxs := int(decNumTxs)
 	decodedBlk := encode.DecodedBlockData{
 		Froms:     make([]common.Address, numTxs),
-		Txs:       make([]types.Transaction, numTxs),
+		Txs:       make([]types.TxData, numTxs),
 		Timestamp: uint64(decTimestamp),
 		BlockHash: blockHash,
 	}
 
+	var err error
 	for i := 0; i < int(decNumTxs); i++ {
-		if err := DecodeTxFromUncompressed(r, &decodedBlk.Txs[i], &decodedBlk.Froms[i]); err != nil {
+		if decodedBlk.Txs[i], err = DecodeTxFromUncompressed(r, &decodedBlk.Froms[i]); err != nil {
 			return encode.DecodedBlockData{}, fmt.Errorf("could not decode transaction #%v: %w", i, err)
 		}
 	}
@@ -200,14 +202,10 @@ func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, erro
 	return decodedBlk, nil
 }
 
-func DecodeTxFromUncompressed(r *bytes.Reader, tx *types.Transaction, from *common.Address) (err error) {
+func DecodeTxFromUncompressed(r *bytes.Reader, from *common.Address) (types.TxData, error) {
 	if _, err := r.Read(from[:]); err != nil {
-		return fmt.Errorf("could not read from address: %w", err)
+		return nil, fmt.Errorf("could not read from address: %w", err)
 	}
 
-	if err := ethereum.DecodeTxFromBytes(r, tx); err != nil {
-		return fmt.Errorf("could not deserialize transaction")
-	}
-
-	return nil
+	return ethereum.DecodeTxFromBytes(r)
 }

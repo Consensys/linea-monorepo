@@ -6,9 +6,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/encode"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -37,12 +37,7 @@ func TestEncodeDecode(t *testing.T) {
 			var buf bytes.Buffer
 			expected := encode.DecodedBlockData{
 				BlockHash: block.Hash(),
-				Txs:       make([]ethtypes.Transaction, len(block.Transactions())),
 				Timestamp: block.Time(),
-			}
-
-			for i := range expected.Txs {
-				expected.Txs[i] = *block.Transactions()[i]
 			}
 
 			if err := v1.EncodeBlockForCompression(&block, &buf); err != nil {
@@ -60,10 +55,10 @@ func TestEncodeDecode(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, expected.BlockHash, decoded.BlockHash)
 			assert.Equal(t, expected.Timestamp, decoded.Timestamp)
-			assert.Equal(t, len(expected.Txs), len(decoded.Txs))
+			assert.Equal(t, len(block.Transactions()), len(decoded.Txs))
 
 			for i := range expected.Txs {
-				checkSameTx(t, &expected.Txs[i], &decoded.Txs[i], decoded.Froms[i])
+				checkSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), decoded.Froms[i])
 				if t.Failed() {
 					return
 				}
