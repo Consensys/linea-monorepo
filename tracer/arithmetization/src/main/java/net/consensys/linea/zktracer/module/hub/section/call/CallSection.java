@@ -113,6 +113,7 @@ public class CallSection extends TraceSection
   private AccountSnapshot postRollbackCalleeSnapshot;
   private AccountSnapshot postRollbackCallerSnapshot;
 
+  public StpCall stpCall;
   private PrecompileSubsection precompileSubsection;
 
   public CallSection(Hub hub) {
@@ -147,7 +148,7 @@ public class CallSection extends TraceSection
       return;
     }
 
-    final StpCall stpCall = new StpCall(hub, mxpCall.gasMxp);
+    stpCall = new StpCall(hub, mxpCall.gasMxp);
     firstImcFragment.callStp(stpCall);
     checkArgument(
         stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions),

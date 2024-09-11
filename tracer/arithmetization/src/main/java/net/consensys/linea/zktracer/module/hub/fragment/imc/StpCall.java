@@ -155,6 +155,10 @@ public class StpCall implements TraceSubFragment {
     return upfrontGasCost;
   }
 
+  public long effectiveChildContextGasAllowance() {
+    return gasPaidOutOfPocket + stipend;
+  }
+
   @Override
   public Trace trace(Trace trace) {
     return trace

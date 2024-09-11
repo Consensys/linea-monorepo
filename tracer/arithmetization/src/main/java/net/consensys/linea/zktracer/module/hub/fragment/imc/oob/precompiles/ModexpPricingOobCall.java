@@ -31,7 +31,7 @@ import org.apache.tuweni.bytes.Bytes;
 @Setter
 public class ModexpPricingOobCall extends OobCall {
 
-  BigInteger callGas;
+  final BigInteger callGas;
   BigInteger returnAtCapacity;
   boolean ramSuccess;
   BigInteger exponentLog;
@@ -40,8 +40,9 @@ public class ModexpPricingOobCall extends OobCall {
   BigInteger returnGas;
   boolean returnAtCapacityNonZero;
 
-  public ModexpPricingOobCall() {
+  public ModexpPricingOobCall(long calleeGas) {
     super(OOB_INST_MODEXP_PRICING);
+    this.callGas = BigInteger.valueOf(calleeGas);
   }
 
   @Override
