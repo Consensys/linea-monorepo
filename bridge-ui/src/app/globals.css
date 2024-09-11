@@ -21,4 +21,27 @@ body {
   .btn-custom {
     @apply min-h-[2.5rem] h-[2.5rem] px-6;
   }
+
+  .divider:not(:empty) {
+    gap: 0;
+  }
+
+  .menu-horizontal > li:not(.menu-title) > details > ul {
+    padding: 0;
+  }
+
+  :where(.menu-horizontal > li:not(.menu-title) > details > ul) {
+    border-radius: 0;
+  }
+
+  .tooltip:after {
+    border-color: #505050 transparent transparent transparent;
+  }
+
+  .tooltip:before {
+    border: 1px solid #505050;
+    background-color: #2d2d2d;
+    border-radius: 8px;
+    padding: 8px;
+  }
 }

@@ -3,10 +3,8 @@
 import { ToastContainer } from "react-toastify";
 import atypTextFont from "@/app/font/atypText";
 import atypFont from "@/app/font/atyp";
-import Header from "./header/Header";
-import SwitchNetwork from "../widgets/SwitchNetwork";
-import useInitialiseChain from "@/hooks/useInitialiseChain";
-import useInitialiseToken from "@/hooks/useInitialiseToken";
+import { Header } from "./header";
+import { useInitialiseChain, useInitialiseToken } from "@/hooks";
 import Sidebar from "./Sidebar";
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -28,10 +26,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="md:ml-64">
         <Header />
       </div>
-      <main className="m-0 flex-1 p-10 md:ml-64">
-        {children}
-        <SwitchNetwork />
-      </main>
+      <main className="m-0 flex-1 p-3 md:ml-64 md:p-10">{children}</main>
     </div>
   );
 }

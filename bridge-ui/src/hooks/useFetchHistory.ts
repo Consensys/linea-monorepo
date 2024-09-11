@@ -41,9 +41,6 @@ const useFetchHistory = () => {
       return;
     }
 
-    // Prevent multiple call
-    if (isLoading) return;
-
     try {
       setIsLoading(true);
 

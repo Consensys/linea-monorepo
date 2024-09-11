@@ -33,6 +33,8 @@ export enum TokenType {
 }
 
 interface LayerConfig {
+  name: string;
+  iconPath: string;
   chainId: number;
   messageServiceAddress: Address;
   tokenBridgeAddress: Address;
@@ -85,6 +87,8 @@ export const config: Config = {
   networks: {
     MAINNET: {
       L1: {
+        name: "Ethereum Mainnet",
+        iconPath: "/images/logo/ethereum-rounded.svg",
         chainId: 1,
         messageServiceAddress: process.env.NEXT_PUBLIC_MAINNET_L1_MESSAGE_SERVICE
           ? (process.env.NEXT_PUBLIC_MAINNET_L1_MESSAGE_SERVICE as Address)
@@ -97,7 +101,9 @@ export const config: Config = {
           : ({} as Address),
       },
       L2: {
+        name: "Linea",
         chainId: 59144,
+        iconPath: "/images/logo/linea-mainnet.svg",
         messageServiceAddress: process.env.NEXT_PUBLIC_MAINNET_LINEA_MESSAGE_SERVICE
           ? (process.env.NEXT_PUBLIC_MAINNET_LINEA_MESSAGE_SERVICE as Address)
           : ({} as Address),
@@ -121,6 +127,8 @@ export const config: Config = {
 
     SEPOLIA: {
       L1: {
+        name: "Sepolia",
+        iconPath: "/images/logo/ethereum-rounded.svg",
         chainId: 11155111,
         messageServiceAddress: process.env.NEXT_PUBLIC_SEPOLIA_L1_MESSAGE_SERVICE
           ? (process.env.NEXT_PUBLIC_SEPOLIA_L1_MESSAGE_SERVICE as Address)
@@ -133,6 +141,8 @@ export const config: Config = {
           : ({} as Address),
       },
       L2: {
+        name: "Linea Sepolia",
+        iconPath: "/images/logo/linea-sepolia.svg",
         chainId: 59141,
         messageServiceAddress: process.env.NEXT_PUBLIC_SEPOLIA_LINEA_MESSAGE_SERVICE
           ? (process.env.NEXT_PUBLIC_SEPOLIA_LINEA_MESSAGE_SERVICE as Address)

@@ -1,14 +1,24 @@
 import { useWeb3Modal } from "@web3modal/wagmi/react";
+import { cn } from "@/utils/cn";
+import Button from "./bridge/Button";
 
-export default function ConnectButton() {
+type ConnectButtonProps = {
+  fullWidth?: boolean;
+};
+
+export default function ConnectButton({ fullWidth }: ConnectButtonProps) {
   const { open } = useWeb3Modal();
   return (
-    <button
+    <Button
       id="wallet-connect-btn"
-      className="btn btn-primary rounded-full text-sm font-semibold uppercase md:text-[0.9375rem]"
+      variant="primary"
+      size="md"
+      className={cn({
+        "w-full": fullWidth,
+      })}
       onClick={() => open()}
     >
       Connect Wallet
-    </button>
+    </Button>
   );
 }

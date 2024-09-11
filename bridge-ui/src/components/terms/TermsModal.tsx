@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import classNames from "classnames";
 import { useConfigStore } from "@/stores/configStore";
+import { cn } from "@/utils/cn";
+import Button from "../bridge/Button";
 
 export default function TermsModal() {
   const termsModalRef = useRef<HTMLDivElement>(null);
@@ -43,7 +44,7 @@ export default function TermsModal() {
     <div
       ref={termsModalRef}
       id="terms_modal"
-      className={classNames(
+      className={cn(
         "p-4 fixed right-2 left-2 md:left-auto md:right-5 md:max-w-[20rem] bg-white rounded text-black z-50 transition-all duration-500",
         !open ? "invisible -bottom-full" : "visible bottom-2 md:bottom-16",
       )}
@@ -75,14 +76,16 @@ export default function TermsModal() {
           (Terms of Service | Linea )
         </Link>{" "}
       </div>
-      <button
+      <Button
         id="agree-terms-btn"
         onClick={handleAgreeToTerms}
         type="button"
-        className="btn btn-primary btn-sm mt-3 w-full rounded-full font-medium uppercase"
+        variant="primary"
+        size="sm"
+        className="mt-3 w-full font-medium"
       >
         Got It
-      </button>
+      </Button>
     </div>
   );
 }

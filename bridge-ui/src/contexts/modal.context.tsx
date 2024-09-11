@@ -19,6 +19,8 @@ interface ModalProviderProps {
 
 interface ModalOptions {
   width?: string;
+  showCloseButton?: boolean;
+  onClose?: () => void;
 }
 
 export const ModalProvider: React.FC<ModalProviderProps> = ({ children }) => {

@@ -17,10 +17,10 @@ import useERC20Storage from "./useERC20Storage";
 import { BlockRange, TransactionHistory } from "@/models/history";
 import useFetchAnchoringEvents from "./useFetchAnchoringEvents";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
-import useBridge from "./useBridge";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { useTokenStore } from "@/stores/tokenStore";
 import useMessageStatus from "./useMessageStatus";
+import useTokenFetch from "./useTokenFetch";
 
 const useFetchBridgeTransactions = () => {
   // Wagmi
@@ -28,7 +28,7 @@ const useFetchBridgeTransactions = () => {
   const tokensConfig = useTokenStore((state) => state.tokensConfig);
   const { fetchAnchoringMessageHashes } = useFetchAnchoringEvents();
   const { getMessageStatuses } = useMessageStatus();
-  const { fetchBridgedToken, fillMissingTokenAddress } = useBridge();
+  const { fetchBridgedToken, fillMissingTokenAddress } = useTokenFetch();
   const { updateOrInsertUserTokenList } = useERC20Storage();
 
   const fetchTransactions = async ({

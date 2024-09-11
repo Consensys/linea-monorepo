@@ -1,47 +1,35 @@
-import { useState, useEffect, useCallback } from "react";
-import { readContract } from "@wagmi/core";
+import { useMemo } from "react";
+import { useReadContract } from "wagmi";
 import { useChainStore } from "@/stores/chainStore";
-import { NetworkLayer, wagmiConfig } from "@/config";
+import { NetworkLayer } from "@/config";
 import MessageService from "@/abis/MessageService.json";
 import { getChainNetworkLayer } from "@/utils/chainsUtil";
 
 const useMinimumFee = () => {
-  const [minimumFee, setMinimumFee] = useState(BigInt(0));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [error, setError] = useState<any | null>(null);
-
   const { messageServiceAddress, fromChain } = useChainStore((state) => ({
     messageServiceAddress: state.messageServiceAddress,
     fromChain: state.fromChain,
   }));
 
-  const fetchMinimumFee = useCallback(async () => {
-    if (!messageServiceAddress) {
-      return;
-    }
+  const isL2Network = useMemo(() => fromChain && getChainNetworkLayer(fromChain) === NetworkLayer.L2, [fromChain]);
 
-    try {
-      let fees = BigInt(0);
-      if (fromChain && getChainNetworkLayer(fromChain) === NetworkLayer.L2) {
-        fees = (await readContract(wagmiConfig, {
-          address: messageServiceAddress,
-          abi: MessageService.abi,
-          functionName: "minimumFeeInWei",
-          chainId: fromChain.id,
-        })) as bigint;
-      }
-      setMinimumFee(fees);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err);
-    }
-  }, [messageServiceAddress, fromChain]);
+  const { data, isLoading, error, queryKey, refetch } = useReadContract({
+    address: messageServiceAddress ?? "0x",
+    abi: MessageService.abi,
+    functionName: "minimumFeeInWei",
+    chainId: fromChain?.id,
+    query: {
+      enabled: !!messageServiceAddress && !!fromChain?.id && !!isL2Network,
+    },
+  });
 
-  useEffect(() => {
-    fetchMinimumFee();
-  }, [fetchMinimumFee]);
-
-  return { minimumFee, error };
+  return {
+    isLoading,
+    minimumFee: (data as bigint | undefined) ?? 0n,
+    error,
+    queryKey,
+    refetchMinimumFee: refetch,
+  };
 };
 
 export default useMinimumFee;

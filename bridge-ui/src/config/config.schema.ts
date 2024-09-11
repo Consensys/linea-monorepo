@@ -8,12 +8,16 @@ export const configSchema = Joi.object({
   networks: Joi.object({
     MAINNET: Joi.object({
       L1: Joi.object({
+        name: Joi.string().required(),
+        iconPath: Joi.string().required(),
         chainId: Joi.number().required(),
         messageServiceAddress: Joi.string().required(),
         tokenBridgeAddress: Joi.string().required(),
         usdcBridgeAddress: Joi.string().required(),
       }),
       L2: Joi.object({
+        name: Joi.string().required(),
+        iconPath: Joi.string().required(),
         chainId: Joi.number().required(),
         messageServiceAddress: Joi.string().required(),
         tokenBridgeAddress: Joi.string().required(),
@@ -25,12 +29,16 @@ export const configSchema = Joi.object({
     }),
     SEPOLIA: Joi.object({
       L1: Joi.object({
+        name: Joi.string().required(),
+        iconPath: Joi.string().required(),
         chainId: Joi.number().required(),
         messageServiceAddress: Joi.string().required(),
         tokenBridgeAddress: Joi.string().required(),
         usdcBridgeAddress: Joi.string().required(),
       }),
       L2: Joi.object({
+        name: Joi.string().required(),
+        iconPath: Joi.string().required(),
         chainId: Joi.number().required(),
         messageServiceAddress: Joi.string().required(),
         tokenBridgeAddress: Joi.string().required(),
