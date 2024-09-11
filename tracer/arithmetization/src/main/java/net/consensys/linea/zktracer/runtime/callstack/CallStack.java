@@ -348,8 +348,4 @@ public final class CallStack {
   public int getParentContextNumberById(int id) {
     return this.getParentCallFrameById(id).contextNumber();
   }
-
-  public void revert(int stamp) {
-    this.currentCallFrame().revert(this, stamp);
-  }
 }

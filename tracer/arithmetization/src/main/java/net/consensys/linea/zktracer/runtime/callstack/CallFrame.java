@@ -318,21 +318,20 @@ public class CallFrame {
             });
   }
 
-  public void revert(CallStack callStack, int revertStamp) {
+  public void setRevertStamps(CallStack callStack, int currentStamp) {
     if (selfReverts) {
-      throw new IllegalStateException("a context can not self-revert twice");
+      throw new IllegalStateException(
+          String.format(
+              "a context can not self-revert twice, it already reverts at %s, can't revert again at %s",
+              revertStamp, currentStamp));
     }
     selfReverts = true;
-    revertStamp = revertStamp;
+    revertStamp = currentStamp;
     this.revertChildren(callStack, revertStamp);
   }
 
   public boolean willRevert() {
     return selfReverts() || getsReverted();
-  }
-
-  public boolean hasReverted() {
-    return selfReverts || getsReverted;
   }
 
   public void initializeFrame(final MessageFrame frame) {

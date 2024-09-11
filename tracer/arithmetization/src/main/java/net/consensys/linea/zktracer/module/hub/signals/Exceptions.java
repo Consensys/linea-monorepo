@@ -227,8 +227,8 @@ public class Exceptions {
    * @param frame the context from which to compute the putative exceptions
    */
   public static short fromFrame(final Hub hub, final MessageFrame frame) {
-    OpCode opCode = hub.opCode();
-    OpCodeData opCodeData = hub.currentFrame().opCodeData();
+    final OpCode opCode = hub.opCode();
+    final OpCodeData opCodeData = hub.currentFrame().opCodeData();
 
     if (isInvalidOpcode(opCode)) {
       return INVALID_OPCODE;
