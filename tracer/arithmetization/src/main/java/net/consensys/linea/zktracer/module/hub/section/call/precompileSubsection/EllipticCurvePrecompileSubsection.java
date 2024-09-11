@@ -35,12 +35,13 @@ public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
   public EllipticCurvePrecompileSubsection(Hub hub, CallSection callSection) {
     super(hub, callSection);
 
+    final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
     oobCall =
         switch (flag()) {
-          case PRC_ECRECOVER -> new PrecompileCommonOobCall(OOB_INST_ECRECOVER);
-          case PRC_ECADD -> new PrecompileCommonOobCall(OOB_INST_ECADD);
-          case PRC_ECMUL -> new PrecompileCommonOobCall(OOB_INST_ECMUL);
-          case PRC_ECPAIRING -> new PrecompileCommonOobCall(OOB_INST_ECPAIRING);
+          case PRC_ECRECOVER -> new PrecompileCommonOobCall(OOB_INST_ECRECOVER, calleeGas);
+          case PRC_ECADD -> new PrecompileCommonOobCall(OOB_INST_ECADD, calleeGas);
+          case PRC_ECMUL -> new PrecompileCommonOobCall(OOB_INST_ECMUL, calleeGas);
+          case PRC_ECPAIRING -> new PrecompileCommonOobCall(OOB_INST_ECPAIRING, calleeGas);
           default -> throw new IllegalArgumentException(
               String.format(
                   "Precompile address %s not supported by constructor", this.flag().toString()));

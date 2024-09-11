@@ -31,7 +31,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction;
 @Setter
 public class PrecompileCommonOobCall extends OobCall {
 
-  BigInteger callGas;
+  BigInteger calleeGas;
   BigInteger cds;
   BigInteger returnAtCapacity;
   boolean hubSuccess;
@@ -39,8 +39,9 @@ public class PrecompileCommonOobCall extends OobCall {
   boolean returnAtCapacityNonZero;
   boolean cdsIsZero; // Necessary to compute extractCallData and emptyCallData
 
-  public PrecompileCommonOobCall(OobInstruction oobInstruction) {
+  public PrecompileCommonOobCall(OobInstruction oobInstruction, long calleeGas) {
     super(oobInstruction);
+    this.calleeGas = BigInteger.valueOf(calleeGas);
     checkArgument(oobInstruction.isCommonPrecompile());
   }
 
@@ -56,7 +57,7 @@ public class PrecompileCommonOobCall extends OobCall {
   public net.consensys.linea.zktracer.module.oob.Trace trace(
       net.consensys.linea.zktracer.module.oob.Trace trace) {
     return trace
-        .data1(bigIntegerToBytes(callGas))
+        .data1(bigIntegerToBytes(calleeGas))
         .data2(bigIntegerToBytes(cds))
         .data3(bigIntegerToBytes(returnAtCapacity))
         .data4(booleanToBytes(hubSuccess)) // Set after the constructor
@@ -72,7 +73,7 @@ public class PrecompileCommonOobCall extends OobCall {
     return trace
         .pMiscOobFlag(true)
         .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(bigIntegerToBytes(callGas))
+        .pMiscOobData1(bigIntegerToBytes(calleeGas))
         .pMiscOobData2(bigIntegerToBytes(cds))
         .pMiscOobData3(bigIntegerToBytes(returnAtCapacity))
         .pMiscOobData4(booleanToBytes(hubSuccess)) // Set after the constructor

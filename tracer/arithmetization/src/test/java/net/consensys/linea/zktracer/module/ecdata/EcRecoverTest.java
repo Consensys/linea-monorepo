@@ -250,7 +250,7 @@ public class EcRecoverTest {
             .push(0x80) // argSize
             .push(0) // argOffset
             .push(1) // address
-            .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
+            .push(3000)
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());

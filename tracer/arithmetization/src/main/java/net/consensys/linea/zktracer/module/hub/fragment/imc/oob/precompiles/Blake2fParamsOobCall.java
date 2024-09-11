@@ -30,22 +30,24 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 @Setter
 public class Blake2fParamsOobCall extends OobCall {
 
-  BigInteger callGas;
+  BigInteger calleeGas;
+  BigInteger callGas; // TODO: remove this
   BigInteger blakeR;
   BigInteger blakeF;
 
   boolean ramSuccess;
   BigInteger returnGas;
 
-  public Blake2fParamsOobCall() {
+  public Blake2fParamsOobCall(long calleeGas) {
     super(OOB_INST_BLAKE_PARAMS);
+    this.calleeGas = BigInteger.valueOf(calleeGas);
   }
 
   @Override
   public net.consensys.linea.zktracer.module.oob.Trace trace(
       net.consensys.linea.zktracer.module.oob.Trace trace) {
     return trace
-        .data1(bigIntegerToBytes(callGas))
+        .data1(bigIntegerToBytes(calleeGas))
         .data2(ZERO)
         .data3(ZERO)
         .data4(booleanToBytes(ramSuccess)) // Set after the constructor
