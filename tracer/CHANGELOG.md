@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.6.0-rc1
+* Refactor ReplayExecutionEnviroment and ToyExecutionEnvironment ([#1159](https://github.com/Consensys/linea-tracer/pull/1159))
+* chore: make spotless and checkSPDXHeader a mandatory step after compilation in order to avoid not passing through the linting process ([#1161](https://github.com/Consensys/linea-tracer/pull/1161))
+* Enable reporting in `go-corset` ([#1150](https://github.com/Consensys/linea-tracer/pull/1150)) to get more information about failing constraints.
+* Set besuVersion=24.9-delivery32 ([#1157](https://github.com/Consensys/linea-tracer/pull/1157))
+* regenerate Trace.java for the HUB
+* delete deleted columns
+* fix: block-1339346-context-revert-twice ([#1151](https://github.com/Consensys/linea-tracer/pull/1151))
+* fix: delete duplicate of setting revertStamp + set the revertStamp at the right moment
+* fix(copy instruction) take destOffset to compute memoryExpension, not source offset
+* Fixed failing precondition for ECRECOVER call ([#1154](https://github.com/Consensys/linea-tracer/pull/1154))
+* fix: Modexp fix
+* Fix(oob): fixed size parameter in OOB_INST_DEPLOYMENT
+* feat: tidy up `ToyExecutionEnvironment` and remove `ToyWorld` ([#1143](https://github.com/Consensys/linea-tracer/pull/1143))This tidies up the `ToyExecutionEnvironment` in several ways.  Firstly, it updates the manner in which the `MainnetTransactionProcessor` is created by reusing as much from BESU as possible; secondly, it removes`ToyWorld` altogether (as this is no longer needed); finally, it removes`ToyExecutionEnvironment.execute()` since this is no longer being used.
+* Support Mainnet vs Sepolia Tests This adds support for distinguishing between Mainnet and Sepolia tests. This is helpful for the odds cases where we want a replay which was inteded for sepolia.
+* Remove `getMainnetTransactionProcessorOrig()`. This removes the now redundant (original) method for getting the mainnet transaction processor.
+* Fix broken replay test.`modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp` was missing the chain identifier.  I'm assuming LINEA_MAINNET for now.
+* chore: switch to ubuntu-22.04-16core github runner on the tests stage ([#973](https://github.com/Consensys/linea-tracer/pull/973))
+* Update Linea-Besu to 24.9-delivery30 ([#1131](https://github.com/Consensys/linea-tracer/pull/1131))
+* fix failing mmu constraints ([#1123](https://github.com/Consensys/linea-tracer/pull/1123))
+* Add nightly tests tag and improve ci test run time
+* fix env
+* Tag issue tests as nightly
+* separate unit tests and replay tests
+* enable concurrent replay tests
+* 1049 filter and run reference tests + GHA ([#1132](https://github.com/Consensys/linea-tracer/pull/1132))
+* Added failedTestsFilePath, failedModule and failedConstraint to filter reference blockchain tests.
+* Added new GHA workflow for automatically running blockchain tests each evening and storing the results arfifact
+* Added header
+* Increase threads for `corset` on Github CI ([#1144](https://github.com/Consensys/linea-tracer/pull/1144))
+  This changes the default number of threads to be used when running `RustCorsetValidator` from `2` to the number of available cores. The ability to override this using `CORSET_THREADS` remains.
+* [997] Migrate Stp and OobCall test to v2 ([#1115](https://github.com/Consensys/linea-tracer/pull/1115))
+* Migrate TxSkip test to V2 ([#1080](https://github.com/Consensys/linea-tracer/pull/1080))
+* fix(hub:skip): coinbase snapshot if not yet in the world at start tx
+* fix after merger Added single range ... that isn't problematic ([#1128](https://github.com/Consensys/linea-tracer/pull/1128))
+* Debugging 6690-6699 ([#1110](https://github.com/Consensys/linea-tracer/pull/1110))
+* Range 10-20 ([#1129](https://github.com/Consensys/linea-tracer/pull/1129))
+* test: new (unexceptional) range
+* fix CountOnlyModule ([#1120](https://github.com/Consensys/linea-tracer/pull/1120))
+* 1049 - Reference test tool ([#1108](https://github.com/Consensys/linea-tracer/pull/1108))
+* Created TestWatcher to intercept failing reference tests and record the failing module and constraint
+* Updated template to include ReferenceTestWatcher
+* Updated linea-constraints submodule up to kebab-case refactor 2a49dae
+* Implemented getModuleFromFailedConstraint() and removed module from constraint name
+* Separated mapping and read/write logic from watcher
+* Added tests for MapFailedReferenceTestsTool and made fixes to the tool
+* Remove comments
+* Added header to new files
+* Improved readability and names of methods
+
 ## 0.5.3-beta
 * fix(return): OOGX for return for deployment + call SHAKIRA for return + cleaning ([#1105](https://github.com/Consensys/linea-tracer/pull/1105))
 * Failing tests file ([#1098](https://github.com/Consensys/linea-tracer/pull/1098))
