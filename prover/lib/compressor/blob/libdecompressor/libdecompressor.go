@@ -27,16 +27,21 @@ func Init() {
 	dictStore = dictionary.NewStore()
 }
 
-// LoadDictionary loads a particular dictionary into the decompressor
+// LoadDictionary loads nbDicts dictionaries into the decompressor
 // Returns true if the operation is successful, false otherwise.
 // If false is returned, the Error() method will return a string describing the error.
 //
 //export LoadDictionary
-func LoadDictionary(dictPath *C.char) bool {
+func LoadDictionary(dictPaths **C.char, nbDicts C.int) bool {
 	lock.Lock()
 	defer lock.Unlock()
-	fPath := C.GoString(dictPath)
-	if err := dictStore.Load(fPath); err != nil {
+	fpaths := make([]string, nbDicts)
+	for i := 0; i < int(nbDicts); i++ {
+		cStr := *(**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(dictPaths)) + uintptr(i)*unsafe.Sizeof(*dictPaths)))
+		fpaths[i] = C.GoString(cStr)
+	}
+
+	if err := dictStore.Load(fpaths...); err != nil {
 		lastError = err
 		return false
 	}
