@@ -3,7 +3,7 @@ project:
   description: Finalized Tag Updater Fat Jar
   longDescription: Finalized Tag Updater (linea-besu plugin)
   links:
-    homepage: https://github.com/Consensys/zkevm-monorepo
+    homepage: https://github.com/Consensys/linea-monorepo
   authors:
     - Linea automations
   license: APACHE-2.0

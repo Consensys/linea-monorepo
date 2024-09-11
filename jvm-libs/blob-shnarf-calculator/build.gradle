@@ -33,31 +33,6 @@ task downloadNativeLibs {
   }
 }
 
-//  GITHUB_TOKEN=ghp_XXX ./gradlew jvm-libs:blob-compressor:downloadNativeLib -PreleaseTag=blob-libs-v0.1.0 -PlibName=blob_compressor
-tasks.register('downloadNativeLib') {
-  def releaseTag
-  def libName
-
-  doLast {
-    if (project.hasProperty("releaseTag")) {
-      releaseTag = project.releaseTag
-    } else {
-      throw new GradleException("releaseTag is required")
-    }
-    if (project.hasProperty("libName")) {
-      libName = project.libName
-    } else {
-      throw new GradleException("libName is required")
-    }
-
-    fetchLib(
-      releaseTag,
-      libName,
-      libsZipDownloadOutputDir
-    )
-  }
-}
-
 compileKotlin {
   dependsOn tasks.downloadNativeLibs
 }
