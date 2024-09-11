@@ -19,7 +19,7 @@ interface GoNativeBlobDecompressor {
    * @param data  dictPath path to the dictionary file
    * @return true if loading was successful else false
    */
-  fun LoadDictionary(dictPath: *String, nbDicts: Int) Boolean
+  fun LoadDictionary(dictPath: StringArray, nbDicts: Int) Boolean
 
   /**
    * Decompress a blob b and writes the resulting blocks in out, serialized in the format of
