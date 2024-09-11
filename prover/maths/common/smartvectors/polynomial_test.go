@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

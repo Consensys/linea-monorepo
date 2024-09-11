@@ -1,13 +1,13 @@
 package statemanager
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 // StateManager is a collection of modules responsible for attesting the

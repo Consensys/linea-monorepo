@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 )
 
 // Pack packs the words as tightly as possible, and works Big Endian: i.e. the first word is the most significant in the packed elem

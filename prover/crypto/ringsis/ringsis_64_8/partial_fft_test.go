@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 )
 

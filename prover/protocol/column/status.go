@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// Status is a tag that we associate to a [github.com/consensys/zkevm-monorepo/prover/protocol/ifaces.Column]. The status carries
+// Status is a tag that we associate to a [github.com/consensys/linea-monorepo/prover/protocol/ifaces.Column]. The status carries
 // information about the role of the column in protocol: if it is visible by
 // the verifier, whether the column is assigned at compilation-time or at
 // runtime, etc...
@@ -30,12 +30,12 @@ const (
 	// and not on the original column anymore. The column is still visible to
 	// the prover and should still be assigned.
 	Ignored Status = iota + 1
-	// Committed marks that a [github.com/consensys/zkevm-monorepo/prover/protocol/ifaces.Column] is to be sent to the oracle,
+	// Committed marks that a [github.com/consensys/linea-monorepo/prover/protocol/ifaces.Column] is to be sent to the oracle,
 	// implicitly this is a request for the following steps of the compiler
 	// to ensure that the column will be committed to and constitutes a part
 	// of the witness of the protocol.
 	Committed
-	// Proof indicates that the [github.com/consensys/zkevm-monorepo/prover/protocol/ifaces.Column] should be sent to the verifier.
+	// Proof indicates that the [github.com/consensys/linea-monorepo/prover/protocol/ifaces.Column] should be sent to the verifier.
 	// The fact that a step of the compiler marks a column as Proof is not a
 	// definitive guarantee that the column will effectively be sent to the
 	// verifier. The best example is self-recursion which converts the Proof
@@ -43,7 +43,7 @@ const (
 	// to the prover is what is tagged as a proof at the end of the full
 	// compilation process.
 	Proof
-	// Precomputed indicates that the [github.com/consensys/zkevm-monorepo/prover/protocol/ifaces.Column] is defined offline during
+	// Precomputed indicates that the [github.com/consensys/linea-monorepo/prover/protocol/ifaces.Column] is defined offline during
 	// the definition or the compilation phase but should not be visible to the
 	// verifier and this is an indication that the column should be committed
 	// to. An example of such columns are the q_L, q_R, q_M, q_O, q_PI columns

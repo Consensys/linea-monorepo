@@ -1,13 +1,13 @@
 package accumulatorsummary
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/common"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
 )
 
 // Constants that are used to compute the connector from AccumulatorSummary to StateSummary

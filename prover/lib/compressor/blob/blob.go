@@ -8,8 +8,8 @@ import (
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 func GetVersion(blob []byte) uint16 {
