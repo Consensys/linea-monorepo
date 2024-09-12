@@ -31,7 +31,7 @@ import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import net.consensys.linea.rpc.LineaEstimateGas;
+import net.consensys.linea.rpc.methods.LineaEstimateGas;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt64;
 import org.bouncycastle.crypto.digests.KeccakDigest;

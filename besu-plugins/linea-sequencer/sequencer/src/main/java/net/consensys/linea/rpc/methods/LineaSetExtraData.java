@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.rpc;
+package net.consensys.linea.rpc.methods;
 
 import static net.consensys.linea.extradata.LineaExtraDataException.ErrorType.FAILED_CALLING_SET_EXTRA_DATA;
 import static net.consensys.linea.extradata.LineaExtraDataException.ErrorType.INVALID_ARGUMENT;
