@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"math/big"
 	"math/bits"
 )
@@ -87,7 +87,7 @@ func VerifyBlobConsistency(api frontend.API, blobCrumbs []frontend.Variable, eva
 	}
 
 	blobEmulated := packCrumbsEmulated(api, blobCrumbs) // perf-TODO use the original blob bytes
-	evaluationChallengeEmulated := internal.NewElementFromBytes[emulated.BLS12381Fr](api, evaluationChallenge[:])
+	evaluationChallengeEmulated := utils.NewElementFromBytes[emulated.BLS12381Fr](api, evaluationChallenge[:])
 
 	blobEmulatedBitReversed := make([]*emulated.Element[emulated.BLS12381Fr], len(blobEmulated))
 	copy(blobEmulatedBitReversed, blobEmulated)
@@ -143,7 +143,7 @@ func newElementFromVars(api frontend.API, x [2]frontend.Variable) *emulated.Elem
 }
 
 func bitReverse(n, logN int) int {
-	return int(bits.Reverse64(uint64(n)) >> (64 - logN))
+	return utils.ToInt(bits.Reverse64(uint64(n)) >> (64 - logN))
 }
 
 func bitReverseSlice[K interface{}](list []K) {
@@ -183,8 +183,8 @@ func packCrumbsEmulated(api frontend.API, words []frontend.Variable) []*emulated
 		}
 	}
 
-	nbLimbs := int(fieldParams.NbLimbs())
-	limbNbWords := int(fieldParams.BitsPerLimb()) / bitsPerWord
+	nbLimbs := int(fieldParams.NbLimbs())                       // #nosec G115 -- Small number of limbs expected
+	limbNbWords := int(fieldParams.BitsPerLimb()) / bitsPerWord // #nosec G115 -- Expected to be 64
 	if uint(limbNbWords*bitsPerWord) != fieldParams.BitsPerLimb() {
 		panic("bitsPerWord must divide bitsPerLimb")
 	}

@@ -1,12 +1,18 @@
 package arithmetization
 
 import (
+	"fmt"
+
+	"github.com/consensys/go-corset/pkg/air"
+	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization/define"
 )
 
-// Settings specifies the parameters for the arithmetization part of the zk-EVM.
-type Settings = define.Settings
+// Settings specifies the parameters for the arithmetization part of the zkEVM.
+type Settings struct {
+	Limits *config.TracesLimits
+}
 
 // Arithmetization exposes all the methods relevant for the user to interact
 // with the arithmetization of the zkEVM. It is a sub-component of the whole
@@ -14,27 +20,36 @@ type Settings = define.Settings
 // signature verification.
 type Arithmetization struct {
 	Settings *Settings
+	Schema   *air.Schema
 }
 
-// Define is the function that declares all the columns and the constraints of
+// NewArithmetization is the function that declares all the columns and the constraints of
 // the zkEVM in the input builder object.
-func (a *Arithmetization) Define(builder *wizard.Builder) {
-	// wrapped works as an adapter between the define.Define and the
-	// wizard.Builder. This value is only relevant during the execution of the
-	// current function and it should not be reused thereafter.
-	wrapped := define.Builder{
-		Settings: a.Settings,
+func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetization {
+
+	schema, errS := ReadZkevmBin()
+	if errS != nil {
+		panic(errS)
 	}
-	wrapped.Define(builder)
+
+	Define(builder.CompiledIOP, schema, settings.Limits)
+
+	return &Arithmetization{
+		Schema:   schema,
+		Settings: &settings,
+	}
 }
 
 // Assign the arithmetization related columns. Namely, it will open the file
 // specified in the witness object, call corset and assign the prover runtime
 // columns.
-func Assign(run *wizard.ProverRuntime, traceFile string) {
-	// @Alex: This opens and reads the conflated trace file
-	AssignFromCorset(
-		traceFile,
-		run,
-	)
+func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
+
+	traceF := files.MustRead(traceFile)
+	trace, errT := ReadLtTraces(traceF, a.Schema)
+	if errT != nil {
+		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
+	}
+
+	AssignFromLtTraces(run, a.Schema, trace, a.Settings.Limits)
 }

@@ -1,35 +1,12 @@
+import { useEffect } from "react";
 import { NetworkTokens, TokenInfo, TokenType } from "@/config";
 import { Token } from "@/models/token";
+import { getTokens, USDC_TYPE } from "@/services";
 import { defaultTokensConfig, useTokenStore } from "@/stores/tokenStore";
-import log from "loglevel";
-import { useEffect } from "react";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
   SEPOLIA = "SEPOLIA",
-}
-const CANONICAL_BRIDGED_TYPE = "canonical-bridge";
-const USDC_TYPE = "USDC";
-
-async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
-  try {
-    // Fetch the JSON data from the URL.
-    let url = process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST ? (process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST as string) : "";
-    if (networkTypes === NetworkTypes.SEPOLIA) {
-      url = process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST ? (process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST as string) : "";
-    }
-
-    const response = await fetch(url);
-    const data = await response.json();
-    const tokens = data.tokens;
-    const bridgedTokens = tokens.filter(
-      (token: Token) => token.tokenType.includes(CANONICAL_BRIDGED_TYPE) || token.symbol === USDC_TYPE,
-    );
-    return bridgedTokens;
-  } catch (error) {
-    log.error("Error getTokens", { error });
-    return [];
-  }
 }
 
 export async function getConfig(): Promise<NetworkTokens> {
@@ -40,20 +17,28 @@ export async function getConfig(): Promise<NetworkTokens> {
 
   updatedTokensConfig.MAINNET = [
     ...defaultTokensConfig.MAINNET,
-    ...mainnetTokens.map((token: Token): TokenInfo => {
-      const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
-      return {
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        type: tokenType,
-        L1: token?.extension?.rootAddress ?? null,
-        L2: token.address,
-        UNKNOWN: null,
-        image: token.logoURI,
-        isDefault: true,
-      };
-    }),
+    ...(await Promise.all(
+      mainnetTokens.map(async (token: Token): Promise<TokenInfo> => {
+        const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
+        try {
+          await fetch(token.logoURI);
+        } catch (error) {
+          token.logoURI = "/images/logo/noTokenLogo.svg";
+        }
+
+        return {
+          name: token.name,
+          symbol: token.symbol,
+          decimals: token.decimals,
+          type: tokenType,
+          L1: token?.extension?.rootAddress ?? null,
+          L2: token.address,
+          UNKNOWN: null,
+          image: token.logoURI,
+          isDefault: true,
+        };
+      }),
+    )),
   ];
 
   updatedTokensConfig.SEPOLIA = [

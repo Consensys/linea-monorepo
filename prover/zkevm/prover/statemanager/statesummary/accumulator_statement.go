@@ -2,6 +2,7 @@ package statesummary
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
@@ -22,6 +23,10 @@ type AccumulatorStatement struct {
 	// flags indicating the type of traces being deferred to the accumulator
 	// module.
 	IsReadZero, IsReadNonZero, IsInsert, IsUpdate, IsDelete ifaces.Column
+	// SameTypeAsBefore is an indicator column indicating whether the current
+	// row has the same type of shomei operation as the previous one.
+	SameTypeAsBefore    ifaces.Column
+	CptSameTypeAsBefore wizard.ProverAction
 
 	// StateDiff contains the relevant accumulator values
 	smCommon.StateDiff
@@ -64,6 +69,22 @@ func newAccumulatorStatement(comp *wizard.CompiledIOP, size int, name string) Ac
 	res.FinalHValIsZero, res.ComputeFinalHValIsZero = dedicated.IsZero(
 		comp,
 		sym.Sub(res.StateDiff.FinalHVal, field.Zero()),
+	)
+
+	res.SameTypeAsBefore, res.CptSameTypeAsBefore = dedicated.IsZero(
+		comp,
+		sym.Sub(
+			sym.Add(
+				res.IsInsert,
+				res.IsUpdate,
+				res.IsDelete,
+			),
+			sym.Add(
+				column.Shift(res.IsInsert, -1),
+				column.Shift(res.IsUpdate, -1),
+				column.Shift(res.IsDelete, -1),
+			),
+		),
 	)
 
 	return res
@@ -149,3 +170,6 @@ func (as *AccumulatorStatementAssignmentBuilder) PadAndAssign(run *wizard.Prover
 	as.IsDelete.PadAndAssign(run)
 	as.SummaryBuilder.PadAndAssign(run)
 }
+
+// Type returns a code to identify the type of trace as a symbolic expression
+//

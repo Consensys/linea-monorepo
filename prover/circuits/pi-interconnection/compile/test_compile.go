@@ -6,9 +6,10 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/zkevm-monorepo/prover/config"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,14 +17,14 @@ func main() {
 
 	fmt.Println("creating wizard circuit")
 
-	c, err := pi_interconnection.Config{
-		MaxNbDecompression:   400,
-		MaxNbExecution:       400,
-		MaxNbKeccakF:         10000,
-		MaxNbMsgPerExecution: 16,
-		L2MsgMerkleDepth:     5,
-		L2MessageMaxNbMerkle: 10,
-	}.Compile(dummy.Compile)
+	c, err := pi_interconnection.Compile(config.PublicInput{
+		MaxNbDecompression: 400,
+		MaxNbExecution:     400,
+		MaxNbKeccakF:       10000,
+		ExecutionMaxNbMsg:  16,
+		L2MsgMerkleDepth:   5,
+		L2MsgMaxNbMerkle:   10,
+	}, dummy.Compile)
 
 	var t test_utils.FakeTestingT
 	assert.NoError(t, err)

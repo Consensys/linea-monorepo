@@ -3,16 +3,11 @@ package gkrmimc
 import (
 	"math/big"
 
-	"github.com/consensys/gnark/constraint"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
-	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/gkr"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var cache []*HasherFactory
@@ -216,40 +211,4 @@ func (f *HasherFactory) padToPow2() int {
 	}
 
 	return targetSize
-}
-
-// SolverOpts returns the list of the [solver.Option] required to prove the
-// satisfiability of a circuit using the MiMC GKR circuit (and thus the
-// [HasherFactory]). It registers all the hints that are necessary to solve
-// the circuit.
-//
-// The result of this function has to be passed to the plonk.Prove function.
-func SolverOpts(scs constraint.ConstraintSystem) []solver.Option {
-
-	// Attempts to parse it as a ccs
-	spr, ok := scs.(*cs.SparseR1CS)
-	if !ok {
-		panic("not a sparse r1cs")
-	}
-
-	// not a circuit using GKR
-	if !spr.GkrInfo.Is() {
-		logrus.Warn("Not a circuit using gkr, this can happen if nothing is actually hashed")
-	}
-
-	var gkrData cs.GkrSolvingData
-	opts := []solver.Option{
-		solver.WithHints(
-			mimcHintfunc,
-			gkr.SolveHintPlaceholder,
-			gkr.ProveHintPlaceholder,
-		),
-	}
-
-	opts = append(opts,
-		solver.OverrideHint(spr.GkrInfo.SolveHintID, cs.GkrSolveHint(spr.GkrInfo, &gkrData)),
-		solver.OverrideHint(spr.GkrInfo.ProveHintID, cs.GkrProveHint(spr.GkrInfo.HashName, &gkrData)),
-	)
-
-	return opts
 }

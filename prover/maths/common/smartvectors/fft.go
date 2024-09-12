@@ -1,8 +1,10 @@
 package smartvectors
 
 import (
+	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 )
 
 // Compute the FFT of a vector
@@ -17,10 +19,14 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int) SmartVector {
+func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
+
+	if pool != nil && pool.Size() != v.Len() {
+		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
+	}
 
 	/*
 		Try to capture the special cases
@@ -50,8 +56,14 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	}
 
 	// Else : we run the FFT directly
-	res := make([]field.Element, v.Len())
-	v.WriteInSlice(res)
+	var res *Pooled
+	if pool != nil {
+		res = AllocFromPool(pool)
+	} else {
+		res = &Pooled{Regular: make([]field.Element, v.Len())}
+	}
+
+	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
 	oncoset := false
@@ -64,17 +76,18 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverse(res)
+			fft.BitReverse(res.Regular)
 		}
-		domain.FFT(res, fft.DIT, oncoset)
+		domain.FFT(res.Regular, fft.DIT, oncoset)
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
-		domain.FFT(res, fft.DIF, oncoset)
+		domain.FFT(res.Regular, fft.DIF, oncoset)
 		if bitReverse {
-			fft.BitReverse(res)
+			fft.BitReverse(res.Regular)
 		}
 	}
-	return NewRegular(res)
+
+	return res
 }
 
 // Compute the FFT inverse of a vector
@@ -89,10 +102,14 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int) SmartVector {
+func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
+
+	if pool != nil && pool.Size() != v.Len() {
+		utils.Panic("provided a mempool with size %v but processing vectors of size %v", pool.Size(), v.Len())
+	}
 
 	/*
 		Try to capture the special cases
@@ -122,10 +139,16 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		}
 	}
 
-	// Else : we run the FFT directly
-	res := make([]field.Element, v.Len())
+	// Else : we run the FFTInverse directly
+	var res *Pooled
+	if pool != nil {
+		res = AllocFromPool(pool)
+	} else {
+		res = &Pooled{Regular: make([]field.Element, v.Len())}
+	}
+
 	oncoset := false
-	v.WriteInSlice(res)
+	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
 	if cosetID != 0 || cosetRatio != 0 {
@@ -136,16 +159,16 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
-		domain.FFTInverse(res, fft.DIF, oncoset)
+		domain.FFTInverse(res.Regular, fft.DIF, oncoset)
 		if bitReverse {
-			fft.BitReverse(res)
+			fft.BitReverse(res.Regular)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverse(res)
+			fft.BitReverse(res.Regular)
 		}
-		domain.FFTInverse(res, fft.DIT, oncoset)
+		domain.FFTInverse(res.Regular, fft.DIT, oncoset)
 	}
-	return NewRegular(res)
+	return res
 }

@@ -47,14 +47,18 @@ type Response struct {
 	FinalTimestamp                      uint `json:"finalTimestamp"`
 	FinalBlockNumber                    uint `json:"finalBlockNumber"`
 
-	// L1 messages related fields
-	L1RollingHash              string `json:"l1RollingHash"`
-	L1RollingHashMessageNumber uint   `json:"l1RollingHashMessageNumber"`
+	// L1RollingHash stores the last rolling hash found in a rolling hash event
+	// during the execution.
+	L1RollingHash string `json:"l1RollingHash"`
+	// L1RollingHashNumber stores the number of the last rolling hash event
+	// occuring in the frame of the current aggregation.
+	L1RollingHashMessageNumber uint `json:"l1RollingHashMessageNumber"`
 
 	// L2 messages related messages. L2MerkleRoots stores a sequences of Merkle
 	// roots containing the hashes of the messages emitted on layer 2.
 	L2MerkleRoots   []string `json:"l2MerkleRoots"` // 0x hexstring
 	L2MsgTreesDepth uint     `json:"l2MerkleTreesDepth"`
+
 	// Hexstring encoding a bitmap of the block containing “MessageSent” events.
 	// events
 	L2MessagingBlocksOffsets string `json:"l2MessagingBlocksOffsets"`

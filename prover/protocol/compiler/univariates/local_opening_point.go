@@ -15,6 +15,9 @@ import (
 
 func CompileLocalOpening(comp *wizard.CompiledIOP) {
 
+	logrus.Trace("started local opening compiler")
+	defer logrus.Trace("finished local opening compiler")
+
 	// The main idea is that we want to group the fixed point queries
 	// that are on the same points. That way, we maintain the invariant
 	// that all univariate queries are on different points.

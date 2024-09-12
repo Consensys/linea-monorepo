@@ -1,6 +1,7 @@
 package plonk
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -11,6 +12,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
 	"github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
@@ -61,12 +63,18 @@ type CircuitAlignmentInput struct {
 	// input. If it is nil, then we use zero value.
 	InputFiller func(circuitInstance, inputIndex int) field.Element
 
-	witnesses     []witness.Witness
-	witnessesOnce sync.Once
+	witnesses       []witness.Witness
+	witnessesOnce   sync.Once
+	numEffWitnesses int
 
 	// nbPublicInputs is the number of public inputs for the circuit. It is
 	// computed from the circuit and then stored here for later use.
 	nbPublicInputs int
+
+	// circMaskOpenings are local opening queries over the ToCircuitMask that
+	// we use to checks that the "activators" of the Plonk in Wizard are
+	// correctly set w.r.t. circMaskOpening
+	circMaskOpenings []query.LocalOpening
 }
 
 func (ci *CircuitAlignmentInput) NbInstances() int {
@@ -130,6 +138,11 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 					close(witnessFillers[(filled-1)/ci.nbPublicInputs])
 				}
 			}
+
+			if filled > 0 {
+				ci.numEffWitnesses = utils.DivCeil(filled-1, ci.nbPublicInputs)
+			}
+
 			for filled < ci.nbPublicInputs*ci.NbCircuitInstances {
 				select {
 				case <-ctx.Done():
@@ -156,6 +169,11 @@ func (ci *CircuitAlignmentInput) Assign(run *wizard.ProverRuntime, i int) (priva
 	// done inside Once, so can always call without overhead
 	ci.prepareWitnesses(run)
 	return ci.witnesses[i], ci.witnesses[i], nil
+}
+
+func (ci *CircuitAlignmentInput) NumEffWitnesses(run *wizard.ProverRuntime) int {
+	ci.prepareWitnesses(run)
+	return ci.numEffWitnesses
 }
 
 // Alignment is the prepared structure where the Data field is aligned to gnark
@@ -235,6 +253,7 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 	res.csIsActive(comp)
 	res.csProjection(comp)
 	res.csProjectionSelector(comp)
+	res.checkActivators(comp)
 
 	return res
 }
@@ -259,6 +278,7 @@ func (a *Alignment) csProjectionSelector(comp *wizard.CompiledIOP) {
 func (a *Alignment) Assign(run *wizard.ProverRuntime) {
 	a.plonkInWizardCtx.GetPlonkProverAction().Run(run, a.CircuitAlignmentInput)
 	a.assignMasks(run)
+	a.assignCircMaskOpenings(run)
 }
 
 func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
@@ -300,6 +320,14 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.ActualCircuitInputMask.GetColID(), smartvectors.NewRegular(actualCircMaskAssignment))
 }
 
+// assignCircMaskOpenings assigns the openings queries over [actualCircMaskAssignment]
+func (a *Alignment) assignCircMaskOpenings(run *wizard.ProverRuntime) {
+	for i := range a.circMaskOpenings {
+		v := a.circMaskOpenings[i].Pol.GetColAssignmentAt(run, 0)
+		run.AssignLocalPoint(a.circMaskOpenings[i].ID, v)
+	}
+}
+
 // getCircuitMaskValue returns the
 func getCircuitMaskValue(nbPublicInputPerCircuit, nbCircuitInstance int) smartvectors.SmartVector {
 
@@ -315,4 +343,60 @@ func getCircuitMaskValue(nbPublicInputPerCircuit, nbCircuitInstance int) smartve
 	}
 
 	return smartvectors.NewRegular(maskValue)
+}
+
+// check the activators are well-set w.r.t to the circuit mask column
+func (ci *Alignment) checkActivators(comp *wizard.CompiledIOP) {
+
+	var (
+		openings   = make([]query.LocalOpening, ci.NbCircuitInstances)
+		mask       = ci.ActualCircuitInputMask
+		offset     = utils.NextPowerOfTwo(ci.nbPublicInputs)
+		activators = ci.plonkInWizardCtx.Columns.Activators
+		round      = activators[0].Round()
+	)
+
+	for i := range openings {
+		openings[i] = comp.InsertLocalOpening(
+			round,
+			ifaces.QueryIDf("%v_ACTIVATOR_LOCAL_OP_%v", ci.Name, i),
+			column.Shift(mask, i*offset),
+		)
+	}
+
+	ci.circMaskOpenings = openings
+
+	comp.RegisterVerifierAction(ci.Round, checkActivatorAndMask(*ci))
+}
+
+type checkActivatorAndMask Alignment
+
+func (c checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
+	for i := range c.circMaskOpenings {
+		var (
+			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
+			valOpened    = localOpening.Y
+			valActiv     = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
+		)
+
+		if valOpened != valActiv {
+			return fmt.Errorf(
+				"%v: activator does not match the circMask %v (activator=%v, mask=%v)",
+				c.Name, i, valActiv.String(), valOpened.String(),
+			)
+		}
+	}
+
+	return nil
+}
+
+func (c checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+	for i := range c.circMaskOpenings {
+		var (
+			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y
+			valActiv  = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignmentGnarkAt(run, 0)
+		)
+
+		api.AssertIsEqual(valOpened, valActiv)
+	}
 }

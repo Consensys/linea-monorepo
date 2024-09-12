@@ -109,6 +109,9 @@ func (vb *VectorBuilder) Pop() {
 
 // RepushLast pushes a value equal to the last pushed value of `vb`
 func (vb *VectorBuilder) RepushLast() {
+	if len(vb.slice) == 0 {
+		panic("attempted to repush the last item of an empty builder")
+	}
 	last := vb.slice[len(vb.slice)-1]
 	vb.PushField(last)
 }
@@ -175,4 +178,9 @@ func (vb *VectorBuilder) Slice() []field.Element {
 // it pushes a slice of field Element
 func (vb *VectorBuilder) PushSliceF(s []field.Element) {
 	vb.slice = append(vb.slice, s...)
+}
+
+// it overwrites the last push
+func (vb *VectorBuilder) OverWriteInt(n int) {
+	vb.slice[len(vb.slice)-1] = field.NewElement(uint64(n))
 }

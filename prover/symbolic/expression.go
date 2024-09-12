@@ -57,7 +57,7 @@ type Expression struct {
 type Operator interface {
 	// Evaluate returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
-	Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector
+	Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error

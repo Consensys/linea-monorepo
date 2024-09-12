@@ -19,16 +19,18 @@ func lookupStateSummaryCodeHash(comp *wizard.CompiledIOP,
 	// Lookup between code hashes (Keccak and MiMC) between state summary initial account and MiMC code hash module
 	comp.InsertInclusionDoubleConditional(round,
 		ifaces.QueryID("LOOKUP_MIMC_CODEHASH_INITIAL_ACCOUNT_INTO_STATE_SUMMARY"),
-		[]ifaces.Column{codeHash.CodeHashHi, codeHash.CodeHashLo, codeHash.NewState, codeHash.CodeSize},
 		[]ifaces.Column{accountPeek.Initial.KeccakCodeHash.Hi, accountPeek.Initial.KeccakCodeHash.Lo, accountPeek.Initial.MiMCCodeHash, accountPeek.Initial.CodeSize},
+		[]ifaces.Column{codeHash.CodeHashHi, codeHash.CodeHashLo, codeHash.NewState, codeHash.CodeSize},
+		accountPeek.Initial.ExistsAndHasNonEmptyCodeHash,
 		codeHash.IsHashEnd,
-		accountPeek.Initial.Exists)
+	)
 
 	// Lookup between code hashes (Keccak and MiMC) between state summary final account and MiMC code hash module
 	comp.InsertInclusionDoubleConditional(round,
 		ifaces.QueryIDf("LOOKUP_MIMC_CODEHASH_FINAL_ACCOUNT_INTO_STATE_SUMMARY"),
-		[]ifaces.Column{codeHash.CodeHashHi, codeHash.CodeHashLo, codeHash.NewState, codeHash.CodeSize},
 		[]ifaces.Column{accountPeek.Final.KeccakCodeHash.Hi, accountPeek.Final.KeccakCodeHash.Lo, accountPeek.Final.MiMCCodeHash, accountPeek.Final.CodeSize},
+		[]ifaces.Column{codeHash.CodeHashHi, codeHash.CodeHashLo, codeHash.NewState, codeHash.CodeSize},
+		accountPeek.Final.ExistsAndHasNonEmptyCodeHash,
 		codeHash.IsHashEnd,
-		accountPeek.Final.Exists)
+	)
 }

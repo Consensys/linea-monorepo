@@ -101,7 +101,8 @@ func Assign(blobData, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Elem
 	// in the Assign function although this creates an unintuitive side effect.
 	// It should be harmless though.
 	lzss.RegisterHints()
-	internal.RegisterHints()
+	//internal.RegisterHints()
+	utils.RegisterHints()
 
 	a := Circuit{
 		BlobBytesLen:       len(blobDataUnpacked),
