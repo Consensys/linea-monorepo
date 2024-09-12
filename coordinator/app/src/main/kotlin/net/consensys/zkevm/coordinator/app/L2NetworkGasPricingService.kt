@@ -15,66 +15,61 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1Calcula
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.web3j.Web3jBlobExtended
-import net.consensys.toKWeiUInt
 import net.consensys.zkevm.LongRunningService
-import net.consensys.zkevm.coordinator.app.config.L2NetworkGasPricing
 import org.apache.logging.log4j.LogManager
 import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
-import kotlin.time.toKotlinDuration
+import kotlin.time.Duration
 
-class GasPriceUpdaterApp(
+class L2NetworkGasPricingService(
   vertx: Vertx,
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   l1Web3jClient: Web3j,
   l1Web3jService: Web3jBlobExtended,
-  config: L2NetworkGasPricing
+  config: Config
 ) : LongRunningService {
+  data class Config(
+    val feeHistoryFetcherConfig: FeeHistoryFetcherImpl.Config,
+    val jsonRpcPricingPropagationEnabled: Boolean,
+    val naiveGasPricingCalculatorConfig: GasUsageRatioWeightedAverageFeesCalculator.Config,
+    val naiveGasPricingCalculatorBounds: BoundableFeeCalculator.Config,
+    val jsonRpcGasPriceUpdaterConfig: GasPriceUpdaterImpl.Config,
+    val jsonRpcPriceUpdateInterval: Duration,
+    val extraDataPricingPropagationEnabled: Boolean,
+    val extraDataUpdateInterval: Duration,
+    val variableFeesCalculatorConfig: VariableFeesCalculator.Config,
+    val variableFeesCalculatorBounds: BoundableFeeCalculator.Config,
+    val extraDataCalculatorConfig: MinerExtraDataV1CalculatorImpl.Config,
+    val extraDataUpdaterConfig: ExtraDataV1UpdaterImpl.Config
+  )
   private val log = LogManager.getLogger(this::class.java)
 
   private val gasPricingFeesFetcher: FeesFetcher = FeeHistoryFetcherImpl(
     l1Web3jClient,
     l1Web3jService,
-    FeeHistoryFetcherImpl.Config(
-      config.feeHistoryBlockCount.toUInt(),
-      config.feeHistoryRewardPercentile
-    )
+    config.feeHistoryFetcherConfig
   )
 
   private val naiveGasPricingCalculator: FeesCalculator = run {
     val gasUsageRatioWeightedAverageFeesCalculator = GasUsageRatioWeightedAverageFeesCalculator(
-      GasUsageRatioWeightedAverageFeesCalculator.Config(
-        baseFeeCoefficient = config.naiveGasPricing.baseFeeCoefficient,
-        priorityFeeCoefficient = config.naiveGasPricing.priorityFeeCoefficient,
-        baseFeeBlobCoefficient = config.naiveGasPricing.baseFeeBlobCoefficient,
-        blobSubmissionExpectedExecutionGas = config.blobSubmissionExpectedExecutionGas,
-        expectedBlobGas = config.l1BlobGas
-      )
+      config.naiveGasPricingCalculatorConfig
     )
     BoundableFeeCalculator(
-      BoundableFeeCalculator.Config(
-        config.naiveGasPricing.gasPriceUpperBound.toDouble(),
-        config.naiveGasPricing.gasPriceLowerBound.toDouble(),
-        0.0
-      ),
+      config.naiveGasPricingCalculatorBounds,
       gasUsageRatioWeightedAverageFeesCalculator
     )
   }
 
   private val minMineableFeesPricerService: MinMineableFeesPricerService? =
-    if (config.jsonRpcPricingPropagation.enabled) {
+    if (config.jsonRpcPricingPropagationEnabled) {
       val l2SetGasPriceUpdater: GasPriceUpdater = GasPriceUpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-        config = GasPriceUpdaterImpl.Config(
-          gethEndpoints = config.jsonRpcPricingPropagation.gethGasPriceUpdateRecipients,
-          besuEndPoints = config.jsonRpcPricingPropagation.besuGasPriceUpdateRecipients,
-          retryConfig = config.requestRetryConfig
-        )
+        config = config.jsonRpcGasPriceUpdaterConfig
       )
 
       MinMineableFeesPricerService(
-        pollingInterval = config.priceUpdateInterval.toKotlinDuration(),
+        pollingInterval = config.jsonRpcPriceUpdateInterval,
         vertx = vertx,
         feesFetcher = gasPricingFeesFetcher,
         feesCalculator = naiveGasPricingCalculator,
@@ -84,41 +79,26 @@ class GasPriceUpdaterApp(
       null
     }
 
-  private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagation.enabled) {
+  private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
     val variableCostCalculator = VariableFeesCalculator(
-      VariableFeesCalculator.Config(
-        blobSubmissionExpectedExecutionGas = config.blobSubmissionExpectedExecutionGas,
-        bytesPerDataSubmission = config.l1BlobGas,
-        expectedBlobGas = config.bytesPerDataSubmission,
-        margin = config.variableCostPricing.margin
-      )
+      config.variableFeesCalculatorConfig
     )
     val boundedVariableCostCalculator = BoundableFeeCalculator(
-      config = BoundableFeeCalculator.Config(
-        feeUpperBound = config.variableCostPricing.variableCostUpperBound.toDouble(),
-        feeLowerBound = config.variableCostPricing.variableCostLowerBound.toDouble(),
-        feeMargin = 0.0
-      ),
+      config = config.variableFeesCalculatorBounds,
       feesCalculator = variableCostCalculator
     )
     ExtraDataV1PricerService(
-      pollingInterval = config.priceUpdateInterval.toKotlinDuration(),
+      pollingInterval = config.extraDataUpdateInterval,
       vertx = vertx,
       feesFetcher = gasPricingFeesFetcher,
       minerExtraDataCalculatorImpl = MinerExtraDataV1CalculatorImpl(
-        config = MinerExtraDataV1CalculatorImpl.Config(
-          fixedCostInKWei = config.variableCostPricing.gasPriceFixedCost.toKWeiUInt(),
-          ethGasPriceMultiplier = config.variableCostPricing.legacyFeesMultiplier
-        ),
+        config = config.extraDataCalculatorConfig,
         variableFeesCalculator = boundedVariableCostCalculator,
         legacyFeesCalculator = naiveGasPricingCalculator
       ),
       extraDataUpdater = ExtraDataV1UpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-        config = ExtraDataV1UpdaterImpl.Config(
-          config.extraDataPricingPropagation.extraDataUpdateRecipient,
-          config.requestRetryConfig
-        )
+        config = config.extraDataUpdaterConfig
       )
     )
   } else {
