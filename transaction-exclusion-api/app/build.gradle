@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
   implementation project(':transaction-exclusion-api:core')
+  implementation project(':transaction-exclusion-api:persistence:rejectedtransaction')
   implementation project(':jvm-libs:json-rpc')
   implementation project(':jvm-libs:metrics:micrometer')
   implementation project(':jvm-libs:kotlin-extensions')
@@ -13,7 +14,6 @@ dependencies {
   implementation project(':jvm-libs:core:long-running-service')
   implementation project(':jvm-libs:core:metrics')
   implementation project(':coordinator:persistence:db')
-  implementation project(':coordinator:persistence:rejectedtransaction')
 
   implementation "com.github.ben-manes.caffeine:caffeine:${libs.versions.caffeine.get()}"
   implementation "io.vertx:vertx-core"

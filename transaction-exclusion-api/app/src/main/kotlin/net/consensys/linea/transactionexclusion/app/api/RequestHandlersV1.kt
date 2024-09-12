@@ -11,7 +11,6 @@ import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
 import net.consensys.encodeHex
-import net.consensys.linea.RejectedTransaction
 import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcRequest
@@ -19,6 +18,7 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestHandler
 import net.consensys.linea.jsonrpc.JsonRpcRequestListParams
 import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
+import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.toHexString
 
