@@ -1,0 +1,17 @@
+#!/bin/bash
+
+find "." -type f -name "*.pprof" | while read -r file; do
+  if [[ -f $file ]]; then
+
+    # Extract filename without directory path
+    filename=$(basename "$file")
+
+    # Extract filename without extension
+    title="${filename%.*}"
+
+    cmd=$"go tool pprof -pdf "$file" > "$title.pprof.pdf""
+    echo $cmd
+    eval $cmd
+
+  fi
+done

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -24,12 +25,12 @@ func main() {
 		ExecutionMaxNbMsg:  16,
 		L2MsgMerkleDepth:   5,
 		L2MsgMaxNbMerkle:   10,
-	}, dummy.Compile)
+	}, dummy.Compile) // TODO The output of this bench is not worth much until we come up with proper Wizard compilation parameters.
 
 	var t test_utils.FakeTestingT
 	assert.NoError(t, err)
 
-	p := profile.Start()
+	p := profile.Start(profile.WithPath("pi-interconnection.pprof"))
 	_, err = frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit, frontend.WithCapacity(1<<27))
 	p.Stop()
 	assert.NoError(t, err)

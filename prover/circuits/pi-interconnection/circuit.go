@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/zkevm-monorepo/prover/circuits"
 	"github.com/consensys/zkevm-monorepo/prover/config"
 	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -161,6 +162,8 @@ func (c *Circuit) Define(api frontend.API) error {
 			l2MessagesByByte[j][i].Length = pi.L2MessageHashes.Length
 		}
 	}
+
+	logrus.Info("Constructing Merkle trees")
 
 	merkleLeavesConcat := internal.Slice[[32]frontend.Variable]{Values: make([][32]frontend.Variable, c.L2MessageMaxNbMerkle*merkleNbLeaves)}
 	for i := 0; i < 32; i++ {
