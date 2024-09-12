@@ -15,6 +15,8 @@
 
 package net.consensys.linea.config;
 
+import java.net.URI;
+
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
@@ -25,5 +27,6 @@ public record LineaTransactionSelectorConfiguration(
     int overLinesLimitCacheSize,
     long maxGasPerBlock,
     int unprofitableCacheSize,
-    int unprofitableRetryLimit)
+    int unprofitableRetryLimit,
+    URI rejectedTxEndpoint)
     implements LineaOptionsConfiguration {}

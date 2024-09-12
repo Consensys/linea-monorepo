@@ -104,6 +104,8 @@ dependencyManagement {
       entry 'picocli-codegen'
     }
 
+    dependency 'com.squareup.okhttp3:okhttp:4.12.0'
+
     dependencySet(group: 'io.tmio', version: '2.4.2') {
       entry 'tuweni-bytes'
       entry 'tuweni-net'
@@ -157,5 +159,7 @@ dependencyManagement {
       entry 'core'
       entry 'crypto'
     }
+
+    dependency "org.wiremock:wiremock:3.9.1"
   }
 }

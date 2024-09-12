@@ -14,13 +14,17 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
+import net.consensys.linea.jsonrpc.JsonRpcManager;
+import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -36,6 +40,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
 
   private TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
   private final List<PluginTransactionSelector> selectors;
+  private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
 
   public LineaTransactionSelector(
       final BlockchainService blockchainService,
@@ -43,8 +48,10 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
-      final Map<String, Integer> limitsMap) {
-    this.selectors =
+      final Map<String, Integer> limitsMap,
+      final Optional<JsonRpcManager> rejectedTxJsonRpcManager) {
+    this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
+    selectors =
         createTransactionSelectors(
             blockchainService,
             txSelectorConfiguration,
@@ -57,9 +64,9 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   /**
    * Creates a list of selectors based on Linea configuration.
    *
-   * @param blockchainService
+   * @param blockchainService Blockchain service.
    * @param txSelectorConfiguration The configuration to use.
-   * @param profitabilityConfiguration
+   * @param profitabilityConfiguration The profitability configuration.
    * @param limitsMap The limits map.
    * @return A list of selectors.
    */
@@ -149,6 +156,15 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     selectors.forEach(
         selector ->
             selector.onTransactionNotSelected(evaluationContext, transactionSelectionResult));
+
+    rejectedTxJsonRpcManager.ifPresent(
+        jsonRpcManager -> {
+          if (transactionSelectionResult.discard()) {
+            jsonRpcManager.submitNewJsonRpcCall(
+                JsonRpcRequestBuilder.buildRejectedTxRequest(
+                    evaluationContext, transactionSelectionResult, Instant.now()));
+          }
+        });
   }
 
   /**
