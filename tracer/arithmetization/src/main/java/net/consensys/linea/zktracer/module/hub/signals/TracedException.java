@@ -13,42 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode;
+package net.consensys.linea.zktracer.module.hub.signals;
 
-/** All the instruction families, as used by the hub. */
-public enum InstructionFamily {
-  ADD,
-  MOD,
-  MUL,
-  EXT,
-  WCP,
-  BIN,
-  SHF,
-  KEC,
-  CONTEXT,
-  ACCOUNT,
-  COPY,
-  TRANSACTION,
-  BATCH,
-  STACK_RAM,
-  STORAGE,
-  JUMP,
-  MACHINE_STATE,
-  PUSH_POP,
-  DUP,
-  SWAP,
-  LOG,
-  CREATE,
-  CALL,
-  HALT,
-  INVALID;
-
-  public boolean isAnyOf(InstructionFamily... families) {
-    for (InstructionFamily family : families) {
-      if (this == family) {
-        return true;
-      }
-    }
-    return false;
-  }
+public enum TracedException {
+  UNDEFINED,
+  NONE,
+  INVALID_OPCODE,
+  STACK_UNDERFLOW,
+  STACK_OVERFLOW,
+  MEMORY_EXPANSION_EXCEPTION,
+  OUT_OF_GAS_EXCEPTION,
+  RETURN_DATA_COPY_FAULT,
+  JUMP_FAULT,
+  STATIC_FAULT,
+  OUT_OF_SSTORE,
+  INVALID_CODE_PREFIX,
+  MAX_CODE_SIZE_EXCEPTION
 }

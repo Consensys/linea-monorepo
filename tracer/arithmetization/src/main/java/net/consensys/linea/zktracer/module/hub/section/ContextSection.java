@@ -22,7 +22,7 @@ public class ContextSection extends TraceSection {
   public ContextSection(Hub hub) {
     super(hub, (short) 3);
 
-    ContextFragment currentContext = ContextFragment.readCurrentContextData(hub);
+    final ContextFragment currentContext = ContextFragment.readCurrentContextData(hub);
     this.addStackAndFragments(hub, currentContext);
   }
 }

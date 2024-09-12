@@ -18,6 +18,8 @@ package net.consensys.linea.zktracer.module.hub.signals;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
 
+import java.util.function.Consumer;
+
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -43,7 +45,7 @@ public class Exceptions {
       128; // trying to execute non-static instruction in a static context
   public static final short OUT_OF_SSTORE = 256; // not enough gas to execute an SSTORE
   public static final short INVALID_CODE_PREFIX = 512;
-  public static final short CODE_SIZE_OVERFLOW = 2048;
+  public static final short MAX_CODE_SIZE_EXCEPTION = 2048;
 
   public static boolean stackException(final short bitmask) {
     return stackOverflow(bitmask) || stackUnderflow(bitmask);
@@ -57,7 +59,7 @@ public class Exceptions {
   }
 
   /**
-   * @return true if any exception flag has been raised
+   * @return true if any exception flag has been raised, i.e., at least one exception flag is raised
    */
   public static boolean any(final short bitmask) {
     return !none(bitmask);
@@ -110,8 +112,8 @@ public class Exceptions {
     return (bitmask & INVALID_CODE_PREFIX) != 0;
   }
 
-  public static boolean codeSizeOverflow(final short bitmask) {
-    return (bitmask & CODE_SIZE_OVERFLOW) != 0;
+  public static boolean maxCodeSizeException(final short bitmask) {
+    return (bitmask & MAX_CODE_SIZE_EXCEPTION) != 0;
   }
 
   private static boolean isInvalidOpcode(final OpCode opCode) {
@@ -243,7 +245,7 @@ public class Exceptions {
       return STATIC_FAULT;
     }
     if (isCodeSizeOverflow(frame)) {
-      return CODE_SIZE_OVERFLOW;
+      return MAX_CODE_SIZE_EXCEPTION;
     }
 
     final GasProjector gp = Hub.GAS_PROJECTOR;
@@ -320,5 +322,51 @@ public class Exceptions {
       return INVALID_CODE_PREFIX;
     }
     return NONE;
+  }
+
+  public static String prettyStringOf(OpCode opCode, final short bitmask) {
+    StringBuilder sb = new StringBuilder();
+    Consumer<String> appendLine = (s) -> sb.append(s).append(System.lineSeparator());
+    appendLine.accept("");
+    appendLine.accept("underlying OpCode: " + opCode.name());
+    appendLine.accept("raw exceptions:");
+    if (none(bitmask)) {
+      appendLine.accept("NONE");
+      return sb.toString();
+    }
+    if (invalidOpcode(bitmask)) {
+      appendLine.accept("INVALID_OPCODE");
+    }
+    if (stackUnderflow(bitmask)) {
+      appendLine.accept("STACK_UNDERFLOW");
+    }
+    if (stackOverflow(bitmask)) {
+      appendLine.accept("STACK_OVERFLOW");
+    }
+    if (memoryExpansionException(bitmask)) {
+      appendLine.accept("MEMORY_EXPANSION_EXCEPTION");
+    }
+    if (outOfGasException(bitmask)) {
+      appendLine.accept("OUT_OF_GAS_EXCEPTION");
+    }
+    if (returnDataCopyFault(bitmask)) {
+      appendLine.accept("RETURN_DATA_COPY_FAULT");
+    }
+    if (jumpFault(bitmask)) {
+      appendLine.accept("JUMP_FAULT");
+    }
+    if (staticFault(bitmask)) {
+      appendLine.accept("STATIC_FAULT");
+    }
+    if (outOfSStore(bitmask)) {
+      appendLine.accept("OUT_OF_SSTORE");
+    }
+    if (invalidCodePrefix(bitmask)) {
+      appendLine.accept("INVALID_CODE_PREFIX");
+    }
+    if (maxCodeSizeException(bitmask)) {
+      appendLine.accept("MAX_CODE_SIZE_EXCEPTION");
+    }
+    return sb.toString();
   }
 }

@@ -15,6 +15,10 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
+import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
+import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
+
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
@@ -27,8 +31,10 @@ import net.consensys.linea.zktracer.module.hub.DeploymentExceptions;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.gas.MxpType;
@@ -57,6 +63,7 @@ public final class StackFragment implements TraceFragment {
   @Setter private boolean validJumpDestination;
   private final boolean willRevert;
   private final State.TxState.Stamps stamps;
+  private final CommonFragmentValues commonFragmentValues;
 
   private StackFragment(
       final Hub hub,
@@ -67,7 +74,8 @@ public final class StackFragment implements TraceFragment {
       DeploymentExceptions contextExceptions,
       GasProjection gp,
       boolean isDeploying,
-      boolean willRevert) {
+      boolean willRevert,
+      CommonFragmentValues commonFragmentValues) {
     this.stack = stack;
     this.stackOps = stackOps;
     this.exceptions = exceptions;
@@ -125,6 +133,7 @@ public final class StackFragment implements TraceFragment {
 
     this.willRevert = willRevert;
     this.stamps = hub.state().stamps();
+    this.commonFragmentValues = commonFragmentValues;
   }
 
   public static StackFragment prepare(
@@ -135,7 +144,8 @@ public final class StackFragment implements TraceFragment {
       final AbortingConditions aborts,
       final GasProjection gp,
       boolean isDeploying,
-      boolean willRevert) {
+      boolean willRevert,
+      CommonFragmentValues commonFragmentValues) {
     return new StackFragment(
         hub,
         stack,
@@ -145,19 +155,21 @@ public final class StackFragment implements TraceFragment {
         DeploymentExceptions.empty(),
         gp,
         isDeploying,
-        willRevert);
+        willRevert,
+        commonFragmentValues);
   }
 
   private boolean traceLog() {
-    return this.opCode.isLog()
+    return opCode.isLog()
         && Exceptions.none(
-            this.exceptions) // TODO: should be redundant (exceptions trigger reverts) --- this
+            exceptions) // TODO: should be redundant (exceptions trigger reverts) --- this
         // could be asserted
-        && !this.willRevert;
+        && !willRevert;
   }
 
   @Override
   public Trace trace(Trace trace) {
+
     final List<Function<Bytes, Trace>> valHiTracers =
         List.of(
             trace::pStackStackItemValueHi1,
@@ -199,7 +211,7 @@ public final class StackFragment implements TraceFragment {
       var i = it.nextIndex();
       var op = it.next();
       final EWord eValue = EWord.of(op.value());
-      if (this.stack.getCurrentOpcodeData().isPush()) {
+      if (stack.getCurrentOpcodeData().isPush()) {
         pushValue = eValue;
       }
 
@@ -210,75 +222,103 @@ public final class StackFragment implements TraceFragment {
       stampTracers.get(i).apply(Bytes.ofUnsignedLong(op.stackStamp()));
     }
 
-    final InstructionFamily currentInstFamily =
-        this.stack.getCurrentOpcodeData().instructionFamily();
+    final InstructionFamily currentInstFamily = stack.getCurrentOpcodeData().instructionFamily();
+
+    TracedException tracedException = commonFragmentValues.tracedException();
+
+    // TODO: here only for debugging, remove it
+    if (tracedException == UNDEFINED) {
+      System.out.println(currentInstFamily);
+      System.out.println(this.opCode);
+    }
+
+    this.tracedExceptionSanityChecks(tracedException);
 
     return trace
         .peekAtStack(true)
         // Instruction details
-        .pStackAlpha(UnsignedByte.of(this.stack.getCurrentOpcodeData().stackSettings().alpha()))
-        .pStackDelta(UnsignedByte.of(this.stack.getCurrentOpcodeData().stackSettings().delta()))
-        .pStackNbAdded(UnsignedByte.of(this.stack.getCurrentOpcodeData().stackSettings().nbAdded()))
-        .pStackNbRemoved(
-            UnsignedByte.of(this.stack.getCurrentOpcodeData().stackSettings().nbRemoved()))
-        .pStackInstruction(Bytes.of(this.stack.getCurrentOpcodeData().value()))
+        .pStackAlpha(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().alpha()))
+        .pStackDelta(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().delta()))
+        .pStackNbAdded(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().nbAdded()))
+        .pStackNbRemoved(UnsignedByte.of(stack.getCurrentOpcodeData().stackSettings().nbRemoved()))
+        .pStackInstruction(Bytes.of(stack.getCurrentOpcodeData().value()))
         .pStackStaticGas(staticGas)
         // Opcode families
-        .pStackAccFlag(currentInstFamily == InstructionFamily.ACCOUNT)
-        .pStackAddFlag(currentInstFamily == InstructionFamily.ADD)
-        .pStackBinFlag(currentInstFamily == InstructionFamily.BIN)
-        .pStackBtcFlag(currentInstFamily == InstructionFamily.BATCH)
-        .pStackCallFlag(currentInstFamily == InstructionFamily.CALL)
-        .pStackConFlag(currentInstFamily == InstructionFamily.CONTEXT)
-        .pStackCopyFlag(currentInstFamily == InstructionFamily.COPY)
-        .pStackCreateFlag(currentInstFamily == InstructionFamily.CREATE)
-        .pStackDupFlag(currentInstFamily == InstructionFamily.DUP)
-        .pStackExtFlag(currentInstFamily == InstructionFamily.EXT)
-        .pStackHaltFlag(currentInstFamily == InstructionFamily.HALT)
-        .pStackInvalidFlag(currentInstFamily == InstructionFamily.INVALID)
-        .pStackJumpFlag(currentInstFamily == InstructionFamily.JUMP)
-        .pStackKecFlag(currentInstFamily == InstructionFamily.KEC)
-        .pStackLogFlag(currentInstFamily == InstructionFamily.LOG)
-        .pStackMachineStateFlag(currentInstFamily == InstructionFamily.MACHINE_STATE)
-        .pStackModFlag(currentInstFamily == InstructionFamily.MOD)
-        .pStackMulFlag(currentInstFamily == InstructionFamily.MUL)
-        .pStackPushpopFlag(currentInstFamily == InstructionFamily.PUSH_POP)
-        .pStackShfFlag(currentInstFamily == InstructionFamily.SHF)
-        .pStackStackramFlag(currentInstFamily == InstructionFamily.STACK_RAM)
-        .pStackStoFlag(currentInstFamily == InstructionFamily.STORAGE)
-        .pStackSwapFlag(currentInstFamily == InstructionFamily.SWAP)
-        .pStackTxnFlag(currentInstFamily == InstructionFamily.TRANSACTION)
-        .pStackWcpFlag(currentInstFamily == InstructionFamily.WCP)
-        .pStackDecFlag1(this.stack.getCurrentOpcodeData().stackSettings().flag1())
-        .pStackDecFlag2(this.stack.getCurrentOpcodeData().stackSettings().flag2())
-        .pStackDecFlag3(this.stack.getCurrentOpcodeData().stackSettings().flag3())
-        .pStackDecFlag4(this.stack.getCurrentOpcodeData().stackSettings().flag4())
+        .pStackAccFlag(currentInstFamily == ACCOUNT)
+        .pStackAddFlag(currentInstFamily == ADD)
+        .pStackBinFlag(currentInstFamily == BIN)
+        .pStackBtcFlag(currentInstFamily == BATCH)
+        .pStackCallFlag(currentInstFamily == CALL)
+        .pStackConFlag(currentInstFamily == CONTEXT)
+        .pStackCopyFlag(currentInstFamily == COPY)
+        .pStackCreateFlag(currentInstFamily == CREATE)
+        .pStackDupFlag(currentInstFamily == DUP)
+        .pStackExtFlag(currentInstFamily == EXT)
+        .pStackHaltFlag(currentInstFamily == HALT)
+        .pStackInvalidFlag(currentInstFamily == INVALID)
+        .pStackJumpFlag(currentInstFamily == JUMP)
+        .pStackKecFlag(currentInstFamily == KEC)
+        .pStackLogFlag(currentInstFamily == LOG)
+        .pStackMachineStateFlag(currentInstFamily == MACHINE_STATE)
+        .pStackModFlag(currentInstFamily == MOD)
+        .pStackMulFlag(currentInstFamily == MUL)
+        .pStackPushpopFlag(currentInstFamily == PUSH_POP)
+        .pStackShfFlag(currentInstFamily == SHF)
+        .pStackStackramFlag(currentInstFamily == STACK_RAM)
+        .pStackStoFlag(currentInstFamily == STORAGE)
+        .pStackSwapFlag(currentInstFamily == SWAP)
+        .pStackTxnFlag(currentInstFamily == TRANSACTION)
+        .pStackWcpFlag(currentInstFamily == WCP)
+        .pStackDecFlag1(stack.getCurrentOpcodeData().stackSettings().flag1())
+        .pStackDecFlag2(stack.getCurrentOpcodeData().stackSettings().flag2())
+        .pStackDecFlag3(stack.getCurrentOpcodeData().stackSettings().flag3())
+        .pStackDecFlag4(stack.getCurrentOpcodeData().stackSettings().flag4())
         .pStackMxpFlag(
-            Optional.ofNullable(this.stack.getCurrentOpcodeData().billing())
+            Optional.ofNullable(stack.getCurrentOpcodeData().billing())
                 .map(b -> b.type() != MxpType.NONE)
                 .orElse(false))
-        .pStackStaticFlag(this.stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
+        .pStackStaticFlag(stack.getCurrentOpcodeData().stackSettings().forbiddenInStatic())
         .pStackPushValueHi(pushValue.hi())
         .pStackPushValueLo(pushValue.lo())
-        .pStackJumpDestinationVettingRequired(
-            this.jumpDestinationVettingRequired) // TODO: confirm this
+        .pStackJumpDestinationVettingRequired(jumpDestinationVettingRequired) // TODO: confirm this
         // Exception flag
-        .pStackOpcx(Exceptions.invalidCodePrefix(exceptions))
-        .pStackSux(Exceptions.stackUnderflow(exceptions))
-        .pStackSox(Exceptions.stackOverflow(exceptions))
-        .pStackMxpx(Exceptions.memoryExpansionException(exceptions))
-        .pStackOogx(Exceptions.outOfGasException(exceptions))
-        .pStackRdcx(Exceptions.returnDataCopyFault(exceptions))
-        .pStackJumpx(Exceptions.jumpFault(exceptions))
-        .pStackStaticx(Exceptions.staticFault(exceptions))
-        .pStackSstorex(Exceptions.outOfSStore(exceptions))
-        .pStackIcpx(contextExceptions.invalidCodePrefix())
-        .pStackMaxcsx(contextExceptions.codeSizeOverflow())
+        .pStackOpcx(tracedException == INVALID_OPCODE)
+        .pStackSux(tracedException == STACK_UNDERFLOW)
+        .pStackSox(tracedException == STACK_OVERFLOW)
+        .pStackMxpx(tracedException == MEMORY_EXPANSION_EXCEPTION)
+        .pStackOogx(tracedException == OUT_OF_GAS_EXCEPTION)
+        .pStackRdcx(tracedException == RETURN_DATA_COPY_FAULT)
+        .pStackJumpx(tracedException == JUMP_FAULT)
+        .pStackStaticx(tracedException == STATIC_FAULT)
+        .pStackSstorex(tracedException == OUT_OF_SSTORE)
+        .pStackIcpx(tracedException == INVALID_CODE_PREFIX)
+        .pStackMaxcsx(tracedException == MAX_CODE_SIZE_EXCEPTION)
         // Hash data
-        .pStackHashInfoFlag(this.hashInfoFlag)
-        .pStackHashInfoKeccakHi(this.hashInfoKeccak.hi())
-        .pStackHashInfoKeccakLo(this.hashInfoKeccak.lo())
+        .pStackHashInfoFlag(hashInfoFlag)
+        .pStackHashInfoKeccakHi(hashInfoKeccak.hi())
+        .pStackHashInfoKeccakLo(hashInfoKeccak.lo())
         .pStackLogInfoFlag(this.traceLog()) // TODO: confirm this
     ;
+  }
+
+  private void tracedExceptionSanityChecks(TracedException tracedException) {
+    switch (tracedException) {
+      case NONE -> checkArgument(Exceptions.none(exceptions));
+      case INVALID_OPCODE -> checkArgument(Exceptions.invalidOpcode(exceptions));
+      case STACK_UNDERFLOW -> checkArgument(Exceptions.stackUnderflow(exceptions));
+      case STACK_OVERFLOW -> checkArgument(Exceptions.stackOverflow(exceptions));
+      case MEMORY_EXPANSION_EXCEPTION -> checkArgument(
+          Exceptions.memoryExpansionException(exceptions));
+      case OUT_OF_GAS_EXCEPTION -> checkArgument(Exceptions.outOfGasException(exceptions));
+      case RETURN_DATA_COPY_FAULT -> checkArgument(Exceptions.returnDataCopyFault(exceptions));
+      case JUMP_FAULT -> checkArgument(Exceptions.jumpFault(exceptions));
+      case STATIC_FAULT -> checkArgument(Exceptions.staticFault(exceptions));
+      case OUT_OF_SSTORE -> checkArgument(Exceptions.outOfSStore(exceptions));
+      case INVALID_CODE_PREFIX -> checkArgument(Exceptions.invalidCodePrefix(exceptions));
+      case MAX_CODE_SIZE_EXCEPTION -> checkArgument(Exceptions.maxCodeSizeException(exceptions));
+      case UNDEFINED -> throw new RuntimeException(
+          "tracedException remained UNDEFINED but "
+              + Exceptions.prettyStringOf(this.opCode, exceptions));
+    }
   }
 }

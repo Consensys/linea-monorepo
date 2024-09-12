@@ -15,7 +15,11 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.common;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
+import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.*;
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
+import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 
 import java.math.BigInteger;
 
@@ -27,6 +31,7 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.State;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import net.consensys.linea.zktracer.module.hub.signals.TracedException;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
@@ -60,10 +65,11 @@ public class CommonFragmentValues {
   @Setter public int numberOfNonStackRows;
   @Setter public boolean TLI;
   @Setter public int codeFragmentIndex = -1;
+  @Getter private TracedException tracedException = UNDEFINED;
 
   public CommonFragmentValues(Hub hub) {
-    final boolean noStackException = !Exceptions.stackException(hub.pch().exceptions());
-    final InstructionFamily instructionFamily = hub.opCode().getData().instructionFamily();
+    final short exceptions = hub.pch().exceptions();
+    final boolean noStackException = !stackException(exceptions);
 
     this.txMetadata = hub.txStack().current();
     this.hubProcessingPhase = hub.state().getProcessingPhase();
@@ -71,7 +77,7 @@ public class CommonFragmentValues {
     this.callStack = hub.callStack();
     this.stamps = hub.state().stamps();
     this.callFrame = hub.currentFrame();
-    this.exceptionAhoy = Exceptions.any(hub.pch().exceptions());
+    this.exceptionAhoy = any(exceptions);
     // this.contextNumberNew = hub.contextNumberNew(callFrame);
     this.pc = hubProcessingPhase == TX_EXEC ? hub.currentFrame().pc() : 0;
     this.pcNew = computePcNew(hub, pc, noStackException, hub.state.getProcessingPhase() == TX_EXEC);
@@ -82,13 +88,68 @@ public class CommonFragmentValues {
     this.gasExpected = hub.expectedGas();
     this.gasActual = hub.remainingGas();
 
+    final InstructionFamily instructionFamily = hub.opCode().getData().instructionFamily();
     this.contextMayChange =
         hubProcessingPhase == HubProcessingPhase.TX_EXEC
-            && ((instructionFamily == InstructionFamily.CALL
-                    || instructionFamily == InstructionFamily.CREATE
-                    || instructionFamily == InstructionFamily.HALT
-                    || instructionFamily == InstructionFamily.INVALID)
+            && ((instructionFamily == CALL
+                    || instructionFamily == CREATE
+                    || instructionFamily == HALT
+                    || instructionFamily == INVALID)
                 || exceptionAhoy);
+
+    if (none(exceptions)) {
+      tracedException = TracedException.NONE;
+      return;
+    }
+
+    final OpCode opCode = hub.opCode();
+
+    if (Exceptions.staticFault(exceptions)) {
+      checkArgument(opCode.mayTriggerStaticException());
+      setTracedException(TracedException.STATIC_FAULT);
+      return;
+    }
+
+    // RETURNDATACOPY opcode specific exception
+    if (opCode == OpCode.RETURNDATACOPY && Exceptions.returnDataCopyFault(exceptions)) {
+      setTracedException(TracedException.RETURN_DATA_COPY_FAULT);
+      return;
+    }
+
+    // SSTORE opcode specific exception
+    if (opCode == OpCode.SSTORE && Exceptions.outOfSStore(exceptions)) {
+      setTracedException(TracedException.OUT_OF_SSTORE);
+      return;
+    }
+
+    // For RETURN, in case none of the above exceptions is the traced one,
+    // we have a complex logic to determine the traced exception that is
+    // implemented in the instruction processing
+    if (opCode == OpCode.RETURN) {
+      return;
+    }
+
+    if (Exceptions.memoryExpansionException(exceptions)) {
+      checkArgument(opCode.mayTriggerMemoryExpansionException());
+      setTracedException(TracedException.MEMORY_EXPANSION_EXCEPTION);
+      return;
+    }
+
+    if (Exceptions.outOfGasException(exceptions)) {
+      setTracedException(TracedException.OUT_OF_GAS_EXCEPTION);
+      return;
+    }
+
+    // JUMP instruction family specific exception
+    if (instructionFamily == InstructionFamily.JUMP && Exceptions.jumpFault(exceptions)) {
+      setTracedException(TracedException.JUMP_FAULT);
+    }
+  }
+
+  public void setTracedException(TracedException tracedException) {
+    checkArgument(
+        this.tracedException == UNDEFINED); // || this.tracedException == tracedException);
+    this.tracedException = tracedException;
   }
 
   static int computePcNew(

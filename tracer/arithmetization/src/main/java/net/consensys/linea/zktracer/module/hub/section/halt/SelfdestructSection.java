@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.hub.section.halt;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.OUT_OF_GAS_EXCEPTION;
 
 import java.util.List;
 import java.util.Map;
@@ -112,7 +113,7 @@ public class SelfdestructSection extends TraceSection
 
     // OOGX case
     if (Exceptions.any(exceptions)) {
-      checkArgument(exceptions == Exceptions.OUT_OF_GAS_EXCEPTION);
+      checkArgument(exceptions == OUT_OF_GAS_EXCEPTION);
 
       selfDestroyerFirstAccountFragment =
           hub.factories()
@@ -134,7 +135,6 @@ public class SelfdestructSection extends TraceSection
                   DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1));
 
       this.addFragment(recipientFirstAccountFragment);
-
       return;
     }
 
