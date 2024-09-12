@@ -78,10 +78,10 @@ bin/controller:
 ##
 ##	Prover (setup and prove)
 ##
-bin/prover: zkevm/arithmetization/zkevm.bin
+bin/prover:
 	mkdir -p bin
 	rm -f $@
-	$(CORSET_FLAGS) go build -o $@ ./cmd/prover
+	go build -o $@ ./cmd/prover
 
 ##
 ##	Compiles the state-manager inspector
@@ -105,7 +105,7 @@ bin/compression-aggregation-sample:
 bin/checker: zkevm/arithmetization/zkevm.bin
 	mkdir -p bin
 	rm -f $@
-	$(CORSET_FLAGS) go build -o $@ ./cmd/dev-tools/corset-checker
+	go build -o $@ ./cmd/dev-tools/corset-checker
 
 ##
 ##	Build the prover docker image
