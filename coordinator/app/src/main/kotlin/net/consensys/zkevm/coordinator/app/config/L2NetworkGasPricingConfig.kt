@@ -14,6 +14,7 @@ import java.net.URL
 import java.time.Duration
 import kotlin.time.toKotlinDuration
 
+// Defaults to a compressed plain transfer transaction
 data class SampleTransactionGasPricingTomlDto(
   val plainTransferCostMultiplier: Double = 1.0,
   val compressedTxSize: Int = 125,
