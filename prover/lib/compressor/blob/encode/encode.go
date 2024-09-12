@@ -270,5 +270,31 @@ func (d *DecodedBlockData) ToStd() *types.Block {
 		}
 	}
 
-	return types.NewBlock(&header, &body, nil, nil)
+	return types.NewBlock(&header, &body, nil, emptyTrieHasher{})
+}
+
+type fixedTrieHasher common.Hash
+
+func (e fixedTrieHasher) Reset() {
+}
+
+func (e fixedTrieHasher) Update(_, _ []byte) error {
+	return nil
+}
+
+func (e fixedTrieHasher) Hash() common.Hash {
+	return common.Hash(e)
+}
+
+type emptyTrieHasher struct{}
+
+func (h emptyTrieHasher) Reset() {
+}
+
+func (h emptyTrieHasher) Update(_, _ []byte) error {
+	return nil
+}
+
+func (h emptyTrieHasher) Hash() common.Hash {
+	return common.Hash{}
 }

@@ -8,13 +8,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
-
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -35,10 +33,6 @@ func TestEncodeDecode(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			expected := encode.DecodedBlockData{
-				BlockHash: block.Hash(),
-				Timestamp: block.Time(),
-			}
 
 			if err := v1.EncodeBlockForCompression(&block, &buf); err != nil {
 				t.Fatalf("failed encoding the block: %s", err.Error())
@@ -53,16 +47,40 @@ func TestEncodeDecode(t *testing.T) {
 			assert.NotZero(t, size, "scanned a block size of zero")
 
 			require.NoError(t, err)
-			assert.Equal(t, expected.BlockHash, decoded.BlockHash)
-			assert.Equal(t, expected.Timestamp, decoded.Timestamp)
+			assert.Equal(t, block.Hash(), decoded.BlockHash)
+			assert.Equal(t, block.Time(), decoded.Timestamp)
 			assert.Equal(t, len(block.Transactions()), len(decoded.Txs))
 
-			for i := range expected.Txs {
+			for i := range block.Transactions() {
 				checkSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), decoded.Froms[i])
 				if t.Failed() {
 					return
 				}
 			}
+
+			t.Log("attempting RLP serialization")
+
+			encoded, err = rlp.EncodeToBytes(decoded.ToStd())
+			assert.NoError(t, err)
+
+			var blockBack ethtypes.Block
+			assert.NoError(t, rlp.Decode(bytes.NewReader(encoded), &blockBack))
+
+			assert.Equal(t, block.Hash(), blockBack.ParentHash())
+			assert.Equal(t, block.Time(), blockBack.Time())
+			assert.Equal(t, len(block.Transactions()), len(blockBack.Transactions()))
+
+			for i := range block.Transactions() {
+				tx := blockBack.Transactions()[i]
+				_, fromInt, _ := tx.RawSignatureValues()
+				var from common.Address
+				fromInt.FillBytes(from[:])
+				checkSameTx(t, block.Transactions()[i], ethtypes.NewTx(decoded.Txs[i]), from)
+				if t.Failed() {
+					return
+				}
+			}
+
 		})
 	}
 
