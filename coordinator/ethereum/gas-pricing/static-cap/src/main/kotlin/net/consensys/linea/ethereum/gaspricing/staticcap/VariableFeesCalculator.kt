@@ -18,15 +18,11 @@ class VariableFeesCalculator(
   val averageWeightedBlobBaseFeesCalculator: FeesCalculator = AverageWeightedBlobBaseFeesCalculator
 ) : FeesCalculator {
   data class Config(
-    val blobSubmissionExpectedExecutionGas: Int,
-    val bytesPerDataSubmission: Int,
-    val expectedBlobGas: Int,
+    val blobSubmissionExpectedExecutionGas: UInt,
+    val bytesPerDataSubmission: UInt,
+    val expectedBlobGas: UInt,
     val margin: Double
   )
-
-  init {
-    require(config.bytesPerDataSubmission > 0.0)
-  }
 
   private val log = LogManager.getLogger(this::class.java)
 
@@ -36,11 +32,11 @@ class VariableFeesCalculator(
     val averageWeightedBlobBaseFees = averageWeightedBlobBaseFeesCalculator.calculateFees(feeHistory)
 
     val executionFee = (averageWeightedBaseFees + averageWeightedPriorityFees) *
-      config.blobSubmissionExpectedExecutionGas
+      config.blobSubmissionExpectedExecutionGas.toDouble()
 
-    val blobFee = averageWeightedBlobBaseFees * config.expectedBlobGas
+    val blobFee = averageWeightedBlobBaseFees * config.expectedBlobGas.toDouble()
 
-    val variableFee = ((executionFee + blobFee) * config.margin) / config.bytesPerDataSubmission
+    val variableFee = ((executionFee + blobFee) * config.margin) / config.bytesPerDataSubmission.toDouble()
 
     log.debug(
       "Calculated variableFee={} wei executionFee={} wei blobFee={} wei bytesPerDataSubmission={} l1Blocks={}",
