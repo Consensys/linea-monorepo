@@ -54,7 +54,8 @@ public class StackRamSection extends TraceSection {
     checkArgument(mxpCall.isMxpx() == Exceptions.memoryExpansionException(exceptions));
 
     // MXPX or OOGX case
-    if (mxpCall.isMxpx() || Exceptions.outOfGasException(exceptions)) {
+    if (Exceptions.memoryExpansionException(exceptions)
+        || Exceptions.outOfGasException(exceptions)) {
       return;
     }
 

@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
+import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.stackUnderflow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
@@ -98,8 +99,45 @@ public class OobCallTest {
     final Hub hub = bytecodeRunner.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
+  }
 
-    // assertNumberOfOnesInOobEvent1(bytecodeRunner.getHub().oob(), 1);
+  /**
+   * Same as {@link #TestRecursiveCallsWithBytecode()} but with an ADD opcode at the end triggering
+   * SUX
+   */
+  @Test
+  void TestRecursiveCallsWithBytecodeFollowedByStackUnderflow() {
+    final BytecodeRunner bytecodeRunner =
+        BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af101"));
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
+
+    final Hub hub = bytecodeRunner.getHub();
+
+    assertTrue(stackUnderflow(hub.pch().exceptions()));
+  }
+
+  /** Same as {@link #TestRecursiveCallsWithBytecode()} but with an ADDRESS opcode at the end */
+  @Test
+  void TestRecursiveCallsWithBytecodeFollowedByAddress() {
+    final BytecodeRunner bytecodeRunner =
+        BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af130"));
+    bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000);
+
+    final Hub hub = bytecodeRunner.getHub();
+
+    assertTrue(Exceptions.none(hub.pch().exceptions()));
+  }
+
+  /** Same as {@link #TestRecursiveCallsWithBytecode()} but with an STOP opcode at the end */
+  @Test
+  void TestRecursiveCallsWithBytecodeFollowedByExplicitStop() {
+    final BytecodeRunner bytecodeRunner =
+        BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af100"));
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
+
+    final Hub hub = bytecodeRunner.getHub();
+
+    assertTrue(Exceptions.none(hub.pch().exceptions()));
   }
 
   // Support methods
@@ -169,9 +207,6 @@ public class OobCallTest {
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
-
-    // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
-    // numberOfOnesInOobEvent1);
   }
 
   private void testRecursiveCalls(EWord iterations) {
@@ -224,8 +259,5 @@ public class OobCallTest {
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 
     assertTrue(Exceptions.none(hub.pch().exceptions()));
-
-    // assertNumberOfOnesInOobEvent1(toyExecutionEnvironment.getHub().oob(),
-    // numberOfOnesInOobEvent1);
   }
 }

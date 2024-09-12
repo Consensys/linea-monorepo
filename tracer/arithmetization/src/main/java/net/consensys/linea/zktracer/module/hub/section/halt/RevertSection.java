@@ -46,11 +46,17 @@ public class RevertSection extends TraceSection {
     imcFragment.callMxp(mxpCall);
     checkArgument(mxpCall.mxpx == Exceptions.memoryExpansionException(exceptions));
 
-    // The XAHOY case
-    /////////////////
-    if (Exceptions.any(exceptions)) {
+    if (Exceptions.memoryExpansionException(exceptions)) {
       return;
     }
+
+    if (Exceptions.outOfGasException(exceptions)) {
+      return;
+    }
+
+    // The XAHOY case
+    /////////////////
+    checkArgument(Exceptions.none(exceptions));
 
     final boolean triggerMmu =
         (Exceptions.none(exceptions))

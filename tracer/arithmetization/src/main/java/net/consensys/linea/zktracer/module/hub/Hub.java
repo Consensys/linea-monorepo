@@ -51,10 +51,12 @@ import net.consensys.linea.zktracer.module.gas.Gas;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.StackFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.section.AccountSection;
 import net.consensys.linea.zktracer.module.hub.section.CallDataLoadSection;
 import net.consensys.linea.zktracer.module.hub.section.ContextSection;
 import net.consensys.linea.zktracer.module.hub.section.CreateSection;
+import net.consensys.linea.zktracer.module.hub.section.EarlyExceptionSection;
 import net.consensys.linea.zktracer.module.hub.section.ExpSection;
 import net.consensys.linea.zktracer.module.hub.section.JumpSection;
 import net.consensys.linea.zktracer.module.hub.section.KeccakSection;
@@ -976,6 +978,11 @@ public class Hub implements Module {
         }
 
         // This works because we are certain that the stack chunks are the first.
+        // TODO: the below check is useful in any case (to avoid unchecked cast)
+        //  but is this check hiding some underlying issue somewhere else?
+        //  TestRecursiveCallsWithByteCode was failing before this check
+        TraceFragment fragment = section.fragments().get(i);
+        checkArgument(fragment instanceof StackFragment);
         ((StackFragment) section.fragments().get(i))
             .stackOps()
             .get(line.resultColumn() - 1)
@@ -997,7 +1004,7 @@ public class Hub implements Module {
       this.squashCurrentFrameOutputData();
       this.squashParentFrameReturnData();
 
-      new StackOnlySection(this);
+      new EarlyExceptionSection(this);
     }
 
     if (Exceptions.any(pch().exceptions()) || opCode() == REVERT) {
@@ -1041,8 +1048,7 @@ public class Hub implements Module {
           MACHINE_STATE,
           PUSH_POP,
           DUP,
-          SWAP,
-          INVALID -> new StackOnlySection(this);
+          SWAP -> new StackOnlySection(this);
       case MUL -> {
         switch (this.opCode()) {
           case OpCode.EXP -> new ExpSection(this);
@@ -1117,6 +1123,7 @@ public class Hub implements Module {
       case CREATE -> new CreateSection(this);
 
       case CALL -> new CallSection(this);
+      case INVALID -> new EarlyExceptionSection(this);
     }
   }
 

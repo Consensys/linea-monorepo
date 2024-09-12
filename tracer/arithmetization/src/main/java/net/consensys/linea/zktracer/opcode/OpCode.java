@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.opcode;
 
 import static com.google.common.base.Preconditions.*;
 
+import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 /** Represents the entire set of opcodes that are required by the arithmetization process. */
@@ -266,5 +267,21 @@ public enum OpCode {
 
   public short numberOfStackRows() {
     return (short) (this.getData().stackSettings().twoLineInstruction() ? 2 : 1);
+  }
+
+  public boolean mayTriggerStackUnderflow() {
+    return this.getData().stackSettings().delta() > 0;
+  }
+
+  public boolean mayTriggerStackOverflow() {
+    return this.getData().stackSettings().alpha() > 0;
+  }
+
+  public boolean mayTriggerStaticException() {
+    return this.getData().stackSettings().forbiddenInStatic();
+  }
+
+  public boolean mayTriggerMemoryExpansionException() {
+    return this != MSIZE && this.getData().billing().type() != MxpType.NONE;
   }
 }

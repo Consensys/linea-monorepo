@@ -183,7 +183,8 @@ public class TraceSection {
                 hub.pch().abortingConditions().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.isDeployment(),
-                f.willRevert()));
+                f.willRevert(),
+                commonValues));
       }
     } else {
       for (StackLine line : f.pending().lines()) {
@@ -196,7 +197,8 @@ public class TraceSection {
                 hub.pch().abortingConditions().snapshot(),
                 Hub.GAS_PROJECTOR.of(f.frame(), f.opCode()),
                 f.isDeployment(),
-                f.willRevert()));
+                f.willRevert(),
+                commonValues));
       }
     }
     return r;
