@@ -13,7 +13,7 @@ env:
 
 jobs:
   staticcheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-128
     name: Prover static check
     steps:
     - name: install Go
@@ -54,7 +54,7 @@ jobs:
     strategy:
       matrix:
         go-version: [1.22.x]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest-128]
     runs-on: ${{ matrix.os }}
     name: Prover testing
     needs:
@@ -86,7 +86,7 @@ jobs:
         go test -p=1 -tags=nocorset,fuzzlight -timeout=30m ./...
     - name: Test (32 bits & race)
       working-directory: prover
-      if: (matrix.os == 'ubuntu-latest') && (matrix.go-version == '1.20.x')
+      if: (matrix.os == 'ubuntu-latest-128') && (matrix.go-version == '1.20.x')
       run: |
           go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
 
@@ -96,7 +96,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-128
     steps:
       - name: Notify slack -- workflow failed
         id: slack
@@ -119,7 +119,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-128
     steps:
       - name: Notify slack -- workflow succeeded
         id: slack
