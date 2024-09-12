@@ -28,7 +28,7 @@ class GasPriceUpdaterApp(
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   l1Web3jClient: Web3j,
   l1Web3jService: Web3jBlobExtended,
-  config: DynamicGasPriceServiceConfig
+  config: L2NetworkGasPricing
 ) : LongRunningService {
   private val log = LogManager.getLogger(this::class.java)
 
@@ -41,33 +41,33 @@ class GasPriceUpdaterApp(
     )
   )
 
-  private val minMineableFeesCalculator: FeesCalculator = run {
+  private val naiveGasPricingCalculator: FeesCalculator = run {
     val gasUsageRatioWeightedAverageFeesCalculator = GasUsageRatioWeightedAverageFeesCalculator(
       GasUsageRatioWeightedAverageFeesCalculator.Config(
-        baseFeeCoefficient = config.baseFeeCoefficient,
-        priorityFeeCoefficient = config.priorityFeeCoefficient,
-        baseFeeBlobCoefficient = config.baseFeeBlobCoefficient,
+        baseFeeCoefficient = config.naiveGasPricing.baseFeeCoefficient,
+        priorityFeeCoefficient = config.naiveGasPricing.priorityFeeCoefficient,
+        baseFeeBlobCoefficient = config.naiveGasPricing.baseFeeBlobCoefficient,
         blobSubmissionExpectedExecutionGas = config.blobSubmissionExpectedExecutionGas,
-        expectedBlobGas = config.expectedBlobGas
+        expectedBlobGas = config.l1BlobGas
       )
     )
     BoundableFeeCalculator(
       BoundableFeeCalculator.Config(
-        config.gasPriceUpperBound.toDouble(),
-        config.gasPriceLowerBound.toDouble(),
-        config.gasPriceFixedCost.toDouble()
+        config.naiveGasPricing.gasPriceUpperBound.toDouble(),
+        config.naiveGasPricing.gasPriceLowerBound.toDouble(),
+        0.0
       ),
       gasUsageRatioWeightedAverageFeesCalculator
     )
   }
 
   private val minMineableFeesPricerService: MinMineableFeesPricerService? =
-    if (config.minMineableFeesEnabled) {
+    if (config.jsonRpcPricingPropagation.enabled) {
       val l2SetGasPriceUpdater: GasPriceUpdater = GasPriceUpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         config = GasPriceUpdaterImpl.Config(
-          gethEndpoints = config.gethGasPriceUpdateRecipients,
-          besuEndPoints = config.besuGasPriceUpdateRecipients,
+          gethEndpoints = config.jsonRpcPricingPropagation.gethGasPriceUpdateRecipients,
+          besuEndPoints = config.jsonRpcPricingPropagation.besuGasPriceUpdateRecipients,
           retryConfig = config.requestRetryConfig
         )
       )
@@ -76,26 +76,26 @@ class GasPriceUpdaterApp(
         pollingInterval = config.priceUpdateInterval.toKotlinDuration(),
         vertx = vertx,
         feesFetcher = gasPricingFeesFetcher,
-        feesCalculator = minMineableFeesCalculator,
+        feesCalculator = naiveGasPricingCalculator,
         gasPriceUpdater = l2SetGasPriceUpdater
       )
     } else {
       null
     }
 
-  private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataEnabled) {
+  private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagation.enabled) {
     val variableCostCalculator = VariableFeesCalculator(
       VariableFeesCalculator.Config(
         blobSubmissionExpectedExecutionGas = config.blobSubmissionExpectedExecutionGas,
-        bytesPerDataSubmission = config.bytesPerDataSubmission,
-        expectedBlobGas = config.expectedBlobGas,
-        margin = config.margin
+        bytesPerDataSubmission = config.l1BlobGas,
+        expectedBlobGas = config.bytesPerDataSubmission,
+        margin = config.variableCostPricing.margin
       )
     )
     val boundedVariableCostCalculator = BoundableFeeCalculator(
       config = BoundableFeeCalculator.Config(
-        feeUpperBound = config.variableCostUpperBound.toDouble(),
-        feeLowerBound = config.variableCostLowerBound.toDouble(),
+        feeUpperBound = config.variableCostPricing.variableCostUpperBound.toDouble(),
+        feeLowerBound = config.variableCostPricing.variableCostLowerBound.toDouble(),
         feeMargin = 0.0
       ),
       feesCalculator = variableCostCalculator
@@ -106,16 +106,16 @@ class GasPriceUpdaterApp(
       feesFetcher = gasPricingFeesFetcher,
       minerExtraDataCalculatorImpl = MinerExtraDataV1CalculatorImpl(
         config = MinerExtraDataV1CalculatorImpl.Config(
-          fixedCostInKWei = config.gasPriceFixedCost.toKWeiUInt(),
-          ethGasPriceMultiplier = config.legacyFeesMultiplier
+          fixedCostInKWei = config.variableCostPricing.gasPriceFixedCost.toKWeiUInt(),
+          ethGasPriceMultiplier = config.variableCostPricing.legacyFeesMultiplier
         ),
         variableFeesCalculator = boundedVariableCostCalculator,
-        legacyFeesCalculator = minMineableFeesCalculator
+        legacyFeesCalculator = naiveGasPricingCalculator
       ),
       extraDataUpdater = ExtraDataV1UpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         config = ExtraDataV1UpdaterImpl.Config(
-          config.extraDataUpdateRecipient,
+          config.extraDataPricingPropagation.extraDataUpdateRecipient,
           config.requestRetryConfig
         )
       )

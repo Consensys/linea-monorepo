@@ -388,39 +388,49 @@ class CoordinatorConfigTest {
       maxMessagesToAnchor = 100U
     )
 
-    private val dynamicGasPriceServiceConfig = DynamicGasPriceServiceConfig(
-      priceUpdateInterval = Duration.parse("PT12S"),
-      feeHistoryBlockCount = 50,
-      feeHistoryRewardPercentile = 15.0,
-      baseFeeCoefficient = 0.1,
-      priorityFeeCoefficient = 1.0,
-      baseFeeBlobCoefficient = 0.1,
-      blobSubmissionExpectedExecutionGas = 213_000.0,
-      expectedBlobGas = 131072.0,
-      gasPriceUpperBound = 10_000_000_000u,
-      gasPriceLowerBound = 90_000_000u,
-      gasPriceFixedCost = 3000000u,
-      gethGasPriceUpdateRecipients = listOf(
-        URI("http://traces-node:8545/").toURL(),
-        URI("http://l2-node:8545/").toURL()
-      ),
-      besuGasPriceUpdateRecipients = listOf(
-        URI("http://sequencer:8545/").toURL()
-      ),
+    private val l2NetworkGasPricing = L2NetworkGasPricing(
       requestRetry = RequestRetryConfigTomlFriendly(
         maxRetries = 3,
         timeout = 6.seconds.toJavaDuration(),
         backoffDelay = 1.seconds.toJavaDuration(),
         failuresWarningThreshold = 2
       ),
-      extraDataEnabled = true,
-      minMineableFeesEnabled = true,
-      legacyFeesMultiplier = 1.2,
-      margin = 4.0,
-      extraDataUpdateRecipient = URI("http://sequencer:8545/").toURL(),
-      variableCostUpperBound = 10_000_000_001u,
-      variableCostLowerBound = 90_000_001u,
-      _bytesPerDataSubmission = null
+
+      priceUpdateInterval = Duration.parse("PT12S"),
+      feeHistoryBlockCount = 50,
+      feeHistoryRewardPercentile = 15.0,
+
+      blobSubmissionExpectedExecutionGas = 213_000,
+      _bytesPerDataSubmission = null,
+      l1BlobGas = 131072,
+
+      naiveGasPricing = NaiveGasPricing(
+        baseFeeCoefficient = 0.1,
+        priorityFeeCoefficient = 1.0,
+        baseFeeBlobCoefficient = 0.1,
+
+        gasPriceUpperBound = 10_000_000_000u,
+        gasPriceLowerBound = 90_000_000u,
+      ),
+      variableCostPricing = VariableCostPricing(
+        gasPriceFixedCost = 3000000u,
+        legacyFeesMultiplier = 1.2,
+        margin = 4.0,
+        variableCostUpperBound = 10_000_000_001u,
+        variableCostLowerBound = 90_000_001u
+      ),
+      jsonRpcPricingPropagation = JsonRpcPricingPropagation(
+        gethGasPriceUpdateRecipients = listOf(
+          URI("http://traces-node:8545/").toURL(),
+          URI("http://l2-node:8545/").toURL()
+        ),
+        besuGasPriceUpdateRecipients = listOf(
+          URI("http://sequencer:8545/").toURL()
+        ),
+      ),
+      extraDataPricingPropagation = ExtraDataPricingPropagation(
+        extraDataUpdateRecipient = URI("http://sequencer:8545/").toURL(),
+      )
     )
 
     private val l1DynamicGasPriceCapServiceConfig = L1DynamicGasPriceCapServiceConfig(
@@ -639,7 +649,7 @@ class CoordinatorConfigTest {
       api = apiConfig,
       l2Signer = l2SignerConfig,
       messageAnchoringService = messageAnchoringServiceConfig,
-      dynamicGasPriceService = dynamicGasPriceServiceConfig,
+      l2NetworkGasPricing = l2NetworkGasPricing,
       l1DynamicGasPriceCapService = l1DynamicGasPriceCapServiceConfig
     )
   }

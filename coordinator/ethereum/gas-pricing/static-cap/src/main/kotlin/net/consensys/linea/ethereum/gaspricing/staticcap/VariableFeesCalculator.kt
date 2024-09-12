@@ -18,9 +18,9 @@ class VariableFeesCalculator(
   val averageWeightedBlobBaseFeesCalculator: FeesCalculator = AverageWeightedBlobBaseFeesCalculator
 ) : FeesCalculator {
   data class Config(
-    val blobSubmissionExpectedExecutionGas: Double,
-    val bytesPerDataSubmission: Double,
-    val expectedBlobGas: Double,
+    val blobSubmissionExpectedExecutionGas: Int,
+    val bytesPerDataSubmission: Int,
+    val expectedBlobGas: Int,
     val margin: Double
   )
 

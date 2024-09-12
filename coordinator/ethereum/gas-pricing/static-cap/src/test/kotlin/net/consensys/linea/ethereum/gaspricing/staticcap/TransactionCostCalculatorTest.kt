@@ -12,16 +12,16 @@ class TransactionCostCalculatorTest {
     baseFeeCoefficient = 0.02,
     priorityFeeCoefficient = 0.02,
     baseFeeBlobCoefficient = 0.02,
-    blobSubmissionExpectedExecutionGas = 69000.0,
-    expectedBlobGas = 131_000.0
+    blobSubmissionExpectedExecutionGas = 69000,
+    expectedBlobGas = 131_000
   )
   private val legacyFeesCalculator = GasUsageRatioWeightedAverageFeesCalculator(oldCalculatorConfig)
 
   private val variableFeesCalculatorConfig = VariableFeesCalculator.Config(
     margin = 1.2,
-    bytesPerDataSubmission = 131_000.0,
-    blobSubmissionExpectedExecutionGas = 69000.0,
-    expectedBlobGas = 131_000.0
+    bytesPerDataSubmission = 131_000,
+    blobSubmissionExpectedExecutionGas = 69000,
+    expectedBlobGas = 131_000
   )
   private val variableFeesCalculator = VariableFeesCalculator(variableFeesCalculatorConfig)
   private val transactionCostCalculator = TransactionCostCalculator(variableFeesCalculator, config)

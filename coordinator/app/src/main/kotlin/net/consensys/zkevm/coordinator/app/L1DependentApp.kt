@@ -125,7 +125,7 @@ class L1DependentApp(
     if (configs.messageAnchoringService.disabled) {
       log.warn("Message anchoring service is disabled")
     }
-    if (configs.dynamicGasPriceService.disabled) {
+    if (configs.l2NetworkGasPricing.disabled) {
       log.warn("Dynamic gas price service is disabled")
     }
   }
@@ -920,13 +920,13 @@ class L1DependentApp(
     }
 
   private val gasPriceUpdaterApp: GasPriceUpdaterApp? =
-    if (configs.dynamicGasPriceService.enabled) {
+    if (configs.l2NetworkGasPricing.enabled) {
       GasPriceUpdaterApp(
         vertx = vertx,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         l1Web3jClient = l1Web3jClient,
         l1Web3jService = l1Web3jService,
-        config = configs.dynamicGasPriceService
+        config = configs.l2NetworkGasPricing
       )
     } else {
       null

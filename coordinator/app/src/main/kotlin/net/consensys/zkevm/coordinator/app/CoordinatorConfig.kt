@@ -375,50 +375,80 @@ data class MessageAnchoringServiceConfig(
   }
 }
 
-data class DynamicGasPriceServiceConfig(
-  val priceUpdateInterval: Duration,
-  val feeHistoryBlockCount: Int,
-  val feeHistoryRewardPercentile: Double,
+data class NaiveGasPricing(
   val baseFeeCoefficient: Double,
   val priorityFeeCoefficient: Double,
   val baseFeeBlobCoefficient: Double,
-  val expectedBlobGas: Double,
-  val blobSubmissionExpectedExecutionGas: Double,
+
   val gasPriceUpperBound: ULong,
   val gasPriceLowerBound: ULong,
-  val gasPriceFixedCost: ULong,
-  val gethGasPriceUpdateRecipients: List<URL>,
-  val besuGasPriceUpdateRecipients: List<URL>,
-  override val requestRetry: RequestRetryConfigTomlFriendly,
-  @ConfigAlias("disabled") var _disabled: Boolean = false,
-  val extraDataEnabled: Boolean = false,
-  val minMineableFeesEnabled: Boolean = false,
-  val legacyFeesMultiplier: Double,
-  val margin: Double,
-  val extraDataUpdateRecipient: URL,
-  val variableCostUpperBound: ULong,
-  val variableCostLowerBound: ULong,
-  val _bytesPerDataSubmission: Double? // If it is set to null or any default value the test fails for some reason
-) : FeatureToggleable, RequestRetryConfigurable {
-  val bytesPerDataSubmission = _bytesPerDataSubmission ?: expectedBlobGas
-
-  override val disabled: Boolean
-    get() =
-      _disabled || (gethGasPriceUpdateRecipients.isEmpty() && besuGasPriceUpdateRecipients.isEmpty())
-
+) {
   init {
-    require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }
     require(gasPriceUpperBound >= gasPriceLowerBound) {
       "gasPriceUpperBound must be greater than or equal to gasPriceLowerBound"
     }
+  }
+}
+
+data class VariableCostPricing(
+  val gasPriceFixedCost: ULong,
+  val legacyFeesMultiplier: Double,
+  val margin: Double,
+  val variableCostUpperBound: ULong,
+  val variableCostLowerBound: ULong,
+) {
+  init {
     require(variableCostUpperBound >= variableCostLowerBound) {
       "variableCostUpperBound must be greater than or equal to variableCostLowerBound"
     }
-    require(extraDataEnabled || minMineableFeesEnabled) {
-      "At least one of extraDataEnabled or minMineableFeesEnabled is required. If gas price updater is not required, " +
-        "disable it with `disabled` config instead"
+  }
+}
+
+data class JsonRpcPricingPropagation (
+  override var disabled: Boolean = false,
+  val gethGasPriceUpdateRecipients: List<URL>,
+  val besuGasPriceUpdateRecipients: List<URL>,
+): FeatureToggleable {
+  init {
+    require(disabled || (gethGasPriceUpdateRecipients.isNotEmpty() || besuGasPriceUpdateRecipients.isNotEmpty())) {
+      "There is no point of enabling JSON RPC pricing propagation if there are no " +
+        "gethGasPriceUpdateRecipients or besuGasPriceUpdateRecipients defined"
     }
   }
+}
+
+data class ExtraDataPricingPropagation (
+  override var disabled: Boolean = false,
+  val extraDataUpdateRecipient: URL,
+): FeatureToggleable
+
+data class L2NetworkGasPricing(
+  override var disabled: Boolean = false,
+  override val requestRetry: RequestRetryConfigTomlFriendly,
+
+  val priceUpdateInterval: Duration,
+  val feeHistoryBlockCount: Int,
+  val feeHistoryRewardPercentile: Double,
+
+  val blobSubmissionExpectedExecutionGas: Int,
+  @ConfigAlias("bytesPerDataSubmission") val _bytesPerDataSubmission: Int?,
+  val l1BlobGas: Int,
+
+  val naiveGasPricing: NaiveGasPricing,
+  val variableCostPricing: VariableCostPricing,
+  val jsonRpcPricingPropagation: JsonRpcPricingPropagation,
+  val extraDataPricingPropagation: ExtraDataPricingPropagation,
+) : FeatureToggleable, RequestRetryConfigurable {
+  init {
+    require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }
+
+    require(disabled || (jsonRpcPricingPropagation.enabled || extraDataPricingPropagation.enabled)) {
+      "There is no point of enabling L2 network gas pricing if " +
+        "both jsonRpcPricingPropagation and extraDataPricingPropagation are disabled"
+    }
+  }
+
+  val bytesPerDataSubmission = _bytesPerDataSubmission ?: l1BlobGas
 }
 
 data class L1DynamicGasPriceCapServiceConfig(
@@ -579,7 +609,7 @@ data class CoordinatorConfig(
   val api: ApiConfig,
   val l2Signer: SignerConfig,
   val messageAnchoringService: MessageAnchoringServiceConfig,
-  val dynamicGasPriceService: DynamicGasPriceServiceConfig,
+  val l2NetworkGasPricing: L2NetworkGasPricing,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false
 ) {
@@ -603,7 +633,7 @@ data class CoordinatorConfig(
 
     if (testL1Disabled) {
       messageAnchoringService.disabled = true
-      dynamicGasPriceService._disabled = true
+      l2NetworkGasPricing.disabled = true
       l1DynamicGasPriceCapService.disabled = true
     }
   }
