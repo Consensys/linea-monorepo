@@ -6,7 +6,6 @@ plugins {
 }
 
 dependencies {
-  api project(':coordinator:clients:prover-client:serialization')
   implementation(project(":coordinator:persistence:db"))
   implementation(project(":coordinator:ethereum:gas-pricing:dynamic-cap"))
 
