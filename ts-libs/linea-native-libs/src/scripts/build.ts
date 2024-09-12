@@ -22,10 +22,10 @@ async function downloadAndParseJson(url: string, headers: Record<string, string>
   return await response.json();
 }
 
-async function getReleaseAssetUrl(authToken: string, nativeLibReleaseTag: string): Promise<string> {
-  const urlStr = "https://api.github.com/repos/ConsenSys/zkevm-monorepo/releases";
+async function getReleaseAssetUrl(nativeLibReleaseTag: string): Promise<string> {
+  const urlStr = "https://api.github.com/repos/Consensys/linea-monorepo/releases";
 
-  const json = await downloadAndParseJson(urlStr, { Authorization: `token ${authToken}` });
+  const json = await downloadAndParseJson(urlStr);
   const release = json.find((release: any) => release.tag_name === nativeLibReleaseTag);
 
   if (!release) {
@@ -38,15 +38,15 @@ async function getReleaseAssetUrl(authToken: string, nativeLibReleaseTag: string
   }
 
   const asset = release.assets.find((asset: any) => asset.name.includes(nativeLibReleaseTag));
-  return `https://${authToken}:@api.github.com/repos/Consensys/zkevm-monorepo/releases/assets/${asset.id}`;
+  return `https://api.github.com/repos/Consensys/linea-monorepo/releases/assets/${asset.id}`;
 }
 
-async function downloadFileUsingCurl(authToken: string, url: string, outputFilePath: string): Promise<string> {
+async function downloadFileUsingCurl(url: string, outputFilePath: string): Promise<string> {
   const outputDirectory = path.dirname(outputFilePath);
 
   // Ensure the output directory exists
   fs.mkdirSync(outputDirectory, { recursive: true });
-  const command = `curl -L -H 'Accept:application/octet-stream' -u ${authToken}: -o ${outputFilePath} ${url}`;
+  const command = `curl -L -H 'Accept:application/octet-stream' -o ${outputFilePath} ${url}`;
 
   return new Promise((resolve, reject) => {
     exec(command, (error: any, _: any, stderr: any) => {
@@ -67,12 +67,12 @@ const architectureResourceDirMapping: Record<string, string> = {
   linux_x86_64: "linux-x64",
 };
 
-async function downloadReleaseAsset(authToken: string, nativeLibReleaseTag: string): Promise<string> {
-  const assetReleaseUrl = await getReleaseAssetUrl(authToken, nativeLibReleaseTag);
+async function downloadReleaseAsset(nativeLibReleaseTag: string): Promise<string> {
+  const assetReleaseUrl = await getReleaseAssetUrl(nativeLibReleaseTag);
   const fileName = `${nativeLibReleaseTag}.zip`;
   const destPath = path.resolve("build", fileName);
   console.log(`Downloading ${fileName} from ${assetReleaseUrl} to ${destPath}`);
-  return await downloadFileUsingCurl(authToken, assetReleaseUrl, destPath);
+  return await downloadFileUsingCurl(assetReleaseUrl, destPath);
 }
 
 function getBinaryResourceFolder(libFile: string): string {
@@ -91,12 +91,8 @@ function getBinaryResourceFileName(libFile: string, libName: string): string {
   return `${libName}_${version}${extension}`;
 }
 
-async function downloadReleaseAndExtractToResources(
-  authToken: string,
-  nativeLibReleaseTag: string,
-  libName: string,
-): Promise<void> {
-  const outputFile = await downloadReleaseAsset(authToken, nativeLibReleaseTag);
+async function downloadReleaseAndExtractToResources(nativeLibReleaseTag: string, libName: string): Promise<void> {
+  const outputFile = await downloadReleaseAsset(nativeLibReleaseTag);
 
   if (!fs.existsSync(outputFile)) {
     throw new Error(`Output file ${outputFile} does not exist`);
@@ -127,13 +123,13 @@ async function downloadReleaseAndExtractToResources(
   }
 }
 
-async function fetchLib(authToken: string, nativeLibReleaseTag: string, libName: string): Promise<void> {
-  await downloadReleaseAndExtractToResources(authToken, nativeLibReleaseTag, libName);
+async function fetchLib(nativeLibReleaseTag: string, libName: string): Promise<void> {
+  await downloadReleaseAndExtractToResources(nativeLibReleaseTag, libName);
 }
 
 async function main() {
-  const { authToken, nativeLibReleaseTag } = getBuildConfig();
-  await fetchLib(authToken, nativeLibReleaseTag, "blob_compressor");
+  const { nativeLibReleaseTag } = getBuildConfig();
+  await fetchLib(nativeLibReleaseTag, "blob_compressor");
 }
 
 main()
