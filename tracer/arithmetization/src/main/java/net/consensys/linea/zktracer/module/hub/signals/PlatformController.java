@@ -61,10 +61,10 @@ public class PlatformController {
   public void setup(MessageFrame frame) {
     this.reset();
 
-    this.exceptions |= Exceptions.fromFrame(hub, frame);
-    if (Exceptions.none(this.exceptions)) {
-      this.abortingConditions.prepare(hub);
+    exceptions |= Exceptions.fromFrame(hub, frame);
+    if (Exceptions.none(exceptions)) {
+      abortingConditions.prepare(hub);
     }
-    this.signals.prepare(frame, this, this.hub);
+    signals.prepare(frame, this, this.hub);
   }
 }

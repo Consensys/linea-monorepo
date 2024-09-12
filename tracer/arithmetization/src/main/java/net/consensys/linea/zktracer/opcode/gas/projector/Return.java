@@ -46,6 +46,11 @@ public final class Return extends GasProjection {
 
   @Override
   public long deploymentCost() {
+
+    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION) {
+      return 0;
+    }
+
     if (this.size > 24_576) {
       return 0L;
     } else {
