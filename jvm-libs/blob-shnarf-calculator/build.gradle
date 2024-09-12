@@ -28,33 +28,8 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 
 task downloadNativeLibs {
   doLast {
-    fetchLib("blob-libs-v0.1.0", "shnarf_calculator", libsZipDownloadOutputDir)
-    fetchLib("blob-libs-v1.0.1", "shnarf_calculator", libsZipDownloadOutputDir)
-  }
-}
-
-//  GITHUB_TOKEN=ghp_XXX ./gradlew jvm-libs:blob-compressor:downloadNativeLib -PreleaseTag=blob-libs-v0.1.0 -PlibName=blob_compressor
-tasks.register('downloadNativeLib') {
-  def releaseTag
-  def libName
-
-  doLast {
-    if (project.hasProperty("releaseTag")) {
-      releaseTag = project.releaseTag
-    } else {
-      throw new GradleException("releaseTag is required")
-    }
-    if (project.hasProperty("libName")) {
-      libName = project.libName
-    } else {
-      throw new GradleException("libName is required")
-    }
-
-    fetchLib(
-      releaseTag,
-      libName,
-      libsZipDownloadOutputDir
-    )
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v0.1.0/linea-blob-libs-v0.1.0.zip", "shnarf_calculator", libsZipDownloadOutputDir)
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.0.1/linea-blob-libs-v1.0.1.zip", "shnarf_calculator", libsZipDownloadOutputDir)
   }
 }
 

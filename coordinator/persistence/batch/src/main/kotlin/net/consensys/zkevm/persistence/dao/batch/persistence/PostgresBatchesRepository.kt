@@ -9,7 +9,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * WARNING: Existing mappings should not chane. Otherwise, can break production New One can be added
  * though.
  */
-public fun batchStatusToDbValue(status: Batch.Status): Int {
+fun batchStatusToDbValue(status: Batch.Status): Int {
   // using manual mapping to catch errors at compile time instead of runtime
   return when (status) {
     Batch.Status.Finalized -> 1

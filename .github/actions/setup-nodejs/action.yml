@@ -5,7 +5,7 @@ inputs:
   node-version:
     description: 'The version of node to use'
     required: true
-    default: '18.15.0'
+    default: '20.17.0'
   pnpm-version:
     description: 'The version of pnpm to use'
     required: true
