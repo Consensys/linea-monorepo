@@ -410,7 +410,7 @@ class CoordinatorConfigTest {
         baseFeeBlobCoefficient = 0.1,
 
         gasPriceUpperBound = 10_000_000_000u,
-        gasPriceLowerBound = 90_000_000u,
+        gasPriceLowerBound = 90_000_000u
       ),
       variableCostPricing = VariableCostPricing(
         gasPriceFixedCost = 3000000u,
@@ -426,10 +426,10 @@ class CoordinatorConfigTest {
         ),
         besuGasPriceUpdateRecipients = listOf(
           URI("http://sequencer:8545/").toURL()
-        ),
+        )
       ),
       extraDataPricingPropagation = ExtraDataPricingPropagation(
-        extraDataUpdateRecipient = URI("http://sequencer:8545/").toURL(),
+        extraDataUpdateRecipient = URI("http://sequencer:8545/").toURL()
       )
     )
 

@@ -381,7 +381,7 @@ data class NaiveGasPricing(
   val baseFeeBlobCoefficient: Double,
 
   val gasPriceUpperBound: ULong,
-  val gasPriceLowerBound: ULong,
+  val gasPriceLowerBound: ULong
 ) {
   init {
     require(gasPriceUpperBound >= gasPriceLowerBound) {
@@ -395,7 +395,7 @@ data class VariableCostPricing(
   val legacyFeesMultiplier: Double,
   val margin: Double,
   val variableCostUpperBound: ULong,
-  val variableCostLowerBound: ULong,
+  val variableCostLowerBound: ULong
 ) {
   init {
     require(variableCostUpperBound >= variableCostLowerBound) {
@@ -404,11 +404,11 @@ data class VariableCostPricing(
   }
 }
 
-data class JsonRpcPricingPropagation (
+data class JsonRpcPricingPropagation(
   override var disabled: Boolean = false,
   val gethGasPriceUpdateRecipients: List<URL>,
-  val besuGasPriceUpdateRecipients: List<URL>,
-): FeatureToggleable {
+  val besuGasPriceUpdateRecipients: List<URL>
+) : FeatureToggleable {
   init {
     require(disabled || (gethGasPriceUpdateRecipients.isNotEmpty() || besuGasPriceUpdateRecipients.isNotEmpty())) {
       "There is no point of enabling JSON RPC pricing propagation if there are no " +
@@ -417,10 +417,10 @@ data class JsonRpcPricingPropagation (
   }
 }
 
-data class ExtraDataPricingPropagation (
+data class ExtraDataPricingPropagation(
   override var disabled: Boolean = false,
-  val extraDataUpdateRecipient: URL,
-): FeatureToggleable
+  val extraDataUpdateRecipient: URL
+) : FeatureToggleable
 
 data class L2NetworkGasPricing(
   override var disabled: Boolean = false,
@@ -437,7 +437,7 @@ data class L2NetworkGasPricing(
   val naiveGasPricing: NaiveGasPricing,
   val variableCostPricing: VariableCostPricing,
   val jsonRpcPricingPropagation: JsonRpcPricingPropagation,
-  val extraDataPricingPropagation: ExtraDataPricingPropagation,
+  val extraDataPricingPropagation: ExtraDataPricingPropagation
 ) : FeatureToggleable, RequestRetryConfigurable {
   init {
     require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }
