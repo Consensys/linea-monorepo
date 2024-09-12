@@ -1,7 +1,6 @@
 package net.consensys.linea.transactionexclusion
 
 import kotlinx.datetime.Instant
-import net.consensys.linea.RejectedTransaction
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface RejectedTransactionsRepository {

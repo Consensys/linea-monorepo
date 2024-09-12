@@ -1,7 +1,6 @@
 package net.consensys.linea.transactionexclusion
 
 import com.github.michaelbull.result.Result
-import net.consensys.linea.RejectedTransaction
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface TransactionExclusionServiceV1 {

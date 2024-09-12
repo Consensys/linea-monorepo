@@ -2,9 +2,6 @@ package net.consensys.linea.transactionexclusion
 
 import kotlinx.datetime.Instant
 import net.consensys.decodeHex
-import net.consensys.linea.ModuleOverflow
-import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.TransactionInfo
 
 internal val defaultRejectedTransaction = RejectedTransaction(
   txRejectionStage = RejectedTransaction.Stage.SEQUENCER,

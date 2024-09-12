@@ -3,9 +3,9 @@ package net.consensys.linea.transactionexclusion.app.api
 import kotlinx.datetime.Instant
 import net.consensys.assertIs32Bytes
 import net.consensys.decodeHex
-import net.consensys.linea.ModuleOverflow
-import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.TransactionInfo
+import net.consensys.linea.transactionexclusion.ModuleOverflow
+import net.consensys.linea.transactionexclusion.RejectedTransaction
+import net.consensys.linea.transactionexclusion.TransactionInfo
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import java.time.format.DateTimeFormatter

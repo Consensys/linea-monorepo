@@ -3,7 +3,9 @@ plugins {
 }
 
 dependencies {
-  api project(':jvm-libs:core:domain-models')
-  api "io.vertx:vertx-core"
-  implementation "org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}"
+  implementation project(":jvm-libs:kotlin-extensions")
+  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
+  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}"
 }

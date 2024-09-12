@@ -46,7 +46,6 @@ include 'coordinator:persistence:blob'
 include 'coordinator:persistence:aggregation'
 include 'coordinator:persistence:batch'
 include 'coordinator:persistence:feehistory'
-include 'coordinator:persistence:rejectedtransaction'
 include 'coordinator:ethereum:gas-pricing'
 include 'coordinator:ethereum:gas-pricing:static-cap'
 include 'coordinator:ethereum:gas-pricing:dynamic-cap'
@@ -59,3 +58,4 @@ include 'traces-api-facade:conflation'
 include 'transaction-decoder-tool'
 include('transaction-exclusion-api:app')
 include('transaction-exclusion-api:core')
+include('transaction-exclusion-api:persistence:rejectedtransaction')

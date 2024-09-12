@@ -4,9 +4,9 @@ import io.vertx.core.json.JsonObject
 import kotlinx.datetime.Instant
 import net.consensys.decodeHex
 import net.consensys.encodeHex
-import net.consensys.linea.ModuleOverflow
-import net.consensys.linea.RejectedTransaction
-import net.consensys.linea.TransactionInfo
+import net.consensys.linea.transactionexclusion.ModuleOverflow
+import net.consensys.linea.transactionexclusion.RejectedTransaction
+import net.consensys.linea.transactionexclusion.TransactionInfo
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
