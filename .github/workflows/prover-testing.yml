@@ -2,11 +2,11 @@ name: Prover testing CI
 
 on:
   workflow_call:
-#    secrets:
-#      SLACK_WEBHOOK_CI_PROVER_FAIL:
-#        required: false
-#      SLACK_WEBHOOK_CI_PROVER_SUCCESS:
-#        required: false
+    secrets:
+      SLACK_WEBHOOK_CI_PROVER_FAIL:
+        required: true
+      SLACK_WEBHOOK_CI_PROVER_SUCCESS:
+        required: true
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -90,49 +90,49 @@ jobs:
       run: |
           go test -p=1 -tags=nocorset,fuzzlight -timeout=30m -short -race  ./...
 
-#  slack-workflow-status-failed:
-#    if: failure()
-#    name: Prover notify slack
-#    needs:
-#      - staticcheck
-#      - test
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Notify slack -- workflow failed
-#        id: slack
-#        uses: slackapi/slack-github-action@v1.23.0
-#        with:
-#          payload: |
-#            {
-#              "actor": "${{ github.actor }}",
-#              "repo": "${{ github.repository }}",
-#              "status": "FAIL",
-#              "title": "${{ github.event.pull_request.title }}",
-#              "pr": "${{ github.event.pull_request.head.ref }}"
-#            }
-#        env:
-#          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_FAIL }}
-#
-#  slack-workflow-status-success:
-#    if: success()
-#    name: Prover notify slack
-#    needs:
-#      - staticcheck
-#      - test
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Notify slack -- workflow succeeded
-#        id: slack
-#        uses: slackapi/slack-github-action@v1.23.0
-#        with:
-#          payload: |
-#            {
-#              "actor": "${{ github.actor }}",
-#              "repo": "${{ github.repository }}",
-#              "status": "SUCCESS",
-#              "title": "${{ github.event.pull_request.title }}",
-#              "pr": "${{ github.event.pull_request.head.ref }}"
-#            }
-#        env:
-#          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_SUCCESS }}
+  slack-workflow-status-failed:
+    if: failure()
+    name: Prover notify slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow failed
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "FAIL",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_FAIL }}
+
+  slack-workflow-status-success:
+    if: success()
+    name: Prover notify slack
+    needs:
+      - staticcheck
+      - test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify slack -- workflow succeeded
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "actor": "${{ github.actor }}",
+              "repo": "${{ github.repository }}",
+              "status": "SUCCESS",
+              "title": "${{ github.event.pull_request.title }}",
+              "pr": "${{ github.event.pull_request.head.ref }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_CI_PROVER_SUCCESS }}
 
