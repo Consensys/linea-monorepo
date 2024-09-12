@@ -79,7 +79,7 @@ export default function FaqPage() {
           </p>
         </Collapse>
 
-        <Collapse title="I can't see the token I want to bridge">
+        <Collapse title="Why can't I see the token I want to bridge?">
           <p>
             The tokens available to select on the Linea Bridge are sourced from a curated list defined{" "}
             <Link
@@ -106,7 +106,7 @@ export default function FaqPage() {
           </p>
         </Collapse>
 
-        <Collapse title="I can't see my bridged tokens in my wallet">
+        <Collapse title="Why can't I see my bridged tokens in my wallet?">
           <p>
             First, check whether your funds are ready to claim. To see claimable funds, go to the “Transactions” tab of
             the Linea Bridge app.
@@ -159,12 +159,12 @@ export default function FaqPage() {
           </p>
         </Collapse>
 
-        <Collapse title="How long does the bridge take?">
+        <Collapse title="How long does the bridging take?">
           <p>This depends on the direction of your bridge:</p>
           <ul className="list-disc p-4">
             <li>Deposit (L1 -&gt; L2): Approximately 20 minutes.</li>
             <li>
-              Withdrawal (L2 -&gt; L1): Between 8 and 32 hours. The transaction must be finalized on Ethereum Mainnet
+              Withdrawal (L2 -&gt; L1): Between 8 and 32 hours. The L2 transaction must be finalized on Ethereum Mainnet
               before you can claim your funds.
             </li>
           </ul>
