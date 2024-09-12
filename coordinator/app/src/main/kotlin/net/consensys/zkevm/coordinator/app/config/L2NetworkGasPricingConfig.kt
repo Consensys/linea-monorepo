@@ -7,27 +7,48 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasPriceUpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAverageFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1CalculatorImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
-import net.consensys.toKWeiUInt
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import java.net.URL
 import java.time.Duration
 import kotlin.time.toKotlinDuration
 
-data class NaiveGasPricingTomlDto(
-  val baseFeeCoefficient: Double,
-  val priorityFeeCoefficient: Double,
-  val baseFeeBlobCoefficient: Double,
+data class SampleTransactionGasPricingTomlDto(
+  val plainTransferCostMultiplier: Double = 1.0,
+  val compressedTxSize: Int = 125,
+  val expectedGas: Int = 21000
+)
 
+data class LegacyGasPricingTomlDto(
+  val type: Type,
+
+  val naiveGasPricing: NaiveGasPricingTomlDto?,
+  val sampleTransactionGasPricing: SampleTransactionGasPricingTomlDto = SampleTransactionGasPricingTomlDto(),
   val gasPriceUpperBound: ULong,
   val gasPriceLowerBound: ULong
 ) {
+  enum class Type {
+    Naive,
+    SampleTransaction
+  }
+
   init {
+    if (type == Type.Naive && naiveGasPricing == null) {
+      throw IllegalStateException("LegacyGasPricing $type configuration is null.")
+    }
+
     require(gasPriceUpperBound >= gasPriceLowerBound) {
       "gasPriceUpperBound must be greater than or equal to gasPriceLowerBound"
     }
   }
 }
+
+data class NaiveGasPricingTomlDto(
+  val baseFeeCoefficient: Double,
+  val priorityFeeCoefficient: Double,
+  val baseFeeBlobCoefficient: Double
+)
 
 data class VariableCostPricingTomlDto(
   val gasPriceFixedCost: ULong,
@@ -73,7 +94,7 @@ data class L2NetworkGasPricingTomlDto(
   @ConfigAlias("bytesPerDataSubmission") val _bytesPerDataSubmission: Int?,
   val l1BlobGas: Int,
 
-  val naiveGasPricing: NaiveGasPricingTomlDto,
+  val legacy: LegacyGasPricingTomlDto,
   val variableCostPricing: VariableCostPricingTomlDto,
   val jsonRpcPricingPropagation: JsonRpcPricingPropagationTomlDto,
   val extraDataPricingPropagation: ExtraDataPricingPropagationTomlDto
@@ -90,24 +111,49 @@ data class L2NetworkGasPricingTomlDto(
   private val bytesPerDataSubmission = _bytesPerDataSubmission ?: l1BlobGas
 
   fun reified(): L2NetworkGasPricingService.Config {
+    val legacyGasPricingConfig = when (legacy.type) {
+      LegacyGasPricingTomlDto.Type.Naive -> {
+        L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
+          transactionCostCalculatorConfig = null,
+          naiveGasPricingCalculatorConfig = GasUsageRatioWeightedAverageFeesCalculator.Config(
+            baseFeeCoefficient = legacy.naiveGasPricing!!.baseFeeCoefficient,
+            priorityFeeCoefficient = legacy.naiveGasPricing.priorityFeeCoefficient,
+            baseFeeBlobCoefficient = legacy.naiveGasPricing.baseFeeBlobCoefficient,
+            blobSubmissionExpectedExecutionGas = blobSubmissionExpectedExecutionGas,
+            expectedBlobGas = l1BlobGas
+          ),
+          legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
+            legacy.gasPriceUpperBound.toDouble(),
+            legacy.gasPriceLowerBound.toDouble(),
+            0.0
+          )
+        )
+      }
+
+      LegacyGasPricingTomlDto.Type.SampleTransaction -> {
+        L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
+          transactionCostCalculatorConfig = TransactionCostCalculator.Config(
+            sampleTransactionCostMultiplier = legacy.sampleTransactionGasPricing.plainTransferCostMultiplier,
+            fixedCostWei = variableCostPricing.gasPriceFixedCost,
+            compressedTxSize = legacy.sampleTransactionGasPricing.compressedTxSize,
+            expectedGas = legacy.sampleTransactionGasPricing.expectedGas
+          ),
+          naiveGasPricingCalculatorConfig = null,
+          legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
+            legacy.gasPriceUpperBound.toDouble(),
+            legacy.gasPriceLowerBound.toDouble(),
+            0.0
+          )
+        )
+      }
+    }
     return L2NetworkGasPricingService.Config(
       feeHistoryFetcherConfig = FeeHistoryFetcherImpl.Config(
         feeHistoryBlockCount = feeHistoryBlockCount.toUInt(),
         feeHistoryRewardPercentile = feeHistoryRewardPercentile
       ),
       jsonRpcPricingPropagationEnabled = jsonRpcPricingPropagation.enabled,
-      naiveGasPricingCalculatorConfig = GasUsageRatioWeightedAverageFeesCalculator.Config(
-        baseFeeCoefficient = naiveGasPricing.baseFeeCoefficient,
-        priorityFeeCoefficient = naiveGasPricing.priorityFeeCoefficient,
-        baseFeeBlobCoefficient = naiveGasPricing.baseFeeBlobCoefficient,
-        blobSubmissionExpectedExecutionGas = blobSubmissionExpectedExecutionGas,
-        expectedBlobGas = l1BlobGas
-      ),
-      naiveGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
-        naiveGasPricing.gasPriceUpperBound.toDouble(),
-        naiveGasPricing.gasPriceLowerBound.toDouble(),
-        0.0
-      ),
+      legacy = legacyGasPricingConfig,
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = jsonRpcPricingPropagation.gethGasPriceUpdateRecipients,
         besuEndPoints = jsonRpcPricingPropagation.besuGasPriceUpdateRecipients,

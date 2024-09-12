@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 import kotlin.math.abs
 
 class TransactionCostCalculatorTest {
-  private val config = TransactionCostCalculator.Config(1.0, 30000000)
+  private val config = TransactionCostCalculator.Config(1.0, 30000000U)
   private val oldCalculatorConfig = GasUsageRatioWeightedAverageFeesCalculator.Config(
     // We may want to price L2 gas cheaper than L1 gas
     baseFeeCoefficient = 0.02,

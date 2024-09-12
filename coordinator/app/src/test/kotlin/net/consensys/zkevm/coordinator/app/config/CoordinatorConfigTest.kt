@@ -9,8 +9,8 @@ import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasPriceUpdaterImpl
-import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAverageFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1CalculatorImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.traces.TracesCountersV1
@@ -420,17 +420,19 @@ class CoordinatorConfigTest {
         feeHistoryRewardPercentile = 15.0
       ),
       jsonRpcPricingPropagationEnabled = true,
-      naiveGasPricingCalculatorConfig = GasUsageRatioWeightedAverageFeesCalculator.Config(
-        baseFeeCoefficient = 0.1,
-        priorityFeeCoefficient = 1.0,
-        baseFeeBlobCoefficient = 0.1,
-        blobSubmissionExpectedExecutionGas = 213_000,
-        expectedBlobGas = 131072
-      ),
-      naiveGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
-        10_000_000_000.0,
-        90_000_000.0,
-        0.0
+      legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
+        legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
+          10_000_000_000.0,
+          90_000_000.0,
+          0.0
+        ),
+        transactionCostCalculatorConfig = TransactionCostCalculator.Config(
+          sampleTransactionCostMultiplier = 1.0,
+          fixedCostWei = 3000000u,
+          compressedTxSize = 125,
+          expectedGas = 21000
+        ),
+        naiveGasPricingCalculatorConfig = null
       ),
       jsonRpcGasPriceUpdaterConfig = GasPriceUpdaterImpl.Config(
         gethEndpoints = listOf(
@@ -440,7 +442,7 @@ class CoordinatorConfigTest {
         besuEndPoints = listOf(
           URI("http://sequencer:8545/").toURL()
         ),
-        retryConfig = l2NetworkGasPricingRequestRetryConfig,
+        retryConfig = l2NetworkGasPricingRequestRetryConfig
       ),
       jsonRpcPriceUpdateInterval = 12.seconds,
       extraDataPricingPropagationEnabled = true,

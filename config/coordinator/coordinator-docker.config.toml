@@ -234,13 +234,11 @@ variable-cost-lower-bound = 90000001  # ~0.09 GWEI
 [l2-network-gas-pricing.extra-data-pricing-propagation]
 extra-data-update-recipient = "http://sequencer:8545/"
 
-[l2-network-gas-pricing.naive-gas-pricing]
-base-fee-coefficient = 0.1
-priority-fee-coefficient = 1.0
-base-fee-blob-coefficient = 0.1
-
+[l2-network-gas-pricing.legacy]
+type="SampleTransaction"
 gas-price-upper-bound = 10000000000 # 10 GWEI
 gas-price-lower-bound = 90000000 # 0.09 GWEI
+
 
 [l2-network-gas-pricing.json-rpc-pricing-propagation]
 geth-gas-price-update-recipients = [

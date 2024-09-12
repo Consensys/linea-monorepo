@@ -15,8 +15,8 @@ class TransactionCostCalculator(
   private val config: Config
 ) : FeesCalculator {
   data class Config(
-    val plainTransferCostMultiplier: Double,
-    val fixedCostWei: Int,
+    val sampleTransactionCostMultiplier: Double,
+    val fixedCostWei: ULong,
     val compressedTxSize: Int = 125,
     val expectedGas: Int = 21000
   )
@@ -26,7 +26,7 @@ class TransactionCostCalculator(
   override fun calculateFees(feeHistory: FeeHistory): Double {
     val dataCostCost = dataCostCalculator.calculateFees(feeHistory)
     log.trace("Data cost: $dataCostCost")
-    return config.plainTransferCostMultiplier *
-      (dataCostCost * config.compressedTxSize / config.expectedGas + config.fixedCostWei)
+    return config.sampleTransactionCostMultiplier *
+      ((dataCostCost * config.compressedTxSize / config.expectedGas) + config.fixedCostWei.toDouble())
   }
 }

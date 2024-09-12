@@ -12,6 +12,7 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.GasPriceUpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAverageFeesCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinMineableFeesPricerService
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1CalculatorImpl
+import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.web3j.Web3jBlobExtended
@@ -29,11 +30,16 @@ class L2NetworkGasPricingService(
   l1Web3jService: Web3jBlobExtended,
   config: Config
 ) : LongRunningService {
+  data class LegacyGasPricingCalculatorConfig(
+    val transactionCostCalculatorConfig: TransactionCostCalculator.Config?,
+    val naiveGasPricingCalculatorConfig: GasUsageRatioWeightedAverageFeesCalculator.Config?,
+    val legacyGasPricingCalculatorBounds: BoundableFeeCalculator.Config
+  )
+
   data class Config(
     val feeHistoryFetcherConfig: FeeHistoryFetcherImpl.Config,
     val jsonRpcPricingPropagationEnabled: Boolean,
-    val naiveGasPricingCalculatorConfig: GasUsageRatioWeightedAverageFeesCalculator.Config,
-    val naiveGasPricingCalculatorBounds: BoundableFeeCalculator.Config,
+    val legacy: LegacyGasPricingCalculatorConfig,
     val jsonRpcGasPriceUpdaterConfig: GasPriceUpdaterImpl.Config,
     val jsonRpcPriceUpdateInterval: Duration,
     val extraDataPricingPropagationEnabled: Boolean,
@@ -51,13 +57,17 @@ class L2NetworkGasPricingService(
     config.feeHistoryFetcherConfig
   )
 
-  private val naiveGasPricingCalculator: FeesCalculator = run {
-    val gasUsageRatioWeightedAverageFeesCalculator = GasUsageRatioWeightedAverageFeesCalculator(
-      config.naiveGasPricingCalculatorConfig
-    )
+  private val legacyGasPricingCalculator: FeesCalculator = run {
+    val baseCalculator = if (config.legacy.transactionCostCalculatorConfig != null) {
+      TransactionCostCalculator(variableCostCalculator, config.legacy.transactionCostCalculatorConfig)
+    } else {
+      GasUsageRatioWeightedAverageFeesCalculator(
+        config.legacy.naiveGasPricingCalculatorConfig!!
+      )
+    }
     BoundableFeeCalculator(
-      config.naiveGasPricingCalculatorBounds,
-      gasUsageRatioWeightedAverageFeesCalculator
+      config.legacy.legacyGasPricingCalculatorBounds,
+      baseCalculator
     )
   }
 
@@ -72,17 +82,19 @@ class L2NetworkGasPricingService(
         pollingInterval = config.jsonRpcPriceUpdateInterval,
         vertx = vertx,
         feesFetcher = gasPricingFeesFetcher,
-        feesCalculator = naiveGasPricingCalculator,
+        feesCalculator = legacyGasPricingCalculator,
         gasPriceUpdater = l2SetGasPriceUpdater
       )
     } else {
       null
     }
 
+  private val variableCostCalculator = VariableFeesCalculator(
+    config.variableFeesCalculatorConfig
+  )
+
   private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
-    val variableCostCalculator = VariableFeesCalculator(
-      config.variableFeesCalculatorConfig
-    )
+
     val boundedVariableCostCalculator = BoundableFeeCalculator(
       config = config.variableFeesCalculatorBounds,
       feesCalculator = variableCostCalculator
@@ -94,7 +106,7 @@ class L2NetworkGasPricingService(
       minerExtraDataCalculatorImpl = MinerExtraDataV1CalculatorImpl(
         config = config.extraDataCalculatorConfig,
         variableFeesCalculator = boundedVariableCostCalculator,
-        legacyFeesCalculator = naiveGasPricingCalculator
+        legacyFeesCalculator = legacyGasPricingCalculator
       ),
       extraDataUpdater = ExtraDataV1UpdaterImpl(
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
