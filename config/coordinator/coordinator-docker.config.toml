@@ -239,7 +239,6 @@ type="SampleTransaction"
 gas-price-upper-bound = 10000000000 # 10 GWEI
 gas-price-lower-bound = 90000000 # 0.09 GWEI
 
-
 [l2-network-gas-pricing.json-rpc-pricing-propagation]
 geth-gas-price-update-recipients = [
   "http://traces-node:8545/",

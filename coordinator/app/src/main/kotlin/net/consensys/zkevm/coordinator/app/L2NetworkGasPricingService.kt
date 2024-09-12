@@ -94,7 +94,6 @@ class L2NetworkGasPricingService(
   )
 
   private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
-
     val boundedVariableCostCalculator = BoundableFeeCalculator(
       config = config.variableFeesCalculatorBounds,
       feesCalculator = variableCostCalculator
