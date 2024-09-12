@@ -272,9 +272,9 @@ class L2NetworkGasPricingConfigTest {
         extraDataPricingPropagationEnabled = true,
         extraDataUpdateInterval = 12.seconds,
         variableFeesCalculatorConfig = VariableFeesCalculator.Config(
-          blobSubmissionExpectedExecutionGas = 213_000,
-          bytesPerDataSubmission = 131072,
-          expectedBlobGas = 131072,
+          blobSubmissionExpectedExecutionGas = 213_000u,
+          bytesPerDataSubmission = 131072u,
+          expectedBlobGas = 131072u,
           margin = 4.0
         ),
         variableFeesCalculatorBounds = BoundableFeeCalculator.Config(
@@ -339,9 +339,9 @@ class L2NetworkGasPricingConfigTest {
         extraDataPricingPropagationEnabled = true,
         extraDataUpdateInterval = 12.seconds,
         variableFeesCalculatorConfig = VariableFeesCalculator.Config(
-          blobSubmissionExpectedExecutionGas = 213_000,
-          bytesPerDataSubmission = 131072,
-          expectedBlobGas = 131072,
+          blobSubmissionExpectedExecutionGas = 213_000u,
+          bytesPerDataSubmission = 131072u,
+          expectedBlobGas = 131072u,
           margin = 4.0
         ),
         variableFeesCalculatorBounds = BoundableFeeCalculator.Config(

@@ -11,9 +11,9 @@ class VariableFeesCalculatorTest {
 
   private val config = VariableFeesCalculator.Config(
     margin = 1.1,
-    bytesPerDataSubmission = 200_000,
-    blobSubmissionExpectedExecutionGas = 120_000,
-    expectedBlobGas = 131_000
+    bytesPerDataSubmission = 200_000u,
+    blobSubmissionExpectedExecutionGas = 120_000u,
+    expectedBlobGas = 131_000u
   )
 
   @Test

@@ -19,9 +19,9 @@ class TransactionCostCalculatorTest {
 
   private val variableFeesCalculatorConfig = VariableFeesCalculator.Config(
     margin = 1.2,
-    bytesPerDataSubmission = 131_000,
-    blobSubmissionExpectedExecutionGas = 69000,
-    expectedBlobGas = 131_000
+    bytesPerDataSubmission = 131_000u,
+    blobSubmissionExpectedExecutionGas = 69000u,
+    expectedBlobGas = 131_000u
   )
   private val variableFeesCalculator = VariableFeesCalculator(variableFeesCalculatorConfig)
   private val transactionCostCalculator = TransactionCostCalculator(variableFeesCalculator, config)

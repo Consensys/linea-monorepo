@@ -101,6 +101,8 @@ data class L2NetworkGasPricingTomlDto(
 ) : FeatureToggleable, RequestRetryConfigurable {
   init {
     require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }
+    require(blobSubmissionExpectedExecutionGas > 0) { "blobSubmissionExpectedExecutionGas must be greater than 0" }
+    require(l1BlobGas > 0) { "l1BlobGas must be greater than 0" }
 
     require(disabled || (jsonRpcPricingPropagation.enabled || extraDataPricingPropagation.enabled)) {
       "There is no point of enabling L2 network gas pricing if " +
@@ -163,9 +165,9 @@ data class L2NetworkGasPricingTomlDto(
       extraDataPricingPropagationEnabled = extraDataPricingPropagation.enabled,
       extraDataUpdateInterval = priceUpdateInterval.toKotlinDuration(),
       variableFeesCalculatorConfig = VariableFeesCalculator.Config(
-        blobSubmissionExpectedExecutionGas = blobSubmissionExpectedExecutionGas,
-        bytesPerDataSubmission = l1BlobGas,
-        expectedBlobGas = bytesPerDataSubmission,
+        blobSubmissionExpectedExecutionGas = blobSubmissionExpectedExecutionGas.toUInt(),
+        bytesPerDataSubmission = l1BlobGas.toUInt(),
+        expectedBlobGas = bytesPerDataSubmission.toUInt(),
         margin = variableCostPricing.margin
       ),
       variableFeesCalculatorBounds = BoundableFeeCalculator.Config(

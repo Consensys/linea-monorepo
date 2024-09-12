@@ -422,9 +422,9 @@ class CoordinatorConfigTest {
       jsonRpcPricingPropagationEnabled = true,
       legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
         legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
-          10_000_000_000.0,
-          90_000_000.0,
-          0.0
+          feeUpperBound = 10_000_000_000.0,
+          feeLowerBound = 90_000_000.0,
+          feeMargin = 0.0
         ),
         transactionCostCalculatorConfig = TransactionCostCalculator.Config(
           sampleTransactionCostMultiplier = 1.0,
@@ -448,9 +448,9 @@ class CoordinatorConfigTest {
       extraDataPricingPropagationEnabled = true,
       extraDataUpdateInterval = 12.seconds,
       variableFeesCalculatorConfig = VariableFeesCalculator.Config(
-        blobSubmissionExpectedExecutionGas = 213_000,
-        bytesPerDataSubmission = 131072,
-        expectedBlobGas = 131072,
+        blobSubmissionExpectedExecutionGas = 213_000u,
+        bytesPerDataSubmission = 131072u,
+        expectedBlobGas = 131072u,
         margin = 4.0
       ),
       variableFeesCalculatorBounds = BoundableFeeCalculator.Config(
