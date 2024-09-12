@@ -85,21 +85,21 @@ dependencyManagement {
       entry 'logback-classic'
     }
 
-    dependency 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
-    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.16.1'
-    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.16.1'
+    dependency 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+    dependency 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.2'
+    dependency 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.2'
 
     dependency 'com.google.auto.service:auto-service:1.1.1'
 
-    dependency 'com.google.guava:guava:33.0.0-jre'
+    dependency 'com.google.guava:guava:33.3.0-jre'
 
-    dependency 'commons-io:commons-io:2.15.1'
+    dependency 'commons-io:commons-io:2.16.1'
 
     dependency 'com.slack.api:slack-api-client:1.32.1'
 
     dependency 'com.splunk.logging:splunk-library-javalogging:1.11.8'
 
-    dependencySet(group: 'info.picocli', version: '4.7.5') {
+    dependencySet(group: 'info.picocli', version: '4.7.6') {
       entry 'picocli'
       entry 'picocli-codegen'
     }
@@ -111,15 +111,15 @@ dependencyManagement {
       entry 'tuweni-units'
     }
 
-    dependency 'io.vertx:vertx-core:4.5.8'
+    dependency 'io.vertx:vertx-core:4.5.9'
 
     dependency 'junit:junit:4.13.2'
 
     dependency 'net.java.dev.jna:jna:5.14.0'
 
-    dependency 'org.assertj:assertj-core:3.25.1'
+    dependency 'org.assertj:assertj-core:3.26.3'
 
-    dependency 'org.apache.commons:commons-lang3:3.14.0'
+    dependency 'org.apache.commons:commons-lang3:3.17.0'
 
     dependencySet(group: 'org.apache.logging.log4j', version: '2.23.1') {
       entry 'log4j-api'
@@ -127,9 +127,9 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
-    dependency 'org.awaitility:awaitility:4.2.0'
+    dependency 'org.awaitility:awaitility:4.2.2'
 
-    dependencySet(group: 'org.bouncycastle', version: '1.77') {
+    dependencySet(group: 'org.bouncycastle', version: '1.78.1') {
       entry 'bcpkix-jdk18on'
       entry 'bcprov-jdk18on'
       entry 'jcajce'
@@ -137,21 +137,21 @@ dependencyManagement {
 
     dependency 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
 
-    dependencySet(group: 'org.junit.jupiter', version: '5.10.2') {
+    dependencySet(group: 'org.junit.jupiter', version: '5.11.0') {
       entry 'junit-jupiter-api'
       entry 'junit-jupiter-engine'
       entry 'junit-jupiter-params'
     }
-    dependency 'org.junit.vintage:junit-vintage-engine:5.10.2'
+    dependency 'org.junit.vintage:junit-vintage-engine:5.11.0'
 
-    dependencySet(group: 'org.mockito', version: '5.8.0') {
+    dependencySet(group: 'org.mockito', version: '5.13.0') {
       entry 'mockito-core'
       entry 'mockito-junit-jupiter'
     }
 
-    dependency 'org.slf4j:slf4j-api:2.0.10'
+    dependency 'org.slf4j:slf4j-api:2.0.16'
 
-    dependencySet(group: 'org.web3j', version: '4.12.0') {
+    dependencySet(group: 'org.web3j', version: '4.12.1') {
       entry 'abi'
       entry 'besu'
       entry 'core'

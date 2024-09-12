@@ -17,24 +17,35 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import com.google.common.base.Stopwatch;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 class TestTransactionEvaluationContext implements TransactionEvaluationContext<PendingTransaction> {
+  private ProcessableBlockHeader processableBlockHeader;
   private PendingTransaction pendingTransaction;
   private Wei transactionGasPrice;
   private Wei minGasPrice;
 
   public TestTransactionEvaluationContext(
+      final ProcessableBlockHeader processableBlockHeader,
       final PendingTransaction pendingTransaction,
       final Wei transactionGasPrice,
       final Wei minGasPrice) {
+    this.processableBlockHeader = processableBlockHeader;
     this.pendingTransaction = pendingTransaction;
     this.transactionGasPrice = transactionGasPrice;
     this.minGasPrice = minGasPrice;
   }
 
-  public TestTransactionEvaluationContext(final PendingTransaction pendingTransaction) {
-    this(pendingTransaction, Wei.ONE, Wei.ONE);
+  public TestTransactionEvaluationContext(
+      final ProcessableBlockHeader processableBlockHeader,
+      final PendingTransaction pendingTransaction) {
+    this(processableBlockHeader, pendingTransaction, Wei.ONE, Wei.ONE);
+  }
+
+  @Override
+  public ProcessableBlockHeader getPendingBlockHeader() {
+    return processableBlockHeader;
   }
 
   @Override

@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
@@ -104,7 +105,8 @@ public class MaxBlockGasTransactionSelectorTest {
     PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     Transaction transaction = mock(Transaction.class);
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
-    return new TestTransactionEvaluationContext(pendingTransaction);
+    return new TestTransactionEvaluationContext(
+        mock(ProcessableBlockHeader.class), pendingTransaction);
   }
 
   private TransactionProcessingResult mockTransactionProcessingResult(long gasUsedByTransaction) {

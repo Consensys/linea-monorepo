@@ -38,6 +38,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
@@ -238,7 +239,8 @@ public class TraceLineLimitTransactionSelectorTest {
     when(transaction.getGasLimit()).thenReturn(gasLimit);
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(pendingTransaction.hasPriority()).thenReturn(hasPriority);
-    return new TestTransactionEvaluationContext(pendingTransaction, effectiveGasPrice, minGasPrice);
+    return new TestTransactionEvaluationContext(
+        mock(ProcessableBlockHeader.class), pendingTransaction, effectiveGasPrice, minGasPrice);
   }
 
   private class TestableTraceLineLimitTransactionSelector

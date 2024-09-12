@@ -35,6 +35,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -361,7 +362,8 @@ public class ProfitableTransactionSelectorTest {
     when(transaction.encoded()).thenReturn(Bytes.wrap(pseudoRandomBytes(size)));
     when(pendingTransaction.getTransaction()).thenReturn(transaction);
     when(pendingTransaction.hasPriority()).thenReturn(hasPriority);
-    return new TestTransactionEvaluationContext(pendingTransaction, effectiveGasPrice, minGasPrice);
+    return new TestTransactionEvaluationContext(
+        mock(ProcessableBlockHeader.class), pendingTransaction, effectiveGasPrice, minGasPrice);
   }
 
   private byte[] pseudoRandomBytes(int size) {
