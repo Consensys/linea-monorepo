@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
