@@ -15,6 +15,7 @@
 
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,6 +23,7 @@ import java.security.InvalidParameterException;
 
 import com.google.common.base.Stopwatch;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
@@ -41,6 +43,8 @@ import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 @RequiredArgsConstructor
 public class GenerateConflatedTracesV2 {
   private static final JsonConverter CONVERTER = JsonConverter.builder().build();
+  private static final String TRACE_FILE_EXTENSION = ".lt";
+  private static final String TRACE_TEMP_FILE_EXTENSION = ".lt.tmp";
 
   private final BesuContext besuContext;
   private final Path tracesOutputPath;
@@ -109,14 +113,26 @@ public class GenerateConflatedTracesV2 {
                     "Unable to find trace service. Please ensure TraceService is registered."));
   }
 
+  @SneakyThrows(IOException.class)
   private String writeTraceToFile(
       final ZkTracer tracer, final TraceRequestParams traceRequestParams) {
-    final Path fileName = generateOutputFileName(traceRequestParams);
-    tracer.writeToFile(fileName);
-    return fileName.toAbsolutePath().toString();
+    // Generate the original and final trace file name.
+    final String origTraceFileName = generateOutputFileName(traceRequestParams);
+    // Generate and resolve the original and final trace file path.
+    final Path origTraceFilePath = generateOutputFilePath(origTraceFileName + TRACE_FILE_EXTENSION);
+
+    // Write the trace at the original and final trace file path, but with the suffix .tmp at the
+    // end of the file.
+    final Path tmpTraceFilePath =
+        tracer.writeToTmpFile(tracesOutputPath, origTraceFileName + ".", TRACE_TEMP_FILE_EXTENSION);
+    // After trace writing is complete, rename the file by removing the .tmp prefix, indicating
+    // the file is complete and should not be corrupted due to trace writing issues.
+    final Path finalizedTraceFilePath = Files.move(tmpTraceFilePath, origTraceFilePath);
+
+    return finalizedTraceFilePath.toAbsolutePath().toString();
   }
 
-  private Path generateOutputFileName(final TraceRequestParams traceRequestParams) {
+  private Path generateOutputFilePath(final String traceFileName) {
     if (!Files.isDirectory(tracesOutputPath) && !tracesOutputPath.toFile().mkdirs()) {
       throw new RuntimeException(
           String.format(
@@ -124,17 +140,14 @@ public class GenerateConflatedTracesV2 {
               tracesOutputPath.toAbsolutePath()));
     }
 
-    return tracesOutputPath.resolve(
-        Paths.get(
-            String.format(
-                "%s-%s.conflated.%s.%s",
-                traceRequestParams.startBlockNumber(),
-                traceRequestParams.endBlockNumber(),
-                traceRequestParams.expectedTracesEngineVersion(),
-                getFileFormat())));
+    return tracesOutputPath.resolve(Paths.get(traceFileName));
   }
 
-  private String getFileFormat() {
-    return "lt";
+  private String generateOutputFileName(final TraceRequestParams traceRequestParams) {
+    return String.format(
+        "%s-%s.conflated.%s",
+        traceRequestParams.startBlockNumber(),
+        traceRequestParams.endBlockNumber(),
+        traceRequestParams.expectedTracesEngineVersion());
   }
 }
