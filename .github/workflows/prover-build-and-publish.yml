@@ -32,7 +32,7 @@ env:
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Prover build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}

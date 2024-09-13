@@ -29,7 +29,7 @@ on:
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Traces api facade build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
