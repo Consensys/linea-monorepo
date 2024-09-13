@@ -114,7 +114,7 @@ export default function FaqPage() {
           <p>
             If claiming isn&apos;t the issue, head to Lineascan and see if the transaction is pending, and in the queue:
           </p>
-          <ul className="list-disc p-4">
+          <ul className="list-disc pl-8">
             <li>
               <Link
                 href="https://lineascan.build/txsDeposits"
@@ -161,7 +161,7 @@ export default function FaqPage() {
 
         <Collapse title="How long does the bridging take?">
           <p>This depends on the direction of your bridge:</p>
-          <ul className="list-disc p-4">
+          <ul className="list-disc pl-8">
             <li>Deposit (L1 -&gt; L2): Approximately 20 minutes.</li>
             <li>
               Withdrawal (L2 -&gt; L1): Between 8 and 32 hours. The L2 transaction must be finalized on Ethereum Mainnet
