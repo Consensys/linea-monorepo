@@ -36,6 +36,11 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-submission-int-test")
   private val fakeClock = FakeFixedClock()
   private lateinit var lineaRollupContractForAggregationSubmission: LineaRollupSmartContractClient
