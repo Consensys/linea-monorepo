@@ -17,6 +17,10 @@ import org.junit.jupiter.api.extension.ExtendWith
 
 @ExtendWith(VertxExtension::class)
 class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../db/src/main/resources/db/"
+  }
 
   fun createFeeHistory(
     oldestBlockNumber: ULong,
