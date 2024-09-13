@@ -2,15 +2,15 @@ package ifaces
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // Accessor represents a function that can be used to retrieve a field element
-// value from a [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.VerifierRuntime].
+// value from a [github.com/consensys/linea-monorepo/prover/protocol/wizard.VerifierRuntime].
 // It also satisfies the the [symbolic.Metadata] interface so that it can be
 // used within arithmetic expression. A good use-case example is using the
-// evaluation point of a [github.com/consensys/zkevm-monorepo/prover/protocol/query.UnivariateEval]
+// evaluation point of a [github.com/consensys/linea-monorepo/prover/protocol/query.UnivariateEval]
 // as part of an arithmetic expression.
 type Accessor interface {
 	symbolic.Metadata

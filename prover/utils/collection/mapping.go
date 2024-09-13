@@ -3,7 +3,7 @@ package collection
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Mapping wraps a map and adds utility functions

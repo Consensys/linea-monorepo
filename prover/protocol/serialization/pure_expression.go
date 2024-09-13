@@ -5,8 +5,8 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // UnmarshalExprCBOR reads a [symbolic.Expression] from a CBOR-encoded reader.
