@@ -40,7 +40,7 @@ contract RewardsStreamer is ReentrancyGuard {
         UserInfo storage user = users[msg.sender];
         uint256 userRewards = calculateUserRewards(msg.sender);
         if (userRewards > 0) {
-            safeRewardTransfer(msg.sender, userRewards);
+            distributeRewards(msg.sender, userRewards);
         }
 
         bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
@@ -63,7 +63,7 @@ contract RewardsStreamer is ReentrancyGuard {
 
         uint256 userRewards = calculateUserRewards(msg.sender);
         if (userRewards > 0) {
-            safeRewardTransfer(msg.sender, userRewards);
+            distributeRewards(msg.sender, userRewards);
         }
 
         user.stakedBalance -= amount;
@@ -104,19 +104,23 @@ contract RewardsStreamer is ReentrancyGuard {
         return (user.stakedBalance * (rewardIndex - user.userRewardIndex)) / SCALE_FACTOR;
     }
 
-    function safeRewardTransfer(address to, uint256 amount) internal {
+    // send the rewards and updates accountedRewards
+    function distributeRewards(address to, uint256 amount) internal {
         uint256 rewardBalance = rewardToken.balanceOf(address(this));
         // If amount is higher than the contract's balance (for rounding error), transfer the balance.
         if (amount > rewardBalance) {
-            bool success = rewardToken.transfer(to, rewardBalance);
-            if (!success) {
-                revert StakingManager__TransferFailed();
-            }
-        } else {
-            bool success = rewardToken.transfer(to, amount);
-            if (!success) {
-                revert StakingManager__TransferFailed();
-            }
+            amount = rewardBalance;
         }
+
+        bool success = rewardToken.transfer(to, amount);
+        if (!success) {
+            revert StakingManager__TransferFailed();
+        }
+
+        accountedRewards -= amount;
+    }
+
+    function getUserInfo(address userAddress) public view returns (UserInfo memory) {
+        return users[userAddress];
     }
 }
