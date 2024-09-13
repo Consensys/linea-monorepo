@@ -3,6 +3,7 @@ package stitcher
 import (
 	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
@@ -59,7 +60,8 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 		switch q := q.(type) {
 		case query.LocalConstraint:
 			board = q.Board()
-			// detect if the expression is over the eligible columns.
+			// detect if the expression is eligible;
+			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
 			if !isExprEligible(ctx, board) {
 				continue
 			}
@@ -96,6 +98,15 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 // more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
 func getStitchingCol(ctx stitchingContext, col ifaces.Column) ifaces.Column {
 
+	switch m := col.(type) {
+	case verifiercol.VerifierCol:
+		scaling := ctx.MaxSize / col.Size()
+		return verifiercol.ExpandedVerifCol{
+			Verifiercol: m,
+			Expansion:   scaling,
+		}
+	}
+
 	// Extract the assumedly single col
 	natural := column.RootParents(col)[0]
 
@@ -116,7 +127,10 @@ func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
 	return ifaces.QueryIDf("%v_STITCHER", oldQ)
 }
 
-// it adjust the expression, that is among sub columns, by replacing the sub columns with their stitching columns.
+// it adjusts the expression, that is among sub columns, by replacing the sub columns with their stitching columns.
+// for the verfiercol instead of stitching, they are expanded to reach the proper size.
+// This is due to the fact that the verifiercols are not tracked by the compiler and can not be stitched
+// via [scanAndClassifyEligibleColumns].
 func (ctx *stitchingContext) adjustExpression(
 	expr *symbolic.Expression,
 	isGlobalConstraint bool,
