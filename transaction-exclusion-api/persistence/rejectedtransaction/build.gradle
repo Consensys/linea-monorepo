@@ -3,12 +3,12 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id "net.consensys.zkevm.kotlin-library-conventions"
-  id 'java-test-fixtures'
 }
 
 dependencies {
+  implementation "io.vertx:vertx-pg-client"
   implementation project(":transaction-exclusion-api:core")
-  implementation project(":coordinator:persistence:db")
+  implementation project(':jvm-libs:persistence:db')
   implementation project(":jvm-libs:kotlin-extensions")
   implementation project(":jvm-libs:future-extensions")
 
@@ -16,16 +16,9 @@ dependencies {
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
   testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
   testImplementation("io.vertx:vertx-junit5")
-
-  testFixturesImplementation('tech.pegasys.teku.internal:async:23.1.1')
-  testFixturesImplementation('org.apache.tuweni:tuweni-units:2.3.1')
-  testFixturesImplementation('com.michael-bull.kotlin-result:kotlin-result:1.1.16')
-  testFixturesImplementation('org.mockito.kotlin:mockito-kotlin:5.1.0')
-  testFixturesApi(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
-  testFixturesApi("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")
 }
 
 sourceSets {

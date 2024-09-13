@@ -13,7 +13,7 @@ dependencies {
   implementation project(':jvm-libs:vertx-helper')
   implementation project(':jvm-libs:core:long-running-service')
   implementation project(':jvm-libs:core:metrics')
-  implementation project(':coordinator:persistence:db')
+  implementation project(':jvm-libs:persistence:db')
 
   implementation "com.github.ben-manes.caffeine:caffeine:${libs.versions.caffeine.get()}"
   implementation "io.vertx:vertx-core"

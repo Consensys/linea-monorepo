@@ -46,7 +46,7 @@ object DbQueries {
       (created_epoch_milli, start_block_number, end_block_number,
       conflation_calculator_version, blob_hash, status, start_block_timestamp, end_block_timestamp,
       batches_count, expected_shnarf, blob_compression_proof)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CAST($11::text as jsonb))
     """.trimIndent()
 
   val insertBatchQueryV1 =

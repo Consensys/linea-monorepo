@@ -6,14 +6,17 @@ plugins {
 }
 
 dependencies {
-  implementation(project(":coordinator:persistence:db"))
+  implementation(project(":jvm-libs:persistence:db"))
+  implementation(project(":jvm-libs:kotlin-extensions"))
+  implementation project(":jvm-libs:future-extensions")
+  implementation(project(":jvm-libs:core:domain-models"))
   implementation(project(":coordinator:ethereum:gas-pricing:dynamic-cap"))
 
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
-  testImplementation(testFixtures(project(":coordinator:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))
   testImplementation("io.vertx:vertx-junit5")
 }

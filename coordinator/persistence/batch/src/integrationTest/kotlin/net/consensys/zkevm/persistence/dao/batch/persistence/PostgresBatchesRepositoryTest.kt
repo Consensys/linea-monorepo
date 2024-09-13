@@ -23,6 +23,11 @@ import kotlin.time.Duration.Companion.seconds
 
 @ExtendWith(VertxExtension::class)
 class PostgresBatchesRepositoryTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
+  }
+
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-batches-repository")
 

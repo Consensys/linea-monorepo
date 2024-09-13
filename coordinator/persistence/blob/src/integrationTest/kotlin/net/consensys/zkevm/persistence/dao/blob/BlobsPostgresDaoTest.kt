@@ -32,6 +32,11 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-blobs-dao")
   private val maxBlobsToReturn = 6u
   private fun blobsContentQuery(): PreparedQuery<RowSet<Row>> =

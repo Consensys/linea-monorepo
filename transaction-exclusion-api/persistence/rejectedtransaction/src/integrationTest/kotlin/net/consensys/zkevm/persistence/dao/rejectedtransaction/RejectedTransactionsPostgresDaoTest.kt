@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.seconds
 class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
   init {
     target = "1"
-    migrationLocations = "filesystem:../../../config/transaction-exclusion-api/db/migration/"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-rejectedtxns-dao")
