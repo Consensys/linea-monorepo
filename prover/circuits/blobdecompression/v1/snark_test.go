@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1/test_utils"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -18,8 +19,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/test"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

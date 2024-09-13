@@ -4,8 +4,8 @@ import (
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 

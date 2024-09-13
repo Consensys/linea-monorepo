@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // TestContext is used to hold the data needed for running tests

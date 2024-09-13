@@ -1,7 +1,7 @@
 package vortex
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 )
 
 // Option to be passed to vortex

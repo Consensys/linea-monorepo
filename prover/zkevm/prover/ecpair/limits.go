@@ -1,7 +1,7 @@
 package ecpair
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Limits for bounds for different calls to gnark circuits

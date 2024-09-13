@@ -2,7 +2,7 @@ package pi_interconnection
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 )
 
 type DummyCircuit struct {

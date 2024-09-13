@@ -3,7 +3,7 @@ package smartvectors
 import (
 	"sort"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // circularInterval represents an interval over a discretized circle. The

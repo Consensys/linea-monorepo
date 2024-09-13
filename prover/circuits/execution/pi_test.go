@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	snarkTestUtils "github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestPIConsistency(t *testing.T) {

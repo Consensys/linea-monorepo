@@ -1,8 +1,8 @@
 package smt
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Update overwrites a leaf in the tree and updates the associated parent nodes.

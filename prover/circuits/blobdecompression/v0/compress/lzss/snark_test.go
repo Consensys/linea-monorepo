@@ -3,11 +3,12 @@ package lzss
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"os"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"

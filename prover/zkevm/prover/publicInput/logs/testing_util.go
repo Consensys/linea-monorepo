@@ -1,10 +1,10 @@
 package logs
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	eth "github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	eth "github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // FirstTopicL2l1 is a helper function that outputs the Hi/Lo parts of the expected first topic of an L2L1 log

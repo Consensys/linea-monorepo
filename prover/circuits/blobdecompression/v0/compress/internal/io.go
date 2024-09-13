@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 )
 
 // TODO Use std/rangecheck instead

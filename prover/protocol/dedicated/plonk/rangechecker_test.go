@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -298,9 +298,8 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 	return nil
 }
 
-// This is a simple test for testing regression
-// https://github.com/Consensys/zkevm-monorepo/issues/3157. Here, we use public
-// inputs which shifts the witness trace.
+// This is a simple test for testing regression.
+// Here, we use public inputs which shifts the witness trace.
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 

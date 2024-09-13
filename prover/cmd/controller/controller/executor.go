@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/consensys/zkevm-monorepo/prover/cmd/controller/controller/metrics"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 

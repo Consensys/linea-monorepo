@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"math/rand"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // RandDataGen generates random data for the smart-contract

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func partialFFT(domainSize, numField, mask int64) string {

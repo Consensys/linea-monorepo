@@ -1,7 +1,7 @@
 package innerproduct
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 )
 
 const innerProdStr = "INNERPRODUCT"

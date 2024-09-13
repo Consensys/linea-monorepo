@@ -3,15 +3,15 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Rotated represents a rotated version of a regular smartvector and also
 // implements the [SmartVector] interface. Rotated have a very niche use-case
 // in the repository as they are used to help saving FFT operations in the
-// [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/arithmetic.CompileGlobal]
+// [github.com/consensys/linea-monorepo/prover/protocol/compiler/arithmetic.CompileGlobal]
 // compiler when the coset evaluation is done over a cyclic rotation of a
 // smart-vector.
 //

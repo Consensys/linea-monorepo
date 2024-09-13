@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // EthAddress represents an ethereum address. It consists of 20bytes and is the

@@ -3,9 +3,9 @@
 package vortex
 
 import (
-	// "github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	// "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	// "github.com/consensys/zkevm-monorepo/prover/maths/field"
+	// "github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	// "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	// "github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"testing"
 
@@ -16,13 +16,13 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,11 +1,11 @@
 package accumulatorsummary
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 // Inputs collects the inputs of [NewModule]

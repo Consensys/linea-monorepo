@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // ins: nbBatches, [end byte positions], payload...

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/time/rate"
 )
 

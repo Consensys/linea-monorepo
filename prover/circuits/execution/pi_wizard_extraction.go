@@ -5,9 +5,9 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 // checkPublicInputs checks that the values in fi are consistent with the
@@ -28,8 +28,6 @@ func checkPublicInputs(
 	// As we have this issue, the execDataHash will not match what we have in the
 	// functional input (the txnrlp is incorrect). It should be converted into
 	// an [api.AssertIsEqual] once this is resolved.
-	//
-	// https://github.com/Consensys/zkevm-monorepo/issues/3801
 	//
 	shouldBeEqual(api, execDataHash, gnarkFuncInp.DataChecksum)
 

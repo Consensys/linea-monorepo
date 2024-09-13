@@ -153,5 +153,5 @@ cgo-flags:
 # Update the prover's testdata in ../testdata/prover
 #
 make update-testdata-for-coordinator:
-	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/zkevm-monorepo/prover/backend/testing -v
+	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/linea-monorepo/prover/backend/testing -v
 	cp -f backend/testing/**/*-*-zkProof.json ../testdata/prover/output

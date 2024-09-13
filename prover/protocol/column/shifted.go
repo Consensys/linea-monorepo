@@ -2,14 +2,14 @@ package column
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
 // Shifted represents a column that is obtains by (cyclic)-shifting the parent
-// column by an Offset. This is useful to implement [github.com/consensys/zkevm-monorepo/prover/protocol/query.GlobalConstraint] constraints
+// column by an Offset. This is useful to implement [github.com/consensys/linea-monorepo/prover/protocol/query.GlobalConstraint] constraints
 // to express the "next" value of a column or the previous value of a column.
 // For instance, say we want enforce that a column is assigned to a Fibonacci
 // sequence: a[i+2] - a[i+1] - a[i] == 0. This can be done using the following
@@ -136,7 +136,7 @@ func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) front
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]
-// and [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]. It returns the same as [GetColID] but as a string
+// and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]. It returns the same as [GetColID] but as a string
 // (required by Metadata).
 func (s Shifted) String() string {
 	return string(s.GetColID())

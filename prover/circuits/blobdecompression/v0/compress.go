@@ -2,16 +2,17 @@ package v0
 
 import (
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
-	goLzss "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
+	goLzss "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // @alex: careful, the blobHeaderLen must be the unpacked one. This is a

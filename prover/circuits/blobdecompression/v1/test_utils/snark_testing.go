@@ -2,8 +2,9 @@ package test_utils
 
 import (
 	"crypto/rand"
+
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // TODO Delete most of the following

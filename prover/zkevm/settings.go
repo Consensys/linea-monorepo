@@ -1,16 +1,16 @@
 package zkevm
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // type alias to denote a wizard-compilation suite. This is used when calling

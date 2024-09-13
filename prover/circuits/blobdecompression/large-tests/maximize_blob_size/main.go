@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	v1 "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 const maxNbConstraints = 1 << 27

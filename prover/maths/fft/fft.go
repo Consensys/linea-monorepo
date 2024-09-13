@@ -3,7 +3,7 @@ package fft
 import (
 	"math/bits"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Decimation is used in the FFT call to select decimation in time or in frequency

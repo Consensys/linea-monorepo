@@ -2,11 +2,12 @@ package keccak
 
 import (
 	"crypto/rand"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 

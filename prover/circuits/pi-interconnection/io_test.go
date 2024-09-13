@@ -1,13 +1,14 @@
 package pi_interconnection
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFr377EncodedFr381ToBytes(t *testing.T) {

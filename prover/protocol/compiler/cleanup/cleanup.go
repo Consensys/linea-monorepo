@@ -1,7 +1,7 @@
 package cleanup
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 // Simple compilation steps which frees ignored items
