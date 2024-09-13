@@ -17,9 +17,10 @@ func main() {
 		BlobBytes:             make([]frontend.Variable, 32*4096),
 		Dict:                  make([]frontend.Variable, 64*1024),
 		MaxBlobPayloadNbBytes: blob.MaxUncompressedBytes,
+		UseGkrMiMC:            true,
 	}
 
-	p := profile.Start(profile.WithPath(fmt.Sprintf("blobdecompression-%sK.pprof", formatFloat(blob.MaxUncompressedBytes/1024.0))))
+	p := profile.Start(profile.WithPath(fmt.Sprintf("blobdecompression-gkrmimc-%sK.pprof", formatFloat(blob.MaxUncompressedBytes/1024.0))))
 
 	if _, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &c, frontend.WithCapacity(1<<27)); err != nil {
 		panic(err)

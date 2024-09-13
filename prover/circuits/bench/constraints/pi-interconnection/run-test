@@ -1,0 +1,3 @@
+go run .
+telegram-file nohup.out
+shutdown
