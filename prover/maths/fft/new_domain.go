@@ -32,7 +32,10 @@ func NewDomain(m int) *Domain {
 
 	// Generator = FinerGenerator^2 has order x
 	expo := uint64(1 << (maxOrderInt - order))
-	domain.Generator.Exp(field.RootOfUnity, big.NewInt(int64(expo))) // order x
+	var expoBig big.Int
+	expoBig.SetUint64(expo)
+	// order x
+	domain.Generator.Exp(field.RootOfUnity, &expoBig)
 	domain.GeneratorInv.Inverse(&domain.Generator)
 	domain.CardinalityInv.SetUint64(uint64(m)).Inverse(&domain.CardinalityInv)
 
@@ -53,7 +56,7 @@ Equipe the current domain with a custom coset obtained as explained in
 the doc of `GetCoset`
 */
 func (dom *Domain) WithCustomCoset(r, numcoset int) *Domain {
-	n := int(dom.Cardinality)
+	n := utils.ToInt(dom.Cardinality)
 	dom.CosetTable,
 		dom.CosetTableInv,
 		dom.CosetTableReversed,

@@ -1,14 +1,11 @@
 package config
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"text/template"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
@@ -58,7 +55,7 @@ func NewConfigFromFile(path string) (*Config, error) {
 	}
 
 	// Set the logging level
-	logrus.SetLevel(logrus.Level(cfg.LogLevel))
+	logrus.SetLevel(logrus.Level(cfg.LogLevel)) // #nosec G115 -- overflow not possible (uint8 -> uint32)
 
 	// Extract the Layer2.MsgSvcContract address from the string
 	addr, err := common.NewMixedcaseAddressFromString(cfg.Layer2.MsgSvcContractStr)
@@ -90,23 +87,24 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 type Config struct {
 	// Environment stores the environment in which the application is running.
 	// It enables us have a clear domain separation for generated assets.
-	Environment string `validate:"required,oneof=mainnet sepolia devnet integration-development integration-full"`
+	Environment string `validate:"required,oneof=mainnet sepolia devnet integration-development integration-full integration-benchmark"`
 
 	// TODO @gbotrel define explicitly where we use that and for why;
 	// if we supply as is to coordinator in responses, coordinator should parse semver
 	Version string `validate:"required,semver"`
 
 	// LogLevel sets the log level for the logger.
-	LogLevel logLevel `mapstructure:"log_level" validate:"required,gte=0,lte=5"`
+	LogLevel logLevel `mapstructure:"log_level" validate:"required,gte=0,lte=6"`
 
 	// AssetsDir stores the root of the directory where the assets are stored (setup) or
 	// accessed (prover). The file structure is described in TODO @gbotrel.
 	AssetsDir string `mapstructure:"assets_dir" validate:"required,dir"`
 
-	Controller        Controller
-	Execution         Execution
-	BlobDecompression BlobDecompression `mapstructure:"blob_decompression"`
-	Aggregation       Aggregation
+	Controller                 Controller
+	Execution                  Execution
+	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
+	Aggregation                Aggregation
+	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 
 	Debug struct {
 		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
@@ -200,13 +198,10 @@ type Execution struct {
 	WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
-	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless"`
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full proofless bench check-only"`
 
 	// CanRunFullLarge indicates whether the prover is running on a large machine (and can run full large traces).
 	CanRunFullLarge bool `mapstructure:"can_run_full_large"`
-
-	// Features specifies the optional features that can be used to tune the definition of the ZkEvm.
-	Features Features `mapstructure:"features"`
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
@@ -256,24 +251,13 @@ func (cfg *WithRequestDir) DirDone() string {
 	return path.Join(cfg.RequestsRootDir, RequestsDoneSubDir)
 }
 
-// Features specifies the optional features that can be used to tune the
-// definition of the ZkEvm.
-type Features struct {
-	WithKeccak bool `mapstructure:"with_keccak"`
-	WithECDSA  bool `mapstructure:"with_ecdsa"`
-}
-
-func (f *Features) Checksum() string {
-	// encode the struct to json, then hash it
-	encoded, err := json.Marshal(f)
-	if err != nil {
-		panic(err) // should never happen
-	}
-
-	digest, err := utils.Digest(bytes.NewReader(encoded))
-	if err != nil {
-		panic(err) // should never happen
-	}
-
-	return digest
+type PublicInput struct {
+	MaxNbDecompression int  `mapstructure:"max_nb_decompression" validate:"gte=0"`
+	MaxNbExecution     int  `mapstructure:"max_nb_execution" validate:"gte=0"`
+	MaxNbCircuits      int  `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDecompression + MaxNbExecution
+	MaxNbKeccakF       int  `mapstructure:"max_nb_keccakf" validate:"gte=0"`
+	ExecutionMaxNbMsg  int  `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
+	L2MsgMerkleDepth   int  `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
+	L2MsgMaxNbMerkle   int  `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MockKeccakWizard   bool // for testing purposes only
 }

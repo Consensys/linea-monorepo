@@ -3,6 +3,7 @@ package internal_test
 import (
 	"bytes"
 	"crypto/rand"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -10,7 +11,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/bits"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
@@ -50,9 +50,9 @@ func TestRecombineBytes(t *testing.T) {
 	}
 
 	assignment := recombineBytesCircuit{
-		Bytes:      test_vector_utils.ToVariableSlice(_bytes),
-		Bits:       test_vector_utils.ToVariableSlice(bits),
-		Recombined: test_vector_utils.ToVariableSlice(recombined),
+		Bytes:      utils.ToVariableSlice(_bytes),
+		Bits:       utils.ToVariableSlice(bits),
+		Recombined: utils.ToVariableSlice(recombined),
 	}
 
 	lzss.RegisterHints()

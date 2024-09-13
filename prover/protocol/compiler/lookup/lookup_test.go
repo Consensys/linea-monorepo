@@ -487,7 +487,7 @@ func TestExhaustive(t *testing.T) {
 								)
 							}
 
-							if tabCase.StratCondIncluding != nil {
+							if tabCase.StratCondIncluding != nil && tabCase.StratCondIncluding[frag] != nil {
 								condTable[frag] = b.InsertCommit(
 									0,
 									ifaces.ColIDf("TAB_%v_FRAG_%v_COND", tabID, frag),
@@ -516,7 +516,7 @@ func TestExhaustive(t *testing.T) {
 							}
 
 							var condInc ifaces.Column
-							if tabCase.StratCondIncluded != nil {
+							if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
 								condInc = b.InsertCommit(
 									0,
 									ifaces.ColIDf("TAB_%v_SUB_%v_COND", tabID, incID),
@@ -526,8 +526,7 @@ func TestExhaustive(t *testing.T) {
 
 							b.SubProvers.AppendToInner(0, func(run *wizard.ProverRuntime) {
 								tabCase.StratIncluded[incID](run, included...)
-
-								if condInc != nil {
+								if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
 									tabCase.StratCondIncluded[incID](run, condInc)
 								}
 							})

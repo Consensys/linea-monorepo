@@ -1,11 +1,11 @@
 {
   "name": "contracts",
   "engines": {
-    "node": ">=18",
+    "node": ">=20",
     "pnpm": ">=9"
   },
   "scripts": {
-    "build": "npx hardhat compile --concurrency 4",
+    "build": "npx hardhat compile",
     "test": "npm run autoupdate && npx hardhat test",
     "test:reportgas": "REPORT_GAS=true npx hardhat test",
     "coverage": "npm run autoupdate && npx hardhat coverage --solcoverjs ./.solcover.js",

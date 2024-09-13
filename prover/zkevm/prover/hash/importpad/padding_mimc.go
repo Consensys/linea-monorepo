@@ -31,10 +31,6 @@ func (ipad *importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
 	// that this does exactly the right number of padded bytes. This is OK since
 	// later stages of the packing check that the padded byte string has a length
 	// divisible by the blocksize.
-	//
-	// The +8 is to account for the last 64 bits string length. In theory it
-	// should be restricted to only 9..72 but the above constraints ensure that
-	// that at least the first and the last limbs are included.
 	comp.InsertInclusionConditionalOnIncluded(0,
 		ifaces.QueryIDf("%v_LOOKUP_NB_PADDED_BYTES", ipad.Inputs.Name),
 		[]ifaces.Column{getLookupForSize(comp, generic.MiMCUsecase.BlockSizeBytes()-1)},

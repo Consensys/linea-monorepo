@@ -98,7 +98,7 @@ class Request(val id: Int, val name: String, val calls: List<ScenarioDefinition>
     }
 
     private fun createContract(contract: net.consensys.zkevm.load.swagger.CreateContract) =
-      CreateContract(contract.name ?: "null", contract.byteCode!!)
+      CreateContract(contract.name ?: "null", contract.byteCode, contract.gasLimit)
 
     private fun translate(methodAndParameters: net.consensys.zkevm.load.swagger.MethodAndParameter):
       MethodAndParameter {

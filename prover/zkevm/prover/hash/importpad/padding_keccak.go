@@ -20,7 +20,7 @@ func (iPadd *importation) newKeccakPadder(comp *wizard.CompiledIOP) padder {
 	// 		if isPadded[i-1] = 0, isPadded[i] = 1, isPadded[i+1] =1 ----> limb = 1, nByte = 1
 	// 		if isPadded[i-1] = 1, isPadded[i] = 1, isPadded[i+1] =0 ----> limb = 128, nByte = 1
 	// 		if isPadded[i-1] = 0, isPadded[i] = 1, isPadded[i+1] =0 ----> limb = 129 , nByte = 1
-	// 		if isPadded[i-1] = 1, isPadded[i] = 1, isPadded[i+1] =1 ----> limb = 0
+	// 		if isPadded[i-1] = 1, isPadded[i] = 1, isPadded[i+1] =1 ----> limb = 0, nByte < 16
 	//  the constraints over NBytes also guarantees the correct number of  padded zeroes.
 
 	var (

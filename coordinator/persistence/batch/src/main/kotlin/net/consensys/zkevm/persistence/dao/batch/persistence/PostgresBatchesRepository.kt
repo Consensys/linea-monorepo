@@ -1,6 +1,7 @@
 package net.consensys.zkevm.persistence.dao.batch.persistence
 
 import net.consensys.zkevm.domain.Batch
+import net.consensys.zkevm.persistence.BatchesRepository
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -8,7 +9,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * WARNING: Existing mappings should not chane. Otherwise, can break production New One can be added
  * though.
  */
-public fun batchStatusToDbValue(status: Batch.Status): Int {
+fun batchStatusToDbValue(status: Batch.Status): Int {
   // using manual mapping to catch errors at compile time instead of runtime
   return when (status) {
     Batch.Status.Finalized -> 1

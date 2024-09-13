@@ -5,7 +5,7 @@ compile:
 	npx hardhat run scripts/hardhat/postCompile.ts
 
 force-compile:
-	npx hardhat compile --concurrency 4 --force
+	npx hardhat compile --force
 	npx hardhat run scripts/hardhat/postCompile.ts
 
 clean:

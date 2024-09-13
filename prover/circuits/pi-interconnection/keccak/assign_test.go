@@ -1,13 +1,15 @@
 package keccak
 
 import (
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAssign(t *testing.T) {
@@ -36,8 +38,8 @@ func TestAssign(t *testing.T) {
 	}
 	assignment.H, err = hsh.Assign()
 	assert.NoError(t, err)
-	internal.Copy(assignment.Outs[0][:], res)
-	internal.Copy(assignment.Ins[0][0][:], zero[:])
+	utils.Copy(assignment.Outs[0][:], res)
+	utils.Copy(assignment.Ins[0][0][:], zero[:])
 
 	assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
 }

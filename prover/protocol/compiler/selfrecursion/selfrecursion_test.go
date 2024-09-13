@@ -45,6 +45,8 @@ var sisInstances = []ringsis.Params{
 	{LogTwoBound: 4, LogTwoDegree: 2},
 	{LogTwoBound: 8, LogTwoDegree: 3},
 	{LogTwoBound: 8, LogTwoDegree: 6},
+	{LogTwoBound: 8, LogTwoDegree: 5},
+	{LogTwoBound: 16, LogTwoDegree: 6},
 }
 
 // testcase type

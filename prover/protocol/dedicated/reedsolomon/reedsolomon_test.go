@@ -15,7 +15,7 @@ import (
 func TestReedSolomon(t *testing.T) {
 
 	wp := smartvectors.ForTest(1, 2, 4, 8, 16, 32, 64, 128, 0, 0, 0, 0, 0, 0, 0, 0)
-	wp = smartvectors.FFT(wp, fft.DIF, true, 0, 0)
+	wp = smartvectors.FFT(wp, fft.DIF, true, 0, 0, nil)
 
 	definer := func(b *wizard.Builder) {
 		p := b.RegisterCommit("P", wp.Len())

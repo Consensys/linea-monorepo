@@ -99,6 +99,9 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 
 // rankChildren ranks the children nodes of a list of parents based on which
 // node has the highest number of parents in the list.
+//
+// The childrenSet is used as an exclusion set, the function shall not return
+// children that are already in the children set.
 func rankChildren(
 	parents []*sym.Expression,
 	childrenSet map[field.Element]*sym.Expression,
@@ -161,14 +164,9 @@ func findGdChildrenGroup(expr *sym.Expression) map[field.Element]*sym.Expression
 	for {
 		ranked := rankChildren(curParents, childrenSet)
 
-		// Happens when we have a lincomb of lincomb. Ideally they should be
+		// Can happen when we have a lincomb of lincomb. Ideally they should be
 		// merged during canonization.
 		if len(ranked) == 0 {
-			// Still if that happens when the children set is non-empty, it
-			// means an invariant was broken.
-			if len(childrenSet) > 0 {
-				panic("empty rank but the children set is non-empty")
-			}
 			return childrenSet
 		}
 
@@ -329,8 +327,6 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[field.Element]int) (
 	if numMatches != len(exponentsOfGroup) {
 		return nil, false
 	}
-
-	fmt.Printf("returning the %++v with exponents %++v\n", e.Children, factoredExponents)
 
 	return sym.NewProduct(e.Children, factoredExponents), true
 }

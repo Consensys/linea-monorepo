@@ -26,11 +26,11 @@ var (
 	}
 )
 
-// Returns the zk-EVM objects corresponding to the light zkevm prover. Namely,
+// Returns the zkEVM objects corresponding to the light zkEVM prover. Namely,
 // it will generate a proof checking only a small portion of the requested
 // computation it is meant primarily for testing and integration testing
 // purpose. When called for the first time, it will compile the corresponding
-// light zkevm using the config option. The next times it is called, it will
+// light zkEVM using the config option. The next times it is called, it will
 // ignore the configuration options and directly return the previously compiled
 // object. It therefore means that it should not be called twice with different
 // config options.
@@ -43,21 +43,19 @@ func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
 	oncePartialZkEvm.Do(func() {
 
 		// The light-prover does not support other features than the
-		// arithmetization itself. I.E. it currently does not instantiate the
+		// arithmetization itself, i.e. it currently does not instantiate the
 		// modules to verify keccak or the state-manager traces.
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Traces:      tl,
-				NumColLimit: numColLimitLight,
+				Limits: tl,
 			},
-		}
-		partialZkEvm = NewZkEVM(settings).Compile(
-			partialCompilationSuite,
-			wizard.VersionMetadata{
+			CompilationSuite: partialCompilationSuite,
+			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/partial",
 				Version: "beta-v1",
 			},
-		)
+		}
+		partialZkEvm = NewZkEVM(settings)
 	})
 
 	return partialZkEvm

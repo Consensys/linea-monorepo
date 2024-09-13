@@ -62,7 +62,7 @@ func (PolyEval) Degree(inputDegrees []int) int {
 /*
 Evaluates a polynomial evaluation
 */
-func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.

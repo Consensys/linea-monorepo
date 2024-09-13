@@ -31,7 +31,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	execReq := pi_interconnection.ExecutionRequest{
+	execReq := public_input.Execution{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(4)},
 		FinalStateRootHash:     finalStateRootHash,
 		FinalBlockNumber:       9,
@@ -43,9 +43,8 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MsgHashes))
 
 	return pi_interconnection.Request{
-		DecompDict:     blobtesting.GetDict(t),
 		Decompressions: []blobsubmission.Response{*blobResp},
-		Executions:     []pi_interconnection.ExecutionRequest{execReq},
+		Executions:     []public_input.Execution{execReq},
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,

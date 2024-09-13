@@ -2,14 +2,15 @@ package keccakf
 
 import (
 	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
 	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 const (
@@ -22,22 +23,20 @@ const (
 )
 
 type InputOutput struct {
-
 	// it is 1 iff BlockBaseB is inserted
 	IsBlockBaseB ifaces.Column
-
 	// it is 1 iff firstBlock is inserted
 	IsFirstBlock ifaces.Column
-
 	//Sum of IsBlockBaseB and IsFirstBlock
-	IsBlcok ifaces.Column
-
-	// shifted version of (the effective part of) isFirstBlock.
+	IsBlock ifaces.Column
+	// it indicates where the hash result is located
 	IsHashOutPut ifaces.Column
-
+	// PiChiIota submodule contains the hash result, in specific columns and rows
 	PiChiIota piChiIota
-
+	// the hash result
 	HashOutputSlicesBaseB [numLanesInHashOutPut][numSlices]ifaces.Column
+	// active part of HashOutputSlicesBaseB
+	IsActive ifaces.Column
 }
 
 /*
@@ -59,144 +58,138 @@ This is tanks to the fact that;     initial state (of original keccakF) = 0
 And so,  FirstBlock XOR (original) initial state = our initial state.
 Therefore we can directly project from the output of dataTransfer module to the keccakF state.
 */
-func (io *InputOutput) newInput(comp *wizard.CompiledIOP, round, maxNumKeccakF int,
+func (io *InputOutput) newInput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 	mod Module,
 ) {
 	lu := mod.lookups
 	io.PiChiIota = mod.piChiIota
+	input := mod.state
 
 	// declare the columns
-	io.declareColumnsInput(comp, round, maxNumKeccakF)
+	io.declareColumnsInput(comp, maxNumKeccakF)
 
 	// declare the constraints
+	commonconstraints.MustBeActivationColumns(comp, mod.isActive)
+	// Binary Column
+	commonconstraints.MustBeBinary(comp, io.IsBlock)
+	commonconstraints.MustBeBinary(comp, io.IsBlockBaseB)
+	commonconstraints.MustBeBinary(comp, io.IsFirstBlock)
 
-	// For a new permutation or it is FirstBlock or it is fed by BlockBaseB.
-	// The constraint also check that the columns are binary
-	io.csIsFirstBlockIsBlockBaseB(comp, round, mod.isActive, lu)
+	commonconstraints.MustZeroWhenInactive(comp, mod.isActive,
+		io.IsBlockBaseB,
+		io.IsFirstBlock,
+	)
 
-	// IsBlockMassage = isFirstBlock + isBlockBaseB
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsBlockMassage"),
-		symbolic.Sub(io.IsBlcok, symbolic.Add(io.IsFirstBlock, io.IsBlockBaseB)))
+	// IsBlock = isFirstBlock + isBlockBaseB
+	comp.InsertGlobal(0, ifaces.QueryIDf("IsBlockMassage"),
+		sym.Sub(io.IsBlock,
+			sym.Add(io.IsFirstBlock, io.IsBlockBaseB),
+		),
+	)
+
+	// usePrevIota = 1- (IsFirstBlock[i]+ IsBlockBaseB[i-1])
+	comp.InsertGlobal(0, ifaces.QueryIDf("UsePrevIota_SET_TO_ZERO_OVER_BLOCKS"),
+		sym.Mul(mod.isActive,
+			sym.Sub(lu.UsePrevAIota,
+				sym.Sub(1,
+					sym.Add(io.IsFirstBlock, column.Shift(io.IsBlockBaseB, -1)),
+				),
+			),
+		),
+	)
+
+	for x := 0; x < 5; x++ {
+		for y := 0; y < 5; y++ {
+			m := 5*y + x
+			if m < numLanesInBlock {
+				// for a new hash (17 first columns of) the state is the first block
+				comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_FIRST_BLOCK_%v_%v", x, y),
+					sym.Mul(io.IsFirstBlock,
+						sym.Sub(input[x][y], mod.Blocks[m]),
+					),
+				)
+			} else {
+				//  the remaining columns of the state are set to zero
+				comp.InsertGlobal(0, ifaces.QueryIDf("STATE_IS_SET_TO_ZERO_%v,%v", x, y),
+					sym.Mul(io.IsFirstBlock, input[x][y]),
+				)
+			}
+		}
+	}
 
 }
 
-func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, round, maxNumKeccakF int,
+func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 	mod Module,
 ) {
 	lu := mod.lookups
-	input := mod.state
 	io.PiChiIota = mod.piChiIota
+	input := mod.state
 
-	// declare the columns
-	io.declareColumnsOutput(comp, round, maxNumKeccakF)
+	io.declareColumnsOutput(comp, maxNumKeccakF)
 
-	// declare the constraints
+	// IsActive has the activation form
+	commonconstraints.MustBeActivationColumns(comp, io.IsActive)
 
-	// Constraints over isActive; it starts with ones, ends with zeroes
-	io.csIsActive(comp, round, mod.isActive)
+	// IsHashOutPut[i] = 1 if either;
+	// - IsFirstBlock[i+1]  = 1
+	// - IsActive[i] = 1 and IsActive[i+1] = 0
+	//
+	//	Note: both conditions are incompatible
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("IS_HASH_OUTPUT_IS_WELL_SET"),
+		sym.Sub(
+			io.IsHashOutPut,
+			column.Shift(io.IsFirstBlock, 1),
+			sym.Sub(mod.isActive, column.Shift(mod.isActive, 1)),
+		),
+	)
 
-	// The constrain over the next sate;
+	// constrains over the next sate;
 	//  - for an ongoing permutation, the next state equals with the last aIota
 	//
 	//  - for the next permutation from the same hash, the state equals with the last aIota
-	io.csNextState(comp, round, io.PiChiIota, lu, input)
+	io.csNextState(comp, io.PiChiIota, lu, input)
 
 	// constraints over hash output
-	io.csHashOutput(comp, round)
+	io.csHashOutput(comp)
+
 }
 
 // It declares the columns specific to the submodule.
-func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
-	size := numRows(maxNumKeccakF)
-	io.IsHashOutPut = comp.InsertCommit(round, deriveName("IS_FIRST_BLOCK_SHIFTED"), size)
+func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
+	var (
+		size      = numRows(maxNumKeccakF)
+		createCol = common.CreateColFn(comp, "KECCAKF_INPUT_MODULE", size)
+	)
 
-	io.IsFirstBlock = comp.InsertCommit(round, deriveName("IS_FIRST_BLOCK"), size)
-	io.IsBlockBaseB = comp.InsertCommit(round, deriveName("IS_BLOCK_BaseB"), size)
-	io.IsBlcok = comp.InsertCommit(round, ifaces.ColIDf("IS_BLOCK_MESSAGE"), size)
+	io.IsFirstBlock = createCol("IS_FIRST_BLOCK")
+	io.IsBlockBaseB = createCol("IS_BLOCK_BaseB")
+	io.IsBlock = createCol("IS_BLOCK")
 }
 
 // It declares the columns specific to the submodule.
-func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, round, maxNumKeccakF int) {
-	hashOutputSize := utils.NextPowerOfTwo(maxNumKeccakF)
+func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
+	var (
+		size      = utils.NextPowerOfTwo(maxNumKeccakF)
+		createCol = common.CreateColFn(comp, "KECCAKF_OUTPUT_MODULE", size)
+	)
 	for j := range io.HashOutputSlicesBaseB {
 		for k := range io.HashOutputSlicesBaseB[0] {
-			io.HashOutputSlicesBaseB[j][k] = comp.InsertCommit(round,
-				ifaces.ColIDf("HashOutPut_SlicesBaseB_%v_%v", j, k), hashOutputSize)
+			io.HashOutputSlicesBaseB[j][k] = createCol("HashOutPut_SlicesBaseB_%v_%v", j, k)
 		}
 	}
-}
+	io.IsActive = createCol("HASH_IS_ACTIVE")
 
-// Constraints over the blocks of the message;
-// any permutation should be relevant to the firstBlock or to the blockBaseB.
-// The flag columns related to firstBlock or to blockBaseB (i.e., isFirstBlock and isBlockBaseB)
-// are binary. Also, they are inactive on the inactive part of the module.
-func (io InputOutput) csIsFirstBlockIsBlockBaseB(comp *wizard.CompiledIOP, round int, isActive ifaces.Column, lu lookUpTables) {
-	//  for a new permutation or it is firstBlock or it is BlockBaseB
-	//  newPerm[i] = 1 ---> isFirstBlock[i] =1 or isBlockBaseB[i-1] = 1 (but not both)
-	//  thus, newPerm[i] * (isFirstBlock[i] -1) * (isBlockBaseB[i-1] - 1) =0
-	//  and isFirstBlock * isBlockBaseB =0
-	isNotFirstBlock := symbolic.Sub(1, io.IsFirstBlock)                          // 1- isFirtBlock[i]
-	isNotBlockBaseBShifted := symbolic.Sub(1, column.Shift(io.IsBlockBaseB, -1)) // 1- isBlockBaseB[i-1]
-	isNewPerm := symbolic.Sub(1, lu.UsePrevAIota)                                // isNewPerm
-	expr := symbolic.Mul(symbolic.Mul(isNewPerm, isNotFirstBlock), isNotBlockBaseBShifted)
-
-	comp.InsertGlobal(round, ifaces.QueryIDf("ISFIRST_OR_ISBLOCKBASEB_1"), symbolic.Mul(expr, isActive))
-	comp.InsertGlobal(round, ifaces.QueryIDf("ISFIRST_OR_ISBLOCKBASEB_2"),
-		symbolic.Mul(io.IsFirstBlock, io.IsBlockBaseB))
-
-	// The columns are binary
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsFisrtBlock_IsBinary"),
-		symbolic.Mul(io.IsFirstBlock, symbolic.Sub(1, io.IsFirstBlock)))
-
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsBlockBaseB_IsBinary"),
-		symbolic.Mul(io.IsBlockBaseB, symbolic.Sub(1, io.IsBlockBaseB)))
-
-	// The columns are zero when isActive is zero
-	// This constraint is important for data-transferring.
-	// The prover may respect the number of  blocks to be imported to keccakF,
-	// but it may not insert them in the active zone.
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsFirstBlock_IsNotActive"),
-		symbolic.Mul(io.IsFirstBlock, symbolic.Sub(1, isActive)))
-
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsBlockBaseB_IsNotActive"),
-		symbolic.Mul(io.IsBlockBaseB, symbolic.Sub(1, isActive)))
-
-	// constraints over isFirstBlockShifted
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsFirstBlockShifted"),
-		symbolic.Mul(symbolic.Sub(column.Shift(io.IsFirstBlock, 1),
-			io.IsHashOutPut), column.Shift(isActive, 1)))
-
-	// the last active cell of isFirstBlockShifted is 1
-	// if isActive[i]=  1 and isActive[i+1] = 0 ---> isFirstBlockShifted[i] =1
-	expr = symbolic.Mul(symbolic.Mul(isActive,
-		symbolic.Sub(1, column.Shift(isActive, 1)),
-		symbolic.Sub(1, io.IsHashOutPut)))
-	comp.InsertGlobal(round, ifaces.QueryIDf("Last_Active_Cell_IsOne"), expr)
-
-}
-
-// Constraints over isActive, it starts with ones, and ends with zeroes
-//
-//  1. a := (isActive[i]-isActive[i+1]) is binary
-//  2. isActive is binary
-//
-// Note: we don't have any constraint over the number of ones.
-// This would be later guaranteed by the projection query between datatransfer-outputs and keccakf-inputs.
-func (io *InputOutput) csIsActive(comp *wizard.CompiledIOP, round int, isActive ifaces.Column) {
-	a := symbolic.Sub(isActive, column.Shift(isActive, 1))
-
-	comp.InsertGlobal(round, ifaces.QueryIDf("OnesThenZeroes_Keccakf"), symbolic.Mul(a, symbolic.Sub(1, a)))
-	comp.InsertGlobal(round, ifaces.QueryIDf("IsActive_IsBinary_Keccakf"), symbolic.Mul(isActive, symbolic.Sub(1, isActive)))
+	var (
+		sizeState = numRows(maxNumKeccakF)
+	)
+	io.IsHashOutPut = comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_IS_HASH_OUTPUT"), sizeState)
 }
 
 // The constrain over the next sate;
-//
-//   - for an ongoing permutation, the next state equals with the last aIota
-//
-//   - for the next permutation from the same hash, the state equals with the last aIota
 func (io *InputOutput) csNextState(
 	comp *wizard.CompiledIOP,
-	round int,
 	pci piChiIota,
 	lu lookUpTables,
 	input [5][5]ifaces.Column,
@@ -206,7 +199,7 @@ func (io *InputOutput) csNextState(
 		for y := 0; y < 5; y++ {
 			// recompose the slices to get aIota in BaseA
 			recomposedAIota := BaseRecomposeSliceHandles(
-				// Recall that the chi module performs all the steps pi-chi-iota
+				// Recall that the PiChiIota module performs all the steps pi-chi-iota
 				// at once.
 				pci.aIotaBaseASliced[x][y][:],
 				BaseA,
@@ -214,17 +207,18 @@ func (io *InputOutput) csNextState(
 			)
 			// for an ongoing permutation or for permutations from the same hash;
 			// impose that the previous aIota in base A should be equal with the state.
-			usePrevIota := symbolic.Add(column.Shift(io.IsBlockBaseB, -1), lu.UsePrevAIota) // isBlockBaseB + UsePrevAIota
-			expr := symbolic.Mul(symbolic.Sub(input[x][y], recomposedAIota), usePrevIota)
-			name := ifaces.QueryIDf("AIOTA_TO_A_%v_%v", x, y)
-			comp.InsertGlobal(round, name, expr)
+			usePrevIota := sym.Add(column.Shift(io.IsBlockBaseB, -1), lu.UsePrevAIota) // isBlockBaseB[i-1] + UsePrevAIota[i]
+			comp.InsertGlobal(0, ifaces.QueryIDf("AIOTA_TO_A_%v_%v", x, y),
+				sym.Mul(usePrevIota,
+					sym.Sub(input[x][y], recomposedAIota)),
+			)
 		}
 	}
 
 }
 
 // It connect the data-transfer module to the keccakf module via a projection query over the blocks.
-func (io *InputOutput) csHashOutput(comp *wizard.CompiledIOP, round int) {
+func (io *InputOutput) csHashOutput(comp *wizard.CompiledIOP) {
 
 	// constraints over info-module (outputs
 	colA := append(io.PiChiIota.AIotaBaseBSliced[0][0][:], io.PiChiIota.AIotaBaseBSliced[1][0][:]...)
@@ -235,73 +229,102 @@ func (io *InputOutput) csHashOutput(comp *wizard.CompiledIOP, round int) {
 	colB = append(colB, io.HashOutputSlicesBaseB[2][:]...)
 	colB = append(colB, io.HashOutputSlicesBaseB[3][:]...)
 
-	comp.InsertInclusionConditionalOnIncluded(round, ifaces.QueryIDf("HashOutput_Projection"),
-		colB, colA, io.IsHashOutPut)
+	projection.InsertProjection(comp, ifaces.QueryIDf("HashOutput_Projection"),
+		colB, colA,
+		io.IsActive,
+		io.IsHashOutPut,
+	)
 }
 
 // It assigns the columns specific to the submodule.
-func (io *InputOutput) assignInputOutput(
+func (io *InputOutput) assignBlockFlags(
 	run *wizard.ProverRuntime,
 	permTrace keccak.PermTraces,
 ) {
-	witnessSize := len(permTrace.KeccakFInps) * numRounds
+	var (
+		isFirstBlock = common.NewVectorBuilder(io.IsFirstBlock)
+		isBlockBaseB = common.NewVectorBuilder(io.IsBlockBaseB)
+		isBlock      = common.NewVectorBuilder(io.IsBlock)
+	)
 
-	var isFirstBlock, isBlockBaseB []field.Element
 	zeroes := make([]field.Element, keccak.NumRound-1)
 	for i := range permTrace.IsNewHash {
 		if permTrace.IsNewHash[i] {
-			isFirstBlock = append(isFirstBlock, field.One())
-			isFirstBlock = append(isFirstBlock, zeroes...)
+			isFirstBlock.PushOne()
+			isFirstBlock.PushSliceF(zeroes)
 			// append 24 zeroes
-			isBlockBaseB = append(isBlockBaseB, zeroes...)
-			isBlockBaseB = append(isBlockBaseB, field.Zero())
+			isBlockBaseB.PushSliceF(zeroes)
+			isBlockBaseB.PushInt(0)
+			// populate IsBlock
+			isBlock.PushOne()
+			isBlock.PushSliceF(zeroes)
 
 		} else {
-			isFirstBlock = append(isFirstBlock, field.Zero())
-			isFirstBlock = append(isFirstBlock, zeroes...)
-			// overwrite the last element
-			isBlockBaseB[len(isBlockBaseB)-1] = field.One()
+			isFirstBlock.PushZero()
+			isFirstBlock.PushSliceF(zeroes)
+
+			isBlockBaseB.OverWriteInt(1)
 			// append 24 zeroes
-			isBlockBaseB = append(isBlockBaseB, zeroes...)
-			isBlockBaseB = append(isBlockBaseB, field.Zero())
+			isBlockBaseB.PushSliceF(zeroes)
+			isBlockBaseB.PushZero()
+
+			//populate IsBlock
+			isBlock.OverWriteInt(1)
+			isBlock.PushSliceF(zeroes)
+			isBlock.PushZero()
 		}
 	}
-	size := io.IsFirstBlock.Size()
 
-	run.AssignColumn(io.IsFirstBlock.GetColID(), smartvectors.RightZeroPadded(isFirstBlock, size))
-	run.AssignColumn(io.IsBlockBaseB.GetColID(), smartvectors.RightZeroPadded(isBlockBaseB, size))
+	isBlock.PadAndAssign(run)
+	isFirstBlock.PadAndAssign(run)
+	isBlockBaseB.PadAndAssign(run)
 
-	var shifted []field.Element
-	if len(isFirstBlock) > 0 {
-		shifted = append(shifted, isFirstBlock[1:]...)
-		shifted = append(shifted, field.One())
-	}
-	run.AssignColumn(io.IsHashOutPut.GetColID(), smartvectors.RightZeroPadded(shifted, size))
-
-	//populate and assign isBlock
-	isBlock := make([]field.Element, witnessSize)
-	vector.Add(isBlock, isFirstBlock, isBlockBaseB)
-	run.AssignColumn(io.IsBlcok.GetColID(), smartvectors.RightZeroPadded(isBlock, size))
 }
 
 // It assigns the columns
-func (io *InputOutput) assignHashOutPut(run *wizard.ProverRuntime) {
-	aIota := io.PiChiIota.AIotaBaseBSliced
-	isHashOutput := io.IsHashOutPut.GetColAssignment(run).IntoRegVecSaveAlloc()
+func (io *InputOutput) assignHashOutPut(run *wizard.ProverRuntime, isBlockActive ifaces.Column) {
+	var (
+		aIota            = io.PiChiIota.AIotaBaseBSliced
+		isFirstBlock     = io.IsFirstBlock.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isHashOutput     = common.NewVectorBuilder(io.IsHashOutPut)
+		hashSlices       = make([][]*common.VectorBuilder, numLanesInHashOutPut)
+		isActive         = common.NewVectorBuilder(io.IsActive)
+		isBlockActiveWit = isBlockActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+	)
+	// populate IsHashOutput
+	for row := 1; row < len(isFirstBlock); row++ {
+		if isBlockActiveWit[row].IsOne() {
+			isHashOutput.PushField(isFirstBlock[row])
+		}
 
-	witSize := smartvectors.Density(aIota[0][0][0].GetColAssignment(run))
-	sizeHashOutput := io.HashOutputSlicesBaseB[0][0].Size()
+	}
+	isHashOutput.PushInt(1)
+	isHashOutput.PadAndAssign(run)
 
+	// populate HashOutputSlicesBaseB
+	isHashOutputWit := isHashOutput.Slice()
 	for j := range io.HashOutputSlicesBaseB {
+		hashSlices[j] = make([]*common.VectorBuilder, numSlice)
 		for k := range io.HashOutputSlicesBaseB[0] {
-			aIotaWit := aIota[j][0][k].GetColAssignment(run).IntoRegVecSaveAlloc()[:witSize]
-			var hashOutput []field.Element
-			for i := range aIotaWit {
-				if isHashOutput[i] == field.One() {
-					hashOutput = append(hashOutput, aIotaWit[i])
+			hashSlices[j][k] = common.NewVectorBuilder(io.HashOutputSlicesBaseB[j][k])
+
+			aIotaWit := aIota[j][0][k].GetColAssignment(run).IntoRegVecSaveAlloc()
+			for i := range isHashOutputWit {
+				if isHashOutputWit[i] == field.One() {
+					hashSlices[j][k].PushField(aIotaWit[i])
 				}
 			}
-			run.AssignColumn(io.HashOutputSlicesBaseB[j][k].GetColID(), smartvectors.RightZeroPadded(hashOutput, sizeHashOutput))
+			hashSlices[j][k].PadAndAssign(run)
+
 		}
 	}
+
+	//populate is active
+	for i := range isHashOutputWit {
+		if isHashOutputWit[i].IsOne() {
+			isActive.PushInt(1)
+
+		}
+	}
+	isActive.PadAndAssign(run)
 }
