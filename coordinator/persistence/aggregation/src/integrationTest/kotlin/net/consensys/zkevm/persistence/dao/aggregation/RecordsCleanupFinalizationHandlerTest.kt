@@ -31,6 +31,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 @ExtendWith(VertxExtension::class)
 class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
+  }
 
   override val databaseName = DbHelper.generateUniqueDbName("records-cleanup-on-finalization")
   private var fakeClock = FakeFixedClock(Clock.System.now())

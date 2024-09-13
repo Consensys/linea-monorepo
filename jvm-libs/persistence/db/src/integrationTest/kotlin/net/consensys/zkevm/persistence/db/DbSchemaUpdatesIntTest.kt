@@ -26,6 +26,7 @@ class DbSchemaUpdatesIntTest {
   private val databaseName = DbHelper.generateUniqueDbName("coordinator-db-migration-tests")
   private val username = "postgres"
   private val password = "postgres"
+  private val migrationLocations = "filesystem:../../../coordinator/app/src/main/resources/db/"
   private lateinit var dataSource: DataSource
 
   private lateinit var pool: Pool
@@ -73,7 +74,11 @@ class DbSchemaUpdatesIntTest {
     val schemaTarget = "1"
 
     DbHelper.dropAllTables(dataSource)
-    Db.applyDbMigrations(dataSource, schemaTarget)
+    Db.applyDbMigrations(
+      dataSource = dataSource,
+      target = schemaTarget,
+      migrationLocations = migrationLocations
+    )
 
     val paramsV1 = listOf(
       Clock.System.now().toEpochMilliseconds(),
@@ -106,7 +111,11 @@ class DbSchemaUpdatesIntTest {
     val schemaTarget = "2"
 
     DbHelper.dropAllTables(dataSource)
-    Db.applyDbMigrations(dataSource, schemaTarget)
+    Db.applyDbMigrations(
+      dataSource = dataSource,
+      target = schemaTarget,
+      migrationLocations = migrationLocations
+    )
 
     val batchParamsV2 = listOf(
       Clock.System.now().toEpochMilliseconds(),
@@ -133,7 +142,7 @@ class DbSchemaUpdatesIntTest {
       Clock.System.now().toEpochMilliseconds(),
       3,
       ByteArray(32).encodeHex(),
-      ""
+      "{}"
     )
 
     DbQueries.insertBlob(sqlClient, DbQueries.insertBlobQuery, blobParams).get()

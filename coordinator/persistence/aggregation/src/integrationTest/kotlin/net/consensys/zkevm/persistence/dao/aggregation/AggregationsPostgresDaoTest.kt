@@ -39,6 +39,11 @@ import java.util.concurrent.TimeUnit
 
 @ExtendWith(VertxExtension::class)
 class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
+  init {
+    target = "4"
+    migrationLocations = "filesystem:../../app/src/main/resources/db/"
+  }
+
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-aggregations-dao")
 
   private val maxBlobReturnLimit = 10u

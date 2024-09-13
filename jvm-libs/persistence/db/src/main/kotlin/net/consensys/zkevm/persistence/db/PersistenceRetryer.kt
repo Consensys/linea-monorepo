@@ -20,7 +20,7 @@ open class PersistenceRetryer(
 
   fun <T> retryQuery(
     action: () -> SafeFuture<T>,
-    stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::stopRetriesOnErrorPredicate
+    stopRetriesOnErrorPredicate: (Throwable) -> Boolean = Companion::stopRetriesOnErrorPredicate
 
   ): SafeFuture<T> {
     return AsyncRetryer.retry(
