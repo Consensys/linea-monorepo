@@ -57,8 +57,6 @@ Check a linear hashby chunk of columns
   - period : 4 // indicates that we should hash chunks of 4 entries
 
   - expectedhash : (Hash(a, b, c, d) || Hash(e, f, g, h))
-
-    See : https://github.com/ConsenSys/zkevm-monorepo/issues/662
 */
 func CheckLinearHash(
 	comp *wizard.CompiledIOP,

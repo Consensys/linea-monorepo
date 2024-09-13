@@ -152,7 +152,6 @@ type Ctx struct {
 		OpenedColumns []ifaces.Column
 		// MerkleProof (only used with the MerkleProof version)
 		// We represents all the Merkle proof as specfied here:
-		// https://github.com/ConsenSys/zkevm-monorepo/issues/67
 		MerkleProofs ifaces.Column
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.

@@ -80,9 +80,7 @@ func NewStateManagerNoHub(comp *wizard.CompiledIOP, settings Settings) *StateMan
 	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
 	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
 
-	// Waiting for the resolution of #
-	//
-	//		https://github.com/Consensys/zkevm-monorepo/issues/3798
+	// Waiting for the resolution of the mimc code hash issue
 	//
 	// lookupStateSummaryCodeHash(comp, &sm.StateSummary.Account, &sm.mimcCodeHash)
 

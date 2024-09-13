@@ -40,7 +40,7 @@ func GetRepoRootPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	const repoName = "zkevm-monorepo"
+	const repoName = "linea-monorepo"
 	i := strings.LastIndex(wd, repoName)
 	if i == -1 {
 		return "", errors.New("could not find repo root")

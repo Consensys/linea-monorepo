@@ -108,8 +108,6 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	// Waiting for the resolution of:
 	//
-	//		https://github.com/Consensys/zkevm-monorepo/issues/3801
-	//
 	// // projection from txn-data to address columns
 	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
 	// 	[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},

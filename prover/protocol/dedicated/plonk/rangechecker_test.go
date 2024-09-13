@@ -298,9 +298,8 @@ func (c *rangeCheckWithPublic) Define(api frontend.API) error {
 	return nil
 }
 
-// This is a simple test for testing regression
-// https://github.com/Consensys/zkevm-monorepo/issues/3157. Here, we use public
-// inputs which shifts the witness trace.
+// This is a simple test for testing regression.
+// Here, we use public inputs which shifts the witness trace.
 func TestErrorCase(t *testing.T) {
 	circuit := &rangeCheckWithPublic{}
 

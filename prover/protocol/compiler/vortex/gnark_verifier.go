@@ -240,7 +240,6 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr *wizard.Wizar
 }
 
 // unpack a list of merkle proofs from a vector as in
-// https://github.com/ConsenSys/zkevm-monorepo/issues/67
 func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []frontend.Variable) (proofs [][]smt.GnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree

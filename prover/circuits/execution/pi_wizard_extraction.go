@@ -29,8 +29,6 @@ func checkPublicInputs(
 	// functional input (the txnrlp is incorrect). It should be converted into
 	// an [api.AssertIsEqual] once this is resolved.
 	//
-	// https://github.com/Consensys/zkevm-monorepo/issues/3801
-	//
 	shouldBeEqual(api, execDataHash, gnarkFuncInp.DataChecksum)
 
 	api.AssertIsEqual(

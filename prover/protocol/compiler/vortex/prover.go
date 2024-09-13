@@ -155,7 +155,6 @@ func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvecto
 }
 
 // pack a list of merkle-proofs in a vector as in
-// https://github.com/ConsenSys/zkevm-monorepo/issues/67
 func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) smartvectors.SmartVector {
 
 	depth := len(proofs[0][0].Siblings) // depth of the Merkle-tree
@@ -210,7 +209,6 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) smartvectors.SmartVector 
 }
 
 // unpack a list of merkle proofs from a vector as in
-// https://github.com/ConsenSys/zkevm-monorepo/issues/67
 func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int) (proofs [][]smt.Proof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
