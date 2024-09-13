@@ -125,6 +125,16 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
   }
 
+  public Path writeToTmpFile(final Path rootDir, final String prefix, final String suffix) {
+    try {
+      final Path traceFile = Files.createTempFile(rootDir, prefix, suffix);
+      this.writeToFile(traceFile);
+      return traceFile;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public void writeToFile(final Path filename) {
     maybeThrowTracingExceptions();
 
