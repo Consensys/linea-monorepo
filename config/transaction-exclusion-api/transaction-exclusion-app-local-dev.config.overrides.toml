@@ -1,5 +1,4 @@
 [database]
-migration_dir_location="config/transaction-exclusion-api/db/migration/"
 [database.read]
 host="localhost"
 [database.write]
