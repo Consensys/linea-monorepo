@@ -27,7 +27,7 @@ internal fun buildSubmitBlobsFunction(
       /*snarkHash*/ blobCompressionProof.snarkHash
     )
 
-    LineaRollup.BlobSubmissionData(
+    BlobSubmissionData(
       /*submissionData*/ supportingSubmissionData,
       /*dataEvaluationClaim*/ BigInteger(blobCompressionProof.expectedY),
       /*kzgCommitment*/ blobCompressionProof.commitment,
