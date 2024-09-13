@@ -54,7 +54,7 @@ services:
       - ./config/traces-node-v2/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/traces-node-v2/plugins:/opt/besu/plugins/
-      - ../tmp/local/:/data/
+      - ../tmp/local/traces/v2/conflated:/data/traces/v2/conflated
     networks:
       linea:
         ipv4_address: 11.11.11.115
