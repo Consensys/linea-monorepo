@@ -1,5 +1,5 @@
 {
-  "name": "zkevm-monorepo",
+  "name": "linea-monorepo",
   "author": "Consensys Software Inc.",
   "engines": {
     "node": ">=20",
