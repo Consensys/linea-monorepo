@@ -459,7 +459,7 @@ class CoordinatorConfigTest {
         feeMargin = 0.0
       ),
       extraDataCalculatorConfig = MinerExtraDataV1CalculatorImpl.Config(
-        fixedCostInKWei = 3000000u,
+        fixedCostInKWei = 3000u,
         ethGasPriceMultiplier = 1.2
       ),
       extraDataUpdaterConfig = ExtraDataV1UpdaterImpl.Config(
