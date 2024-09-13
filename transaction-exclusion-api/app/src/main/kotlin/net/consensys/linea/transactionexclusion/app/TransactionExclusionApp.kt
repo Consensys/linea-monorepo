@@ -36,8 +36,7 @@ data class DatabaseConfig(
   val schema: String,
   val readPoolSize: Int,
   val readPipeliningLimit: Int,
-  val transactionalPoolSize: Int,
-  val migrationDirLocation: String
+  val transactionalPoolSize: Int
 )
 
 data class AppConfig(
@@ -71,14 +70,12 @@ class TransactionExclusionApp(config: AppConfig) {
     this.sqlReadClient = initDb(
       connectionConfig = config.database.read,
       schema = config.database.schema,
-      migrationDirLocation = config.database.migrationDirLocation,
       transactionalPoolSize = config.database.transactionalPoolSize,
       readPipeliningLimit = config.database.readPipeliningLimit
     )
     this.sqlWriteClient = initDb(
       connectionConfig = config.database.write,
       schema = config.database.schema,
-      migrationDirLocation = config.database.migrationDirLocation,
       transactionalPoolSize = config.database.transactionalPoolSize,
       readPipeliningLimit = config.database.readPipeliningLimit
     )
@@ -133,19 +130,17 @@ class TransactionExclusionApp(config: AppConfig) {
   private fun initDb(
     connectionConfig: DbConnectionConfig,
     schema: String,
-    migrationDirLocation: String,
     transactionalPoolSize: Int,
-    readPipeliningLimit: Int,
-    version: String? = "1"
+    readPipeliningLimit: Int
   ): SqlClient {
+    val dbVersion = "1"
     Db.applyDbMigrations(
       host = connectionConfig.host,
       port = connectionConfig.port,
       database = schema,
-      target = version!!,
+      target = dbVersion,
       username = connectionConfig.username,
-      password = connectionConfig.password.value,
-      migrationLocations = "filesystem:$migrationDirLocation"
+      password = connectionConfig.password.value
     )
     return Db.vertxSqlClient(
       vertx = vertx,
