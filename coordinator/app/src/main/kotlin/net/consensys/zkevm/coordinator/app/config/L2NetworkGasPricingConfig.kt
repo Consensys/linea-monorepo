@@ -9,6 +9,7 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAv
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1CalculatorImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
+import net.consensys.toKWeiUInt
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import java.net.URL
 import java.time.Duration
@@ -177,7 +178,7 @@ data class L2NetworkGasPricingTomlDto(
         feeMargin = 0.0
       ),
       extraDataCalculatorConfig = MinerExtraDataV1CalculatorImpl.Config(
-        fixedCostInKWei = variableCostPricing.gasPriceFixedCost.toUInt(),
+        fixedCostInKWei = variableCostPricing.gasPriceFixedCost.toKWeiUInt(),
         ethGasPriceMultiplier = variableCostPricing.legacyFeesMultiplier
       ),
       extraDataUpdaterConfig = ExtraDataV1UpdaterImpl.Config(

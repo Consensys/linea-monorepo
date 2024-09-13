@@ -283,7 +283,7 @@ class L2NetworkGasPricingConfigTest {
           feeMargin = 0.0
         ),
         extraDataCalculatorConfig = MinerExtraDataV1CalculatorImpl.Config(
-          fixedCostInKWei = 3000000u,
+          fixedCostInKWei = 3000u,
           ethGasPriceMultiplier = 1.2
         ),
         extraDataUpdaterConfig = ExtraDataV1UpdaterImpl.Config(
@@ -350,7 +350,7 @@ class L2NetworkGasPricingConfigTest {
           feeMargin = 0.0
         ),
         extraDataCalculatorConfig = MinerExtraDataV1CalculatorImpl.Config(
-          fixedCostInKWei = 3000000u,
+          fixedCostInKWei = 3000u,
           ethGasPriceMultiplier = 1.2
         ),
         extraDataUpdaterConfig = ExtraDataV1UpdaterImpl.Config(
