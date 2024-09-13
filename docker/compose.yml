@@ -271,7 +271,6 @@ services:
       - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
       - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
       - ../config/transaction-exclusion-api/log4j2-dev.xml:/opt/consensys/linea/transaction-exclusion-api/config/log4j2-dev.xml:ro
-      - ../config/transaction-exclusion-api/db/migration:/opt/consensys/linea/transaction-exclusion-api/config/db/migration:ro
       - local-dev:/data/
     networks:
       linea:
