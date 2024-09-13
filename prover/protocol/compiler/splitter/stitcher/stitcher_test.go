@@ -5,8 +5,10 @@ import (
 
 	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
+	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter/stitcher"
 	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
@@ -49,6 +51,8 @@ func TestLocalEval(t *testing.T) {
 	}
 
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+
+	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("A").String())
 	assert.Equal(t, column.Ignored.String(), comp.Columns.Status("B").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("C").String())
@@ -105,6 +109,7 @@ func TestGlobalConstraintFibonacci(t *testing.T) {
 	define := func(builder *wizard.Builder) {
 		// declare columns of different sizes
 		a = builder.RegisterCommit("B", 4)
+		// a = verifiercol.NewConstantCol(field.One(), 4)
 		b = builder.RegisterCommit("C", 8)
 		c = builder.RegisterCommit("D", 16)
 
@@ -122,6 +127,7 @@ func TestGlobalConstraintFibonacci(t *testing.T) {
 
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
+	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
@@ -166,6 +172,7 @@ func TestLocalConstraintFibonacci(t *testing.T) {
 
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
+	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
@@ -208,6 +215,7 @@ func TestGlobalMixedRounds(t *testing.T) {
 
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
+	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q0.ID), "q0 should be ignored")
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should be ignored")
@@ -228,4 +236,57 @@ func TestGlobalMixedRounds(t *testing.T) {
 
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
+}
+
+func TestGlobalWithVerifCol(t *testing.T) {
+	var a, b, c, verifcol1, verifcol2 ifaces.Column
+	var q1, q2 query.GlobalConstraint
+
+	define := func(builder *wizard.Builder) {
+		// declare columns of different sizes
+		a = builder.RegisterCommit("B", 4)
+		b = builder.RegisterCommit("C", 4)
+		// a new round
+		_ = builder.RegisterRandomCoin("COIN", coin.Field)
+		c = builder.RegisterCommit("D", 4)
+		// verifiercols
+		verifcol1 = verifiercol.NewConstantCol(field.NewElement(3), 4)
+		accessors := genAccessors([]int{1, 7, 5, 3})
+		verifcol2 = verifiercol.NewFromAccessors(accessors, field.Zero(), 4)
+
+		expr := symbolic.Sub(symbolic.Mul(a, verifcol1), b)
+		q1 = builder.GlobalConstraint("Q0", expr)
+
+		expr = symbolic.Sub(symbolic.Add(a, verifcol2), c)
+		q2 = builder.GlobalConstraint("Q1", expr)
+	}
+
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+
+	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
+	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
+	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should  be ignored")
+
+	// manually compiles the comp
+	dummy.Compile(comp)
+
+	proof := wizard.Prove(comp, func(assi *wizard.ProverRuntime) {
+		// Assigns all the columns
+		assi.AssignColumn(a.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
+		assi.AssignColumn(b.GetColID(), smartvectors.ForTest(3, 3, 6, 9))
+		_ = assi.GetRandomCoinField("COIN") // triggers going to the next round
+		assi.AssignColumn(c.GetColID(), smartvectors.ForTest(2, 8, 7, 6))
+	})
+
+	err := wizard.Verify(comp, proof)
+	require.NoError(t, err)
+
+}
+
+func genAccessors(a []int) (res []ifaces.Accessor) {
+	for i := range a {
+		t := accessors.NewConstant(field.NewElement(uint64(a[i])))
+		res = append(res, t)
+	}
+	return res
 }
