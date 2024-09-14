@@ -19,7 +19,7 @@ interface GoNativeBlobDecompressor {
    * @param data  dictPath path to the dictionary file
    * @return true if loading was successful else false
    */
-  fun LoadDictionary(dictPath: StringArray, nbDicts: Int) Boolean
+  fun LoadDictionary(dictPath: String, nbDicts: Int): Boolean
 
   /**
    * Decompress a blob b and writes the resulting blocks in out, serialized in the format of
@@ -30,7 +30,7 @@ interface GoNativeBlobDecompressor {
    * @param blob to be decompressed
    * @param blob_len length of the blob
    * @param out buffer to write the decompressed data
-    * @param out_max_len maximum length of the out buffer
+   * @param out_max_len maximum length of the out buffer
    * @return number of bytes in out, or -1 in case of failure
    */
   fun Decompress(blob: ByteArray, blob_len: Int, out: ByteArray, out_max_len: Int): Int
