@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/encode"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/utils"

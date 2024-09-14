@@ -7,8 +7,8 @@ import (
 	"sync"
 	"unsafe"
 
-	decompressor "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/dictionary"
+	decompressor "github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 )
 
 //go:generate go build -tags nocorset -ldflags "-s -w" -buildmode=c-shared -o libdecompressor.so libdecompressor.go

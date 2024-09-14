@@ -5,7 +5,7 @@ package v1_test
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
