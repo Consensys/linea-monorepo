@@ -395,7 +395,7 @@ class CoordinatorConfigTest {
     )
 
     private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT10S"),
+      pollingInterval = Duration.parse("PT1S"),
       maxMessagesToAnchor = 100U
     )
 
