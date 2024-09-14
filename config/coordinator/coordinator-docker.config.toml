@@ -203,7 +203,7 @@ public-key="4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae9294
 
 [message-anchoring-service]
 disabled=false
-polling-interval="PT10S"
+polling-interval="PT1S"
 max-messages-to-anchor=100
 
 [dynamic-gas-price-service]
