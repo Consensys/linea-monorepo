@@ -3,8 +3,35 @@ package net.consensys.linea.blob
 import com.sun.jna.Library
 import com.sun.jna.Native
 import net.consensys.jvm.ResourcesUtil.copyResourceToTmpDir
+import java.nio.file.Path
 
-interface GoNativeBlobDecompressor {
+class DecompressionException(message: String) : RuntimeException(message)
+
+interface BlobDecompressor {
+  fun decompress(blob: ByteArray, out: ByteArray): Int
+}
+
+internal class Adapter(
+  private val delegate: GoNativeBlobDecompressorJnaBinding,
+  dictionaries: List<Path>
+) : BlobDecompressor {
+  init {
+    dictionaries.forEachIndexed { index, dict ->
+      delegate.LoadDictionary(dict.toString(), index)
+    }
+    delegate.Init()
+  }
+
+  override fun decompress(blob: ByteArray, out: ByteArray): Int {
+    val decompressedSize = delegate.Decompress(blob, blob.size, out, out.size)
+    if (decompressedSize < 0) {
+      throw DecompressionException("Decompression failed, error='${delegate.Error()}'")
+    }
+    return decompressedSize
+  }
+}
+
+internal interface GoNativeBlobDecompressorJnaBinding {
 
   /**
    * Init initializes the Decompressor.
@@ -17,6 +44,7 @@ interface GoNativeBlobDecompressor {
    * return a description of the error.
    *
    * @param data  dictPath path to the dictionary file
+   * @param nbDicts FIXME: explain this
    * @return true if loading was successful else false
    */
   fun LoadDictionary(dictPath: String, nbDicts: Int): Boolean
@@ -41,26 +69,28 @@ interface GoNativeBlobDecompressor {
   fun Error(): String?
 }
 
-interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressor, Library
+internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaBinding, Library
 
 enum class BlobDecompressorVersion(val version: String) {
-  V1_0_1("v1.0.1")
+  V1_1_0("v1.1.0")
 }
 
 class GoNativeBlobDecompressorFactory {
   companion object {
-    private const val DICTIONARY_NAME = "Decompressor_dict.bin"
+    private const val DICTIONARY_NAME = "compressor_dict.bin"
     val dictionaryPath = copyResourceToTmpDir(DICTIONARY_NAME)
 
     private fun getLibFileName(version: String) = "blob_decompressor_jna_$version"
 
     fun getInstance(
       version: BlobDecompressorVersion
-    ): GoNativeBlobDecompressor {
+    ): BlobDecompressor {
       return Native.load(
         Native.extractFromResourcePath(getLibFileName(version.version)).toString(),
         GoNativeBlobDecompressorJnaLib::class.java
-      )
+      ).let {
+        Adapter(it, listOf(dictionaryPath))
+      }
     }
   }
 }
