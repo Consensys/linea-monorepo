@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.dao.rejectedtransaction
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.vertx.core.Future
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlClient
@@ -51,15 +52,29 @@ class RejectedTransactionsPostgresDao(
       }
     }
 
+    fun parseModuleOverflowListFromJsonString(jsonString: String): List<ModuleOverflow> {
+      return ObjectMapper().readValue(
+        jsonString,
+        Array<ModuleOverflow>::class.java
+      ).toList()
+    }
+
+    fun parseModuleOverflowListToJsonString(target: Any): String {
+      if (target is String) {
+        return target
+      }
+      return ObjectMapper().writeValueAsString(target)
+    }
+
     fun parseRecord(record: Row): RejectedTransaction {
       return RejectedTransaction(
         txRejectionStage = record.getString("reject_stage").run(::dbValueToRejectedStage),
-        timestamp = Instant.fromEpochMilliseconds(record.getLong("timestamp")),
+        timestamp = Instant.fromEpochMilliseconds(record.getLong("reject_timestamp")),
         blockNumber = record.getLong("block_number")?.toULong(),
         transactionRLP = record.getBuffer("tx_rlp").bytes,
         reasonMessage = record.getString("reject_reason"),
         overflows = record.getJsonArray("overflows").let { jsonArray ->
-          ModuleOverflow.parseListFromJsonString(jsonArray.encode())
+          parseModuleOverflowListFromJsonString(jsonArray.encode())
         },
         transactionInfo = TransactionInfo(
           hash = record.getBuffer("tx_hash").bytes,
@@ -82,7 +97,7 @@ class RejectedTransactionsPostgresDao(
       with x as (
         insert into $rejectedTransactionsTable
         (created_epoch_milli, tx_hash, tx_from, tx_to, tx_nonce,
-        reject_stage, reject_reason, timestamp, block_number, overflows)
+        reject_stage, reject_reason, reject_timestamp, block_number, overflows)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CAST($10::text as jsonb))
         RETURNING tx_hash, reject_reason
       )
@@ -101,8 +116,8 @@ class RejectedTransactionsPostgresDao(
       from $rejectedTransactionsTable
       join $fullTransactionsTable on $rejectedTransactionsTable.tx_hash = $fullTransactionsTable.tx_hash
         and $rejectedTransactionsTable.reject_reason = $fullTransactionsTable.reject_reason
-      where $fullTransactionsTable.tx_hash = $1 and $rejectedTransactionsTable.timestamp >= $2
-      order by $rejectedTransactionsTable.timestamp desc
+      where $fullTransactionsTable.tx_hash = $1 and $rejectedTransactionsTable.reject_timestamp >= $2
+      order by $rejectedTransactionsTable.reject_timestamp desc
       limit 1
     """
       .trimIndent()
@@ -110,7 +125,7 @@ class RejectedTransactionsPostgresDao(
   private val deleteSql =
     """
       delete from $rejectedTransactionsTable
-      where timestamp < $1
+      where reject_timestamp < $1
     """
       .trimIndent()
 
@@ -130,7 +145,7 @@ class RejectedTransactionsPostgresDao(
         rejectedTransaction.reasonMessage,
         rejectedTransaction.timestamp.toEpochMilliseconds(),
         rejectedTransaction.blockNumber?.toLong(),
-        ModuleOverflow.parseToJsonString(rejectedTransaction.overflows),
+        parseModuleOverflowListToJsonString(rejectedTransaction.overflows),
         rejectedTransaction.transactionRLP
       )
     queryLog.log(Level.TRACE, insertSql, params)

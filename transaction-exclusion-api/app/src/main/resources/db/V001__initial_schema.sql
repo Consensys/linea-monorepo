@@ -9,7 +9,7 @@ create table if not exists rejected_transactions (
   tx_nonce                     bigint,
   reject_stage                 varchar(5), -- SEQ,RPC,P2P
   reject_reason                varchar(256),
-  timestamp                    bigint,
+  reject_timestamp             bigint,
   block_number                 bigint,
   overflows                    jsonb,
   primary key (tx_hash, reject_reason)

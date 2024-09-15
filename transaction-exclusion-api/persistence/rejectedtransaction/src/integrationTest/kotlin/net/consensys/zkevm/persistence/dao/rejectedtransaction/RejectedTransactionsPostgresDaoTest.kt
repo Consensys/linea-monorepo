@@ -1,5 +1,6 @@
 package net.consensys.zkevm.persistence.dao.rejectedtransaction
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
@@ -135,10 +136,10 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
         row.getLong("created_epoch_milli") == fakeClock.now().toEpochMilliseconds() &&
           row.getString("reject_stage") ==
           RejectedTransactionsPostgresDao.rejectedStageToDbValue(rejectedTransaction.txRejectionStage) &&
-          row.getLong("timestamp") == rejectedTransaction.timestamp.toEpochMilliseconds() &&
+          row.getLong("reject_timestamp") == rejectedTransaction.timestamp.toEpochMilliseconds() &&
           row.getLong("block_number") == rejectedTransaction.blockNumber?.toLong() &&
           row.getString("reject_reason") == rejectedTransaction.reasonMessage &&
-          row.getJsonArray("overflows").encode() == ModuleOverflow.parseToJsonString(rejectedTransaction.overflows) &&
+          row.getJsonArray("overflows").encode() == ObjectMapper().writeValueAsString(rejectedTransaction.overflows) &&
           row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo!!.hash) &&
           row.getBuffer("tx_from").bytes.contentEquals(rejectedTransaction.transactionInfo!!.from) &&
           row.getBuffer("tx_to").bytes.contentEquals(rejectedTransaction.transactionInfo!!.to) &&

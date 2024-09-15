@@ -1,19 +1,11 @@
 package net.consensys.linea.transactionexclusion
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.datetime.Instant
 import net.consensys.encodeHex
 
 data class ModuleOverflow(
-  // The new property needs to be placed in
-  // alphabetical order; otherwise the integration
-  // test would fail due to object to json string function
-  @JsonProperty("count")
   val count: Long,
-  @JsonProperty("limit")
   val limit: Long,
-  @JsonProperty("module")
   val module: String
 ) {
   // Jackson ObjectMapper requires a default constructor
@@ -21,22 +13,6 @@ data class ModuleOverflow(
 
   override fun toString(): String {
     return "module=$module count=$count limit=$limit"
-  }
-
-  companion object {
-    fun parseListFromJsonString(jsonString: String): List<ModuleOverflow> {
-      return ObjectMapper().readValue(
-        jsonString,
-        Array<ModuleOverflow>::class.java
-      ).toList()
-    }
-
-    fun parseToJsonString(target: Any): String {
-      if (target is String) {
-        return target
-      }
-      return ObjectMapper().writeValueAsString(target)
-    }
   }
 }
 
