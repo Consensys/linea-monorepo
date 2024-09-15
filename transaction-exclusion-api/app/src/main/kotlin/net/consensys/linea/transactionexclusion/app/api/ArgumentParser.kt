@@ -6,6 +6,7 @@ import net.consensys.decodeHex
 import net.consensys.linea.transactionexclusion.ModuleOverflow
 import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionInfo
+import net.consensys.linea.transactionexclusion.dto.ModuleOverflowJsonDto
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import java.time.format.DateTimeFormatter
@@ -47,9 +48,9 @@ object ArgumentParser {
 
   fun getOverflows(target: Any): List<ModuleOverflow> {
     try {
-      return ModuleOverflow.parseListFromJsonString(
-        ModuleOverflow.parseToJsonString(target)
-      )
+      return ModuleOverflowJsonDto.parseListFromJsonString(
+        ModuleOverflowJsonDto.parseToJsonString(target)
+      ).map { it.toDomainObject() }
     } catch (ex: Exception) {
       throw IllegalArgumentException("Overflows cannot be parsed: ${ex.message}")
     }
