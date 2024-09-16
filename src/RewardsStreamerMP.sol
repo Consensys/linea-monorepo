@@ -139,7 +139,8 @@ contract RewardsStreamerMP is ReentrancyGuard {
     }
 
     function updateRewardIndex() public {
-        if (totalStaked == 0) {
+        uint256 totalWeight = totalStaked + totalMP;
+        if (totalWeight == 0) {
             return;
         }
 
@@ -147,7 +148,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         uint256 newRewards = rewardBalance > accountedRewards ? rewardBalance - accountedRewards : 0;
 
         if (newRewards > 0) {
-            rewardIndex += (newRewards * SCALE_FACTOR) / totalStaked;
+            rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
             accountedRewards += newRewards;
         }
     }
