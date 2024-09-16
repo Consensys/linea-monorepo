@@ -104,15 +104,31 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__InsufficientBalance();
         }
 
+        if (block.timestamp < user.lockUntil) {
+            revert StakingManager__TokensAreLocked();
+        }
+
         updateRewardIndex();
+        updateGlobalMP();
+        updateUserMP(msg.sender);
 
         uint256 userRewards = calculateUserRewards(msg.sender);
         if (userRewards > 0) {
             distributeRewards(msg.sender, userRewards);
         }
 
+        uint256 previousStakedBalance = user.stakedBalance;
         user.stakedBalance -= amount;
         totalStaked -= amount;
+
+        uint256 amountRatio = (amount * SCALE_FACTOR) / previousStakedBalance;
+        uint256 mpToReduce = (user.userMP * amountRatio) / SCALE_FACTOR;
+        uint256 potentialMPToReduce = (user.userPotentialMP * amountRatio) / SCALE_FACTOR;
+
+        user.userMP -= mpToReduce;
+        user.userPotentialMP -= potentialMPToReduce;
+        totalMP -= mpToReduce;
+        potentialMP -= potentialMPToReduce;
 
         bool success = stakingToken.transfer(msg.sender, amount);
         if (!success) {
