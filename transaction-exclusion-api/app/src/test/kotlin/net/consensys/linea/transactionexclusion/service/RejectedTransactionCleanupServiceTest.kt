@@ -6,7 +6,7 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import kotlinx.datetime.Clock
 import net.consensys.FakeFixedClock
-import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
+import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
 import org.awaitility.Awaitility
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -27,13 +27,13 @@ import kotlin.time.toJavaDuration
 @ExtendWith(VertxExtension::class)
 class RejectedTransactionCleanupServiceTest {
   private lateinit var rejectedTransactionCleanupService: RejectedTransactionCleanupService
-  private lateinit var rejectedTransactionsRepositoryMock: RejectedTransactionsRepository
+  private lateinit var rejectedTransactionsRepositoryMock: RejectedTransactionsDao
   private var fakeClock = FakeFixedClock(Clock.System.now())
 
   @BeforeEach
   fun beforeEach() {
     fakeClock.setTimeTo(Clock.System.now())
-    rejectedTransactionsRepositoryMock = mock<RejectedTransactionsRepository>(
+    rejectedTransactionsRepositoryMock = mock<RejectedTransactionsDao>(
       defaultAnswer = Mockito.RETURNS_DEEP_STUBS
     ).also {
       whenever(it.deleteRejectedTransactions(any()))
