@@ -153,14 +153,6 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
     }
 
-    function getStakedBalance(address userAddress) public view returns (uint256) {
-        return users[userAddress].stakedBalance;
-    }
-
-    function getPendingRewards(address userAddress) public view returns (uint256) {
-        return calculateUserRewards(userAddress);
-    }
-
     function calculateUserRewards(address userAddress) public view returns (uint256) {
         UserInfo storage user = users[userAddress];
         return (user.stakedBalance * (rewardIndex - user.userRewardIndex)) / SCALE_FACTOR;
@@ -218,7 +210,15 @@ contract RewardsStreamerMP is ReentrancyGuard {
         user.lastMPUpdateTime = block.timestamp;
     }
 
-    function getUserInfo(address userAddress) public view returns (UserInfo memory) {
+    function getStakedBalance(address userAddress) external view returns (uint256) {
+        return users[userAddress].stakedBalance;
+    }
+
+    function getPendingRewards(address userAddress) external view returns (uint256) {
+        return calculateUserRewards(userAddress);
+    }
+
+    function getUserInfo(address userAddress) external view returns (UserInfo memory) {
         return users[userAddress];
     }
 }
