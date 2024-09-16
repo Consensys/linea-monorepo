@@ -46,7 +46,7 @@ public class Mod implements OperationSetModule<ModOperation> {
     final Bytes32 arg1 = Bytes32.leftPad(frame.getStackItem(0));
     final Bytes32 arg2 = Bytes32.leftPad(frame.getStackItem(1));
 
-    operations.add(new ModOperation(opCodeData, arg1, arg2));
+    operations.add(new ModOperation(opCodeData.mnemonic(), arg1, arg2));
   }
 
   @Override
