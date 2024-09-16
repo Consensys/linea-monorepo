@@ -14,8 +14,8 @@ import net.consensys.linea.vertx.ObservabilityServer
 data class ApiConfig(
   val port: UInt,
   val observabilityPort: UInt,
-  val path: String = "/",
-  val numberOfVerticles: UInt
+  val numberOfVerticles: UInt,
+  val path: String = "/"
 )
 
 class Api(

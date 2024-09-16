@@ -21,7 +21,7 @@ rejected-timestamp-within-duration="PT24H"
 
 [persistence-retry]
 #max-retries = 10 commented as can be null
-backoff-delay = "PT1S"
+backoff-delay = "PT5S"
 timeout = "PT20S"
 
 [api]
