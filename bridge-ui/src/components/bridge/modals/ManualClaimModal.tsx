@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Button from "../Button";
+import { Button } from "../../ui";
 import { MdCallMade } from "react-icons/md";
 
 type ManualClaimModalProps = {
@@ -10,7 +10,7 @@ type ManualClaimModalProps = {
 const ManualClaimModal: React.FC<ManualClaimModalProps> = ({ handleNoClose, handleYesClose }) => {
   return (
     <div className="flex flex-col items-center justify-center gap-8 px-8">
-      <h2 className="text-xl">Manual claim on destination</h2>
+      <h2 className="text-2xl text-[#E5E5E5]">Manual claim on destination</h2>
       <div className="space-y-5 text-center">
         <div className="text-sm">
           Activating Manual claim means you will need to claim the message on the destination chain with ETH with a

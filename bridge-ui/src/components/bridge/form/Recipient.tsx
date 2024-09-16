@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { isAddress } from "viem";
 import { useFormContext } from "react-hook-form";
 import { MdInfo, MdAdd } from "react-icons/md";
-import { Tooltip } from "../tooltip";
+import { Tooltip } from "@/components/ui/";
 
 export function Recipient() {
   const [isChecked, setIsChecked] = useState(false);

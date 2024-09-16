@@ -1,7 +1,7 @@
 import React from "react";
 import { UseFormRegisterReturn } from "react-hook-form";
 import { MdInfo } from "react-icons/md";
-import { Tooltip } from "../../tooltip";
+import { Tooltip } from "@/components/ui";
 import { cn } from "@/utils/cn";
 
 interface ClaimOptionProps {

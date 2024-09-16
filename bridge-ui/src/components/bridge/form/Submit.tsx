@@ -3,7 +3,7 @@ import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormContext } from "react-hook-form";
 import ApproveERC20 from "./ApproveERC20";
-import Button from "./Button";
+import { Button } from "../../ui";
 import { useAccount, useBalance } from "wagmi";
 import { cn } from "@/utils/cn";
 
@@ -55,7 +55,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   return isETHTransfer ? (
     <Button
       type="submit"
-      className={cn("w-full", {
+      className={cn("w-full text-lg font-normal", {
         "btn-secondary": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
@@ -68,7 +68,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   ) : (
     <Button
       id="submit-erc-btn"
-      className="w-full"
+      className="w-full text-lg font-normal"
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
       type="submit"

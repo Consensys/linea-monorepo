@@ -1,6 +1,6 @@
 import { useChainStore } from "@/stores/chainStore";
 import { useFormContext } from "react-hook-form";
-import { Stepper } from "./Stepper";
+import { Stepper } from "../ui";
 
 const STEPS = ["Approve", "Bridge"];
 

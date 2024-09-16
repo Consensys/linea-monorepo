@@ -1,8 +1,6 @@
 "use client";
 
 import { ToastContainer } from "react-toastify";
-import atypTextFont from "@/app/font/atypText";
-import atypFont from "@/app/font/atyp";
 import { Header } from "./header";
 import { useInitialiseChain, useInitialiseToken } from "@/hooks";
 import Sidebar from "./Sidebar";
@@ -12,9 +10,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useInitialiseToken();
 
   return (
-    <div
-      className={`${atypFont.variable} ${atypTextFont.variable} ${atypFont.className} flex min-h-screen flex-col bg-cover bg-no-repeat`}
-    >
+    <div className="flex min-h-screen flex-col bg-cover bg-no-repeat">
       <ToastContainer
         position="top-center"
         autoClose={2000}

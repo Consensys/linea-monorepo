@@ -1,6 +1,6 @@
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { cn } from "@/utils/cn";
-import Button from "./bridge/Button";
+import { Button } from "./ui";
 
 type ConnectButtonProps = {
   fullWidth?: boolean;
