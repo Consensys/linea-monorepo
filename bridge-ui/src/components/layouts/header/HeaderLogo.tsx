@@ -11,6 +11,8 @@ function formatPath(pathname: string): string {
       return "Bridge";
     case "/transactions":
       return "Transactions";
+    case "/faq":
+      return "FAQ";
     default:
       return "";
   }
