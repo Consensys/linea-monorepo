@@ -1,6 +1,10 @@
 import { Wallet, ethers } from "ethers";
 import { beforeAll, describe, expect, it } from "@jest/globals";
-import { encodeFunctionCall, sendXTransactions, waitForEvents } from "./utils/utils";
+import {
+  encodeFunctionCall,
+  sendTransactionsToGenerateTrafficWithInterval,
+  waitForEvents
+} from "./utils/utils";
 import { getAndIncreaseFeeData } from "./utils/helpers";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./utils/constants";
 
@@ -46,33 +50,21 @@ const messagingTestSuite = (title: string) => {
 
           const receipt = await tx.wait();
 
+          console.log("Moving the L2 chain forward to trigger anchoring...");
+          const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2Account0);
+
           const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
           const messageHash = messageSentEvent.topics[3];
 
           console.log(`L1 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
           //Extra transactions to trigger anchoring
-          console.log("Moving the L2 chain forward to trigger anchoring...");
-
-          const [maxPriorityFeePerGas2, maxFeePerGas2] = getAndIncreaseFeeData(await l2Provider.getFeeData());
-          await sendXTransactions(
-            l2Account0,
-            {
-              to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-              value: ethers.utils.parseEther("0.0001"),
-              maxPriorityFeePerGas: maxPriorityFeePerGas2,
-              maxFeePerGas: maxFeePerGas2,
-            },
-            5,
-          );
-
           console.log("Waiting for MessageClaimed event on L2.");
           const [messageClaimedEvent] = await waitForEvents(
             l2MessageService,
             l2MessageService.filters.MessageClaimed(messageHash),
-            1_000,
           );
-
+          clearInterval(intervalId);
           console.log(`Message claimed on L2: ${JSON.stringify(messageClaimedEvent)}`);
           expect(messageClaimedEvent).toBeDefined();
         },
@@ -116,24 +108,14 @@ const messagingTestSuite = (title: string) => {
           console.log(`L2 message sent: messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
           console.log("Moving the L2 chain forward to trigger conflation...");
-          const [maxPriorityFeePerGas2, maxFeePerGas2] = getAndIncreaseFeeData(await l2Provider.getFeeData());
-          await sendXTransactions(
-            l2Account0,
-            {
-              to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-              value: ethers.utils.parseEther("0.0001"),
-              maxPriorityFeePerGas: maxPriorityFeePerGas2,
-              maxFeePerGas: maxFeePerGas2,
-            },
-            10,
-          );
+          const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2Account0);
 
           console.log("Waiting for MessageClaimed event on L1.");
           const [messageClaimedEvent] = await waitForEvents(
             lineaRollup,
-            lineaRollup.filters.MessageClaimed(messageHash),
-            1_000,
+            lineaRollup.filters.MessageClaimed(messageHash)
           );
+          clearInterval(intervalId);
 
           console.log(`Message claimed on L1: ${JSON.stringify(messageClaimedEvent)}`);
           expect(messageClaimedEvent).toBeDefined();

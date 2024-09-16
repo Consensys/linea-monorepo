@@ -5,7 +5,7 @@ import {
   waitForEvents,
   getMessageSentEventFromLogs,
   sendMessage,
-  sendTransactionsWithInterval,
+  sendTransactionsWithInterval, sendTransactionsToGenerateTrafficWithInterval,
 } from "./utils/utils";
 import {getAndIncreaseFeeData} from "./utils/helpers";
 import {Wallet, ethers} from "ethers";
@@ -15,19 +15,9 @@ const coordinatorRestartTestSuite = (title: string) => {
   describe(title, () => {
     it("When the coordinator restarts it should resume blob submission and finalization", async () => {
       const l2Account0 = new Wallet(L2_ACCOUNT_0_PRIVATE_KEY, l2Provider);
-      const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l2Provider.getFeeData());
 
       console.log("Moving the L2 chain forward to trigger conflation...");
-      const intervalId = sendTransactionsWithInterval(
-        l2Account0,
-        {
-          to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-          value: ethers.utils.parseEther("0.0001"),
-          maxPriorityFeePerGas,
-          maxFeePerGas,
-        },
-        1_000,
-      )
+      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2Account0)
 
       // await for a finalization to happen on L1
       await Promise.all([
