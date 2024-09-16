@@ -2,7 +2,7 @@ package gkrmimc
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // RoundGate represents a normal round of gkr (i.e. any round except for the

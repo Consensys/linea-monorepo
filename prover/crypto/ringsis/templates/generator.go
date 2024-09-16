@@ -9,7 +9,7 @@ import (
 	"text/template"
 
 	"github.com/consensys/bavard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Config stores the template generation parameters for the optimized ring-SIS

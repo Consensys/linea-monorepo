@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/std/compress"
@@ -163,7 +163,6 @@ func (bm *BlobMaker) Write(rlpBlock []byte, forceReset bool) (ok bool, err error
 
 	if blockLen > bm.limit {
 		// we should panic but logging / alerting is handled by the caller.
-		// see https://github.com/Consensys/zkevm-monorepo/issues/2326#issuecomment-1923573005
 		logrus.Warn("block size is larger than the blob limit. This should be checked by the coordinator, keeping the log for sanity", "block size", blockLen, "limit", bm.limit)
 	}
 

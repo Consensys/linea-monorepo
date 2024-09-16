@@ -1,7 +1,7 @@
 package simplify
 
 import (
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // removePolyEval rewrites all the polyeval as an equivalent sums of products

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/go-corset/pkg/air"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 // Settings specifies the parameters for the arithmetization part of the zkEVM.

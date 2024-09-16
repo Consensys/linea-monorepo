@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
 

@@ -2,12 +2,13 @@ package keccak
 
 import (
 	"encoding/json"
-	"golang.org/x/crypto/sha3"
 	"os"
 	"sync"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"golang.org/x/crypto/sha3"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 
