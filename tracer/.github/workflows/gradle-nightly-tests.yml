@@ -2,7 +2,7 @@ name: Nightly Tests
 
 on:
   schedule:
-    - cron: "0 22 * * *"
+    - cron: "0 22 * * 1-5"
   workflow_dispatch:
 
 env:
