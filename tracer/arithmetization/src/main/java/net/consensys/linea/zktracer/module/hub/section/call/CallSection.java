@@ -418,6 +418,9 @@ public class CallSection extends TraceSection
     postRollbackCalleeSnapshot = canonical(hub, preOpcodeCalleeSnapshot.address());
     postRollbackCallerSnapshot = canonical(hub, preOpcodeCallerSnapshot.address());
 
+    final boolean selfCall =
+        postOpcodeCalleeSnapshot.address().equals(postOpcodeCallerSnapshot.address());
+
     final CallScenarioFragment.CallScenario callScenario = scenarioFragment.getScenario();
     switch (callScenario) {
       case CALL_ABORT_WONT_REVERT -> completeAbortWillRevert(factory);
@@ -470,12 +473,22 @@ public class CallSection extends TraceSection
   private void completeEoaSuccessWillRevert(Factories factory) {
     scenarioFragment.setScenario(CALL_EOA_SUCCESS_WILL_REVERT);
 
+    final AccountSnapshot callerRightBeforeRollBack =
+        postOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
+    final AccountSnapshot callerRightAfterRollBack =
+        preOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
+
+    final AccountSnapshot calleeRightBeforeRollBack =
+        postOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
+    final AccountSnapshot calleeRightAfterRollBack =
+        preOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
+
     final AccountFragment undoingCallerAccountFragment =
         factory
             .accountFragment()
             .make(
-                postOpcodeCallerSnapshot,
-                postRollbackCallerSnapshot,
+                callerRightBeforeRollBack,
+                callerRightAfterRollBack,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), 2));
 
@@ -483,8 +496,8 @@ public class CallSection extends TraceSection
         factory
             .accountFragment()
             .make(
-                postOpcodeCalleeSnapshot,
-                postRollbackCalleeSnapshot,
+                calleeRightBeforeRollBack,
+                calleeRightAfterRollBack,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), 3));
 
@@ -516,25 +529,30 @@ public class CallSection extends TraceSection
       scenarioFragment.setScenario(CALL_PRC_SUCCESS_WILL_REVERT);
     }
 
-    if (selfCallWithNonzeroValueTransfer) {
-      reEntryCallerSnapshot.decrementBalanceBy(value);
-      postRollbackCalleeSnapshot.decrementBalanceBy(value);
-    }
+    final AccountSnapshot callerRightBeforeRollBack =
+        postOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
+    final AccountSnapshot callerRightAfterRollBack =
+        preOpcodeCallerSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCallerSnapshot);
+
+    final AccountSnapshot calleeRightBeforeRollBack =
+        postOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
+    final AccountSnapshot calleeRightAfterRollBack =
+        preOpcodeCalleeSnapshot.deepCopy().copyDeploymentInfoFrom(postRollbackCalleeSnapshot);
 
     final AccountFragment undoingCallerAccountFragment =
         factory
             .accountFragment()
             .make(
-                reEntryCallerSnapshot,
-                postRollbackCallerSnapshot,
+                callerRightBeforeRollBack,
+                callerRightAfterRollBack,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), 2));
     final AccountFragment undoingCalleeAccountFragment =
         factory
             .accountFragment()
             .make(
-                reEntryCalleeSnapshot,
-                postRollbackCalleeSnapshot,
+                calleeRightBeforeRollBack,
+                calleeRightAfterRollBack,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), 3));
 

@@ -57,8 +57,8 @@ import org.junit.jupiter.api.Test;
  * One can run this command: scripts/capture.pl --start xxx --end yyy --output my-test-case.json.gz
  */
 @Slf4j
+// @Tag("nightly")
 @Tag("replay")
-@Tag("nightly")
 public class ReplayTests {
 
   /**
