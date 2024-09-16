@@ -37,12 +37,15 @@ class RejectedTransactionsPostgresDao(
       }
     }
 
-    fun dbValueToRejectedStage(value: String): RejectedTransaction.Stage {
-      return when (value) {
+    fun dbValueToRejectedStage(dbStrValue: String): RejectedTransaction.Stage {
+      return when (dbStrValue) {
         "SEQ" -> RejectedTransaction.Stage.SEQUENCER
         "RPC" -> RejectedTransaction.Stage.RPC
         "P2P" -> RejectedTransaction.Stage.P2P
-        else -> throw IllegalStateException()
+        else -> throw IllegalStateException(
+          "The db string value: \"$dbStrValue\" cannot be mapped to any RejectedTransaction.Stage enum: " +
+            RejectedTransaction.Stage.entries.joinToString(",", "[", "]") { it.name }
+        )
       }
     }
 
