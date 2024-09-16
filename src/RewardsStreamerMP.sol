@@ -222,10 +222,6 @@ contract RewardsStreamerMP is ReentrancyGuard {
         user.userPotentialMP -= accruedMP;
         user.userMP += accruedMP;
 
-        // TODO: check if this is correct
-        totalMP += accruedMP;
-        potentialMP -= accruedMP;
-
         user.lastMPUpdateTime = block.timestamp;
     }
 
