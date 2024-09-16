@@ -3,10 +3,10 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Generic hashing for object satisfying the io.WriterTo interface

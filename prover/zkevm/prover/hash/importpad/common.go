@@ -3,8 +3,8 @@ package importpad
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func leftAlign(x uint64, nBytes int) field.Element {

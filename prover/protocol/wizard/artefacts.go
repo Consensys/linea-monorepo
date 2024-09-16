@@ -7,7 +7,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/sirupsen/logrus"
 )
 

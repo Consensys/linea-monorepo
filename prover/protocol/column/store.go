@@ -1,14 +1,14 @@
 package column
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // Store registers [Natural] for structs that can return the infos given a name
-// and it is used by the [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.ProverRuntime] and the
-// [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.VerifierRuntime] to store the columns. The store keeps
+// and it is used by the [github.com/consensys/linea-monorepo/prover/protocol/wizard.ProverRuntime] and the
+// [github.com/consensys/linea-monorepo/prover/protocol/wizard.VerifierRuntime] to store the columns. The store keeps
 // tracks of the definition rounds of the columns and offers a handful of
 // methods to resolve all the columns that have a particular status.
 type Store struct {
