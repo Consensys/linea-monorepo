@@ -81,17 +81,18 @@ export function Fees({ totalReceived, fees: { total, bridgingFeeInWei, transacti
           amount &&
           !errors.amount?.message &&
           (networkType === NetworkType.MAINNET && ethPrice && ethPrice?.[zeroAddress]
-            ? `$${(Number(formatEther(total)) * ethPrice[zeroAddress].usd).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 10,
+            ? `${(Number(formatEther(total)) * ethPrice[zeroAddress].usd).toLocaleString("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 4,
               })}`
             : `${formatBalance(formatEther(total), 8)} ETH`)
         }
         tooltipClassName="before:whitespace-pre-wrap before:content-[attr(data-tip)] text-left"
         tooltip={
           claim === "auto"
-            ? `Bridging transaction fee: ${formatEther(transactionFeeInWei)} ETH\nAutomatic claiming Fee: ${formatEther(bridgingFeeInWei)} ETH`
-            : `Bridging transaction fee: ${formatEther(transactionFeeInWei)} ETH`
+            ? `Bridging transaction fee: ${formatBalance(formatEther(transactionFeeInWei), 8)} ETH\nAutomatic claiming Fee: ${formatBalance(formatEther(bridgingFeeInWei), 8)} ETH`
+            : `Bridging transaction fee: ${formatBalance(formatEther(transactionFeeInWei), 8)} ETH`
         }
       />
       <FeeLine

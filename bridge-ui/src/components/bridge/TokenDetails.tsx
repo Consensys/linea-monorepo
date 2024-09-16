@@ -77,9 +77,9 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
           </p>
           {tokenPrice ? (
             <p className="text-[#C0C0C0]">
-              $
               {(tokenPrice * Number(balance)).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
+                style: "currency",
+                currency: "USD",
                 maximumFractionDigits: 4,
               })}
             </p>
