@@ -44,6 +44,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
     constructor(address _stakingToken, address _rewardToken) {
         stakingToken = IERC20(_stakingToken);
         rewardToken = IERC20(_rewardToken);
+        lastMPUpdatedTime = block.timestamp;
     }
 
     function stake(uint256 amount, uint256 lockPeriod) external nonReentrant {
