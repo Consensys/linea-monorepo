@@ -56,8 +56,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__InvalidLockingPeriod();
         }
 
-        updateRewardIndex();
-        updateGlobalMP();
+        _updateGlobalState();
         updateUserMP(msg.sender);
 
         UserInfo storage user = users[msg.sender];
@@ -111,8 +110,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             revert StakingManager__TokensAreLocked();
         }
 
-        updateRewardIndex();
-        updateGlobalMP();
+        _updateGlobalState();
         updateUserMP(msg.sender);
 
         uint256 userRewards = calculateUserRewards(msg.sender);
@@ -141,41 +139,13 @@ contract RewardsStreamerMP is ReentrancyGuard {
         user.userRewardIndex = rewardIndex;
     }
 
-    function updateRewardIndex() public {
-        uint256 totalWeight = totalStaked + totalMP;
-        if (totalWeight == 0) {
-            return;
-        }
-
-        uint256 rewardBalance = rewardToken.balanceOf(address(this));
-        uint256 newRewards = rewardBalance > accountedRewards ? rewardBalance - accountedRewards : 0;
-
-        if (newRewards > 0) {
-            rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
-            accountedRewards += newRewards;
-        }
+    function _updateGlobalState() internal {
+        updateGlobalMP();
+        updateRewardIndex();
     }
 
-    function calculateUserRewards(address userAddress) public view returns (uint256) {
-        UserInfo storage user = users[userAddress];
-        uint256 userWeight = user.stakedBalance + user.userMP;
-        uint256 deltaRewardIndex = rewardIndex - user.userRewardIndex;
-        return (userWeight * deltaRewardIndex) / SCALE_FACTOR;
-    }
-
-    function distributeRewards(address to, uint256 amount) internal {
-        uint256 rewardBalance = rewardToken.balanceOf(address(this));
-        // If amount is higher than the contract's balance (for rounding error), transfer the balance.
-        if (amount > rewardBalance) {
-            amount = rewardBalance;
-        }
-
-        bool success = rewardToken.transfer(to, amount);
-        if (!success) {
-            revert StakingManager__TransferFailed();
-        }
-
-        accountedRewards -= amount;
+    function updateGlobalState() external {
+        _updateGlobalState();
     }
 
     function updateGlobalMP() internal {
@@ -201,6 +171,21 @@ contract RewardsStreamerMP is ReentrancyGuard {
         lastMPUpdatedTime = currentTime;
     }
 
+    function updateRewardIndex() internal {
+        uint256 totalWeight = totalStaked + totalMP;
+        if (totalWeight == 0) {
+            return;
+        }
+
+        uint256 rewardBalance = rewardToken.balanceOf(address(this));
+        uint256 newRewards = rewardBalance > accountedRewards ? rewardBalance - accountedRewards : 0;
+
+        if (newRewards > 0) {
+            rewardIndex += (newRewards * SCALE_FACTOR) / totalWeight;
+            accountedRewards += newRewards;
+        }
+    }
+
     function updateUserMP(address userAddress) internal {
         UserInfo storage user = users[userAddress];
 
@@ -223,6 +208,28 @@ contract RewardsStreamerMP is ReentrancyGuard {
         user.userMP += accruedMP;
 
         user.lastMPUpdateTime = block.timestamp;
+    }
+
+    function calculateUserRewards(address userAddress) public view returns (uint256) {
+        UserInfo storage user = users[userAddress];
+        uint256 userWeight = user.stakedBalance + user.userMP;
+        uint256 deltaRewardIndex = rewardIndex - user.userRewardIndex;
+        return (userWeight * deltaRewardIndex) / SCALE_FACTOR;
+    }
+
+    function distributeRewards(address to, uint256 amount) internal {
+        uint256 rewardBalance = rewardToken.balanceOf(address(this));
+        // If amount is higher than the contract's balance (for rounding error), transfer the balance.
+        if (amount > rewardBalance) {
+            amount = rewardBalance;
+        }
+
+        bool success = rewardToken.transfer(to, amount);
+        if (!success) {
+            revert StakingManager__TransferFailed();
+        }
+
+        accountedRewards -= amount;
     }
 
     function getStakedBalance(address userAddress) external view returns (uint256) {
