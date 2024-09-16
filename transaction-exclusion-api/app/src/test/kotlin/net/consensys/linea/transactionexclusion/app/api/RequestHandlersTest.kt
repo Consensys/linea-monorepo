@@ -28,18 +28,27 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class RequestHandlersTest {
   private lateinit var transactionExclusionServiceMock: TransactionExclusionServiceV1
 
-  private val request = JsonRpcRequestMapParams(
+  private val mapParams = mapOf(
+    "txRejectionStage" to "SEQUENCER",
+    "timestamp" to "2024-09-05T09:22:52Z",
+    "transactionRLP" to defaultRejectedTransaction.transactionRLP.encodeHex(),
+    "reasonMessage" to defaultRejectedTransaction.reasonMessage,
+    "overflows" to
+      "[{\"module\":\"ADD\",\"count\":402,\"limit\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
+  )
+
+  private val mapRequest = JsonRpcRequestMapParams(
     "2.0",
     "1",
     "linea_saveRejectedTransactionV1",
-    mapOf(
-      "txRejectionStage" to "SEQUENCER",
-      "timestamp" to "2024-09-05T09:22:52Z",
-      "transactionRLP" to defaultRejectedTransaction.transactionRLP.encodeHex(),
-      "reasonMessage" to defaultRejectedTransaction.reasonMessage,
-      "overflows" to
-        "[{\"module\":\"ADD\",\"count\":402,\"limit\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
-    )
+    mapParams
+  )
+
+  private val listRequest = JsonRpcRequestListParams(
+    "2.0",
+    "1",
+    "linea_saveRejectedTransactionV1",
+    listOf(mapParams)
   )
 
   @BeforeEach
@@ -66,12 +75,41 @@ class RequestHandlersTest {
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
       .let {
-        JsonRpcSuccessResponse(request.id, it)
+        JsonRpcSuccessResponse(mapRequest.id, it)
       }
 
     val result = saveRequestHandlerV1.invoke(
       user = null,
-      request = request,
+      request = mapRequest,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(expectedResult, result.get())
+  }
+
+  @Test
+  fun SaveRejectedTransactionRequestHandlerV1_invoke_acceptsValidRequestList() {
+    whenever(transactionExclusionServiceMock.saveRejectedTransaction(any()))
+      .thenReturn(
+        SafeFuture.completedFuture(
+          Ok(TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
+        )
+      )
+
+    val saveRequestHandlerV1 = SaveRejectedTransactionRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val expectedResult = JsonObject()
+      .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
+      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      .let {
+        JsonRpcSuccessResponse(listRequest.id, it)
+      }
+
+    val result = saveRequestHandlerV1.invoke(
+      user = null,
+      request = listRequest,
       requestJson = JsonObject()
     ).get()
 
@@ -94,14 +132,13 @@ class RequestHandlersTest {
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
-      // .put("reasonMessage", defaultRejectedTransaction.reasonMessage)
       .let {
-        JsonRpcSuccessResponse(request.id, it)
+        JsonRpcSuccessResponse(mapRequest.id, it)
       }
 
     val result = saveTxRequestHandlerV1.invoke(
       user = null,
-      request = request,
+      request = mapRequest,
       requestJson = JsonObject()
     ).get()
 
@@ -125,12 +162,12 @@ class RequestHandlersTest {
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
       .let {
-        JsonRpcSuccessResponse(request.id, it)
+        JsonRpcSuccessResponse(mapRequest.id, it)
       }
 
     val result = saveTxRequestHandlerV1.invoke(
       user = null,
-      request = request,
+      request = mapRequest,
       requestJson = JsonObject()
     ).get()
 
@@ -156,7 +193,7 @@ class RequestHandlersTest {
     )
 
     val expectedResult = JsonRpcErrorResponse(
-      request.id,
+      mapRequest.id,
       jsonRpcError(
         TransactionExclusionError(
           ErrorType.SERVER_ERROR,
@@ -167,7 +204,7 @@ class RequestHandlersTest {
 
     val result = saveTxRequestHandlerV1.invoke(
       user = null,
-      request = request,
+      request = mapRequest,
       requestJson = JsonObject()
     ).get()
 

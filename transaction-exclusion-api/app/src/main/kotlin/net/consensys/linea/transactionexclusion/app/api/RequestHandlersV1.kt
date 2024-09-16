@@ -20,7 +20,29 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestMapParams
 import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.transactionexclusion.RejectedTransaction
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
+import net.consensys.linea.transactionexclusion.dto.RejectedTransactionJsonDto
 import net.consensys.toHexString
+
+private fun validateParams(request: JsonRpcRequest): Result<JsonRpcRequest, JsonRpcErrorResponse> {
+  if (request.params !is Map<*, *> && request.params !is List<*>) {
+    return Err(
+      JsonRpcErrorResponse.invalidParams(
+        request.id,
+        "params should be either an object or a list"
+      )
+    )
+  }
+  return try {
+    if (request.params is Map<*, *>) {
+      validateMapParams(request)
+    } else if (request.params is List<*>) {
+      validateListParams(request)
+    }
+    Ok(request)
+  } catch (e: Exception) {
+    Err(JsonRpcErrorResponse.invalidRequest())
+  }
+}
 
 private fun validateMapParams(request: JsonRpcRequest): Result<JsonRpcRequest, JsonRpcErrorResponse> {
   if (request.params !is Map<*, *>) {
@@ -88,10 +110,10 @@ class SaveRejectedTransactionRequestHandlerV1(
     OVERFLOWS("overflows")
   }
 
-  private fun validateMapParamsPresence(requestMapParams: JsonRpcRequestMapParams) {
+  private fun validateMapParamsPresence(requestMapParams: Map<*, *>) {
     RequestParams.entries
       .filter { requestParam ->
-        requestParam != RequestParams.BLOCK_NUMBER && requestMapParams.params[requestParam.paramName] == null
+        requestParam != RequestParams.BLOCK_NUMBER && requestMapParams[requestParam.paramName] == null
       }
       .run {
         if (this.isNotEmpty()) {
@@ -103,44 +125,28 @@ class SaveRejectedTransactionRequestHandlerV1(
       }
   }
 
-  private fun parseAndGetRejectedTransaction(
-    txRejectionStage: String,
-    timestamp: String,
-    blockNumber: String?,
-    transactionRLP: String,
-    reasonMessage: String,
-    overflows: Any
-  ): RejectedTransaction {
-    return RejectedTransaction(
-      txRejectionStage = ArgumentParser.getTxRejectionStage(txRejectionStage),
-      timestamp = ArgumentParser.getTimestampFromISO8601(timestamp),
-      blockNumber = ArgumentParser.getBlockNumber(blockNumber),
-      transactionRLP = ArgumentParser.getTransactionRLPInRawBytes(transactionRLP),
-      reasonMessage = ArgumentParser.getReasonMessage(reasonMessage),
-      overflows = ArgumentParser.getOverflows(overflows)
-    ).also {
-      it.transactionInfo = ArgumentParser.getTransactionInfoFromRLP(it.transactionRLP)
-    }
+  private fun parseMapParamsToRejectedTransaction(requestMapParams: Map<*, *>): RejectedTransaction {
+    return validateMapParamsPresence(requestMapParams)
+      .run {
+        RejectedTransactionJsonDto(
+          txRejectionStage = requestMapParams[RequestParams.TX_REJECTION_STAGE.paramName].toString(),
+          timestamp = requestMapParams[RequestParams.TIMESTAMP.paramName].toString(),
+          blockNumber = requestMapParams[RequestParams.BLOCK_NUMBER.paramName]?.toString(),
+          transactionRLP = requestMapParams[RequestParams.TRANSACTION_RLP.paramName].toString(),
+          reasonMessage = requestMapParams[RequestParams.REASON_MESSAGE.paramName].toString(),
+          overflows = requestMapParams[RequestParams.OVERFLOWS.paramName]!!
+        ).toDomainObject()
+      }
   }
 
-  private fun parseMapParamsToRejectedTransaction(validatedRequest: JsonRpcRequestMapParams): RejectedTransaction {
-    return validateMapParamsPresence(validatedRequest)
-      .run {
-        parseAndGetRejectedTransaction(
-          txRejectionStage = validatedRequest
-            .params[RequestParams.TX_REJECTION_STAGE.paramName].toString(),
-          timestamp = validatedRequest
-            .params[RequestParams.TIMESTAMP.paramName].toString(),
-          blockNumber = validatedRequest
-            .params[RequestParams.BLOCK_NUMBER.paramName]?.toString(),
-          transactionRLP = validatedRequest
-            .params[RequestParams.TRANSACTION_RLP.paramName].toString(),
-          reasonMessage = validatedRequest
-            .params[RequestParams.REASON_MESSAGE.paramName].toString(),
-          overflows = validatedRequest
-            .params[RequestParams.OVERFLOWS.paramName]!!
-        )
-      }
+  private fun parseListParamsToRejectedTransaction(requestMapParams: List<Any?>): RejectedTransaction {
+    if (requestMapParams.isEmpty() || requestMapParams[0] !is Map<*, *>) {
+      throw IllegalArgumentException(
+        "The size of the given request params list should not be empty " +
+          "or the first param should be an object"
+      )
+    }
+    return parseMapParamsToRejectedTransaction(requestMapParams[0] as Map<*, *>)
   }
 
   override fun invoke(
@@ -149,11 +155,14 @@ class SaveRejectedTransactionRequestHandlerV1(
     requestJson: JsonObject
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val rejectedTransaction = try {
-      val parsingResult = validateMapParams(request).flatMap { validatedRequest ->
+      val parsingResult = validateParams(request).flatMap { validatedRequest ->
         val parsedRejectedTransaction =
           when (validatedRequest) {
-            is JsonRpcRequestMapParams -> parseMapParamsToRejectedTransaction(validatedRequest)
-            else -> throw IllegalStateException("JsonRpcRequest should be as JsonRpcRequestMapParams")
+            is JsonRpcRequestMapParams -> parseMapParamsToRejectedTransaction(validatedRequest.params)
+            is JsonRpcRequestListParams -> parseListParamsToRejectedTransaction(validatedRequest.params)
+            else -> throw IllegalStateException(
+              "JsonRpcRequest should be as JsonRpcRequestMapParams or JsonRpcRequestListParams"
+            )
           }
         Ok(parsedRejectedTransaction)
       }
