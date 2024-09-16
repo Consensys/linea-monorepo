@@ -25,6 +25,6 @@ public class Issue1145Tests {
 
   @Test
   public void issue_1145_block_3318494_ReturnPrecondition() {
-    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz", false);
+    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz");
   }
 }

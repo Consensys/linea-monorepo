@@ -17,13 +17,14 @@ package net.consensys.linea.zktracer;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
 import static net.consensys.linea.zktracer.ReplayTests.replay;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-// @Tag("nightly")
+@Tag("nightly")
 public class Issue1169Tests {
 
   @Test
   public void issue_1145_block_3318494_InsufficientBalanceMainnet() {
-    replay(LINEA_MAINNET, "2746060.mainnet.json.gz", false);
+    replay(LINEA_MAINNET, "2746060.mainnet.json.gz");
   }
 }
