@@ -158,9 +158,9 @@ jobs:
         run: |
           mkdir -p docker_logs
           docker ps -a >> docker_logs/docker_ps.txt
-#          docker logs prover --since 1h &>> docker_logs/prover.txt
-#          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt
           docker logs coordinator --since 1h &>> docker_logs/coordinator.txt
+          docker logs prover --since 1h &>> docker_logs/prover.txt
+          docker logs prover-v3 --since 1h &>> docker_logs/prover-v3.txt
           docker logs shomei --since 1h &>> docker_logs/shomei.txt
           docker logs zkbesu-shomei --since 1h &>> docker_logs/zkbesu-shomei.txt
           docker logs shomei-frontend --since 1h &>> docker_logs/shomei-frontend.txt
