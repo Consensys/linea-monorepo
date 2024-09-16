@@ -31,3 +31,6 @@ linters-settings:
       - all
       - '-SA1019' # disable the rule against deprecated code
       - '-SA1006'
+  gosec:
+    excludes:
+      - G115 # Conversions from int -> uint etc

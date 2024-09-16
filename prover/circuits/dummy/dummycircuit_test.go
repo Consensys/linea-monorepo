@@ -5,8 +5,8 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/stretchr/testify/require"
 )
 

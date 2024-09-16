@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 func TestPureExpr(t *testing.T) {

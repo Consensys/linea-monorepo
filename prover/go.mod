@@ -1,4 +1,4 @@
-module github.com/consensys/zkevm-monorepo/prover
+module github.com/consensys/linea-monorepo/prover
 
 go 1.22.1
 

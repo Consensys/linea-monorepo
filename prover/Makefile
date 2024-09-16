@@ -78,10 +78,10 @@ bin/controller:
 ##
 ##	Prover (setup and prove)
 ##
-bin/prover: zkevm/arithmetization/zkevm.bin
+bin/prover:
 	mkdir -p bin
 	rm -f $@
-	$(CORSET_FLAGS) go build -o $@ ./cmd/prover
+	go build -o $@ ./cmd/prover
 
 ##
 ##	Compiles the state-manager inspector
@@ -105,7 +105,7 @@ bin/compression-aggregation-sample:
 bin/checker: zkevm/arithmetization/zkevm.bin
 	mkdir -p bin
 	rm -f $@
-	$(CORSET_FLAGS) go build -o $@ ./cmd/dev-tools/corset-checker
+	go build -o $@ ./cmd/dev-tools/corset-checker
 
 ##
 ##	Build the prover docker image
@@ -153,5 +153,5 @@ cgo-flags:
 # Update the prover's testdata in ../testdata/prover
 #
 make update-testdata-for-coordinator:
-	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/zkevm-monorepo/prover/backend/testing -v
+	go test -timeout 30m -tags amd64,nocorset -run TestSamples github.com/consensys/linea-monorepo/prover/backend/testing -v
 	cp -f backend/testing/**/*-*-zkProof.json ../testdata/prover/output

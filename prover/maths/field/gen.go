@@ -3,7 +3,7 @@ package field
 import (
 	"runtime"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // ParBatchInvert is as a parallel implementation of [BatchInvert]. The caller

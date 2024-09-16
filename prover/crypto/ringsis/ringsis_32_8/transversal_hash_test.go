@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_32_8"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	wfft "github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	wfft "github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 

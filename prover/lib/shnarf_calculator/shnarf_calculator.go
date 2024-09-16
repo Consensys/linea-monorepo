@@ -7,7 +7,7 @@ import "C"
 import (
 	"unsafe"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 )
 
 // Required to make CGO work.

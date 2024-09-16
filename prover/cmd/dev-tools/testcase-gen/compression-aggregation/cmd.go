@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/spf13/cobra"
 )
 

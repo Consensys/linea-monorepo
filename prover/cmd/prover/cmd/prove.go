@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobdecompression"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/spf13/cobra"
 )
 
