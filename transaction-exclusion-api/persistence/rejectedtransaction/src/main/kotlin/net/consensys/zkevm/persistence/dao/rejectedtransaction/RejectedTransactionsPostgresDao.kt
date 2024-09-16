@@ -18,20 +18,14 @@ import net.consensys.zkevm.persistence.db.isDuplicateKeyException
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Duration
 
 class RejectedTransactionsPostgresDao(
   private val readConnection: SqlClient,
   private val writeConnection: SqlClient,
-  private val config: Config,
   private val clock: Clock = Clock.System
 ) : RejectedTransactionsDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
-
-  data class Config(
-    val queryableWindowSinceRejectTimestamp: Duration
-  )
 
   companion object {
     // Public instead of internal to allow usage in integrationTest source set
@@ -73,9 +67,9 @@ class RejectedTransactionsPostgresDao(
         blockNumber = record.getLong("block_number")?.toULong(),
         transactionRLP = record.getBuffer("tx_rlp").bytes,
         reasonMessage = record.getString("reject_reason"),
-        overflows = record.getJsonArray("overflows").let { jsonArray ->
-          parseModuleOverflowListFromJsonString(jsonArray.encode())
-        },
+        overflows = parseModuleOverflowListFromJsonString(
+          record.getJsonArray("overflows").encode()
+        ),
         transactionInfo = TransactionInfo(
           hash = record.getBuffer("tx_hash").bytes,
           from = record.getBuffer("tx_from").bytes,
@@ -125,7 +119,7 @@ class RejectedTransactionsPostgresDao(
   private val deleteSql =
     """
       delete from $rejectedTransactionsTable
-      where reject_timestamp < $1
+      where created_epoch_milli < $1
     """
       .trimIndent()
 
@@ -167,12 +161,15 @@ class RejectedTransactionsPostgresDao(
       .toSafeFuture()
   }
 
-  override fun findRejectedTransactionByTxHash(txHash: ByteArray): SafeFuture<RejectedTransaction?> {
+  override fun findRejectedTransactionByTxHash(
+    txHash: ByteArray,
+    notRejectedBefore: Instant
+  ): SafeFuture<RejectedTransaction?> {
     return selectSqlQuery
       .execute(
         Tuple.of(
           txHash,
-          clock.now().minus(config.queryableWindowSinceRejectTimestamp).toEpochMilliseconds()
+          notRejectedBefore.toEpochMilliseconds()
         )
       )
       .toSafeFuture()
@@ -180,9 +177,11 @@ class RejectedTransactionsPostgresDao(
       .thenApply { rejectedTxRecords -> rejectedTxRecords.firstOrNull() }
   }
 
-  override fun deleteRejectedTransactionsBeforeTimestamp(timestamp: Instant): SafeFuture<Int> {
+  override fun deleteRejectedTransactions(
+    createdBefore: Instant
+  ): SafeFuture<Int> {
     return deleteSqlQuery
-      .execute(Tuple.of(timestamp.toEpochMilliseconds()))
+      .execute(Tuple.of(createdBefore.toEpochMilliseconds()))
       .map { rowSet -> rowSet.rowCount() }
       .toSafeFuture()
   }

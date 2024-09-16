@@ -18,11 +18,11 @@ class TransactionExclusionAppMain {
 
     private fun startApp(configs: AppConfig) {
       try {
-        val sumoApp = TransactionExclusionApp(configs)
+        val app = TransactionExclusionApp(configs)
         Runtime.getRuntime()
           .addShutdownHook(
             Thread {
-              sumoApp.stop()
+              app.stop()
               if (LogManager.getContext() is LoggerContext) {
                 // Disable log4j auto shutdown hook is not used otherwise
                 // Messages in App.stop won't appear in the logs
@@ -30,7 +30,7 @@ class TransactionExclusionAppMain {
               }
             }
           )
-        sumoApp.start()
+        app.start()
       } catch (t: Throwable) {
         log.error("Startup failure: ", t)
         exitProcess(1)
