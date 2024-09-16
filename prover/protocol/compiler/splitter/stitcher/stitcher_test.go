@@ -238,9 +238,10 @@ func TestGlobalMixedRounds(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGlobalWithVerifCol(t *testing.T) {
+func TestWithVerifCol(t *testing.T) {
 	var a, b, c, verifcol1, verifcol2 ifaces.Column
 	var q1, q2 query.GlobalConstraint
+	var q3 query.LocalConstraint
 
 	define := func(builder *wizard.Builder) {
 		// declare columns of different sizes
@@ -259,6 +260,8 @@ func TestGlobalWithVerifCol(t *testing.T) {
 
 		expr = symbolic.Sub(symbolic.Add(a, verifcol2), c)
 		q2 = builder.GlobalConstraint("Q1", expr)
+
+		q3 = builder.LocalConstraint("Q2", expr)
 	}
 
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
@@ -266,6 +269,7 @@ func TestGlobalWithVerifCol(t *testing.T) {
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should  be ignored")
+	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q3.ID), "q2 should  be ignored")
 
 	// manually compiles the comp
 	dummy.Compile(comp)
