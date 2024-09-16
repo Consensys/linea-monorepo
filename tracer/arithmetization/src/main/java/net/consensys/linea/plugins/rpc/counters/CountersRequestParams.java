@@ -21,12 +21,18 @@ import net.consensys.linea.zktracer.ZkTracer;
 
 /** Holds needed parameters for sending an execution trace generation request. */
 public record CountersRequestParams(long blockNumber, String expectedTracesEngineVersion) {
-  public void validateTracerVersion() {
+  public void validate() {
     if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
       throw new InvalidParameterException(
           String.format(
               "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s",
               getTracerRuntime(), expectedTracesEngineVersion));
+    }
+
+    if (blockNumber < 0) {
+      throw new InvalidParameterException(
+          "INVALID_BLOCK_NUMBER: blockNumber: %d cannot be a negative number"
+              .formatted(blockNumber));
     }
   }
 
