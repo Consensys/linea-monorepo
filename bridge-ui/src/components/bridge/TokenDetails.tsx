@@ -80,7 +80,7 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
               $
               {(tokenPrice * Number(balance)).toLocaleString("en-US", {
                 minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
+                maximumFractionDigits: 4,
               })}
             </p>
           ) : null}
