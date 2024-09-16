@@ -83,7 +83,7 @@ public class GenerateConflatedTracesV2 {
       TraceRequestParams params =
           CONVERTER.fromJson(CONVERTER.toJson(rawParams[0]), TraceRequestParams.class);
 
-      params.validateTracerVersion();
+      params.validate();
 
       final long fromBlock = params.startBlockNumber();
       final long toBlock = params.endBlockNumber();

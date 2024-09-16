@@ -23,12 +23,29 @@ import net.consensys.linea.zktracer.ZkTracer;
 public record TraceRequestParams(
     long startBlockNumber, long endBlockNumber, String expectedTracesEngineVersion) {
 
-  public void validateTracerVersion() {
+  public void validate() {
     if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
       throw new InvalidParameterException(
-          String.format(
-              "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s",
-              getTracerRuntime(), expectedTracesEngineVersion));
+          "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s"
+              .formatted(getTracerRuntime(), expectedTracesEngineVersion));
+    }
+
+    if (startBlockNumber < 0) {
+      throw new InvalidParameterException(
+          "INVALID_START_BLOCK_NUMBER: startBlockNumber: %d cannot be a negative number"
+              .formatted(startBlockNumber));
+    }
+
+    if (endBlockNumber < 0) {
+      throw new InvalidParameterException(
+          "INVALID_END_BLOCK_NUMBER: endBlockNumber: %d cannot be a negative number"
+              .formatted(endBlockNumber));
+    }
+
+    if (endBlockNumber - startBlockNumber < 0) {
+      throw new InvalidParameterException(
+          "INVALID_END_BLOCK_NUMBER: endBlockNumber: %d cannot be less than startBlockNumber: %d"
+              .formatted(endBlockNumber, startBlockNumber));
     }
   }
 

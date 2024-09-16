@@ -81,7 +81,7 @@ public class GenerateCountersV2 {
       final CountersRequestParams params =
           CONVERTER.fromJson(CONVERTER.toJson(rawParams[0]), CountersRequestParams.class);
 
-      params.validateTracerVersion();
+      params.validate();
 
       final long requestedBlockNumber = params.blockNumber();
 
