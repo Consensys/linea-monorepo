@@ -87,6 +87,8 @@ contract RewardsStreamerMP is ReentrancyGuard {
             initialMP += (amount * lockMultiplier);
             userPotentialMP += (amount * lockMultiplier);
             user.lockUntil = block.timestamp + lockPeriod;
+        } else {
+            user.lockUntil = 0;
         }
 
         user.userMP += initialMP;
