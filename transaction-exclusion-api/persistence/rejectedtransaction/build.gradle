@@ -3,6 +3,7 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -23,6 +24,8 @@ dependencies {
   testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
   testImplementation("io.vertx:vertx-junit5")
+
+  testFixturesImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
 }
 
 sourceSets {

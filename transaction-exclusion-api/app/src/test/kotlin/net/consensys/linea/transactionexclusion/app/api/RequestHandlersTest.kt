@@ -14,7 +14,7 @@ import net.consensys.linea.jsonrpc.JsonRpcSuccessResponse
 import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
-import net.consensys.linea.transactionexclusion.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.toHexString
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -94,6 +94,7 @@ class RequestHandlersTest {
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
       .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      // .put("reasonMessage", defaultRejectedTransaction.reasonMessage)
       .let {
         JsonRpcSuccessResponse(request.id, it)
       }
@@ -141,7 +142,12 @@ class RequestHandlersTest {
     whenever(transactionExclusionServiceMock.saveRejectedTransaction(any()))
       .thenReturn(
         SafeFuture.completedFuture(
-          Err(TransactionExclusionError(ErrorType.OTHER_ERROR, ""))
+          Err(
+            TransactionExclusionError(
+              ErrorType.SERVER_ERROR,
+              "error for unit test"
+            )
+          )
         )
       )
 
@@ -153,8 +159,8 @@ class RequestHandlersTest {
       request.id,
       jsonRpcError(
         TransactionExclusionError(
-          ErrorType.OTHER_ERROR,
-          ""
+          ErrorType.SERVER_ERROR,
+          "error for unit test"
         )
       )
     )
@@ -212,14 +218,43 @@ class RequestHandlersTest {
   }
 
   @Test
+  fun GetTransactionExclusionStatusRequestHandlerV1_invoke_return_null_result() {
+    whenever(transactionExclusionServiceMock.getTransactionExclusionStatus(any()))
+      .thenReturn(SafeFuture.completedFuture(Ok(null)))
+
+    val request = JsonRpcRequestListParams(
+      "2.0",
+      "1",
+      "linea_getTransactionExclusionStatusV1",
+      listOf(
+        defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
+      )
+    )
+
+    val getTxStatusRequestHandlerV1 = GetTransactionExclusionStatusRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val expectedResult = JsonRpcSuccessResponse(request.id, null)
+
+    val result = getTxStatusRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(expectedResult, result.get())
+  }
+
+  @Test
   fun GetTransactionExclusionStatusRequestHandlerV1_invoke_return_failure_result() {
     whenever(transactionExclusionServiceMock.getTransactionExclusionStatus(any()))
       .thenReturn(
         SafeFuture.completedFuture(
           Err(
             TransactionExclusionError(
-              ErrorType.TRANSACTION_UNAVAILABLE,
-              "Cannot find the rejected transaction"
+              ErrorType.SERVER_ERROR,
+              "error for unit test"
             )
           )
         )
@@ -242,8 +277,8 @@ class RequestHandlersTest {
       request.id,
       jsonRpcError(
         TransactionExclusionError(
-          ErrorType.TRANSACTION_UNAVAILABLE,
-          "Cannot find the rejected transaction"
+          ErrorType.SERVER_ERROR,
+          "error for unit test"
         )
       )
     )

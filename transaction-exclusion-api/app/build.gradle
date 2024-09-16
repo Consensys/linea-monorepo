@@ -1,6 +1,6 @@
 plugins {
-    id 'net.consensys.zkevm.kotlin-application-conventions'
-    id 'com.github.johnrengelman.shadow' version '7.1.2'
+  id 'net.consensys.zkevm.kotlin-application-conventions'
+  id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 dependencies {
@@ -49,6 +49,7 @@ dependencies {
   testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
   testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
   testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":transaction-exclusion-api:persistence:rejectedtransaction")))
 }
 
 application {

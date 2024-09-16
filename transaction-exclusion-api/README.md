@@ -125,11 +125,7 @@ The rejected transaction was not found:
 {
     "jsonrpc": "2.0",
     "id": 53,
-    "error": {
-      "code": -4000,
-      "message": "Rejected transaction not available",
-      "data": "Cannot find the rejected transaction with hash=0x526e56101cf39c1e717cef9cedf6fdddb42684711abda35bae51136dbb350ad8"
-  }
+    "result": null
 }
 ```
 Invalid request params errors:

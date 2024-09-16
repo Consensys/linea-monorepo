@@ -1,9 +1,12 @@
-package net.consensys.linea.transactionexclusion
+package net.consensys.linea.transactionexclusion.test
 
 import kotlinx.datetime.Instant
 import net.consensys.decodeHex
+import net.consensys.linea.transactionexclusion.ModuleOverflow
+import net.consensys.linea.transactionexclusion.RejectedTransaction
+import net.consensys.linea.transactionexclusion.TransactionInfo
 
-internal val defaultRejectedTransaction = RejectedTransaction(
+val defaultRejectedTransaction = RejectedTransaction(
   txRejectionStage = RejectedTransaction.Stage.SEQUENCER,
   timestamp = Instant.parse("2024-08-31T09:18:51Z"),
   blockNumber = 10000UL,

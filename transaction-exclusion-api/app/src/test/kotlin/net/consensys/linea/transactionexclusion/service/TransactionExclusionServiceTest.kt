@@ -2,13 +2,12 @@ package net.consensys.linea.transactionexclusion.service
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
-import net.consensys.encodeHex
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
-import net.consensys.linea.transactionexclusion.defaultRejectedTransaction
+import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -18,9 +17,13 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Duration.Companion.hours
 
 class TransactionExclusionServiceTest {
   private val metricsFacadeMock = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+  private val config = TransactionExclusionServiceV1Impl.Config(
+    rejectedTimestampWithinDuration = 24.hours
+  )
   private lateinit var rejectedTransactionsRepositoryMock: RejectedTransactionsRepository
 
   @BeforeEach
@@ -32,12 +35,13 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_success_result_with_saved_status() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(Unit))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
@@ -50,12 +54,13 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_success_result_with_duplicated_already_saved_status() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
       .thenReturn(SafeFuture.failedFuture(DuplicatedRecordException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
@@ -68,46 +73,49 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_error_result_when_findRejectedTransaction_failed() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
     whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(Unit))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
 
     Assertions.assertEquals(
-      Err(TransactionExclusionError(ErrorType.OTHER_ERROR, "")),
+      Err(TransactionExclusionError(ErrorType.SERVER_ERROR, "")),
       transactionExclusionService.saveRejectedTransaction(defaultRejectedTransaction).get()
     )
   }
 
   @Test
   fun saveRejectedTransaction_return_error_result_when_saveRejectedTransaction_failed() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
 
     Assertions.assertEquals(
-      Err(TransactionExclusionError(ErrorType.OTHER_ERROR, "")),
+      Err(TransactionExclusionError(ErrorType.SERVER_ERROR, "")),
       transactionExclusionService.saveRejectedTransaction(defaultRejectedTransaction).get()
     )
   }
 
   @Test
   fun getTransactionExclusionStatus_return_success_result_with_rejected_txn() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
@@ -122,22 +130,17 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun getTransactionExclusionStatus_return_error_result_with_transaction_unavailable() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.completedFuture(null))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
 
     Assertions.assertEquals(
-      Err(
-        TransactionExclusionError(
-          ErrorType.TRANSACTION_UNAVAILABLE,
-          "Cannot find the rejected transaction with hash=" +
-            defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
-        )
-      ),
+      Ok(null),
       transactionExclusionService.getTransactionExclusionStatus(
         defaultRejectedTransaction.transactionInfo!!.hash
       ).get()
@@ -146,10 +149,11 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun getTransactionExclusionStatus_return_error_result_with_other_error() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = config,
       repository = rejectedTransactionsRepositoryMock,
       metricsFacade = metricsFacadeMock
     )
@@ -157,7 +161,7 @@ class TransactionExclusionServiceTest {
     Assertions.assertEquals(
       Err(
         TransactionExclusionError(
-          ErrorType.OTHER_ERROR,
+          ErrorType.SERVER_ERROR,
           ""
         )
       ),

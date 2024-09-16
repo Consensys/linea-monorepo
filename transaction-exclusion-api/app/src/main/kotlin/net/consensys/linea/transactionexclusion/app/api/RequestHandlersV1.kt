@@ -230,7 +230,7 @@ class GetTransactionExclusionStatusRequestHandlerV1(
       .getTransactionExclusionStatus(txHash)
       .thenApply { result ->
         result.map {
-          val rpcResult =
+          val rpcResult = if (it == null) { null } else {
             JsonObject()
               .put("txHash", it.transactionInfo!!.hash.encodeHex())
               .put("from", it.transactionInfo!!.from.encodeHex())
@@ -243,6 +243,7 @@ class GetTransactionExclusionStatusRequestHandlerV1(
                   jsonObject.put("blockNumber", it.blockNumber!!.toHexString())
                 }
               }
+          }
           JsonRpcSuccessResponse(request.id, rpcResult)
         }.mapError { error ->
           JsonRpcErrorResponse(request.id, jsonRpcError(error))
