@@ -10,6 +10,7 @@ services:
 
   linea-besu-sequencer-plugin-downloader:
     command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.3.0-rc2.2/linea-sequencer-v0.3.0-rc2.2.jar",  "/linea-besu-sequencer" ]
+#    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test32/besu-sequencer-plugins-v0.1.4-test32.jar",  "/linea-besu-sequencer" ]
 
   traces-node:
     command: ['echo', 'forced exit as replaced by traces-node-v2']
