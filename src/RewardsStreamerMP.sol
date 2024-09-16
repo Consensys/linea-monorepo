@@ -200,19 +200,29 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
     function updateUserMP(address userAddress) internal {
         UserInfo storage user = users[userAddress];
-        if (user.userMP == 0) {
+
+        if (user.userPotentialMP == 0 || user.stakedBalance == 0) {
+            user.lastMPUpdateTime = block.timestamp;
             return;
         }
 
         uint256 timeDiff = block.timestamp - user.lastMPUpdateTime;
-        uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days);
+        if (timeDiff == 0) {
+            return;
+        }
 
+        uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
         if (accruedMP > user.userPotentialMP) {
             accruedMP = user.userPotentialMP;
         }
 
         user.userPotentialMP -= accruedMP;
         user.userMP += accruedMP;
+
+        // TODO: check if this is correct
+        totalMP += accruedMP;
+        potentialMP -= accruedMP;
+
         user.lastMPUpdateTime = block.timestamp;
     }
 
