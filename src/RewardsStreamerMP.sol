@@ -11,24 +11,24 @@ contract RewardsStreamerMP is ReentrancyGuard {
     error StakingManager__InsufficientBalance();
     error StakingManager__InvalidLockingPeriod();
     error StakingManager__CannotRestakeWithLockedFunds();
+    error StakingManager__TokensAreLocked();
 
     IERC20 public immutable stakingToken;
     IERC20 public immutable rewardToken;
 
     uint256 public constant SCALE_FACTOR = 1e18;
-    uint256 public constant MP_RATE_PER_YEAR = 1;
+    uint256 public constant MP_RATE_PER_YEAR = 1e18;
 
     uint256 public constant MIN_LOCKING_PERIOD = 90 days;
-    uint256 public constant MAX_LOCKING_PERIOD = (365 days) * 4;
+    uint256 public constant MAX_LOCKING_PERIOD = 4 * 365 days;
     uint256 public constant MAX_MULTIPLIER = 4;
 
     uint256 public totalStaked;
+    uint256 public totalMP;
+    uint256 public potentialMP;
     uint256 public rewardIndex;
     uint256 public accountedRewards;
-
-    uint256 totalMP;
-    uint256 potentialMP;
-    uint256 lastMPUpdatedTime;
+    uint256 public lastMPUpdatedTime;
 
     struct UserInfo {
         uint256 stakedBalance;
@@ -76,28 +76,25 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
         user.stakedBalance += amount;
         totalStaked += amount;
-        user.userRewardIndex = rewardIndex;
 
-        // TODO: revisit initialMP calculation
-        uint256 initialMP;
-        uint256 userPotentialMP;
-        if (lockPeriod == 0) {
-            initialMP = amount;
-            potentialMP = amount * 4;
-        } else {
-            uint256 maxAmount = amount * MAX_MULTIPLIER;
-            initialMP = amount + (lockPeriod * maxAmount) / MAX_LOCKING_PERIOD;
-            // TODO: this needs to be proportional,
-            // not 8 only because the funds are locked.
-            potentialMP = amount * 8;
+        uint256 initialMP = amount;
+        uint256 userPotentialMP = amount * 4;
+
+        if (lockPeriod != 0) {
+            uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKING_PERIOD;
+            lockMultiplier = lockMultiplier / SCALE_FACTOR;
+            initialMP += (amount * lockMultiplier);
+            userPotentialMP += (amount * lockMultiplier);
+            user.lockUntil = block.timestamp + lockPeriod;
         }
 
         user.userMP += initialMP;
         totalMP += initialMP;
 
-        user.userPotentialMP = userPotentialMP;
+        user.userPotentialMP += userPotentialMP;
         potentialMP += userPotentialMP;
 
+        user.userRewardIndex = rewardIndex;
         user.lastMPUpdateTime = block.timestamp;
     }
 
