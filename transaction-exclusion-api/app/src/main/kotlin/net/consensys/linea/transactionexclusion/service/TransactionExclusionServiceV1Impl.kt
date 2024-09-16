@@ -8,19 +8,17 @@ import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.RejectedTransaction
-import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1.SaveRejectedTransactionStatus
+import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration
 
 class TransactionExclusionServiceV1Impl(
   private val config: Config,
-  private val repository: RejectedTransactionsRepository,
+  private val repository: RejectedTransactionsDao,
   metricsFacade: MetricsFacade,
   private val clock: Clock = Clock.System
 ) : TransactionExclusionServiceV1 {
@@ -28,7 +26,6 @@ class TransactionExclusionServiceV1Impl(
     val rejectedTimestampWithinDuration: Duration
   )
 
-  private val log: Logger = LogManager.getLogger(this::class.java)
   private val txRejectionCounter = metricsFacade.createCounter(
     LineaMetricsCategory.TX_EXCLUSION_API,
     "transactions.rejected",
@@ -40,7 +37,7 @@ class TransactionExclusionServiceV1Impl(
   ): SafeFuture<
     Result<SaveRejectedTransactionStatus, TransactionExclusionError>
     > {
-    return this.repository.findRejectedTransaction(
+    return this.repository.findRejectedTransactionByTxHash(
       txHash = rejectedTransaction.transactionInfo!!.hash,
       notRejectedBefore = clock.now().minus(config.rejectedTimestampWithinDuration)
     )
@@ -50,7 +47,7 @@ class TransactionExclusionServiceV1Impl(
         }
       }
       .thenCompose {
-        this.repository.saveRejectedTransaction(rejectedTransaction)
+        this.repository.saveNewRejectedTransaction(rejectedTransaction)
       }
       .handleComposed { _, error ->
         if (error != null) {
@@ -72,7 +69,7 @@ class TransactionExclusionServiceV1Impl(
   override fun getTransactionExclusionStatus(
     txHash: ByteArray
   ): SafeFuture<Result<RejectedTransaction?, TransactionExclusionError>> {
-    return this.repository.findRejectedTransaction(
+    return this.repository.findRejectedTransactionByTxHash(
       txHash = txHash,
       notRejectedBefore = clock.now().minus(config.rejectedTimestampWithinDuration)
     )

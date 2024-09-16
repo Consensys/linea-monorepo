@@ -9,18 +9,21 @@ import io.vertx.sqlclient.SqlClient
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.async.toVertxFuture
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
-import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.app.api.Api
 import net.consensys.linea.transactionexclusion.app.api.ApiConfig
-import net.consensys.linea.transactionexclusion.repository.RejectedTransactionsRepositoryImpl
 import net.consensys.linea.transactionexclusion.service.RejectedTransactionCleanupService
 import net.consensys.linea.transactionexclusion.service.TransactionExclusionServiceV1Impl
 import net.consensys.linea.vertx.loadVertxConfig
+import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
 import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsPostgresDao
+import net.consensys.zkevm.persistence.dao.rejectedtransaction.RetryingRejectedTransactionsPostgresDao
 import net.consensys.zkevm.persistence.db.Db
+import net.consensys.zkevm.persistence.db.PersistenceRetryer
 import org.apache.logging.log4j.LogManager
 import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 
 data class DbConnectionConfig(
@@ -52,7 +55,14 @@ data class DatabaseConfig(
 
 data class AppConfig(
   val api: ApiConfig,
-  val database: DatabaseConfig
+  val database: DatabaseConfig,
+  val persistenceRetry: PersistenceRetryConfig
+)
+
+data class PersistenceRetryConfig(
+  val maxRetries: Int? = null,
+  val backoffDelay: Duration = 1.seconds.toJavaDuration(),
+  val timeout: Duration? = 20.seconds.toJavaDuration()
 )
 
 class TransactionExclusionApp(config: AppConfig) {
@@ -62,7 +72,7 @@ class TransactionExclusionApp(config: AppConfig) {
   private val api: Api
   private val sqlReadClient: SqlClient
   private val sqlWriteClient: SqlClient
-  private val rejectedTransactionsRepository: RejectedTransactionsRepository
+  private val rejectedTransactionsRepository: RejectedTransactionsDao
   private val transactionExclusionService: TransactionExclusionServiceV1
   private val rejectedTransactionCleanupService: RejectedTransactionCleanupService
   private val micrometerMetricsFacade: MicrometerMetricsFacade
@@ -87,10 +97,18 @@ class TransactionExclusionApp(config: AppConfig) {
       transactionalPoolSize = config.database.transactionalPoolSize,
       readPipeliningLimit = config.database.readPipeliningLimit
     )
-    this.rejectedTransactionsRepository = RejectedTransactionsRepositoryImpl(
-      rejectedTransactionsDao = RejectedTransactionsPostgresDao(
+    this.rejectedTransactionsRepository = RetryingRejectedTransactionsPostgresDao(
+      delegate = RejectedTransactionsPostgresDao(
         readConnection = this.sqlReadClient,
         writeConnection = this.sqlWriteClient
+      ),
+      persistenceRetryer = PersistenceRetryer(
+        vertx = vertx,
+        config = PersistenceRetryer.Config(
+          backoffDelay = config.persistenceRetry.backoffDelay.toKotlinDuration(),
+          maxRetries = config.persistenceRetry.maxRetries,
+          timeout = config.persistenceRetry.timeout?.toKotlinDuration()
+        )
       )
     )
     this.transactionExclusionService = TransactionExclusionServiceV1Impl(

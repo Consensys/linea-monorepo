@@ -153,7 +153,7 @@ class SaveRejectedTransactionRequestHandlerV1(
         val parsedRejectedTransaction =
           when (validatedRequest) {
             is JsonRpcRequestMapParams -> parseMapParamsToRejectedTransaction(validatedRequest)
-            else -> throw IllegalStateException()
+            else -> throw IllegalStateException("JsonRpcRequest should be as JsonRpcRequestMapParams")
           }
         Ok(parsedRejectedTransaction)
       }
@@ -206,7 +206,7 @@ class GetTransactionExclusionStatusRequestHandlerV1(
         val parsedTxHash =
           when (validatedRequest) {
             is JsonRpcRequestListParams -> parseListParamsToTxHash(validatedRequest)
-            else -> throw IllegalStateException()
+            else -> throw IllegalStateException("JsonRpcRequest should be as JsonRpcRequestListParams")
           }
         Ok(parsedTxHash)
       }

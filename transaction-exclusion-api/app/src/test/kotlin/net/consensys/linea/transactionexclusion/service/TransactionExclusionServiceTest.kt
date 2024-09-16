@@ -4,10 +4,10 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.transactionexclusion.ErrorType
-import net.consensys.linea.transactionexclusion.RejectedTransactionsRepository
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.transactionexclusion.test.defaultRejectedTransaction
+import net.consensys.zkevm.persistence.dao.rejectedtransaction.RejectedTransactionsDao
 import net.consensys.zkevm.persistence.db.DuplicatedRecordException
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -24,20 +24,20 @@ class TransactionExclusionServiceTest {
   private val config = TransactionExclusionServiceV1Impl.Config(
     rejectedTimestampWithinDuration = 24.hours
   )
-  private lateinit var rejectedTransactionsRepositoryMock: RejectedTransactionsRepository
+  private lateinit var rejectedTransactionsRepositoryMock: RejectedTransactionsDao
 
   @BeforeEach
   fun beforeEach() {
-    rejectedTransactionsRepositoryMock = mock<RejectedTransactionsRepository>(
+    rejectedTransactionsRepositoryMock = mock<RejectedTransactionsDao>(
       defaultAnswer = Mockito.RETURNS_DEEP_STUBS
     )
   }
 
   @Test
   fun saveRejectedTransaction_return_success_result_with_saved_status() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
-    whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(Unit))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -54,9 +54,9 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_success_result_with_duplicated_already_saved_status() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
-    whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.failedFuture(DuplicatedRecordException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -73,9 +73,9 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_error_result_when_findRejectedTransaction_failed() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
-    whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.completedFuture(Unit))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -92,9 +92,9 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_error_result_when_saveRejectedTransaction_failed() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
-    whenever(rejectedTransactionsRepositoryMock.saveRejectedTransaction(any()))
+    whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -111,7 +111,7 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun getTransactionExclusionStatus_return_success_result_with_rejected_txn() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -130,7 +130,7 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun getTransactionExclusionStatus_return_error_result_with_transaction_unavailable() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.completedFuture(null))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(
@@ -149,7 +149,7 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun getTransactionExclusionStatus_return_error_result_with_other_error() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransaction(any(), any()))
+    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
       .thenReturn(SafeFuture.failedFuture(RuntimeException()))
 
     val transactionExclusionService = TransactionExclusionServiceV1Impl(

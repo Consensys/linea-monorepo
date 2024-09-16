@@ -19,6 +19,11 @@ storage-period="P7D"
 [database.queryable-window]
 rejected-timestamp-within-duration="PT24H"
 
+[persistence-retry]
+#max-retries = 10 commented as can be null
+backoff-delay = "PT1S"
+timeout = "PT20S"
+
 [api]
 port=8080
 path="/"
