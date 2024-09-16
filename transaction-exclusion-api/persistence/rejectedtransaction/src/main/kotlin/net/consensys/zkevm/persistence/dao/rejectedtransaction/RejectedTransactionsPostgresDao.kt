@@ -43,7 +43,7 @@ class RejectedTransactionsPostgresDao(
         "RPC" -> RejectedTransaction.Stage.RPC
         "P2P" -> RejectedTransaction.Stage.P2P
         else -> throw IllegalStateException(
-          "The db string value: \"$dbStrValue\" cannot be mapped to any RejectedTransaction.Stage enum: " +
+          "The db string value: \"$dbStrValue\" cannot be mapped to any RejectedTransaction.Stage enums: " +
             RejectedTransaction.Stage.entries.joinToString(",", "[", "]") { it.name }
         )
       }
