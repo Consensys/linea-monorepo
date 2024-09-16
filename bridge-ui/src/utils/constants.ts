@@ -17,16 +17,16 @@ export const MENU_ITEMS = [
     Icon: TransactionsIcon,
   },
   {
+    title: "FAQ",
+    href: "/faq",
+    external: false,
+    Icon: FaqIcon,
+  },
+  {
     title: "Docs",
     href: "https://docs.linea.build/",
     external: true,
     Icon: DocsIcon,
-  },
-  {
-    title: "FAQ",
-    href: "https://support.linea.build/hc/en-us/categories/13281330249371-FAQs",
-    external: true,
-    Icon: FaqIcon,
   },
 ];
 
