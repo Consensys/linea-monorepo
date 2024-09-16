@@ -5,9 +5,6 @@ import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.TransactionExclusionError
 
 enum class TransactionExclusionErrorCodes(val code: Int, val message: String) {
-  // User' error codes
-  TRANSACTION_UNAVAILABLE(-4000, "Rejected transaction not available"),
-
   // App/System/Server' error codes
   SERVER_ERROR(-32000, "Server error");
 
@@ -18,9 +15,7 @@ enum class TransactionExclusionErrorCodes(val code: Int, val message: String) {
 
 fun jsonRpcError(appError: TransactionExclusionError): JsonRpcError {
   return when (appError.errorType) {
-    ErrorType.TRANSACTION_UNAVAILABLE ->
-      TransactionExclusionErrorCodes.TRANSACTION_UNAVAILABLE.toErrorObject(appError.errorDetail)
-    ErrorType.OTHER_ERROR ->
+    ErrorType.SERVER_ERROR ->
       TransactionExclusionErrorCodes.SERVER_ERROR.toErrorObject(appError.errorDetail)
   }
 }

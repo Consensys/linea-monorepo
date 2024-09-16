@@ -15,5 +15,5 @@ interface TransactionExclusionServiceV1 {
 
   fun getTransactionExclusionStatus(
     txHash: ByteArray
-  ): SafeFuture<Result<RejectedTransaction, TransactionExclusionError>>
+  ): SafeFuture<Result<RejectedTransaction?, TransactionExclusionError>>
 }

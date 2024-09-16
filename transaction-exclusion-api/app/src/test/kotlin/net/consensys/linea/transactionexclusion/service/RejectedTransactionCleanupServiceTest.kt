@@ -36,7 +36,7 @@ class RejectedTransactionCleanupServiceTest {
     rejectedTransactionsRepositoryMock = mock<RejectedTransactionsRepository>(
       defaultAnswer = Mockito.RETURNS_DEEP_STUBS
     ).also {
-      whenever(it.deleteRejectedTransaction(any()))
+      whenever(it.deleteRejectedTransactions(any()))
         .thenReturn(SafeFuture.completedFuture(1))
     }
     rejectedTransactionCleanupService =
@@ -61,7 +61,7 @@ class RejectedTransactionCleanupServiceTest {
           .pollInterval(50.milliseconds.toJavaDuration())
           .untilAsserted {
             verify(rejectedTransactionsRepositoryMock, atLeastOnce())
-              .deleteRejectedTransaction(eq(fakeClock.now().minus(24.hours)))
+              .deleteRejectedTransactions(eq(fakeClock.now().minus(24.hours)))
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)

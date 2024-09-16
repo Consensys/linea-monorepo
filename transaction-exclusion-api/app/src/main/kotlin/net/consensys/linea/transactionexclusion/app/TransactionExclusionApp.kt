@@ -30,9 +30,20 @@ data class DbConnectionConfig(
   val password: Masked
 )
 
+data class DbCleanupConfig(
+  val pollingInterval: Duration,
+  val storagePeriod: Duration
+)
+
+data class DbQueryableWindowConfig(
+  val rejectedTimestampWithinDuration: Duration
+)
+
 data class DatabaseConfig(
   val read: DbConnectionConfig,
   val write: DbConnectionConfig,
+  val cleanup: DbCleanupConfig,
+  val queryableWindow: DbQueryableWindowConfig,
   val schema: String,
   val readPoolSize: Int,
   val readPipeliningLimit: Int,
@@ -41,10 +52,7 @@ data class DatabaseConfig(
 
 data class AppConfig(
   val api: ApiConfig,
-  val database: DatabaseConfig,
-  val dbStoragePeriod: Duration,
-  val dbCleanupPollingInterval: Duration,
-  val dbQueryableWindowSinceRejectTimestamp: Duration
+  val database: DatabaseConfig
 )
 
 class TransactionExclusionApp(config: AppConfig) {
@@ -82,20 +90,20 @@ class TransactionExclusionApp(config: AppConfig) {
     this.rejectedTransactionsRepository = RejectedTransactionsRepositoryImpl(
       rejectedTransactionsDao = RejectedTransactionsPostgresDao(
         readConnection = this.sqlReadClient,
-        writeConnection = this.sqlWriteClient,
-        config = RejectedTransactionsPostgresDao.Config(
-          queryableWindowSinceRejectTimestamp = config.dbQueryableWindowSinceRejectTimestamp.toKotlinDuration()
-        )
+        writeConnection = this.sqlWriteClient
       )
     )
     this.transactionExclusionService = TransactionExclusionServiceV1Impl(
+      config = TransactionExclusionServiceV1Impl.Config(
+        config.database.queryableWindow.rejectedTimestampWithinDuration.toKotlinDuration()
+      ),
       repository = this.rejectedTransactionsRepository,
       metricsFacade = this.micrometerMetricsFacade
     )
     this.rejectedTransactionCleanupService = RejectedTransactionCleanupService(
       config = RejectedTransactionCleanupService.Config(
-        pollingInterval = config.dbCleanupPollingInterval.toKotlinDuration(),
-        storagePeriod = config.dbStoragePeriod.toKotlinDuration()
+        pollingInterval = config.database.cleanup.pollingInterval.toKotlinDuration(),
+        storagePeriod = config.database.cleanup.storagePeriod.toKotlinDuration()
       ),
       repository = this.rejectedTransactionsRepository,
       vertx = this.vertx
