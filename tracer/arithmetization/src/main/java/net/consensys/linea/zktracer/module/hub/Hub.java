@@ -383,6 +383,7 @@ public class Hub implements Module {
                 rlpTxnRcpt,
                 rom,
                 shf,
+                stp,
                 trm,
                 txnData,
                 wcp,
