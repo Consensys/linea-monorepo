@@ -30,7 +30,7 @@ public class Issue1180Tests {
   @Tag("replay")
   @Test
   void split_range_2321470_2321479() {
-    replay(LINEA_MAINNET, "2321470-2321479.json.gz", false);
+    replay(LINEA_MAINNET, "2321470-2321479.json.gz");
   }
 
   @Tag("nightly")
