@@ -155,7 +155,9 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
     function calculateUserRewards(address userAddress) public view returns (uint256) {
         UserInfo storage user = users[userAddress];
-        return (user.stakedBalance * (rewardIndex - user.userRewardIndex)) / SCALE_FACTOR;
+        uint256 userWeight = user.stakedBalance + user.userMP;
+        uint256 deltaRewardIndex = rewardIndex - user.userRewardIndex;
+        return (userWeight * deltaRewardIndex) / SCALE_FACTOR;
     }
 
     function distributeRewards(address to, uint256 amount) internal {
