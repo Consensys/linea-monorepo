@@ -177,13 +177,17 @@ contract RewardsStreamerMP is ReentrancyGuard {
 
     function updateGlobalMP() internal {
         if (potentialMP == 0) {
+            lastMPUpdatedTime = block.timestamp;
             return;
         }
 
         uint256 currentTime = block.timestamp;
         uint256 timeDiff = currentTime - lastMPUpdatedTime;
-        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / (365 days);
+        if (timeDiff == 0) {
+            return;
+        }
 
+        uint256 accruedMP = (timeDiff * totalStaked * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
         if (accruedMP > potentialMP) {
             accruedMP = potentialMP;
         }
