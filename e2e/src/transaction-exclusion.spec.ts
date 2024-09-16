@@ -111,7 +111,7 @@ const transactionExclusionTestSuite = (title: string) => {
       expect(saveResponse.result.txHash).toStrictEqual(expectedTxHash);
     }, 10_000);
 
-    it("Should return error code -4000 when getting the rejected transaction with unknown transaction hash", async () => {
+    it("Should return result as null when getting the rejected transaction with unknown transaction hash", async () => {
       if (transactionExclusionClient == null) {
         // Skip this test for dev and uat environments
         return;
@@ -121,9 +121,7 @@ const transactionExclusionTestSuite = (title: string) => {
       const getResponse = await transactionExclusionClient.getTransactionExclusionStatusV1(unknownTxHash);
 
       console.log(`getResponse: ${JSON.stringify(getResponse)}`);
-      expect(getResponse.error.code).toStrictEqual(-4000);
-      expect(getResponse.error.message).toStrictEqual("Rejected transaction not available");
-      expect(getResponse.error.data).toStrictEqual(`Cannot find the rejected transaction with hash=${unknownTxHash}`);
+      expect(getResponse.result).toStrictEqual(null)
     }, 10_000);
   });
 };
