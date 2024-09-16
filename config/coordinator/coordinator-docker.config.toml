@@ -245,7 +245,7 @@ disabled=false
 [l1-dynamic-gas-price-cap-service.gas-price-cap-calculation]
 adjustment-constant=25
 blob-adjustment-constant=25
-finalization-target-max-delay="PT2M"
+finalization-target-max-delay="PT30S"
 gas-fee-percentile-window="PT1M"
 gas-fee-percentile-window-leeway="PT10S"
 gas-fee-percentile=10
