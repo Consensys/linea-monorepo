@@ -2,7 +2,7 @@ name: Daily Reference Blockchain Tests
 
 on:
   schedule:
-    - cron: 0 21 * * *
+    - cron: 0 21 * * 1-5
   workflow_dispatch:
     inputs:
       failed_tests_file_name:
