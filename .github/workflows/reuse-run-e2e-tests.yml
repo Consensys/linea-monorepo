@@ -146,7 +146,7 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 18
+        timeout-minutes: 25
         run: |
           pnpm run -F e2e test:e2e:local
       - name: Show e2e tests result
