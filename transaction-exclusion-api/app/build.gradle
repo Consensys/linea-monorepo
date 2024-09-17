@@ -1,6 +1,5 @@
 plugins {
   id 'net.consensys.zkevm.kotlin-application-conventions'
-  id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 dependencies {
@@ -57,12 +56,19 @@ application {
 }
 
 jar {
+  archiveBaseName = 'transaction-exclusion-api'
   manifest {
     attributes(
       'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.findAll {it.endsWith('jar') }.join(' '),
-      'Main-Class': 'net.consensys.linea.traces.app.TransactionExclusionAppMain',
+      'Main-Class': 'net.consensys.linea.transactionexclusion.app.TransactionExclusionAppMain',
       'Multi-Release': 'true'
     )
+  }
+}
+
+distributions {
+  main {
+    distributionBaseName = 'transaction-exclusion-api'
   }
 }
 
