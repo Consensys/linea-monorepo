@@ -21,7 +21,6 @@ func (ctx stitchingContext) constraints() {
 }
 
 func (ctx stitchingContext) LocalOpening() {
-
 	// Ignore the LocalOpening queries over the subColumns.
 	for _, qName := range ctx.comp.QueriesParams.AllUnignoredKeys() {
 		// Filters out only the LocalOpening
