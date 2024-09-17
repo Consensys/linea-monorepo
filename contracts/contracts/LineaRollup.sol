@@ -15,6 +15,8 @@ import { Utils } from "./lib/Utils.sol";
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
   using Utils for *;
 
+  string public CONTRACT_VERSION = "6.0";
+  
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
