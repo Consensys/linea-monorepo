@@ -266,7 +266,7 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
-    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
     volumes:
       - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
       - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
