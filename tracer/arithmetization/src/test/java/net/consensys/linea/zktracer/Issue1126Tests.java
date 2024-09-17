@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
 public class Issue1126Tests {
   @Test
   void test_3108622_3108633() {
-    replay(LINEA_MAINNET, "3108622-3108633.json.gz", false);
+    replay(LINEA_MAINNET, "3108622-3108633.json.gz");
   }
 
   @Test
@@ -50,12 +50,12 @@ public class Issue1126Tests {
 
   @Test
   void test_3432730_3432768() {
-    replay(LINEA_MAINNET, "3432730-3432768.json.gz", false);
+    replay(LINEA_MAINNET, "3432730-3432768.json.gz");
   }
 
   @Test
   void test_4392225_4392280() {
-    replay(LINEA_MAINNET, "4392225-4392280.json.gz", false);
+    replay(LINEA_MAINNET, "4392225-4392280.json.gz");
   }
 
   @Test

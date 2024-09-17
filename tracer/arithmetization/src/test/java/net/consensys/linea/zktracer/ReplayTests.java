@@ -189,7 +189,7 @@ public class ReplayTests {
 
   @Test
   void traceTxStartNotTheSameAsTxPrepare() {
-    replay(LINEA_MAINNET, "296519.json.gz", false);
+    replay(LINEA_MAINNET, "296519.json.gz");
   }
 
   @Test
