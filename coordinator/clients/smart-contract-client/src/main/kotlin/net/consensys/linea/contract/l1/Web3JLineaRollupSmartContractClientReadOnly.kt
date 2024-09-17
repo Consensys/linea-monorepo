@@ -1,11 +1,11 @@
 package net.consensys.linea.contract.l1
 
 import net.consensys.encodeHex
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.LineaRollup
 import net.consensys.toBigInteger
 import net.consensys.toULong
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import org.apache.logging.log4j.LogManager
