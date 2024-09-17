@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // FromIntVecCoinPositionAccessor refers to a position of a random coin of type
@@ -41,7 +41,7 @@ func (c *FromIntVecCoinPositionAccessor) Name() string {
 	return fmt.Sprintf("INT_VEC_COIN_ACCESSOR_%v_%v", c.Info.Name, c.Pos)
 }
 
-// String implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (c *FromIntVecCoinPositionAccessor) String() string {
 	return c.Name()
 }

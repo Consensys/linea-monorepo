@@ -15,13 +15,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob"
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/stretchr/testify/assert"

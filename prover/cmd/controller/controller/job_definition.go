@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/dlclark/regexp2"
 )
 

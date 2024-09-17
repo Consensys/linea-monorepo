@@ -1,25 +1,29 @@
-import { useEffect, useState } from "react";
-import classNames from "classnames";
+import { useContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useSwitchNetwork } from "@/hooks";
 import { Transaction } from "@/models";
 import { TransactionHistory } from "@/models/history";
 import { useWaitForTransactionReceipt } from "wagmi";
 import { useChainStore } from "@/stores/chainStore";
+import Button from "@/components/bridge/Button";
 import useTransactionManagement, { MessageWithStatus } from "@/hooks/useTransactionManagement";
+import { ModalContext } from "@/contexts/modal.context";
+import TransactionConfirmationModal from "@/components/bridge/modals/TransactionConfirmationModal";
 
 interface Props {
   message: MessageWithStatus;
   transaction: TransactionHistory;
+  handleClose: () => void;
 }
 
-export default function TransactionClaimButton({ message, transaction }: Props) {
+export default function TransactionClaimButton({ message, transaction, handleClose }: Props) {
   const [waitingTransaction, setWaitingTransaction] = useState<Transaction | undefined>();
   const [isClaimingLoading, setIsClaimingLoading] = useState<boolean>(false);
 
   // Context
   const toChain = useChainStore((state) => state.toChain);
-
+  const { handleShow: handleShowConfirmationModal, handleClose: handleCloseConfirmationModal } =
+    useContext(ModalContext);
   // Hooks
   const { switchChainById } = useSwitchNetwork(toChain?.id);
   const { writeClaimMessage, isLoading: isTxLoading, transaction: claimTx } = useTransactionManagement();
@@ -48,10 +52,19 @@ export default function TransactionClaimButton({ message, transaction }: Props) 
 
   useEffect(() => {
     if (isWaitingSuccess) {
-      toast.success(`Funds claimed on ${transaction.toChain.name}.`);
+      handleClose();
+      handleShowConfirmationModal(<TransactionConfirmationModal handleClose={handleCloseConfirmationModal} />, {
+        showCloseButton: true,
+      });
       setWaitingTransaction(undefined);
     }
-  }, [isWaitingSuccess, transaction.toChain.name]);
+  }, [
+    handleClose,
+    handleCloseConfirmationModal,
+    handleShowConfirmationModal,
+    isWaitingSuccess,
+    transaction.toChain.name,
+  ]);
 
   useEffect(() => {
     if (isWaitingError) {
@@ -77,17 +90,15 @@ export default function TransactionClaimButton({ message, transaction }: Props) 
   };
 
   return (
-    <button
+    <Button
       id={!claimBusy ? "claim-funds-btn" : "claim-funds-btn-disabled"}
       onClick={() => !claimBusy && onClaimMessage()}
-      className={classNames("btn btn-primary w-full rounded-full uppercase", {
-        "cursor-wait": claimBusy,
-      })}
+      variant="primary"
+      loading={claimBusy}
       type="button"
       disabled={claimBusy}
     >
-      {claimBusy && <span className="loading loading-spinner loading-xs"></span>}
       Claim
-    </button>
+    </Button>
   );
 }

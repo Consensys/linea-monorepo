@@ -24,7 +24,6 @@ jobs:
 
       - name: Run tests and generate coverage report
         env:
-          GITHUB_API_ACCESS_TOKEN: ${{ secrets._GITHUB_TOKEN_RELEASE_ACCESS }}
           NATIVE_LIBS_RELEASE_TAG: blob-libs-v1.0.1
         run: |
           pnpm run -F ./ts-libs/linea-native-libs build;

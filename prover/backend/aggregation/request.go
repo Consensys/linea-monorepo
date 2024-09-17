@@ -1,10 +1,10 @@
 package aggregation
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobdecompression"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 )
 
 // Request collects all the fields used to perform an aggregation request.

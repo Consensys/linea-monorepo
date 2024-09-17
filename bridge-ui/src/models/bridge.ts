@@ -9,6 +9,7 @@ export type BridgeForm = {
   minFees: string;
   token: TokenInfo;
   recipient: Address | undefined;
+  bridgingAllowed: boolean;
 };
 
 export type BridgeError = {

@@ -50,8 +50,15 @@ export async function fetchERC20Image(name: string) {
       throw new Error("Image not found");
     }
 
-    const image = coinDataResponse.data.image.small;
-    return image.split("?")[0];
+    const imageUrl = coinDataResponse.data.image.small.split("?")[0];
+    // Test image URL
+    const response = await axios.get(imageUrl, { timeout: 5000 });
+
+    if (response.status !== 200) {
+      return "/images/logo/noTokenLogo.svg";
+    }
+
+    return imageUrl;
   } catch (error) {
     log.warn(error);
     return "/images/logo/noTokenLogo.svg";
@@ -136,4 +143,23 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
     log.error("Error getTokens", { error });
     return [];
   }
+}
+
+export async function fetchTokenPrices(
+  tokenAddresses: Address[],
+  chainId?: number,
+): Promise<Record<string, { usd: number }>> {
+  if (!chainId) {
+    return {};
+  }
+
+  const response = await fetch(
+    `https://price.api.cx.metamask.io/v2/chains/${chainId}/spot-prices?tokenAddresses=${tokenAddresses.join(",")}&vsCurrency=usd`,
+  );
+  if (!response.ok) {
+    throw new Error("Error in getTokenPrices");
+  }
+
+  const data = await response.json();
+  return data;
 }

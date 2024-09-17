@@ -77,10 +77,10 @@ services:
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
 
   linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
-    image: badouralix/curl-jq
-    command: [ "sh", "/finalized-tag-updater-jar-downloader.sh", "${GITHUB_TOKEN}", "0.0.1", "/linea-besu-sequencer" ]
+    image: busybox:1.36.1
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-monorepo/releases/download/finalized-tag-updater-v0.0.2/finalized-tag-updater-v0.0.2.jar", "/linea-besu-sequencer" ]
     volumes:
-      - ./scripts/finalized-tag-updater-jar-downloader.sh:/finalized-tag-updater-jar-downloader.sh:ro
+      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
 
   l2-node:

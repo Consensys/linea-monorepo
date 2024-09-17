@@ -5,18 +5,21 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/leanovate/gopter"
+	"github.com/leanovate/gopter/gen"
+	"github.com/leanovate/gopter/prop"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/test_utils"
+	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/sha3"
 )
@@ -103,22 +106,32 @@ func (c *testMerkleCircuit) Define(api frontend.API) error {
 }
 
 func TestMaxNbCircuitsSum(t *testing.T) {
-	cfg := config.PublicInput{
-		MaxNbDecompression: test_utils.RandIntN(10),
-		MaxNbExecution:     test_utils.RandIntN(10),
-		MaxNbCircuits:      20,
-		MaxNbKeccakF:       200,
-		ExecutionMaxNbMsg:  2,
-		L2MsgMerkleDepth:   5,
-		L2MsgMaxNbMerkle:   2,
-		MockKeccakWizard:   true,
-	}
+	parameters := gopter.DefaultTestParameters()
+	parameters.MinSuccessfulTests = 5
+	parameters.Rng.Seed(0x123456789abcdef0)
 
-	c, err := pi_interconnection.Compile(cfg)
-	assert.NoError(t, err)
+	properties := gopter.NewProperties(parameters)
 
-	cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
-	assert.NoError(t, err)
+	properties.Property("provides the correct number of public inputs", prop.ForAll(
+		func(maxNbDecompression, maxNbExecution int) bool {
+			cfg := config.PublicInput{
+				MaxNbDecompression: maxNbDecompression,
+				MaxNbExecution:     maxNbExecution,
+				MaxNbCircuits:      20,
+				MaxNbKeccakF:       200,
+				ExecutionMaxNbMsg:  2,
+				L2MsgMerkleDepth:   5,
+				L2MsgMaxNbMerkle:   2,
+				MockKeccakWizard:   true,
+			}
 
-	assert.Equal(t, cfg.MaxNbDecompression+cfg.MaxNbExecution, pi_interconnection.GetMaxNbCircuitsSum(cs))
+			c, err := pi_interconnection.Compile(cfg)
+			assert.NoError(t, err)
+			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
+			assert.NoError(t, err)
+			return cfg.MaxNbDecompression+cfg.MaxNbExecution == pi_interconnection.GetMaxNbCircuitsSum(cs)
+		}, gen.IntRange(1, 10), gen.IntRange(1, 10),
+	))
+
+	properties.TestingRun(t)
 }

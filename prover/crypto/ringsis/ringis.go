@@ -11,14 +11,14 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_32_8"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_64_16"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_64_8"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_8"
 )
 
 const (

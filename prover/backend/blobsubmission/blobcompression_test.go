@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/assert"
