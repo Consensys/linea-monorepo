@@ -33,8 +33,6 @@ public class Issue1180Tests {
     replay(LINEA_MAINNET, "2321470-2321479.json.gz");
   }
 
-  @Tag("nightly")
-  @Tag("replay")
   @Test
   void failingSmodInstructionTest() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
