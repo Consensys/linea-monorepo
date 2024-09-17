@@ -38,7 +38,7 @@ class TransactionExclusionServiceV1Impl(
     Result<SaveRejectedTransactionStatus, TransactionExclusionError>
     > {
     return this.repository.findRejectedTransactionByTxHash(
-      txHash = rejectedTransaction.transactionInfo!!.hash,
+      txHash = rejectedTransaction.transactionInfo.hash,
       notRejectedBefore = clock.now().minus(config.rejectedTimestampWithinDuration)
     )
       .thenPeek {

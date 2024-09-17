@@ -55,7 +55,7 @@ data class RejectedTransaction(
   val transactionRLP: ByteArray,
   val reasonMessage: String,
   val overflows: List<ModuleOverflow>,
-  var transactionInfo: TransactionInfo? = null
+  val transactionInfo: TransactionInfo
 ) {
   enum class Stage {
     SEQUENCER,

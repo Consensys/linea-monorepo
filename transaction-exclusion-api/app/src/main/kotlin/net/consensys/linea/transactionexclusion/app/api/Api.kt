@@ -12,9 +12,9 @@ import net.consensys.linea.transactionexclusion.TransactionExclusionServiceV1
 import net.consensys.linea.vertx.ObservabilityServer
 
 data class ApiConfig(
-  val port: UInt,
-  val observabilityPort: UInt,
-  val numberOfVerticles: UInt,
+  val port: Int,
+  val observabilityPort: Int,
+  val numberOfVerticles: Int = 0,
   val path: String = "/"
 )
 
@@ -43,17 +43,22 @@ class Api(
       JsonRpcMessageProcessor(JsonRpcRequestRouter(requestHandlersV1), meterRegistry)
 
     val numberOfVerticles: Int =
-      if (configs.numberOfVerticles.toInt() > 0) {
-        configs.numberOfVerticles.toInt()
+      if (configs.numberOfVerticles > 0) {
+        configs.numberOfVerticles
       } else {
         Runtime.getRuntime().availableProcessors()
       }
 
     val observabilityServer =
-      ObservabilityServer(ObservabilityServer.Config("transaction-exclusion-api", configs.observabilityPort.toInt()))
+      ObservabilityServer(
+        ObservabilityServer.Config(
+          "transaction-exclusion-api",
+          configs.observabilityPort
+        )
+      )
     return vertx
       .deployVerticle(
-        { HttpJsonRpcServer(configs.port, configs.path, HttpRequestHandler(messageHandler)) },
+        { HttpJsonRpcServer(configs.port.toUInt(), configs.path, HttpRequestHandler(messageHandler)) },
         DeploymentOptions().setInstances(numberOfVerticles)
       )
       .compose { verticleId: String ->

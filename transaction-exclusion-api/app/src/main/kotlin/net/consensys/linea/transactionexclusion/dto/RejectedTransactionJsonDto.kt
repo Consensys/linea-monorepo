@@ -73,32 +73,18 @@ data class RejectedTransactionJsonDto(
     return result
   }
 
-//  companion object {
-//    fun parseFromJsonString(jsonString: String): RejectedTransactionJsonDto {
-//      return ObjectMapper().readValue(
-//        jsonString,
-//        RejectedTransactionJsonDto::class.java
-//      )
-//    }
-//
-//    fun parseToJsonString(target: Any): String {
-//      if (target is String) {
-//        return target
-//      }
-//      return ObjectMapper().writeValueAsString(target)
-//    }
-//  }
-
   fun toDomainObject(): RejectedTransaction {
-    return RejectedTransaction(
-      txRejectionStage = ArgumentParser.getTxRejectionStage(txRejectionStage),
-      timestamp = ArgumentParser.getTimestampFromISO8601(timestamp),
-      blockNumber = ArgumentParser.getBlockNumber(blockNumber),
-      transactionRLP = ArgumentParser.getTransactionRLPInRawBytes(transactionRLP),
-      reasonMessage = ArgumentParser.getReasonMessage(reasonMessage),
-      overflows = ArgumentParser.getOverflows(overflows)
-    ).also {
-      it.transactionInfo = ArgumentParser.getTransactionInfoFromRLP(it.transactionRLP)
-    }
+    return ArgumentParser.getTransactionRLPInRawBytes(transactionRLP)
+      .let { parsedTransactionRLP ->
+        RejectedTransaction(
+          txRejectionStage = ArgumentParser.getTxRejectionStage(txRejectionStage),
+          timestamp = ArgumentParser.getTimestampFromISO8601(timestamp),
+          blockNumber = ArgumentParser.getBlockNumber(blockNumber),
+          transactionRLP = parsedTransactionRLP,
+          reasonMessage = ArgumentParser.getReasonMessage(reasonMessage),
+          overflows = ArgumentParser.getOverflows(overflows),
+          transactionInfo = ArgumentParser.getTransactionInfoFromRLP(parsedTransactionRLP)
+        )
+      }
   }
 }

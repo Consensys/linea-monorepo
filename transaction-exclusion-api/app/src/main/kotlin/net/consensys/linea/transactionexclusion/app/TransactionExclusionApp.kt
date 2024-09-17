@@ -47,16 +47,16 @@ data class DatabaseConfig(
   val write: DbConnectionConfig,
   val cleanup: DbCleanupConfig,
   val queryableWindow: DbQueryableWindowConfig,
-  val schema: String,
-  val readPoolSize: Int,
-  val readPipeliningLimit: Int,
-  val transactionalPoolSize: Int
+  val persistenceRetry: PersistenceRetryConfig,
+  val schema: String = "linea_transaction_exclusion",
+  val readPoolSize: Int = 10,
+  val readPipeliningLimit: Int = 10,
+  val transactionalPoolSize: Int = 10
 )
 
 data class AppConfig(
   val api: ApiConfig,
-  val database: DatabaseConfig,
-  val persistenceRetry: PersistenceRetryConfig
+  val database: DatabaseConfig
 )
 
 data class PersistenceRetryConfig(
@@ -105,9 +105,9 @@ class TransactionExclusionApp(config: AppConfig) {
       persistenceRetryer = PersistenceRetryer(
         vertx = vertx,
         config = PersistenceRetryer.Config(
-          backoffDelay = config.persistenceRetry.backoffDelay.toKotlinDuration(),
-          maxRetries = config.persistenceRetry.maxRetries,
-          timeout = config.persistenceRetry.timeout?.toKotlinDuration()
+          backoffDelay = config.database.persistenceRetry.backoffDelay.toKotlinDuration(),
+          maxRetries = config.database.persistenceRetry.maxRetries,
+          timeout = config.database.persistenceRetry.timeout?.toKotlinDuration()
         )
       )
     )

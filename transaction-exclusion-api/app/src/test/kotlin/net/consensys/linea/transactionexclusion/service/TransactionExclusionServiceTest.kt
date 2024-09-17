@@ -123,7 +123,7 @@ class TransactionExclusionServiceTest {
     Assertions.assertEquals(
       Ok(defaultRejectedTransaction),
       transactionExclusionService.getTransactionExclusionStatus(
-        defaultRejectedTransaction.transactionInfo!!.hash
+        defaultRejectedTransaction.transactionInfo.hash
       ).get()
     )
   }
@@ -142,7 +142,7 @@ class TransactionExclusionServiceTest {
     Assertions.assertEquals(
       Ok(null),
       transactionExclusionService.getTransactionExclusionStatus(
-        defaultRejectedTransaction.transactionInfo!!.hash
+        defaultRejectedTransaction.transactionInfo.hash
       ).get()
     )
   }
@@ -166,7 +166,7 @@ class TransactionExclusionServiceTest {
         )
       ),
       transactionExclusionService.getTransactionExclusionStatus(
-        defaultRejectedTransaction.transactionInfo!!.hash
+        defaultRejectedTransaction.transactionInfo.hash
       ).get()
     )
   }

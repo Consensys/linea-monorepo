@@ -189,7 +189,7 @@ class SaveRejectedTransactionRequestHandlerV1(
           val rpcResult =
             JsonObject()
               .put("status", it.name)
-              .put("txHash", rejectedTransaction.transactionInfo!!.hash.encodeHex())
+              .put("txHash", rejectedTransaction.transactionInfo.hash.encodeHex())
           JsonRpcSuccessResponse(request.id, rpcResult)
         }.mapError { error ->
           JsonRpcErrorResponse(request.id, jsonRpcError(error))
@@ -241,9 +241,9 @@ class GetTransactionExclusionStatusRequestHandlerV1(
         result.map {
           val rpcResult = if (it == null) { null } else {
             JsonObject()
-              .put("txHash", it.transactionInfo!!.hash.encodeHex())
-              .put("from", it.transactionInfo!!.from.encodeHex())
-              .put("nonce", it.transactionInfo!!.nonce.toHexString())
+              .put("txHash", it.transactionInfo.hash.encodeHex())
+              .put("from", it.transactionInfo.from.encodeHex())
+              .put("nonce", it.transactionInfo.nonce.toHexString())
               .put("txRejectionStage", it.txRejectionStage.name)
               .put("reasonMessage", it.reasonMessage)
               .put("timestamp", it.timestamp.toString())
