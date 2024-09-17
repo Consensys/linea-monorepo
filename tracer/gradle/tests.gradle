@@ -92,10 +92,10 @@ tasks.withType(Test).configureEach {
     showSimpleNames false
 
     // set to false to hide passed tests
-    showPassed true
+    showPassed false
 
     // set to false to hide skipped tests
-    showSkipped true
+    showSkipped false
 
     // set to false to hide failed tests
     showFailed true
@@ -104,10 +104,10 @@ tasks.withType(Test).configureEach {
     showStandardStreams true
 
     // set to false to hide passed standard out and error streams
-    showPassedStandardStreams true
+    showPassedStandardStreams false
 
     // set to false to hide skipped standard out and error streams
-    showSkippedStandardStreams true
+    showSkippedStandardStreams false
 
     // set to false to hide failed standard out and error streams
     showFailedStandardStreams true
