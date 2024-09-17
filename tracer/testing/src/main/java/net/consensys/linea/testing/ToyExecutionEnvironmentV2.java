@@ -15,10 +15,6 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BLOCK_GAS_LIMIT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_DIFFICULTY;
-
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Consumer;
@@ -45,6 +41,7 @@ public class ToyExecutionEnvironmentV2 {
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   private static final long DEFAULT_BLOCK_NUMBER = 6678980;
+
   private static final long DEFAULT_TIME_STAMP = 1347310;
   private static final Hash DEFAULT_HASH =
       Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
@@ -86,10 +83,7 @@ public class ToyExecutionEnvironmentV2 {
     ReferenceTestWorldState referenceTestWorldState =
         ReferenceTestWorldState.create(accountMockMap, protocolSpec.getEvm().getEvmConfiguration());
     BlockHeader blockHeader =
-        BlockHeaderBuilder.createDefault()
-            .baseFee(Wei.of(LINEA_BASE_FEE))
-            .gasLimit(LINEA_BLOCK_GAS_LIMIT)
-            .difficulty(Difficulty.of(LINEA_DIFFICULTY))
+        ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
             .number(DEFAULT_BLOCK_NUMBER)
             .coinbase(DEFAULT_COINBASE_ADDRESS)
             .timestamp(DEFAULT_TIME_STAMP)

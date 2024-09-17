@@ -15,14 +15,21 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+
 import java.math.BigInteger;
 import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.hyperledger.besu.config.GenesisConfigFile;
+import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.chain.BadBlockManager;
+import org.hyperledger.besu.ethereum.core.BlockHeader;
+import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
+import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.MiningParameters;
 import org.hyperledger.besu.ethereum.core.PrivacyParameters;
+import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
 import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSchedule;
 import org.hyperledger.besu.ethereum.mainnet.MainnetProtocolSpecFactory;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSchedule;
@@ -34,6 +41,23 @@ import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
 public class ExecutionEnvironment {
   static GenesisConfigFile GENESIS_CONFIG =
       GenesisConfigFile.fromSource(GenesisConfigFile.class.getResource("/linea.json"));
+
+  public static BlockHeaderBuilder getLineaBlockHeaderBuilder(
+      Optional<BlockHeader> parentBlockHeader) {
+    BlockHeaderBuilder blockHeaderBuilder =
+        parentBlockHeader.isPresent()
+            ? BlockHeaderBuilder.fromHeader(parentBlockHeader.get())
+                .number(parentBlockHeader.get().getNumber() + 1)
+                .timestamp(parentBlockHeader.get().getTimestamp() + 100)
+                .parentHash(parentBlockHeader.get().getHash())
+                .blockHeaderFunctions(new MainnetBlockHeaderFunctions())
+            : BlockHeaderBuilder.createDefault();
+
+    return blockHeaderBuilder
+        .baseFee(Wei.of(LINEA_BASE_FEE))
+        .gasLimit(LINEA_BLOCK_GAS_LIMIT)
+        .difficulty(Difficulty.of(LINEA_DIFFICULTY));
+  }
 
   public static ProtocolSpec getProtocolSpec(BigInteger chainId) {
     BadBlockManager badBlockManager = new BadBlockManager();
