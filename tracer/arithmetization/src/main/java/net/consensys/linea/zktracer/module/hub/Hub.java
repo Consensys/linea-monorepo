@@ -316,19 +316,17 @@ public class Hub implements Module {
    */
   public List<Module> getModulesToTrace() {
     return Stream.concat(
-            refTableModules.stream(),
-            // Modules
             Stream.of(
                 this,
                 add,
                 bin,
                 blakeModexpData,
-                ecData,
                 blockdata,
                 blockhash,
+                ecData,
+                exp,
                 ext,
                 euc,
-                exp,
                 logData,
                 logInfo,
                 mmu, // WARN: must be traced before the MMIO
@@ -347,7 +345,8 @@ public class Hub implements Module {
                 stp,
                 trm,
                 txnData,
-                wcp))
+                wcp),
+            refTableModules.stream())
         .toList();
   }
 
@@ -361,28 +360,28 @@ public class Hub implements Module {
     return Stream.concat(
             Stream.of(
                 this,
-                romLex,
                 add,
                 bin,
                 blakeModexpData,
                 blockdata,
                 blockhash,
-                ext,
                 ecData,
+                exp,
+                ext,
                 euc,
-                mmu,
-                mmio,
                 logData,
                 logInfo,
+                mmu,
+                mmio,
                 mod,
                 mul,
                 mxp,
                 oob,
-                exp,
                 rlpAddr,
                 rlpTxn,
                 rlpTxnRcpt,
                 rom,
+                romLex,
                 shakiraData,
                 shf,
                 stp,
@@ -390,7 +389,7 @@ public class Hub implements Module {
                 txnData,
                 wcp,
                 l2Block),
-            Stream.concat(precompileLimitModules().stream(), refTableModules.stream()))
+            Stream.concat(refTableModules.stream(), precompileLimitModules().stream()))
         .toList();
   }
 
