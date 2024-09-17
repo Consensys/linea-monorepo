@@ -44,7 +44,7 @@ class RetryingRejectedTransactionsPostgresDaoTest {
 
     whenever(
       delegateRejectedTransactionsDao.findRejectedTransactionByTxHash(
-        eq(rejectedTransaction.transactionInfo!!.hash),
+        eq(rejectedTransaction.transactionInfo.hash),
         eq(notRejectedBefore)
       )
     )
@@ -60,11 +60,11 @@ class RetryingRejectedTransactionsPostgresDaoTest {
     verify(delegateRejectedTransactionsDao, times(1)).saveNewRejectedTransaction(eq(rejectedTransaction))
 
     retryingRejectedTransactionsPostgresDao.findRejectedTransactionByTxHash(
-      rejectedTransaction.transactionInfo!!.hash,
+      rejectedTransaction.transactionInfo.hash,
       notRejectedBefore
     )
     verify(delegateRejectedTransactionsDao, times(1)).findRejectedTransactionByTxHash(
-      eq(rejectedTransaction.transactionInfo!!.hash),
+      eq(rejectedTransaction.transactionInfo.hash),
       eq(notRejectedBefore)
     )
 

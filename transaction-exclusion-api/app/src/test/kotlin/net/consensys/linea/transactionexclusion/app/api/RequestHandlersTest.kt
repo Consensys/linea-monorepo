@@ -73,7 +73,7 @@ class RequestHandlersTest {
 
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      .put("txHash", defaultRejectedTransaction.transactionInfo.hash.encodeHex())
       .let {
         JsonRpcSuccessResponse(mapRequest.id, it)
       }
@@ -102,7 +102,7 @@ class RequestHandlersTest {
 
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      .put("txHash", defaultRejectedTransaction.transactionInfo.hash.encodeHex())
       .let {
         JsonRpcSuccessResponse(listRequest.id, it)
       }
@@ -131,7 +131,7 @@ class RequestHandlersTest {
 
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.SAVED)
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      .put("txHash", defaultRejectedTransaction.transactionInfo.hash.encodeHex())
       .let {
         JsonRpcSuccessResponse(mapRequest.id, it)
       }
@@ -160,7 +160,7 @@ class RequestHandlersTest {
 
     val expectedResult = JsonObject()
       .put("status", TransactionExclusionServiceV1.SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE)
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
+      .put("txHash", defaultRejectedTransaction.transactionInfo.hash.encodeHex())
       .let {
         JsonRpcSuccessResponse(mapRequest.id, it)
       }
@@ -225,7 +225,7 @@ class RequestHandlersTest {
       "1",
       "linea_getTransactionExclusionStatusV1",
       listOf(
-        defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
+        defaultRejectedTransaction.transactionInfo.hash.encodeHex()
       )
     )
 
@@ -234,9 +234,9 @@ class RequestHandlersTest {
     )
 
     val expectedResult = JsonObject()
-      .put("txHash", defaultRejectedTransaction.transactionInfo!!.hash.encodeHex())
-      .put("from", defaultRejectedTransaction.transactionInfo!!.from.encodeHex())
-      .put("nonce", defaultRejectedTransaction.transactionInfo!!.nonce.toHexString())
+      .put("txHash", defaultRejectedTransaction.transactionInfo.hash.encodeHex())
+      .put("from", defaultRejectedTransaction.transactionInfo.from.encodeHex())
+      .put("nonce", defaultRejectedTransaction.transactionInfo.nonce.toHexString())
       .put("txRejectionStage", defaultRejectedTransaction.txRejectionStage.name)
       .put("reasonMessage", defaultRejectedTransaction.reasonMessage)
       .put("timestamp", defaultRejectedTransaction.timestamp.toString())
@@ -264,7 +264,7 @@ class RequestHandlersTest {
       "1",
       "linea_getTransactionExclusionStatusV1",
       listOf(
-        defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
+        defaultRejectedTransaction.transactionInfo.hash.encodeHex()
       )
     )
 
@@ -302,7 +302,7 @@ class RequestHandlersTest {
       "1",
       "linea_getTransactionExclusionStatusV1",
       listOf(
-        defaultRejectedTransaction.transactionInfo!!.hash.encodeHex()
+        defaultRejectedTransaction.transactionInfo.hash.encodeHex()
       )
     )
 
