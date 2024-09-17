@@ -13,7 +13,7 @@ export default function ConnectButton({ fullWidth }: ConnectButtonProps) {
       id="wallet-connect-btn"
       variant="primary"
       size="md"
-      className={cn({
+      className={cn("text-lg font-normal", {
         "w-full": fullWidth,
       })}
       onClick={() => open()}

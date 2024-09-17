@@ -6,6 +6,7 @@ import ApproveERC20 from "./ApproveERC20";
 import { Button } from "../../ui";
 import { useAccount, useBalance } from "wagmi";
 import { cn } from "@/utils/cn";
+import { parseUnits } from "viem";
 
 type SubmitProps = {
   isLoading: boolean;
@@ -40,7 +41,9 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   const isERC20Token = token && networkLayer !== NetworkLayer.UNKNOWN && token[networkLayer];
   const isButtonDisabled = !bridgeEnabled(watchAmount, watchAllowance || BigInt(0), errors);
   const isETHTransfer = token && token.symbol === "ETH";
-  const showApproveERC20 = !isETHTransfer && (!watchAllowance || watchAllowance < watchAmount);
+  const showApproveERC20 =
+    !isETHTransfer &&
+    (!watchAllowance || (token?.decimals && watchAllowance < parseUnits(watchAmount, token.decimals)));
 
   // TODO: refactor this
   const destinationBalanceTooLow =
