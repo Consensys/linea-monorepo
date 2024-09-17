@@ -390,7 +390,7 @@ public class Hub implements Module {
                 txnData,
                 wcp,
                 l2Block),
-            precompileLimitModules().stream())
+            Stream.concat(precompileLimitModules().stream(), refTableModules.stream()))
         .toList();
   }
 
