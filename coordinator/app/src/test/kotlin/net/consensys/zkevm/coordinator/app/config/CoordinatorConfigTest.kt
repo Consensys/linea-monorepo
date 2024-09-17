@@ -5,6 +5,7 @@ import com.github.michaelbull.result.getError
 import com.github.michaelbull.result.onFailure
 import com.github.michaelbull.result.onSuccess
 import com.sksamuel.hoplite.Masked
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
@@ -14,7 +15,6 @@ import net.consensys.zkevm.coordinator.app.CoordinatorAppCli
 import net.consensys.zkevm.coordinator.clients.prover.FileBasedProverConfig
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail

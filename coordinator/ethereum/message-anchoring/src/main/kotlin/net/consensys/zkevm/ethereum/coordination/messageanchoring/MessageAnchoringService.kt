@@ -1,10 +1,10 @@
 package net.consensys.zkevm.ethereum.coordination.messageanchoring
 
 import io.vertx.core.Vertx
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.L2MessageService
 import net.consensys.zkevm.PeriodicPollingService
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
