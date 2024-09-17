@@ -47,7 +47,7 @@ const ClaimingTypeOption: React.FC<ClaimOptionProps> = ({
       })}
     >
       {label}
-      <Tooltip text={tooltip}>
+      <Tooltip text={tooltip} className="z-[100]">
         <MdInfo />
       </Tooltip>
     </label>

@@ -36,7 +36,7 @@ export function Recipient() {
         <span className="">To different address</span>
         <Tooltip
           text="Input the address you want to bridge assets to on the recipient chain"
-          className="z-[9999]"
+          className="z-[99]"
           position="bottom"
         >
           <MdInfo />
