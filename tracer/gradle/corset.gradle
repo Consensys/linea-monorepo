@@ -35,3 +35,15 @@ tasks.register('buildZkevmBin', Exec) {
         return standardOutput.toString()
     }
 }
+
+tasks.register('buildReferenceTestsZkevmBin', Exec) {
+//    dependsOn corsetExists
+    workingDir "${project.rootDir}/linea-constraints/"
+    commandLine 'make', 'zkevm_for_reference_tests.bin'
+
+    //store the output instead of printing to the console
+    standardOutput = new ByteArrayOutputStream()
+    ext.output = {
+        return standardOutput.toString()
+    }
+}

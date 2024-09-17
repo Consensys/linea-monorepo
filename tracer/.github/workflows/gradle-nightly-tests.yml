@@ -61,7 +61,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: unit-test-report
+          name: nightly-tests-report
           path: build/reports/tests/**/*
 
   go-corset-tests:

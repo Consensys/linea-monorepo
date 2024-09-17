@@ -25,7 +25,9 @@ import java.util.Map;
 import java.util.Optional;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.datatypes.BlobGas;
 import org.hyperledger.besu.datatypes.Hash;
@@ -47,12 +49,14 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.testutil.JsonTestParameters;
 
+@Slf4j
 public class GeneralStateReferenceTestTools {
+
   private static final ReferenceTestProtocolSchedules REFERENCE_TEST_PROTOCOL_SCHEDULES =
       ReferenceTestProtocolSchedules.create();
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
-  private static final CorsetValidator corsetValidator = new CorsetValidator();
+  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
 
   private static MainnetTransactionProcessor transactionProcessor(final String name) {
     return protocolSpec(name).getTransactionProcessor();
@@ -81,11 +85,10 @@ public class GeneralStateReferenceTestTools {
               (testName, fullPath, stateSpec, collector) -> {
                 final String prefix = testName + "-";
                 for (final Map.Entry<String, List<GeneralStateTestCaseEipSpec>> entry :
-                    stateSpec.finalStateSpecs().entrySet().stream()
-                        .filter(e -> e.getKey().equalsIgnoreCase("London"))
-                        .toList()) {
+                    stateSpec.finalStateSpecs().entrySet()) {
                   final String eip = entry.getKey();
-                  final boolean runTest = EIPS_TO_RUN.contains(eip);
+                  final boolean runTest =
+                      EIPS_TO_RUN.contains(eip) && eip.equalsIgnoreCase("London");
                   final List<GeneralStateTestCaseEipSpec> eipSpecs = entry.getValue();
                   if (eipSpecs.size() == 1) {
                     collector.add(prefix + eip, fullPath, eipSpecs.get(0), runTest);
@@ -225,7 +228,7 @@ public class GeneralStateReferenceTestTools {
                   .isEqualTo(expected);
             });
 
-    assertThat(corsetValidator.validate(zkTracer.writeToTmpFile()).isValid()).isTrue();
+    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {

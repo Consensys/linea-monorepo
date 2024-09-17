@@ -56,24 +56,8 @@ jobs:
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      # The asset URL for the latest release can be found with:
-      # curl -L -H "Accept: application/vnd.github+json"  \
-      #     -H "Authorization: Bearer YOUR_GH_API_TOKEN" \
-      #     -H "X-GitHub-Api-Version: 2022-11-28" \
-      #     https://api.github.com/repos/ConsenSys/corset/releases/latest
-      # | jq '.assets[] | select(.name|endswith("x86_64-unknown-linux-musl.tar.gz")) | .url'
       - name: Install Corset
         run: RUSTFLAGS=-Awarnings cargo install --git ssh://git@github.com/ConsenSys/corset --tag v9.7.13 --locked --force
-      #        run: |
-      #          curl -L \
-      #          -H "Accept: application/octet-stream" \
-      #          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-      #          -H "X-GitHub-Api-Version: 2022-11-28" \
-      #          -o corset.tar.gz \
-      #          https://api.github.com/repos/Consensys/corset/releases/assets/151396061
-      #          tar xzf corset.tar.gz
-      #          mv corset $HOME
-      #          echo $HOME >> $GITHUB_PATH
 
       - name: Generate block chain reference tests
         run:  ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
@@ -87,8 +71,8 @@ jobs:
       - name: Run reference blockchain tests
         run: ./gradlew referenceBlockchainTests -x spotlessCheck
         env:
+          REFERENCE_TESTS_PARALLELISM: 10
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          ZKEVM_BIN: zkevm_for_reference_tests.bin
           CORSET_FLAGS: fields,expand,expand,expand
           FAILED_TESTS_FILE_NAME: ${{ inputs.failed_tests_file_name || '' }}
           FAILED_TEST_JSON_DIRECTORY: ${{ ../tmp/${{ inputs.branch-name }}/ || '' }}

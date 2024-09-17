@@ -50,12 +50,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 
 tasks.register('referenceBlockchainTests', Test) {
   description = 'Runs ETH reference blockchain tests.'
-
   dependsOn generateBlockchainReferenceTests
-
-  boolean isCiServer = System.getenv().containsKey("CI")
-  minHeapSize = "4g"
-  maxHeapSize = isCiServer ? "32g" : "8g"
 
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
@@ -64,37 +59,34 @@ tasks.register('referenceBlockchainTests', Test) {
 
 tasks.register('referenceGeneralStateTests', Test) {
   description = 'Runs ETH reference general state tests.'
-
   dependsOn generateGeneralStateReferenceTests
 
-  systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
-  systemProperties["junit.jupiter.execution.parallel.enabled"] = true
-  systemProperties["junit.jupiter.execution.parallel.mode.default"] = "concurrent"
-  systemProperties["junit.jupiter.execution.parallel.mode.classes.default"] = "concurrent"
-  maxParallelForks = Runtime.getRuntime().availableProcessors()
-
-  boolean isCiServer = System.getenv().containsKey("CI")
-  minHeapSize = "4g"
-  maxHeapSize = isCiServer ? "32g" : "8g"
-
   useJUnitPlatform {
     includeTags("GeneralStateReferenceTest")
   }
 }
 
-tasks.register('referenceTests', Test) {
-  description = 'Runs ETH reference tests.'
+[
+  tasks.named("referenceGeneralStateTests"),
+  tasks.named("referenceBlockchainTests"),
+].forEach {
+  it.configure {
+    dependsOn buildReferenceTestsZkevmBin
+    environment.put("ZKEVM_BIN", "zkevm_for_reference_tests.bin")
 
-  boolean isCiServer = System.getenv().containsKey("CI")
-  minHeapSize = "4g"
-  maxHeapSize = isCiServer ? "32g" : "8g"
+    systemProperty("junit.jupiter.execution.timeout.default", "5 m")  // 5 minutes
+    systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+    systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+    systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+      System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
 
-  useJUnitPlatform {
-    includeTags("BlockchainReferenceTest")
-    includeTags("GeneralStateReferenceTest")
+    boolean isCiServer = System.getenv().containsKey("CI")
+    minHeapSize = "4g"
+    maxHeapSize = isCiServer ? "32g" : "8g"
   }
 }
-
 
 dependencies {
   testImplementation "${besuArtifactGroup}:besu-datatypes"
@@ -118,4 +110,5 @@ dependencies {
 
   implementation project(":arithmetization")
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+  testImplementation project(path: ':testing')
 }

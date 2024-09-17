@@ -27,10 +27,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.ethereum.MainnetBlockValidator;
@@ -65,7 +67,7 @@ public class BlockchainReferenceTestTools {
                     testName + "[" + eip + "]", fullPath, spec, NETWORKS_TO_RUN.contains(eip));
               });
 
-  private static final CorsetValidator corsetValidator = new CorsetValidator();
+  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
 
   static {
     if (NETWORKS_TO_RUN.isEmpty()) {
@@ -217,9 +219,7 @@ public class BlockchainReferenceTestTools {
         log.info("caugh RLP exception, checking it's invalid {}", candidateBlock.isValid());
         assertThat(candidateBlock.isValid()).isFalse();
       }
-      CorsetValidator.Result corsetResult = corsetValidator.validate(zkTracer.writeToTmpFile());
-      log.info("Corset result {}", corsetResult);
-      assertThat(corsetResult.isValid()).isTrue();
+      ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
     }
 
     assertThat(blockchain.getChainHeadHash()).isEqualTo(spec.getLastBlockHash());

@@ -40,7 +40,7 @@ spotless {
   java {
     // This path needs to be relative to each project
     target 'src/**/*.java'
-    targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
+    targetExclude '**/src/main/**/generated/**', '**/src/test/**/generated/**', '**/src/jmh/**/generated/**'
     removeUnusedImports()
     googleJavaFormat('1.17.0')
     importOrder '\\#', 'java', 'javax', ''
