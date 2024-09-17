@@ -17,9 +17,6 @@ package net.consensys.linea.testing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -171,14 +168,7 @@ public class GeneralStateReferenceTestTools {
                   .isEqualTo(expected);
             });
 
-    try {
-      final Path traceFile = Files.createTempFile(null, ".lt");
-      tracer.writeToFile(traceFile);
-      log.info("trace written to `{}`", traceFile);
-      assertThat(CORSET_VALIDATOR.validate(traceFile).isValid()).isTrue();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {

@@ -15,12 +15,8 @@
 
 package net.consensys.linea.testing;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -37,6 +33,7 @@ import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
 import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -59,10 +56,11 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 @Slf4j
 public class ReplayExecutionEnvironment {
   /** Chain ID for Linea mainnet */
-  public static final BigInteger LINEA_MAINNET = BigInteger.valueOf(59144);
+  public static final BigInteger LINEA_MAINNET = BigInteger.valueOf(GlobalConstants.LINEA_CHAIN_ID);
 
   /** Chain ID for Linea sepolia */
-  public static final BigInteger LINEA_SEPOLIA = BigInteger.valueOf(59141);
+  public static final BigInteger LINEA_SEPOLIA =
+      BigInteger.valueOf(GlobalConstants.LINEA_SEPOLIA_CHAIN_ID);
 
   /** Used for checking resulting trace files. */
   private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
@@ -78,17 +76,6 @@ public class ReplayExecutionEnvironment {
   private final boolean txResultChecking;
 
   private final ZkTracer tracer = new ZkTracer();
-
-  public void checkTracer() {
-    try {
-      final Path traceFile = Files.createTempFile(null, ".lt");
-      this.tracer.writeToFile(traceFile);
-      log.info("trace written to `{}`", traceFile);
-      assertThat(CORSET_VALIDATOR.validate(traceFile).isValid()).isTrue();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
 
   public void checkTracer(String inputFilePath) {
     // Generate the output file path based on the input file path
@@ -117,7 +104,7 @@ public class ReplayExecutionEnvironment {
       return;
     }
     this.executeFrom(chainId, conflation);
-    this.checkTracer();
+    ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   public void replay(BigInteger chainId, final Reader replayFile, String inputFilePath) {
@@ -135,7 +122,7 @@ public class ReplayExecutionEnvironment {
 
   public void replay(BigInteger chainId, ConflationSnapshot conflation) {
     this.executeFrom(chainId, conflation);
-    this.checkTracer();
+    ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   /**

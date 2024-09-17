@@ -16,11 +16,17 @@
 package net.consensys.linea.testing;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalLong;
 
+import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.config.GenesisConfigFile;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.chain.BadBlockManager;
@@ -37,10 +43,37 @@ import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpecBuilder;
 import org.hyperledger.besu.evm.internal.EvmConfiguration;
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem;
+import org.slf4j.Logger;
 
 public class ExecutionEnvironment {
   static GenesisConfigFile GENESIS_CONFIG =
       GenesisConfigFile.fromSource(GenesisConfigFile.class.getResource("/linea.json"));
+
+  public static void checkTracer(
+      ZkTracer zkTracer, CorsetValidator corsetValidator, Optional<Logger> logger) {
+    Path traceFilePath = null;
+    try {
+      traceFilePath = Files.createTempFile(null, ".lt");
+      zkTracer.writeToFile(traceFilePath);
+      final Path finalTraceFilePath = traceFilePath;
+      logger.ifPresent(log -> log.debug("trace written to {}", finalTraceFilePath));
+      CorsetValidator.Result corsetValidationResult = corsetValidator.validate(traceFilePath);
+      assertThat(corsetValidationResult.isValid())
+          .withFailMessage("Corset validation result {}", corsetValidationResult)
+          .isTrue();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (traceFilePath != null) {
+        if (System.getenv("PRESERVE_TRACE_FILES") == null) {
+          boolean traceFileDeleted = traceFilePath.toFile().delete();
+          final Path finalTraceFilePath = traceFilePath;
+          logger.ifPresent(
+              log -> log.debug("trace file {} deleted {}", finalTraceFilePath, traceFileDeleted));
+        }
+      }
+    }
+  }
 
   public static BlockHeaderBuilder getLineaBlockHeaderBuilder(
       Optional<BlockHeader> parentBlockHeader) {
@@ -82,8 +115,9 @@ public class ExecutionEnvironment {
             .londonDefinition(GENESIS_CONFIG.getConfigOptions());
     // .lineaOpCodesDefinition(GENESIS_CONFIG.getConfigOptions());
 
-    builder.privacyParameters(PrivacyParameters.DEFAULT);
-    builder.badBlocksManager(badBlockManager);
-    return builder.build(schedule);
+    return builder
+        .privacyParameters(PrivacyParameters.DEFAULT)
+        .badBlocksManager(badBlockManager)
+        .build(schedule);
   }
 }
