@@ -191,30 +191,19 @@ public class ExpOperation extends ModuleOperation {
     pPreprocessingWcpRes[1] = minCutoffLeq16;
 
     // Third row
-    pPreprocessingWcpFlag[2] = true;
-    pPreprocessingWcpArg1Hi[2] = Bytes.of(0);
-    pPreprocessingWcpArg1Lo[2] = Bytes.of(modexplogExpCall.getEbsCutoff());
-    pPreprocessingWcpArg2Hi[2] = Bytes.of(0);
-    pPreprocessingWcpArg2Lo[2] = Bytes.of(LLARGEPO);
-    pPreprocessingWcpInst[2] = UnsignedByte.of(EVM_INST_LT);
-    final boolean ebsCutoffLeq16 =
-        wcp.callLT(Bytes.of(modexplogExpCall.getEbsCutoff()), Bytes.of(LLARGEPO));
-    pPreprocessingWcpRes[2] = ebsCutoffLeq16;
-
-    // Fourth row
     final EWord rawLead = modexplogExpCall.getRawLeadingWord();
     final Bytes rawLeadHi = rawLead.hi();
     final Bytes rawLeadLo = rawLead.lo();
-    pPreprocessingWcpFlag[3] = true;
-    pPreprocessingWcpArg1Hi[3] = Bytes.of(0);
-    pPreprocessingWcpArg1Lo[3] = rawLeadHi;
-    pPreprocessingWcpArg2Hi[3] = Bytes.of(0);
-    pPreprocessingWcpArg2Lo[3] = Bytes.of(0);
-    pPreprocessingWcpInst[3] = UnsignedByte.of(EVM_INST_ISZERO);
+    pPreprocessingWcpFlag[2] = true;
+    pPreprocessingWcpArg1Hi[2] = Bytes.of(0);
+    pPreprocessingWcpArg1Lo[2] = rawLeadHi;
+    pPreprocessingWcpArg2Hi[2] = Bytes.of(0);
+    pPreprocessingWcpArg2Lo[2] = Bytes.of(0);
+    pPreprocessingWcpInst[2] = UnsignedByte.of(EVM_INST_ISZERO);
     final boolean rawLeadHiIsZero = wcp.callISZERO(rawLeadHi);
-    pPreprocessingWcpRes[3] = rawLeadHiIsZero;
+    pPreprocessingWcpRes[2] = rawLeadHiIsZero;
 
-    // Fifth row is filled later since we need pComputationTrimAcc
+    // Fourth row is filled later since we need pComputationTrimAcc
 
     // Linking constraints and fill rawAcc and pltJmp
     if (minCutoffLeq16) {
@@ -243,15 +232,15 @@ public class ExpOperation extends ModuleOperation {
       }
     }
 
-    // Fifth row
-    pPreprocessingWcpFlag[4] = true;
-    pPreprocessingWcpArg1Hi[4] = Bytes.of(0);
-    pPreprocessingWcpArg1Lo[4] = pComputationTrimAcc;
-    pPreprocessingWcpArg2Hi[4] = Bytes.of(0);
-    pPreprocessingWcpArg2Lo[4] = Bytes.of(0);
-    pPreprocessingWcpInst[4] = UnsignedByte.of(EVM_INST_ISZERO);
+    // Fourth row
+    pPreprocessingWcpFlag[3] = true;
+    pPreprocessingWcpArg1Hi[3] = Bytes.of(0);
+    pPreprocessingWcpArg1Lo[3] = pComputationTrimAcc;
+    pPreprocessingWcpArg2Hi[3] = Bytes.of(0);
+    pPreprocessingWcpArg2Lo[3] = Bytes.of(0);
+    pPreprocessingWcpInst[3] = UnsignedByte.of(EVM_INST_ISZERO);
     final boolean trimAccIsZero = wcp.callISZERO(pComputationTrimAcc);
-    pPreprocessingWcpRes[4] = trimAccIsZero;
+    pPreprocessingWcpRes[3] = trimAccIsZero;
   }
 
   final void traceComputation(int stamp, Trace trace) {
