@@ -50,8 +50,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
       - name: Build dist
         run: |
-          ./gradlew transaction-exclusion-api:app:shadowJar
-          echo ${{ github.workspace }}
+          ./gradlew transaction-exclusion-api:app:distZip --no-daemon
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
@@ -72,7 +71,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          build-contexts: jar=./transaction-exclusion-api/app/build/libs/
+          build-contexts: zip=./transaction-exclusion-api/app/build/distributions/
           file: ./transaction-exclusion-api/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
