@@ -4,8 +4,8 @@ plugins {
 }
 
 dependencies {
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:kotlin-extensions')
+  implementation(project(":jvm-libs:future-extensions"))
+  implementation(project(":jvm-libs:kotlin-extensions"))
   api("io.vertx:vertx-pg-client")
   api("com.ongres.scram:common:2.1") {
     because("Vertx pg client fails without it")

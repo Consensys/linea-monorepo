@@ -7,8 +7,8 @@ plugins {
 
 dependencies {
   api(project(":coordinator:core"))
-  api project(':coordinator:clients:prover-client:serialization')
-  implementation project(':jvm-libs:persistence:db')
+  api(project(":coordinator:clients:prover-client:serialization"))
+  implementation(project(":jvm-libs:persistence:db"))
 
   testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
   testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")

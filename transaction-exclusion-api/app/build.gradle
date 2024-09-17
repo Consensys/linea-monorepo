@@ -48,8 +48,8 @@ dependencies {
   testImplementation "io.vertx:vertx-junit5"
   testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
   testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
-  testImplementation(testFixtures(project(":transaction-exclusion-api:persistence:rejectedtransaction")))
+  testImplementation testFixtures(project(":jvm-libs:kotlin-extensions"))
+  testImplementation testFixtures(project(":transaction-exclusion-api:persistence:rejectedtransaction"))
 }
 
 application {
