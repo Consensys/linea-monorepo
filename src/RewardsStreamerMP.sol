@@ -78,7 +78,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         totalStaked += amount;
 
         uint256 initialMP = amount;
-        uint256 userPotentialMP = amount * 4;
+        uint256 userPotentialMP = amount * MAX_MULTIPLIER;
 
         if (lockPeriod != 0) {
             uint256 lockMultiplier = (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR) / MAX_LOCKING_PERIOD;
@@ -165,9 +165,16 @@ contract RewardsStreamerMP is ReentrancyGuard {
             accruedMP = potentialMP;
         }
 
-        potentialMP -= accruedMP;
+        // Adjust rewardIndex before updating totalMP
+        uint256 previousTotalWeight = totalStaked + totalMP;
         totalMP += accruedMP;
+        uint256 newTotalWeight = totalStaked + totalMP;
 
+        if (previousTotalWeight != 0 && newTotalWeight != previousTotalWeight) {
+            rewardIndex = (rewardIndex * previousTotalWeight) / newTotalWeight;
+        }
+
+        potentialMP -= accruedMP;
         lastMPUpdatedTime = currentTime;
     }
 
@@ -200,6 +207,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
 
         uint256 accruedMP = (timeDiff * user.stakedBalance * MP_RATE_PER_YEAR) / (365 days * SCALE_FACTOR);
+
         if (accruedMP > user.userPotentialMP) {
             accruedMP = user.userPotentialMP;
         }
