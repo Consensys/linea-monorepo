@@ -35,7 +35,7 @@ public class Trace {
   public static final int CT_MAX_MACRO_EXP_LOG = 0x0;
   public static final int CT_MAX_MACRO_MODEXP_LOG = 0x0;
   public static final int CT_MAX_PRPRC_EXP_LOG = 0x0;
-  public static final int CT_MAX_PRPRC_MODEXP_LOG = 0x4;
+  public static final int CT_MAX_PRPRC_MODEXP_LOG = 0x3;
 
   private final BitSet filled = new BitSet();
   private int currentLine = 0;
