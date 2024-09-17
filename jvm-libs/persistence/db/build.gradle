@@ -4,8 +4,8 @@ plugins {
 }
 
 dependencies {
-  implementation project(':jvm-libs:future-extensions')
-  implementation project(':jvm-libs:kotlin-extensions')
+  implementation(project(":jvm-libs:future-extensions"))
+  implementation(project(":jvm-libs:kotlin-extensions"))
   api("io.vertx:vertx-pg-client")
   api("com.ongres.scram:common:2.1") {
     because("Vertx pg client fails without it")
@@ -19,7 +19,8 @@ dependencies {
     because("Flyway DB and other dependencies use SLF4J")
   }
 
-  testImplementation testFixtures(project(':jvm-libs:kotlin-extensions'))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+
   testFixturesImplementation(project(":coordinator:core"))
   testFixturesApi(platform("org.junit:junit-bom:${libs.versions.junit.get()}"))
   testFixturesApi("io.vertx:vertx-junit5:${libs.versions.vertx.get()}")

@@ -4,8 +4,8 @@ plugins {
 
 dependencies {
   api(project(":coordinator:core"))
-  api project(':coordinator:clients:prover-client:serialization')
-  implementation project(':jvm-libs:persistence:db')
+  api(project(":coordinator:clients:prover-client:serialization"))
+  implementation(project(":jvm-libs:persistence:db"))
   implementation(project(":coordinator:persistence:batch"))
 
   testImplementation(project(":coordinator:persistence:batch"))
