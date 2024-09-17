@@ -21,7 +21,7 @@ abstract class CleanDbTestSuiteParallel {
   private lateinit var dataSource: DataSource
   lateinit var pool: Pool
   lateinit var sqlClient: SqlClient
-  var target: String = "4"
+  var target: String = "1"
   var migrationLocations: String = "classpath:db/"
 
   private fun createDataSource(databaseName: String): DataSource {

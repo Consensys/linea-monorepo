@@ -25,7 +25,7 @@ dependencies {
   testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
   testImplementation("io.vertx:vertx-junit5")
 
-  testFixturesImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testFixtures implementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
 }
 
 sourceSets {
