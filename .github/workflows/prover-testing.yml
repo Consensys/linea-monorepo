@@ -13,7 +13,7 @@ env:
 
 jobs:
   staticcheck:
-    runs-on: besu-arm64
+    runs-on: ubuntu-latest
     name: Prover static check
     steps:
     - name: install Go
