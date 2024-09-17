@@ -597,9 +597,13 @@ public class ReplayTests {
     replay(LINEA_MAINNET, "1339346.json.gz");
   }
 
-  @Disabled("#1173")
+  /**
+   * The first transaction of this block doesn't have a chainId and have a ridiculously small R and
+   * S signature, see @Link{<a
+   * href="https://medium.com/patronum-labs/nicks-method-ethereum-keyless-execution-168a6659479c">...</a>}
+   */
   @Test
-  void legacyTxWithoutChainID() {
+  void legacyTxWithoutChainIDAndSmallSignature() {
     replay(LINEA_SEPOLIA, "254251.sepolia.json.gz");
   }
 }
