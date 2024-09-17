@@ -48,7 +48,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     transactionRLP: ByteArray = defaultRejectedTransaction.transactionRLP,
     reasonMessage: String = defaultRejectedTransaction.reasonMessage,
     overflows: List<ModuleOverflow> = defaultRejectedTransaction.overflows,
-    transactionInfo: TransactionInfo = defaultRejectedTransaction.transactionInfo!!
+    transactionInfo: TransactionInfo = defaultRejectedTransaction.transactionInfo
   ): RejectedTransaction {
     return RejectedTransaction(
       txRejectionStage = txRejectionStage,
@@ -90,8 +90,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     // assert the corresponding record was inserted into the full_transactions table
     val newlyInsertedFullTxnsRows = dbTableContentQuery(RejectedTransactionsPostgresDao.fullTransactionsTable)
       .execute().get().filter { row ->
-        row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo!!.hash) &&
-          row.getString("reject_reason") == rejectedTransaction.reasonMessage
+        row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo.hash)
       }
     assertThat(newlyInsertedFullTxnsRows.size).isEqualTo(1)
 
@@ -105,10 +104,10 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
           row.getLong("block_number") == rejectedTransaction.blockNumber?.toLong() &&
           row.getString("reject_reason") == rejectedTransaction.reasonMessage &&
           row.getJsonArray("overflows").encode() == ObjectMapper().writeValueAsString(rejectedTransaction.overflows) &&
-          row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo!!.hash) &&
-          row.getBuffer("tx_from").bytes.contentEquals(rejectedTransaction.transactionInfo!!.from) &&
-          row.getBuffer("tx_to").bytes.contentEquals(rejectedTransaction.transactionInfo!!.to) &&
-          row.getLong("tx_nonce") == rejectedTransaction.transactionInfo!!.nonce.toLong()
+          row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo.hash) &&
+          row.getBuffer("tx_from").bytes.contentEquals(rejectedTransaction.transactionInfo.from) &&
+          row.getBuffer("tx_to").bytes.contentEquals(rejectedTransaction.transactionInfo.to) &&
+          row.getLong("tx_nonce") == rejectedTransaction.transactionInfo.nonce.toLong()
       }
     assertThat(newlyInsertedRejectedTxnsRows.size).isEqualTo(1)
   }
@@ -146,7 +145,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     // assert that the total number of rows in the two tables are correct
     assertThat(rejectedTransactionsTotalRows()).isEqualTo(2)
-    assertThat(fullTransactionsTotalRows()).isEqualTo(2)
+    assertThat(fullTransactionsTotalRows()).isEqualTo(1)
   }
 
   @Test
@@ -174,7 +173,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
       assertThat(executionException.cause).isInstanceOf(DuplicatedRecordException::class.java)
       assertThat(executionException.cause!!.message)
         .isEqualTo(
-          "RejectedTransaction ${duplicatedRejectedTransaction.transactionInfo!!.hash.encodeHex()} " +
+          "RejectedTransaction ${duplicatedRejectedTransaction.transactionInfo.hash.encodeHex()} " +
             "is already persisted!"
         )
     }
@@ -211,7 +210,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     // find the rejected transaction with the txHash
     val foundRejectedTransaction = rejectedTransactionsPostgresDao.findRejectedTransactionByTxHash(
-      oldestRejectedTransaction.transactionInfo!!.hash
+      oldestRejectedTransaction.transactionInfo.hash
     ).get()
 
     // assert that the found rejected transaction is the same as the one with most recent timestamp
@@ -219,7 +218,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     // assert that the total number of rows in the two tables are correct
     assertThat(rejectedTransactionsTotalRows()).isEqualTo(3)
-    assertThat(fullTransactionsTotalRows()).isEqualTo(3)
+    assertThat(fullTransactionsTotalRows()).isEqualTo(1)
   }
 
   @Test
@@ -232,7 +231,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     // find the rejected transaction with the txHash
     val foundRejectedTransaction = rejectedTransactionsPostgresDao.findRejectedTransactionByTxHash(
-      rejectedTransaction.transactionInfo!!.hash,
+      rejectedTransaction.transactionInfo.hash,
       notRejectedBefore
     ).get()
 
@@ -285,7 +284,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     // assert that the total number of rows in the two tables are both three which
     // implies all the rejected transactions above are present in db
     assertThat(rejectedTransactionsTotalRows()).isEqualTo(3)
-    assertThat(fullTransactionsTotalRows()).isEqualTo(3)
+    assertThat(fullTransactionsTotalRows()).isEqualTo(2)
 
     // delete the rejected transactions with storage window as 10 hours from now
     val deletedRows = rejectedTransactionsPostgresDao.deleteRejectedTransactions(

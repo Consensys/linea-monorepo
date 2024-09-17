@@ -95,13 +95,15 @@ class RejectedTransactionsPostgresDao(
         insert into $rejectedTransactionsTable
         (created_epoch_milli, tx_hash, tx_from, tx_to, tx_nonce,
         reject_stage, reject_reason, reject_timestamp, block_number, overflows)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CAST($10::text as jsonb))
-        RETURNING tx_hash, reject_reason
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, cast($10::text as jsonb))
+        returning tx_hash
       )
       insert into $fullTransactionsTable
-      (tx_hash, reject_reason, tx_rlp)
-      SELECT x.tx_hash, x.reject_reason, $11
-      FROM x
+      (tx_hash, tx_rlp)
+      select x.tx_hash, $11
+      from x
+      on conflict on constraint ${fullTransactionsTable}_pkey
+      do nothing
     """
       .trimIndent()
 
@@ -112,32 +114,39 @@ class RejectedTransactionsPostgresDao(
         $fullTransactionsTable.tx_rlp as tx_rlp
       from $rejectedTransactionsTable
       join $fullTransactionsTable on $rejectedTransactionsTable.tx_hash = $fullTransactionsTable.tx_hash
-        and $rejectedTransactionsTable.reject_reason = $fullTransactionsTable.reject_reason
       where $fullTransactionsTable.tx_hash = $1 and $rejectedTransactionsTable.reject_timestamp >= $2
       order by $rejectedTransactionsTable.reject_timestamp desc
       limit 1
     """
       .trimIndent()
 
-  private val deleteSql =
+  private val deleteRejectedTransactionsSql =
     """
       delete from $rejectedTransactionsTable
       where created_epoch_milli < $1
     """
       .trimIndent()
 
+  private val deleteFullTransactionsSql =
+    """
+      delete from $fullTransactionsTable
+      where tx_hash not in (select x.tx_hash from $rejectedTransactionsTable x)
+    """
+      .trimIndent()
+
   private val insertSqlQuery = writeConnection.preparedQuery(insertSql)
   private val selectSqlQuery = readConnection.preparedQuery(selectSql)
-  private val deleteSqlQuery = writeConnection.preparedQuery(deleteSql)
+  private val deleteRejectedTransactionsSqlQuery = writeConnection.preparedQuery(deleteRejectedTransactionsSql)
+  private val deleteFullTransactionsSqlQuery = writeConnection.preparedQuery(deleteFullTransactionsSql)
 
   override fun saveNewRejectedTransaction(rejectedTransaction: RejectedTransaction): SafeFuture<Unit> {
     val params: List<Any?> =
       listOf(
         clock.now().toEpochMilliseconds(),
-        rejectedTransaction.transactionInfo!!.hash,
-        rejectedTransaction.transactionInfo!!.from,
-        rejectedTransaction.transactionInfo!!.to,
-        rejectedTransaction.transactionInfo!!.nonce.toLong(),
+        rejectedTransaction.transactionInfo.hash,
+        rejectedTransaction.transactionInfo.from,
+        rejectedTransaction.transactionInfo.to,
+        rejectedTransaction.transactionInfo.nonce.toLong(),
         rejectedStageToDbValue(rejectedTransaction.txRejectionStage),
         rejectedTransaction.reasonMessage,
         rejectedTransaction.timestamp.toEpochMilliseconds(),
@@ -153,7 +162,7 @@ class RejectedTransactionsPostgresDao(
         if (isDuplicateKeyException(th)) {
           Future.failedFuture(
             DuplicatedRecordException(
-              "RejectedTransaction ${rejectedTransaction.transactionInfo!!.hash.encodeHex()} is already persisted!",
+              "RejectedTransaction ${rejectedTransaction.transactionInfo.hash.encodeHex()} is already persisted!",
               th
             )
           )
@@ -183,9 +192,12 @@ class RejectedTransactionsPostgresDao(
   override fun deleteRejectedTransactions(
     createdBefore: Instant
   ): SafeFuture<Int> {
-    return deleteSqlQuery
+    return deleteRejectedTransactionsSqlQuery
       .execute(Tuple.of(createdBefore.toEpochMilliseconds()))
       .map { rowSet -> rowSet.rowCount() }
+      .also {
+        deleteFullTransactionsSqlQuery.execute()
+      }
       .toSafeFuture()
   }
 }
