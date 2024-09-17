@@ -4,12 +4,20 @@ import { ToastContainer } from "react-toastify";
 import { Header } from "./header";
 import { useInitialiseChain, useInitialiseToken } from "@/hooks";
 import Sidebar from "./Sidebar";
+import { useAccount } from "wagmi";
+import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
+import WrongNetwork from "./WrongNetwork";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useInitialiseChain();
   useInitialiseToken();
 
-  return (
+  const { chainId } = useAccount();
+
+  return chainId &&
+    ![mainnet.id, sepolia.id, linea.id, lineaSepolia.id].includes(chainId as 1 | 11155111 | 59144 | 59141) ? (
+    <WrongNetwork />
+  ) : (
     <div className="flex min-h-screen flex-col bg-cover bg-no-repeat">
       <ToastContainer
         position="top-center"
