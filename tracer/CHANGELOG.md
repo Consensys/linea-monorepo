@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0-rc2
+* fix(oob): update constraints ([#1224](https://github.com/Consensys/linea-tracer/pull/1224))
+* added ranges from issue ([#1225](https://github.com/Consensys/linea-tracer/pull/1225))
+* Fix for NPE in `SelfdestructSection` ([#1221](https://github.com/Consensys/linea-tracer/pull/1221))
+* Update README.md ([#1206](https://github.com/Consensys/linea-tracer/pull/1206))
+* reintegrate ref table in module to count ([#1215](https://github.com/Consensys/linea-tracer/pull/1215))
+* typo in RlpTxn for small signature ([#1208](https://github.com/Consensys/linea-tracer/pull/1208))
+* update constraints ([#1219](https://github.com/Consensys/linea-tracer/pull/1219))
+* fix(exp): remove not necessary computation ([#1204](https://github.com/Consensys/linea-tracer/pull/1204))
+* [README] fix broken link ([#1207](https://github.com/Consensys/linea-tracer/pull/1207))
+* [996] Add features to write multi block tests ([#1178](https://github.com/Consensys/linea-tracer/pull/1178))
+* 1126 oob issue ([#1134](https://github.com/Consensys/linea-tracer/pull/1134))
+* Fix #1200 ([#1201](https://github.com/Consensys/linea-tracer/pull/1201))
+* update constraints ([#1199](https://github.com/Consensys/linea-tracer/pull/1199))
+* Set daily workflows to only execute on weekdays ([#1179](https://github.com/Consensys/linea-tracer/pull/1179))
+* build: build a separate zkevm.bin for reference tests ([#1177](https://github.com/Consensys/linea-tracer/pull/1177))
+* Rectification of `AccountSnapshot`'s for some of the `CallSection` after care methods ([#1174](https://github.com/Consensys/linea-tracer/pull/1174))
+* add PRC_DATA module to moduleToCount ([#1186](https://github.com/Consensys/linea-tracer/pull/1186))
+* `MOD` constraint failure on mainnet ([#1181](https://github.com/Consensys/linea-tracer/pull/1181))
+* fix: add validations to block number params of trace generation and line counting JSON-RPC endpoints ([#1191](https://github.com/Consensys/linea-tracer/pull/1191))
+* update constraints ([#1184](https://github.com/Consensys/linea-tracer/pull/1184))
+* feat: use .tmp file extension while writing a conflated trace in order to indicate that the trace is incomplete if it stays with the .tmp extension ([#1170](https://github.com/Consensys/linea-tracer/pull/1170))
+* feat: exceptions vs tracedexceptions ([#1133](https://github.com/Consensys/linea-tracer/pull/1133))
+* Fixed `RETURN` pricing ([#1166](https://github.com/Consensys/linea-tracer/pull/1166))
+* fix(ecAddTest): remove comment ([#1165](https://github.com/Consensys/linea-tracer/pull/1165))
+
 ## 0.6.0-rc1
 * Refactor ReplayExecutionEnviroment and ToyExecutionEnvironment ([#1159](https://github.com/Consensys/linea-tracer/pull/1159))
 * chore: make spotless and checkSPDXHeader a mandatory step after compilation in order to avoid not passing through the linting process ([#1161](https://github.com/Consensys/linea-tracer/pull/1161))
