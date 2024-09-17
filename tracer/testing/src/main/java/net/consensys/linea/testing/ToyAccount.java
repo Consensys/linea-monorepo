@@ -48,7 +48,7 @@ public class ToyAccount implements MutableAccount {
   private Wei balance;
   private Bytes code;
   private Supplier<Hash> codeHash = Suppliers.memoize(() -> Hash.hash(code));
-  private final Map<UInt256, UInt256> storage = new HashMap<>();
+  final Map<UInt256, UInt256> storage = new HashMap<>();
 
   @Builder
   public ToyAccount(
