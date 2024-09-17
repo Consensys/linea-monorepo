@@ -8,9 +8,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
@@ -24,30 +24,7 @@ type stitchingContext struct {
 
 	// It collects the information about subColumns and their stitchings.
 	// The index of Stitchings is over the rounds.
-	Stitchings []struct {
-		// associate a group of the sub columns to their stitching
-		ByStitching map[ifaces.ColID][]ifaces.Column
-		// for a sub column, it indicates its stitching column and its position in the stitching.
-		BySubCol map[ifaces.ColID]struct {
-			NameStitching ifaces.ColID
-			PosInNew      int
-		}
-	}
-}
-
-// It stores the information regarding a single stitching.
-// used to update the content of [stitchingContex.Stitchings]
-type stitching struct {
-	// the result of the stitching
-	stitchingRes ifaces.Column
-	// sub columns that are stitched together
-	subCol []ifaces.Column
-	// the round in which the sub columns are committed.
-	round int
-	// status of the sub columns
-	// the only valid status for the eligible sub columns are;
-	// committed, Precomputed, VerifierDefined
-	status column.Status
+	Stitchings []alliance.SummerizedAlliances
 }
 
 // Stitcher applies the stitching over the eligible sub columns and adjusts the constraints accordingly.
@@ -79,13 +56,7 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 		MinSize: minSize,
 		MaxSize: maxSize,
 		// initialize the stitichings
-		Stitchings: make([]struct {
-			ByStitching map[ifaces.ColID][]ifaces.Column
-			BySubCol    map[ifaces.ColID]struct {
-				NameStitching ifaces.ColID
-				PosInNew      int
-			}
-		}, numRounds),
+		Stitchings: make([]alliance.SummerizedAlliances, numRounds),
 	}
 	// it scans the compiler trace for the eligible columns, creates stitchings from the sub columns and commits to the them.
 	res.ScanStitchCommit()
@@ -120,6 +91,7 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 					committedCols = append(committedCols, col)
 
 				default:
+					// note that status of verifercol/ veriferDefined is not available via compiler trace.
 					utils.Panic("found the column %v with the invalid status %v for stitching", col.GetColID(), status.String())
 				}
 
@@ -134,10 +106,10 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 
 				for _, group := range preComputedGroups {
 					// prepare a group for stitching
-					stitching := stitching{
-						subCol: group,
-						round:  round,
-						status: column.Precomputed,
+					stitching := alliance.Alliance{
+						SubCols: group,
+						Round:   round,
+						Status:  column.Precomputed,
 					}
 					// stitch the group
 					ctx.stitchGroup(stitching)
@@ -148,10 +120,10 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 				committedGroups := groupCols(committedCols, ctx.MaxSize/size)
 
 				for _, group := range committedGroups {
-					stitching := stitching{
-						subCol: group,
-						round:  round,
-						status: column.Committed,
+					stitching := alliance.Alliance{
+						SubCols: group,
+						Round:   round,
+						Status:  column.Committed,
 					}
 					ctx.stitchGroup(stitching)
 
@@ -159,14 +131,24 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 			}
 
 		}
-
+		// @Azam Precomputed ones are double assigned by this?
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 			stopTimer := profiling.LogTimer("stitching compiler")
 			defer stopTimer()
-			for id, subColumns := range ctx.Stitchings[round].ByStitching {
-				// Trick, in order to compute the assignment of stitching column, we
-				// extract the witness of the interleaving of the grouped
-				// columns.
+			for idBigCol, subColumns := range ctx.Stitchings[round].ByBigCol {
+
+				// Sanity-check
+				sizeBigCol := ctx.comp.Columns.GetHandle(idBigCol).Size()
+				if sizeBigCol != ctx.MaxSize {
+					utils.Panic("Unexpected size %v != %v", sizeBigCol, ctx.MaxSize)
+				}
+
+				// If the column is precomputed, it is already assigned
+				if ctx.comp.Precomputed.Exists(idBigCol) {
+					continue
+				}
+
+				// get the assignment of the subColumns and interleave them
 				witnesses := make([]smartvectors.SmartVector, len(subColumns))
 				for i := range witnesses {
 					witnesses[i] = subColumns[i].GetColAssignment(run)
@@ -178,7 +160,7 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 						(*assignement)[i+j*len(subColumns)] = witnesses[i].Get(j)
 					}
 				}
-				run.AssignColumn(id, assignement)
+				run.AssignColumn(idBigCol, assignement)
 			}
 		})
 	}
@@ -193,18 +175,28 @@ func scanAndClassifyEligibleColumns(ctx stitchingContext, round int) map[int][]i
 		status := ctx.comp.Columns.Status(colName)
 		col := ctx.comp.Columns.GetHandle(colName)
 
-		// 1. we expect no constraints over a mix of eligible columns and proof, thus ignore Proof columns
+		// 1. we expect no constraint over a mix of eligible columns and proof, thus ignore Proof columns
 		// 2. we expect no verifingKey column to fall withing the stitching interval (ctx.MinSize, ctx.MaxSize)
 		// 3. we expect no query over the ignored columns.
 		if status == column.Ignored || status == column.Proof || status == column.VerifyingKey {
 			continue
 		}
 
-		// If the sizes are either too small or too large, stitcher does not manipulate the column.
-		if ctx.MinSize > col.Size() || col.Size() >= ctx.MaxSize {
+		// If the column is too big, the stitcher does not manipulate the column.
+		if col.Size() >= ctx.MaxSize {
 			continue
 		}
 
+		//  If the column is very small, make it public.
+		if col.Size() < ctx.MinSize {
+			if status.IsPublic() {
+				// Nothing to do : the column is already public and we will ask the
+				// verifier to perform the operation itself.
+				continue
+			}
+			ctx.makeColumnPublic(col, status)
+			continue
+		}
 		// Initialization clause of `sizes`
 		if _, ok := columnsBySize[col.Size()]; !ok {
 			columnsBySize[col.Size()] = []ifaces.Column{}
@@ -252,11 +244,11 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 }
 
 // for a group of sub columns it creates their stitching.
-func (ctx *stitchingContext) stitchGroup(s stitching) {
+func (ctx *stitchingContext) stitchGroup(s alliance.Alliance) {
 	var (
-		group        = s.subCol
+		group        = s.SubCols
 		stitchingCol ifaces.Column
-		status       = s.status
+		status       = s.Status
 	)
 	// Declare the new columns
 	switch status {
@@ -272,8 +264,8 @@ func (ctx *stitchingContext) stitchGroup(s stitching) {
 		)
 	case column.Committed:
 		stitchingCol = ctx.comp.InsertCommit(
-			s.round,
-			groupedName(s.subCol),
+			s.Round,
+			groupedName(s.SubCols),
 			ctx.MaxSize,
 		)
 
@@ -282,92 +274,28 @@ func (ctx *stitchingContext) stitchGroup(s stitching) {
 
 	}
 
-	s.stitchingRes = stitchingCol
-	ctx.insertNew(s)
-}
-
-// it inserts the new stitching to [stitchingContex]
-func (ctx *stitchingContext) insertNew(s stitching) {
-	// Initialize the bySubCol if necessary
-	if ctx.Stitchings[s.round].BySubCol == nil {
-		ctx.Stitchings[s.round].BySubCol = map[ifaces.ColID]struct {
-			NameStitching ifaces.ColID
-			PosInNew      int
-		}{}
-	}
-
-	// Populate the bySubCol
-	for posInNew, c := range s.subCol {
-		ctx.Stitchings[s.round].BySubCol[c.GetColID()] = struct {
-			NameStitching ifaces.ColID
-			PosInNew      int
-		}{
-			NameStitching: s.stitchingRes.GetColID(),
-			PosInNew:      posInNew,
-		}
-	}
-
-	//Initialize byStitching f necessary
-	if ctx.Stitchings[s.round].ByStitching == nil {
-		ctx.Stitchings[s.round].ByStitching = make(map[ifaces.ColID][]ifaces.Column)
-	}
-	//populate byStitching
-	ctx.Stitchings[s.round].ByStitching[s.stitchingRes.GetColID()] = s.subCol
+	s.BigCol = stitchingCol
+	(alliance.MultiSummary)(ctx.Stitchings).InsertNew(s)
 }
 
 // it checks if the column belongs to a stitching.
-func isColEligible(ctx stitchingContext, col ifaces.Column) bool {
+func isColEligible(stitchings alliance.MultiSummary, col ifaces.Column) bool {
 	natural := column.RootParents(col)[0]
-	_, found := ctx.Stitchings[col.Round()].BySubCol[natural.GetColID()]
+	_, found := stitchings[col.Round()].BySubCol[natural.GetColID()]
 	return found
 }
 
-// It checks if the expression is over a set of the columns eligible to the stitching.
-// Namely, it contains columns of proper size with status Precomputed, Committed, or Verifiercol.
-// It panics if the expression includes a mixture of eligible columns and columns with status Proof/VerifiyingKey/Ignored.
-//
-// If all the columns are verifierCol the expression is not eligible to the compilation.
-// This is an expected behavior, since the verifier checks such expression by itself.
-func isExprEligible(ctx stitchingContext, board symbolic.ExpressionBoard) bool {
-	metadata := board.ListVariableMetadata()
-	hasAtLeastOneEligible := false
-	allAreEligible := true
-	allAreVeriferCol := true
-	for i := range metadata {
-		switch m := metadata[i].(type) {
-		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
-		// all implement [ifaces.Column]
-		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
-			natural := column.RootParents(m)[0]
-			switch natural.(type) {
-			case column.Natural: // then it is not a verifiercol
-				allAreVeriferCol = false
-				b := isColEligible(ctx, m)
-
-				hasAtLeastOneEligible = hasAtLeastOneEligible || b
-				allAreEligible = allAreEligible && b
-				if m.Size() == 0 {
-					panic("found no columns in the expression")
-				}
-			}
-
-		}
-
+// It makes the given colum public.
+// If the colum is Precomputed it becomes the VerifierKey, otherwise it becomes Proof.
+func (ctx stitchingContext) makeColumnPublic(col ifaces.Column, status column.Status) {
+	switch status {
+	case column.Precomputed:
+		// send it to the verifier directly as part of the verifying key
+		ctx.comp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
+	case column.Committed:
+		// send it to the verifier directly as part of the proof
+		ctx.comp.Columns.SetStatus(col.GetColID(), column.Proof)
+	default:
+		utils.Panic("Unknown status : %v", status.String())
 	}
-
-	if hasAtLeastOneEligible && !allAreEligible {
-		// 1. we expect no expression including Proof columns
-		// 2. we expect no expression over ignored columns
-		// 3. we expect no VerifiyingKey withing the stitching range.
-		panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ingnored/verifierKey")
-	}
-	if allAreVeriferCol {
-		// 4. we expect no expression involving only and only the verifierCols.
-		// We expect that this case wont happen.
-		// Otherwise should be handled in the [github.com/consensys/linea-monorepo/prover/protocol/query] package.
-		// Namely, Local/Global queries should be checked directly by the verifer.
-		panic("all the columns in the expression are verifierCols, unsupported by the compiler")
-	}
-
-	return hasAtLeastOneEligible
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	alliance "github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -27,7 +28,7 @@ func (ctx stitchingContext) LocalOpening() {
 			utils.Panic("got an uncompilable query %v", qName)
 		}
 
-		if !isColEligible(ctx, q.Pol) {
+		if !isColEligible(ctx.Stitchings, q.Pol) {
 			continue
 		}
 		// mark the query as ignored
@@ -62,7 +63,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			board = q.Board()
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			if !isExprEligible(ctx, board) {
+			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
 				continue
 			}
 
@@ -75,7 +76,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 		case query.GlobalConstraint:
 			board = q.Board()
 			// detect if the expression is over the eligible columns.
-			if !isExprEligible(ctx, board) {
+			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
 				continue
 			}
 
@@ -112,13 +113,13 @@ func getStitchingCol(ctx stitchingContext, col ifaces.Column) ifaces.Column {
 
 	round := col.Round()
 	subColInfo := ctx.Stitchings[round].BySubCol[natural.GetColID()]
-	stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameStitching)
+	stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
 
 	// Shift the stitching column by the right position
 	position := column.StackOffsets(col)
 
 	scaling := stitchingCol.Size() / natural.Size()
-	newPosition := scaling*position + subColInfo.PosInNew
+	newPosition := scaling*position + subColInfo.PosInBigCol
 
 	return column.Shift(stitchingCol, newPosition)
 }

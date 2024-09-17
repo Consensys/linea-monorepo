@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/stitcher"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter/splitter/stitcher"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -53,7 +53,7 @@ func TestLocalEval(t *testing.T) {
 	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
 
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
-	assert.Equal(t, column.Committed.String(), comp.Columns.Status("A").String())
+	assert.Equal(t, column.Proof.String(), comp.Columns.Status("A").String())
 	assert.Equal(t, column.Ignored.String(), comp.Columns.Status("B").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("C").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("D").String())
