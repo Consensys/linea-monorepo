@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
+import net.consensys.linea.BlockParameter
 import net.consensys.toBigInteger
 import net.consensys.zkevm.PeriodicPollingService
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
