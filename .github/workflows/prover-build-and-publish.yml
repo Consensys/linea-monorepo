@@ -34,6 +34,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     name: Prover build
+    environment: test-and-builds
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
