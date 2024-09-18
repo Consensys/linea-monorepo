@@ -12,19 +12,31 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
+package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
-import static net.consensys.linea.zktracer.ReplayTests.replay;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+/** Same underlying NPE issue as that solved in #1216. */
+@Tag("replay")
 @Tag("nightly")
-public class Issue1169Tests {
+public class Issue1123Tests {
 
   @Test
-  public void issue_1145_block_3318494_InsufficientBalanceMainnet() {
-    replay(LINEA_MAINNET, "2746060.mainnet.json.gz");
+  void issue_1123_mainnet_block_8043758() {
+    replay(LINEA_MAINNET, "8043758-8043758.json.gz");
+  }
+
+  @Test
+  void issue_1123_mainnet_block_8019521() {
+    replay(LINEA_MAINNET, "8019521-8019521.json.gz");
+  }
+
+  @Test
+  void issue_1123_mainnet_block_8005327() {
+    replay(LINEA_MAINNET, "8005327-8005327.json.gz");
   }
 }

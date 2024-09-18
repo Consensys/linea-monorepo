@@ -12,21 +12,19 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
+package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
-import static net.consensys.linea.zktracer.ReplayTests.replay;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-/** Insufficient balance at some address */
-@Tag("nightly")
-public class Issue1116Tests {
+@Tag("replay")
+public class Issue1109Tests {
 
-  // @Disabled
   @Test
-  void issue_1116_block_8019521() {
-    replay(LINEA_MAINNET, "8019521-8019521.json.gz");
+  void issue_1090_block_6690_6699() {
+    replay(LINEA_MAINNET, "6690-6699.json.gz", false);
   }
 }
