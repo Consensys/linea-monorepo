@@ -114,7 +114,7 @@ export default function Approve() {
   return (
     <button
       id="approve-btn"
-      className={cn("btn btn-primary w-full uppercase rounded-full", {
+      className={cn("btn btn-primary w-full uppercase rounded-full text-lg font-normal", {
         "btn-disabled":
           token &&
           (isApprovalLoading ||

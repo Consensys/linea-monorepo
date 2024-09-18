@@ -60,7 +60,7 @@ export function Chains() {
             style={{ width: "18px", height: "auto" }}
           />
 
-          <span className="hidden md:block">
+          <span className="hidden font-normal md:block">
             {chain?.name ? (chain.name === "Linea Sepolia Testnet" ? "Linea Sepolia" : chain.name) : ""}
           </span>
         </summary>

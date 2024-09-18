@@ -118,7 +118,7 @@ export function Amount() {
         onChange={checkAmountHandler}
         pattern={AMOUNT_REGEX}
         placeholder="Enter amount"
-        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-bold placeholder:text-right focus:border-0 focus:outline-none md:text-2xl"
+        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-medium placeholder:text-right focus:border-0 focus:outline-none md:text-3xl"
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">

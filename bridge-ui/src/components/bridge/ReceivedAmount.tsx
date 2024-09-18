@@ -25,7 +25,7 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
     <div className="flex min-h-20 flex-col gap-2 rounded-lg bg-[#2D2D2D] p-3">
       {isConnected && (
         <>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-semibold text-white">
             {formatBalance(receivedAmount) || 0} {token?.symbol}
           </span>
           {networkType === NetworkType.MAINNET && (

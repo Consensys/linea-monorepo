@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import { useAccount } from "wagmi";
 import { MdMenu } from "react-icons/md";
 import MobileMenu from "../MobileMenu";
-import Button from "@/components/bridge/Button";
+import { Button } from "@/components/ui";
 import { HeaderLogo } from "./HeaderLogo";
 import { NavMenu } from "./NavMenu";
 
