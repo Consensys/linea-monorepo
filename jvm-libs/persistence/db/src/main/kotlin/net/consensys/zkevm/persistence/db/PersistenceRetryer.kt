@@ -20,8 +20,21 @@ open class PersistenceRetryer(
 
   fun <T> retryQuery(
     action: () -> SafeFuture<T>,
-    stopRetriesOnErrorPredicate: (Throwable) -> Boolean = Companion::stopRetriesOnErrorPredicate
-
+    stopRetriesOnErrorPredicate: (Throwable) -> Boolean = Companion::stopRetriesOnErrorPredicate,
+    exceptionConsumer: (Throwable) -> Unit = { error ->
+      when {
+        isDuplicateKeyException(error) -> log.info(
+          "Persistence errorMessage={}",
+          error.message
+        )
+        else -> log.info(
+          "Persistence errorMessage={}, it will retry again in {}",
+          error.message,
+          config.backoffDelay,
+          error
+        )
+      }
+    }
   ): SafeFuture<T> {
     return AsyncRetryer.retry(
       vertx = vertx,
@@ -29,14 +42,7 @@ open class PersistenceRetryer(
       backoffDelay = config.backoffDelay,
       maxRetries = config.maxRetries,
       stopRetriesOnErrorPredicate = stopRetriesOnErrorPredicate,
-      exceptionConsumer = { error ->
-        log.info(
-          "Persistence errorMessage={}, it will retry again in {}",
-          error.message,
-          config.backoffDelay,
-          error
-        )
-      },
+      exceptionConsumer = exceptionConsumer,
       action = action
     )
   }
