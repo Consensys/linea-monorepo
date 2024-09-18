@@ -31,7 +31,7 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     name: Traces api facade build
-    environment: test-and-builds
+    environment: docker-build-and-e2e
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}
