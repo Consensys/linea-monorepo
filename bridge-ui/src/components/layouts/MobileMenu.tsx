@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { MdOutlineClose } from "react-icons/md";
-import Button from "../bridge/Button";
+import { Button } from "../ui";
 import { SocialLinks, FooterLinks } from "./footer";
 import { Menu } from "./menu";
 
@@ -10,7 +10,7 @@ type MobileMenuProps = {
 
 export default function MobileMenu({ toggleMenu }: MobileMenuProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#121212] px-8 py-4 md:hidden">
+    <div className="fixed inset-0 z-[200] flex flex-col bg-[#121212] px-8 py-4 md:hidden">
       <div className="flex items-center justify-between">
         <Image
           src={"/images/logo/linea.svg"}

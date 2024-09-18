@@ -1,6 +1,6 @@
 import { BsDashLg } from "react-icons/bs";
 import { MdInfo } from "react-icons/md";
-import { Tooltip } from "@/components/tooltip";
+import { Tooltip } from "@/components/ui";
 
 interface FeeLineProps {
   label: string;
