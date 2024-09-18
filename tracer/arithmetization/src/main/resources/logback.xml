@@ -1,0 +1,7 @@
+<!-- Log level is set here. Possible values: TRACE, DEBUG, INFO, WARN, ERROR
+          DEBUG is recommended on testing and development instances.
+          INFO is recommended on production instances.
+-->
+<root level="TRACE">
+    <appender-ref ref="LOGGER" />
+</root>

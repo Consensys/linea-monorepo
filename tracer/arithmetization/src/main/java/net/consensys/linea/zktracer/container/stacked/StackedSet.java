@@ -24,6 +24,8 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implements a system of pseudo-stacked squashed sets where {@link
@@ -36,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
  */
 @Accessors(fluent = true)
 public class StackedSet<E extends ModuleOperation> {
+  private static final Logger log = LoggerFactory.getLogger(StackedSet.class);
   @Getter private final Set<E> operationsCommitedToTheConflation;
   @Getter private final Set<E> operationsInTransaction;
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
@@ -98,6 +101,11 @@ public class StackedSet<E extends ModuleOperation> {
         lineCounter.add(e.lineCount());
       }
       return isNew;
+    } else {
+      log.trace(
+          "Operation of type {} was already in operationsCommitedToTheConflation hashset, reference is ",
+          e.getClass().getName(),
+          e);
     }
     return false;
   }
