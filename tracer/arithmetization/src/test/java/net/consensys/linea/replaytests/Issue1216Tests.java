@@ -12,10 +12,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
+package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
-import static net.consensys.linea.zktracer.ReplayTests.replay;
 
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;

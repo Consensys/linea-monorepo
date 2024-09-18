@@ -114,7 +114,7 @@ jobs:
           CORSET_FLAGS: fields,expand,expand,expand
 
       - name: Run Replay tests
-        run: ./gradlew :arithmetization:replayTests --stacktrace
+        run: ./gradlew :arithmetization:fastReplayTests --stacktrace
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: fields,expand,expand,expand
@@ -130,7 +130,7 @@ jobs:
   go-corset-tests:
     needs: [ build, spotless ]
     runs-on: ubuntu-latest-128
-    continue-on-error: true    
+    continue-on-error: true
     steps:
       - name: Setup upterm session
         if: ${{ inputs.tests-with-ssh }}
@@ -172,7 +172,7 @@ jobs:
           GOCORSET_FLAGS: -wd --ansi-escapes=false --report --air
 
       - name: Run replay tests
-        run: GOMEMLIMIT=196GiB ./gradlew :arithmetization:replayTests
+        run: GOMEMLIMIT=196GiB ./gradlew :arithmetization:fastReplayTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable

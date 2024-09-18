@@ -12,14 +12,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
+package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
-import static net.consensys.linea.zktracer.ReplayTests.replay;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-// @Tag("nightly")
 
 /**
  * This test contains a STATICCALL to the ECRECOVER precompile in the first transaction, at
@@ -38,7 +37,10 @@ import org.junit.jupiter.api.Test;
  *
  * <p><a href="https://github.com/Consensys/linea-tracer/issues/1153">Related GitHub issue</a>
  */
+@Tag("replay")
+@Tag("nightly")
 public class Issue1136Tests {
+
   @Test
   void issue_1136_block_3110546() {
     replay(LINEA_SEPOLIA, "3110546.sepolia.json.gz");

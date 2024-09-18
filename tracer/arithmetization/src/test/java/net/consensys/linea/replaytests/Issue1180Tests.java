@@ -12,10 +12,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.zktracer;
+package net.consensys.linea.replaytests;
 
+import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
-import static net.consensys.linea.zktracer.ReplayTests.replay;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
@@ -24,10 +24,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 /** This range broke the MOD module's mod.set-absolute-values constraint. */
+@Tag("nightly")
+@Tag("replay")
 public class Issue1180Tests {
 
-  @Tag("nightly")
-  @Tag("replay")
   @Test
   void split_range_2321470_2321479() {
     replay(LINEA_MAINNET, "2321470-2321479.json.gz");
