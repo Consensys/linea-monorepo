@@ -568,7 +568,7 @@
       {
         "indexed": false,
         "internalType": "bytes32",
-        "name": "startingRootHash",
+        "name": "parentStateRootHash",
         "type": "bytes32"
       },
       {
@@ -578,7 +578,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "DataFinalizedV2",
+    "name": "DataFinalizedV3",
     "type": "event"
   },
   {

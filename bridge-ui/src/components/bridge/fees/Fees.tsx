@@ -12,12 +12,12 @@ type FeesProps = {
   totalReceived: string;
   fees: {
     total: bigint;
-    executionFeeInWei: bigint;
     bridgingFeeInWei: bigint;
+    transactionFeeInWei: bigint;
   };
 };
 
-export function Fees({ totalReceived, fees: { total, executionFeeInWei, bridgingFeeInWei } }: FeesProps) {
+export function Fees({ totalReceived, fees: { total, bridgingFeeInWei, transactionFeeInWei } }: FeesProps) {
   // Context
   const { token, networkLayer, fromChain, networkType } = useChainStore((state) => ({
     token: state.token,
@@ -27,8 +27,14 @@ export function Fees({ totalReceived, fees: { total, executionFeeInWei, bridging
   }));
 
   // Form
-  const { watch, setError, clearErrors } = useFormContext();
-  const amount = watch("amount");
+  const {
+    watch,
+    setError,
+    clearErrors,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
+  const [amount, claim] = watch(["amount", "claim"]);
 
   // Wagmi
   const { address, isConnected } = useAccount();
@@ -51,34 +57,51 @@ export function Fees({ totalReceived, fees: { total, executionFeeInWei, bridging
     }
   }, [setError, clearErrors, ethBalance, total]);
 
+  useEffect(() => {
+    setValue("minFees", bridgingFeeInWei);
+  }, [bridgingFeeInWei, setValue]);
+
   const estimatedTime = networkLayer === NetworkLayer.L1 ? "20 mins" : "8 hrs to 32 hrs";
 
   return (
     <div className="flex flex-col gap-2 text-sm">
       <FeeLine
         label="Estimated Time"
-        value={amount && estimatedTime}
-        tooltip="Linea has a minimum 8 hour delay on withdrawals as a security measure. 
-Withdrawals can take up to 32 hours to complete"
+        value={amount && !errors.amount?.message && estimatedTime}
+        tooltip={
+          networkLayer === NetworkLayer.L1
+            ? "Linea has a 20 minutes delay on deposits as a security measure."
+            : "Linea has a minimum 8 hour delay on withdrawals as a security measure. Withdrawals can take up to 32 hours to complete"
+        }
       />
       <FeeLine
         label="Estimated Total Fee"
         value={
           isConnected &&
           amount &&
+          !errors.amount?.message &&
           (networkType === NetworkType.MAINNET && ethPrice && ethPrice?.[zeroAddress]
-            ? `$${(Number(formatEther(total)) * ethPrice[zeroAddress].usd).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 10,
+            ? `${(Number(formatEther(total)) * ethPrice[zeroAddress].usd).toLocaleString("en-US", {
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 4,
               })}`
-            : `${formatBalance(formatEther(total))} ETH`)
+            : `${formatBalance(formatEther(total), 8)} ETH`)
         }
         tooltipClassName="before:whitespace-pre-wrap before:content-[attr(data-tip)] text-left"
-        tooltip={`Execution Fee: ${formatEther(executionFeeInWei)} ETH\nBridging fee: ${formatEther(bridgingFeeInWei)} ETH`}
+        tooltip={
+          claim === "auto"
+            ? `Bridging transaction fee: ${formatBalance(formatEther(transactionFeeInWei), 8)} ETH\nAutomatic claiming Fee: ${formatBalance(formatEther(bridgingFeeInWei), 8)} ETH`
+            : `Bridging transaction fee: ${formatBalance(formatEther(transactionFeeInWei), 8)} ETH`
+        }
       />
       <FeeLine
         label="Total Received"
-        value={totalReceived && totalReceived !== "0" ? `${formatBalance(totalReceived)} ${token?.symbol}` : undefined}
+        value={
+          !errors.amount?.message && totalReceived && totalReceived !== "0"
+            ? `${formatBalance(totalReceived)} ${token?.symbol}`
+            : undefined
+        }
       />
     </div>
   );

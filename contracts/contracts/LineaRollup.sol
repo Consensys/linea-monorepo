@@ -15,8 +15,8 @@ import { Utils } from "./lib/Utils.sol";
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
   using Utils for *;
 
-  string public CONTRACT_VERSION = "6.0";
-  
+  string public constant CONTRACT_VERSION = "6.0";
+
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
@@ -564,7 +564,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       _finalizationData.finalTimestamp
     );
 
-    emit DataFinalizedV2(
+    emit DataFinalizedV3(
       /// @dev incremented to cover the starting block of data being finalized
       ++_lastFinalizedBlock,
       _finalizationData.finalBlockInData,

@@ -1337,7 +1337,7 @@ describe("Linea Rollup contract", () => {
           finalizationData.shnarfData.finalStateRootHash,
         ];
 
-        await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV2", eventArgs);
+        await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
       });
 
       it("Should successfully finalize blocks and store the last state root hash, the final timestamp, the final block number", async () => {
@@ -2023,7 +2023,7 @@ describe("Linea Rollup contract", () => {
       finalStateRootHash,
     ];
 
-    await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV2", eventArgs);
+    await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
 
     const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
       lineaRollup.stateRootHashes(finalizationData.finalBlockInData),

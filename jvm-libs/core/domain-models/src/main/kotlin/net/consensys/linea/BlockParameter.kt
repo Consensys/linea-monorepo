@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.clients.smartcontract
+package net.consensys.linea
 
 sealed interface BlockParameter {
   fun getTag(): String

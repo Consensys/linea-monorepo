@@ -30,13 +30,14 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
           </span>
           {networkType === NetworkType.MAINNET && (
             <span className="label-text flex items-center">
-              <PiApproximateEqualsBold /> $
+              <PiApproximateEqualsBold />
               {tokenPrices?.[tokenAddress]?.usd
                 ? (Number(receivedAmount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 10,
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 4,
                   })
-                : "0.00"}
+                : "$0.00"}
             </span>
           )}
         </>
