@@ -66,12 +66,12 @@ contract RewardsStreamerMPTest is Test {
     function checkUser(CheckUserParams memory p) public view {
         assertEq(rewardToken.balanceOf(p.user), p.rewardBalance, "wrong user reward balance");
 
-        // RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(p.user);
+        RewardsStreamerMP.UserInfo memory userInfo = streamer.getUserInfo(p.user);
 
-        // assertEq(userInfo.stakedBalance, p.stakedBalance, "wrong user staked balance");
-        // assertEq(userInfo.userRewardIndex, p.rewardIndex, "wrong user reward index");
-        // assertEq(userInfo.userMP, p.userMP, "wrong user MP");
-        // assertEq(userInfo.userPotentialMP, p.userPotentialMP, "wrong user potential MP");
+        assertEq(userInfo.stakedBalance, p.stakedBalance, "wrong user staked balance");
+        assertEq(userInfo.userRewardIndex, p.rewardIndex, "wrong user reward index");
+        assertEq(userInfo.userMP, p.userMP, "wrong user MP");
+        assertEq(userInfo.userPotentialMP, p.userPotentialMP, "wrong user potential MP");
     }
 
     function testStake() public {
@@ -235,7 +235,7 @@ contract RewardsStreamerMPTest is Test {
                 user: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
-                rewardIndex: 25e18,
+                rewardIndex: 10e18,
                 userMP: 0e18,
                 userPotentialMP: 0e18
             })
@@ -273,7 +273,7 @@ contract RewardsStreamerMPTest is Test {
                 user: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
-                rewardIndex: 25e18,
+                rewardIndex: 10e18,
                 userMP: 0e18,
                 userPotentialMP: 0e18
             })
@@ -323,7 +323,7 @@ contract RewardsStreamerMPTest is Test {
                 user: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
-                rewardIndex: 25e18,
+                rewardIndex: 10e18,
                 userMP: 0e18,
                 userPotentialMP: 0e18
             })
@@ -374,9 +374,9 @@ contract RewardsStreamerMPTest is Test {
                 user: alice,
                 rewardBalance: 250e18,
                 stakedBalance: 0e18,
-                rewardIndex: 25e18,
-                userMP: 0e18,
-                userPotentialMP: 0e18
+                rewardIndex: 10e18,
+                userMP: 0,
+                userPotentialMP: 0
             })
         );
 
@@ -391,10 +391,10 @@ contract RewardsStreamerMPTest is Test {
                 // bobs rewards = 1000 * 75 / 135 = 555.555555555555555555
                 // bobs total rewards = 555.55 + 750 of the first bucket = 1305.55
                 rewardBalance: 1305555555555555555525,
-                stakedBalance: 30e18,
-                rewardIndex: 0,
-                userMP: 30e18,
-                userPotentialMP: 120e18
+                stakedBalance: 0e18,
+                rewardIndex: 17407407407407407407,
+                userMP: 0,
+                userPotentialMP: 0
             })
         );
 
