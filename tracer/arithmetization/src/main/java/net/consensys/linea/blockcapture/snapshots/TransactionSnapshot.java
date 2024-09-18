@@ -103,14 +103,6 @@ public class TransactionSnapshot {
     BigInteger s = Bytes.fromHexStringLenient(this.s).toUnsignedBigInteger();
     BigInteger v = Bytes.fromHexStringLenient(this.v).toUnsignedBigInteger();
 
-    if (this.type == TransactionType.FRONTIER) {
-      if (v.compareTo(REPLAY_PROTECTED_V_MIN) > 0) {
-        v = v.subtract(REPLAY_PROTECTED_V_BASE).subtract(chainId.multiply(BigInteger.TWO));
-      } else {
-        v = v.subtract(REPLAY_UNPROTECTED_V_BASE);
-      }
-    }
-
     final var tx =
         Transaction.builder()
             .type(this.type)
@@ -118,13 +110,22 @@ public class TransactionSnapshot {
             .nonce(this.nonce)
             .value(Wei.fromHexString(this.value))
             .payload(Bytes.fromHexString(this.payload))
-            .gasLimit(this.gasLimit)
-            .signature(
-                SignatureAlgorithmFactory.getInstance().createSignature(r, s, v.byteValueExact()));
-    // Set the chainID only if it makes sense to do so.
+            .gasLimit(this.gasLimit);
+    // Set the chainID (if it makes sense to do so).
     if (this.type != TransactionType.FRONTIER || v.compareTo(REPLAY_PROTECTED_V_MIN) > 0) {
       tx.chainId(this.chainId);
     }
+    // Update v for legacy transactions
+    if (this.type == TransactionType.FRONTIER) {
+      if (v.compareTo(REPLAY_PROTECTED_V_MIN) > 0) {
+        v = v.subtract(REPLAY_PROTECTED_V_BASE).subtract(chainId.multiply(BigInteger.TWO));
+      } else {
+        v = v.subtract(REPLAY_UNPROTECTED_V_BASE);
+      }
+    }
+    // Set transaction signature
+    tx.signature(SignatureAlgorithmFactory.getInstance().createSignature(r, s, v.byteValueExact()));
+    //
     this.to.ifPresent(to -> tx.to(Words.toAddress(Bytes.fromHexString(to))));
     this.gasPrice.ifPresent(gasPrice -> tx.gasPrice(Wei.fromHexString(gasPrice)));
     this.maxPriorityFeePerGas.ifPresent(
