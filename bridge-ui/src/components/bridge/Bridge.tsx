@@ -18,7 +18,6 @@ import { BridgeForm, Transaction } from "@/models";
 import { useChainStore } from "@/stores/chainStore";
 import { NetworkLayer, TokenType } from "@/config";
 import { useBridge, useSwitchNetwork, useFetchHistory } from "@/hooks";
-import { parseEther } from "viem";
 import TokenList from "./TokenList";
 import { toast } from "react-toastify";
 import { ERC20Stepper } from "./ERC20Stepper";
@@ -31,13 +30,19 @@ import TransactionConfirmationModal from "./modals/TransactionConfirmationModal"
 const Bridge = () => {
   const [waitingTransaction, setWaitingTransaction] = useState<Transaction | undefined>();
   const { handleShow, handleClose } = useContext(ModalContext);
-  const { fromChain, token, networkLayer } = useChainStore((state) => ({
+  const {
+    fromChain,
+    token,
+    networkLayer,
+    switchChain: switchChainInStore,
+  } = useChainStore((state) => ({
     fromChain: state.fromChain,
     token: state.token,
     networkLayer: state.networkLayer,
+    switchChain: state.switchChain,
   }));
 
-  const { handleSubmit, watch, reset } = useFormContext<BridgeForm>();
+  const { handleSubmit, watch, reset, setValue } = useFormContext<BridgeForm>();
 
   const [amount, bridgingAllowed, claim] = watch(["amount", "bridgingAllowed", "claim"]);
 
@@ -75,6 +80,10 @@ const Bridge = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
+
+  useEffect(() => {
+    setValue("gasFees", fees.transactionFeeInWei);
+  }, [fees.transactionFeeInWei, setValue]);
 
   // Clear tx waiting when changing account
   useEffect(() => {
@@ -123,7 +132,7 @@ const Bridge = () => {
   const onSubmit = async (data: BridgeForm) => {
     if (isLoading || isWaitingLoading) return;
     await switchChain();
-    bridge(data.amount, parseEther(data.minFees), data.recipient);
+    bridge(data.amount, data.minFees, data.recipient);
   };
 
   return (
@@ -150,7 +159,17 @@ const Bridge = () => {
             </div>
 
             <div className="divider my-6 flex justify-center">
-              <SwapIcon />
+              <button
+                className="btn btn-circle w-fit transition-transform duration-200"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.toggle("rotate-180");
+                  switchChainInStore();
+                  reset();
+                }}
+              >
+                <SwapIcon />
+              </button>
             </div>
 
             <ToChain />

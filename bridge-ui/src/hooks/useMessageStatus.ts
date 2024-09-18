@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import useLineaSDK from "./useLineaSDK";
 import { config, NetworkLayer } from "@/config";
-import { MessageWithStatus } from "./useTransactionManagement";
+import { MessageWithStatus } from "./useClaimTransaction";
 import { useChainStore } from "@/stores/chainStore";
 
 const useMessageStatus = () => {

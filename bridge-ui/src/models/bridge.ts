@@ -6,10 +6,11 @@ export type BridgeForm = {
   balance: string;
   submit: string;
   claim: string;
-  minFees: string;
+  minFees: bigint;
   token: TokenInfo;
   recipient: Address | undefined;
   bridgingAllowed: boolean;
+  gasFees: bigint;
 };
 
 export type BridgeError = {

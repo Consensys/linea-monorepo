@@ -49,7 +49,9 @@ export default function FromChainDropdown() {
               style={{ width: "18px", height: "auto" }}
             />
           )}
-          <span className="hidden md:block">{fromChain?.name}</span>
+          <span className="hidden md:block">
+            {fromChain?.name === "Linea Sepolia Testnet" ? "Linea Sepolia" : fromChain?.name}
+          </span>
           <svg
             className="size-4 text-card transition-transform"
             fill="none"
@@ -62,7 +64,7 @@ export default function FromChainDropdown() {
         </summary>
         <ul className="menu dropdown-content absolute right-0 z-10 mt-2 min-w-max border-2 border-card bg-cardBg p-0 shadow">
           <DropdownItem
-            title={toChain?.name || ""}
+            title={toChain?.name ? (toChain?.name === "Linea Sepolia Testnet" ? "Linea Sepolia" : toChain?.name) : ""}
             iconPath={toChain && getChainLogoPath(toChain.id)}
             onClick={switchNetworkHandler}
           />

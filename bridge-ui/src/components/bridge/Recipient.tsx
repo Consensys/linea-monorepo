@@ -31,20 +31,24 @@ export function Recipient() {
   return (
     <div className="collapse rounded-none">
       <input type="checkbox" className="min-h-0" onChange={toggleCheckbox} />
-      <div className="align-items collapse-title flex h-6 min-h-0 flex-row items-center gap-2 p-0 text-sm">
+      <div className="collapse-title flex h-6 min-h-1 flex-row items-center gap-2 p-0 text-sm">
         <MdAdd className="size-6 text-primary" />
         <span className="">To different address</span>
-        <Tooltip text="Input the address you want to bridge assets to on the recipient chain">
+        <Tooltip
+          text="Input the address you want to bridge assets to on the recipient chain"
+          className="z-[9999]"
+          position="bottom"
+        >
           <MdInfo />
         </Tooltip>
       </div>
 
-      <div className="collapse-content p-1 !pb-1">
+      <div className="collapse-content p-0 !pb-1 pt-2">
         <div className="form-control w-full">
           <div className="flex flex-row">
             <input
               type="text"
-              className="input w-full bg-[#2D2D2D]"
+              className="input w-full bg-[#2D2D2D] focus:border-none focus:outline-none"
               placeholder="0x..."
               {...register("recipient", {
                 validate: (value) => !value || isAddress(value) || "Invalid address",

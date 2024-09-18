@@ -14,6 +14,5 @@ export { default as useMessageStatus } from "./useMessageStatus";
 export { default as useMinimumFee } from "./useMinimumFee";
 export { default as useSwitchNetwork } from "./useSwitchNetwork";
 export { default as useTokenFetch } from "./useTokenFetch";
-export { default as useTransactionManagement } from "./useTransactionManagement";
-
-export type { MessageWithStatus } from "./useTransactionManagement";
+export { default as useClaimTransaction } from "./useClaimTransaction";
+export type { MessageWithStatus } from "./useClaimTransaction";

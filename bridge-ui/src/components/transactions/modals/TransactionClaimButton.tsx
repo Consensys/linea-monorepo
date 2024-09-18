@@ -6,7 +6,7 @@ import { TransactionHistory } from "@/models/history";
 import { useWaitForTransactionReceipt } from "wagmi";
 import { useChainStore } from "@/stores/chainStore";
 import Button from "@/components/bridge/Button";
-import useTransactionManagement, { MessageWithStatus } from "@/hooks/useTransactionManagement";
+import useClaimTransaction, { MessageWithStatus } from "@/hooks/useClaimTransaction";
 import { ModalContext } from "@/contexts/modal.context";
 import TransactionConfirmationModal from "@/components/bridge/modals/TransactionConfirmationModal";
 
@@ -26,7 +26,7 @@ export default function TransactionClaimButton({ message, transaction, handleClo
     useContext(ModalContext);
   // Hooks
   const { switchChainById } = useSwitchNetwork(toChain?.id);
-  const { writeClaimMessage, isLoading: isTxLoading, transaction: claimTx } = useTransactionManagement();
+  const { writeClaimMessage, isLoading: isTxLoading, transaction: claimTx } = useClaimTransaction();
 
   // Wagmi
   const {

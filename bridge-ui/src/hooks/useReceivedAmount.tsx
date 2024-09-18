@@ -34,13 +34,16 @@ export function useReceivedAmount({ amount, enoughAllowance, claim }: UseReceive
 
   useEffect(() => {
     const estimate = async () => {
-      if (!amount || minimumFee === null || !token?.decimals) return;
+      if (!amount || minimumFee === null || !token?.decimals) {
+        setEstimatedGasFee(0n);
+        return;
+      }
 
-      let calculatedGasFee = BigInt(0);
+      let calculatedGasFee = 0n;
       if (enoughAllowance) {
-        calculatedGasFee = (await estimateGasBridge(amount, minimumFee)) || BigInt(0);
+        calculatedGasFee = (await estimateGasBridge(amount, minimumFee)) || 0n;
       } else {
-        calculatedGasFee = (await estimateApprove(parseUnits(amount, token.decimals), tokenBridgeAddress)) || BigInt(0);
+        calculatedGasFee = (await estimateApprove(parseUnits(amount, token.decimals), tokenBridgeAddress)) || 0n;
       }
 
       setEstimatedGasFee(calculatedGasFee);
@@ -68,8 +71,8 @@ export function useReceivedAmount({ amount, enoughAllowance, claim }: UseReceive
     totalReceived,
     fees: {
       total: executionFee + estimatedGasFee,
-      executionFeeInWei: executionFee,
-      bridgingFeeInWei: estimatedGasFee,
+      bridgingFeeInWei: executionFee,
+      transactionFeeInWei: estimatedGasFee,
     },
   };
 }

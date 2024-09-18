@@ -21,10 +21,8 @@ export function Amount() {
   const { address } = useAccount();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
-  const watchBalance = watch("balance") || "0";
-  const amount = getValues("amount");
-  const gasFees = getValues("gasFees") || BigInt(0);
-  const minFees = getValues("minFees") || BigInt(0);
+  const watchBalance = watch("balance");
+  const [amount, gasFees, minFees] = getValues(["amount", "gasFees", "minFees"]);
 
   const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain?.id);
 
@@ -35,7 +33,7 @@ export function Amount() {
       }
       const amountToCompare =
         token.type === TokenType.ETH
-          ? parseUnits(_amount, token.decimals) + gasFees + parseUnits(minFees.toString(), 18)
+          ? parseUnits(_amount, token.decimals) + gasFees + minFees
           : parseUnits(_amount, token.decimals);
 
       const balanceToCompare = parseUnits(watchBalance, token.decimals);
@@ -124,13 +122,14 @@ export function Amount() {
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">
-          <PiApproximateEqualsBold /> $
+          <PiApproximateEqualsBold />
           {amount && tokenPrices?.[tokenAddress]?.usd
             ? `${(Number(amount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 10,
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 4,
               })}`
-            : "0.00"}
+            : "$0.00"}
         </span>
       )}
     </>

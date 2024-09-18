@@ -20,7 +20,10 @@ export default function BridgeLayout() {
       token: configContextValue?.UNKNOWN[0],
       claim: token?.type === TokenType.ETH ? "auto" : "manual",
       amount: "",
-      minFees: "0",
+      minFees: 0n,
+      gasFees: 0n,
+      bridgingAllowed: false,
+      balance: "0",
     },
   });
 
