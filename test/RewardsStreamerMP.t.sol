@@ -45,13 +45,13 @@ contract RewardsStreamerMPTest is Test {
     }
 
     function checkStreamer(CheckStreamerParams memory p) public view {
-        // assertEq(streamer.totalStaked(), p.totalStaked, "wrong total staked");
-        // assertEq(streamer.totalMP(), p.totalMP, "wrong total MP");
-        // assertEq(streamer.potentialMP(), p.potentialMP, "wrong potential MP");
-        // assertEq(stakingToken.balanceOf(address(streamer)), p.stakingBalance, "wrong staking balance");
-        // // assertEq(rewardToken.balanceOf(address(streamer)), p.rewardBalance, "wrong reward balance");
-        // assertEq(streamer.rewardIndex(), p.rewardIndex, "wrong reward index");
-        // // assertEq(streamer.accountedRewards(), p.accountedRewards, "wrong accounted rewards");
+        assertEq(streamer.totalStaked(), p.totalStaked, "wrong total staked");
+        assertEq(streamer.totalMP(), p.totalMP, "wrong total MP");
+        assertEq(streamer.potentialMP(), p.potentialMP, "wrong potential MP");
+        assertEq(stakingToken.balanceOf(address(streamer)), p.stakingBalance, "wrong staking balance");
+        assertEq(rewardToken.balanceOf(address(streamer)), p.rewardBalance, "wrong reward balance");
+        assertEq(streamer.rewardIndex(), p.rewardIndex, "wrong reward index");
+        assertEq(streamer.accountedRewards(), p.accountedRewards, "wrong accounted rewards");
     }
 
     struct CheckUserParams {
@@ -118,132 +118,295 @@ contract RewardsStreamerMPTest is Test {
             })
         );
 
-        // // T2
-        // vm.prank(bob);
-        // streamer.stake(30e18, 0);
+        // T2
+        vm.prank(bob);
+        streamer.stake(30e18, 0);
 
-        // checkStreamer(
-        //     CheckStreamerParams({
-        //         totalStaked: 40e18,
-        //         stakingBalance: 40e18,
-        //         rewardBalance: 0,
-        //         rewardIndex: 0,
-        //         accountedRewards: 0
-        //     })
-        // );
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                potentialMP: 160e18,
+                stakingBalance: 40e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
 
-        // // T3
-        // vm.prank(admin);
-        // rewardToken.transfer(address(streamer), 1000e18);
-        // streamer.updateGlobalState();
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
 
-        // checkStreamer(
-        //     CheckStreamerParams({
-        //         totalStaked: 40e18,
-        //         stakingBalance: 40e18,
-        //         rewardBalance: 1000e18,
-        //         rewardIndex: 25e18,
-        //         accountedRewards: 1000e18
-        //     })
-        // );
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
 
-        // checkUser(
-        //     CheckUserParams({
-        //         user: alice,
-        //         rewardBalance: 0,
-        //         stakedBalance: 10e18,
-        //         rewardIndex: 0,
-        //         userMP: 10e18,
-        //         userPotentialMP: 40e18
-        //     })
-        // );
-        // checkUser(
-        //     CheckUserParams({
-        //         user: bob,
-        //         rewardBalance: 0,
-        //         stakedBalance: 30e18,
-        //         rewardIndex: 0,
-        //         userMP: 0,
-        //         userPotentialMP: 120e18
-        //     })
-        // );
+        // T3
+        vm.prank(admin);
+        rewardToken.transfer(address(streamer), 1000e18);
+        streamer.updateGlobalState();
 
-        //// T4
-        //vm.prank(alice);
-        //streamer.unstake(10e18);
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                potentialMP: 160e18,
+                stakingBalance: 40e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 125e17, // 1000 rewards / (40 staked + 40 MP) = 12.5
+                accountedRewards: 1000e18
+            })
+        );
 
-        //checkStreamer(
-        //    CheckStreamerParams({
-        //        totalStaked: 30e18,
-        //        stakingBalance: 30e18,
-        //        rewardBalance: 750e18,
-        //        rewardIndex: 25e18,
-        //        accountedRewards: 750e18
-        //    })
-        //);
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
 
-        //checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18}));
-        //checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
 
-        //// T5
-        //vm.prank(charlie);
-        //streamer.stake(30e18, 0);
+        // T4
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (365 days / 2));
+        streamer.updateGlobalState();
 
-        //checkStreamer(
-        //    CheckStreamerParams({
-        //        totalStaked: 60e18,
-        //        stakingBalance: 60e18,
-        //        rewardBalance: 750e18,
-        //        rewardIndex: 25e18,
-        //        accountedRewards: 750e18
-        //    })
-        //);
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 60e18, // 6 months passed, 20 MP accrued
+                potentialMP: 140e18, // 160 - 20
+                stakingBalance: 40e18,
+                rewardBalance: 1000e18,
+                // 6 months passed and more MPs have been accrued
+                // so we need to adjust the reward index
+                rewardIndex: 10e18,
+                accountedRewards: 1000e18
+            })
+        );
 
-        //checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18}));
-        //checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
-        //checkUser(CheckUserParams({user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18}));
+        // T5
+        vm.prank(alice);
+        streamer.unstake(10e18);
 
-        //// T6
-        //vm.prank(admin);
-        //rewardToken.transfer(address(streamer), 1000e18);
-        //streamer.updateRewardIndex();
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 30e18,
+                totalMP: 45e18, // 60 - 15 from Alice (10 + 6 months = 5)
+                potentialMP: 105e18, // Alice's initial potential MP: 40. 5 already accrued in 6 months. new potentialMP = 140 - 35 = 105
+                stakingBalance: 30e18,
+                rewardBalance: 750e18,
+                rewardIndex: 10e18,
+                accountedRewards: 750e18
+            })
+        );
 
-        //checkStreamer(
-        //    CheckStreamerParams({
-        //        totalStaked: 60e18,
-        //        stakingBalance: 60e18,
-        //        rewardBalance: 1750e18,
-        //        rewardIndex: 41666666666666666666,
-        //        accountedRewards: 1750e18
-        //    })
-        //);
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 250e18,
+                stakedBalance: 0e18,
+                rewardIndex: 25e18,
+                userMP: 0e18,
+                userPotentialMP: 0e18
+            })
+        );
 
-        //checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18}));
-        //checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
-        //checkUser(CheckUserParams({user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18}));
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
 
-        ////T7
-        //vm.prank(bob);
-        //streamer.unstake(30e18);
+        // T5
+        vm.prank(charlie);
+        streamer.stake(30e18, 0);
 
-        //checkStreamer(
-        //    CheckStreamerParams({
-        //        totalStaked: 30e18,
-        //        stakingBalance: 30e18,
-        //        rewardBalance: 500e18 + 20, // 500e18 (with rounding error of 20 wei)
-        //        rewardIndex: 41666666666666666666,
-        //        accountedRewards: 500e18 + 20
-        //    })
-        //);
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 60e18,
+                totalMP: 75e18,
+                potentialMP: 225e18,
+                stakingBalance: 60e18,
+                rewardBalance: 750e18,
+                rewardIndex: 10e18,
+                accountedRewards: 750e18
+            })
+        );
 
-        //checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18}));
-        //checkUser(
-        //    CheckUserParams({
-        //        user: bob,
-        //        rewardBalance: 1249999999999999999980, // 750e18 + 500e18 (with rounding error)
-        //        stakedBalance: 0,
-        //        rewardIndex: 41666666666666666666
-        //    })
-        //);
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 250e18,
+                stakedBalance: 0e18,
+                rewardIndex: 25e18,
+                userMP: 0e18,
+                userPotentialMP: 0e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: charlie,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 10e18,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+
+        // T6
+        vm.prank(admin);
+        rewardToken.transfer(address(streamer), 1000e18);
+        streamer.updateGlobalState();
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 60e18,
+                totalMP: 75e18,
+                potentialMP: 225e18,
+                stakingBalance: 60e18,
+                rewardBalance: 1750e18,
+                rewardIndex: 17407407407407407407,
+                accountedRewards: 1750e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 250e18,
+                stakedBalance: 0e18,
+                rewardIndex: 25e18,
+                userMP: 0e18,
+                userPotentialMP: 0e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: charlie,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 10e18,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+
+        //T7
+        vm.prank(bob);
+        streamer.unstake(30e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 30e18,
+                totalMP: 30e18,
+                // 225 - 105 from bob who had 120 potential MP and had accrued 15
+                potentialMP: 120e18,
+                stakingBalance: 30e18,
+                // 1750 - (750 + 555.55) = 444.44
+                rewardBalance: 444444444444444444475,
+                rewardIndex: 17407407407407407407,
+                accountedRewards: 444444444444444444475
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 250e18,
+                stakedBalance: 0e18,
+                rewardIndex: 25e18,
+                userMP: 0e18,
+                userPotentialMP: 0e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                // bob had 30 staked + 30 initial MP + 15 MP accrued in 6 months
+                // so in the second bucket we have 1000 rewards with
+                // bob's weight = 75
+                // charlie's weight = 60
+                // total weight = 135
+                // bobs rewards = 1000 * 75 / 135 = 555.555555555555555555
+                // bobs total rewards = 555.55 + 750 of the first bucket = 1305.55
+                rewardBalance: 1305555555555555555525,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: charlie,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 10e18,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
     }
 }
