@@ -7,7 +7,7 @@
     "@oclif/core": "^3",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^3.7.0",
-    "ethers": "^5.7.2"
+    "ethers": "^6.13.2"
   },
   "description": "Sync pending transactions from source to target node",
   "devDependencies": {
@@ -29,7 +29,7 @@
     "typescript": "^5"
   },
   "peerDependencies": {
-    "ethers": "^5.7.2"
+    "ethers": "^6.13.2"
   },
   "engines": {
     "node": ">=20"
