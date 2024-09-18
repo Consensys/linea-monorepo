@@ -28,8 +28,10 @@ class RejectedTransactionCleanupService(
   override fun action(): SafeFuture<*> {
     return this.repository.deleteRejectedTransactions(
       clock.now().minus(config.storagePeriod)
-    ).thenPeek {
-      log.debug("Number of deleted rows = $it")
+    ).thenPeek { deletedRows ->
+      if (deletedRows > 0) {
+        log.debug("deletedRows=$deletedRows")
+      }
     }
   }
 
