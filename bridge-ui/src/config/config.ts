@@ -87,7 +87,7 @@ export const config: Config = {
   networks: {
     MAINNET: {
       L1: {
-        name: "Ethereum Mainnet",
+        name: "Ethereum",
         iconPath: "/images/logo/ethereum-rounded.svg",
         chainId: 1,
         messageServiceAddress: process.env.NEXT_PUBLIC_MAINNET_L1_MESSAGE_SERVICE
