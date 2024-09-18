@@ -1,6 +1,9 @@
 package stitcher
 
 import (
+	"fmt"
+
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -20,12 +23,31 @@ func (ctx stitchingContext) constraints() {
 }
 
 func (ctx stitchingContext) LocalOpening() {
+
 	// Ignore the LocalOpening queries over the subColumns.
 	for _, qName := range ctx.comp.QueriesParams.AllUnignoredKeys() {
 		// Filters out only the LocalOpening
 		q, ok := ctx.comp.QueriesParams.Data(qName).(query.LocalOpening)
 		if !ok {
 			utils.Panic("got an uncompilable query %v", qName)
+		}
+
+		round := ctx.comp.QueriesParams.Round(q.ID)
+
+		// Ask the verifier to directly check the query
+		if q.Pol.Size() < ctx.MinSize {
+
+			verifiercol.AssertIsPublicCol(ctx.comp, q.Pol)
+
+			// Requires the verifier to verify the query itself
+			ctx.comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+				return q.Check(vr)
+			}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+				q.CheckGnark(api, wvc)
+			})
+
+			// And skip the rest of the compilation : we are done
+			continue
 		}
 
 		if !isColEligible(ctx.Stitchings, q.Pol) {
@@ -36,7 +58,6 @@ func (ctx stitchingContext) LocalOpening() {
 
 		// get the stitching column associated with the sub column q.Poly.
 		stitchingCol := getStitchingCol(ctx, q.Pol)
-		round := q.Pol.Round()
 
 		newQ := ctx.comp.InsertLocalOpening(round, queryName(q.ID), stitchingCol)
 
@@ -61,6 +82,10 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 		switch q := q.(type) {
 		case query.LocalConstraint:
 			board = q.Board()
+			if q.DomainSize < ctx.MinSize {
+				insertVerifier(ctx.comp, q, board, round)
+				continue
+			}
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
 			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
@@ -75,6 +100,10 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 
 		case query.GlobalConstraint:
 			board = q.Board()
+			if q.DomainSize < ctx.MinSize {
+				insertVerifier(ctx.comp, q, board, round)
+				continue
+			}
 			// detect if the expression is over the eligible columns.
 			if !alliance.IsExprEligible(isColEligible, ctx.Stitchings, board) {
 				continue
@@ -169,4 +198,32 @@ func (ctx *stitchingContext) adjustExpression(
 	}
 
 	return newExpr
+}
+
+func insertVerifier(
+	comp *wizard.CompiledIOP,
+	q ifaces.Query,
+	board symbolic.ExpressionBoard,
+	round int,
+) {
+	// Sanity-check : at this point all the parameters of the query
+	// should have a public status. Indeed, prior to compiling the
+	// constraints to work
+	metadatas := board.ListVariableMetadata()
+	for _, metadata := range metadatas {
+		if h, ok := metadata.(ifaces.Column); ok {
+			verifiercol.AssertIsPublicCol(comp, h)
+		}
+	}
+
+	// Requires the verifier to verify the query itself
+	comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+		err := q.Check(vr)
+		if err != nil {
+			return fmt.Errorf("failure, here is why %v", err)
+		}
+		return nil
+	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+		q.CheckGnark(api, wvc)
+	})
 }
