@@ -1,13 +1,16 @@
 # Changelog
 
+## 0.6.0-rc4
+*  Fix file permission ([#1243](https://github.com/Consensys/linea-tracer/pull/1168))
+
 ## 0.6.0-rc3
-* chore: preliminary selection of nightly tests ([#1176](https://github.com/Consensys/linea-tracer/pull/1176)
-* Add a trace log on existing operations ([#1237](https://github.com/Consensys/linea-tracer/pull/1237)
-* count L2L1Logs ([#1234](https://github.com/Consensys/linea-tracer/pull/1234)
-* Fix for legacy transactions with chainID ([#1231](https://github.com/Consensys/linea-tracer/pull/1231)
-* Show only failing tests in CI output ([#1217](https://github.com/Consensys/linea-tracer/pull/1217)
-* alphabetical ordering ([#1228](https://github.com/Consensys/linea-tracer/pull/1228)
-* Some optimizations for CI and Reference tests ([#1168](https://github.com/Consensys/linea-tracer/pull/1168)
+* chore: preliminary selection of nightly tests ([#1176](https://github.com/Consensys/linea-tracer/pull/1176))
+* Add a trace log on existing operations ([#1237](https://github.com/Consensys/linea-tracer/pull/1237))
+* count L2L1Logs ([#1234](https://github.com/Consensys/linea-tracer/pull/1234))
+* Fix for legacy transactions with chainID ([#1231](https://github.com/Consensys/linea-tracer/pull/1231))
+* Show only failing tests in CI output ([#1217](https://github.com/Consensys/linea-tracer/pull/1217))
+* alphabetical ordering ([#1228](https://github.com/Consensys/linea-tracer/pull/1228))
+* Some optimizations for CI and Reference tests ([#1168](https://github.com/Consensys/linea-tracer/pull/1168))
 
 
 
