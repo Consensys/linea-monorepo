@@ -92,7 +92,6 @@ class CoordinatorConfigTest {
           TracingModuleV2.EUC to 65536u,
           TracingModuleV2.EXP to 8192u,
           TracingModuleV2.EXT to 65536u,
-          TracingModuleV2.GAS to 65536u,
           TracingModuleV2.HUB to 2097152u,
           TracingModuleV2.LOG_DATA to 65536u,
           TracingModuleV2.LOG_INFO to 4096u,

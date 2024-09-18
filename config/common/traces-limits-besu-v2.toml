@@ -11,7 +11,6 @@ EC_DATA             = 262144
 EUC                 = 65536
 EXP                 = 8192
 EXT	                = 1048576
-GAS	                = 65536
 HUB                 = 2097152
 LOG_DATA            = 65536
 LOG_INFO            = 4096
