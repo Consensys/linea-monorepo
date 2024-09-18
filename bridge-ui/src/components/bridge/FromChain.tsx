@@ -1,4 +1,4 @@
-import FromChainDropdown from "./FromChainDropdown";
+import FromChainDropdown from "./dropdowns/FromChainDropdown";
 
 export function FromChain() {
   return (

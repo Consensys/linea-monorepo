@@ -4,9 +4,9 @@ import { ModalContext } from "@/contexts/modal.context";
 import { useChainStore } from "@/stores/chainStore";
 import { useContext } from "react";
 import { useAccount } from "wagmi";
-import TokenModal from "./TokenModal";
+import TokenModal from "./modals/TokenModal";
 import { useFormContext } from "react-hook-form";
-import Button from "./Button";
+import { Button } from "../ui";
 
 export default function TokenList() {
   const token = useChainStore((state) => state.token);
@@ -22,7 +22,7 @@ export default function TokenList() {
           id="token-select-btn"
           type="button"
           variant="outline"
-          className="px-2 py-1"
+          className="px-2 py-1 font-normal"
           disabled={!isConnected}
           onClick={() =>
             handleShow(<TokenModal setValue={setValue} clearErrors={clearErrors} />, {

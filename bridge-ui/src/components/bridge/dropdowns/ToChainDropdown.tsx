@@ -8,13 +8,14 @@ import DropdownItem from "@/components/DropdownItem";
 import { getChainLogoPath } from "@/utils/chainsUtil";
 import { useFormContext } from "react-hook-form";
 
-export default function FromChainDropdown() {
+export default function ToChainDropdown() {
   const { networkType, fromChain, toChain, switchChain } = useChainStore((state) => ({
     networkType: state.networkType,
     fromChain: state.fromChain,
     toChain: state.toChain,
     switchChain: state.switchChain,
   }));
+
   const { reset } = useFormContext();
 
   const detailsRef = useRef<HTMLDetailsElement>(null);
@@ -40,16 +41,18 @@ export default function FromChainDropdown() {
     return (
       <details className="dropdown relative" ref={detailsRef}>
         <summary className="flex cursor-pointer items-center gap-2 rounded-full bg-[#2D2D2D] p-2 px-3 text-white">
-          {fromChain && (
+          {toChain && (
             <Image
-              src={getChainLogoPath(fromChain.id)}
+              src={getChainLogoPath(toChain.id)}
               alt="MetaMask"
               width={0}
               height={0}
               style={{ width: "18px", height: "auto" }}
             />
           )}
-          <span className="hidden md:block">{fromChain?.name}</span>
+          <span className="hidden md:block">
+            {toChain?.name === "Linea Sepolia Testnet" ? "Linea Sepolia" : toChain?.name}
+          </span>
           <svg
             className="size-4 text-card transition-transform"
             fill="none"
@@ -62,8 +65,10 @@ export default function FromChainDropdown() {
         </summary>
         <ul className="menu dropdown-content absolute right-0 z-10 mt-2 min-w-max border-2 border-card bg-cardBg p-0 shadow">
           <DropdownItem
-            title={toChain?.name || ""}
-            iconPath={toChain && getChainLogoPath(toChain.id)}
+            title={
+              fromChain?.name ? (fromChain?.name === "Linea Sepolia Testnet" ? "Linea Sepolia" : fromChain?.name) : ""
+            }
+            iconPath={fromChain && getChainLogoPath(fromChain.id)}
             onClick={switchNetworkHandler}
           />
         </ul>

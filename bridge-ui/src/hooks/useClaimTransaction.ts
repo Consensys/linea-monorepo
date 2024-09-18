@@ -37,7 +37,7 @@ interface ClaimMessageWithProofParams {
   data: string;
 }
 
-const useTransactionManagement = () => {
+const useClaimTransaction = () => {
   const { address } = useAccount();
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,4 +115,4 @@ const useTransactionManagement = () => {
   return { transaction, isLoading, isError: error !== null, error, writeClaimMessage };
 };
 
-export default useTransactionManagement;
+export default useClaimTransaction;
