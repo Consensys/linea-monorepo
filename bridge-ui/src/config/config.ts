@@ -170,7 +170,7 @@ export const config: Config = {
 
   storage: {
     // The storage will be cleared if its version is smaller than the one configured
-    minVersion: process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION || "0.0.1",
+    minVersion: process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION || "1",
   },
 };
 
