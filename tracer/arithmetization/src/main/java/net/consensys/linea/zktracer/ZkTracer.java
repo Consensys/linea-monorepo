@@ -24,6 +24,9 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -127,7 +130,9 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public Path writeToTmpFile(final Path rootDir, final String prefix, final String suffix) {
     try {
-      final Path traceFile = Files.createTempFile(rootDir, prefix, suffix);
+      FileAttribute<Set<PosixFilePermission>> perms =
+          PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r--r--"));
+      final Path traceFile = Files.createTempFile(rootDir, prefix, suffix, perms);
       this.writeToFile(traceFile);
       return traceFile;
     } catch (IOException e) {
