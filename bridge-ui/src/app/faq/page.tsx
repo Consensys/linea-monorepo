@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Collapse } from "@/components/Collapse";
+import { Collapse } from "@/components/ui";
 
 export default function FaqPage() {
   return (

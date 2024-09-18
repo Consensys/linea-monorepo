@@ -7,7 +7,7 @@ type TransactionConfirmationModalProps = {
 const TransactionConfirmationModal: React.FC<TransactionConfirmationModalProps> = ({ handleClose }) => {
   return (
     <div className="flex flex-col items-center justify-center gap-8 px-8 py-4">
-      <h2 className="text-xl">Trandaction confirmed!</h2>
+      <h2 className="text-xl">Transaction confirmed!</h2>
       <div className="flex items-center justify-center gap-4">
         <Link href="/" className="btn btn-primary rounded-full uppercase" onClick={handleClose}>
           Start a new transaction

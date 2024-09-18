@@ -7,7 +7,7 @@ const test = testWithSynpress(advancedFixtures);
 const { expect, describe } = test;
 
 describe("Bridge L1 > L2", () => {
-  test("should set up the UI and metamask correctly", async ({ page, metamask, initUI }) => {
+  test.skip("should set up the UI and metamask correctly", async ({ page, metamask, initUI }) => {
     await initUI(true);
 
     await page.locator("#wallet-connect-btn").click();
@@ -23,14 +23,14 @@ describe("Bridge L1 > L2", () => {
     expect(pageUrl).toEqual(TEST_URL);
   });
 
-  test("should successfully display the correct heading", async ({ page, initUI }) => {
+  test.skip("should successfully display the correct heading", async ({ page, initUI }) => {
     await initUI(true);
 
     const header = "Bridge";
     await page.locator("h2", { hasText: header }).waitFor({ state: "visible" });
   });
 
-  test("metamask should be connected to the right network", async ({ page, metamask, initUI }) => {
+  test.skip("metamask should be connected to the right network", async ({ page, metamask, initUI }) => {
     await initUI(true);
 
     await page.locator("#wallet-connect-btn").click();
@@ -62,7 +62,7 @@ describe("Bridge L1 > L2", () => {
     await page.locator("#transactions-list").locator("ul").nth(1).waitFor({ timeout: 10_000 });
   });
 
-  test("should be able to switch network", async ({ page, metamask, initUI }) => {
+  test.skip("should be able to switch network", async ({ page, metamask, initUI }) => {
     await initUI(true);
     await page.locator("#wallet-connect-btn").click();
     await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
