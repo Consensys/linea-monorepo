@@ -3,9 +3,10 @@ import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormContext } from "react-hook-form";
 import ApproveERC20 from "./ApproveERC20";
-import Button from "./Button";
+import { Button } from "../../ui";
 import { useAccount, useBalance } from "wagmi";
 import { cn } from "@/utils/cn";
+import { parseUnits } from "viem";
 
 type SubmitProps = {
   isLoading: boolean;
@@ -40,7 +41,9 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   const isERC20Token = token && networkLayer !== NetworkLayer.UNKNOWN && token[networkLayer];
   const isButtonDisabled = !bridgeEnabled(watchAmount, watchAllowance || BigInt(0), errors);
   const isETHTransfer = token && token.symbol === "ETH";
-  const showApproveERC20 = !isETHTransfer && (!watchAllowance || watchAllowance < watchAmount);
+  const showApproveERC20 =
+    !isETHTransfer &&
+    (!watchAllowance || (token?.decimals && watchAllowance < parseUnits(watchAmount, token.decimals)));
 
   // TODO: refactor this
   const destinationBalanceTooLow =
@@ -55,7 +58,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   return isETHTransfer ? (
     <Button
       type="submit"
-      className={cn("w-full", {
+      className={cn("w-full text-lg font-normal", {
         "btn-secondary": destinationBalanceTooLow,
       })}
       disabled={isButtonDisabled}
@@ -68,7 +71,7 @@ export function Submit({ isLoading = false, isWaitingLoading = false }: SubmitPr
   ) : (
     <Button
       id="submit-erc-btn"
-      className="w-full"
+      className="w-full text-lg font-normal"
       disabled={isButtonDisabled}
       loading={isLoading || isWaitingLoading}
       type="submit"

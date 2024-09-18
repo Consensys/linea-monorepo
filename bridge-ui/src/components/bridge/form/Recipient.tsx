@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { isAddress } from "viem";
 import { useFormContext } from "react-hook-form";
 import { MdInfo, MdAdd } from "react-icons/md";
-import { Tooltip } from "../tooltip";
+import { Tooltip } from "@/components/ui/";
 
 export function Recipient() {
   const [isChecked, setIsChecked] = useState(false);
@@ -36,7 +36,7 @@ export function Recipient() {
         <span className="">To different address</span>
         <Tooltip
           text="Input the address you want to bridge assets to on the recipient chain"
-          className="z-[9999]"
+          className="z-[99]"
           position="bottom"
         >
           <MdInfo />

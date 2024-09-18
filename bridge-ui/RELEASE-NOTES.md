@@ -1,3 +1,15 @@
+<a name="v1.0.0"></a>
+
+# [v1.0.0] - 18 Sep 2024
+
+# Fix: New Bridge UI design
+
+Description:
+- New bridge UI design
+
+[Changes][v1.0.0]
+
+
 <a name="v0.6.5"></a>
 
 # [v0.6.5] - 30 May 2024

@@ -66,13 +66,13 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
       <div className="flex gap-5">
         <Image src={token.image} alt={token.name} width={40} height={40} className="rounded-full" />
         <div className="text-left">
-          <p className="font-normal text-white">{token.symbol}</p>
+          <p className="font-semibold text-white">{token.symbol}</p>
           <p className="text-sm font-normal text-[#C0C0C0]">{token.name}</p>
         </div>
       </div>
       {!tokenNotFromCurrentLayer && (
         <div className="text-right">
-          <p className="text-md text-white">
+          <p className="font-semibold text-white">
             {formatBalance(balance)} {token.symbol}
           </p>
           {tokenPrice ? (

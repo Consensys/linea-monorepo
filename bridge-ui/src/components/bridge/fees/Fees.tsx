@@ -68,6 +68,7 @@ export function Fees({ totalReceived, fees: { total, bridgingFeeInWei, transacti
       <FeeLine
         label="Estimated Time"
         value={amount && !errors.amount?.message && estimatedTime}
+        tooltipClassName="z-[100]"
         tooltip={
           networkLayer === NetworkLayer.L1
             ? "Linea has a 20 minutes delay on deposits as a security measure."
@@ -88,7 +89,7 @@ export function Fees({ totalReceived, fees: { total, bridgingFeeInWei, transacti
               })}`
             : `${formatBalance(formatEther(total), 8)} ETH`)
         }
-        tooltipClassName="before:whitespace-pre-wrap before:content-[attr(data-tip)] text-left"
+        tooltipClassName="before:whitespace-pre-wrap before:content-[attr(data-tip)] text-left z-[100]"
         tooltip={
           claim === "auto"
             ? `Bridging transaction fee: ${formatBalance(formatEther(transactionFeeInWei), 8)} ETH\nAutomatic claiming Fee: ${formatBalance(formatEther(bridgingFeeInWei), 8)} ETH`

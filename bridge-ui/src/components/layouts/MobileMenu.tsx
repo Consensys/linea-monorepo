@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { MdOutlineClose } from "react-icons/md";
-import Button from "../bridge/Button";
+import { Button } from "../ui";
 import { SocialLinks, FooterLinks } from "./footer";
 import { Menu } from "./menu";
 

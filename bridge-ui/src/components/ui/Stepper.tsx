@@ -5,7 +5,7 @@ type StepperProps = {
   activeStep: number;
 };
 
-export function Stepper({ steps, activeStep }: StepperProps) {
+export default function Stepper({ steps, activeStep }: StepperProps) {
   return (
     <div className="flex items-end">
       {steps.map((step, index) => (

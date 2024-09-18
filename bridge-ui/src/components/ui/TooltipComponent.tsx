@@ -8,7 +8,7 @@ interface TooltipProps {
   className?: string;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({ text, position = "top", children, className }) => (
+const Tooltip: React.FC<TooltipProps> = ({ text, position = "top", children, className }) => (
   <div
     className={cn(
       "tooltip",
@@ -25,3 +25,5 @@ export const Tooltip: React.FC<TooltipProps> = ({ text, position = "top", childr
     {children}
   </div>
 );
+
+export default Tooltip;

@@ -20,7 +20,7 @@ export default function DropdownItem({ title, iconPath, onClick, externalLink, c
           passHref
           target="_blank"
           rel="noopener noreferrer"
-          className={cn("btn btn-md flex justify-start rounded-none border-none bg-cardBg ", className)}
+          className={cn("btn btn-md flex justify-start font-normal rounded-none border-none bg-cardBg", className)}
         >
           {iconPath && (
             <Image src={iconPath} alt={title} width={18} height={18} style={{ width: "18px", height: "auto" }} />
@@ -35,7 +35,7 @@ export default function DropdownItem({ title, iconPath, onClick, externalLink, c
   return (
     <li key={`dropdown-item-${title}`} className="w-full">
       <button
-        className={cn("btn btn-md flex justify-start border-none bg-cardBg rounded-none", className)}
+        className={cn("btn btn-md flex justify-start font-normal border-none bg-cardBg rounded-none", className)}
         onClick={onClick}
       >
         {iconPath && (

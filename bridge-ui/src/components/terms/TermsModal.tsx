@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useConfigStore } from "@/stores/configStore";
 import { cn } from "@/utils/cn";
-import Button from "../bridge/Button";
+import { Button } from "../ui";
 
 export default function TermsModal() {
   const termsModalRef = useRef<HTMLDivElement>(null);

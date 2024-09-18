@@ -1,20 +1,24 @@
 "use client";
 
 import { ToastContainer } from "react-toastify";
-import atypTextFont from "@/app/font/atypText";
-import atypFont from "@/app/font/atyp";
 import { Header } from "./header";
 import { useInitialiseChain, useInitialiseToken } from "@/hooks";
 import Sidebar from "./Sidebar";
+import { useAccount } from "wagmi";
+import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
+import WrongNetwork from "./WrongNetwork";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useInitialiseChain();
   useInitialiseToken();
 
-  return (
-    <div
-      className={`${atypFont.variable} ${atypTextFont.variable} ${atypFont.className} flex min-h-screen flex-col bg-cover bg-no-repeat`}
-    >
+  const { chainId } = useAccount();
+
+  return chainId &&
+    ![mainnet.id, sepolia.id, linea.id, lineaSepolia.id].includes(chainId as 1 | 11155111 | 59144 | 59141) ? (
+    <WrongNetwork />
+  ) : (
+    <div className="flex min-h-screen flex-col bg-cover bg-no-repeat">
       <ToastContainer
         position="top-center"
         autoClose={2000}
