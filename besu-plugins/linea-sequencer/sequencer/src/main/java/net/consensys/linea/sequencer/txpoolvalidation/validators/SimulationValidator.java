@@ -91,7 +91,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           transaction, isLocal, hasPriority, maybeSimulationResults, moduleLimitResult);
 
       if (moduleLimitResult.getResult() != ModuleLineCountValidator.ModuleLineCountResult.VALID) {
-        return Optional.of(handleModuleOverLimit(moduleLimitResult));
+        return Optional.of(handleModuleOverLimit(transaction, moduleLimitResult));
       }
 
       if (maybeSimulationResults.isPresent()) {
@@ -150,7 +150,8 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
     return zkTracer;
   }
 
-  private String handleModuleOverLimit(ModuleLimitsValidationResult moduleLimitResult) {
+  private String handleModuleOverLimit(
+      Transaction transaction, ModuleLimitsValidationResult moduleLimitResult) {
     if (moduleLimitResult.getResult() == MODULE_NOT_DEFINED) {
       String moduleNotDefinedMsg =
           String.format(
@@ -161,7 +162,8 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
     if (moduleLimitResult.getResult() == TX_MODULE_LINE_COUNT_OVERFLOW) {
       String txOverflowMsg =
           String.format(
-              "Transaction line count for module %s=%s is above the limit %s",
+              "Transaction %s line count for module %s=%s is above the limit %s",
+              transaction.getHash(),
               moduleLimitResult.getModuleName(),
               moduleLimitResult.getModuleLineCount(),
               moduleLimitResult.getModuleLineLimit());
