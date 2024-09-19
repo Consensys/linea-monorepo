@@ -5,7 +5,7 @@ import { Transaction } from "@/models";
 import { TransactionHistory } from "@/models/history";
 import { useWaitForTransactionReceipt } from "wagmi";
 import { useChainStore } from "@/stores/chainStore";
-import Button from "@/components/bridge/Button";
+import { Button } from "@/components/ui";
 import useClaimTransaction, { MessageWithStatus } from "@/hooks/useClaimTransaction";
 import { ModalContext } from "@/contexts/modal.context";
 import TransactionConfirmationModal from "@/components/bridge/modals/TransactionConfirmationModal";
