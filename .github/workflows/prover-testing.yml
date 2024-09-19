@@ -96,7 +96,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     steps:
       - name: Notify slack -- workflow failed
         id: slack
@@ -119,7 +119,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     steps:
       - name: Notify slack -- workflow succeeded
         id: slack

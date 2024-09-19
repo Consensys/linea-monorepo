@@ -8,7 +8,7 @@ jobs:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   filter-commit-changes:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
@@ -114,7 +114,7 @@ jobs:
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
       traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
     secrets: inherit
-  
+
   # Comment out the auto build and release step below as the plugin release should be
   # by manual Github action for versioning control
   # finalized-tag-updater-jar-build-release:
