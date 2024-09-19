@@ -94,8 +94,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Create directory for conflated traces
         run: |
-          mkdir -p ../tmp/local/traces/v2
-          chmod -R a+w ../tmp/local/traces/v2
+          mkdir -p tmp/local/traces/v2/conflated
+          chmod -R a+w tmp/local/traces/v2/conflated
       - name: Setup Shomei directories
         run: |
           mkdir -p ../tmp/zkbesu-shomei/plugins/
