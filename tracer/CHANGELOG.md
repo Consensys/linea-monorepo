@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0-rc5
+* Test CI using smaller runner (#1251)
+* perf(WCP): split StackedSet per opcode (#1249)
+* Remove duplicate `ReplayTests.java` file (#1253)
+* fix(abortingCondiftions): handle EIP2681 MAX_NONCE (#1188)
+* added `GAS` module to `getModulesToCount()` (#1247)
+* use CliqueProtocolSchedule instead of MainnetProtocolSchedule to extr… (#1222)
+
+
 ## 0.6.0-rc4
 *  Fix file permission ([#1243](https://github.com/Consensys/linea-tracer/pull/1168))
 
