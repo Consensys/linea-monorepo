@@ -14,7 +14,7 @@ eth-api="http://traces-node-v2:8545"
 
 [traces]
 switch-to-linea-besu=true
-expected-traces-api-version-v2="v0.6.0-rc5-2"
+expected-traces-api-version-v2="v0.6.0-rc5"
 [traces.counters-v2]
 endpoints=["http://traces-node-v2:8545/"]
 request-limit-per-endpoint=20
