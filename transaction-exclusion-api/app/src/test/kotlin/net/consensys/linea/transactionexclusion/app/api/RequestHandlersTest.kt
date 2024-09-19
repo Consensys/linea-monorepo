@@ -314,7 +314,7 @@ class RequestHandlersTest {
 
   @Test
   fun GetTransactionExclusionStatusRequestHandlerV1_rejectsListWithInvalidArgument() {
-    val request = JsonRpcRequestListParams("", "", "", listOf("invalid_argument"))
+    val request = JsonRpcRequestListParams("", "", "", listOf("0x123"))
 
     val getRequestHandlerV1 = GetTransactionExclusionStatusRequestHandlerV1(
       transactionExclusionServiceMock
@@ -330,7 +330,7 @@ class RequestHandlersTest {
       Err(
         JsonRpcErrorResponse.invalidParams(
           request.id,
-          "The argument in the request params list should be an object"
+          "Hex string of transaction hash cannot be parsed: Must have an even length"
         )
       ),
       result
