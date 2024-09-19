@@ -22,6 +22,7 @@ services:
     container_name: traces-node-v2
     image: consensys/linea-besu:linea-delivery-28
     profiles: [ "l2", "l2-bc", "debug" ]
+    user: 1001:127
     depends_on:
       traces-node-v2-plugin-downloader:
         condition: service_completed_successfully
