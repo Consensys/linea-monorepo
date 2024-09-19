@@ -203,7 +203,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         TracesCountersV2(tracesLimitsV2Configs.get()!!.tracesLimits)
       }.getOrElse {
         hasConfigError = true
-        logger.error("Traces limits file {} is incomplete. {}", tracesLimitsFile, it.message)
+        logger.error("Traces limits file {} is incomplete. {}", tracesLimitsV2File, it.message)
       }
     }
 
