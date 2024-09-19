@@ -68,7 +68,7 @@ tasks.withType(Test).configureEach {
 
   testlogger {
     // pick a theme - mocha, standard, plain, mocha-parallel, standard-parallel or plain-parallel
-    theme 'standard-parallel'
+    theme 'plain-parallel'
 
     // set to false to disable detailed failure logs
     showExceptions true
@@ -125,9 +125,6 @@ tasks.test.configure {
 }
 
 tasks.register("fastReplayTests", Test) {
-  boolean isCiServer = System.getenv().containsKey("CI")
-  maxHeapSize = isCiServer ? "32g" : "8g"
-
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
