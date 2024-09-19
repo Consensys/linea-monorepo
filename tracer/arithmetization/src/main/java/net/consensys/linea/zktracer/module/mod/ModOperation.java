@@ -209,18 +209,14 @@ public class ModOperation extends ModuleOperation {
     return opCode == OpCode.DIV || opCode == OpCode.SDIV;
   }
 
-  int maxCounter() {
-    if (oli) {
-      return 1;
-    } else {
-      return MMEDIUM;
-    }
+  int numberOfRows() {
+    return oli ? 1 : MMEDIUM;
   }
 
   public void trace(Trace trace, int stamp) {
     this.compute();
 
-    for (short ct = 0; ct < this.maxCounter(); ct++) {
+    for (short ct = 0; ct < this.numberOfRows(); ct++) {
       final int accLength = ct + 1;
       trace
           .stamp(stamp)
@@ -295,6 +291,6 @@ public class ModOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.maxCounter();
+    return this.numberOfRows();
   }
 }

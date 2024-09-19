@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.ext;
 
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
@@ -31,7 +32,6 @@ import org.apache.tuweni.units.bigints.UInt256;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class ExtOperation extends ModuleOperation {
-  private static final int MMEDIUM = 8;
 
   @EqualsAndHashCode.Include private final OpCode opCode;
   @EqualsAndHashCode.Include private final BaseBytes arg1;
@@ -118,17 +118,13 @@ public class ExtOperation extends ModuleOperation {
     return getBit1() || getBit2() || getBit3();
   }
 
-  private int maxCt() {
-    if (this.isOneLineInstruction) {
-      return 1;
-    }
-
-    return MMEDIUM;
+  private int numberOfRows() {
+    return isOneLineInstruction ? 1 : MMEDIUM;
   }
 
   @Override
   protected int computeLineCount() {
-    return this.maxCt();
+    return this.numberOfRows();
   }
 
   private UInt256 getSigma() {
@@ -150,7 +146,7 @@ public class ExtOperation extends ModuleOperation {
   void trace(Trace trace, int stamp) {
     this.setup();
 
-    for (int i = 0; i < this.maxCt(); i++) {
+    for (int i = 0; i < this.numberOfRows(); i++) {
       final int accLength = i + 1;
       trace
           // Byte A and Acc A
