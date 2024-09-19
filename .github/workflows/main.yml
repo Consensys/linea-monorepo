@@ -175,4 +175,3 @@ jobs:
       untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
     secrets: inherit
-
