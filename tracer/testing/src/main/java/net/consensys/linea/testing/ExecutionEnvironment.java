@@ -67,7 +67,7 @@ public class ExecutionEnvironment {
       logger.ifPresent(log -> log.debug("trace written to {}", finalTraceFilePath));
       CorsetValidator.Result corsetValidationResult = corsetValidator.validate(traceFilePath);
       assertThat(corsetValidationResult.isValid())
-          .withFailMessage("Corset validation result {}", corsetValidationResult)
+          .withFailMessage("Corset validation result: %s", corsetValidationResult.toString())
           .isTrue();
     } catch (IOException e) {
       throw new RuntimeException(e);
