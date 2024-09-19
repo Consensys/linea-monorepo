@@ -50,15 +50,16 @@ public class WcpOperation extends ModuleOperation {
   public static final byte GEQbv = (byte) WCP_INST_GEQ;
   static final byte LTbv = (byte) EVM_INST_LT;
   static final byte GTbv = (byte) EVM_INST_GT;
-  private static final byte SLTbv = (byte) EVM_INST_SLT;
-  private static final byte SGTbv = (byte) EVM_INST_SGT;
+  static final byte SLTbv = (byte) EVM_INST_SLT;
+  static final byte SGTbv = (byte) EVM_INST_SGT;
   static final byte EQbv = (byte) EVM_INST_EQ;
   static final byte ISZERObv = (byte) EVM_INST_ISZERO;
 
-  @EqualsAndHashCode.Include private final byte wcpInst;
+  private final byte wcpInst;
   @EqualsAndHashCode.Include private final Bytes32 arg1;
   @EqualsAndHashCode.Include private final Bytes32 arg2;
-  final int ctMax;
+  private int ctMax; // Note : is computed in computeLineCount, if the WCP operation is added to the
+  // StackedSet
 
   private Bytes arg1Hi;
   private Bytes arg1Lo;
@@ -82,12 +83,10 @@ public class WcpOperation extends ModuleOperation {
     this.wcpInst = wcpInst;
     this.arg1 = arg1;
     this.arg2 = arg2;
-
-    this.ctMax = maxCt();
   }
 
   private void compute() {
-    final int length = this.isOli() ? LLARGE : this.ctMax + 1;
+    final int length = isOli() ? LLARGE : ctMax + 1;
     final int offset = LLARGE - length;
     this.arg1Hi = arg1.slice(offset, length);
     this.arg1Lo = arg1.slice(LLARGE + offset, length);
@@ -98,39 +97,39 @@ public class WcpOperation extends ModuleOperation {
     resLo = calculateResult(wcpInst, arg1, arg2);
 
     // Set bit 3 and AdjHi
-    final BigInteger firstHi = this.arg1.slice(0, LLARGE).toUnsignedBigInteger();
-    final BigInteger secondHi = this.arg2.slice(0, LLARGE).toUnsignedBigInteger();
+    final BigInteger firstHi = arg1.slice(0, LLARGE).toUnsignedBigInteger();
+    final BigInteger secondHi = arg2.slice(0, LLARGE).toUnsignedBigInteger();
     this.bit3 = firstHi.compareTo(secondHi) > 0;
     this.adjHi = calculateAdj(bit3, firstHi, secondHi).slice(offset, length);
 
     // Set bit 4 and AdjLo
-    final BigInteger firstLo = this.arg1.slice(LLARGE, LLARGE).toUnsignedBigInteger();
-    final BigInteger secondLo = this.arg2.slice(LLARGE, LLARGE).toUnsignedBigInteger();
+    final BigInteger firstLo = arg1.slice(LLARGE, LLARGE).toUnsignedBigInteger();
+    final BigInteger secondLo = arg2.slice(LLARGE, LLARGE).toUnsignedBigInteger();
     this.bit4 = firstLo.compareTo(secondLo) > 0;
     this.adjLo = calculateAdj(bit4, firstLo, secondLo).slice(offset, length);
 
     // Initiate negatives and BITS
-    if (this.ctMax == LLARGEMO && (this.wcpInst == SLTbv || this.wcpInst == SGTbv)) {
+    if (this.ctMax == LLARGEMO && (wcpInst == SLTbv || wcpInst == SGTbv)) {
       // meaningful only for signed OpCode with LLARGE argument
-      UnsignedByte msb1 = UnsignedByte.of(this.arg1Hi.get(0));
-      UnsignedByte msb2 = UnsignedByte.of(this.arg2Hi.get(0));
+      UnsignedByte msb1 = UnsignedByte.of(arg1Hi.get(0));
+      UnsignedByte msb2 = UnsignedByte.of(arg2Hi.get(0));
       Boolean[] msb1Bits = byteBits(msb1);
       Boolean[] msb2Bits = byteBits(msb2);
-      this.neg1 = msb1Bits[0];
-      this.neg2 = msb2Bits[0];
+      neg1 = msb1Bits[0];
+      neg2 = msb2Bits[0];
       Collections.addAll(bits, msb1Bits);
       Collections.addAll(bits, msb2Bits);
     } else {
-      this.neg1 = false;
-      this.neg2 = false;
-      for (int ct = 0; ct <= this.ctMax; ct++) {
+      neg1 = false;
+      neg2 = false;
+      for (int ct = 0; ct <= ctMax; ct++) {
         bits.add(ct, false);
       }
     }
 
     // Set bit 1 and 2
-    this.bit1 = this.arg1Hi.compareTo(this.arg2Hi) == 0;
-    this.bit2 = this.arg1Lo.compareTo(this.arg2Lo) == 0;
+    bit1 = arg1Hi.compareTo(arg2Hi) == 0;
+    bit2 = arg1Lo.compareTo(arg2Lo) == 0;
   }
 
   private boolean calculateResult(byte opCode, Bytes32 arg1, Bytes32 arg2) {
@@ -159,42 +158,42 @@ public class WcpOperation extends ModuleOperation {
     final boolean resLo = this.resLo;
     final boolean oli = isOli();
     final boolean vli = isVli();
-    final UnsignedByte inst = UnsignedByte.of(this.wcpInst);
+    final UnsignedByte inst = UnsignedByte.of(wcpInst);
 
-    for (int ct = 0; ct <= this.maxCt(); ct++) {
+    for (int ct = 0; ct <= ctMax; ct++) {
       trace
           .wordComparisonStamp(stamp)
           .oneLineInstruction(oli)
           .variableLengthInstruction(vli)
           .counter(UnsignedByte.of(ct))
-          .ctMax(UnsignedByte.of(this.ctMax))
+          .ctMax(UnsignedByte.of(ctMax))
           .inst(inst)
-          .isEq(this.wcpInst == EQbv)
-          .isIszero(this.wcpInst == ISZERObv)
-          .isSlt(this.wcpInst == SLTbv)
-          .isSgt(this.wcpInst == SGTbv)
-          .isLt(this.wcpInst == LTbv)
-          .isGt(this.wcpInst == GTbv)
-          .isLeq(this.wcpInst == LEQbv)
-          .isGeq(this.wcpInst == GEQbv)
-          .argument1Hi(this.arg1Hi)
-          .argument1Lo(this.arg1Lo)
-          .argument2Hi(this.arg2Hi)
-          .argument2Lo(this.arg2Lo)
+          .isEq(wcpInst == EQbv)
+          .isIszero(wcpInst == ISZERObv)
+          .isSlt(wcpInst == SLTbv)
+          .isSgt(wcpInst == SGTbv)
+          .isLt(wcpInst == LTbv)
+          .isGt(wcpInst == GTbv)
+          .isLeq(wcpInst == LEQbv)
+          .isGeq(wcpInst == GEQbv)
+          .argument1Hi(arg1Hi)
+          .argument1Lo(arg1Lo)
+          .argument2Hi(arg2Hi)
+          .argument2Lo(arg2Lo)
           .result(resLo)
           .bits(bits.get(ct))
           .neg1(neg1)
           .neg2(neg2)
-          .byte1(UnsignedByte.of(this.arg1Hi.get(ct)))
-          .byte2(UnsignedByte.of(this.arg1Lo.get(ct)))
-          .byte3(UnsignedByte.of(this.arg2Hi.get(ct)))
-          .byte4(UnsignedByte.of(this.arg2Lo.get(ct)))
+          .byte1(UnsignedByte.of(arg1Hi.get(ct)))
+          .byte2(UnsignedByte.of(arg1Lo.get(ct)))
+          .byte3(UnsignedByte.of(arg2Hi.get(ct)))
+          .byte4(UnsignedByte.of(arg2Lo.get(ct)))
           .byte5(UnsignedByte.of(adjHi.get(ct)))
           .byte6(UnsignedByte.of(adjLo.get(ct)))
-          .acc1(this.arg1Hi.slice(0, 1 + ct))
-          .acc2(this.arg1Lo.slice(0, 1 + ct))
-          .acc3(this.arg2Hi.slice(0, 1 + ct))
-          .acc4(this.arg2Lo.slice(0, 1 + ct))
+          .acc1(arg1Hi.slice(0, 1 + ct))
+          .acc2(arg1Lo.slice(0, 1 + ct))
+          .acc3(arg2Hi.slice(0, 1 + ct))
+          .acc4(arg2Lo.slice(0, 1 + ct))
           .acc5(adjHi.slice(0, 1 + ct))
           .acc6(adjLo.slice(0, 1 + ct))
           .bit1(bit1)
@@ -206,22 +205,22 @@ public class WcpOperation extends ModuleOperation {
   }
 
   private boolean isOli() {
-    return switch (this.wcpInst) {
+    return switch (wcpInst) {
       case ISZERObv, EQbv -> true;
       case SLTbv, SGTbv, LTbv, GTbv, LEQbv, GEQbv -> false;
-      default -> throw new IllegalStateException("Unexpected value: " + this.wcpInst);
+      default -> throw new IllegalStateException("Unexpected value: " + wcpInst);
     };
   }
 
   private boolean isVli() {
-    return switch (this.wcpInst) {
+    return switch (wcpInst) {
       case LTbv, GTbv, LEQbv, GEQbv, SLTbv, SGTbv -> true;
       case ISZERObv, EQbv -> false;
-      default -> throw new IllegalStateException("Unexpected value: " + this.wcpInst);
+      default -> throw new IllegalStateException("Unexpected value: " + wcpInst);
     };
   }
 
-  private int maxCt() {
+  private int computeCtMax() {
     switch (this.wcpInst) {
       case ISZERObv, EQbv -> {
         return 0;
@@ -244,6 +243,7 @@ public class WcpOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.ctMax + 1;
+    ctMax = computeCtMax();
+    return ctMax + 1;
   }
 }

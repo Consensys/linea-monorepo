@@ -31,7 +31,7 @@ public class EucOperation extends ModuleOperation {
   @Getter @EqualsAndHashCode.Include private final Bytes divisor;
   @Getter private final Bytes remainder;
   @Getter private final Bytes quotient;
-  private final int ctMax;
+  private int ctMax;
 
   public EucOperation(
       final Bytes dividend, final Bytes divisor, final Bytes quotient, final Bytes remainder) {
@@ -40,11 +40,7 @@ public class EucOperation extends ModuleOperation {
     }
     final Bytes divisorTrim = divisor.trimLeadingZeros();
     final Bytes quotientTrim = quotient.trimLeadingZeros();
-    this.ctMax = Math.max(quotientTrim.size(), divisorTrim.size()) - 1;
-    if (ctMax >= 8) {
-      throw new IllegalArgumentException(
-          String.format("Max ByteSize of input is 8 for EUC, received %s", ctMax + 1));
-    }
+
     this.dividend = dividend;
     this.divisor = divisorTrim;
     this.quotient = quotientTrim;
@@ -83,6 +79,11 @@ public class EucOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.ctMax + 1;
+    ctMax = computeCtMax();
+    return ctMax + 1;
+  }
+
+  private int computeCtMax() {
+    return Math.max(quotient.size(), divisor.size()) - 1;
   }
 }

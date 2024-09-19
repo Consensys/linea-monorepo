@@ -74,8 +74,8 @@ public class ExpOperation extends ModuleOperation {
 
   boolean isExpLog;
 
-  private Wcp wcp;
-  private Hub hub;
+  private final Wcp wcp;
+  private final Hub hub;
 
   public ExpOperation(ExpCall expCall, Wcp wcp, Hub hub) {
     this.expCall = expCall;

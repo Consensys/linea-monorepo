@@ -43,14 +43,7 @@ public class BinOperation extends ModuleOperation {
   @EqualsAndHashCode.Include private final BaseBytes arg1;
   @EqualsAndHashCode.Include private final BaseBytes arg2;
 
-  public BinOperation(OpCode opCode, BaseBytes arg1, BaseBytes arg2) {
-    this.opCode = opCode;
-    this.arg1 = arg1;
-    this.arg2 = arg2;
-    this.ctMax = maxCt();
-  }
-
-  private final int ctMax;
+  private int ctMax;
   private List<Boolean> lastEightBits = List.of(false);
   private boolean bit4 = false;
   private int low4 = 0;
@@ -60,10 +53,11 @@ public class BinOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.ctMax + 1;
+    ctMax = computeCtMax();
+    return ctMax + 1;
   }
 
-  private int maxCt() {
+  private int computeCtMax() {
     return switch (opCode) {
       case NOT -> LLARGEMO;
       case BYTE, SIGNEXTEND -> arg1.getHigh().isZero() ? LLARGEMO : 0;

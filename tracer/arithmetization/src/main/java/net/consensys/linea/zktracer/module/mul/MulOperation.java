@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.Util.boolToByte;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
 import static net.consensys.linea.zktracer.module.Util.getBit;
 import static net.consensys.linea.zktracer.module.Util.getOverflow;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -39,7 +40,6 @@ import org.apache.tuweni.units.bigints.UInt256;
 
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public class MulOperation extends ModuleOperation {
-  private static final int MMEDIUM = 8;
 
   @EqualsAndHashCode.Include @Getter private final OpCode opCode;
   @EqualsAndHashCode.Include @Getter private final Bytes32 arg1;
@@ -394,7 +394,7 @@ public class MulOperation extends ModuleOperation {
     }
   }
 
-  public int maxCt() {
+  public int numberOfRows() {
     return isOneLineInstruction() ? 1 : MMEDIUM;
   }
 
@@ -419,7 +419,7 @@ public class MulOperation extends ModuleOperation {
   }
 
   private void traceSubOp(Trace trace, int stamp) {
-    for (int i = 0; i < this.maxCt(); i++) {
+    for (int i = 0; i < this.numberOfRows(); i++) {
       trace
           .mulStamp(stamp)
           .counter(UnsignedByte.of(i))
@@ -481,20 +481,20 @@ public class MulOperation extends ModuleOperation {
     final MulOperation op = this.clone();
 
     return switch (this.getRegime()) {
-      case EXPONENT_ZERO_RESULT -> op.maxCt();
+      case EXPONENT_ZERO_RESULT -> op.numberOfRows();
 
       case EXPONENT_NON_ZERO_RESULT -> {
         int r = 0;
         while (op.carryOn()) {
           op.update();
-          r += op.maxCt();
+          r += op.numberOfRows();
         }
         yield r;
       }
 
       case TRIVIAL_MUL, NON_TRIVIAL_MUL -> {
         op.setHsAndBits(UInt256.fromBytes(op.getArg1()), UInt256.fromBytes(op.getArg2()));
-        yield op.maxCt();
+        yield op.numberOfRows();
       }
 
       default -> throw new RuntimeException("regime not supported");

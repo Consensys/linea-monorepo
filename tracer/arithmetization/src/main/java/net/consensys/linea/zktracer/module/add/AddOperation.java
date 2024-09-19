@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.add;
 
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+
 import lombok.EqualsAndHashCode;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -28,13 +30,12 @@ import org.apache.tuweni.units.bigints.UInt256;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 public final class AddOperation extends ModuleOperation {
   private static final UInt256 TWO_TO_THE_128 = UInt256.ONE.shiftLeft(128);
-  private static final int LLARGE = 16;
 
   @EqualsAndHashCode.Include private final OpCode opCode;
   @EqualsAndHashCode.Include private final Bytes32 arg1;
   @EqualsAndHashCode.Include private final Bytes32 arg2;
-  private final BaseBytes res;
-  public final int ctMax;
+  private BaseBytes res;
+  private int ctMax;
 
   /**
    * Returns the appropriate state of the overflow bit depending on the position within the cycle.
@@ -61,17 +62,13 @@ public final class AddOperation extends ModuleOperation {
     this.opCode = opCode;
     this.arg1 = Bytes32.leftPad(arg1);
     this.arg2 = Bytes32.leftPad(arg2);
-    this.res = Adder.addSub(this.opCode, this.arg1, this.arg2);
-
-    this.ctMax = maxCT();
   }
 
-  private int maxCT() {
+  private int computeCtMax() {
+    res = Adder.addSub(opCode, arg1, arg2);
     return Math.max(
         1,
-        Math.max(
-                this.res.getHigh().trimLeadingZeros().size(),
-                this.res.getLow().trimLeadingZeros().size())
+        Math.max(res.getHigh().trimLeadingZeros().size(), res.getLow().trimLeadingZeros().size())
             - 1);
   }
 
@@ -135,6 +132,7 @@ public final class AddOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return this.ctMax + 1;
+    ctMax = computeCtMax();
+    return ctMax + 1;
   }
 }
