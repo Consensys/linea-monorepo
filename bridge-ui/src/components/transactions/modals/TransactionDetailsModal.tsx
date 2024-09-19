@@ -1,6 +1,5 @@
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
-import { PiApproximateEqualsBold } from "react-icons/pi";
-import { formatTimestamp } from "@/utils/format";
+import { formatBalance, formatTimestamp } from "@/utils/format";
 import { NETWORK_ID_TO_NAME } from "@/utils/constants";
 import { MessageWithStatus } from "@/hooks";
 import { TransactionHistory } from "@/models/history";
@@ -40,18 +39,14 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({ trans
       ? initialTransactionReceipt.gasUsed * initialTransactionReceipt.effectiveGasPrice
       : 0n;
 
-  console.log(formatEther(initialTransactionFee || 0n));
   const claimingTransactionFee =
     claimingTransactionReceipt?.gasUsed && claimingTransactionReceipt?.effectiveGasPrice
       ? claimingTransactionReceipt.gasUsed * claimingTransactionReceipt.effectiveGasPrice
       : 0n;
 
-  const totalFee =
-    initialTransactionFee && claimingTransactionFee ? initialTransactionFee + claimingTransactionFee : 0n;
-
   return (
     <div className="flex flex-col gap-8 px-4">
-      <h2 className="text-xl">Transaction details</h2>
+      <h2 className="text-xl text-[#E5E5E5]">Transaction details</h2>
       <div className="space-y-2">
         <TransactionDetailRow
           label="Date & Time"
@@ -78,22 +73,62 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({ trans
           }
         />
         {message.status === OnChainMessageStatus.CLAIMED && (
-          <TransactionDetailRow
-            label="Fee"
-            value={
-              <div>
-                {transaction.fromChain.id === 1 || transaction.toChain.id === 1
-                  ? `${formatEther(totalFee)} ETH ${(<PiApproximateEqualsBold />)}
-                  $${
-                    tokenPrices?.[zeroAddress]?.usd.toLocaleString("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                    }) || ""
-                  }`
-                  : `${formatEther(totalFee)} ETH`}
-              </div>
-            }
-          />
+          <>
+            <TransactionDetailRow
+              label={`${NETWORK_ID_TO_NAME[transaction.fromChain.id]} fees`}
+              value={
+                <div>
+                  {transaction.toChain.id === 1 ? (
+                    <>
+                      {tokenPrices[zeroAddress]?.usd ? (
+                        <span>
+                          {(tokenPrices[zeroAddress].usd * Number(formatEther(initialTransactionFee))).toLocaleString(
+                            "en-US",
+                            {
+                              style: "currency",
+                              currency: "USD",
+                              maximumFractionDigits: 4,
+                            },
+                          )}
+                        </span>
+                      ) : (
+                        `${formatBalance(formatEther(initialTransactionFee), 8)} ETH`
+                      )}
+                    </>
+                  ) : (
+                    `${formatBalance(formatEther(initialTransactionFee), 8)} ETH`
+                  )}
+                </div>
+              }
+            />
+            <TransactionDetailRow
+              label={`${NETWORK_ID_TO_NAME[transaction.toChain.id]} fees`}
+              value={
+                <div>
+                  {transaction.toChain.id === 1 ? (
+                    <>
+                      {tokenPrices[zeroAddress]?.usd ? (
+                        <span>
+                          {(tokenPrices[zeroAddress].usd * Number(formatEther(claimingTransactionFee))).toLocaleString(
+                            "en-US",
+                            {
+                              style: "currency",
+                              currency: "USD",
+                              maximumFractionDigits: 4,
+                            },
+                          )}
+                        </span>
+                      ) : (
+                        `${formatBalance(formatEther(claimingTransactionFee), 8)} ETH`
+                      )}
+                    </>
+                  ) : (
+                    `${formatBalance(formatEther(claimingTransactionFee), 8)} ETH`
+                  )}
+                </div>
+              }
+            />
+          </>
         )}
       </div>
       {message.status === OnChainMessageStatus.CLAIMABLE && (

@@ -45,7 +45,7 @@ function TransactionAmountSection({ amount, decimals, symbol }: { amount: bigint
   return (
     <div className="px-6 md:px-0">
       <div className="text-xs uppercase">Amount</div>
-      <span className="font-bold text-white">
+      <span className="font-semibold text-white">
         {formatUnits(amount, decimals)} {symbol}
       </span>
     </div>

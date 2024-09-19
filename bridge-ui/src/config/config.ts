@@ -87,7 +87,7 @@ export const config: Config = {
   networks: {
     MAINNET: {
       L1: {
-        name: "Ethereum Mainnet",
+        name: "Ethereum",
         iconPath: "/images/logo/ethereum-rounded.svg",
         chainId: 1,
         messageServiceAddress: process.env.NEXT_PUBLIC_MAINNET_L1_MESSAGE_SERVICE
@@ -170,7 +170,7 @@ export const config: Config = {
 
   storage: {
     // The storage will be cleared if its version is smaller than the one configured
-    minVersion: process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION || "0.0.1",
+    minVersion: process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION || "1",
   },
 };
 

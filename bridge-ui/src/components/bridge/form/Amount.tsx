@@ -21,10 +21,8 @@ export function Amount() {
   const { address } = useAccount();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
-  const watchBalance = watch("balance") || "0";
-  const amount = getValues("amount");
-  const gasFees = getValues("gasFees") || BigInt(0);
-  const minFees = getValues("minFees") || BigInt(0);
+  const watchBalance = watch("balance");
+  const [amount, gasFees, minFees] = getValues(["amount", "gasFees", "minFees"]);
 
   const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain?.id);
 
@@ -35,7 +33,7 @@ export function Amount() {
       }
       const amountToCompare =
         token.type === TokenType.ETH
-          ? parseUnits(_amount, token.decimals) + gasFees + parseUnits(minFees.toString(), 18)
+          ? parseUnits(_amount, token.decimals) + gasFees + minFees
           : parseUnits(_amount, token.decimals);
 
       const balanceToCompare = parseUnits(watchBalance, token.decimals);
@@ -120,17 +118,18 @@ export function Amount() {
         onChange={checkAmountHandler}
         pattern={AMOUNT_REGEX}
         placeholder="Enter amount"
-        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-bold placeholder:text-right focus:border-0 focus:outline-none md:text-2xl"
+        className="input input-md w-full border-0 bg-inherit p-0 text-right text-lg font-medium placeholder:text-right focus:border-0 focus:outline-none md:text-3xl"
       />
       {networkType === NetworkType.MAINNET && (
         <span className="label-text flex items-center justify-end">
-          <PiApproximateEqualsBold /> $
+          <PiApproximateEqualsBold />
           {amount && tokenPrices?.[tokenAddress]?.usd
             ? `${(Number(amount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 10,
+                style: "currency",
+                currency: "USD",
+                maximumFractionDigits: 4,
               })}`
-            : "0.00"}
+            : "$0.00"}
         </span>
       )}
     </>
