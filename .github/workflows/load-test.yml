@@ -21,13 +21,13 @@ on:
         required: false
         type: string
 
-concurrency: 
+concurrency:
   group: load-test-${{ github.event.inputs.network }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   run-load-test:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Run Load Test
     steps:
       - name: Checkout
@@ -35,12 +35,12 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
-          
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-          
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
@@ -48,7 +48,7 @@ jobs:
         uses: levibostian/action-hide-sensitive-inputs@1.0.0
         with:
           exclude_inputs: network, file
-        
+
       - name: Determine Private Key
         id: set_private_key
         run: |
@@ -62,7 +62,7 @@ jobs:
             echo "Using sepolia private key from secrets."
             echo "PRIVATE_KEY=${{ secrets.SEPOLIA_LOAD_TEST_PRIVATE_KEY }}" >> $GITHUB_ENV
           fi
-          
+
       - name: Load Test
         run: |
           echo "Network to execute load test on: ${{ github.event.inputs.network }}"
