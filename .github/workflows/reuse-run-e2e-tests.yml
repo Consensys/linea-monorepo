@@ -92,6 +92,9 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Setup traces directories
+        run: |
+          mkdir -p ../tmp/local/traces/v2
       - name: Setup Shomei directories
         run: |
           mkdir -p ../tmp/zkbesu-shomei/plugins/
