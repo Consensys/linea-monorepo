@@ -93,23 +93,40 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
         row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo.hash)
       }
     assertThat(newlyInsertedFullTxnsRows.size).isEqualTo(1)
+    assertThat(newlyInsertedFullTxnsRows.first().getBuffer("tx_rlp").bytes).isEqualTo(
+      rejectedTransaction.transactionRLP
+    )
 
     // assert the corresponding record was inserted into the rejected_transactions table
     val newlyInsertedRejectedTxnsRows = dbTableContentQuery(RejectedTransactionsPostgresDao.rejectedTransactionsTable)
       .execute().get().filter { row ->
-        row.getLong("created_epoch_milli") == fakeClock.now().toEpochMilliseconds() &&
-          row.getString("reject_stage") ==
-          RejectedTransactionsPostgresDao.rejectedStageToDbValue(rejectedTransaction.txRejectionStage) &&
-          row.getLong("reject_timestamp") == rejectedTransaction.timestamp.toEpochMilliseconds() &&
-          row.getLong("block_number") == rejectedTransaction.blockNumber?.toLong() &&
-          row.getString("reject_reason") == rejectedTransaction.reasonMessage &&
-          row.getJsonArray("overflows").encode() == ObjectMapper().writeValueAsString(rejectedTransaction.overflows) &&
-          row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo.hash) &&
-          row.getBuffer("tx_from").bytes.contentEquals(rejectedTransaction.transactionInfo.from) &&
-          row.getBuffer("tx_to").bytes.contentEquals(rejectedTransaction.transactionInfo.to) &&
-          row.getLong("tx_nonce") == rejectedTransaction.transactionInfo.nonce.toLong()
+        row.getBuffer("tx_hash").bytes.contentEquals(rejectedTransaction.transactionInfo.hash) &&
+          row.getString("reject_reason") == rejectedTransaction.reasonMessage
       }
     assertThat(newlyInsertedRejectedTxnsRows.size).isEqualTo(1)
+    val insertedRow = newlyInsertedRejectedTxnsRows.first()
+    assertThat(insertedRow.getLong("created_epoch_milli")).isEqualTo(
+      fakeClock.now().toEpochMilliseconds()
+    )
+    assertThat(insertedRow.getString("reject_stage")).isEqualTo(
+      RejectedTransactionsPostgresDao.rejectedStageToDbValue(rejectedTransaction.txRejectionStage)
+    )
+    assertThat(insertedRow.getLong("block_number") == rejectedTransaction.blockNumber?.toLong()).isTrue()
+    assertThat(insertedRow.getJsonArray("overflows").encode()).isEqualTo(
+      ObjectMapper().writeValueAsString(rejectedTransaction.overflows)
+    )
+    assertThat(insertedRow.getLong("reject_timestamp")).isEqualTo(
+      rejectedTransaction.timestamp.toEpochMilliseconds()
+    )
+    assertThat(insertedRow.getBuffer("tx_from").bytes).isEqualTo(
+      rejectedTransaction.transactionInfo.from
+    )
+    assertThat(insertedRow.getBuffer("tx_to").bytes).isEqualTo(
+      rejectedTransaction.transactionInfo.to
+    )
+    assertThat(insertedRow.getLong("tx_nonce")).isEqualTo(
+      rejectedTransaction.transactionInfo.nonce.toLong()
+    )
   }
 
   @Test
@@ -135,7 +152,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
         reasonMessage = "Transaction line count for module MUL=587 is above the limit 401",
         overflows = listOf(
           ModuleOverflow(
-            module = "ADD",
+            module = "MUL",
             count = 587,
             limit = 401
           )

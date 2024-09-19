@@ -11,18 +11,10 @@ dependencies {
   implementation project(':jvm-libs:persistence:db')
   implementation project(":jvm-libs:kotlin-extensions")
   implementation project(":jvm-libs:future-extensions")
-  implementation "com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}"
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
-  implementation "com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}"
-  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}"
   implementation "io.vertx:vertx-pg-client"
 
   testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
-  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
-  testImplementation("com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}")
-  testImplementation("com.fasterxml.jackson.core:jackson-annotations:${libs.versions.jackson.get()}")
-  testImplementation("com.fasterxml.jackson.module:jackson-module-kotlin:${libs.versions.jackson.get()}")
-  testImplementation("tech.pegasys.teku.internal:executionclient:${libs.versions.teku.get()}")
   testImplementation("io.vertx:vertx-junit5")
 
   testFixtures implementation(testFixtures(project(":jvm-libs:kotlin-extensions")))

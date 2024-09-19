@@ -59,6 +59,82 @@ class RequestHandlersTest {
   }
 
   @Test
+  fun SaveRejectedTransactionRequestHandlerV1_rejectsEmptyMap() {
+    val request = JsonRpcRequestMapParams("", "", "", emptyMap<String, Any>())
+
+    val saveRequestHandlerV1 = SaveRejectedTransactionRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val result = saveRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "Missing [txRejectionStage,timestamp,reasonMessage,transactionRLP,overflows] " +
+            "from the given request params"
+        )
+      ),
+      result
+    )
+  }
+
+  @Test
+  fun SaveRejectedTransactionRequestHandlerV1_rejectsEmptyList() {
+    val request = JsonRpcRequestListParams("", "", "", emptyList())
+
+    val saveRequestHandlerV1 = SaveRejectedTransactionRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val result = saveRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "The given request params list should have one argument"
+        )
+      ),
+      result
+    )
+  }
+
+  @Test
+  fun SaveRejectedTransactionRequestHandlerV1_rejectsListWithInvalidArgument() {
+    val request = JsonRpcRequestListParams("", "", "", listOf("invalid_argument"))
+
+    val saveRequestHandlerV1 = SaveRejectedTransactionRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val result = saveRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "The argument in the request params list should be an object"
+        )
+      ),
+      result
+    )
+  }
+
+  @Test
   fun SaveRejectedTransactionRequestHandlerV1_invoke_acceptsValidRequestMap() {
     whenever(transactionExclusionServiceMock.saveRejectedTransaction(any()))
       .thenReturn(
@@ -209,6 +285,56 @@ class RequestHandlersTest {
     ).get()
 
     Assertions.assertEquals(expectedResult, result.getError())
+  }
+
+  @Test
+  fun GetTransactionExclusionStatusRequestHandlerV1_rejectsEmptyList() {
+    val request = JsonRpcRequestListParams("", "", "", emptyList())
+
+    val getRequestHandlerV1 = GetTransactionExclusionStatusRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val result = getRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "The given request params list should have one argument"
+        )
+      ),
+      result
+    )
+  }
+
+  @Test
+  fun GetTransactionExclusionStatusRequestHandlerV1_rejectsListWithInvalidArgument() {
+    val request = JsonRpcRequestListParams("", "", "", listOf("invalid_argument"))
+
+    val getRequestHandlerV1 = GetTransactionExclusionStatusRequestHandlerV1(
+      transactionExclusionServiceMock
+    )
+
+    val result = getRequestHandlerV1.invoke(
+      user = null,
+      request = request,
+      requestJson = JsonObject()
+    ).get()
+
+    Assertions.assertEquals(
+      Err(
+        JsonRpcErrorResponse.invalidParams(
+          request.id,
+          "The argument in the request params list should be an object"
+        )
+      ),
+      result
+    )
   }
 
   @Test
