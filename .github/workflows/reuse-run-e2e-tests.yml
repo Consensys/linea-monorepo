@@ -96,11 +96,6 @@ jobs:
         run: |
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+w tmp/local/traces/v2/conflated
-      - name: Setup Shomei directories
-        run: |
-          mkdir -p ../tmp/zkbesu-shomei/plugins/
-          mkdir -p ../tmp/local/shomei/
-          mkdir -p ../tmp/local/shomei-frontend/
       - name: Restore cached images
         id: restore-cached-images
         uses: actions/cache/restore@v4.0.2
