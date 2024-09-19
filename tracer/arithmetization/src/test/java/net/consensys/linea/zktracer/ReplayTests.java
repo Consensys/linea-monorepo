@@ -229,7 +229,7 @@ public class ReplayTests {
   // @Disabled
   @Test
   void rlprcptManyTopicsWoLogData() {
-    replay(LINEA_MAINNET, "6569423.json.gz", false);
+    replay(LINEA_MAINNET, "6569423.json.gz");
   }
 
   // @Disabled
@@ -253,7 +253,7 @@ public class ReplayTests {
   // @Disabled
   @Test
   void issue1004() {
-    replay(LINEA_MAINNET, "6020023-6020029.json.gz", false);
+    replay(LINEA_MAINNET, "6020023-6020029.json.gz");
   }
 
   // @Disabled
@@ -294,7 +294,7 @@ public class ReplayTests {
 
   @Test
   void simpleSelfDestruct() {
-    replay(LINEA_MAINNET, "50020-50029.json.gz", false);
+    replay(LINEA_MAINNET, "50020-50029.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering a failed CREATE2
@@ -513,7 +513,7 @@ public class ReplayTests {
   // @Disabled
   @Test
   void test_6871261_6871263() {
-    replay(LINEA_MAINNET, "6871261-6871263.json.gz", false);
+    replay(LINEA_MAINNET, "6871261-6871263.json.gz");
   }
 
   // @Disabled

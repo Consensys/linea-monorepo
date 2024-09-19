@@ -45,6 +45,6 @@ public class Issue1216Tests {
   @Tag("replay")
   @Test
   void issue_1216_sepolia_block_2392659() {
-    replay(LINEA_SEPOLIA, "2392659.json.gz", false);
+    replay(LINEA_SEPOLIA, "2392659.json.gz");
   }
 }

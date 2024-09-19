@@ -36,7 +36,7 @@ public class NightlyTests {
 
   @Test
   void test_5104820_5104829() {
-    replay(LINEA_MAINNET, "5104820-5104829.json.gz", false);
+    replay(LINEA_MAINNET, "5104820-5104829.json.gz");
   }
 
   @Test
@@ -46,7 +46,7 @@ public class NightlyTests {
 
   @Test
   void test_5104840_5104849() {
-    replay(LINEA_MAINNET, "5104840-5104849.json.gz", false);
+    replay(LINEA_MAINNET, "5104840-5104849.json.gz");
   }
 
   @Test
@@ -73,47 +73,47 @@ public class NightlyTests {
   ///////////////////////////////////////
   @Test
   void test_5105646_5105649() {
-    replay(LINEA_MAINNET, "5105646-5105649.json.gz", false);
+    replay(LINEA_MAINNET, "5105646-5105649.json.gz");
   }
 
   @Test
   void test_5105650_5105659() {
-    replay(LINEA_MAINNET, "5105650-5105659.json.gz", false);
+    replay(LINEA_MAINNET, "5105650-5105659.json.gz");
   }
 
   @Test
   void test_5105660_5105669() {
-    replay(LINEA_MAINNET, "5105660-5105669.json.gz", false);
+    replay(LINEA_MAINNET, "5105660-5105669.json.gz");
   }
 
   @Test
   void test_5105670_5105679() {
-    replay(LINEA_MAINNET, "5105670-5105679.json.gz", false);
+    replay(LINEA_MAINNET, "5105670-5105679.json.gz");
   }
 
   @Test
   void test_5105680_5105689() {
-    replay(LINEA_MAINNET, "5105680-5105689.json.gz", false);
+    replay(LINEA_MAINNET, "5105680-5105689.json.gz");
   }
 
   @Test
   void test_5105690_5105699() {
-    replay(LINEA_MAINNET, "5105690-5105699.json.gz", false);
+    replay(LINEA_MAINNET, "5105690-5105699.json.gz");
   }
 
   @Test
   void test_5105700_5105709() {
-    replay(LINEA_MAINNET, "5105700-5105709.json.gz", false);
+    replay(LINEA_MAINNET, "5105700-5105709.json.gz");
   }
 
   @Test
   void test_5105710_5105719() {
-    replay(LINEA_MAINNET, "5105710-5105719.json.gz", false);
+    replay(LINEA_MAINNET, "5105710-5105719.json.gz");
   }
 
   @Test
   void test_5105720_5105728() {
-    replay(LINEA_MAINNET, "5105720-5105728.json.gz", false);
+    replay(LINEA_MAINNET, "5105720-5105728.json.gz");
   }
 
   // Leo's range split up 5106538-5106638
@@ -124,17 +124,17 @@ public class NightlyTests {
 
   @Test
   void test_5106540_5106549() {
-    replay(LINEA_MAINNET, "5106540-5106549.json.gz", false);
+    replay(LINEA_MAINNET, "5106540-5106549.json.gz");
   }
 
   @Test
   void test_5106550_5106559() {
-    replay(LINEA_MAINNET, "5106550-5106559.json.gz", false);
+    replay(LINEA_MAINNET, "5106550-5106559.json.gz");
   }
 
   @Test
   void test_5106560_5106569() {
-    replay(LINEA_MAINNET, "5106560-5106569.json.gz", false);
+    replay(LINEA_MAINNET, "5106560-5106569.json.gz");
   }
 
   @Test
@@ -159,17 +159,17 @@ public class NightlyTests {
 
   @Test
   void test_5106610_5106619() {
-    replay(LINEA_MAINNET, "5106610-5106619.json.gz", false);
+    replay(LINEA_MAINNET, "5106610-5106619.json.gz");
   }
 
   @Test
   void test_5106620_5106629() {
-    replay(LINEA_MAINNET, "5106620-5106629.json.gz", false);
+    replay(LINEA_MAINNET, "5106620-5106629.json.gz");
   }
 
   @Test
   void test_5106630_5106638() {
-    replay(LINEA_MAINNET, "5106630-5106638.json.gz", false);
+    replay(LINEA_MAINNET, "5106630-5106638.json.gz");
   }
 
   // Leo's range split up 5118361-5118389
@@ -181,19 +181,19 @@ public class NightlyTests {
 
   @Test
   void test_5118370_5118379() {
-    replay(LINEA_MAINNET, "5118370-5118379.json.gz", false);
+    replay(LINEA_MAINNET, "5118370-5118379.json.gz");
   }
 
   @Test
   void test_5118380_5118389() {
-    replay(LINEA_MAINNET, "5118380-5118389.json.gz", false);
+    replay(LINEA_MAINNET, "5118380-5118389.json.gz");
   }
 
   // Florian's ranges
   ///////////////////
   @Test
   void test_6871261_6871263() {
-    replay(LINEA_MAINNET, "6871261-6871263.json.gz", false);
+    replay(LINEA_MAINNET, "6871261-6871263.json.gz");
   }
 
   @Test
@@ -213,7 +213,7 @@ public class NightlyTests {
 
   @Test
   void test_7037237_7037243() {
-    replay(LINEA_MAINNET, "7037237-7037243.json.gz", false);
+    replay(LINEA_MAINNET, "7037237-7037243.json.gz");
   }
 
   @Test
