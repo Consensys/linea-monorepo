@@ -369,6 +369,7 @@ public class Hub implements Module {
                 exp,
                 ext,
                 euc,
+                gas,
                 logData,
                 logInfo,
                 mmu,
