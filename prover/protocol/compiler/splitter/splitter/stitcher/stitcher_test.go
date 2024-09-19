@@ -58,15 +58,15 @@ func TestLocalEval(t *testing.T) {
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("C").String())
 	assert.Equal(t, column.Committed.String(), comp.Columns.Status("D").String())
 
-	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q1.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q1.ID))
 	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q2.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q3.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q4.ID))
-	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q5.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q5.ID))
 	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q6.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q7.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q8.ID))
-	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q9.ID))
+	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q9.ID))
 	assert.Equal(t, true, comp.QueriesParams.IsIgnored(q10.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q11.ID))
 	assert.Equal(t, false, comp.QueriesParams.IsIgnored(q12.ID))
@@ -125,11 +125,11 @@ func TestGlobalConstraintFibonacci(t *testing.T) {
 		q3 = builder.GlobalConstraint("Q2", fibo(c))
 	}
 
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(8, 16))
 
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
+	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
 
 	// manually compiles the comp
@@ -170,11 +170,11 @@ func TestLocalConstraintFibonacci(t *testing.T) {
 		q3 = builder.LocalConstraint("Q2", fibo(c))
 	}
 
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(8, 16))
 
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")
-	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
+	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q2.ID), "q2 should not be ignored")
 	assert.Equal(t, false, comp.QueriesNoParams.IsIgnored(q3.ID), "q3 should not be ignored")
 
 	// manually compiles the comp
@@ -264,7 +264,7 @@ func TestWithVerifCol(t *testing.T) {
 		q3 = builder.LocalConstraint("Q2", expr)
 	}
 
-	comp := wizard.Compile(define, stitcher.Stitcher(4, 8))
+	comp := wizard.Compile(define, stitcher.Stitcher(4, 16))
 
 	//after stitcing-compilation we expect that the eligible columns and their relevant queries be ignored
 	assert.Equal(t, true, comp.QueriesNoParams.IsIgnored(q1.ID), "q1 should be ignored")

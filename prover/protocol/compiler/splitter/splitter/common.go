@@ -6,14 +6,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// It stores the information regarding a single Alliance.
-// used to update the content of [stitchingContex.Stitchings]
+// It stores the information regarding an alliance between a BigCol and a set of SubColumns.
+// The subject of alliance can be either stitching or splitting.
 type Alliance struct {
-	// the result of the stitching
+	// the  bigCol in the alliance;
+	// - for stitching, it is the result of stitching of the subColumns.
+	// - for splitting, it is split to the sub Columns.
 	BigCol ifaces.Column
-	// sub columns that are stitched together
+	// sub columns allied with the bigCol
 	SubCols []ifaces.Column
-	// the Round in which the sub columns are committed.
+	// the Round in which the alliance is created.
 	Round int
 	// Status of the sub columns
 	// the only valid Status for the eligible sub columns are;
@@ -21,6 +23,7 @@ type Alliance struct {
 	Status column.Status
 }
 
+// It summarizes the information about all the alliances in a single round of PIOP.
 type SummerizedAlliances struct {
 	// associate a group of the sub columns to their splitting
 	ByBigCol map[ifaces.ColID][]ifaces.Column
@@ -31,9 +34,10 @@ type SummerizedAlliances struct {
 	}
 }
 
+// The summary of all the alliances round-by-round.
 type MultiSummary []SummerizedAlliances
 
-// it inserts the new stitching to [stitchingContex]
+// It inserts the new alliance into the summary.
 func (summary MultiSummary) InsertNew(s Alliance) {
 	// Initialize the bySubCol if necessary
 	if summary[s.Round].BySubCol == nil {

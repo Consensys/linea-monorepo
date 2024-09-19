@@ -1,8 +1,6 @@
 package stitcher
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -34,17 +32,13 @@ func (ctx stitchingContext) LocalOpening() {
 
 		round := ctx.comp.QueriesParams.Round(q.ID)
 
-		// Ask the verifier to directly check the query
 		if q.Pol.Size() < ctx.MinSize {
-
+			//sanity-check: column should be public
 			verifiercol.AssertIsPublicCol(ctx.comp, q.Pol)
-
-			// Requires the verifier to verify the query itself
-			ctx.comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-				return q.Check(vr)
-			}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-				q.CheckGnark(api, wvc)
-			})
+			// Ask the verifier to directly check the query
+			insertVerifier(ctx.comp, q, round)
+			// mark the query as ignored
+			ctx.comp.QueriesParams.MarkAsIgnored(q.ID)
 
 			// And skip the rest of the compilation : we are done
 			continue
@@ -83,7 +77,18 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 		case query.LocalConstraint:
 			board = q.Board()
 			if q.DomainSize < ctx.MinSize {
-				insertVerifier(ctx.comp, q, board, round)
+				// Sanity-check : at this point all the parameters of the query
+				// should have a public status. Indeed, prior to compiling the
+				// constraints to work
+				metadatas := board.ListVariableMetadata()
+				for _, metadata := range metadatas {
+					if h, ok := metadata.(ifaces.Column); ok {
+						verifiercol.AssertIsPublicCol(ctx.comp, h)
+					}
+				}
+				insertVerifier(ctx.comp, q, round)
+				// mark the query as ignored
+				ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
 			// detect if the expression is eligible;
@@ -101,7 +106,19 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 		case query.GlobalConstraint:
 			board = q.Board()
 			if q.DomainSize < ctx.MinSize {
-				insertVerifier(ctx.comp, q, board, round)
+
+				// Sanity-check : at this point all the parameters of the query
+				// should have a public status. Indeed, prior to compiling the
+				// constraints to work
+				metadatas := board.ListVariableMetadata()
+				for _, metadata := range metadatas {
+					if h, ok := metadata.(ifaces.Column); ok {
+						verifiercol.AssertIsPublicCol(ctx.comp, h)
+					}
+				}
+				insertVerifier(ctx.comp, q, round)
+				// mark the query as ignored
+				ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
 			// detect if the expression is over the eligible columns.
@@ -203,27 +220,14 @@ func (ctx *stitchingContext) adjustExpression(
 func insertVerifier(
 	comp *wizard.CompiledIOP,
 	q ifaces.Query,
-	board symbolic.ExpressionBoard,
 	round int,
 ) {
-	// Sanity-check : at this point all the parameters of the query
-	// should have a public status. Indeed, prior to compiling the
-	// constraints to work
-	metadatas := board.ListVariableMetadata()
-	for _, metadata := range metadatas {
-		if h, ok := metadata.(ifaces.Column); ok {
-			verifiercol.AssertIsPublicCol(comp, h)
-		}
-	}
 
 	// Requires the verifier to verify the query itself
 	comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-		err := q.Check(vr)
-		if err != nil {
-			return fmt.Errorf("failure, here is why %v", err)
-		}
-		return nil
+		return q.Check(vr)
 	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
 		q.CheckGnark(api, wvc)
 	})
+
 }
