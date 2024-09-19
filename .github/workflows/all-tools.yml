@@ -17,7 +17,7 @@ env:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Filter commit changes
     outputs:
       all-tools: ${{ steps.filter.outputs.all-tools }}
@@ -38,15 +38,15 @@ jobs:
 
   store_image_name_and_tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
-  
+
   check_image_tags_exist:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Check image tags exist
     needs: [ changes, store_image_name_and_tags ]
     if: ${{ needs.changes.outputs.all-tools == 'false' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 
+        uses: actions/checkout@v4
       - name: Check image tags exist
         uses: ./.github/actions/check-image-tags-exist
         with:
@@ -57,7 +57,7 @@ jobs:
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   all-tools-tag-only:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: All tools tag only
     needs: [ changes, store_image_name_and_tags, check_image_tags_exist ]
     if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.all-tools == 'false' }}
