@@ -3,6 +3,10 @@ name: main
 on:
   push:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
