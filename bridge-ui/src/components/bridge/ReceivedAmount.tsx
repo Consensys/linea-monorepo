@@ -30,14 +30,21 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
           </span>
           {networkType === NetworkType.MAINNET && (
             <span className="label-text flex items-center">
-              <PiApproximateEqualsBold />
-              {tokenPrices?.[tokenAddress]?.usd
-                ? (Number(receivedAmount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
+              {receivedAmount &&
+              parseFloat(receivedAmount) > 0 &&
+              tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
+              tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+                <>
+                  <PiApproximateEqualsBold />
+                  {(Number(receivedAmount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                     maximumFractionDigits: 4,
-                  })
-                : "$0.00"}
+                  })}
+                </>
+              ) : (
+                ""
+              )}
             </span>
           )}
         </>
