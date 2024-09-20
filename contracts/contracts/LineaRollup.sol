@@ -102,9 +102,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
    */
@@ -118,9 +118,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
-   * @notice Sets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses and their roles.
    * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    */
   function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
     uint256 roleAddressesLength = _roleAddresses.length;
