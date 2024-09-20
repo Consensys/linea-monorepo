@@ -24,10 +24,10 @@ public class TransactionUtils {
         return tx.getChainId().get().longValueExact();
       }
       case FRONTIER -> {
-        // when ChainId != 0, V = 2 * ChainID + 35 or V = 2 * ChainId + 36;
+        // If chainId is specified, V = 2 * ChainID + 35 or V = 2 * ChainId + 36;
         final long V = tx.getV().longValueExact();
         if (V == 27 || V == 28) {
-          return 0;
+          throw new IllegalArgumentException("ChainId not specified in transaction");
         }
         return (V - 35) / 2;
       }
