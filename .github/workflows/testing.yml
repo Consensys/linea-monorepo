@@ -33,6 +33,9 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-testing.yml
@@ -45,7 +48,7 @@ jobs:
     uses: ./.github/workflows/prover-testing.yml
     if: ${{ always() && inputs.prover_changed == 'true' }}
     secrets: inherit
-      
+
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
