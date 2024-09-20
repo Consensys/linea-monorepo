@@ -10,6 +10,7 @@ concurrency:
 jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
+
   filter-commit-changes:
     runs-on: besu-arm64
     name: Filter commit changes
