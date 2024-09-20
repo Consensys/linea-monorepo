@@ -56,13 +56,6 @@ class RejectedTransactionsPostgresDao(
       ).toList()
     }
 
-    fun parseModuleOverflowListToJsonString(target: Any): String {
-      if (target is String) {
-        return target
-      }
-      return ObjectMapper().writeValueAsString(target)
-    }
-
     fun parseRecord(record: Row): RejectedTransaction {
       return RejectedTransaction(
         txRejectionStage = record.getString("reject_stage").run(::dbValueToRejectedStage),
@@ -151,7 +144,7 @@ class RejectedTransactionsPostgresDao(
         rejectedTransaction.reasonMessage,
         rejectedTransaction.timestamp.toEpochMilliseconds(),
         rejectedTransaction.blockNumber?.toLong(),
-        parseModuleOverflowListToJsonString(rejectedTransaction.overflows),
+        ObjectMapper().writeValueAsString(rejectedTransaction.overflows),
         rejectedTransaction.transactionRLP
       )
     queryLog.log(Level.TRACE, insertSql, params)
