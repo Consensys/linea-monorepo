@@ -27,6 +27,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: coordinator-build-and-publish-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-publish:
     runs-on: ubuntu-22.04
