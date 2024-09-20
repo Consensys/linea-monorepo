@@ -6,7 +6,6 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { L1MessageServiceV1 } from "./messageService/l1/v1/L1MessageServiceV1.sol";
 import { IZkEvmV2 } from "./interfaces/l1/IZkEvmV2.sol";
 import { IPlonkVerifier } from "./interfaces/l1/IPlonkVerifier.sol";
-
 /**
  * @title Contract to manage cross-chain messaging on L1 and rollup proving.
  * @author ConsenSys Software Inc.
@@ -46,8 +45,8 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
     uint256 _finalizedL2BlockNumber,
     bytes32 _finalStateRootHash
   ) internal {
-    uint256[] memory input = new uint256[](1);
-    input[0] = _publicInputHash;
+    uint256[] memory publicInput = new uint256[](1);
+    publicInput[0] = _publicInputHash;
 
     address verifierToUse = verifiers[_proofType];
 
@@ -55,8 +54,35 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
       revert InvalidProofType();
     }
 
-    bool success = IPlonkVerifier(verifierToUse).Verify(_proof, input);
-    if (!success) {
+    (bool callSuccess, bytes memory result) = verifierToUse.call(
+      abi.encodeWithSelector(IPlonkVerifier.Verify.selector, _proof, publicInput)
+    );
+
+    if (!callSuccess) {
+      if (result.length > 0) {
+        assembly {
+          let dataOffset := add(result, 0x20)
+
+          // Store the modified first 32 bytes back into memory overwriting the location after having swapped out the selector
+          mstore(
+            dataOffset,
+            or(
+              // InvalidProofOrProofVerificationRanOutOfGas(string) = 0xca389c44bf373a5a506ab5a7d8a53cb0ea12ba7c5872fd2bc4a0e31614c00a85
+              // Using the selector from a bytes4 variable and shl results in 0x00000000
+              shl(224, 0xca389c44),
+              and(mload(dataOffset), 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            )
+          )
+
+          revert(dataOffset, mload(result))
+        }
+      } else {
+        revert InvalidProofOrProofVerificationRanOutOfGas("Unknown");
+      }
+    }
+
+    bool proofSucceeded = abi.decode(result, (bool));
+    if (!proofSucceeded) {
       revert InvalidProof();
     }
 
