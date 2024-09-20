@@ -593,7 +593,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     checkArgument(bigIntegerToBytes(V).size() <= 8, "V is longer than 8 bytes");
     final boolean betaIsZero =
         V.equals(BigInteger.valueOf(27))
-            || V.equals(BigInteger.valueOf(28)); // beta = ChainId = 0 iff (V == 27 or V == 28)
+            || V.equals(BigInteger.valueOf(28)); // beta = 0 iff (V == 27 or V == 28)
 
     // Rlp(w)
     rlpInt(
