@@ -19,7 +19,7 @@ import java.util.*;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.container.stacked.NoLineCountStackedSet;
+import net.consensys.linea.zktracer.container.stacked.StackedSet;
 import net.consensys.linea.zktracer.runtime.LogData;
 
 /** Stores data relative to the conflation. */
@@ -28,10 +28,10 @@ import net.consensys.linea.zktracer.runtime.LogData;
 public class Conflation {
   private final DeploymentInfo deploymentInfo = new DeploymentInfo();
   private final List<LogData> logs = new ArrayList<>(100);
-  private final NoLineCountStackedSet<StackHeightCheck> stackHeightChecksForStackUnderflows =
-      new NoLineCountStackedSet<>(256, 32);
-  private final NoLineCountStackedSet<StackHeightCheck> stackHeightChecksForStackOverflows =
-      new NoLineCountStackedSet<>(256, 32);
+  private final StackedSet<StackHeightCheck> stackHeightChecksForStackUnderflows =
+      new StackedSet<>(256, 32);
+  private final StackedSet<StackHeightCheck> stackHeightChecksForStackOverflows =
+      new StackedSet<>(256, 32);
 
   public int log(LogData logData) {
     this.logs.add(logData);

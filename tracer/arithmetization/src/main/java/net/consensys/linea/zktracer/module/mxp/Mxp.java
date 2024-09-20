@@ -24,7 +24,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 
 /** Implementation of a {@link Module} for memory expansion. */
@@ -33,7 +33,8 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 @RequiredArgsConstructor
 public class Mxp implements OperationListModule<MxpOperation> {
 
-  private final StackedList<MxpOperation> operations = new StackedList<>();
+  private final ModuleOperationStackedList<MxpOperation> operations =
+      new ModuleOperationStackedList<>();
 
   @Override
   public String moduleKey() {

@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -34,7 +34,10 @@ import org.apache.tuweni.bytes.Bytes;
 @Accessors(fluent = true)
 public class Euc implements OperationSetModule<EucOperation> {
   private final Wcp wcp;
-  @Getter private final StackedSet<EucOperation> operations = new StackedSet<>();
+
+  @Getter
+  private final ModuleOperationStackedSet<EucOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   @Override
   public String moduleKey() {

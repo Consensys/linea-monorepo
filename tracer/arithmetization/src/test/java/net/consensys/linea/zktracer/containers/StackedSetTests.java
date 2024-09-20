@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.containers;
 
 import java.math.BigInteger;
 
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -40,7 +40,7 @@ public class StackedSetTests {
 
   @Test
   public void push() {
-    StackedSet<AddOperation> chunks = new StackedSet<>();
+    ModuleOperationStackedSet<AddOperation> chunks = new ModuleOperationStackedSet<>();
     chunks.enter();
 
     chunks.add(ONE_PLUS_ONE);
@@ -53,7 +53,7 @@ public class StackedSetTests {
 
   @Test
   public void multiplePushPop() {
-    StackedSet<AddOperation> chunks = new StackedSet<>();
+    ModuleOperationStackedSet<AddOperation> chunks = new ModuleOperationStackedSet<>();
     chunks.enter();
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);

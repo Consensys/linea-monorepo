@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
@@ -39,7 +39,8 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   private final BlakeEffectiveCall blakeEffectiveCall;
   private final BlakeRounds blakeRounds;
 
-  private final StackedList<BlakeModexpDataOperation> operations = new StackedList<>();
+  private final ModuleOperationStackedList<BlakeModexpDataOperation> operations =
+      new ModuleOperationStackedList<>();
 
   private long previousID = 0;
 

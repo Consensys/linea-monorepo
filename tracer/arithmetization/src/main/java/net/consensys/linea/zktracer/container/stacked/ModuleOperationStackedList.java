@@ -35,19 +35,19 @@ import org.jetbrains.annotations.NotNull;
  * @param <E> the type of elements stored in the set
  */
 @Accessors(fluent = true)
-public class StackedList<E extends ModuleOperation> {
+public class ModuleOperationStackedList<E extends ModuleOperation> {
   private final List<E> operationsCommitedToTheConflation;
   @Getter private final List<E> operationsInTransaction;
   private final CountOnlyOperation lineCounter = new CountOnlyOperation();
   private boolean conflationFinished = false;
 
-  public StackedList() {
+  public ModuleOperationStackedList() {
     operationsCommitedToTheConflation = new ArrayList<>();
     operationsInTransaction = new ArrayList<>();
   }
 
   /** Prefer this constructor as we preallocate more needed memory */
-  public StackedList(
+  public ModuleOperationStackedList(
       final int expectedConflationNumberOperations, final int expectedTransactionNumberOperations) {
     operationsCommitedToTheConflation = new ArrayList<>(expectedConflationNumberOperations);
     operationsInTransaction = new ArrayList<>(expectedTransactionNumberOperations);

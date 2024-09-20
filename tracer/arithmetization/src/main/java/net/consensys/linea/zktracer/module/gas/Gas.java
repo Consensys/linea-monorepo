@@ -21,12 +21,13 @@ import java.util.List;
 
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public class Gas implements Module {
   /** A list of the operations to trace */
-  private final StackedList<GasOperation> operations = new StackedList<>();
+  private final ModuleOperationStackedList<GasOperation> operations =
+      new ModuleOperationStackedList<>();
 
   // TODO: why a stackedList of GasOperation? It should be a StateLess module no ?
 

@@ -24,7 +24,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -38,7 +38,8 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Getter
 @Accessors(fluent = true)
 public class Trm implements OperationSetModule<TrmOperation> {
-  private final StackedSet<TrmOperation> operations = new StackedSet<>();
+  private final ModuleOperationStackedSet<TrmOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   static final int MAX_CT = LLARGE;
   static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;

@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.container.module;
 
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
@@ -24,7 +24,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  * where we can keep trace of duplicates.
  */
 public interface OperationListModule<E extends ModuleOperation> extends Module {
-  StackedList<E> operations();
+  ModuleOperationStackedList<E> operations();
 
   @Override
   default void enterTransaction() {

@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -35,7 +35,9 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class TxnData implements OperationListModule<TxndataOperation> {
-  @Getter private final StackedList<TxndataOperation> operations = new StackedList<>();
+  @Getter
+  private final ModuleOperationStackedList<TxndataOperation> operations =
+      new ModuleOperationStackedList<>();
 
   private final Wcp wcp;
   private final Euc euc;

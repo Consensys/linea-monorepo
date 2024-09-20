@@ -31,7 +31,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -41,20 +41,28 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @RequiredArgsConstructor
 public class Wcp implements Module {
 
-  private final StackedSet<WcpOperation> ltOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> leqOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> gtOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> geqOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> sltOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> sgtOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> eqOperations = new StackedSet<>();
-  private final StackedSet<WcpOperation> isZeroOperations = new StackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> ltOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> leqOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> gtOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> geqOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> sltOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> sgtOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> eqOperations =
+      new ModuleOperationStackedSet<>();
+  private final ModuleOperationStackedSet<WcpOperation> isZeroOperations =
+      new ModuleOperationStackedSet<>();
 
   /**
    * For perf, we split the WcpOperations into different StackedSet in order to - have smaller
    * set,thus faster to check for equality - remove the opcode value when checking the equality
    */
-  private final List<StackedSet<WcpOperation>> operations =
+  private final List<ModuleOperationStackedSet<WcpOperation>> operations =
       List.of(
           ltOperations,
           leqOperations,
@@ -75,7 +83,7 @@ public class Wcp implements Module {
 
   @Override
   public void enterTransaction() {
-    for (StackedSet<WcpOperation> operationsSet : operations) {
+    for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       operationsSet.enter();
     }
     additionalRows.enter();
@@ -83,7 +91,7 @@ public class Wcp implements Module {
 
   @Override
   public void popTransaction() {
-    for (StackedSet<WcpOperation> operationsSet : operations) {
+    for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       operationsSet.pop();
     }
     additionalRows.pop();
@@ -117,7 +125,7 @@ public class Wcp implements Module {
     final Trace trace = new Trace(buffers);
 
     int stamp = 0;
-    for (StackedSet<WcpOperation> operationsSet : operations) {
+    for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       for (WcpOperation operation : operationsSet.getAll()) {
         operation.trace(trace, ++stamp);
       }
@@ -126,7 +134,7 @@ public class Wcp implements Module {
 
   @Override
   public int lineCount() {
-    final int count = operations.stream().mapToInt(StackedSet::lineCount).sum();
+    final int count = operations.stream().mapToInt(ModuleOperationStackedSet::lineCount).sum();
     return ltOperations.conflationFinished() ? count : count + additionalRows.lineCount();
   }
 
@@ -198,7 +206,7 @@ public class Wcp implements Module {
 
   @Override
   public void traceEndConflation(final WorldView state) {
-    for (StackedSet<WcpOperation> operationsSet : operations) {
+    for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       operationsSet.finishConflation();
     }
   }

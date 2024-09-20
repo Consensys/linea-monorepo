@@ -25,7 +25,7 @@ import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.evm.frame.MessageFrame;
@@ -36,7 +36,8 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 @RequiredArgsConstructor
 public class Bin implements OperationSetModule<BinOperation> {
 
-  private final StackedSet<BinOperation> operations = new StackedSet<>();
+  private final ModuleOperationStackedSet<BinOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   @Override
   public String moduleKey() {

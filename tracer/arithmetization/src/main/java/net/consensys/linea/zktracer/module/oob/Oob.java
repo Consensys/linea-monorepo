@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -46,7 +46,9 @@ public class Oob implements OperationListModule<OobOperation> {
   private final Mod mod;
   private final Wcp wcp;
 
-  @Getter private final StackedList<OobOperation> operations = new StackedList<>();
+  @Getter
+  private final ModuleOperationStackedList<OobOperation> operations =
+      new ModuleOperationStackedList<>();
 
   @Override
   public String moduleKey() {
