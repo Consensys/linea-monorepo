@@ -48,6 +48,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-build-and-publish.yml

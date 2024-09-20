@@ -65,6 +65,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-e2e-tests:
     env:
