@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 var _ ifaces.Accessor = &FromConstAccessor{}
@@ -29,7 +29,7 @@ func (c *FromConstAccessor) Name() string {
 	return fmt.Sprintf("CONST_ACCESSOR_%v", c.F.String())
 }
 
-// String implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (c *FromConstAccessor) String() string {
 	return c.Name()
 }

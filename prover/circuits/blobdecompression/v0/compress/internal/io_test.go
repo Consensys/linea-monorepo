@@ -5,16 +5,17 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/utils"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/bits"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
 	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,9 +51,9 @@ func TestRecombineBytes(t *testing.T) {
 	}
 
 	assignment := recombineBytesCircuit{
-		Bytes:      test_vector_utils.ToVariableSlice(_bytes),
-		Bits:       test_vector_utils.ToVariableSlice(bits),
-		Recombined: test_vector_utils.ToVariableSlice(recombined),
+		Bytes:      utils.ToVariableSlice(_bytes),
+		Bits:       utils.ToVariableSlice(bits),
+		Recombined: utils.ToVariableSlice(recombined),
 	}
 
 	lzss.RegisterHints()

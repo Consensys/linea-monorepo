@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"testing"
 
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"

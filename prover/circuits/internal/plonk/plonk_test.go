@@ -1,17 +1,19 @@
-package plonk
+package plonk_test
 
 import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"reflect"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
-	"reflect"
-	"testing"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestCustomConstraint(t *testing.T) {
@@ -64,8 +66,8 @@ func TestCustomConstraint(t *testing.T) {
 		circuit.oVal[i] = sum
 	}
 
-	assignment.A = test_vector_utils.ToVariableSlice(circuit.aVal)
-	assignment.B = test_vector_utils.ToVariableSlice(circuit.bVal)
+	assignment.A = utils.ToVariableSlice(circuit.aVal)
+	assignment.B = utils.ToVariableSlice(circuit.bVal)
 
 	test.NewAssert(t).CheckCircuit(&circuit, test.WithValidAssignment(&assignment), test.WithBackends(backend.PLONK), test.WithCurves(ecc.BLS12_377))
 }
@@ -79,6 +81,7 @@ func randomizeInts(slices ...[]int) {
 			}
 			neg := 1 - 2*int(buff[0]>>7)
 			buff[0] &= 127
+			// #nosec G115 -- sign bit is set to be zero above
 			slice[i] = int(binary.BigEndian.Uint64(buff[:])) * neg
 		}
 	}
@@ -122,10 +125,10 @@ func (c *customConstraintCircuit) Define(api frontend.API) error {
 	for i := range c.A {
 		a, b, o := ifConstThenElse(api, c.mode[i]&1, c.aVal[i], c.A[i]), ifConstThenElse(api, c.mode[i]&2, c.bVal[i], c.B[i]), ifConstThenElse(api, c.mode[i]&4, c.oVal[i], c.O[i])
 
-		_o := EvaluateExpression(api, a, b, c.qL[i], c.qR[i], c.qM[i], c.qC[i])
+		_o := plonk.EvaluateExpression(api, a, b, c.qL[i], c.qR[i], c.qM[i], c.qC[i])
 		api.AssertIsEqual(_o, o)
 
-		AddConstraint(api, a, b, o, c.qL[i], c.qR[i], -1, c.qM[i], c.qC[i])
+		plonk.AddConstraint(api, a, b, o, c.qL[i], c.qR[i], -1, c.qM[i], c.qC[i])
 	}
 
 	return nil

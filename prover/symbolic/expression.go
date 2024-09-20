@@ -5,11 +5,11 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // anchoredExpression represents symbolic expression pinned into an overarching
@@ -57,7 +57,7 @@ type Expression struct {
 type Operator interface {
 	// Evaluate returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
-	Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector
+	Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error

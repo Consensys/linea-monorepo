@@ -1,16 +1,17 @@
 package public_input
 
 import (
+	"hash"
+	"slices"
+
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
-	"hash"
-	"slices"
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -49,6 +50,11 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 		hsh.Write(b[:])
 	}
 
+	writeUint := func(i uint) {
+		b := utils.FmtUint32Bytes(i)
+		hsh.Write(b[:])
+	}
+
 	hsh.Reset()
 
 	for _, hex := range p.L2MsgRootHashes {
@@ -60,14 +66,14 @@ func (p Aggregation) Sum(hsh hash.Hash) []byte {
 	hsh.Reset()
 	writeHex(p.ParentAggregationFinalShnarf)
 	writeHex(p.FinalShnarf)
-	writeInt(int(p.ParentAggregationLastBlockTimestamp))
-	writeInt(int(p.FinalTimestamp))
-	writeInt(int(p.LastFinalizedBlockNumber))
-	writeInt(int(p.FinalBlockNumber))
+	writeUint(p.ParentAggregationLastBlockTimestamp)
+	writeUint(p.FinalTimestamp)
+	writeUint(p.LastFinalizedBlockNumber)
+	writeUint(p.FinalBlockNumber)
 	writeHex(p.LastFinalizedL1RollingHash)
 	writeHex(p.L1RollingHash)
-	writeInt(int(p.LastFinalizedL1RollingHashMessageNumber))
-	writeInt(int(p.L1RollingHashMessageNumber))
+	writeUint(p.LastFinalizedL1RollingHashMessageNumber)
+	writeUint(p.L1RollingHashMessageNumber)
 	writeInt(p.L2MsgMerkleTreeDepth)
 	hsh.Write(l2Msgs)
 

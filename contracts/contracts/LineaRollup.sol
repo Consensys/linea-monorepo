@@ -15,6 +15,9 @@ import { Utils } from "./lib/Utils.sol";
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
   using Utils for *;
 
+  /// @dev This is the ABI version and not the reinitialize version.
+  string public constant CONTRACT_VERSION = "6.0";
+
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
   bytes32 public constant FINALIZE_WITHOUT_PROOF_ROLE = keccak256("FINALIZE_WITHOUT_PROOF_ROLE");
@@ -85,7 +88,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
-    _resetPermissions(_initializationData.roleAddresses);
+    _setPermissions(_initializationData.roleAddresses);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
@@ -99,9 +102,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
-   * @notice Resets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
    */
@@ -110,16 +113,16 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(6) {
-    _resetPermissions(_roleAddresses);
+    _setPermissions(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
   }
 
   /**
-   * @notice Resets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses and their roles.
    * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    */
-  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
     uint256 roleAddressesLength = _roleAddresses.length;
 
     for (uint256 i; i < roleAddressesLength; i++) {

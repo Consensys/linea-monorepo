@@ -489,7 +489,7 @@ class TestExecutor(request: String, pk: String) {
     chainId: Int,
     gasPerCall: BigInteger,
     gasPricePerCall: BigInteger,
-    valuePerCall: BigInteger = BigInteger.ZERO,
+    valuePerCall: BigInteger = BigInteger.ZERO
   ): Map<Int, Wallet> {
     val wallets: Map<Int, Wallet> = createWallets(nbWallets)
     executionDetails.addInitialization(

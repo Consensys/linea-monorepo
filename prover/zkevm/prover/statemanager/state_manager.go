@@ -1,13 +1,13 @@
 package statemanager
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulator"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 // StateManager is a collection of modules responsible for attesting the
@@ -80,9 +80,7 @@ func NewStateManagerNoHub(comp *wizard.CompiledIOP, settings Settings) *StateMan
 	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
 	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
 
-	// Waiting for the resolution of #
-	//
-	//		https://github.com/Consensys/zkevm-monorepo/issues/3798
+	// Waiting for the resolution of the mimc code hash issue
 	//
 	// lookupStateSummaryCodeHash(comp, &sm.StateSummary.Account, &sm.mimcCodeHash)
 

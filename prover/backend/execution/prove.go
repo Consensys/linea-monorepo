@@ -2,13 +2,13 @@ package execution
 
 import (
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -154,6 +154,31 @@ func mustProveAndPass(
 
 		// TODO: implements the collection of the functional inputs from the prover response
 		return execution.MakeProof(setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
+
+	case config.ProverModeBench:
+
+		// Run the full prover to obtain the intermediate proof
+		logrus.Info("Get Full IOP")
+		fullZkEvm := zkevm.FullZkEvm(traces)
+
+		// Generates the inner-proof and sanity-check it so that we ensure that
+		// the prover nevers outputs invalid proofs.
+		proof := fullZkEvm.ProveInner(w.ZkEVM)
+
+		logrus.Info("Sanity-checking the inner-proof")
+		if err := fullZkEvm.VerifyInner(proof); err != nil {
+			utils.Panic("The prover did not pass: %v", err)
+		}
+		return "", ""
+
+	case config.ProverModeCheckOnly:
+
+		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces)
+		// this will panic to alert errors, so there is no need to handle or
+		// sanity-check anything.
+		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		return "", ""
+
 	default:
 		panic("not implemented")
 	}

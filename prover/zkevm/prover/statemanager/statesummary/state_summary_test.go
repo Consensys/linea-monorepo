@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mock"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mock"
 )
 
 // TestStateSummaryInternal tests only the StateSummary module internally, without any connectors
@@ -51,7 +51,7 @@ func TestStateSummaryInternal(t *testing.T) {
 	}
 }
 
-func TestStateSummaryReadZeroShomei(t *testing.T) {
+func TestStateSummaryReadNonZeroShomei(t *testing.T) {
 
 	var (
 		addresses = []types.EthAddress{
@@ -99,10 +99,10 @@ func TestStateSummaryReadZeroShomei(t *testing.T) {
 
 	// Shuffle the logs to ensure they will be in the same order as shomei's
 	newTraces := [][]statemanager.DecodedTrace{make([]statemanager.DecodedTrace, 4)}
-	newTraces[0][0] = shomeiTraces[0][0]
-	newTraces[0][1] = shomeiTraces[0][3]
+	newTraces[0][0] = shomeiTraces[0][2]
+	newTraces[0][1] = shomeiTraces[0][0]
 	newTraces[0][2] = shomeiTraces[0][1]
-	newTraces[0][3] = shomeiTraces[0][2]
+	newTraces[0][3] = shomeiTraces[0][3]
 
 	define := func(b *wizard.Builder) {
 		ss = NewModule(b.CompiledIOP, 1<<6)

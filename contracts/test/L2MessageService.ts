@@ -85,6 +85,10 @@ describe("L2MessageService", () => {
   });
 
   describe("Initialization checks", () => {
+    it("Should set minimumFeeInWei to 0.0001 ETH", async () => {
+      expect(await l2MessageService.minimumFeeInWei()).to.be.equal(ethers.parseEther("0.0001"));
+    });
+
     it("Security council should have DEFAULT_ADMIN_ROLE", async () => {
       expect(await l2MessageService.hasRole(DEFAULT_ADMIN_ROLE, securityCouncil.address)).to.be.true;
     });
@@ -209,7 +213,7 @@ describe("L2MessageService", () => {
         const sendMessageCall = l2MessageService
           .connect(admin)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, {
-            value: MESSAGE_FEE - ethers.parseEther("0.01"),
+            value: MESSAGE_FEE - ethers.parseEther("0.01") + ethers.parseEther("0.0001"),
           });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "ValueSentTooLow");
@@ -239,7 +243,7 @@ describe("L2MessageService", () => {
         const sendMessageCall = l2MessageService
           .connect(admin)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, {
-            value: MESSAGE_FEE + ethers.parseEther("0.01"),
+            value: MESSAGE_FEE + ethers.parseEther("0.0001"),
           });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "FeeTooLow");
@@ -263,18 +267,20 @@ describe("L2MessageService", () => {
         await l2MessageService
           .connect(admin)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE + MINIMUM_FEE, EMPTY_CALLDATA, {
-            value: MINIMUM_FEE + MESSAGE_FEE,
+            value: MINIMUM_FEE + MESSAGE_FEE + ethers.parseEther("0.0001"),
           });
 
         expect(await ethers.provider.getBalance(BLOCK_COINBASE)).to.be.gt(initialCoinbaseBalance + MINIMUM_FEE);
       });
 
       it("Should succeed if 'MinimumFeeChanged' event is emitted", async () => {
+        const initialMinimumFee = ethers.parseEther("0.0001");
+
         await expectEvent(
           l2MessageService,
           l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE),
           "MinimumFeeChanged",
-          [0, MINIMUM_FEE, securityCouncil.address],
+          [initialMinimumFee, MINIMUM_FEE, securityCouncil.address],
         );
 
         // Testing non-zero transition
@@ -321,7 +327,7 @@ describe("L2MessageService", () => {
         const expectedBytes = await encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
-          MESSAGE_FEE,
+          MESSAGE_FEE - ethers.parseEther("0.0001"),
           MESSAGE_VALUE_1ETH,
           1n,
           EMPTY_CALLDATA,
@@ -331,7 +337,7 @@ describe("L2MessageService", () => {
         const eventArgs = [
           admin.address,
           notAuthorizedAccount.address,
-          MESSAGE_FEE,
+          MESSAGE_FEE - ethers.parseEther("0.0001"),
           MESSAGE_VALUE_1ETH,
           1,
           EMPTY_CALLDATA,
@@ -351,7 +357,7 @@ describe("L2MessageService", () => {
           securityCouncil.address,
           notAuthorizedAccount.address,
           0n,
-          INITIAL_WITHDRAW_LIMIT,
+          INITIAL_WITHDRAW_LIMIT - ethers.parseEther("0.0001"),
           1n,
           EMPTY_CALLDATA,
         );
@@ -359,12 +365,14 @@ describe("L2MessageService", () => {
 
         const sendMessageCall = l2MessageService
           .connect(securityCouncil)
-          .sendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
+          .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+            value: INITIAL_WITHDRAW_LIMIT,
+          });
         const eventArgs = [
           securityCouncil.address,
           notAuthorizedAccount.address,
           0,
-          INITIAL_WITHDRAW_LIMIT,
+          INITIAL_WITHDRAW_LIMIT - ethers.parseEther("0.0001"),
           1,
           EMPTY_CALLDATA,
           messageHash,
@@ -376,7 +384,9 @@ describe("L2MessageService", () => {
       it("Should revert with send over max limit amount only", async () => {
         const sendMessageCall = l2MessageService
           .connect(admin)
-          .sendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT + 1n });
+          .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+            value: INITIAL_WITHDRAW_LIMIT + ethers.parseEther("0.0002"),
+          });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "RateLimitExceeded");
       });
@@ -384,21 +394,27 @@ describe("L2MessageService", () => {
       it("Should revert with send over max limit amount and fees", async () => {
         const sendMessageCall = l2MessageService
           .connect(admin)
-          .sendMessage(notAuthorizedAccount.address, 1, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT + 1n });
+          .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+            value: INITIAL_WITHDRAW_LIMIT + ethers.parseEther("0.0002"),
+          });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "RateLimitExceeded");
       });
 
       it("Should fail when the rate limit would be exceeded - multi transactions", async () => {
-        await l2MessageService.connect(admin).sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, {
-          value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
-        });
+        await l2MessageService
+          .connect(admin)
+          .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+            value: MESSAGE_FEE + MESSAGE_VALUE_1ETH + ethers.parseEther("0.0001"),
+          });
 
-        const breachingAmount = INITIAL_WITHDRAW_LIMIT - MESSAGE_FEE - MESSAGE_VALUE_1ETH + 1n;
+        const breachingAmount = INITIAL_WITHDRAW_LIMIT - MESSAGE_FEE - MESSAGE_VALUE_1ETH + ethers.parseEther("0.0002");
 
         const sendMessageCall = l2MessageService
           .connect(admin)
-          .sendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: breachingAmount });
+          .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+            value: breachingAmount,
+          });
 
         await expectRevertWithCustomError(l2MessageService, sendMessageCall, "RateLimitExceeded");
       });
@@ -1360,7 +1376,9 @@ describe("L2MessageService", () => {
 
       await l2MessageService
         .connect(admin)
-        .sendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
+        .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+          value: INITIAL_WITHDRAW_LIMIT + ethers.parseEther("0.0001"),
+        });
 
       usedAmount = await l2MessageService.currentPeriodAmountInWei();
       expect(usedAmount).to.be.equal(INITIAL_WITHDRAW_LIMIT);
@@ -1376,7 +1394,9 @@ describe("L2MessageService", () => {
 
       await l2MessageService
         .connect(admin)
-        .sendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
+        .sendMessage(notAuthorizedAccount.address, ethers.parseEther("0.0001"), EMPTY_CALLDATA, {
+          value: INITIAL_WITHDRAW_LIMIT + ethers.parseEther("0.0001"),
+        });
 
       usedAmount = await l2MessageService.currentPeriodAmountInWei();
       expect(usedAmount).to.be.equal(INITIAL_WITHDRAW_LIMIT);

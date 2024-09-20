@@ -20,6 +20,7 @@ import { PauseManager } from "../messageService/lib/PauseManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { StorageFiller39 } from "./lib/StorageFiller39.sol";
 
+import { Utils } from "../lib/Utils.sol";
 /**
  * @title Linea Canonical Token Bridge
  * @notice Contract to manage cross-chain ERC20 bridging.
@@ -35,6 +36,7 @@ contract TokenBridge is
   PauseManager,
   StorageFiller39
 {
+  using Utils for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
@@ -396,21 +398,20 @@ contract TokenBridge is
    * @param _nativeToken The address of the native token on the source chain.
    * @param _tokenMetadata The encoded metadata for the token.
    * @param _chainId The chain id on which the token will be deployed, used to calculate the salt
-   * @return The address of the newly deployed BridgedToken contract.
+   * @return bridgedTokenAddress The address of the newly deployed BridgedToken contract.
    */
   function deployBridgedToken(
     address _nativeToken,
     bytes calldata _tokenMetadata,
     uint256 _chainId
-  ) internal returns (address) {
-    bytes32 _salt = keccak256(abi.encode(_chainId, _nativeToken));
-    BeaconProxy bridgedToken = new BeaconProxy{ salt: _salt }(tokenBeacon, "");
-    address bridgedTokenAddress = address(bridgedToken);
+  ) internal returns (address bridgedTokenAddress) {
+    bridgedTokenAddress = address(
+      new BeaconProxy{ salt: Utils._efficientKeccak(_chainId, _nativeToken) }(tokenBeacon, "")
+    );
 
     (string memory name, string memory symbol, uint8 decimals) = abi.decode(_tokenMetadata, (string, string, uint8));
     BridgedToken(bridgedTokenAddress).initialize(name, symbol, decimals);
     emit NewTokenDeployed(bridgedTokenAddress, _nativeToken);
-    return bridgedTokenAddress;
   }
 
   /**

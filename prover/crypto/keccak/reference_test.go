@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )

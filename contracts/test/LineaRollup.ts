@@ -74,6 +74,7 @@ kzg.loadTrustedSetup(`${__dirname}/testData/trusted_setup.txt`);
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
+  let revertingVerifier: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -85,6 +86,13 @@ describe("Linea Rollup contract", () => {
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentDataHash, parentStateRootHash } =
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
+
+  async function deployRevertingVerifier(scenario: bigint) {
+    const RevertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
+    const verifier = await RevertingVerifierFactory.deploy(scenario);
+    await verifier.waitForDeployment();
+    revertingVerifier = await verifier.getAddress();
+  }
 
   async function deployLineaRollupFixture() {
     const PlonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation");
@@ -1096,6 +1104,153 @@ describe("Linea Rollup contract", () => {
         fourthCompressedDataContent.finalStateRootHash,
         generateBlobParentShnarfData,
       );
+    });
+
+    it("Should fail to finalize with not enough gas for the rollup (pre-verifier)", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(2, 4);
+
+      // Finalize 4 blobs
+      const finalizationData = await generateFinalizationData({
+        l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
+        lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
+        finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
+        finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
+        l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
+        l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
+        l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
+        aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
+        shnarfData: generateBlobParentShnarfData(4, false),
+      });
+      finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
+      finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
+
+      finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
+
+      await lineaRollup.setRollingHash(
+        blobAggregatedProof1To155.l1RollingHashMessageNumber,
+        blobAggregatedProof1To155.l1RollingHash,
+      );
+
+      const finalizeCompressedCall = lineaRollup
+        .connect(operator)
+        .finalizeBlocksWithProof(
+          blobAggregatedProof1To155.aggregatedProof,
+          TEST_PUBLIC_VERIFIER_INDEX,
+          finalizationData,
+          { gasLimit: 50000 },
+        );
+
+      // there is no reason
+      await expect(finalizeCompressedCall).to.be.reverted;
+    });
+
+    it("Should fail to finalize with not enough gas to verify", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(2, 4);
+
+      // Finalize 4 blobs
+      const finalizationData = await generateFinalizationData({
+        l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
+        lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
+        finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+        parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
+        finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
+        l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
+        l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
+        l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
+        aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
+        shnarfData: generateBlobParentShnarfData(4, false),
+      });
+      finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
+      finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
+
+      finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
+
+      await lineaRollup.setRollingHash(
+        blobAggregatedProof1To155.l1RollingHashMessageNumber,
+        blobAggregatedProof1To155.l1RollingHash,
+      );
+
+      const finalizeCompressedCall = lineaRollup
+        .connect(operator)
+        .finalizeBlocksWithProof(
+          blobAggregatedProof1To155.aggregatedProof,
+          TEST_PUBLIC_VERIFIER_INDEX,
+          finalizationData,
+          { gasLimit: 400000 },
+        );
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        finalizeCompressedCall,
+        "InvalidProofOrProofVerificationRanOutOfGas",
+        ["error pairing"],
+      );
+    });
+
+    const testCases = [
+      { revertScenario: 0n, title: "Should fail to finalize via EMPTY_REVERT scenario with 'Unknown'" },
+      { revertScenario: 1n, title: "Should fail to finalize via GAS_GUZZLE scenario with 'Unknown'" },
+    ];
+
+    testCases.forEach(({ revertScenario, title }) => {
+      it(title, async () => {
+        await deployRevertingVerifier(revertScenario);
+        await lineaRollup.connect(securityCouncil).setVerifierAddress(revertingVerifier, 0);
+
+        // Submit 2 blobs
+        await sendBlobTransaction(0, 2);
+        // Submit another 2 blobs
+        await sendBlobTransaction(2, 4);
+
+        // Finalize 4 blobs
+        const finalizationData = await generateFinalizationData({
+          l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
+          l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
+          lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
+          finalBlockInData: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: blobAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
+          l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateBlobParentShnarfData(4, false),
+        });
+        finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
+        finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
+
+        finalizationData.lastFinalizedShnarf = blobAggregatedProof1To155.parentAggregationFinalShnarf;
+
+        await lineaRollup.setRollingHash(
+          blobAggregatedProof1To155.l1RollingHashMessageNumber,
+          blobAggregatedProof1To155.l1RollingHash,
+        );
+
+        const finalizeCompressedCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(
+            blobAggregatedProof1To155.aggregatedProof,
+            TEST_PUBLIC_VERIFIER_INDEX,
+            finalizationData,
+            { gasLimit: 400000 },
+          );
+
+        await expectRevertWithCustomError(
+          lineaRollup,
+          finalizeCompressedCall,
+          "InvalidProofOrProofVerificationRanOutOfGas",
+          ["Unknown"],
+        );
+      });
     });
 
     it("Should successfully submit 2 blobs twice then finalize in two separate finalizations", async () => {

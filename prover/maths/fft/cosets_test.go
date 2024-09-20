@@ -3,7 +3,7 @@ package fft_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
 )
 
 // Aimed at being run only during go-race

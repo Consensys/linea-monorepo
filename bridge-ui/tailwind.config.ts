@@ -11,15 +11,15 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      backgroundImage: {
-        hero: "url('/bridge_bg.png')",
-      },
       colors: {
         primary: "#61DFFF",
+        secondary: "#FF62E6",
         card: "#505050",
         cardBg: "#1D1D1D",
+        success: "#C1FF14",
       },
       fontFamily: {
+        atyp: ["var(--font-atyp)"],
         atypText: ["var(--font-atyp-text)"],
       },
     },
@@ -31,8 +31,10 @@ const config: Config = {
         dark: {
           ...daisyuiThemes.dark,
           primary: "#61DFFF",
+          secondary: "#FF62E6",
           "primary-content": "#000000",
-          info: "#fff",
+          info: "#61DFFF",
+          success: "#C1FF14",
         },
       },
     ],
