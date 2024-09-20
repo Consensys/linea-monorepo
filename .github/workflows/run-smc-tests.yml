@@ -16,6 +16,11 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
+ 
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.x
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
