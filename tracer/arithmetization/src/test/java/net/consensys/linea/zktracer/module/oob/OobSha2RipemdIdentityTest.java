@@ -48,7 +48,7 @@ public class OobSha2RipemdIdentityTest {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void TestSha2(int argSize) throws NoSuchAlgorithmException {
+  void testSha2(int argSize) throws NoSuchAlgorithmException {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.SHA256);
     BytecodeCompiler program = programAndRetInfo.program();
@@ -72,7 +72,7 @@ public class OobSha2RipemdIdentityTest {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void TestIdentity(int argSize) {
+  void testIdentity(int argSize) {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.ID);
     BytecodeCompiler program = programAndRetInfo.program();
@@ -90,7 +90,7 @@ public class OobSha2RipemdIdentityTest {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void TestRipmd(int argSize) {
+  void testRipmd(int argSize) {
     String data = generateHexString(argSize);
     ProgramAndRetInfo programAndRetInfo = initProgramInvokingPrecompile(data, Address.RIPEMD160);
     BytecodeCompiler program = programAndRetInfo.program();
@@ -134,7 +134,7 @@ public class OobSha2RipemdIdentityTest {
   }
 
   @Test
-  void TestPrcSupportMethods() throws NoSuchAlgorithmException {
+  void testPrcSupportMethods() throws NoSuchAlgorithmException {
     String data = generateHexString(32);
     System.out.println("SHA2-256 of random data: " + sha256(data));
     System.out.println("RIPEMD-160 of random data: " + ripemd160(data));
@@ -264,7 +264,7 @@ public class OobSha2RipemdIdentityTest {
 
   @ParameterizedTest
   @MethodSource("argSizesSource")
-  void TestInitProgramInvokingPrecompileDataInMemorySupportMethod(int argSize) {
+  void testInitProgramInvokingPrecompileDataInMemorySupportMethod(int argSize) {
     // This test is to ensure that the data written in memory is the same as the input data
     String data = generateHexString(argSize);
 

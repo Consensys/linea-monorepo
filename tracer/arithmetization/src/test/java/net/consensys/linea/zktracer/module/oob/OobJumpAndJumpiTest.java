@@ -42,7 +42,7 @@ public class OobJumpAndJumpiTest {
       BigInteger.ONE.shiftLeft(128).subtract(BigInteger.ONE);
 
   @Test
-  void TestJumpSequenceSuccessTrivial() {
+  void testJumpSequenceSuccessTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJump(EWord.of(35), program);
@@ -70,7 +70,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpSequenceSuccessBackAndForth() {
+  void testJumpSequenceSuccessBackAndForth() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJump(EWord.of(71), program);
@@ -98,7 +98,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpSequenceFailingNoJumpdestTrivial() {
+  void testJumpSequenceFailingNoJumpdestTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJump(EWord.of(35), program);
@@ -125,7 +125,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpSequenceFailingOobTrivial() {
+  void testJumpSequenceFailingOobTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJump(EWord.of(35), program);
@@ -152,7 +152,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpSequenceSuccessRandom() {
+  void testJumpSequenceSuccessRandom() {
     final int N_JUMPS = 200;
     final int MAX_JUMPDESTINATION = 256;
     final int SPREADING_FACTOR = 256;
@@ -198,7 +198,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpSequenceSuccessRandomBackAndForth() {
+  void testJumpSequenceSuccessRandomBackAndForth() {
     final int N_JUMPS = 200;
     final int MAX_JUMPDESTINATION = 256;
     final int SPREADING_FACTOR = 256;
@@ -248,7 +248,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceSuccessTrivial() {
+  void testJumpiSequenceSuccessTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
@@ -276,7 +276,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceSuccessBackAndForth() {
+  void testJumpiSequenceSuccessBackAndForth() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJumpi(EWord.of(137), EWord.of(1), program);
@@ -304,7 +304,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceFailingNoJumpdestTrivial() {
+  void testJumpiSequenceFailingNoJumpdestTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
@@ -331,7 +331,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceFailingOobTrivial() {
+  void testJumpiSequenceFailingOobTrivial() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
@@ -359,7 +359,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestNoJumpi() {
+  void testNoJumpi() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     appendJumpi(EWord.of(68), EWord.of(0), program); // jumpCondition is 0, that means no JUMPI
@@ -378,7 +378,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiHiNonZero() {
+  void testJumpiHiNonZero() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     EWord jumpCondition = EWord.of(TWO_POW_128_MINUS_ONE, BigInteger.ZERO);
@@ -398,7 +398,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiLoNonZero() {
+  void testJumpiLoNonZero() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     EWord jumpCondition = EWord.of(BigInteger.valueOf(0), TWO_POW_128_MINUS_ONE);
@@ -418,7 +418,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiHiLoNonZero() {
+  void testJumpiHiLoNonZero() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     EWord jumpCondition = EWord.of(TWO_POW_128_MINUS_ONE, TWO_POW_128_MINUS_ONE);
@@ -438,7 +438,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceSuccessRandom() {
+  void testJumpiSequenceSuccessRandom() {
     final int N_JUMPIS = 200;
     final int MAX_JUMPDESTINATION = 256;
     final int SPREADING_FACTOR = 256;
@@ -489,7 +489,7 @@ public class OobJumpAndJumpiTest {
   }
 
   @Test
-  void TestJumpiSequenceSuccessRandomBackAndForth() {
+  void testJumpiSequenceSuccessRandomBackAndForth() {
     final int N_JUMPIS = 200;
     final int MAX_JUMPDESTINATION = 256;
     final int SPREADING_FACTOR = 256;

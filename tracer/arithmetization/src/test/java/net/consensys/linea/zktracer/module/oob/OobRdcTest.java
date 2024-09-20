@@ -37,7 +37,7 @@ public class OobRdcTest {
       BigInteger.ONE.shiftLeft(128).subtract(BigInteger.valueOf(100));
 
   @Test
-  void TestReturnDataCopyMaxPosZero() {
+  void testReturnDataCopyMaxPosZero() {
     // maxPos = offset + size = 0 + 0 < rds = 32
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.ZERO, BigInteger.ZERO);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -49,7 +49,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosRds() {
+  void testReturnDataCopyMaxPosRds() {
     // maxPos = offset + size = 12 + 20 = rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(12), BigInteger.valueOf(20));
@@ -62,7 +62,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosSmallerThanRds() {
+  void testReturnDataCopyMaxPosSmallerThanRds() {
     // maxPos = offset + size = 3 + 4 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(3), BigInteger.valueOf(4));
@@ -75,7 +75,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosSmallerThanRdsAndOffsetZero() {
+  void testReturnDataCopyMaxPosSmallerThanRdsAndOffsetZero() {
     // maxPos = offset + size = 0 + 4 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(0), BigInteger.valueOf(4));
@@ -88,7 +88,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosSmallerThanRdsAndSizeZero() {
+  void testReturnDataCopyMaxPosSmallerThanRdsAndSizeZero() {
     // maxPos = offset + size = 3 + 0 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(3), BigInteger.valueOf(0));
@@ -104,7 +104,7 @@ public class OobRdcTest {
 
   // offset smaller cases
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeSmall() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeSmall() {
     // maxPos = offset + size = 10 + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(10), BigInteger.valueOf(23));
@@ -117,7 +117,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigLeft() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigLeft() {
     // maxPos = offset + size = 10 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(10), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -129,7 +129,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigRight() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetSmallerAndSizeBigRight() {
     // maxPos = offset + size = 10 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(10), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -142,7 +142,7 @@ public class OobRdcTest {
 
   // offset just greater cases
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeZero() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeZero() {
     // maxPos = offset + size = 33 + 0 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(33), BigInteger.valueOf(0));
@@ -155,7 +155,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeSmall() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeSmall() {
     // maxPos = offset + size = 33 + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(33), BigInteger.valueOf(23));
@@ -168,7 +168,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigLeft() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigLeft() {
     // maxPos = offset + size = 33 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(33), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -180,7 +180,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigRight() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetJustGreaterAndSizeBigRight() {
     // maxPos = offset + size = 33 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(33), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -193,7 +193,7 @@ public class OobRdcTest {
 
   // offset big left cases
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeZero() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeZero() {
     // maxPos = offset + size = TWO_POW_128_LEFT + 0 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -205,7 +205,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeSmall() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeSmall() {
     // maxPos = offset + size = TWO_POW_128_LEFT + 23 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -217,7 +217,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigLeft() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigLeft() {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -229,7 +229,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigRight() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeBigRight() {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -242,7 +242,7 @@ public class OobRdcTest {
 
   // offset big right cases
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeZero() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeZero() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 0 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -254,7 +254,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeSmall() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeSmall() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 23 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -266,7 +266,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigLeft() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigLeft() {
     // maxPos = offset + size = TWO_POW_128_Right + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -278,7 +278,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigRight() {
+  void testReturnDataCopyMaxPosGreaterThanRdsAndOffsetBigRightAndSizeBigRight() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
@@ -291,7 +291,7 @@ public class OobRdcTest {
 
   // Same cases but using identity precompile
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosZero() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosZero() {
     // maxPos = offset + size = 0 + 0 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.ZERO, BigInteger.ZERO);
@@ -311,7 +311,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosRds() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosRds() {
     // maxPos = offset + size = 12 + 20 = rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -333,7 +333,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRds() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRds() {
     // maxPos = offset + size = 3 + 4 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -354,7 +354,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRdsAndOffsetZero() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRdsAndOffsetZero() {
     // maxPos = offset + size = 0 + 4 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -375,7 +375,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRdsAndSizeZero() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosSmallerThanRdsAndSizeZero() {
     // maxPos = offset + size = 3 + 0 < rds = 32
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -399,7 +399,7 @@ public class OobRdcTest {
 
   // offset smaller cases
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeSmall() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetSmallerAndSizeSmall() {
     // maxPos = offset + size = 10 + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(
@@ -551,7 +551,7 @@ public class OobRdcTest {
 
   // offset big left cases
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeZero() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeZero() {
     // maxPos = offset + size = TWO_POW_128_LEFT + 0 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, BigInteger.valueOf(0));
@@ -571,7 +571,7 @@ public class OobRdcTest {
   }
 
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeSmall() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigLeftAndSizeSmall() {
     // maxPos = offset + size = TWO_POW_128_LEFT + 23 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, BigInteger.valueOf(23));
@@ -634,7 +634,7 @@ public class OobRdcTest {
 
   // offset big right cases
   @Test
-  void TestReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeZero() {
+  void testReturnDataCopyUsingIdentityPrecompileMaxPosGreaterThanRdsAndOffsetBigRightAndSizeZero() {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 0 > 32 = rds
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, BigInteger.valueOf(0));

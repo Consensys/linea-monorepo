@@ -41,7 +41,7 @@ import org.junit.jupiter.api.Test;
 public class OobCallTest {
 
   @Test
-  void TestCallSendValueGreaterThanBalanceHiNonZero() {
+  void testCallSendValueGreaterThanBalanceHiNonZero() {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.ONE, BigInteger.ZERO);
 
@@ -49,7 +49,7 @@ public class OobCallTest {
   }
 
   @Test
-  void TestCallSendValueGreaterThanBalanceLoNonZero() {
+  void testCallSendValueGreaterThanBalanceLoNonZero() {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.ZERO, BigInteger.TWO);
 
@@ -57,7 +57,7 @@ public class OobCallTest {
   }
 
   @Test
-  void TestCallSendValueGreaterThanBalanceHiLoNonZero() {
+  void testCallSendValueGreaterThanBalanceHiLoNonZero() {
     final EWord balanceOfCaller = EWord.of(BigInteger.ONE);
     final EWord amountToSend = EWord.of(BigInteger.TWO, BigInteger.TWO);
 
@@ -65,7 +65,7 @@ public class OobCallTest {
   }
 
   @Test
-  void TestCallSendValueSmallerThanBalanceLoNonZero() {
+  void testCallSendValueSmallerThanBalanceLoNonZero() {
     final EWord balanceOfCaller = EWord.of(BigInteger.TWO);
     final EWord amountToSend = EWord.of(BigInteger.ZERO, BigInteger.ONE);
 
@@ -91,7 +91,7 @@ public class OobCallTest {
   }
 
   @Test
-  void TestRecursiveCallsWithBytecode() {
+  void testRecursiveCallsWithBytecode() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af1"));
     bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
@@ -102,11 +102,11 @@ public class OobCallTest {
   }
 
   /**
-   * Same as {@link #TestRecursiveCallsWithBytecode()} but with an ADD opcode at the end triggering
+   * Same as {@link #testRecursiveCallsWithBytecode()} but with an ADD opcode at the end triggering
    * SUX
    */
   @Test
-  void TestRecursiveCallsWithBytecodeFollowedByStackUnderflow() {
+  void testRecursiveCallsWithBytecodeFollowedByStackUnderflow() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af101"));
     bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
@@ -116,9 +116,9 @@ public class OobCallTest {
     assertTrue(stackUnderflow(hub.pch().exceptions()));
   }
 
-  /** Same as {@link #TestRecursiveCallsWithBytecode()} but with an ADDRESS opcode at the end */
+  /** Same as {@link #testRecursiveCallsWithBytecode()} but with an ADDRESS opcode at the end */
   @Test
-  void TestRecursiveCallsWithBytecodeFollowedByAddress() {
+  void testRecursiveCallsWithBytecodeFollowedByAddress() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af130"));
     bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000);
@@ -128,9 +128,9 @@ public class OobCallTest {
     assertTrue(Exceptions.none(hub.pch().exceptions()));
   }
 
-  /** Same as {@link #TestRecursiveCallsWithBytecode()} but with an STOP opcode at the end */
+  /** Same as {@link #testRecursiveCallsWithBytecode()} but with an STOP opcode at the end */
   @Test
-  void TestRecursiveCallsWithBytecodeFollowedByExplicitStop() {
+  void testRecursiveCallsWithBytecodeFollowedByExplicitStop() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af100"));
     bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
