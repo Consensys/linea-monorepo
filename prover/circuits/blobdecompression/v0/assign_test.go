@@ -3,19 +3,20 @@ package v0_test
 import (
 	"encoding/base64"
 	"encoding/json"
-	v0 "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"os"
 	"testing"
+
+	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )

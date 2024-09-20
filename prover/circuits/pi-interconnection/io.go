@@ -1,14 +1,15 @@
 package pi_interconnection
 
 import (
+	"math/big"
+	"slices"
+
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/uints"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"math/big"
-	"slices"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 )
 
 func assertBytesEqual(api frontend.API, a, b []uints.U8) {

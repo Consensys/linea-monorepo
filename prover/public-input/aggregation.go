@@ -1,16 +1,17 @@
 package public_input
 
 import (
+	"hash"
+	"slices"
+
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
-	"hash"
-	"slices"
 )
 
 // Aggregation collects all the field that are used to construct the public

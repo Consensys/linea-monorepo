@@ -8,8 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,7 +15,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -75,7 +76,7 @@ func TestInterpolateLagrange(t *testing.T) {
 		}
 		for i := range unitCircleEvaluations {
 			bytes := unitCircleEvaluationsFr[i].Bytes()
-			copy(assignment.UnitCircleEvaluationsBytes[i][:], internal.ToVariableSlice(bytes[:]))
+			copy(assignment.UnitCircleEvaluationsBytes[i][:], utils.ToVariableSlice(bytes[:]))
 		}
 
 		// compute the evaluation using the iop package
@@ -232,7 +233,7 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 			assert.Zero(t, len(blob)%32, "blob not consisting of 32-byte field elements")
 			assert.LessOrEqual(t, len(blob), 4096*32, "blob too large")
 			blob = append(blob, make([]byte, 4096*32-len(blob))...) // pad if necessary
-			assignment.BlobBytes = internal.ToVariableSlice(blob)
+			assignment.BlobBytes = utils.ToVariableSlice(blob)
 
 			if assignment.Eip4844Enabled = 0; testCase.Eip4844Enabled {
 				assignment.Eip4844Enabled = 1
@@ -295,17 +296,17 @@ func TestConsistencyCheckFlagRange(t *testing.T) {
 	}
 	assignments := []*blobConsistencyCheckCircuit{
 		{
-			BlobBytes:      internal.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 0,
 		},
 		{
-			BlobBytes:      internal.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 1,
 		},
 		{
-			BlobBytes:      internal.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 2,
 		},
@@ -400,7 +401,7 @@ func TestPackCrumbEmulated(t *testing.T) {
 	assert.NoError(t, err)
 	bytes[0] &= msbMask
 	var assignment testPackCrumbEmulatedCircuit
-	copy(assignment.Bytes[:], internal.ToVariableSlice(bytes[:]))
+	copy(assignment.Bytes[:], utils.ToVariableSlice(bytes[:]))
 	test.NewAssert(t).CheckCircuit(
 		&testPackCrumbEmulatedCircuit{}, test.WithValidAssignment(&assignment), test.WithCurves(ecc.BLS12_377), test.WithBackends(backend.PLONK),
 		test.NoTestEngine(),

@@ -5,15 +5,15 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -52,8 +52,8 @@ func TestCreateCols(t *testing.T) {
 			In:                in,
 			InLength:          make([]frontend.Variable, len(c.in)),
 			Lanes:             make([]frontend.Variable, len(c.lanes)),
-			IsFirstLaneOfHash: internal.ToVariableSlice(c.isFirstLaneOfHash),
-			IsLaneActive:      internal.ToVariableSlice(c.isLaneActive),
+			IsFirstLaneOfHash: utils.ToVariableSlice(c.isFirstLaneOfHash),
+			IsLaneActive:      utils.ToVariableSlice(c.isLaneActive),
 			Hash:              hash,
 		}
 
@@ -261,10 +261,10 @@ func TestCreateColsBoundaryChecks(t *testing.T) {
 
 		fail := nbNeededLanes > c.maxNbLanes
 
-		t.Run(fmt.Sprintf("%d-%s", i, internal.Ite(fail, "fail", "pass")), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d-%s", i, utils.Ite(fail, "fail", "pass")), func(t *testing.T) {
 
 			assignment := testCreateColsBoundaryChecks{
-				InLength: internal.ToVariableSlice(c.inLength),
+				InLength: utils.ToVariableSlice(c.inLength),
 			}
 
 			err := test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField())
