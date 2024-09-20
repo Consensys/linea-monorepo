@@ -239,7 +239,7 @@ func TestGlobalMixedRounds(t *testing.T) {
 }
 
 func TestWithVerifCol(t *testing.T) {
-	var a, b, c, verifcol1, verifcol2 ifaces.Column
+	var a, b, c, verifcol1 ifaces.Column
 	var q1, q2 query.GlobalConstraint
 	var q3 query.LocalConstraint
 
@@ -253,14 +253,16 @@ func TestWithVerifCol(t *testing.T) {
 		// verifiercols
 		verifcol1 = verifiercol.NewConstantCol(field.NewElement(3), 4)
 		accessors := genAccessors([]int{1, 7, 5, 3})
-		verifcol2 = verifiercol.NewFromAccessors(accessors, field.Zero(), 4)
+		verifcol := verifiercol.NewFromAccessors(accessors, field.Zero(), 4)
+		// verifcol2 = column.Shift(verifcol, 1)
 
 		expr := symbolic.Sub(symbolic.Mul(a, verifcol1), b)
 		q1 = builder.GlobalConstraint("Q0", expr)
 
-		expr = symbolic.Sub(symbolic.Add(a, verifcol2), c)
+		expr = symbolic.Sub(symbolic.Add(a, verifcol), c)
 		q2 = builder.GlobalConstraint("Q1", expr)
 
+		expr = symbolic.Sub(symbolic.Add(column.Shift(a, 1), column.Shift(verifcol, 1)), column.Shift(c, 1))
 		q3 = builder.LocalConstraint("Q2", expr)
 	}
 
