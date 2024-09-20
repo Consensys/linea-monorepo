@@ -114,14 +114,15 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           return Optional.of(errMsg);
         }
       }
+    } else {
+      log.atTrace()
+          .setMessage(
+              "Simulation validation not enabled for tx with hash={}, isLocal={}, hasPriority={}")
+          .addArgument(transaction::getHash)
+          .addArgument(isLocal)
+          .addArgument(hasPriority)
+          .log();
     }
-    log.atTrace()
-        .setMessage(
-            "Simulation validation not enabled for tx with hash={}, isLocal={}, hasPriority={}")
-        .addArgument(transaction::getHash)
-        .addArgument(isLocal)
-        .addArgument(hasPriority)
-        .log();
 
     return Optional.empty();
   }
@@ -168,6 +169,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
               moduleLimitResult.getModuleLineCount(),
               moduleLimitResult.getModuleLineLimit());
       log.warn(txOverflowMsg);
+      log.trace("Transaction details: {}", transaction);
       return txOverflowMsg;
     }
     return "Internal Error: do not know what to do with result: " + moduleLimitResult.getResult();
