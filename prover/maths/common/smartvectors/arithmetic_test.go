@@ -242,7 +242,6 @@ func TestOpBasicEdgeCases(t *testing.T) {
 	}
 }
 
-
 func TestInnerProduct(t *testing.T) {
 	testCases := []struct {
 		a, b SmartVector
