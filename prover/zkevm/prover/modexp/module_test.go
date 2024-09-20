@@ -3,9 +3,9 @@ package modexp
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
 func TestModExpAntichamber(t *testing.T) {
@@ -40,9 +40,10 @@ func TestModExpAntichamber(t *testing.T) {
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
 					Limbs:            inpCt.GetCommit(build, "LIMBS"),
+					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1},
 				}
 
-				mod = NewModule(build.CompiledIOP, inp, 1, 1)
+				mod = newModule(build.CompiledIOP, inp)
 			}, dummy.Compile)
 
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {

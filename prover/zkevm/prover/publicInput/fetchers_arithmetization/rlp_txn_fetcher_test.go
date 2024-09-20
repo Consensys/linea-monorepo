@@ -1,46 +1,38 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestRlpTxnFetcher tests the fetching of the rlp txn data
 func TestRlpTxnFetcher(t *testing.T) {
 
 	// initialize sample RlpTxn data from a mock test data CSV file
-	ctRlpTxn := utilities.InitializeCsv("../testdata/rlp_txn_mock.csv", t)
+	ctRlpTxn := util.InitializeCsv("../testdata/rlp_txn_mock.csv", t)
 	var (
-		rt      *RlpTxn
+		rt      *arith.RlpTxn
 		fetcher RlpTxnFetcher
 	)
 
 	cmp := wizard.Compile(func(b *wizard.Builder) {
 		// register sample arithmetization columns
-		rt = &RlpTxn{
-			AbsTxNum:       ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM"),
-			AbsTxNumMax:    ctRlpTxn.GetCommit(b, "RT.ABS_TX_NUM_MAX"),
-			ToHashByProver: ctRlpTxn.GetCommit(b, "RL.TO_HASH_BY_PROVER"),
-			Limb:           ctRlpTxn.GetCommit(b, "RL.LIMB"),
-			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
-		}
+		_, _, rt = arith.DefineTestingArithModules(b, nil, nil, ctRlpTxn)
 		fetcher = NewRlpTxnFetcher(b.CompiledIOP, "RLP_TXN_FETCHER_FROM_ARITH", rt)
 		// constrain the fetcher
 		DefineRlpTxnFetcher(b.CompiledIOP, &fetcher, "RLP_TXN_FETCHER_FROM_ARITH", rt)
 	}, dummy.Compile)
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 		// assign the CSV columns
-		ctRlpTxn.Assign(
-			run,
-			"RT.ABS_TX_NUM",
-			"RT.ABS_TX_NUM_MAX",
-			"RL.TO_HASH_BY_PROVER",
-			"RL.LIMB",
-			"RL.NBYTES",
-		)
+		arith.AssignTestingArithModules(run, nil, nil, ctRlpTxn)
 		AssignRlpTxnFetcher(run, &fetcher, rt)
+		assert.Equal(t, field.NewFromString("0xccc00000000000000000000000000000"), fetcher.ChainID.GetColAssignmentAt(run, 0), "ChainID value is incorrect.")
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

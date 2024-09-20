@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -24,7 +25,7 @@ type Signature struct {
 }
 
 // Returns the sender of a transaction
-func GetFrom(tx *types.Transaction) common.Address {
+func GetFrom(tx *ethtypes.Transaction) types.EthAddress {
 	from, err := GetSigner(tx).Sender(tx)
 	if err != nil {
 		v, r, s := tx.RawSignatureValues()
@@ -33,12 +34,12 @@ func GetFrom(tx *types.Transaction) common.Address {
 			tx.ChainId(), v.String(), r.String(), s.String(), tx, err.Error(),
 		)
 	}
-	return from
+	return types.EthAddress(from)
 }
 
 // Returns the signature in json and the sender of the transaction
 // Signature in JSONable format and from as an hex string
-func GetJsonSignature(tx *types.Transaction) Signature {
+func GetJsonSignature(tx *ethtypes.Transaction) Signature {
 
 	// Depending on the type of transaction and the chainID, we may need
 	// to update V in a specific way.
@@ -47,14 +48,14 @@ func GetJsonSignature(tx *types.Transaction) Signature {
 	V.Set(v)
 
 	switch tx.Type() {
-	case types.LegacyTxType:
+	case ethtypes.LegacyTxType:
 		// Otherwise, it's just a homestead and we just return V
 		if tx.Protected() { // use directly, the tx's chainID
 			chainIdMul := new(big.Int).Mul(tx.ChainId(), big.NewInt(2))
 			V.Sub(V, chainIdMul)
 			V.Sub(V, big.NewInt(8))
 		}
-	case types.AccessListTxType, types.DynamicFeeTxType:
+	case ethtypes.AccessListTxType, ethtypes.DynamicFeeTxType:
 		// AL txs are defined to use 0 and 1 as their recovery
 		// id, add 27 to become equivalent to unprotected Homestead signatures.
 		V.Add(V, big.NewInt(27))

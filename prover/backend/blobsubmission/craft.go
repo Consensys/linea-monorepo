@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"hash"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/sha3"
 )
 

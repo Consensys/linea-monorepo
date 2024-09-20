@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -15,12 +17,12 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"math/big"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 // TODO make as many things package private as possible
@@ -107,15 +109,15 @@ func (i *FunctionalPublicInput) ToSnarkType() (FunctionalPublicInputSnark, error
 		FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 			Y:              [2]frontend.Variable{i.Y[0], i.Y[1]},
 			SnarkHash:      i.SnarkHash,
-			Eip4844Enabled: internal.Ite(i.Eip4844Enabled, 1, 0),
+			Eip4844Enabled: utils.Ite(i.Eip4844Enabled, 1, 0),
 			NbBatches:      len(i.BatchSums),
 		},
 	}
-	internal.Copy(res.X[:], i.X[:])
+	utils.Copy(res.X[:], i.X[:])
 	if len(i.BatchSums) > len(res.BatchSums) {
 		return res, errors.New("batches do not fit in circuit")
 	}
-	for n := internal.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
+	for n := utils.Copy(res.BatchSums[:], i.BatchSums); n < len(res.BatchSums); n++ {
 		res.BatchSums[n] = 0
 	}
 	return res, nil
@@ -147,7 +149,7 @@ func (i *FunctionalPublicInput) Sum(opts ...FPISumOption) ([]byte, error) {
 	hsh.Write(i.Y[0])
 	hsh.Write(i.Y[1])
 	hsh.Write(i.SnarkHash)
-	hsh.Write(internal.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
+	hsh.Write(utils.Ite(i.Eip4844Enabled, []byte{1}, []byte{0}))
 	hsh.Write(batchesSum)
 	return hsh.Sum(nil), nil
 }
@@ -291,8 +293,8 @@ func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Ele
 	}
 
 	assignment = &Circuit{
-		Dict:        test_vector_utils.ToVariableSlice(dict),
-		BlobBytes:   test_vector_utils.ToVariableSlice(blobBytes),
+		Dict:        utils.ToVariableSlice(dict),
+		BlobBytes:   utils.ToVariableSlice(blobBytes),
 		PublicInput: publicInput,
 		FuncPI:      sfpi,
 	}
@@ -315,7 +317,7 @@ func BatchesChecksumAssign(ends []int, payload []byte) [][]byte {
 
 	batchStart := 0
 	for i := range res {
-		ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
+		gnarkutil.ChecksumLooselyPackedBytes(payload[batchStart:ends[i]], buf[:], hsh)
 		res[i] = bytes.Clone(buf[:])
 		batchStart = ends[i]
 	}

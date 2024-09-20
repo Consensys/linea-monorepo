@@ -1,15 +1,16 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 type TxnDataFetcher struct {
@@ -23,31 +24,21 @@ type TxnDataFetcher struct {
 	ComputeSelectorFromAddress wizard.ProverAction
 }
 
-// TxnData models the arithmetization's TxnData module
-type TxnData struct {
-	AbsTxNum, AbsTxNumMax ifaces.Column // Absolute number of the transaction (starts from 1 and acts as an Active Filter), and the maximum number of transactions
-	RelTxNum, RelTxNumMax ifaces.Column // Relative TxNum inside the block,
-	FromHi, FromLo        ifaces.Column // Sender address
-	IsLastTxOfBlock       ifaces.Column // 1 if this is the last transaction inside the block
-	RelBlock              ifaces.Column // Relative Block number inside the batch
-	Ct                    ifaces.Column
-}
-
 // NewTxnDataFetcher returns a new TxnDataFetcher with initialized columns that are not constrained.
-func NewTxnDataFetcher(comp *wizard.CompiledIOP, name string, td *TxnData) TxnDataFetcher {
+func NewTxnDataFetcher(comp *wizard.CompiledIOP, name string, td *arith.TxnData) TxnDataFetcher {
 	size := td.Ct.Size()
 	res := TxnDataFetcher{
-		RelBlock:      utilities.CreateCol(name, "REL_BLOCK", size, comp),
-		AbsTxNum:      utilities.CreateCol(name, "ABS_TX_NUM", size, comp),
-		FromHi:        utilities.CreateCol(name, "FROM_HI", size, comp),
-		FromLo:        utilities.CreateCol(name, "FROM_LO", size, comp),
-		FilterFetched: utilities.CreateCol(name, "FILTER_FETCHED", size, comp),
+		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
+		AbsTxNum:      util.CreateCol(name, "ABS_TX_NUM", size, comp),
+		FromHi:        util.CreateCol(name, "FROM_HI", size, comp),
+		FromLo:        util.CreateCol(name, "FROM_LO", size, comp),
+		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
 	}
 	return res
 }
 
 // DefineTxnDataFetcher specifies the constraints of the TxnDataFetcher with respect to the arithmetization's TxnData
-func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, name string, td *TxnData) {
+func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, name string, td *arith.TxnData) {
 	fetcher.SelectorFromAddress, fetcher.ComputeSelectorFromAddress = dedicated.IsZero(
 		comp,
 		sym.Sub(
@@ -100,7 +91,7 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 }
 
 // AssignTxnDataFetcher assigns the data in the TxnDataFetcher using data fetched from the TxnData
-func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td *TxnData) {
+func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td *arith.TxnData) {
 	size := td.Ct.Size()
 	relBlock := make([]field.Element, size)
 	absTxNum := make([]field.Element, size)

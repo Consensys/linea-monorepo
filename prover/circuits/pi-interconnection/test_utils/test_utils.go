@@ -2,15 +2,16 @@ package test_utils
 
 import (
 	"encoding/base64"
-	"github.com/consensys/zkevm-monorepo/prover/backend/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/test_utils"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
-	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
-	"github.com/consensys/zkevm-monorepo/prover/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +32,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	blobResp, err := blobsubmission.CraftResponse(&blobReq)
 	assert.NoError(t, err)
 
-	execReq := pi_interconnection.ExecutionRequest{
+	execReq := public_input.Execution{
 		L2MsgHashes:            [][32]byte{internal.Uint64To32Bytes(4)},
 		FinalStateRootHash:     finalStateRootHash,
 		FinalBlockNumber:       9,
@@ -43,9 +44,8 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MsgHashes))
 
 	return pi_interconnection.Request{
-		DecompDict:     blobtesting.GetDict(t),
 		Decompressions: []blobsubmission.Response{*blobResp},
-		Executions:     []pi_interconnection.ExecutionRequest{execReq},
+		Executions:     []public_input.Execution{execReq},
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,

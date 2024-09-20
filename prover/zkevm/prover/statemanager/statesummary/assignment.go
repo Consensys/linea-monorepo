@@ -4,13 +4,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // stateSummaryAssignmentBuilder is the struct holding the logic for assigning
@@ -119,6 +119,15 @@ func (ss *stateSummaryAssignmentBuilder) pushBlockTraces(batchNumber int, traces
 		}
 
 		if newAddress != curAddress {
+			// This addresses the case where the segment is Read|ReadZero. In
+			// that situation, the account trace is at the beginning of the
+			// segment. When that happens, we want to be sure that the
+			// storage rows and the account segment arise in the same position.
+			if len(subSegment.storageTraces) > 0 {
+				curSegment[len(curSegment)-1].storageTraces = subSegment.storageTraces
+				subSegment = accountSubSegmentWitness{}
+			}
+
 			ss.pushAccountSegment(batchNumber, curSegment)
 			curSegment = accountSegmentWitness{}
 			curAddress = newAddress
@@ -133,6 +142,10 @@ func (ss *stateSummaryAssignmentBuilder) pushBlockTraces(batchNumber int, traces
 		}
 
 		subSegment.storageTraces = append(subSegment.storageTraces, trace)
+	}
+
+	if len(subSegment.storageTraces) > 0 {
+		curSegment[len(curSegment)-1].storageTraces = subSegment.storageTraces
 	}
 
 	ss.pushAccountSegment(batchNumber, curSegment)
@@ -301,15 +314,20 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 	}
 
 	runConcurrent([]wizard.ProverAction{
+		ss.StateSummary.Account.Initial.CptHasEmptyCodeHash,
+		ss.StateSummary.Account.Final.CptHasEmptyCodeHash,
 		ss.StateSummary.Account.ComputeAddressHash,
-		ss.StateSummary.Account.ComputeAddressLimbs,
 		ss.StateSummary.Account.ComputeHashFinal,
 		ss.StateSummary.Account.ComputeHashInitial,
-		ss.StateSummary.Storage.ComputeKeyLimbsHi,
-		ss.StateSummary.Storage.ComputeKeyLimbsLo,
 		ss.StateSummary.Storage.ComputeKeyHash,
 		ss.StateSummary.Storage.ComputeOldValueHash,
 		ss.StateSummary.Storage.ComputeNewValueHash,
+		ss.StateSummary.AccumulatorStatement.CptSameTypeAsBefore,
+	})
+
+	runConcurrent([]wizard.ProverAction{
+		ss.StateSummary.Account.ComputeAddressLimbs,
+		ss.StateSummary.Storage.ComputeKeyLimbs,
 	})
 
 	runConcurrent([]wizard.ProverAction{

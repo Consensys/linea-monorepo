@@ -1,33 +1,38 @@
 package logs
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 // RollingSelector is used to fetch the last rolling hash and its associated message number
 type RollingSelector struct {
 	// Exists contains a 1 if there exists at least one rolling hash log
 	Exists ifaces.Column
+	// the Hi/Lo part of the first Rolling Hash found in the logs
+	FirstHi, FirstLo ifaces.Column
 	// the Hi/Lo part of the last Rolling Hash found in the logs
 	LastHi, LastLo ifaces.Column
-	// the last message number of the last Rolling hash log
-	LastMessageNo ifaces.Column
+	// the first/last message number of the last Rolling hash log
+	FirstMessageNo, LastMessageNo ifaces.Column
 }
 
 // NewRollingSelector returns a new RollingSelector with initialized columns that are not constrained.
 func NewRollingSelector(comp *wizard.CompiledIOP, name string) RollingSelector {
 	res := RollingSelector{
-		Exists:        utilities.CreateCol(name, "EXISTS", 1, comp),
-		LastHi:        utilities.CreateCol(name, "LAST_HI", 1, comp),
-		LastLo:        utilities.CreateCol(name, "LAST_LO", 1, comp),
-		LastMessageNo: utilities.CreateCol(name, "LAST_MESSAGE_NO", 1, comp),
+		Exists:         util.CreateCol(name, "EXISTS", 1, comp),
+		FirstHi:        util.CreateCol(name, "FIRST_HI", 1, comp),
+		FirstLo:        util.CreateCol(name, "FIRST_LO", 1, comp),
+		LastHi:         util.CreateCol(name, "LAST_HI", 1, comp),
+		LastLo:         util.CreateCol(name, "LAST_LO", 1, comp),
+		FirstMessageNo: util.CreateCol(name, "FIRST_MESSAGE_NO", 1, comp),
+		LastMessageNo:  util.CreateCol(name, "LAST_MESSAGE_NO", 1, comp),
 	}
 	return res
 }
@@ -38,16 +43,19 @@ func DefineRollingSelector(comp *wizard.CompiledIOP, sel RollingSelector, name s
 	isActive := fetchedHash.filterFetched
 
 	// set the RollingSelector columns as public in order to get accessors
-	comp.Columns.SetStatus(sel.Exists.GetColID(), column.Proof)
-	comp.Columns.SetStatus(sel.LastHi.GetColID(), column.Proof)
-	comp.Columns.SetStatus(sel.LastLo.GetColID(), column.Proof)
-	comp.Columns.SetStatus(sel.LastMessageNo.GetColID(), column.Proof)
+	var allCols = []ifaces.Column{sel.Exists, sel.FirstHi, sel.FirstLo, sel.LastHi, sel.LastLo, sel.FirstMessageNo, sel.LastMessageNo}
+	for _, col := range allCols {
+		comp.Columns.SetStatus(col.GetColID(), column.Proof)
+	}
 
 	// get accessors for columns of size 1
 	accExists := accessors.NewFromPublicColumn(sel.Exists, 0)
-	accessLastHi := accessors.NewFromPublicColumn(sel.LastHi, 0)           // to fetch the only field element in the column
-	accessLastLo := accessors.NewFromPublicColumn(sel.LastLo, 0)           // to fetch the only field element in the column
-	accessLastMsgNo := accessors.NewFromPublicColumn(sel.LastMessageNo, 0) // to fetch the only field element in the column
+	accessFirstHi := accessors.NewFromPublicColumn(sel.FirstHi, 0)           // to fetch the only field element in the column
+	accessFirstLo := accessors.NewFromPublicColumn(sel.FirstLo, 0)           // to fetch the only field element in the column
+	accessFirstMsgNo := accessors.NewFromPublicColumn(sel.FirstMessageNo, 0) // to fetch the only field element in the column
+	accessLastHi := accessors.NewFromPublicColumn(sel.LastHi, 0)             // to fetch the only field element in the column
+	accessLastLo := accessors.NewFromPublicColumn(sel.LastLo, 0)             // to fetch the only field element in the column
+	accessLastMsgNo := accessors.NewFromPublicColumn(sel.LastMessageNo, 0)   // to fetch the only field element in the column
 
 	// set the exists flag
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "EXISTS"),
@@ -56,40 +64,30 @@ func DefineRollingSelector(comp *wizard.CompiledIOP, sel RollingSelector, name s
 			accExists,
 		),
 	)
+	// local openings for the first values
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "FIRST_HI"),
+		sym.Sub(
+			fetchedHash.Hi,
+			accessFirstHi,
+		),
+	)
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "FIRST_LO"),
+		sym.Sub(
+			fetchedHash.Lo,
+			accessFirstLo,
+		),
+	)
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "FIRST_MSG_NO"),
+		sym.Sub(
+			fetchedMsg.Lo,
+			accessFirstMsgNo,
+		),
+	)
 
-	// checkLastELemConsistency checks that the last element of the active part of parentCol is present in the field element of acc
-	checkLastELemConsistency := func(parentCol ifaces.Column, acc ifaces.Accessor) {
-		// active is already constrained in the fetcher, no need to constrain it again
-		// two cases: Case 1: isActive is not completely filled with 1s, then parentCol[i] is equal to acc at the last row i where isActive[i] is 1
-		comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s_%s", name, "IS_ACTIVE_BORDER_CONSTRAINT", parentCol.GetColID()),
-			sym.Mul(
-				isActive,
-				sym.Sub(1,
-					column.Shift(isActive, 1),
-				),
-				sym.Sub(
-					parentCol,
-					acc,
-				),
-			),
-		)
-
-		// Case 2: isActive is completely filled with 1s, in which case we ask that isActive[size]*(parentCol[size]-acc) = 0
-		// i.e. at the last row, parentCol contains the same element as acc
-		comp.InsertLocal(0, ifaces.QueryIDf("%s_%s_%s", name, "IS_ACTIVE_FULL_CONSTRAINT", parentCol.GetColID()),
-			sym.Mul(
-				column.Shift(isActive, -1),
-				sym.Sub(
-					column.Shift(parentCol, -1),
-					acc,
-				),
-			),
-		)
-	}
 	// define the consistency constraints
-	checkLastELemConsistency(fetchedHash.Hi, accessLastHi)
-	checkLastELemConsistency(fetchedHash.Lo, accessLastLo)
-	checkLastELemConsistency(fetchedMsg.Lo, accessLastMsgNo)
+	util.CheckLastELemConsistency(comp, isActive, fetchedHash.Hi, accessLastHi, name)
+	util.CheckLastELemConsistency(comp, isActive, fetchedHash.Lo, accessLastLo, name)
+	util.CheckLastELemConsistency(comp, isActive, fetchedMsg.Lo, accessLastMsgNo, name)
 }
 
 // AssignRollingSelector assigns the data in the RollingSelector using the ExtractedData fetched from the arithmetization
@@ -107,9 +105,16 @@ func AssignRollingSelector(run *wizard.ProverRuntime, selector RollingSelector, 
 			break
 		}
 	}
+	// compute first values
+	firstHi := run.GetColumnAt(fetchedHash.Hi.GetColID(), 0)
+	firstLo := run.GetColumnAt(fetchedHash.Lo.GetColID(), 0)
+	firstMsg := run.GetColumnAt(fetchedMsg.Lo.GetColID(), 0)
 
 	// assign the RollingSelector columns
 	run.AssignColumn(selector.Exists.GetColID(), smartvectors.NewRegular([]field.Element{exists}))
+	run.AssignColumn(selector.FirstHi.GetColID(), smartvectors.NewRegular([]field.Element{firstHi}))
+	run.AssignColumn(selector.FirstLo.GetColID(), smartvectors.NewRegular([]field.Element{firstLo}))
+	run.AssignColumn(selector.FirstMessageNo.GetColID(), smartvectors.NewRegular([]field.Element{firstMsg}))
 	run.AssignColumn(selector.LastHi.GetColID(), smartvectors.NewRegular([]field.Element{lastHi}))
 	run.AssignColumn(selector.LastLo.GetColID(), smartvectors.NewRegular([]field.Element{lastLo}))
 	run.AssignColumn(selector.LastMessageNo.GetColID(), smartvectors.NewRegular([]field.Element{lastMsg}))

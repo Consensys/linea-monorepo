@@ -1,17 +1,15 @@
 package v1
 
 import (
-	"encoding/binary"
 	"errors"
-	hashInterface "hash"
 
-	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 
 	"math/big"
 	"math/bits"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -19,9 +17,9 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
-	public_input "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 const (
@@ -223,6 +221,10 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 
 			internal.AssertEqualIf(api, startNext, batchSum, partialSumsT.Lookup(batchI)[0]) // if we're done with the current checksum, check that the claimed one from the table is equal to it
 			// THIS STEP REQUIRES THAT NO BATCH SHOULD BE SMALLER THAN 31 BYTES
+			//
+			// @alex: this is always the case in practice since a batch contains
+			// at least one block and one block stores a root hash which is is
+			// already more than 31 bytes.
 			batchSum = api.Select(startNext, inputAt31B.Lookup(end)[0], batchSum) // if the next one starts, the sum is the 31 byte "prefix" of the next batch; assumes any batch is at least 31 bytes long
 
 		}
@@ -243,45 +245,8 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 	return nil
 }
 
-func toBytes(ins []*big.Int) []byte {
-	res := make([]byte, len(ins))
-	for i := range ins {
-		res[i] = byte(ins[i].Uint64())
-	}
-	return res
-}
-
-// ins: nbBatches, [end byte positions], payload...
-// the result for each batch is <data (31 bytes)> ... <data (31 bytes)>
-// for soundness some kind of length indicator must later be incorporated.
 func partialChecksumBatchesPackedHint(_ *big.Int, ins []*big.Int, outs []*big.Int) error {
-	if len(outs) != MaxNbBatches {
-		return errors.New("expected exactly MaxNbBatches outputs")
-	}
-
-	nbBatches := int(ins[0].Uint64())
-	ends := toInts(ins[1 : 1+MaxNbBatches])
-	in := append(toBytes(ins[1+MaxNbBatches:]), make([]byte, 31)...) // pad with 31 bytes to avoid out of range panic TODO try removing this
-
-	hsh := hash.MIMC_BLS12_377.New()
-	buf := make([]byte, 32)
-	batchStart := 0
-
-	for i := range outs[:nbBatches] {
-		partialChecksumLooselyPackedBytes(in[batchStart:ends[i]], buf, hsh)
-		outs[i].SetBytes(buf)
-		batchStart = ends[i]
-	}
-
-	return nil
-}
-
-func toInts(ints []*big.Int) []int {
-	res := make([]int, len(ints))
-	for i := range ints {
-		res[i] = int(ints[i].Uint64())
-	}
-	return res
+	return gnarkutil.PartialChecksumBatchesPackedHint(MaxNbBatches)(nil, ins, outs)
 }
 
 func registerHints() {
@@ -417,47 +382,4 @@ func CheckDictChecksum(api frontend.API, checksum frontend.Variable, dict []fron
 	dictCrumbs = append(dictCrumbs, 3, 3, 3, 3)              // add the 0xff end-of-stream marker
 	dictPacked := internal.PackFull(api, dictCrumbs, 2)
 	return compress.AssertChecksumEquals(api, dictPacked, checksum)
-}
-
-func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashInterface.Hash) {
-	pack := func(b []byte, buffStartIndex int) {
-		for i := range buf[:buffStartIndex] {
-			buf[i] = 0
-		}
-		buf := buf[buffStartIndex:]
-		for n := copy(buf, b); n < len(buf); n++ {
-			buf[n] = 0
-		}
-	}
-
-	pack(b, 1)
-	for i := len(buf) - 1; i < len(b); i += len(buf) - 1 {
-		h.Reset()
-		h.Write(buf)
-		pack(b[i:], 1)
-		h.Write(buf)
-		pack(h.Sum(nil), 0)
-	}
-}
-
-// ChecksumLooselyPackedBytes produces the results expected by CheckBatchesSums, but more generalized
-// b is partitioned into elements of length len(buf)-1 and hashed together, with zero padding on the right if necessary.
-// the first bytes of the result are put in buf.
-// if b consists of only one "element", the result is not hashed
-func ChecksumLooselyPackedBytes(b []byte, buf []byte, h hashInterface.Hash) {
-	partialChecksumLooselyPackedBytes(b, buf, h)
-
-	// hash the length along with the partial sum
-	var numBuf [8]byte
-	binary.BigEndian.PutUint64(numBuf[:], uint64(len(b)))
-	h.Reset()
-	h.Write(numBuf[:])
-	h.Write(buf)
-
-	res := h.Sum(nil)
-
-	for i := 0; i < len(buf)-len(res); i++ { // one final "packing"
-		buf[i] = 0
-	}
-	copy(buf[len(buf)-len(res):], res)
 }

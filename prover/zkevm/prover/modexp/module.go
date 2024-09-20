@@ -1,16 +1,16 @@
 package modexp
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	// nbInstancePerCircuit256 and nbInstancePerCircuit4096 state how many
 	// instance of modexp are taken care of by a single gnark circuit in the
 	// "small" variant (256 bits) or the "large" variant (4096 bits)
-	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 20, 1
+	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 10, 1
 )
 
 // Module implements the wizard part responsible for checking the MODEXP
@@ -61,20 +61,26 @@ type Module struct {
 	hasCircuit bool
 }
 
-// NewModule constructs an instance of the modexp module. It should be called
+// NewModuleZkEvm constructs an instance of the modexp module. It should be called
 // only once.
 //
 // To define the circuit, call [Module.WithCircuit] as the present function
 // does not define them.
-func NewModule(comp *wizard.CompiledIOP, input Input, maxNbInstance256, maxNbInstance4096 int) *Module {
+func NewModuleZkEvm(comp *wizard.CompiledIOP, settings Settings) *Module {
+	return newModule(comp, newZkEVMInput(comp, settings)).
+		WithCircuit(comp, plonk.WithRangecheck(16, 6, false))
+}
+
+func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 
 	var (
-		maxNbInstance = maxNbInstance256 + maxNbInstance4096
+		settings      = input.Settings
+		maxNbInstance = settings.MaxNbInstance256 + settings.MaxNbInstance4096
 		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
 		mod           = &Module{
 			Input:                  input,
-			MaxNb256BitsInstances:  maxNbInstance256,
-			MaxNb4096BitsInstances: maxNbInstance4096,
+			MaxNb256BitsInstances:  settings.MaxNbInstance256,
+			MaxNb4096BitsInstances: settings.MaxNbInstance4096,
 			IsActive:               comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size),
 			Limbs:                  comp.InsertCommit(0, "MODEXP_LIMBS", size),
 			IsSmall:                comp.InsertCommit(0, "MODEXP_IS_SMALL", size),

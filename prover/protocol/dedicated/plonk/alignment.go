@@ -7,15 +7,15 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
@@ -139,7 +139,9 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				}
 			}
 
-			ci.numEffWitnesses = (filled-1)/ci.nbPublicInputs + 1
+			if filled > 0 {
+				ci.numEffWitnesses = utils.DivCeil(filled-1, ci.nbPublicInputs)
+			}
 
 			for filled < ci.nbPublicInputs*ci.NbCircuitInstances {
 				select {
@@ -372,12 +374,16 @@ type checkActivatorAndMask Alignment
 func (c checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
 	for i := range c.circMaskOpenings {
 		var (
-			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y
-			valActiv  = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
+			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
+			valOpened    = localOpening.Y
+			valActiv     = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
 		)
 
 		if valOpened != valActiv {
-			return fmt.Errorf("activator does not match the circMask %v", i)
+			return fmt.Errorf(
+				"%v: activator does not match the circMask %v (activator=%v, mask=%v)",
+				c.Name, i, valActiv.String(), valOpened.String(),
+			)
 		}
 	}
 

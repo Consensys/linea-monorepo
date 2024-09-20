@@ -1,15 +1,15 @@
 package statesummary
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // StoragePeek provides the columns to represent a peek to an account storage
@@ -33,9 +33,9 @@ type StoragePeek struct {
 	// KeyLimbs represents the key in limb decomposition.
 	KeyLimbs byte32cmp.LimbColumns
 
-	// ComputeKeyLimbsHi and ComputeKeyLimbLo are responsible for computing the
+	// ComputeKeyLimbs and ComputeKeyLimbLo are responsible for computing the
 	// "hi" and the "lo" limbs of the KeyLimbs.
-	ComputeKeyLimbsHi, ComputeKeyLimbsLo wizard.ProverAction
+	ComputeKeyLimbs wizard.ProverAction
 
 	// KeyIncreased is a column indicating whether the current storage
 	// key is strictly greater than the previous one.
@@ -115,10 +115,7 @@ func newStoragePeek(comp *wizard.CompiledIOP, size int, name string) StoragePeek
 		sym.Sub(res.NewValueHash, hashOfZeroStorage()),
 	)
 
-	var keyLimbsHi, keyLimbsLo byte32cmp.LimbColumns
-	keyLimbsHi, res.ComputeKeyLimbsHi = byte32cmp.Decompose(comp, res.Key.Hi, 16, 16)
-	keyLimbsLo, res.ComputeKeyLimbsLo = byte32cmp.Decompose(comp, res.Key.Lo, 16, 16)
-	res.KeyLimbs = byte32cmp.FuseLimbs(keyLimbsLo, keyLimbsHi)
+	res.KeyLimbs, res.ComputeKeyLimbs = byte32cmp.Decompose(comp, res.KeyHash, 16, 16)
 
 	res.KeyIncreased, _, _, res.ComputeKeyIncreased = byte32cmp.CmpMultiLimbs(
 		comp,

@@ -1,14 +1,14 @@
 package logs
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 // ExtractedData contains the data extracted from the arithmetization logs:
@@ -25,12 +25,12 @@ type ExtractedData struct {
 func NewExtractedData(comp *wizard.CompiledIOP, size int, name string) ExtractedData {
 	res := ExtractedData{
 		// register Hi, Lo, the columns in which we embed the message we want to fetch from LogColumns
-		Hi: utilities.CreateCol(name, "EXTRACTED_HI", size, comp),
-		Lo: utilities.CreateCol(name, "EXTRACTED_LO", size, comp),
+		Hi: util.CreateCol(name, "EXTRACTED_HI", size, comp),
+		Lo: util.CreateCol(name, "EXTRACTED_LO", size, comp),
 		// register the filter on the arithmetization log columns
-		filterArith: utilities.CreateCol(name, "FILTER", size, comp),
+		filterArith: util.CreateCol(name, "FILTER", size, comp),
 		// a filter on the columns with fetched data
-		filterFetched: utilities.CreateCol(name, "FILTER_ON_FETCHED", size, comp),
+		filterFetched: util.CreateCol(name, "FILTER_ON_FETCHED", size, comp),
 	}
 	return res
 }

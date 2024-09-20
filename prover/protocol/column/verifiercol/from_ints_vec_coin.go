@@ -1,12 +1,12 @@
 package verifiercol
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Represents a columns instantiated by the values of a random indices list.
@@ -41,13 +41,10 @@ func NewFromIntVecCoin(comp *wizard.CompiledIOP, info coin.Info, ops ...FivcOp) 
 	}
 
 	if settings.padding.IsPadded {
-		fullLen := utils.NextPowerOfTwo(len(access))
-		for len(access) < fullLen {
-			access = append(access, accessors.NewConstant(field.Zero()))
-		}
+		return NewFromAccessors(access, field.Zero(), utils.NextPowerOfTwo(len(access)))
 	}
 
-	return NewFromAccessors(access)
+	return NewFromAccessors(access, field.Zero(), len(access))
 }
 
 // Passes a padding value to the Fivc

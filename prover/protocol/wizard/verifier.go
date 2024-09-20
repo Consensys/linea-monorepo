@@ -1,14 +1,14 @@
 package wizard
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
@@ -153,38 +153,41 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 				"closing"
 			*/
 			toBeConsumed := run.Spec.Coins.AllKeysAt(currRound - 1)
-			run.Coins.Exists(toBeConsumed...)
+			run.Coins.MustExists(toBeConsumed...)
 
-			/*
-				Make sure that all messages have been written and use them
-				to update the FS state.  Note that we do not need to update
-				FS using the last round of the prover because he is always
-				the last one to "talk" in the protocol.
-			*/
-			msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
-			for _, msgName := range msgsToFS {
-				instance := run.GetColumn(msgName)
-				logrus.Tracef("VERIFIER : Update fiat-shamir with proof message %v", msgName)
-				run.FS.UpdateSV(instance)
-			}
+			if !run.Spec.DummyCompiled {
 
-			msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-			for _, msgName := range msgsToFS {
-				instance := run.GetColumn(msgName)
-				logrus.Tracef("VERIFIER : Update fiat-shamir with public input %v", msgName)
-				run.FS.UpdateSV(instance)
-			}
+				/*
+					Make sure that all messages have been written and use them
+					to update the FS state.  Note that we do not need to update
+					FS using the last round of the prover because he is always
+					the last one to "talk" in the protocol.
+				*/
+				msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
+				for _, msgName := range msgsToFS {
+					instance := run.GetColumn(msgName)
+					logrus.Tracef("VERIFIER : Update fiat-shamir with proof message %v", msgName)
+					run.FS.UpdateSV(instance)
+				}
 
-			/*
-				Also include the prover's allegations for all evaluations
-			*/
-			queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
-			for _, qName := range queries {
-				// Implicitly, this will panic whenever we start supporting
-				// a new type of query params
-				logrus.Tracef("VERIFIER : Update fiat-shamir with query parameters %v", qName)
-				params := run.QueriesParams.MustGet(qName)
-				params.UpdateFS(run.FS)
+				msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
+				for _, msgName := range msgsToFS {
+					instance := run.GetColumn(msgName)
+					logrus.Tracef("VERIFIER : Update fiat-shamir with public input %v", msgName)
+					run.FS.UpdateSV(instance)
+				}
+
+				/*
+					Also include the prover's allegations for all evaluations
+				*/
+				queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
+				for _, qName := range queries {
+					// Implicitly, this will panic whenever we start supporting
+					// a new type of query params
+					logrus.Tracef("VERIFIER : Update fiat-shamir with query parameters %v", qName)
+					params := run.QueriesParams.MustGet(qName)
+					params.UpdateFS(run.FS)
+				}
 			}
 		}
 

@@ -4,14 +4,14 @@
 package keccakf
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const (
@@ -106,11 +106,11 @@ func NewModule(
 
 	// Then initializes the submodules : declare the columns and all the
 	// constraints per submodule.
-	mod.IO.newInput(comp, round, maxNumKeccakf, mod)
+	mod.IO.newInput(comp, maxNumKeccakf, mod)
 	mod.theta = newTheta(comp, round, maxNumKeccakf, mod.state, mod.lookups)
 	mod.rho = newRho(comp, round, maxNumKeccakf, mod.theta.aThetaSlicedBaseB)
 	mod.piChiIota = newPiChiIota(comp, round, maxNumKeccakf, mod)
-	mod.IO.newOutput(comp, round, maxNumKeccakf, mod)
+	mod.IO.newOutput(comp, maxNumKeccakf, mod)
 
 	return mod
 }
@@ -132,12 +132,12 @@ func (mod *Module) Assign(
 
 	lu := mod.lookups
 	mod.assignStateAndBlocks(run, traces, numKeccakf)
-	mod.IO.assignInputOutput(run, traces)
+	mod.IO.assignBlockFlags(run, traces)
 	mod.theta.assign(run, mod.state, lu, numKeccakf)
 	mod.rho.assign(run, mod.theta.aThetaSlicedBaseB, numKeccakf)
 	mod.piChiIota.assign(run, numKeccakf, lu, mod.rho.aRho,
 		mod.Blocks, mod.IO.IsBlockBaseB)
-	mod.IO.assignHashOutPut(run)
+	mod.IO.assignHashOutPut(run, mod.isActive)
 
 }
 
@@ -169,8 +169,7 @@ func (mod *Module) assignStateAndBlocks(
 		}
 	}
 
-	// Assign the block in BaseB. Recall that the columns will contains only
-	// the blocks starting from the second block of a hash. The Xoring with the state
+	// Assign the block in BaseB.  The Xoring with the state
 	// is done at the end of the previous call of the sponge function (at its
 	// last operation during the iota phase).
 	blocksVal := [numLanesInBlock][]field.Element{}

@@ -1,14 +1,16 @@
 package utilities
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"os"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 // CreateCol is a utility function to quickly register columns
@@ -57,5 +59,35 @@ func MustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
 		0,
 		ifaces.QueryIDf("%v_MUST_BE_BINARY", c.GetColID()),
 		sym.Mul(c, sym.Sub(c, 1)),
+	)
+}
+
+// CheckLastELemConsistency checks that the last element of the active part of parentCol is present in the field element of acc
+func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, parentCol ifaces.Column, acc ifaces.Accessor, name string) {
+	// active is already constrained in the fetcher, no need to constrain it again
+	// two cases: Case 1: isActive is not completely filled with 1s, then parentCol[i] is equal to acc at the last row i where isActive[i] is 1
+	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s_%s", name, "IS_ACTIVE_BORDER_CONSTRAINT", parentCol.GetColID()),
+		sym.Mul(
+			isActive,
+			sym.Sub(1,
+				column.Shift(isActive, 1),
+			),
+			sym.Sub(
+				parentCol,
+				acc,
+			),
+		),
+	)
+
+	// Case 2: isActive is completely filled with 1s, in which case we ask that isActive[size]*(parentCol[size]-acc) = 0
+	// i.e. at the last row, parentCol contains the same element as acc
+	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s_%s", name, "IS_ACTIVE_FULL_CONSTRAINT", parentCol.GetColID()),
+		sym.Mul(
+			column.Shift(isActive, -1),
+			sym.Sub(
+				column.Shift(parentCol, -1),
+				acc,
+			),
+		),
 	)
 }

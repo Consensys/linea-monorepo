@@ -2,19 +2,21 @@ package v0
 
 import (
 	"fmt"
+
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/frontend"
 	snarkMiMC "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
-	public_input "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 )
 
 type (
@@ -137,7 +139,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	xBytes := internal.ToBytes(api, c.X[1])
+	xBytes := utils.ToBytes(api, c.X[1])
 	rc := rangecheck.New(api)
 	const nbBitsLower = (fr377.Bits - 1) % 8
 	rc.Check(xBytes[0], nbBitsLower)

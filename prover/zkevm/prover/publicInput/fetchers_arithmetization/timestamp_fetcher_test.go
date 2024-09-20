@@ -1,33 +1,29 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestTimestampFetcher tests the fetching of the timestamp data
 func TestTimestampFetcher(t *testing.T) {
 
 	// initialize sample block data from a mock test data CSV file
-	ctBlockData := utilities.InitializeCsv("../testdata/blockdata_mock.csv", t)
+	ctBlockData := util.InitializeCsv("../testdata/blockdata_mock.csv", t)
 	var (
-		bdc     *BlockDataCols
+		bdc     *arith.BlockDataCols
 		fetcher TimestampFetcher
 	)
 
 	cmp := wizard.Compile(func(b *wizard.Builder) {
 		// register sample arithmetization columns
-		bdc = &BlockDataCols{
-			RelBlock: ctBlockData.GetCommit(b, "REL_BLOCK"),
-			Inst:     ctBlockData.GetCommit(b, "INST"),
-			Ct:       ctBlockData.GetCommit(b, "CT"),
-			DataHi:   ctBlockData.GetCommit(b, "DATA_HI"),
-			DataLo:   ctBlockData.GetCommit(b, "DATA_LO"),
-		}
+		bdc, _, _ = arith.DefineTestingArithModules(b, ctBlockData, nil, nil)
 		// create a new timestamp fetcher
 		fetcher = NewTimestampFetcher(b.CompiledIOP, "TIMESTAMP_FETCHER_FROM_ARITH", bdc)
 		// constrain the timestamp fetcher
@@ -35,14 +31,7 @@ func TestTimestampFetcher(t *testing.T) {
 	}, dummy.Compile)
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 		// assign the CSV columns
-		ctBlockData.Assign(
-			run,
-			"REL_BLOCK",
-			"INST",
-			"CT",
-			"DATA_HI",
-			"DATA_LO",
-		)
+		arith.AssignTestingArithModules(run, ctBlockData, nil, nil)
 		// assign the timestamp fetcher
 		AssignTimestampFetcher(run, fetcher, bdc)
 		// two simple sanity checks based on the mock test data

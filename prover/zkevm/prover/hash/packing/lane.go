@@ -1,17 +1,17 @@
 package packing
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 // laneRepackingInputs collects the inputs of the [newLane] function.
@@ -44,11 +44,11 @@ type laneRepacking struct {
 func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInput) laneRepacking {
 	var (
 		size                  = utils.NextPowerOfTwo(pckInp.PackingParam.NbOfLanesPerBlock() * pckInp.MaxNumBlocks)
-		createCol             = common.CreateColFn(comp, LANE, size)
+		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size)
 		isFirstSliceOfNewHash = spaghetti.newHashSp
 		maxValue              = pckInp.PackingParam.LaneSizeBytes()
 		decomposedLenSp       = spaghetti.decLenSp
-		pa                    = dedicated.AccumulateUpToMax(comp, maxValue, decomposedLenSp)
+		pa                    = dedicated.AccumulateUpToMax(comp, maxValue, decomposedLenSp, spaghetti.filterSpaghetti)
 		spaghettiSize         = spaghetti.spaghettiSize
 	)
 
@@ -61,7 +61,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 		Lanes:                createCol("Lane"),
 		IsFirstLaneOfNewHash: createCol("IsFirstLaneOfNewHash"),
 		IsLaneActive:         createCol("IsLaneActive"),
-		coeff:                comp.InsertCommit(0, ifaces.ColIDf("Coefficient"), spaghettiSize),
+		coeff:                comp.InsertCommit(0, ifaces.ColIDf("Coefficient_"+pckInp.Name), spaghettiSize),
 
 		paAccUpToMax:   pa,
 		isLaneComplete: pa.IsMax,
@@ -81,7 +81,7 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 
 	// constraints over isFirstLaneOfNewHash
 	// Project the isFirstLaneOfNewHash from isFirstSliceOfNewHash
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_IsFirstLaneOfHash"),
+	projection.InsertProjection(comp, ifaces.QueryIDf("Project_IsFirstLaneOfHash_"+pckInp.Name),
 		[]ifaces.Column{isFirstSliceOfNewHash},
 		[]ifaces.Column{l.IsFirstLaneOfNewHash},
 		l.isLaneComplete, l.IsLaneActive)
@@ -98,7 +98,7 @@ func (l *laneRepacking) csCoeff(comp *wizard.CompiledIOP, s spaghettiCtx) {
 
 	// coeff[last-active-row] = 1
 	comp.InsertGlobal(
-		0, ifaces.QueryIDf("Coeff_In_Last_Active_Row"),
+		0, ifaces.QueryIDf("%v_Coeff_In_Last_Active_Row", l.Inputs.pckInp.Name),
 		sym.Mul(isActive,
 			sym.Sub(column.Shift(isActive, 1), 1),
 			sym.Sub(l.coeff,
@@ -107,7 +107,7 @@ func (l *laneRepacking) csCoeff(comp *wizard.CompiledIOP, s spaghettiCtx) {
 
 	// coeff[last] = 1 // to cover the case where; last-active-row ==  last-row
 	comp.InsertLocal(
-		0, ifaces.QueryIDf("Coeff-In_Last_Row"),
+		0, ifaces.QueryIDf("%v_Coeff-In_Last_Row", l.Inputs.pckInp.Name),
 		sym.Sub(column.Shift(l.coeff, -1), 1),
 	)
 
@@ -119,7 +119,7 @@ func (l *laneRepacking) csCoeff(comp *wizard.CompiledIOP, s spaghettiCtx) {
 	)
 	res = sym.Add(res, column.Shift(l.isLaneComplete, 1))
 	expr := sym.Mul(sym.Sub(l.coeff, res), column.Shift(isActive, 1))
-	comp.InsertGlobal(0, ifaces.QueryIDf("Coefficient_Glob"), expr)
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_Coefficient_Glob", l.Inputs.pckInp.Name), expr)
 }
 
 // It declares the constraints over the lanes
@@ -128,14 +128,14 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 	// compute the partitioned inner product
 	//ipTaker[i] = (decomposedLimbs[i] * coeff[i]) + ipTracker[i+1]* (1- isLaneComplete[i+1])
 	// Constraints on the Partitioned Inner-Products
-	ipTracker := dedicated.InsertPartitionedIP(comp, "PIP_For_LaneRePacking",
+	ipTracker := dedicated.InsertPartitionedIP(comp, l.Inputs.pckInp.Name+"_PIP_For_LaneRePacking",
 		s.decLimbSp,
 		l.coeff,
-		column.Shift(l.isLaneComplete, 1),
+		l.isLaneComplete,
 	)
 
 	// Project the lanes from ipTracker over the Lane column.
-	projection.InsertProjection(comp, ifaces.QueryIDf("ProjectOverLanes"),
+	projection.InsertProjection(comp, ifaces.QueryIDf("%v_ProjectOverLanes", l.Inputs.pckInp.Name),
 		[]ifaces.Column{ipTracker},
 		[]ifaces.Column{l.Lanes},
 		l.isLaneComplete, l.IsLaneActive,
@@ -202,8 +202,9 @@ func (l *laneRepacking) assignLane(run *wizard.ProverRuntime) {
 		blocks, flag         = l.getBlocks(run, l.Inputs.pckInp)
 	)
 	var f field.Element
+
 	if len(flag) != len(blocks) {
-		utils.Panic("should have one flag per block")
+		utils.Panic("should have one flag per block numFlags=%v numBlocks=%v", len(flag), len(blocks))
 	}
 
 	for k, block := range blocks {
@@ -250,7 +251,7 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 	var isFirstBlockOfHash []int
 	isFirstBlockOfHash = append(isFirstBlockOfHash, 1)
 	for pos := 0; pos < len(limbs); pos++ {
-		nbyte := int(nBytes[pos].Uint64())
+		nbyte := field.ToInt(&nBytes[pos])
 		s = s + nbyte
 
 		// Extract the limb, which is left aligned to the 16-th byte
@@ -290,5 +291,14 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 			utils.Panic("the number of the blocks %v passes the limit %v", ctr, inp.MaxNumBlocks)
 		}
 	}
+
+	// This corresponds to the edge-case were no blocks are being processed. In
+	// that situation we can simply return empty lists. This addressment is
+	// necessary because by default, [isFirstBlockOfHash] is initialized with
+	// one value while the blocks are not.
+	if len(block) == 0 {
+		return [][]byte{}, []int{}
+	}
+
 	return block, isFirstBlockOfHash
 }

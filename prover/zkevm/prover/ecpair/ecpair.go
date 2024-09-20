@@ -1,9 +1,9 @@
 package ecpair
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
@@ -36,7 +36,7 @@ const (
 // - AlignedMillerLoopCircuit: the aligned columns for the MillerLoop circuit
 // - AlignedFinalExpCircuit: the aligned columns for the FinalExp circuit
 //
-// Use [NewECPair] to create a new instance of ECPair with the limits and source columns.
+// Use [newECPair] to create a new instance of ECPair with the limits and source columns.
 //
 // By default, the gnark circuit is not attached to the module. Use methods
 // [WithPairingCircuit] and [WithG2MembershipCircuit] for attaching the circuit
@@ -55,7 +55,27 @@ type ECPair struct {
 	AlignedFinalExpCircuit   *plonk.Alignment
 }
 
-func NewECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource) *ECPair {
+func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits) *ECPair {
+	return newECPair(
+		comp,
+		limits,
+		&ECPairSource{
+			CsEcpairing:       comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECPAIRING"),
+			ID:                comp.Columns.GetHandle("ecdata.ID"),
+			Limb:              comp.Columns.GetHandle("ecdata.LIMB"),
+			SuccessBit:        comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
+			Index:             comp.Columns.GetHandle("ecdata.INDEX"),
+			IsEcPairingData:   comp.Columns.GetHandle("ecdata.IS_ECPAIRING_DATA"),
+			IsEcPairingResult: comp.Columns.GetHandle("ecdata.IS_ECPAIRING_RESULT"),
+			AccPairings:       comp.Columns.GetHandle("ecdata.ACC_PAIRINGS"),
+			TotalPairings:     comp.Columns.GetHandle("ecdata.TOTAL_PAIRINGS"),
+			CsG2Membership:    comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
+		},
+	).WithG2MembershipCircuit(comp).
+		WithPairingCircuit(comp, plonk.WithRangecheck(16, 6, true))
+}
+
+func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource) *ECPair {
 	size := limits.sizeECPair()
 	createCol := createColFn(comp, nameECPair, size)
 

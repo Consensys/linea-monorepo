@@ -17,8 +17,8 @@ import (
 	"github.com/consensys/gnark/std/algebra/emulated/sw_bw6761"
 	"github.com/consensys/gnark/std/math/emulated"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 )
 
 // shorthand for the emulated types as this can get verbose very quickly with

@@ -7,13 +7,14 @@ import (
 	cGkr "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/gkr"
 	"github.com/consensys/gnark/constraint"
 	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	gGkr "github.com/consensys/gnark/std/gkr"
 	"github.com/consensys/gnark/std/hash"
 	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/multicommit"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,6 +37,7 @@ func init() {
 
 	// Registers the hasher to be used in the GKR prover
 	cs.RegisterHashBuilder("mimc", mimc.NewMiMC)
+	solver.RegisterHint(mimcHintfunc)
 }
 
 // writePaddedHex appends the integer `n` (assumedly less than 1<<(4*nbDigits))

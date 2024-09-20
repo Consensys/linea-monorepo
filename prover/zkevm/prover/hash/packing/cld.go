@@ -3,25 +3,26 @@ package packing
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	iszero "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	iszero "github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 // It stores the inputs for [newDecomposition] function.
 type decompositionInputs struct {
 	// parameters for decomposition,
-	// the are used to determine the number slices and their lengths.
+	// the are used to determine the number of slices and their lengths.
 	param       generic.HashingUsecase
 	cleaningCtx cleaningCtx
+	Name        string
 }
 
 // Decomposition struct stores all the intermediate columns required to constraint correct decomposition.
@@ -39,7 +40,7 @@ type decomposition struct {
 	// decomposedLenPowers = 2^(8*decomposedLen)
 	decomposedLenPowers []ifaces.Column
 	// prover action for lengthConsistency;
-	// it checks that decomposedLimbs is of length decomposedLen.
+	// it checks that decomposedLimb is of length decomposedLen.
 	pa wizard.ProverAction
 	// it indicates the active part of the decomposition module
 	isActive ifaces.Column
@@ -109,7 +110,7 @@ func newDecomposition(comp *wizard.CompiledIOP, inp decompositionInputs) decompo
 // declare the native columns
 func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 
-	createCol := common.CreateColFn(comp, DECOMPOSITION, decomposed.size)
+	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.size)
 	for x := 0; x < decomposed.nbSlices; x++ {
 		decomposed.decomposedLimbs = append(decomposed.decomposedLimbs, createCol("Decomposed_Limbs", x))
 		decomposed.decomposedLen = append(decomposed.decomposedLen, createCol("Decomposed_Len", x))
@@ -141,15 +142,15 @@ func (decomposed *decomposition) csDecomposLen(
 
 		// Equivalence of "decomposedLenPowers" with "2^(decomposedLen * 8)"
 		comp.InsertInclusion(0,
-			ifaces.QueryIDf("Decomposed_Len_Powers_%v", j), []ifaces.Column{lu.colNumber, lu.colPowers},
+			ifaces.QueryIDf("%v_Decomposed_Len_Powers_%v", decomposed.Inputs.Name, j), []ifaces.Column{lu.colNumber, lu.colPowers},
 			[]ifaces.Column{decomposed.decomposedLen[j], decomposed.decomposedLenPowers[j]})
 	}
 	// \sum_i decomposedLen[i]=NByte
-	comp.InsertGlobal(0, ifaces.QueryIDf("DecomposedLen_IsNByte"), sym.Sub(s, imported.NByte))
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_DecomposedLen_IsNByte", decomposed.Inputs.Name), sym.Sub(s, imported.NByte))
 
 }
 
-// decomposedLimbs cis the the decomposition of cleanLimbs
+// decomposedLimbs is the the decomposition of cleanLimbs
 func (decomposed *decomposition) csDecomposition(
 	comp *wizard.CompiledIOP, cleanLimbs ifaces.Column) {
 
@@ -159,7 +160,7 @@ func (decomposed *decomposition) csDecomposition(
 		cleanLimb = sym.Add(sym.Mul(cleanLimb, decomposed.decomposedLenPowers[k]), decomposed.decomposedLimbs[k])
 	}
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("Decompose_CleanLimbs"), sym.Sub(cleanLimb, cleanLimbs))
+	comp.InsertGlobal(0, ifaces.QueryIDf("Decompose_CleanLimbs_%v", decomposed.Inputs.Name), sym.Sub(cleanLimb, cleanLimbs))
 }
 
 // /  Constraints over the form of filter and decomposedLen;
@@ -170,7 +171,7 @@ func (decomposed decomposition) csFilter(comp *wizard.CompiledIOP) {
 		// s.resIsZero = 1 iff decomposedLen = 0
 		decomposed.resIsZero[j], decomposed.paIsZero[j] = iszero.IsZero(comp, decomposed.decomposedLen[j])
 		// s.filter = (1 - s.resIsZero), this enforces filters to be binary.
-		comp.InsertGlobal(0, ifaces.QueryIDf("%v_%v", "IS_NON_ZERO", j),
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_%v_%v", decomposed.Inputs.Name, "IS_NON_ZERO", j),
 			sym.Sub(decomposed.filter[j],
 				sym.Sub(1, decomposed.resIsZero[j])),
 		)
@@ -178,7 +179,7 @@ func (decomposed decomposition) csFilter(comp *wizard.CompiledIOP) {
 
 	// filter[0] = 1 over is Active.
 	// this ensures that the first slice of the limb falls in the first column.
-	comp.InsertGlobal(0, "FIRST_SLICE_IN_FIRST_COLUMN",
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_FIRST_SLICE_IN_FIRST_COLUMN", decomposed.Inputs.Name),
 		sym.Sub(
 			decomposed.filter[0], decomposed.isActive),
 	)
@@ -222,6 +223,7 @@ func getDecompositionInputs(cleaning cleaningCtx, pckParam PackingInput) decompo
 	decInp := decompositionInputs{
 		cleaningCtx: cleaning,
 		param:       pckParam.PackingParam,
+		Name:        pckParam.Name,
 	}
 	return decInp
 }
@@ -250,11 +252,11 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		// i-th row of DecomposedLen
 		var lenRow []int
 		for j := 0; j < decomposed.nbSlices; j++ {
-			lenRow = append(lenRow, int(decomposedLen[j][i].Uint64()))
+			lenRow = append(lenRow, utils.ToInt(decomposedLen[j][i].Uint64()))
 		}
 
 		// populate DecomposedLimb
-		decomposedLimb := decomposeByLength(cleanLimbs[i], int(nByte[i].Uint64()), lenRow)
+		decomposedLimb := decomposeByLength(cleanLimbs[i], field.ToInt(&nByte[i]), lenRow)
 
 		for j := 0; j < decomposed.nbSlices; j++ {
 			decomposedLimbs[j][i] = decomposedLimb[j]
@@ -305,11 +307,11 @@ func cutUpToMax(nByte []field.Element, nbChunk, max int) (b [][]field.Element) {
 		}
 		s := 0
 		for j := 0; j < nbChunk; j++ {
-			s = s + int(a[j].Uint64())
+			s += field.ToInt(&a[j])
 			b[j] = append(b[j], a[j])
 		}
 
-		if s != int(nByte[i].Uint64()) {
+		if s != field.ToInt(&nByte[i]) {
 			utils.Panic("decomposition of nByte is not correct; nByte %v, s %v", nByte[i].Uint64(), s)
 		}
 

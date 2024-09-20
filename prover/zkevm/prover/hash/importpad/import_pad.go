@@ -1,15 +1,16 @@
 package importpad
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	cs "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	cs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 // ImportAndPadInputs collect the inputs of the [ImportAndPad] function.
@@ -48,6 +49,10 @@ type importation struct {
 
 	// Padder stores the padding-strategy-specific
 	padder padder
+
+	// helper column
+	indexIsZero ifaces.Column
+	paIsZero    wizard.ProverAction
 }
 
 // importationAssignmentBuilder is a utility struct used to build an assignment
@@ -129,25 +134,34 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		),
 	)
 
-	// IsNewHash is correctly set after the IsPadded IsInserted structure:
+	// When Index = 0, IsNewHash = 1
+	res.indexIsZero, res.paIsZero = dedicated.IsZero(comp, res.Index)
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET", inp.Name),
+		sym.Mul(res.IsActive, res.indexIsZero,
+			sym.Sub(1, res.IsNewHash),
+		),
+	)
+
+	//  IsPadded is correctly set before each newHash.
 	// IsInserted[i] * IsPadded[i-1] == IsNewHash
 	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET", inp.Name),
+		ifaces.QueryIDf("%v_IS_PADDED_WELL_SET", inp.Name),
 		sym.Sub(res.IsNewHash, sym.Mul(res.IsInserted, column.Shift(res.IsPadded, -1))),
 	)
 
-	// This addresses the boundary case of the above column
-	comp.InsertLocal(
-		0,
-		ifaces.QueryIDf("%v_IS_NEW_HASH_WELL_SET_BEGIN", inp.Name),
-		sym.Sub(res.IsNewHash, 1),
+	// before IsActive transits to 0, there should be a padding zone.
+	// IsActive[i] * (1-IsActive[i+1]) * (1-IsPadded[i]) =0
+	comp.InsertGlobal(0, ifaces.QueryIDf("%v_LAST_HASH_HAS_PADDING", inp.Name),
+		sym.Mul(res.IsActive,
+			sym.Sub(1, column.Shift(res.IsActive, 1)),
+			sym.Sub(1, res.IsPadded),
+		),
 	)
 
-	// When IsNewHash is 1, then the index must be zero
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("%v_INDEX_MUST_RESTART_AT_0", inp.Name),
-		sym.Mul(res.IsNewHash, res.Index),
+	// to handle the above constraint for the case where isActive[i] = 1  for all i .
+	// IsPadded[last-row]= isActive[last-row]
+	comp.InsertLocal(0, ifaces.QueryIDf("%v_LAST_PADDING_LAST_HASH_WELL_SET", inp.Name),
+		sym.Sub(column.Shift(res.IsActive, -1), column.Shift(res.IsPadded, -1)),
 	)
 
 	// Ensures that AccPaddedBytes is well-set
@@ -173,7 +187,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		[]ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},
 		[]ifaces.Column{res.HashNum, res.Limbs, res.NBytes, res.Index},
-		inp.Src.Data.TO_HASH,
+		inp.Src.Data.ToHash,
 		res.IsInserted,
 	)
 
@@ -184,12 +198,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		srcData = imp.Inputs.Src.Data
-		hashNum = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs   = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nBytes  = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
-		index   = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash  = srcData.TO_HASH.GetColAssignment(run).IntoRegVecSaveAlloc()
+		sha2Count = 0
+		srcData   = imp.Inputs.Src.Data
+		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs     = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 
 		iab = importationAssignmentBuilder{
 			HashNum:        common.NewVectorBuilder(imp.HashNum),
@@ -223,12 +238,16 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 	for i := range hashNum {
 
 		if toHash[i].IsZero() {
-			if i == len(hashNum)-1 {
+			// The condition of sha2Count addresses the case were sha2 is never
+			// called.
+			if sha2Count > 0 && i == len(hashNum)-1 {
 				imp.padder.pushPaddingRows(currByteSize, &iab)
 			}
 
 			continue
 		}
+
+		sha2Count++
 
 		if i > 0 && currHashNum != hashNum[i] && !currHashNum.IsZero() {
 			imp.padder.pushPaddingRows(currByteSize, &iab)
@@ -242,10 +261,8 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 			iab.IsNewHash.PushZero()
 		}
 
-		var (
-			indexInt  = int(index[i].Uint64())
-			nBytesInt = int(nBytes[i].Uint64())
-		)
+		indexInt := field.ToInt(&index[i])
+		nBytesInt := field.ToInt(&nBytes[i])
 
 		currByteSize += nBytesInt
 
@@ -266,6 +283,8 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 	iab.IsActive.PadAndAssign(run, field.Zero())
 	iab.IsNewHash.PadAndAssign(run, field.Zero())
 	iab.Padder.padAndAssign(run)
+
+	imp.paIsZero.Run(run)
 }
 
 // pushPaddingCommonColumns push an insertion row corresponding to the first

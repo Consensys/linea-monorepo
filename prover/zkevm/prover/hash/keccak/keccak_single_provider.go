@@ -4,17 +4,13 @@
 package keccak
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing"
-)
-
-const (
-	numLanesPerBlock = 17
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 )
 
 // KeccakSingleProviderInput stores the inputs for [NewKeccakSingleProvider]
@@ -36,13 +32,12 @@ type KeccakSingleProvider struct {
 	pa_cKeccak               *KeccakOverBlocks
 }
 
-// NewCustomizedKeccak implements the utilities for proving keccak hash
+// NewKeccakSingleProvider implements the utilities for proving keccak hash
 // over the streams which are encoded inside a set of structs [generic.GenDataModule].
 // It calls;
-// -  accumulate a set of structs [generic.GenDataModule] inside a single struct.
 // -  Padding module to insure the correct padding of the streams.
 // -  packing module to insure the correct packing of padded-stream into blocks.
-// - customizedKeccak to insures the correct hash computation over the given blocks.
+// -  keccakOverBlocks to insures the correct hash computation over the given blocks.
 func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderInput) *KeccakSingleProvider {
 	var (
 		maxNumKeccakF = inp.MaxNumKeccakF
@@ -69,6 +64,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 				IsNewHash: imported.IsNewHash,
 				IsActive:  imported.IsActive,
 			},
+			Name: "KECCAK",
 		}
 
 		packing = packing.NewPack(comp, inpPck)
@@ -128,7 +124,7 @@ func (m *KeccakSingleProvider) Run(run *wizard.ProverRuntime) {
 
 func isBlock(col ifaces.Column) []ifaces.Column {
 	var isBlock []ifaces.Column
-	for j := 0; j < numLanesPerBlock; j++ {
+	for j := 0; j < generic.KeccakUsecase.NbOfLanesPerBlock(); j++ {
 		isBlock = append(isBlock, col)
 	}
 	return isBlock

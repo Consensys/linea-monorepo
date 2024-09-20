@@ -14,13 +14,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress/lzss"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/stretchr/testify/assert"
@@ -156,7 +156,8 @@ func assertBatchesConsistent(t *testing.T, raw, decoded [][]byte) {
 				from = decodedTx[4]
 			}
 
-			assert.Equal(t, ethereum.GetFrom(tx).Bytes(), from, "tx from should match")
+			txFrom := ethereum.GetFrom(tx)
+			assert.Equal(t, txFrom[:], from, "tx from should match")
 
 			var decodedTxLen writeCounter
 			assert.NoError(t, EncodeTxForCompression(tx, &decodedTxLen))

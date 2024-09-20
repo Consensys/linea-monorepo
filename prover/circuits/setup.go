@@ -27,8 +27,8 @@ import (
 
 	"github.com/consensys/gnark/constraint"
 	gnarkio "github.com/consensys/gnark/io"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Setup contains the proving and verifying keys of a circuit, as well as the constraint system.
@@ -89,7 +89,7 @@ func (s *Setup) CurveID() ecc.ID {
 	return fieldToCurve(s.Circuit.Field())
 }
 
-func (s *Setup) VerifiyingKeyDigest() string {
+func (s *Setup) VerifyingKeyDigest() string {
 	r, err := objectChecksum(s.VerifyingKey)
 	if err != nil {
 		utils.Panic("could not get the verifying key digest: %v", err)

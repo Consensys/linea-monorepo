@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +45,7 @@ func TestNextPowerOfTwo(t *testing.T) {
 	// To check if the code panics if large values (e.g. val > 2 ** 62) are sent as input
 	largeNum := 1 << 62
 	largeNum++
-	require.PanicsWithValue(t, "Input is too large", func() { utils.NextPowerOfTwo(largeNum) },
+	require.PanicsWithValue(t, "input out of range", func() { utils.NextPowerOfTwo(largeNum) },
 		"NextPowerOfTwo should panic with 'Input is too large' message")
 
 }

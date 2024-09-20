@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 )
 
 type hashAnyTestCircuit struct {
@@ -58,7 +58,7 @@ func TestHashGnarkAny(t *testing.T) {
 		t.Fatalf("could not get the witness: %v", err)
 	}
 
-	err = ccs.IsSolved(wit, gkrmimc.SolverOpts(ccs)...)
+	err = ccs.IsSolved(wit)
 	if err != nil {
 		t.Fatalf("circuit not solved: %v", err.Error())
 	}

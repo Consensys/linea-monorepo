@@ -1,11 +1,11 @@
 package selfrecursion
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Registers the polynomial I(X) = (0, 1, 2, 3, 4, 5, ..., nBcol-1)
@@ -54,14 +54,25 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	// round
 	maxSize := utils.NextPowerOfTwo(ctx.VortexCtx.CommittedRowsCount)
 	roundStartAt := 0
+
 	// Consider the precomputed columns
 	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
+
 		// Sanity-check : if coms in precomputeds have length zero then the
 		// associated Dh should be nil
 		if (numPrecomputeds == 0) != (ctx.Columns.precompRoot == nil) {
 			panic("nilness mismatch for precomputeds")
 		}
+
+		// The Vortex compiler is supposed to add "shadow columns" ensuring that
+		// every round (counting the precomputations as a round) uses ring-SIS
+		// polynomials fully. Otherwise, the compilation will not be able to
+		// be successful.
+		if (numPrecomputeds*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
+			panic("the ring-SIS polynomials are not fully used")
+		}
+
 		// Registers the commitment key (if this matches an existing key
 		// then the preexisting precomputed key is reused.
 		ah[0] = ctx.comp.InsertPrecomputed(
@@ -77,10 +88,12 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		precompOffset += 1
 	}
+
 	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
 
 		// Sanity-check : if coms in rounds has length zero then the
-		// associated Dh should be nil
+		// associated Dh should be nil. That happens when the examinated round
+		// is a "dry" round or when it has been self-recursed already.
 		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
 			panic("nilness mismatch")
 		}
@@ -89,6 +102,14 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		if len(comsInRoundsI) == 0 {
 			// and ah[i] is nil
 			continue
+		}
+
+		// The Vortex compiler is supposed to add "shadow columns" ensuring that
+		// every round (counting the precomputations as a round) uses ring-SIS
+		// polynomials fully. Otherwise, the compilation will not be able to
+		// be successful.
+		if (len(comsInRoundsI)*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
+			panic("the ring-SIS polynomials are not fully used")
 		}
 
 		// Registers the commitment key (if this matches an existing key

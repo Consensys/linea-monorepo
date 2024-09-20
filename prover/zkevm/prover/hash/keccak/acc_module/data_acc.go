@@ -2,17 +2,17 @@
 package gen_acc
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	projection "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	projection "github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 const (
@@ -73,7 +73,7 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 		projection.InsertProjection(comp, ifaces.QueryIDf("Stitch_Modules_%v", i),
 			[]ifaces.Column{gbm.HashNum, gbm.Limb, gbm.NBytes, gbm.Index},
 			[]ifaces.Column{d.Provider.HashNum, d.Provider.Limb, d.Provider.NBytes, d.Provider.Index},
-			gbm.TO_HASH,
+			gbm.ToHash,
 			d.sFilters[i],
 		)
 	}
@@ -95,7 +95,7 @@ func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProv
 	d.Provider.Limb = createCol("sLimb")
 	d.Provider.NBytes = createCol("sNBytes")
 	d.Provider.Index = createCol("sIndex")
-	d.Provider.TO_HASH = d.IsActive
+	d.Provider.ToHash = d.IsActive
 }
 
 // It assigns the columns specific to the submodule.
@@ -108,7 +108,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 		asb[i].Limb = providers[i].Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].NBytes = providers[i].NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		asb[i].Index = providers[i].Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		asb[i].TO_HASH = providers[i].TO_HASH.GetColAssignment(run).IntoRegVecSaveAlloc()
+		asb[i].TO_HASH = providers[i].ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
 	sFilters := make([][]field.Element, len(providers))

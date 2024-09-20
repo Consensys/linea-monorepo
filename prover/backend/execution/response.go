@@ -1,8 +1,9 @@
 package execution
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // JSON schema of the message to return as an output of the prover
@@ -14,10 +15,13 @@ import (
 type Response struct {
 
 	// Proof in 0x prefixed hexstring format
-	Proof string `json:"proof"`
-
+	Proof      string            `json:"proof"`
 	ProverMode config.ProverMode `json:"proverMode"`
 
+	// VerifierIndex is a deprecated field indicating which verifier contract to
+	// verify the proof.
+	//
+	// Deprecated: the execution proof is no longer verified on-chain.
 	VerifierIndex uint `json:"verifierIndex"`
 
 	// The shasum of the verifier key to use to verify the proof. This is used
@@ -42,31 +46,39 @@ type Response struct {
 	// First block number
 	FirstBlockNumber int `json:"firstBlockNumber"`
 
-	// Debug data, helps tracking issues for deserializing the hashes
-	DebugData struct {
-		Blocks []PerBlockDebugData `json:"blocks"`
+	// ExecDataChecksum stores the mimc hash of the execution data. It is also
+	// part of the public inputs of the related compression proof.
+	ExecDataChecksum types.Bytes32 `json:"execDataChecksum"`
+	// ChainID indicates which ChainID was used during the execution.
+	ChainID uint `json:"chainID"`
+	// L2BridgeAddress indicates which ChainID was used during the execution.
+	L2BridgeAddress types.EthAddress `json:"l2BridgeAddress"`
+	// MaxNbL2MessageHashes indicates the max number of L2 Message hashes that
+	// can be processed by the execution prover at once in the config.
+	MaxNbL2MessageHashes int `json:"maxNbL2MessageHashes"`
 
-		// Hash for all the blocks
-		HashForAllBlocks string `json:"hashForAllBlocks"`
-
-		// Hasf of the n+1 root hashes concatenated altogether
-		HashOfRootHashes string `json:"hashOfRootHashes"`
-
-		// Hash of the time stamps
-		TimeStampsHash string `json:"timestampHashes"`
-
-		// Final hash, after applying the modulus
-		FinalHash string `json:"finalHash"`
-	}
+	// AllRollingHash stores the collection of all the rolling hash events
+	// occurring during the execution frame.
+	AllRollingHashEvent []bridge.RollingHashUpdated `json:"allRollingHashEvent"`
+	// AllL2L1MessageHashes stores the collection of all the L2 to L1 message's
+	// hashes.
+	AllL2L1MessageHashes []types.FullBytes32 `json:"allL2L1MessageHashes"`
+	// PublicInput is the final value public input of the current proof. This
+	// field is used for debugging in case one of the proofs don't pass at the
+	// aggregation level.
+	PublicInput types.Bytes32 `json:"publicInput"`
 }
 
 type BlockData struct {
+
+	// BlockHash is the Eths block hash
+	BlockHash types.FullBytes32 `json:"blockHash"`
 
 	// T Transaction in 0x-prefixed hex format
 	RlpEncodedTransactions []string `json:"rlpEncodedTransactions"`
 
 	// L2 to L1 message hashes
-	L2ToL1MsgHashes []string `json:"l2ToL1MsgHashes"`
+	L2ToL1MsgHashes []types.FullBytes32 `json:"l2ToL1MsgHashes"`
 
 	// List of the N timestamps for each blocks. To optimize
 	// for space we put the timestamps in uint64 form
@@ -77,11 +89,11 @@ type BlockData struct {
 	// execution of the first block in the conflated batch
 	// and the last one is the final root hash of the state
 	// after execution of the last block in the conflated batch.
-	RootHash string `json:"rootHash"`
+	RootHash types.Bytes32 `json:"rootHash"`
 
 	// The from addresses of the transactions in the block all concatenated
 	// in a single hex string.
-	FromAddresses string `json:"fromAddresses"`
+	FromAddresses []types.EthAddress `json:"fromAddresses"`
 
 	// Not part of the inputs to hash. Flag indicating whether the block
 	// contains a BatchL1MsgReceiptConfirmation

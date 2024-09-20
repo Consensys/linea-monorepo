@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/sirupsen/logrus"
 )
@@ -22,10 +22,10 @@ type L2L1Log struct {
 }
 
 // Returns the L2L1LogHashes from a list of logs and abi.encode them
-func L2L1MessageHashes(logs []types.Log, l2BridgeAddress common.Address) []string {
+func L2L1MessageHashes(logs []ethtypes.Log, l2BridgeAddress common.Address) []types.FullBytes32 {
 
 	logrus.Tracef("Filtering the following logs: %++v", logs)
-	res := []string{}
+	res := []types.FullBytes32{}
 	for _, log := range logs {
 		// Filters out the uninteresting logs
 		if !isL2L1Log(log, l2BridgeAddress) {
@@ -40,7 +40,7 @@ func L2L1MessageHashes(logs []types.Log, l2BridgeAddress common.Address) []strin
 }
 
 // Returns true iff the log is an l2l1 event
-func isL2L1Log(log types.Log, l2BridgeAddress common.Address) bool {
+func isL2L1Log(log ethtypes.Log, l2BridgeAddress common.Address) bool {
 
 	// the log should originate the right address
 	if log.Address != l2BridgeAddress {
@@ -73,7 +73,7 @@ func isL2L1Log(log types.Log, l2BridgeAddress common.Address) bool {
 }
 
 // ABI encode an L2L1 log
-func ParseL2L1Log(log types.Log) L2L1Log {
+func ParseL2L1Log(log ethtypes.Log) L2L1Log {
 
 	// Get the from and to from the topics
 	res := L2L1Log{}
@@ -135,8 +135,8 @@ func ParseL2L1Log(log types.Log) L2L1Log {
 }
 
 // Returns the message hash of the log in hex format
-func (l L2L1Log) MsgHash() string {
-	return hexutil.Encode(l.messageHash[:])
+func (l L2L1Log) MsgHash() types.FullBytes32 {
+	return types.FullBytes32(l.messageHash)
 }
 
 // Returns the selector for the L2 L1 logs

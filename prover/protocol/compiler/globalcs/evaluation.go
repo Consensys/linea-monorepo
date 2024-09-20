@@ -7,18 +7,18 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark/frontend"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
-	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -106,6 +106,9 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 			witness := handle.GetColAssignment(run)
 			witnesses[i] = witness
 
+			if witness.Len() == 0 {
+				logrus.Errorf("found a witness of size zero: %v", handle.GetColID())
+			}
 		}
 	})
 

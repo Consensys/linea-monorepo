@@ -7,13 +7,13 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // Compile-time sanity check the satisfaction of the interface RangeChecker by
@@ -150,7 +150,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 		numRcR                           = smartvectors.Sum(rcRValue)
 		numRcO                           = smartvectors.Sum(rcOValue)
 		totalNumRangeCheckedValues       = numRcL.Uint64() + numRcR.Uint64() + numRcO.Uint64()
-		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(int(totalNumRangeCheckedValues))
+		totalNumRangeCheckedValuesPadded = utils.NextPowerOfTwo(totalNumRangeCheckedValues)
 	)
 
 	if totalNumRangeCheckedValues == 0 {
@@ -169,7 +169,7 @@ func (ctx *compilationCtx) addRangeCheckConstraint() {
 			l            = ctx.Columns.L[i]
 			r            = ctx.Columns.R[i]
 			o            = ctx.Columns.O[i]
-			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), totalNumRangeCheckedValuesPadded)
+			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
 		)
 
 		ctx.Columns.RangeChecked[i] = rangeChecked
@@ -238,27 +238,27 @@ func (ctx *compilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 					ctx.Columns.RangeChecked[i].GetColID(),
 					smartvectors.NewConstant(field.Zero(), rcSize),
 				)
-				continue
+			} else {
+
+				for i := range rcLValue {
+					if rcLValue[i].IsOne() {
+						rc = append(rc, l.Get(i))
+					}
+
+					if rcRValue[i].IsOne() {
+						rc = append(rc, r.Get(i))
+					}
+
+					if rcOValue[i].IsOne() {
+						rc = append(rc, o.Get(i))
+					}
+				}
+
+				run.AssignColumn(
+					ctx.Columns.RangeChecked[i].GetColID(),
+					smartvectors.RightZeroPadded(rc, rcSize),
+				)
 			}
-
-			for i := range rcLValue {
-				if rcLValue[i].IsOne() {
-					rc = append(rc, l.Get(i))
-				}
-
-				if rcRValue[i].IsOne() {
-					rc = append(rc, r.Get(i))
-				}
-
-				if rcOValue[i].IsOne() {
-					rc = append(rc, o.Get(i))
-				}
-			}
-
-			run.AssignColumn(
-				ctx.Columns.RangeChecked[i].GetColID(),
-				smartvectors.RightZeroPadded(rc, rcSize),
-			)
 
 			ctx.RangeCheck.limbDecomposition[i].Run(run)
 		}

@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // CopyHexEncodedBytes panics if the string won't fit. If the string is too small, is will be 0-padded on the left.
@@ -17,7 +17,7 @@ func CopyHexEncodedBytes(dst []frontend.Variable, hex string) error {
 		dst[i] = 0
 	}
 
-	Copy(dst[slack:], b) // This will panic if b is too long
+	utils.Copy(dst[slack:], b) // This will panic if b is too long
 
 	return nil
 }

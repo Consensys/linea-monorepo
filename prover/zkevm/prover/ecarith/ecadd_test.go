@@ -3,10 +3,10 @@ package ecarith
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
 func TestEcAddIntegration(t *testing.T) {
@@ -15,7 +15,7 @@ func TestEcAddIntegration(t *testing.T) {
 		NbCircuitInstances: 1,
 	}
 	ct := csvtraces.MustOpenCsvFile("testdata/ecadd_test.csv")
-	var ecAdd *EcAddIntegration
+	var ecAdd *EcAdd
 	var ecAddSource *EcDataAddSource
 	cmp := wizard.Compile(
 		func(b *wizard.Builder) {
@@ -26,7 +26,7 @@ func TestEcAddIntegration(t *testing.T) {
 				IsData:  ct.GetCommit(b, "IS_DATA"),
 				IsRes:   ct.GetCommit(b, "IS_RES"),
 			}
-			ecAdd = NewEcAddIntegration(b.CompiledIOP, limits, ecAddSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
+			ecAdd = newEcAdd(b.CompiledIOP, limits, ecAddSource, []plonk.Option{plonk.WithRangecheck(16, 6, true)})
 		},
 		dummy.Compile,
 	)
@@ -34,7 +34,7 @@ func TestEcAddIntegration(t *testing.T) {
 	proof := wizard.Prove(cmp,
 		func(run *wizard.ProverRuntime) {
 			ct.Assign(run, "CS_ADD", "LIMB", "INDEX", "IS_DATA", "IS_RES")
-			ecAdd.Assign(run, ecAddSource)
+			ecAdd.Assign(run)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {

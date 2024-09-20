@@ -3,20 +3,20 @@ package vortex
 import (
 	"math"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/vortex"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/crypto"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,6 +33,9 @@ There are the following requirements:
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
 func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
+
+	logrus.Trace("started vortex compiler")
+	defer logrus.Trace("finished vortex compiler")
 
 	if !utils.IsPowerOfTwo(blowUpFactor) {
 		utils.Panic("expected a power of two but rho was %v", blowUpFactor)
@@ -149,7 +152,6 @@ type Ctx struct {
 		OpenedColumns []ifaces.Column
 		// MerkleProof (only used with the MerkleProof version)
 		// We represents all the Merkle proof as specfied here:
-		// https://github.com/ConsenSys/zkevm-monorepo/issues/67
 		MerkleProofs ifaces.Column
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
@@ -302,7 +304,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		if deg%numLimbs != 0 {
 			utils.Panic("the number of limbs should at least divide the degree")
 		}
-		numFieldPerPoly := deg / numLimbs
+		numFieldPerPoly := utils.Max(1, deg/numLimbs)
 		numShadow := (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
 		targetSize := ctx.comp.Columns.GetSize(coms[0])
 
@@ -579,6 +581,14 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	}
 
 	for _, name := range precomputedColNames {
+
+		_, ok := ctx.PolynomialsTouchedByTheQuery[name]
+		if !ok {
+			logrus.Warnf("got an unconstrained column: %v -> marking as ignored", name)
+			comp.Columns.MarkAsIgnored(name)
+			continue
+		}
+
 		pCol := comp.Columns.GetHandle(name)
 		// Marking all these columns as "Ignored" to mean that the compiler
 		// should ignore theses columns.
@@ -606,7 +616,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			sisDegree          = ctx.SisParams.OutputSize()
 			sisNumLimbs        = ctx.SisParams.NumLimbs()
 			sisNumFieldPerPoly = utils.Max(1, sisDegree/sisNumLimbs)
-			numShadowRows      = len(precomputedCols) % sisNumFieldPerPoly
+			numShadowRows      = sisNumFieldPerPoly - (len(precomputedCols) % sisNumFieldPerPoly)
 		)
 
 		if sisDegree > sisNumLimbs && numShadowRows > 0 {
@@ -619,8 +629,10 @@ func (ctx *Ctx) processStatusPrecomputed() {
 				precomputedCols = append(precomputedCols, shadowCol)
 			}
 		}
+
 	}
 
+	logrus.Infof("Processed %v precomputed columns", len(precomputedCols))
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 }
 

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 // it receives columns hashNum and toHash and generates GenDataModule.
@@ -28,7 +28,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
 		limbCol    = common.NewVectorBuilder(gdm.Limb)
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
-		toHashCol  = common.NewVectorBuilder(gdm.TO_HASH)
+		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
 		indexCol   = common.NewVectorBuilder(gdm.Index)
 	)
 
@@ -124,7 +124,7 @@ func CreateGenDataModule(
 	gbm.Index = createCol("INDEX")
 	gbm.Limb = createCol("LIMBS")
 	gbm.NBytes = createCol("NBYTES")
-	gbm.TO_HASH = createCol("TO_HASH")
+	gbm.ToHash = createCol("TO_HASH")
 	return gbm
 }
 

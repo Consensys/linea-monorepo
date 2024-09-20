@@ -1,13 +1,13 @@
 package ringsis
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Standard parameter that we use for ring-SIS they are benchmarked at achieve
 // more than the 128 level of security.
-var StdParams = Params{LogTwoBound: 8, LogTwoDegree: 6}
+var StdParams = Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 // Params encapsulates the parameters of a ring SIS instance
 type Params struct {

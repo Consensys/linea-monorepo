@@ -1,11 +1,11 @@
 package mimccodehash
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type assignBuilder struct {
@@ -66,7 +66,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 
 	for i := 0; i < length; i++ {
 
-		if cfi[i+1].IsZero() && !cfi[i].IsZero() {
+		if !cfi[i].IsZero() && ((i+1 == length) || cfi[i+1].IsZero()) {
 			// This is the last row in the active area of the rom input.
 			// We assign one more row to make the assignment of the last row
 			// for other columns below work correctly, we exclude codeHash and

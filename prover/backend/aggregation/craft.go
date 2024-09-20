@@ -5,21 +5,26 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"path"
+
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobdecompression"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,8 +39,8 @@ const (
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	var (
-		l2MessageHashes   = []string{}
-		l2MsgBlockOffsets = []bool{}
+		l2MessageHashes   []string
+		l2MsgBlockOffsets []bool
 		cf                = &CollectedFields{
 			L2MsgTreeDepth:                          l2MsgMerkleTreeDepth,
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
@@ -44,10 +49,16 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		}
 	)
 
+	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
+	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
+
 	for i, execReqFPath := range req.ExecutionProofs {
-		po := &execution.Response{}
-		fpath := path.Join(cfg.Execution.DirTo(), execReqFPath)
-		f := files.MustRead(fpath)
+
+		var (
+			po    = &execution.Response{}
+			fpath = path.Join(cfg.Execution.DirTo(), execReqFPath)
+			f     = files.MustRead(fpath)
+		)
 
 		if err := json.NewDecoder(f).Decode(po); err != nil {
 			return nil, fmt.Errorf("fields collection, decoding %s, %w", execReqFPath, err)
@@ -66,35 +77,57 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			utils.Panic("conflated batch %v reports a parent state hash mismatch, but this is not the first batch of the sequence", i)
 		}
 
-		// This is purposefuly overwritten at each iteration over i. We want to
-		// keep the final velue.
+		// This is purposefully overwritten at each iteration over i. We want to
+		// keep the final value.
 		cf.FinalBlockNumber = uint(po.FirstBlockNumber + len(po.BlocksData) - 1)
 
 		for _, blockdata := range po.BlocksData {
-			l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes...)
+
+			for i := range blockdata.L2ToL1MsgHashes {
+				l2MessageHashes = append(l2MessageHashes, blockdata.L2ToL1MsgHashes[i].Hex())
+			}
+
 			l2MsgBlockOffsets = append(l2MsgBlockOffsets, len(blockdata.L2ToL1MsgHashes) > 0)
 			cf.HowManyL2Msgs += uint(len(blockdata.L2ToL1MsgHashes))
 
 			// The goal is that we want to keep the final value
 			lastRollingHashEvent := blockdata.LastRollingHashUpdatedEvent
 			if lastRollingHashEvent != (bridge.RollingHashUpdated{}) {
-				cf.L1RollingHash = lastRollingHashEvent.RollingHash
+				cf.L1RollingHash = lastRollingHashEvent.RollingHash.Hex()
 				cf.L1RollingHashMessageNumber = uint(lastRollingHashEvent.MessageNumber)
 			}
+
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
 		}
 
 		// Append the proof claim to the list of collected proofs
-		if !cf.IsProoflessJob {
-			pClaim, err := parseProofClaim(po.Proof, po.DebugData.FinalHash, po.VerifyingKeyShaSum)
+		if !cf.IsProoflessJob { // TODO @Tabaie @alexandre.belling proofless jobs will no longer be accepted post PI interconnection
+			cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Execution)
+			pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			// TODO make sure this belongs in the if
+			finalBlock := &po.BlocksData[len(po.BlocksData)-1]
+			piq, err := public_input.ExecutionSerializable{
+				L2MsgHashes:            l2MessageHashes,
+				FinalStateRootHash:     po.PublicInput.Hex(), // TODO @tabaie make sure this is the right value
+				FinalBlockNumber:       uint64(cf.FinalBlockNumber),
+				FinalBlockTimestamp:    finalBlock.TimeStamp,
+				FinalRollingHash:       cf.L1RollingHash,
+				FinalRollingHashNumber: uint64(cf.L1RollingHashMessageNumber),
+			}.Decode()
+			if err != nil {
+				return nil, err
+			}
+			cf.ExecutionPI = append(cf.ExecutionPI, piq)
 		}
 	}
 
-	for i, decompReqFPath := range req.CompressionProofs {
+	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
+
+	for i, decompReqFPath := range req.DecompressionProofs {
 		dp := &blobdecompression.Response{}
 		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
@@ -115,11 +148,13 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
+			cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Decompression)
 			pClaim, err := parseProofClaim(dp.DecompressionProof, dp.Debug.PublicInput, dp.VerifyingKeyShaSum)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
 			}
 			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
+			cf.DecompressionPI = append(cf.DecompressionPI, dp.Request)
 		}
 	}
 
@@ -240,7 +275,7 @@ func PackOffsets(unpacked []bool) []byte {
 		if b {
 			// @alex: issue #2261 requires the prover to start counting from 1
 			// and not from zero for the offsets.
-			binary.BigEndian.PutUint16(tmp[:], uint16(i+1))
+			binary.BigEndian.PutUint16(tmp[:], utils.ToUint16(i+1)) // #nosec G115 -- Check above precludes overflowing
 			resWrite.Write(tmp[:])
 		}
 	}

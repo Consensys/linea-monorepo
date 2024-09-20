@@ -6,11 +6,12 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend/plonk"
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Assignment collects all the arguments that are necessary to produce a circuit
@@ -83,4 +84,18 @@ func assignProofClaim(a *ProofClaimAssignment) (proofClaim, error) {
 		Proof:       emPi,
 		CircuitID:   a.CircuitID,
 	}, nil
+}
+
+type PiInfo struct {
+	Proof         plonk.Proof
+	PublicWitness witness.Witness
+	ActualIndexes []int
+}
+
+func (i *PiInfo) claim() (proof emProof, witness emWitness, err error) {
+	if witness, err = emPlonk.ValueOfWitness[emFr](i.PublicWitness); err != nil {
+		return
+	}
+	proof, err = emPlonk.ValueOfProof[emFr, emG1, emG2](i.Proof)
+	return
 }

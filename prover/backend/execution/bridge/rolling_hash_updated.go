@@ -3,9 +3,10 @@ package bridge
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/sirupsen/logrus"
 )
@@ -17,13 +18,13 @@ var rollingHashUpdateTopic0 = GetRollingHashUpdateTopic0()
 // Bridge-event emitted post-compression release to notify the prover that a
 // message has been received on L2 from L1.
 type RollingHashUpdated struct {
-	MessageNumber int64  `json:"messageNumber"`
-	RollingHash   string `json:"rollingHash"`
+	MessageNumber int64             `json:"messageNumber"`
+	RollingHash   types.FullBytes32 `json:"rollingHash"`
 }
 
 // Scan the list of logs and returns the parsed  `RollingHashUpdated` events
 // that originated from the l2BridgeAddress.
-func ExtractRollingHashUpdated(logs []types.Log, l2BridgeAddress common.Address) []RollingHashUpdated {
+func ExtractRollingHashUpdated(logs []ethtypes.Log, l2BridgeAddress common.Address) []RollingHashUpdated {
 
 	logrus.Tracef("Filtering the following logs for rolling hash updated: %++v", logs)
 	res := []RollingHashUpdated{}
@@ -35,14 +36,14 @@ func ExtractRollingHashUpdated(logs []types.Log, l2BridgeAddress common.Address)
 
 		res = append(res, RollingHashUpdated{
 			MessageNumber: new(big.Int).SetBytes(log.Topics[1][:]).Int64(),
-			RollingHash:   utils.HexEncodeToString(log.Topics[2][:]),
+			RollingHash:   types.FullBytes32(log.Topics[2]),
 		})
 	}
 
 	return res
 }
 
-func IsRollingHashUpdated(log types.Log, l2BridgeAddress common.Address) bool {
+func IsRollingHashUpdated(log ethtypes.Log, l2BridgeAddress common.Address) bool {
 
 	if len(log.Topics) == 0 || log.Topics[0] != rollingHashUpdateTopic0 {
 		return false
@@ -55,13 +56,13 @@ func IsRollingHashUpdated(log types.Log, l2BridgeAddress common.Address) bool {
 	return true
 }
 
-func (l *RollingHashUpdated) AsTypesLog(l2BridgeAddress common.Address) types.Log {
-	return types.Log{
+func (l *RollingHashUpdated) AsTypesLog(l2BridgeAddress common.Address) ethtypes.Log {
+	return ethtypes.Log{
 		Address: l2BridgeAddress,
 		Topics: []common.Hash{
 			rollingHashUpdateTopic0,
 			common.Hash(utils.AsBigEndian32Bytes(int(l.MessageNumber))),
-			common.HexToHash(l.RollingHash),
+			common.Hash(l.RollingHash),
 		},
 	}
 }

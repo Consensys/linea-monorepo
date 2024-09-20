@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // DeletetionTrace gathers all the data necessary to audit the deletion of a
@@ -167,7 +168,7 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks implements [DeferableCheck]
+// DeferMerkleChecks implements [Trace]
 func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,
@@ -191,4 +192,12 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	appendTo, _ = deferCheckUpdateRoot(config, trace.ProofPlus, currentRoot, oldLeafPlus, newLeafPlus, appendTo)
 
 	return appendTo
+}
+
+func (trace DeletionTrace[K, V]) HKey(_ *smt.Config) Bytes32 {
+	return trace.DeletedOpen.HKey
+}
+
+func (trace DeletionTrace[K, V]) RWInt() int {
+	return 1
 }

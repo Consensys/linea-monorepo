@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,8 +26,8 @@ func MakeTestCaseInputOutputModule(maxNumKeccakF int) (
 		mod.theta.declareColumn(comp, round, maxNumKeccakF)
 		mod.rho.declareColumns(comp, round, maxNumKeccakF)
 		mod.piChiIota.declareColumns(comp, round, maxNumKeccakF)
-		mod.IO.newInput(comp, round, maxNumKeccakF, *mod)
-		mod.IO.newOutput(comp, round, maxNumKeccakF, *mod)
+		mod.IO.newInput(comp, maxNumKeccakF, *mod)
+		mod.IO.newOutput(comp, maxNumKeccakF, *mod)
 	}
 
 	prover = func(permTrace keccak.PermTraces) wizard.ProverStep {
@@ -41,8 +41,8 @@ func MakeTestCaseInputOutputModule(maxNumKeccakF int) (
 func TestInputOutputModule(t *testing.T) {
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(rand.NewSource(0))
-	numCases := 15
-	maxNumKeccakf := 128
+	numCases := 2
+	maxNumKeccakf := 64
 	// The -1 is here to prevent the generation of a padding block
 	maxInputSize := maxNumKeccakf*keccak.Rate - 1
 

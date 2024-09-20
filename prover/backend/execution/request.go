@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"path"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -68,11 +68,11 @@ func RlpTransactions(block *ethtypes.Block) []string {
 
 // Returns the list of the From addresses for each
 // transaction in the block
-func FromAddresses(block *ethtypes.Block) []string {
-	froms := []string{}
+func FromAddresses(block *ethtypes.Block) []types.EthAddress {
+	froms := []types.EthAddress{}
 	for _, tx := range block.Transactions() {
 		from := ethereum.GetFrom(tx)
-		froms = append(froms, hexutil.Encode(from[:]))
+		froms = append(froms, from)
 	}
 	return froms
 }

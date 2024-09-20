@@ -1,15 +1,15 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 // RootHashFetcher is a struct used to fetch the first/final root hashes from the state summary module
@@ -20,8 +20,8 @@ type RootHashFetcher struct {
 // NewRootHashFetcher returns a new RootHashFetcher with initialized columns that are not constrained.
 func NewRootHashFetcher(comp *wizard.CompiledIOP, name string) RootHashFetcher {
 	res := RootHashFetcher{
-		First: utilities.CreateCol(name, "FIRST", 1, comp),
-		Last:  utilities.CreateCol(name, "LAST", 1, comp),
+		First: util.CreateCol(name, "FIRST", 1, comp),
+		Last:  util.CreateCol(name, "LAST", 1, comp),
 	}
 	return res
 }
@@ -43,7 +43,7 @@ func DefineRootHashFetcher(comp *wizard.CompiledIOP, fetcher RootHashFetcher, na
 		ifaces.QueryIDf("%s_%s", name, "FIRST_LOCAL"),
 		sym.Sub(
 			accessFirst,
-			utilities.Ternary(ss.IsStorage, ss.WorldStateRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
+			util.Ternary(ss.IsStorage, ss.WorldStateRoot, ss.AccumulatorStatement.StateDiff.InitialRoot),
 		),
 	)
 	// ss.IsActive is already constrained in the state summary as a typical IsActive pattern,
@@ -51,31 +51,11 @@ func DefineRootHashFetcher(comp *wizard.CompiledIOP, fetcher RootHashFetcher, na
 	// two cases: Case 1: ss.IsActive is not completely full, then fetcher.Last is equal to
 	// the accumulator's final root at the last cell where isActive is 1
 	// (ss.IsActive[i]*(1-ss.IsActive[i+1]))*(fetcher.Last-ss.FinalRoot[i])
-	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "LAST_GLOBAL"),
-		sym.Mul(
-			ss.IsActive,
-			sym.Sub(1,
-				column.Shift(ss.IsActive, 1),
-			),
-			sym.Sub(
-				accessLast,
-				ss.AccumulatorStatement.StateDiff.FinalRoot,
-			),
-		),
-	)
-
 	// Case 2: ss.IsActive is completely full, in which case we ask that
 	// ss.IsActive[size]*(fetcher.Last-ss.FinalRoot[size]) = 0
 	// i.e. at the last row, counter is equal to ctMax
-	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "LAST_LOCAL"),
-		sym.Mul(
-			column.Shift(ss.IsActive, -1),
-			sym.Sub(
-				accessLast,
-				column.Shift(ss.AccumulatorStatement.StateDiff.FinalRoot, -1),
-			),
-		),
-	)
+	util.CheckLastELemConsistency(comp, ss.IsActive, ss.AccumulatorStatement.StateDiff.FinalRoot, accessLast, name)
+
 }
 
 // AssignRootHashFetcher assigns the data in the RootHashFetcher using the data fetched from the StateSummary

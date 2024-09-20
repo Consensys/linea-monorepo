@@ -3,10 +3,10 @@ package ecpair
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
 
 type pairingDataTestCase struct {
@@ -108,7 +108,7 @@ func testModule(t *testing.T, tc pairingDataTestCase, withPairingCircuit, withG2
 				TotalPairings:     inpCt.GetCommit(build, "ECDATA_TOTAL_PAIRINGS"),
 			}
 
-			mod = NewECPair(build.CompiledIOP, limits, inp)
+			mod = newECPair(build.CompiledIOP, limits, inp)
 			if withPairingCircuit {
 				mod.WithPairingCircuit(build.CompiledIOP, plonk.WithRangecheck(16, 6, false))
 			}

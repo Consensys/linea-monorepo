@@ -6,16 +6,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/constraints"
-	"math/big"
-	"os"
-	"strings"
-	"testing"
 )
 
 func printAsHexHint(_ *big.Int, ins, outs []*big.Int) error {
@@ -144,23 +143,6 @@ func SnarkFunctionTest(f func(frontend.API) []frontend.Variable, outs ...fronten
 	}
 }
 
-func Range[T constraints.Integer](length int, startingPoints ...T) []T {
-	if len(startingPoints) == 0 {
-		startingPoints = []T{0}
-	}
-	res := make([]T, length*len(startingPoints))
-	for i := range startingPoints {
-		FillRange(res[i*length:(i+1)*length], startingPoints[i])
-	}
-	return res
-}
-
-func FillRange[T constraints.Integer](dst []T, start T) {
-	for l := range dst {
-		dst[l] = T(l) + start
-	}
-}
-
 func BlocksToHex(b ...[][32]byte) []string {
 	res := make([]string, 0)
 	for i := range b {
@@ -169,14 +151,4 @@ func BlocksToHex(b ...[][32]byte) []string {
 		}
 	}
 	return res
-}
-
-type FakeTestingT struct{}
-
-func (FakeTestingT) Errorf(format string, args ...interface{}) {
-	panic(fmt.Sprintf(format+"\n", args...))
-}
-
-func (FakeTestingT) FailNow() {
-	os.Exit(-1)
 }

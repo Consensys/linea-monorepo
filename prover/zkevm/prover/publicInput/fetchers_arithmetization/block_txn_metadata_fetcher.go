@@ -1,15 +1,16 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 type BlockTxnMetadata struct {
@@ -25,7 +26,7 @@ type BlockTxnMetadata struct {
 	LastAbsTxId  ifaces.Column
 }
 
-func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *TxnData) BlockTxnMetadata {
+func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *arith.TxnData) BlockTxnMetadata {
 	res := BlockTxnMetadata{
 		BlockID:         util.CreateCol(name, "BLOCK_ID", td.Ct.Size(), comp),
 		TotalNoTxnBlock: util.CreateCol(name, "TOTAL_NO_TX_BLOCK", td.Ct.Size(), comp),
@@ -37,7 +38,7 @@ func NewBlockTxnMetadata(comp *wizard.CompiledIOP, name string, td *TxnData) Blo
 	return res
 }
 
-func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, name string, td *TxnData) {
+func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, name string, td *arith.TxnData) {
 	btm.SelectorCt, btm.ComputeSelectorCt = dedicated.IsZero(
 		comp,
 		td.Ct, // select the columns where td.Ct = 0
@@ -138,7 +139,7 @@ func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, nam
 	)
 }
 
-func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td *TxnData) {
+func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td *arith.TxnData) {
 	blockId := make([]field.Element, td.Ct.Size())
 	totalNoTxnBlock := make([]field.Element, td.Ct.Size())
 	filterFetched := make([]field.Element, td.Ct.Size())
@@ -162,9 +163,9 @@ func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td 
 			// set the absolute IDs, firstAbsTxId and lastAbsTxId for the block
 			firstAbsTxId[counter].SetInt64(ctAbsTxNum)
 			lastAbsTxId[counter].Set(&firstAbsTxId[counter])
-			integerNoOfTxBlock := int64(fetchTotalNoTxnBlock.Uint64())
+			integerNoOfTxBlock := int64(field.ToInt(&fetchTotalNoTxnBlock))
 			lastAbsTxId[counter].SetInt64(ctAbsTxNum + integerNoOfTxBlock - 1)
-			// increas ctAbsTxNum counter
+			// increase ctAbsTxNum counter
 			ctAbsTxNum += integerNoOfTxBlock
 			// set the counter
 			counter++

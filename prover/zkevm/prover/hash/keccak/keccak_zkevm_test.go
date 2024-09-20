@@ -3,10 +3,10 @@ package keccak
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,14 +31,11 @@ func MakeTestCaseKeccakZkEVM(t *testing.T, c []makeTestCaseGBM) (
 			}
 		}
 
-		inp := KeccakZkEVMInput{
-			Settings: &Settings{
-				MaxNumKeccakf: maxNumKeccakF,
-			},
-
-			Providers: gbm,
-		}
-		mod = NewKeccakZkEVM(comp, inp)
+		mod = newKeccakZkEvm(
+			comp,
+			Settings{MaxNumKeccakf: maxNumKeccakF},
+			gbm,
+		)
 	}
 
 	prover = func(run *wizard.ProverRuntime) {

@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -16,7 +15,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -26,7 +28,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/emulated"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -75,7 +76,7 @@ func TestInterpolateLagrange(t *testing.T) {
 		}
 		for i := range unitCircleEvaluations {
 			bytes := unitCircleEvaluationsFr[i].Bytes()
-			copy(assignment.UnitCircleEvaluationsBytes[i][:], test_vector_utils.ToVariableSlice(bytes[:]))
+			copy(assignment.UnitCircleEvaluationsBytes[i][:], utils.ToVariableSlice(bytes[:]))
 		}
 
 		// compute the evaluation using the iop package
@@ -89,11 +90,11 @@ func TestInterpolateLagrange(t *testing.T) {
 
 		scalars, err := internal.Bls12381ScalarToBls12377Scalars(evaluationPointFr)
 		assert.NoError(t, err)
-		internal.Copy(assignment.EvaluationPoint[:], scalars[:])
+		utils.Copy(assignment.EvaluationPoint[:], scalars[:])
 
 		scalars, err = internal.Bls12381ScalarToBls12377Scalars(evaluation)
 		assert.NoError(t, err)
-		internal.Copy(assignment.Evaluation[:], scalars[:])
+		utils.Copy(assignment.Evaluation[:], scalars[:])
 
 		return &assignment
 	}
@@ -198,7 +199,7 @@ func decodeHexHL(t *testing.T, s string) (r [2]frontend.Variable) {
 
 	scalars, err := internal.Bls12381ScalarToBls12377Scalars(b)
 	assert.NoError(t, err)
-	internal.Copy(r[:], scalars[:])
+	utils.Copy(r[:], scalars[:])
 
 	return
 }
@@ -232,13 +233,13 @@ func TestVerifyBlobConsistencyIntegration(t *testing.T) {
 			assert.Zero(t, len(blob)%32, "blob not consisting of 32-byte field elements")
 			assert.LessOrEqual(t, len(blob), 4096*32, "blob too large")
 			blob = append(blob, make([]byte, 4096*32-len(blob))...) // pad if necessary
-			assignment.BlobBytes = test_vector_utils.ToVariableSlice(blob)
+			assignment.BlobBytes = utils.ToVariableSlice(blob)
 
 			if assignment.Eip4844Enabled = 0; testCase.Eip4844Enabled {
 				assignment.Eip4844Enabled = 1
 			}
 
-			internal.Copy(assignment.X[:], decodeHex(t, testCase.ExpectedX))
+			utils.Copy(assignment.X[:], decodeHex(t, testCase.ExpectedX))
 			assignment.Y = decodeHexHL(t, testCase.ExpectedY)
 
 			t.Run(folderAndFile, func(t *testing.T) {
@@ -295,17 +296,17 @@ func TestConsistencyCheckFlagRange(t *testing.T) {
 	}
 	assignments := []*blobConsistencyCheckCircuit{
 		{
-			BlobBytes:      test_vector_utils.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 0,
 		},
 		{
-			BlobBytes:      test_vector_utils.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 1,
 		},
 		{
-			BlobBytes:      test_vector_utils.ToVariableSlice(make([]byte, 4096*32)),
+			BlobBytes:      utils.ToVariableSlice(make([]byte, 4096*32)),
 			Y:              [2]frontend.Variable{0, 0},
 			Eip4844Enabled: 2,
 		},
@@ -375,7 +376,7 @@ func TestFrConversions(t *testing.T) {
 
 		assert.Equal(t, tmp, xBack, fmt.Sprintf("out-of-snark conversion round-trip failed on %s or 0x%s", tmp.Text(10), tmp.Text(16)))
 		var assignment testFrConversionCircuit
-		internal.Copy(assignment.X[:], xPartitioned[:])
+		utils.Copy(assignment.X[:], xPartitioned[:])
 		options = append(options, test.WithValidAssignment(&assignment))
 	}
 
@@ -400,7 +401,7 @@ func TestPackCrumbEmulated(t *testing.T) {
 	assert.NoError(t, err)
 	bytes[0] &= msbMask
 	var assignment testPackCrumbEmulatedCircuit
-	copy(assignment.Bytes[:], test_vector_utils.ToVariableSlice(bytes[:]))
+	copy(assignment.Bytes[:], utils.ToVariableSlice(bytes[:]))
 	test.NewAssert(t).CheckCircuit(
 		&testPackCrumbEmulatedCircuit{}, test.WithValidAssignment(&assignment), test.WithCurves(ecc.BLS12_377), test.WithBackends(backend.PLONK),
 		test.NoTestEngine(),

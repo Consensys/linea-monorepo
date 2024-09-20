@@ -1,7 +1,9 @@
 package publicInput
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 // FunctionalInputExtractor is a collection over LocalOpeningQueries that can be
@@ -32,6 +34,34 @@ type FunctionalInputExtractor struct {
 	InitialRollingHash, FinalRollingHash             [2]query.LocalOpening
 	InitialRollingHashNumber, FinalRollingHashNumber query.LocalOpening
 
-	ChainID              query.LocalOpening
-	L2MessageServiceAddr query.LocalOpening
+	ChainID                query.LocalOpening
+	NBytesChainID          query.LocalOpening
+	L2MessageServiceAddrHi ifaces.Accessor
+	L2MessageServiceAddrLo ifaces.Accessor
+}
+
+// Run assigns all the local opening queries
+func (fie *FunctionalInputExtractor) Run(run *wizard.ProverRuntime) {
+
+	assignLO := func(q query.LocalOpening) {
+		run.AssignLocalPoint(q.ID, q.Pol.GetColAssignmentAt(run, 0))
+	}
+
+	assignLO(fie.DataNbBytes)
+	assignLO(fie.DataChecksum)
+	assignLO(fie.L2MessageHash)
+	assignLO(fie.InitialStateRootHash)
+	assignLO(fie.InitialBlockNumber)
+	assignLO(fie.InitialBlockTimestamp)
+	assignLO(fie.InitialRollingHash[0])
+	assignLO(fie.InitialRollingHash[1])
+	assignLO(fie.InitialRollingHashNumber)
+	assignLO(fie.FinalStateRootHash)
+	assignLO(fie.FinalBlockNumber)
+	assignLO(fie.FinalBlockTimestamp)
+	assignLO(fie.FinalRollingHash[0])
+	assignLO(fie.FinalRollingHash[1])
+	assignLO(fie.FinalRollingHashNumber)
+	assignLO(fie.ChainID)
+	assignLO(fie.NBytesChainID)
 }

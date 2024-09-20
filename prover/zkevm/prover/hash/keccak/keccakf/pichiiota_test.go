@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,7 +55,7 @@ func piChiIotaTestingModule(
 		}
 
 		mod.lookups = newLookUpTables(comp, maxNumKeccakf)
-		mod.IO.declareColumnsInput(comp, round, maxNumKeccakf)
+		mod.IO.declareColumnsInput(comp, maxNumKeccakf)
 		mod.piChiIota = newPiChiIota(comp, round, maxNumKeccakf, *mod)
 	}
 
@@ -125,7 +125,7 @@ func piChiIotaTestingModule(
 
 			// Then assigns all the columns of the rho module
 			mod.assignStateAndBlocks(run, traces, numKeccakf)
-			mod.IO.assignInputOutput(run, traces)
+			mod.IO.assignBlockFlags(run, traces)
 			mod.piChiIota.assign(run, numKeccakf, mod.lookups, mod.rho.aRho,
 				mod.Blocks, mod.IO.IsBlockBaseB)
 		}

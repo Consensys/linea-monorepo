@@ -3,7 +3,8 @@ package globalcs
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 // them using Plonk's quotient technique. The compiler also applies symbolic
 // expression optimization and runtime memory optimizations for the prover.
 func Compile(comp *wizard.CompiledIOP) {
+
+	logrus.Trace("started global constraint compiler")
+	defer logrus.Trace("finished global constraint compiler")
 
 	merging, anyCs := accumulateConstraints(comp)
 	if !anyCs {
@@ -38,6 +42,7 @@ func Compile(comp *wizard.CompiledIOP) {
 	comp.RegisterProverAction(quotientRound, &quotientCtx)
 	comp.RegisterProverAction(evaluationRound, evaluationProver(evaluationCtx))
 	comp.RegisterVerifierAction(evaluationRound, evaluationVerifier(evaluationCtx))
+
 }
 
 func deriveName(comp *wizard.CompiledIOP, s string, args ...any) string {

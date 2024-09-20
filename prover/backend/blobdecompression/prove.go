@@ -8,18 +8,18 @@ import (
 	"os"
 	"path/filepath"
 
-	blob_v0 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
-	blob_v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
+	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
@@ -181,7 +181,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		DecompressionProof: circuits.SerializeProofRaw(proof),
-		VerifyingKeyShaSum: setup.VerifiyingKeyDigest(),
+		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
 	}
 
 	resp.Debug.PublicInput = "0x" + pubInput.Text(16)
@@ -227,7 +227,7 @@ func dummyProve(cfg *config.Config, req *Request) (*Response, error) {
 		Request:            *req,
 		ProverVersion:      cfg.Version,
 		DecompressionProof: proof,
-		VerifyingKeyShaSum: setup.VerifiyingKeyDigest(),
+		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
 	}
 
 	inputString := utils.HexEncodeToString(input)

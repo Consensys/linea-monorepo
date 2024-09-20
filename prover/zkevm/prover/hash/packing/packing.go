@@ -3,12 +3,12 @@
 package packing
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 const (
@@ -52,6 +52,7 @@ type PackingInput struct {
 	// The columns in Imported should be of size;
 	// size := utils.NextPowerOfTwo(packingParam.blockSize * maxNumBlocks)
 	Imported Importation
+	Name     string
 }
 
 // Packing implements the [wizard.ProverAction] receiving the limbs and relevant parameters,
@@ -85,7 +86,7 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *Packing {
 	var (
 		isNewHash  = inp.Imported.IsNewHash
 		lookup     = NewLookupTables(comp)
-		cleaning   = NewClean(comp, getCleaningInputs(inp.Imported, lookup))
+		cleaning   = NewClean(comp, newCleaningInputs(inp.Imported, lookup, inp.Name))
 		decomposed = newDecomposition(comp, getDecompositionInputs(cleaning, inp))
 		spaghetti  = spaghettiMaker(comp, decomposed, isNewHash)
 		lanes      = newLane(comp, spaghetti, inp)
@@ -138,7 +139,7 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 
 	// Constraints over the spaghetti forms
 	inp := spaghettifier.SpaghettificationInput{
-		Name: SPAGHETTI,
+		Name: decomposed.Inputs.Name,
 		ContentMatrix: [][]ifaces.Column{
 			decomposed.decomposedLimbs,
 			decomposed.decomposedLen,
