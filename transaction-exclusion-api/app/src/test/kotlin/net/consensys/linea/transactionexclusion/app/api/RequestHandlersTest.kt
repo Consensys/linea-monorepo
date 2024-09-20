@@ -33,8 +33,7 @@ class RequestHandlersTest {
     "timestamp" to "2024-09-05T09:22:52Z",
     "transactionRLP" to defaultRejectedTransaction.transactionRLP.encodeHex(),
     "reasonMessage" to defaultRejectedTransaction.reasonMessage,
-    "overflows" to
-      "[{\"module\":\"ADD\",\"count\":402,\"limit\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
+    "overflows" to defaultRejectedTransaction.overflows
   )
 
   private val mapRequest = JsonRpcRequestMapParams(

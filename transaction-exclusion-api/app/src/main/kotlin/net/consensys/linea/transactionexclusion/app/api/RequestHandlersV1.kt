@@ -75,17 +75,9 @@ class SaveRejectedTransactionRequestHandlerV1(
   }
 
   private fun parseMapParamsToRejectedTransaction(requestMapParams: Map<*, *>): RejectedTransaction {
-    return validateMapParamsPresence(requestMapParams)
-      .run {
-        RejectedTransactionJsonDto(
-          txRejectionStage = requestMapParams[RequestParams.TX_REJECTION_STAGE.paramName].toString(),
-          timestamp = requestMapParams[RequestParams.TIMESTAMP.paramName].toString(),
-          blockNumber = requestMapParams[RequestParams.BLOCK_NUMBER.paramName]?.toString(),
-          transactionRLP = requestMapParams[RequestParams.TRANSACTION_RLP.paramName].toString(),
-          reasonMessage = requestMapParams[RequestParams.REASON_MESSAGE.paramName].toString(),
-          overflows = requestMapParams[RequestParams.OVERFLOWS.paramName]!!
-        ).toDomainObject()
-      }
+    return validateMapParamsPresence(requestMapParams).run {
+      RejectedTransactionJsonDto.parseFrom(requestMapParams).toDomainObject()
+    }
   }
 
   private fun parseListParamsToRejectedTransaction(requestListParams: List<Any?>): RejectedTransaction {
