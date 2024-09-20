@@ -15,7 +15,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
-
+import { Utils } from "../lib/Utils.sol";
 /**
  * @title Linea Canonical Token Bridge
  * @notice Contract to manage cross-chain ERC20 bridging.
@@ -29,6 +29,7 @@ contract TokenBridge is
   MessageServiceBase,
   ReentrancyGuardUpgradeable
 {
+  using Utils for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   // solhint-disable-next-line var-name-mixedcase
@@ -328,21 +329,20 @@ contract TokenBridge is
    * @param _nativeToken The address of the native token on the source chain.
    * @param _tokenMetadata The encoded metadata for the token.
    * @param _chainId The chain id on which the token will be deployed, used to calculate the salt
-   * @return The address of the newly deployed BridgedToken contract.
+   * @return bridgedTokenAddress The address of the newly deployed BridgedToken contract.
    */
   function deployBridgedToken(
     address _nativeToken,
     bytes calldata _tokenMetadata,
     uint256 _chainId
-  ) internal returns (address) {
-    bytes32 _salt = keccak256(abi.encode(_chainId, _nativeToken));
-    BeaconProxy bridgedToken = new BeaconProxy{ salt: _salt }(tokenBeacon, "");
-    address bridgedTokenAddress = address(bridgedToken);
+  ) internal returns (address bridgedTokenAddress) {
+    bridgedTokenAddress = address(
+      new BeaconProxy{ salt: Utils._efficientKeccak(_chainId, _nativeToken) }(tokenBeacon, "")
+    );
 
     (string memory name, string memory symbol, uint8 decimals) = abi.decode(_tokenMetadata, (string, string, uint8));
     BridgedToken(bridgedTokenAddress).initialize(name, symbol, decimals);
     emit NewTokenDeployed(bridgedTokenAddress, _nativeToken);
-    return bridgedTokenAddress;
   }
 
   /**
