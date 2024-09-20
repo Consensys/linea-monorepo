@@ -124,27 +124,44 @@ class ArgumentParserTest {
       )
     )
 
-    // valid json string
-    val moduleOverflowJsonStr =
-      "[{\"module\":\"ADD\",\"count\":402,\"limit\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
-    Assertions.assertEquals(
-      ArgumentParser.getOverflows(moduleOverflowJsonStr),
-      expectedModuleOverflowList
-    )
+    // valid module overflow as json request params
+    val moduleOverflowJsonRequestParams =
+      listOf(
+        mapOf(
+          "module" to "ADD",
+          "count" to "402",
+          "limit" to "70"
+        ),
+        mapOf(
+          "module" to "MUL",
+          "count" to "587",
+          "limit" to "400"
+        )
+      )
 
-    // valid list of ModuleOverflow
     Assertions.assertEquals(
-      ArgumentParser.getOverflows(expectedModuleOverflowList),
+      ArgumentParser.getOverflows(moduleOverflowJsonRequestParams),
       expectedModuleOverflowList
     )
   }
 
   @Test
-  fun getOverflows_should_throw_error_for_invalid_moduleOverflowJsonStr() {
-    // invalid json string (invalid field name xxx)
+  fun getOverflows_should_throw_error_for_invalid_moduleOverflowJsonRequestParams() {
+    // invalid module overflow as json request params (invalid field name xxx)
     assertThrows<IllegalArgumentException> {
       ArgumentParser.getOverflows(
-        "[{\"module\":\"ADD\",\"count\":402,\"xxx\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
+        listOf(
+          mapOf(
+            "module" to "ADD",
+            "count" to "402",
+            "xxx" to "70"
+          ),
+          mapOf(
+            "module" to "MUL",
+            "count" to "587",
+            "limit" to "400"
+          )
+        )
       )
     }.also { error ->
       Assertions.assertTrue(
@@ -152,10 +169,21 @@ class ArgumentParserTest {
       )
     }
 
-    // invalid json string (invalid module value)
+    // invalid module overflow as json request params (invalid module value)
     assertThrows<IllegalArgumentException> {
       ArgumentParser.getOverflows(
-        "[{\"module\":123,\"count\":402,\"xxx\":70},{\"module\":\"MUL\",\"count\":587,\"limit\":400}]"
+        listOf(
+          mapOf(
+            "module" to null,
+            "count" to "402",
+            "limit" to "70"
+          ),
+          mapOf(
+            "module" to "MUL",
+            "count" to "587",
+            "limit" to "400"
+          )
+        )
       )
     }.also { error ->
       Assertions.assertTrue(
