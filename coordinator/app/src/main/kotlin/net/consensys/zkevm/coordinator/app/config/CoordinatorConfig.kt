@@ -4,6 +4,7 @@ import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.Masked
 import net.consensys.assertIs32Bytes
 import net.consensys.decodeHex
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.assertIsValidAddress
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
@@ -19,7 +20,6 @@ import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import java.math.BigInteger
 import java.net.URL
 import java.nio.file.Path

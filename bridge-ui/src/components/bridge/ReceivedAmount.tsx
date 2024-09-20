@@ -25,18 +25,19 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
     <div className="flex min-h-20 flex-col gap-2 rounded-lg bg-[#2D2D2D] p-3">
       {isConnected && (
         <>
-          <span className="text-2xl font-bold text-white">
+          <span className="text-2xl font-semibold text-white">
             {formatBalance(receivedAmount) || 0} {token?.symbol}
           </span>
           {networkType === NetworkType.MAINNET && (
             <span className="label-text flex items-center">
-              <PiApproximateEqualsBold /> $
+              <PiApproximateEqualsBold />
               {tokenPrices?.[tokenAddress]?.usd
                 ? (Number(receivedAmount) * tokenPrices?.[tokenAddress]?.usd).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 10,
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 4,
                   })
-                : "0.00"}
+                : "$0.00"}
             </span>
           )}
         </>

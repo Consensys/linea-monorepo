@@ -13,6 +13,7 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.MinerExtraDataV1Calcula
 import net.consensys.linea.ethereum.gaspricing.staticcap.TransactionCostCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
+import net.consensys.linea.BlockParameter
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
@@ -23,7 +24,6 @@ import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.FileBasedProverConfig
 import net.consensys.zkevm.coordinator.clients.prover.ProverConfig
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.fail

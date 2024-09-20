@@ -1,4 +1,4 @@
-import ToChainDropdown from "./ToChainDropdown";
+import ToChainDropdown from "./dropdowns/ToChainDropdown";
 
 export function ToChain() {
   return (

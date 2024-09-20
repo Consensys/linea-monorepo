@@ -24,7 +24,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const computedClassName = useMemo(() => {
-      const baseClasses = "btn rounded-full font-semibold uppercase";
+      const baseClasses = "btn rounded-full uppercase";
       const variantClasses = {
         primary: "btn-primary",
         secondary: "btn-secondary",
