@@ -7,22 +7,24 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobdecompression"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,8 +39,8 @@ const (
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	var (
-		l2MessageHashes   = []string{}
-		l2MsgBlockOffsets = []bool{}
+		l2MessageHashes   []string
+		l2MsgBlockOffsets []bool
 		cf                = &CollectedFields{
 			L2MsgTreeDepth:                          l2MsgMerkleTreeDepth,
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
@@ -48,6 +50,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	)
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
+	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -98,7 +101,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		}
 
 		// Append the proof claim to the list of collected proofs
-		if !cf.IsProoflessJob {
+		if !cf.IsProoflessJob { // TODO @Tabaie @alexandre.belling proofless jobs will no longer be accepted post PI interconnection
+			cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Execution)
 			pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
@@ -121,9 +125,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		}
 	}
 
-	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.CompressionProofs))
+	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
 
-	for i, decompReqFPath := range req.CompressionProofs {
+	for i, decompReqFPath := range req.DecompressionProofs {
 		dp := &blobdecompression.Response{}
 		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
@@ -144,6 +148,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
+			cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Decompression)
 			pClaim, err := parseProofClaim(dp.DecompressionProof, dp.Debug.PublicInput, dp.VerifyingKeyShaSum)
 			if err != nil {
 				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)

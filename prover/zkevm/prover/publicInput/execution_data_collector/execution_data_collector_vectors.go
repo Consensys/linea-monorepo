@@ -1,7 +1,7 @@
 package execution_data_collector
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // ExecutionDataCollectorVectors is a helper struct used to instantiate the ExecutionDataCollector's columns

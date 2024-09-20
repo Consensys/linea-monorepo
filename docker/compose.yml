@@ -23,7 +23,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu:${SEQUENCER_TAG:-linea-delivery-28}
+    image: consensys/linea-besu:${SEQUENCER_TAG:-24.9-delivery32}
     profiles: [ "l2", "l2-bc", "debug" ]
     depends_on:
       linea-besu-sequencer-plugin-downloader:
@@ -71,16 +71,16 @@ services:
   linea-besu-sequencer-plugin-downloader:
     image: busybox:1.36.1
     # profiles: ["l2", "l2-bc"] this works locally but breakes on CI, maybe Docker compose version issue
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test32/besu-sequencer-plugins-v0.1.4-test32.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.1.4-test33/besu-sequencer-plugins-v0.1.4-test33.jar",  "/linea-besu-sequencer" ]
     volumes:
       - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
 
   linea-besu-sequencer-finalized-tag-updater-plugin-downloader:
-    image: badouralix/curl-jq
-    command: [ "sh", "/finalized-tag-updater-jar-downloader.sh", "${GITHUB_TOKEN}", "0.0.1", "/linea-besu-sequencer" ]
+    image: busybox:1.36.1
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-monorepo/releases/download/finalized-tag-updater-v0.0.2/finalized-tag-updater-v0.0.2.jar", "/linea-besu-sequencer" ]
     volumes:
-      - ./scripts/finalized-tag-updater-jar-downloader.sh:/finalized-tag-updater-jar-downloader.sh:ro
+      - ./scripts/file-downloader.sh:/file-downloader.sh:ro
       - ../tmp/linea-besu-sequencer/plugins:/linea-besu-sequencer/
 
   l2-node:

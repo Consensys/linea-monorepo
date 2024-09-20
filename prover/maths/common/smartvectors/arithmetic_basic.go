@@ -1,10 +1,10 @@
 package smartvectors
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Add returns a smart-vector obtained by position-wise adding [SmartVector].
@@ -65,7 +65,7 @@ func InnerProduct(a, b SmartVector) field.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func PolyEval(vecs []SmartVector, x field.Element, p ...*mempool.Pool) (result SmartVector) {
+func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
@@ -80,10 +80,11 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...*mempool.Pool) (result S
 		resReg = make([]field.Element, length)
 		tmpVec = make([]field.Element, length)
 	} else {
-		a, b := pool.Alloc(), pool.Alloc()
-		resReg, tmpVec = *a, *b
+		a := AllocFromPool(pool)
+		b := AllocFromPool(pool)
+		resReg, tmpVec = a.Regular, b.Regular
 		vector.Fill(resReg, field.Zero())
-		defer pool.Free(b)
+		defer b.Free(pool)
 	}
 
 	var tmpF, resCon field.Element
@@ -166,9 +167,11 @@ func BatchInvert(x SmartVector) SmartVector {
 		return res
 	case *Rotated:
 		return NewRotated(
-			field.BatchInvert(v.v),
+			field.BatchInvert(v.v.Regular),
 			v.offset,
 		)
+	case *Pooled:
+		return NewRegular(field.BatchInvert(v.Regular))
 	case *Regular:
 		return NewRegular(field.BatchInvert(*v))
 	}
@@ -207,9 +210,9 @@ func IsZero(x SmartVector) SmartVector {
 		return res
 
 	case *Rotated:
-		res := make([]field.Element, len(v.v))
+		res := make([]field.Element, len(v.v.Regular))
 		for i := range res {
-			if v.v[i] == field.Zero() {
+			if v.v.Regular[i] == field.Zero() {
 				res[i] = field.One()
 			}
 		}
@@ -222,6 +225,15 @@ func IsZero(x SmartVector) SmartVector {
 		res := make([]field.Element, len(*v))
 		for i := range res {
 			if (*v)[i] == field.Zero() {
+				res[i] = field.One()
+			}
+		}
+		return NewRegular(res)
+
+	case *Pooled:
+		res := make([]field.Element, len(v.Regular))
+		for i := range res {
+			if v.Regular[i] == field.Zero() {
 				res[i] = field.One()
 			}
 		}
@@ -259,8 +271,15 @@ func Sum(a SmartVector) (res field.Element) {
 
 	case *Rotated:
 		res := field.Zero()
-		for i := range v.v {
-			res.Add(&res, &v.v[i])
+		for i := range v.v.Regular {
+			res.Add(&res, &v.v.Regular[i])
+		}
+		return res
+
+	case *Pooled:
+		res := field.Zero()
+		for i := range v.Regular {
+			res.Add(&res, &v.Regular[i])
 		}
 		return res
 

@@ -3,7 +3,7 @@ package plonk
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
 // Returns the complete name of a gate columns

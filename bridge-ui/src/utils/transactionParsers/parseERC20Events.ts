@@ -2,7 +2,7 @@ import { Chain, PublicClient, decodeAbiParameters, getAddress } from "viem";
 import log from "loglevel";
 import { NetworkTokens, NetworkType } from "@/config/config";
 import { ERC20Event, ERC20V2Event } from "@/models";
-import fetchTokenInfo from "@/services/fetchTokenInfo";
+import { fetchTokenInfo } from "@/services";
 import { TransactionHistory } from "@/models/history";
 import { findTokenByAddress } from "./helpers";
 
