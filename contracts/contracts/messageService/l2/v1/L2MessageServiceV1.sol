@@ -7,6 +7,7 @@ import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L2MessageManagerV1 } from "./L2MessageManagerV1.sol";
+import { MessageHashing } from "../../lib/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L2.
@@ -21,6 +22,8 @@ abstract contract L2MessageServiceV1 is
   IMessageService,
   IGenericErrors
 {
+  using MessageHashing for *;
+
   /**
    * @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
    * NB: Take note that this is at the beginning of the file where other storage gaps,
@@ -79,6 +82,7 @@ abstract contract L2MessageServiceV1 is
     __ReentrancyGuard_init();
 
     nextMessageNumber = 1;
+    minimumFeeInWei = 0.0001 ether;
 
     _grantRole(DEFAULT_ADMIN_ROLE, _securityCouncil);
     _grantRole(MINIMUM_FEE_SETTER_ROLE, _securityCouncil);
@@ -123,7 +127,7 @@ abstract contract L2MessageServiceV1 is
     /// @dev Rate limit and revert is in the rate limiter.
     _addUsedAmount(valueSent + postmanFee);
 
-    bytes32 messageHash = keccak256(abi.encode(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata);
 
     emit MessageSent(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata, messageHash);
 
@@ -156,7 +160,7 @@ abstract contract L2MessageServiceV1 is
   ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
     _requireTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE);
 
-    bytes32 messageHash = keccak256(abi.encode(_from, _to, _fee, _value, _nonce, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
     /// @dev Status check and revert is in the message manager.
     _updateL1L2MessageStatusToClaimed(messageHash);
