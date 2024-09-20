@@ -91,8 +91,8 @@ class MinMineableFeesPricerServiceIntegrationTest {
         baseFeeCoefficient = 0.1,
         priorityFeeCoefficient = 0.1,
         baseFeeBlobCoefficient = 0.1,
-        blobSubmissionExpectedExecutionGas = 131_000.0,
-        expectedBlobGas = 120_000.0
+        blobSubmissionExpectedExecutionGas = 131_000,
+        expectedBlobGas = 120_000
       )
     )
   )

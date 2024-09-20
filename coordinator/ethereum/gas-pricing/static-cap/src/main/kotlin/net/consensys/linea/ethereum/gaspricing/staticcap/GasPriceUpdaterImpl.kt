@@ -10,7 +10,7 @@ class GasPriceUpdaterImpl(
   private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   private val config: Config
 ) : GasPriceUpdater {
-  class Config(
+  data class Config(
     val gethEndpoints: List<URL>,
     val besuEndPoints: List<URL>,
     val retryConfig: RequestRetryConfig

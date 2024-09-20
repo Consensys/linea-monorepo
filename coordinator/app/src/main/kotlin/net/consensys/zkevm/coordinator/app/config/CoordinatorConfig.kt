@@ -18,6 +18,7 @@ import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.linea.web3j.SmartContractErrors
+import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import java.math.BigInteger
 import java.net.URL
@@ -120,7 +121,7 @@ data class PersistenceRetryConfig(
   override val timeout: Duration? = 10.minutes.toJavaDuration()
 ) : RetryConfig
 
-private interface RequestRetryConfigurable {
+internal interface RequestRetryConfigurable {
   val requestRetry: RequestRetryConfigTomlFriendly
   val requestRetryConfig: RequestRetryConfig
     get() = requestRetry.asDomain
@@ -366,52 +367,6 @@ data class MessageAnchoringServiceConfig(
   }
 }
 
-data class DynamicGasPriceServiceConfig(
-  val priceUpdateInterval: Duration,
-  val feeHistoryBlockCount: Int,
-  val feeHistoryRewardPercentile: Double,
-  val baseFeeCoefficient: Double,
-  val priorityFeeCoefficient: Double,
-  val baseFeeBlobCoefficient: Double,
-  val expectedBlobGas: Double,
-  val blobSubmissionExpectedExecutionGas: Double,
-  val gasPriceUpperBound: ULong,
-  val gasPriceLowerBound: ULong,
-  val gasPriceFixedCost: ULong,
-  val gethGasPriceUpdateRecipients: List<URL>,
-  val besuGasPriceUpdateRecipients: List<URL>,
-  override val requestRetry: RequestRetryConfigTomlFriendly,
-  @ConfigAlias("disabled") var _disabled: Boolean = false,
-  val extraDataEnabled: Boolean = false,
-  val minMineableFeesEnabled: Boolean = false,
-  val legacyFeesMultiplier: Double,
-  val margin: Double,
-  val extraDataUpdateRecipient: URL,
-  val variableCostUpperBound: ULong,
-  val variableCostLowerBound: ULong,
-  val _bytesPerDataSubmission: Double? // If it is set to null or any default value the test fails for some reason
-) : FeatureToggleable, RequestRetryConfigurable {
-  val bytesPerDataSubmission = _bytesPerDataSubmission ?: expectedBlobGas
-
-  override val disabled: Boolean
-    get() =
-      _disabled || (gethGasPriceUpdateRecipients.isEmpty() && besuGasPriceUpdateRecipients.isEmpty())
-
-  init {
-    require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }
-    require(gasPriceUpperBound >= gasPriceLowerBound) {
-      "gasPriceUpperBound must be greater than or equal to gasPriceLowerBound"
-    }
-    require(variableCostUpperBound >= variableCostLowerBound) {
-      "variableCostUpperBound must be greater than or equal to variableCostLowerBound"
-    }
-    require(extraDataEnabled || minMineableFeesEnabled) {
-      "At least one of extraDataEnabled or minMineableFeesEnabled is required. If gas price updater is not required, " +
-        "disable it with `disabled` config instead"
-    }
-  }
-}
-
 data class L1DynamicGasPriceCapServiceConfig(
   val gasPriceCapCalculation: GasPriceCapCalculation,
   val feeHistoryFetcher: FeeHistoryFetcher,
@@ -573,7 +528,7 @@ data class CoordinatorConfigTomlDto(
   val api: ApiConfig,
   val l2Signer: SignerConfig,
   val messageAnchoringService: MessageAnchoringServiceConfig,
-  val dynamicGasPriceService: DynamicGasPriceServiceConfig,
+  val l2NetworkGasPricing: L2NetworkGasPricingTomlDto,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
   val prover: ProverConfigTomlDto
@@ -598,7 +553,7 @@ data class CoordinatorConfigTomlDto(
     api = api,
     l2Signer = l2Signer,
     messageAnchoringService = messageAnchoringService,
-    dynamicGasPriceService = dynamicGasPriceService,
+    l2NetworkGasPricingService = if (!testL1Disabled) l2NetworkGasPricing.reified() else null,
     l1DynamicGasPriceCapService = l1DynamicGasPriceCapService,
     testL1Disabled = testL1Disabled,
     proversConfig = prover.reified()
@@ -625,7 +580,7 @@ data class CoordinatorConfig(
   val api: ApiConfig,
   val l2Signer: SignerConfig,
   val messageAnchoringService: MessageAnchoringServiceConfig,
-  val dynamicGasPriceService: DynamicGasPriceServiceConfig,
+  val l2NetworkGasPricingService: L2NetworkGasPricingService.Config?,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
   val proversConfig: ProversConfig
@@ -650,7 +605,6 @@ data class CoordinatorConfig(
 
     if (testL1Disabled) {
       messageAnchoringService.disabled = true
-      dynamicGasPriceService._disabled = true
       l1DynamicGasPriceCapService.disabled = true
     }
   }

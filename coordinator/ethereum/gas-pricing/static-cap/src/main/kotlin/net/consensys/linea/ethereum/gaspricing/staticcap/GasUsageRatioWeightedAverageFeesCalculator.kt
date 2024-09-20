@@ -19,8 +19,8 @@ class GasUsageRatioWeightedAverageFeesCalculator(
     val baseFeeCoefficient: Double,
     val priorityFeeCoefficient: Double,
     val baseFeeBlobCoefficient: Double,
-    val blobSubmissionExpectedExecutionGas: Double,
-    val expectedBlobGas: Double
+    val blobSubmissionExpectedExecutionGas: Int,
+    val expectedBlobGas: Int
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)

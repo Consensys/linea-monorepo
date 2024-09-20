@@ -10,7 +10,7 @@ interface FeesFetcher {
   fun getL1EthGasPriceData(): SafeFuture<FeeHistory>
 }
 
-interface FeesCalculator {
+fun interface FeesCalculator {
   fun calculateFees(feeHistory: FeeHistory): Double
 }
 

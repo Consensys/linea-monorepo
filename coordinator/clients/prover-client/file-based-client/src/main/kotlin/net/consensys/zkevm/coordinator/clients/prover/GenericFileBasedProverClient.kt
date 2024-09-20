@@ -138,7 +138,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
     )
   }
 
-  open fun parseResponse(
+  protected open fun parseResponse(
     responseFilePath: Path,
     proofIndex: ProofIndex
   ): SafeFuture<Response> {

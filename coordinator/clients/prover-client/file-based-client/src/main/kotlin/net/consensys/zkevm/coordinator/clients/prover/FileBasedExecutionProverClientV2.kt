@@ -125,7 +125,6 @@ class FileBasedExecutionProverClientV2(
   override fun parseResponse(
     responseFilePath: Path,
     proofIndex: ProofIndex
-
   ): SafeFuture<BatchExecutionProofResponse> {
     return SafeFuture.completedFuture(
       BatchExecutionProofResponse(

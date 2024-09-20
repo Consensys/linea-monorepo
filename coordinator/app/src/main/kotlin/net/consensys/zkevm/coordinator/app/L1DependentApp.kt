@@ -127,7 +127,7 @@ class L1DependentApp(
     if (configs.messageAnchoringService.disabled) {
       log.warn("Message anchoring service is disabled")
     }
-    if (configs.dynamicGasPriceService.disabled) {
+    if (configs.l2NetworkGasPricingService == null) {
       log.warn("Dynamic gas price service is disabled")
     }
   }
@@ -907,14 +907,14 @@ class L1DependentApp(
       null
     }
 
-  private val gasPriceUpdaterApp: GasPriceUpdaterApp? =
-    if (configs.dynamicGasPriceService.enabled) {
-      GasPriceUpdaterApp(
+  private val l2NetworkGasPricingService: L2NetworkGasPricingService? =
+    if (configs.l2NetworkGasPricingService != null) {
+      L2NetworkGasPricingService(
         vertx = vertx,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         l1Web3jClient = l1Web3jClient,
         l1Web3jService = l1Web3jService,
-        config = configs.dynamicGasPriceService
+        config = configs.l2NetworkGasPricingService
       )
     } else {
       null
@@ -1001,7 +1001,7 @@ class L1DependentApp(
       .thenCompose { aggregationFinalizationCoordinator.start() }
       .thenCompose { proofAggregationCoordinatorService.start() }
       .thenCompose { messageAnchoringApp?.start() ?: SafeFuture.completedFuture(Unit) }
-      .thenCompose { gasPriceUpdaterApp?.start() ?: SafeFuture.completedFuture(Unit) }
+      .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { l1FeeHistoryCachingService.start() }
       .thenCompose { deadlineConflationCalculatorRunnerOld.start() }
       .thenCompose { deadlineConflationCalculatorRunnerNew.start() }
@@ -1019,7 +1019,7 @@ class L1DependentApp(
       aggregationFinalizationCoordinator.stop(),
       proofAggregationCoordinatorService.stop(),
       messageAnchoringApp?.stop() ?: SafeFuture.completedFuture(Unit),
-      gasPriceUpdaterApp?.stop() ?: SafeFuture.completedFuture(Unit),
+      l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
       l1FeeHistoryCachingService.stop(),
       blockCreationMonitor.stop(),
       deadlineConflationCalculatorRunnerOld.stop(),

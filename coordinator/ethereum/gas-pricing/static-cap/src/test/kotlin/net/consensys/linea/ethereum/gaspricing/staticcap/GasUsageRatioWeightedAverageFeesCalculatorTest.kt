@@ -9,8 +9,8 @@ class GasUsageRatioWeightedAverageFeesCalculatorTest {
     baseFeeCoefficient = 0.1,
     priorityFeeCoefficient = 1.2,
     baseFeeBlobCoefficient = 0.1,
-    blobSubmissionExpectedExecutionGas = 120_000.0,
-    expectedBlobGas = 131_000.0
+    blobSubmissionExpectedExecutionGas = 120_000,
+    expectedBlobGas = 131_000
   )
   private val feesCalculator = GasUsageRatioWeightedAverageFeesCalculator(config)
 
