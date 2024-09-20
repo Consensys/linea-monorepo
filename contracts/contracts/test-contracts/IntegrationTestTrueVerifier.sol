@@ -3,7 +3,6 @@ pragma solidity 0.8.24;
 
 import { IPlonkVerifier } from "../interfaces/l1/IPlonkVerifier.sol";
 
-/// @dev Test verifier contract that returns true.
 contract IntegrationTestTrueVerifier is IPlonkVerifier {
 
   /// @dev Always returns true for quick turnaround testing.

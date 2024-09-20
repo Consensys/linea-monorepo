@@ -1,8 +1,8 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.23
+go 1.22.1
 
-toolchain go1.23.1
+toolchain go1.23.0
 
 require (
 	github.com/consensys/bavard v0.1.15
