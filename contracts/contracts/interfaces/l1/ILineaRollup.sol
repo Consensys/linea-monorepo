@@ -293,6 +293,15 @@ interface ILineaRollup {
   function setVerifierAddress(address _newVerifierAddress, uint256 _proofType) external;
 
   /**
+   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
+   * @dev Reverts if six months have not passed since the last operator action.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   */
+  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
+
+  /**
    * @notice Unset the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _proofType The proof type being set/updated.

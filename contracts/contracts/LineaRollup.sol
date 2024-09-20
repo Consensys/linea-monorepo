@@ -62,14 +62,11 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev Timestamp of the last finalization or blob submission by an operator.
-  uint256 public lastOperatorActionTimestamp;
-
   /// @dev The address of the gateway operator.
   /// @dev This address is granted the OPERATOR_ROLE after six months of inactivity by the current operators.
   address public gatewayOperator;
 
-  /// @dev Total contract storage is 12 slots.
+  /// @dev Total contract storage is 11 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -98,7 +95,8 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     address[] calldata _operators,
     uint256 _rateLimitPeriodInSeconds,
     uint256 _rateLimitAmountInWei,
-    uint256 _genesisTimestamp
+    uint256 _genesisTimestamp,
+    address _gatewayOperator
   ) external initializer {
     if (_defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -118,6 +116,8 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     verifiers[0] = _defaultVerifier;
 
+    gatewayOperator = _gatewayOperator;
+
     currentL2BlockNumber = _initialL2BlockNumber;
     stateRootHashes[_initialL2BlockNumber] = _initialStateRootHash;
 
@@ -125,17 +125,14 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     currentFinalizedShnarf = GENESIS_SHNARF;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _genesisTimestamp);
-    lastOperatorActionTimestamp = block.timestamp;
   }
 
   /**
-   * @notice Initializes the last operator action timestamp and sets the gateway operator.
+   * @notice Initializes and sets the gateway operator.
    * @dev This will be included with whatever other initializer upgrades we need to perform on branch merging.
    * @param _gatewayOperator The address of the gateway operator.
    */
-  function initializeLastOperatorActionTimestamp(address _gatewayOperator) external reinitializer(6) {
-    lastOperatorActionTimestamp = block.timestamp;
-
+  function initializeGatewayOperator(address _gatewayOperator) external reinitializer(6) {
     gatewayOperator = _gatewayOperator;
   }
 
@@ -156,24 +153,27 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
-   * @notice Sets the gateway operator role to the specified address if six months have passed since the last operator action.
+   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last operator action.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
-  function setGatewayOperator() external {
-    if (block.timestamp < lastOperatorActionTimestamp + SIX_MONTHS_IN_SECONDS) {
+  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
+    if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
     }
+    if (currentFinalizedState != _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)) {
+      revert FinalizationStateIncorrect(
+        currentFinalizedState,
+        _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)
+      );
+    }
+
     address gatewayOperatorAddress = gatewayOperator;
 
     _grantRole(OPERATOR_ROLE, gatewayOperatorAddress);
     emit GatewayOperatorRoleGranted(msg.sender, gatewayOperatorAddress);
-  }
-
-  /**
-   * @notice Internal function to update the last operator action timestamp to the current block timestamp.
-   */
-  function _setLastOperatorActionTimestamp() internal {
-    lastOperatorActionTimestamp = block.timestamp;
   }
 
   /**
@@ -265,8 +265,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     /// @dev use the last shnarf as the submission to store as technically it becomes the next parent shnarf.
     shnarfFinalBlockNumbers[computedShnarf] = blobFinalBlockNumber;
 
-    _setLastOperatorActionTimestamp();
-
     emit DataSubmittedV2(computedShnarf, _blobSubmissionData[0].submissionData.firstBlockInData, blobFinalBlockNumber);
   }
 
@@ -315,8 +313,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     }
 
     shnarfFinalBlockNumbers[computedShnarf] = _submissionData.finalBlockInData;
-
-    _setLastOperatorActionTimestamp();
 
     emit DataSubmittedV2(computedShnarf, _submissionData.firstBlockInData, _submissionData.finalBlockInData);
   }
@@ -492,8 +488,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       _finalizationData.finalBlockInData,
       _finalizationData.shnarfData.finalStateRootHash
     );
-
-    _setLastOperatorActionTimestamp();
   }
 
   /**

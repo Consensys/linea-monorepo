@@ -32,6 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const LineaRollup_rateLimitPeriodInSeconds = requireEnv("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const LineaRollup_rateLimitAmountInWei = requireEnv("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const LineaRollup_genesisTimestamp = requireEnv("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
   console.log(`Setting operators ${LineaRollup_operators}`);
 
@@ -51,9 +52,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       LineaRollup_rateLimitPeriodInSeconds,
       LineaRollup_rateLimitAmountInWei,
       LineaRollup_genesisTimestamp,
+      MultiCallAddress,
     ],
     {
-      initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+      initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
       unsafeAllow: ["constructor"],
     },
   );

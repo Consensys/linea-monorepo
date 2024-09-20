@@ -69,6 +69,8 @@ describe("Linea Rollup contract", () => {
   let nonAuthorizedAccount: SignerWithAddress;
   let gatewayOperator: SignerWithAddress;
 
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentDataHash, parentStateRootHash } =
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
@@ -91,15 +93,16 @@ describe("Linea Rollup contract", () => {
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
         1683325137n,
+        multiCallAddress,
       ],
       {
-        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
         unsafeAllow: ["constructor"],
       },
     )) as unknown as TestLineaRollup;
 
-    // Initialize the last operator action timestamp and set the gateway operator
-    await lineaRollup.initializeLastOperatorActionTimestamp(gatewayOperator.address);
+    // Initialize the the gateway operator
+    await lineaRollup.initializeGatewayOperator(gatewayOperator.address);
 
     return lineaRollup;
   }
@@ -145,9 +148,10 @@ describe("Linea Rollup contract", () => {
           ONE_DAY_IN_SECONDS,
           INITIAL_WITHDRAW_LIMIT,
           GENESIS_L2_TIMESTAMP,
+          multiCallAddress,
         ],
         {
-          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
           unsafeAllow: ["constructor"],
         },
       );
@@ -167,9 +171,10 @@ describe("Linea Rollup contract", () => {
           ONE_DAY_IN_SECONDS,
           INITIAL_WITHDRAW_LIMIT,
           GENESIS_L2_TIMESTAMP,
+          multiCallAddress,
         ],
         {
-          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
           unsafeAllow: ["constructor"],
         },
       );
@@ -204,9 +209,10 @@ describe("Linea Rollup contract", () => {
           ONE_DAY_IN_SECONDS,
           INITIAL_WITHDRAW_LIMIT,
           GENESIS_L2_TIMESTAMP,
+          multiCallAddress,
         ],
         {
-          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
           unsafeAllow: ["constructor"],
         },
       );
@@ -225,6 +231,7 @@ describe("Linea Rollup contract", () => {
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
         GENESIS_L2_TIMESTAMP,
+        multiCallAddress,
       );
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
@@ -1972,21 +1979,62 @@ describe("Linea Rollup contract", () => {
 
   describe("Gateway Operator Role", () => {
     it("Should revert if trying to set gateway operator role before six months have passed", async () => {
-      await expect(lineaRollup.setGatewayOperator()).to.be.revertedWithCustomError(
-        lineaRollup,
-        "LastFinalizationTimeNotLapsed",
-      );
+      const initialBlock = await ethers.provider.getBlock("latest");
+
+      const customLineaRollup = (await deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [
+          parentStateRootHash,
+          0,
+          verifier,
+          securityCouncil.address,
+          [operator.address],
+          ONE_DAY_IN_SECONDS,
+          INITIAL_WITHDRAW_LIMIT,
+          initialBlock?.timestamp,
+          multiCallAddress,
+        ],
+        {
+          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
+          unsafeAllow: ["constructor"],
+        },
+      )) as unknown as TestLineaRollup;
+
+      await expect(
+        customLineaRollup.setGatewayOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
+      ).to.be.revertedWithCustomError(lineaRollup, "LastFinalizationTimeNotLapsed");
     });
 
     it("Should set the gateway operator role after six months have passed", async () => {
+      const initialBlock = await ethers.provider.getBlock("latest");
+
+      const customLineaRollup = (await deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [
+          parentStateRootHash,
+          0,
+          verifier,
+          securityCouncil.address,
+          [operator.address],
+          ONE_DAY_IN_SECONDS,
+          INITIAL_WITHDRAW_LIMIT,
+          initialBlock?.timestamp,
+          multiCallAddress,
+        ],
+        {
+          initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
+          unsafeAllow: ["constructor"],
+        },
+      )) as unknown as TestLineaRollup;
+
       // Fast forward time by six months
       await networkTime.increase(15768000); // 6 months in seconds
 
-      await expect(lineaRollup.setGatewayOperator())
-        .to.emit(lineaRollup, "GatewayOperatorRoleGranted")
-        .withArgs(admin.address, gatewayOperator.address);
+      await expect(customLineaRollup.setGatewayOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)))
+        .to.emit(customLineaRollup, "GatewayOperatorRoleGranted")
+        .withArgs(admin.address, multiCallAddress);
 
-      expect(await lineaRollup.hasRole(OPERATOR_ROLE, gatewayOperator.address)).to.be.true;
+      expect(await customLineaRollup.hasRole(OPERATOR_ROLE, multiCallAddress)).to.be.true;
     });
   });
 });

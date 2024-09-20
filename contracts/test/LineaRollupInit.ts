@@ -21,6 +21,8 @@ describe("LineaRollup Init contract", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
 
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
   const parentStateRootHash = generateRandomBytes(32);
 
   const firstBlockNumber = 199;
@@ -43,9 +45,10 @@ describe("LineaRollup Init contract", () => {
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
         GENESIS_L2_TIMESTAMP,
+        multiCallAddress,
       ],
       {
-        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
         unsafeAllow: ["constructor"],
       },
     )) as unknown as TestLineaRollup;
