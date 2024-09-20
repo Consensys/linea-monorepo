@@ -13,7 +13,7 @@
         "scenarioType": "SelfTransactionWithPayload",
         "wallet": "source",
         "nbTransfers": 1,
-        "payload": "custom payload"
+        "payload": ""
       }
     }
   ]
