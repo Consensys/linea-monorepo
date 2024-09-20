@@ -4,6 +4,7 @@ compile:
 	pnpm run build
 	npx hardhat run scripts/hardhat/postCompile.ts
 
+force-compile: export TS_NODE_TRANSPILE_ONLY := 1
 force-compile:
 	npx hardhat compile --force
 	npx hardhat run scripts/hardhat/postCompile.ts
