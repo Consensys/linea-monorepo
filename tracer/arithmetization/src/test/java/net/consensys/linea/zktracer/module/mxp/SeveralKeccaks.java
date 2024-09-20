@@ -28,7 +28,7 @@ public class SeveralKeccaks {
 
   /** For readability we write __ instead of 00 */
   @Test
-  void TestIsTheBeefDeadYet() {
+  void testIsTheBeefDeadYet() {
     BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .push("deadbeef") // 4 bytes

@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 public class MessageFrameTest {
 
   @Test
-  void TestCreate() {
+  void testCreate() {
     // The pc is not updated as expected
     // We do not execute the init code of the created smart contract
     // TODO: fix this!
@@ -50,7 +50,7 @@ public class MessageFrameTest {
   }
 
   @Test
-  void TestCall() {
+  void testCall() {
     // Interestingly for CALL the pc is updated as expected
     // We execute the bytecode of the called smart contract
     BytecodeCompiler program = BytecodeCompiler.newProgram();

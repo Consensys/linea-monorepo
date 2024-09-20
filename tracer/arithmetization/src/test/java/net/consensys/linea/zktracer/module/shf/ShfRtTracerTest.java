@@ -48,7 +48,7 @@ class ShfRtTracerTest {
   }
 
   @Test
-  void TestShfResultFailure() {
+  void testShfResultFailure() {
     BytecodeRunner.of(
             Bytes.fromHexString(
                 "7faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7fa0000000000000000000000000000000000000000000000000000000000000001d"))
