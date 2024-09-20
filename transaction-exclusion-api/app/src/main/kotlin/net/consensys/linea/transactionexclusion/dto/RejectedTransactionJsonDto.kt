@@ -14,18 +14,11 @@ data class ModuleOverflowJsonDto(
   constructor() : this(0L, 0L, "")
 
   companion object {
-    fun parseListFromJsonString(jsonString: String): List<ModuleOverflowJsonDto> {
+    fun parseListFrom(target: Any): List<ModuleOverflowJsonDto> {
       return ObjectMapper().readValue(
-        jsonString,
+        ObjectMapper().writeValueAsString(target),
         Array<ModuleOverflowJsonDto>::class.java
       ).toList()
-    }
-
-    fun parseToJsonString(target: Any): String {
-      if (target is String) {
-        return target
-      }
-      return ObjectMapper().writeValueAsString(target)
     }
   }
 
@@ -48,6 +41,15 @@ data class RejectedTransactionJsonDto(
 ) {
   // Jackson ObjectMapper requires a default constructor
   constructor() : this("", "", null, "", "", Any())
+
+  companion object {
+    fun parseFrom(target: Any): RejectedTransactionJsonDto {
+      return ObjectMapper().readValue(
+        ObjectMapper().writeValueAsString(target),
+        RejectedTransactionJsonDto::class.java
+      )
+    }
+  }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

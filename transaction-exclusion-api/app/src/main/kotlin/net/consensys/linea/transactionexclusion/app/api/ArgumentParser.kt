@@ -48,9 +48,7 @@ object ArgumentParser {
 
   fun getOverflows(target: Any): List<ModuleOverflow> {
     try {
-      return ModuleOverflowJsonDto.parseListFromJsonString(
-        ModuleOverflowJsonDto.parseToJsonString(target)
-      ).map { it.toDomainObject() }
+      return ModuleOverflowJsonDto.parseListFrom(target).map { it.toDomainObject() }
     } catch (ex: Exception) {
       throw IllegalArgumentException("Overflows cannot be parsed: ${ex.message}")
     }
