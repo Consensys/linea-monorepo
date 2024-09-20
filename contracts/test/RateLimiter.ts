@@ -8,6 +8,7 @@ import {
   INITIALIZED_ERROR_MESSAGE,
   ONE_DAY_IN_SECONDS,
   RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -39,6 +40,7 @@ describe("Rate limiter", () => {
   beforeEach(async () => {
     testRateLimiter = await loadFixture(deployTestRateLimiterFixture);
     await testRateLimiter.grantRole(RATE_LIMIT_SETTER_ROLE, resetAdmin.address);
+    await testRateLimiter.grantRole(USED_RATE_LIMIT_RESETTER_ROLE, resetAdmin.address);
   });
 
   async function assertCurrentPeriodAmount(expectedAmount: bigint) {
@@ -59,14 +61,14 @@ describe("Rate limiter", () => {
       expect(await testRateLimiter.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin.address)).to.be.true;
     });
 
-    it("fails to initialise when not initialising", async () => {
+    it("fails to initialize when not initialising", async () => {
       await expectRevertWithReason(
         testRateLimiter.tryInitialize(ONE_DAY_IN_SECONDS, ONE_HUNDRED_ETH),
         INITIALIZED_ERROR_MESSAGE,
       );
     });
 
-    it("fails to initialise when the limit is zero", async () => {
+    it("fails to initialize when the limit is zero", async () => {
       const upgradeCall = deployUpgradableFromFactory("TestRateLimiter", [ONE_DAY_IN_SECONDS, 0], {
         initializer: "initialize(uint256,uint256)",
       });
@@ -109,7 +111,7 @@ describe("Rate limiter", () => {
       expect(parsedLogs!.args.currentPeriodEnd).to.equal(currentPeriodEnd);
     });
 
-    it("fails to initialise when the period is zero", async () => {
+    it("fails to initialize when the period is zero", async () => {
       const upgradeCall = deployUpgradableFromFactory("TestRateLimiter", [0, ONE_HUNDRED_ETH], {
         initializer: "initialize(uint256,uint256)",
       });
@@ -147,7 +149,7 @@ describe("Rate limiter", () => {
 
     it("resetting currentPeriodAmountInWei fails if not admin", async () => {
       await expect(resetCurrentPeriodAmountByAccount(defaultAdmin)).to.be.revertedWith(
-        buildAccessErrorMessage(defaultAdmin, RATE_LIMIT_SETTER_ROLE),
+        buildAccessErrorMessage(defaultAdmin, USED_RATE_LIMIT_RESETTER_ROLE),
       );
     });
 

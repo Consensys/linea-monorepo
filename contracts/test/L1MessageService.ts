@@ -28,9 +28,15 @@ import {
   MESSAGE_FEE,
   MESSAGE_VALUE_1ETH,
   ONE_DAY_IN_SECONDS,
-  PAUSE_MANAGER_ROLE,
+  PAUSE_ALL_ROLE,
+  UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
   VALID_MERKLE_PROOF,
+  PAUSE_L2_L1_ROLE,
+  PAUSE_L1_L2_ROLE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
 } from "./utils/constants";
 import { deployFromFactory, deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -56,25 +62,26 @@ describe("L1MessageService", () => {
 
   async function deployTestL1MessageServiceFixture(): Promise<TestL1MessageService> {
     return deployUpgradableFromFactory("TestL1MessageService", [
-      limitSetter.address,
-      pauser.address,
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ]) as unknown as Promise<TestL1MessageService>;
   }
 
   async function deployL1MessageServiceMerkleFixture(): Promise<TestL1MessageServiceMerkleProof> {
     return deployUpgradableFromFactory("TestL1MessageServiceMerkleProof", [
-      limitSetter.address,
-      pauser.address,
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ]) as unknown as Promise<TestL1MessageServiceMerkleProof>;
   }
 
   async function deployL1TestRevertFixture(): Promise<TestL1RevertContract> {
     return deployUpgradableFromFactory("TestL1RevertContract", []) as unknown as Promise<TestL1RevertContract>;
   }
+
   before(async () => {
     [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
     await setNonce(admin.address, 1);
@@ -84,6 +91,15 @@ describe("L1MessageService", () => {
     l1MessageService = await loadFixture(deployTestL1MessageServiceFixture);
     l1MessageServiceMerkleProof = await loadFixture(deployL1MessageServiceMerkleFixture);
     l1TestRevert = await loadFixture(deployL1TestRevertFixture);
+
+    await l1MessageService.grantRole(PAUSE_L1_L2_ROLE, pauser.address);
+    await l1MessageService.grantRole(PAUSE_L2_L1_ROLE, pauser.address);
+    await l1MessageService.grantRole(PAUSE_ALL_ROLE, pauser.address);
+    await l1MessageService.grantRole(UNPAUSE_ALL_ROLE, pauser.address);
+    await l1MessageService.grantRole(RATE_LIMIT_SETTER_ROLE, limitSetter.address);
+    await l1MessageService.grantRole(USED_RATE_LIMIT_RESETTER_ROLE, limitSetter.address);
+
+    await l1MessageServiceMerkleProof.grantRole(PAUSE_ALL_ROLE, pauser.address);
 
     await l1MessageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
     await l1MessageServiceMerkleProof.addFunds({ value: INITIAL_WITHDRAW_LIMIT * 2n });
@@ -98,8 +114,16 @@ describe("L1MessageService", () => {
       expect(await l1MessageService.hasRole(RATE_LIMIT_SETTER_ROLE, limitSetter.address)).to.be.true;
     });
 
-    it("pauser has PAUSE_MANAGER_ROLE", async () => {
-      expect(await l1MessageService.hasRole(PAUSE_MANAGER_ROLE, pauser.address)).to.be.true;
+    it("limitSetter has USED_RATE_LIMIT_RESETTER_ROLE", async () => {
+      expect(await l1MessageService.hasRole(USED_RATE_LIMIT_RESETTER_ROLE, limitSetter.address)).to.be.true;
+    });
+
+    it("pauser has PAUSE_ALL_ROLE", async () => {
+      expect(await l1MessageService.hasRole(PAUSE_ALL_ROLE, pauser.address)).to.be.true;
+    });
+
+    it("pauser has UNPAUSE_ALL_ROLE", async () => {
+      expect(await l1MessageService.hasRole(UNPAUSE_ALL_ROLE, pauser.address)).to.be.true;
     });
 
     it("Should set rate limit and period", async () => {
@@ -109,24 +133,19 @@ describe("L1MessageService", () => {
 
     it("It should fail when not initializing", async () => {
       await expectRevertWithReason(
-        l1MessageService.tryInitialize(limitSetter.address, pauser.address, ONE_DAY_IN_SECONDS, INITIAL_WITHDRAW_LIMIT),
+        l1MessageService.tryInitialize(ONE_DAY_IN_SECONDS, INITIAL_WITHDRAW_LIMIT, pauseTypeRoles, unpauseTypeRoles),
         INITIALIZED_ERROR_MESSAGE,
       );
     });
 
-    it("Should initialise nextMessageNumber", async () => {
+    it("Should initialize nextMessageNumber", async () => {
       expect(await l1MessageService.nextMessageNumber()).to.be.equal(1);
     });
 
     it("Should fail to deploy missing amount", async () => {
       await expectRevertWithCustomError(
         l1MessageService,
-        deployUpgradableFromFactory("TestL1MessageService", [
-          limitSetter.address,
-          pauser.address,
-          ONE_DAY_IN_SECONDS,
-          0,
-        ]),
+        deployUpgradableFromFactory("TestL1MessageService", [ONE_DAY_IN_SECONDS, 0, pauseTypeRoles, unpauseTypeRoles]),
         "LimitIsZero",
       );
     });
@@ -135,38 +154,12 @@ describe("L1MessageService", () => {
       await expectRevertWithCustomError(
         l1MessageService,
         deployUpgradableFromFactory("TestL1MessageService", [
-          limitSetter.address,
-          pauser.address,
           0,
           INITIAL_WITHDRAW_LIMIT,
+          pauseTypeRoles,
+          unpauseTypeRoles,
         ]),
         "PeriodIsZero",
-      );
-    });
-
-    it("Should fail with empty limiter address", async () => {
-      await expectRevertWithCustomError(
-        l1MessageService,
-        deployUpgradableFromFactory("TestL1MessageService", [
-          ADDRESS_ZERO,
-          pauser.address,
-          ONE_DAY_IN_SECONDS,
-          INITIAL_WITHDRAW_LIMIT,
-        ]),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
-    it("Should fail with empty pauser address", async () => {
-      await expectRevertWithCustomError(
-        l1MessageService,
-        deployUpgradableFromFactory("TestL1MessageService", [
-          limitSetter.address,
-          ADDRESS_ZERO,
-          ONE_DAY_IN_SECONDS,
-          INITIAL_WITHDRAW_LIMIT,
-        ]),
-        "ZeroAddressNotAllowed",
       );
     });
   });
@@ -1311,7 +1304,7 @@ describe("L1MessageService", () => {
 
       await expectRevertWithReason(
         l1MessageService.connect(admin).resetAmountUsedInPeriod(),
-        buildAccessErrorMessage(admin, RATE_LIMIT_SETTER_ROLE),
+        buildAccessErrorMessage(admin, USED_RATE_LIMIT_RESETTER_ROLE),
       );
 
       usedAmount = await l1MessageService.currentPeriodAmountInWei();
@@ -1324,7 +1317,7 @@ describe("L1MessageService", () => {
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
 
       await expect(l1MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE)).to.be.revertedWith(
-        "AccessControl: account " + admin.address.toLowerCase() + " is missing role " + PAUSE_MANAGER_ROLE,
+        "AccessControl: account " + admin.address.toLowerCase() + " is missing role " + PAUSE_ALL_ROLE,
       );
 
       expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;

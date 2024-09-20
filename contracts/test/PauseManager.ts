@@ -9,14 +9,30 @@ import {
   INITIALIZED_ALREADY_MESSAGE,
   L1_L2_PAUSE_TYPE,
   L2_L1_PAUSE_TYPE,
-  PAUSE_MANAGER_ROLE,
-  PROVING_SYSTEM_PAUSE_TYPE,
+  PAUSE_ALL_ROLE,
+  UNPAUSE_ALL_ROLE,
+  PAUSE_L1_L2_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  PAUSE_L2_L1_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  PAUSE_FINALIZE_WITHPROOF_ROLE,
+  PAUSE_L2_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_FINALIZE_WITHPROOF_ROLE,
+  UNPAUSE_L2_BLOB_SUBMISSION_ROLE,
+  BLOB_SUBMISSION_PAUSE_TYPE,
+  CALLDATA_SUBMISSION_PAUSE_TYPE,
+  FINALIZATION_PAUSE_TYPE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import { buildAccessErrorMessage, expectEvent } from "./utils/helpers";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
-  return deployUpgradableFromFactory("TestPauseManager") as unknown as Promise<TestPauseManager>;
+  return deployUpgradableFromFactory("TestPauseManager", [
+    pauseTypeRoles,
+    unpauseTypeRoles,
+  ]) as unknown as Promise<TestPauseManager>;
 }
 
 describe("PauseManager", () => {
@@ -30,7 +46,20 @@ describe("PauseManager", () => {
     [defaultAdmin, pauseManagerAccount, nonManager] = await ethers.getSigners();
     pauseManager = await loadFixture(deployTestPauseManagerFixture);
 
-    await pauseManager.grantRole(PAUSE_MANAGER_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(PAUSE_ALL_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(UNPAUSE_ALL_ROLE, pauseManagerAccount.address);
+
+    await pauseManager.grantRole(PAUSE_L1_L2_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(UNPAUSE_L1_L2_ROLE, pauseManagerAccount.address);
+
+    await pauseManager.grantRole(PAUSE_L2_L1_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(UNPAUSE_L2_L1_ROLE, pauseManagerAccount.address);
+
+    await pauseManager.grantRole(PAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(UNPAUSE_L2_BLOB_SUBMISSION_ROLE, pauseManagerAccount.address);
+
+    await pauseManager.grantRole(PAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
+    await pauseManager.grantRole(UNPAUSE_FINALIZE_WITHPROOF_ROLE, pauseManagerAccount.address);
   });
 
   async function pauseByType(pauseType: number, account: SignerWithAddress = pauseManagerAccount) {
@@ -47,38 +76,40 @@ describe("PauseManager", () => {
     });
 
     it("Second initialisation while initializing fails", async () => {
-      await expect(pauseManager.initialize()).to.be.revertedWith(INITIALIZED_ALREADY_MESSAGE);
+      await expect(pauseManager.initialize(pauseTypeRoles, unpauseTypeRoles)).to.be.revertedWith(
+        INITIALIZED_ALREADY_MESSAGE,
+      );
     });
   });
 
   describe("General pausing", () => {
-    // can pause as PAUSE_MANAGER_ROLE
-    it("should pause the contract if PAUSE_MANAGER_ROLE", async () => {
+    // can pause as PAUSE_ALL_ROLE
+    it("should pause the contract if PAUSE_ALL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
-    // cannot pause as non-PAUSE_MANAGER_ROLE
-    it("should revert pause attempt if not PAUSE_MANAGER_ROLE", async () => {
+    // cannot pause as non-PAUSE_ALL_ROLE
+    it("should revert pause attempt if not PAUSE_ALL_ROLE", async () => {
       await expect(pauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-        buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+        buildAccessErrorMessage(nonManager, PAUSE_ALL_ROLE),
       );
     });
 
-    // can unpause as PAUSE_MANAGER_ROLE
-    it("should unpause the contract if PAUSE_MANAGER_ROLE", async () => {
+    // can unpause as UNPAUSE_ALL_ROLE
+    it("should unpause the contract if UNPAUSE_ALL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       await unPauseByType(GENERAL_PAUSE_TYPE);
 
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
     });
 
-    // cannot unpause as non-PAUSE_MANAGER_ROLE
-    it("should revert unpause attempt if not PAUSE_MANAGER_ROLE", async () => {
+    // cannot unpause as non-UNPAUSE_ALL_ROLE
+    it("should revert unpause attempt if not UNPAUSE_ALL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
 
       await expect(unPauseByType(GENERAL_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-        buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+        buildAccessErrorMessage(nonManager, UNPAUSE_ALL_ROLE),
       );
     });
   });
@@ -102,7 +133,7 @@ describe("PauseManager", () => {
   });
 
   describe("Specific type pausing", () => {
-    describe("With permissions as PAUSE_MANAGER_ROLE", () => {
+    describe("With permissions as PAUSE_ALL_ROLE", () => {
       it("should pause the L1_L2_PAUSE_TYPE", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
         expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.true;
@@ -127,23 +158,47 @@ describe("PauseManager", () => {
         expect(await pauseManager.isPaused(L2_L1_PAUSE_TYPE)).to.be.false;
       });
 
-      it("should pause the PROVING_SYSTEM_PAUSE_TYPE", async () => {
-        await pauseByType(PROVING_SYSTEM_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(PROVING_SYSTEM_PAUSE_TYPE)).to.be.true;
+      it("should pause the BLOB_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(BLOB_SUBMISSION_PAUSE_TYPE)).to.be.true;
       });
 
-      it("should unpause the PROVING_SYSTEM_PAUSE_TYPE", async () => {
-        await pauseByType(PROVING_SYSTEM_PAUSE_TYPE);
+      it("should unpause the BLOB_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
-        await unPauseByType(PROVING_SYSTEM_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(PROVING_SYSTEM_PAUSE_TYPE)).to.be.false;
+        await unPauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(BLOB_SUBMISSION_PAUSE_TYPE)).to.be.false;
+      });
+
+      it("should pause the CALLDATA_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(CALLDATA_SUBMISSION_PAUSE_TYPE)).to.be.true;
+      });
+
+      it("should unpause the CALLDATA_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
+
+        await unPauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(CALLDATA_SUBMISSION_PAUSE_TYPE)).to.be.false;
+      });
+
+      it("should pause the FINALIZATION_PAUSE_TYPE", async () => {
+        await pauseByType(FINALIZATION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(FINALIZATION_PAUSE_TYPE)).to.be.true;
+      });
+
+      it("should unpause the FINALIZATION_PAUSE_TYPE", async () => {
+        await pauseByType(FINALIZATION_PAUSE_TYPE);
+
+        await unPauseByType(FINALIZATION_PAUSE_TYPE);
+        expect(await pauseManager.isPaused(FINALIZATION_PAUSE_TYPE)).to.be.false;
       });
     });
 
-    describe("Without permissions - non-PAUSE_MANAGER_ROLE", () => {
+    describe("Without permissions - non-PAUSE_ALL_ROLE", () => {
       it("cannot pause the L1_L2_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(L1_L2_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_L1_L2_ROLE),
         );
       });
 
@@ -151,13 +206,13 @@ describe("PauseManager", () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
 
         await expect(unPauseByType(L1_L2_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_L1_L2_ROLE),
         );
       });
 
       it("cannot pause the L2_L1_PAUSE_TYPE as non-manager", async () => {
         await expect(pauseByType(L2_L1_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+          buildAccessErrorMessage(nonManager, PAUSE_L2_L1_ROLE),
         );
       });
 
@@ -165,21 +220,49 @@ describe("PauseManager", () => {
         await pauseByType(L2_L1_PAUSE_TYPE);
 
         await expect(unPauseByType(L2_L1_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+          buildAccessErrorMessage(nonManager, UNPAUSE_L2_L1_ROLE),
         );
       });
 
-      it("cannot pause the PROVING_SYSTEM_PAUSE_TYPE as non-manager", async () => {
-        await expect(pauseByType(PROVING_SYSTEM_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+      it("cannot pause the BLOB_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
+        await expect(pauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, PAUSE_L2_BLOB_SUBMISSION_ROLE),
         );
       });
 
-      it("cannot unpause the PROVING_SYSTEM_PAUSE_TYPE", async () => {
-        await pauseByType(PROVING_SYSTEM_PAUSE_TYPE);
+      it("cannot unpause the BLOB_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(BLOB_SUBMISSION_PAUSE_TYPE);
 
-        await expect(unPauseByType(PROVING_SYSTEM_PAUSE_TYPE, nonManager)).to.be.revertedWith(
-          buildAccessErrorMessage(nonManager, PAUSE_MANAGER_ROLE),
+        await expect(unPauseByType(BLOB_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, UNPAUSE_L2_BLOB_SUBMISSION_ROLE),
+        );
+      });
+
+      it("cannot pause the CALLDATA_SUBMISSION_PAUSE_TYPE as non-manager", async () => {
+        await expect(pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, PAUSE_L2_BLOB_SUBMISSION_ROLE),
+        );
+      });
+
+      it("cannot unpause the CALLDATA_SUBMISSION_PAUSE_TYPE", async () => {
+        await pauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE);
+
+        await expect(unPauseByType(CALLDATA_SUBMISSION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, UNPAUSE_L2_BLOB_SUBMISSION_ROLE),
+        );
+      });
+
+      it("cannot pause the FINALIZATION_PAUSE_TYPE as non-manager", async () => {
+        await expect(pauseByType(FINALIZATION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, PAUSE_FINALIZE_WITHPROOF_ROLE),
+        );
+      });
+
+      it("cannot unpause the FINALIZATION_PAUSE_TYPE", async () => {
+        await pauseByType(FINALIZATION_PAUSE_TYPE);
+
+        await expect(unPauseByType(FINALIZATION_PAUSE_TYPE, nonManager)).to.be.revertedWith(
+          buildAccessErrorMessage(nonManager, UNPAUSE_FINALIZE_WITHPROOF_ROLE),
         );
       });
     });
@@ -196,9 +279,9 @@ describe("PauseManager", () => {
 
         await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
 
-        await expectEvent(pauseManager, pauseByType(PROVING_SYSTEM_PAUSE_TYPE), "Paused", [
+        await expectEvent(pauseManager, pauseByType(BLOB_SUBMISSION_PAUSE_TYPE), "Paused", [
           pauseManagerAccount.address,
-          PROVING_SYSTEM_PAUSE_TYPE,
+          BLOB_SUBMISSION_PAUSE_TYPE,
         ]);
       });
 

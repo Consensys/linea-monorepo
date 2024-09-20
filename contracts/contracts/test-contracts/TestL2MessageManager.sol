@@ -4,14 +4,20 @@ pragma solidity 0.8.19;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { L2MessageManager } from "../messageService/l2/L2MessageManager.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
+import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
 
-contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors {
+contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors, TestSetPauseTypeRoles {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
   }
 
-  function initialize(address _pauserManager, address _l1l2MessageSetter) public initializer {
+  function initialize(
+    address _pauserManager,
+    address _l1l2MessageSetter,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
+  ) public initializer {
     if (_pauserManager == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -24,9 +30,11 @@ contract TestL2MessageManager is Initializable, L2MessageManager, IGenericErrors
     __Context_init();
     __AccessControl_init();
     __L2MessageManager_init(_l1l2MessageSetter);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    _grantRole(PAUSE_MANAGER_ROLE, _pauserManager);
+    _grantRole(PAUSE_ALL_ROLE, _pauserManager);
+    _grantRole(UNPAUSE_ALL_ROLE, _pauserManager);
   }
 
   function tryInitialize(address _l1l2MessageSetter) external {
