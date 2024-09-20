@@ -21,7 +21,7 @@ import java.math.BigInteger;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -53,7 +53,8 @@ public class StackedListTests {
 
   @Test
   void testAddedToFront() {
-    final StackedList<IntegerModuleOperation> state = new StackedList<>();
+    final ModuleOperationStackedList<IntegerModuleOperation> state =
+        new ModuleOperationStackedList<>();
 
     state.enter();
     state.add(new IntegerModuleOperation(1));
@@ -69,7 +70,7 @@ public class StackedListTests {
 
   @Test
   public void push() {
-    StackedList<AddOperation> chunks = new StackedList<>();
+    ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
     chunks.enter();
 
     chunks.add(ONE_PLUS_ONE);
@@ -82,7 +83,7 @@ public class StackedListTests {
 
   @Test
   public void multiplePushPop() {
-    StackedList<AddOperation> chunks = new StackedList<>();
+    ModuleOperationStackedList<AddOperation> chunks = new ModuleOperationStackedList<>();
     chunks.enter();
     chunks.add(ONE_PLUS_ONE);
     chunks.add(ONE_PLUS_ONE);

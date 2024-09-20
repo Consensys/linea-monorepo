@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.limits.precompiles.EcAddEffectiveCall;
@@ -44,7 +44,8 @@ public class EcData implements OperationListModule<EcDataOperation> {
   public static final Set<Address> EC_PRECOMPILES =
       Set.of(Address.ECREC, Address.ALTBN128_ADD, Address.ALTBN128_MUL, Address.ALTBN128_PAIRING);
 
-  private final StackedList<EcDataOperation> operations = new StackedList<>();
+  private final ModuleOperationStackedList<EcDataOperation> operations =
+      new ModuleOperationStackedList<>();
 
   private final Wcp wcp;
   private final Ext ext;

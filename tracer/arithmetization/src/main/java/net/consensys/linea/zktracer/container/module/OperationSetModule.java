@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.container.module;
 
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
@@ -25,7 +25,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public interface OperationSetModule<E extends ModuleOperation> extends Module {
 
-  StackedSet<E> operations();
+  ModuleOperationStackedSet<E> operations();
 
   @Override
   default void enterTransaction() {

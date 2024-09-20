@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
-import net.consensys.linea.zktracer.container.stacked.StackedSet;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -39,7 +39,9 @@ public class Stp implements OperationSetModule<StpOperation> {
   private final Wcp wcp;
   private final Mod mod;
 
-  @Getter private final StackedSet<StpOperation> operations = new StackedSet<>();
+  @Getter
+  private final ModuleOperationStackedSet<StpOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   public void call(StpCall stpCall) {
     final StpOperation stpOperation = new StpOperation(stpCall);

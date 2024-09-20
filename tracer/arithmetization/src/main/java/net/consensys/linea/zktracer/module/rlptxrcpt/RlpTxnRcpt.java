@@ -38,7 +38,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.types.BitDecOutput;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -55,8 +55,8 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   private static final Bytes BYTES_RLP_LIST_SHORT = Bytes.minimalBytes(RLP_PREFIX_LIST_SHORT);
 
   @Getter
-  private final StackedList<RlpTxrcptOperation> operations =
-      new StackedList<>(LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH, 1);
+  private final ModuleOperationStackedList<RlpTxrcptOperation> operations =
+      new ModuleOperationStackedList<>(LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH, 1);
 
   private int absLogNum = 0;
 

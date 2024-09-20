@@ -63,7 +63,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.module.romlex.RomLex;
@@ -90,8 +90,8 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   private final RomLex romLex;
 
   @Getter
-  private final StackedList<RlpTxnOperation> operations =
-      new StackedList<>(LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH, 1);
+  private final ModuleOperationStackedList<RlpTxnOperation> operations =
+      new ModuleOperationStackedList<>(LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH, 1);
 
   @Override
   public String moduleKey() {

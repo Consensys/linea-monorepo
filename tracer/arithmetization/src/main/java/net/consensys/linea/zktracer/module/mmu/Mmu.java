@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.ColumnHeader;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
-import net.consensys.linea.zktracer.container.stacked.StackedList;
+import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
@@ -33,7 +33,10 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 public class Mmu implements OperationListModule<MmuOperation> {
-  @Getter private final StackedList<MmuOperation> operations = new StackedList<>();
+  @Getter
+  private final ModuleOperationStackedList<MmuOperation> operations =
+      new ModuleOperationStackedList<>();
+
   private final Euc euc;
   private final Wcp wcp;
 
