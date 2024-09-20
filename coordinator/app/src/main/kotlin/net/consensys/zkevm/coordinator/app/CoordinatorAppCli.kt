@@ -10,6 +10,12 @@ import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addFileSource
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
+import net.consensys.zkevm.coordinator.app.config.CoordinatorConfigTomlDto
+import net.consensys.zkevm.coordinator.app.config.GasPriceCapTimeOfDayMultipliersConfig
+import net.consensys.zkevm.coordinator.app.config.SmartContractErrorCodesConfig
+import net.consensys.zkevm.coordinator.app.config.TracesLimitsV1ConfigFile
+import net.consensys.zkevm.coordinator.app.config.TracesLimitsV2ConfigFile
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import picocli.CommandLine
@@ -175,7 +181,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
     val gasPriceCapTimeOfDayMultipliers =
       loadConfigsOrError<GasPriceCapTimeOfDayMultipliersConfig>(listOf(gasPriceCapTimeOfDayMultipliersFile))
 
-    val configs = loadConfigsOrError<CoordinatorConfig>(coordinatorConfigFiles)
+    val configs = loadConfigsOrError<CoordinatorConfigTomlDto>(coordinatorConfigFiles)
 
     if (tracesLimitsV1Configs is Err) {
       hasConfigError = true
@@ -197,7 +203,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
         TracesCountersV2(tracesLimitsV2Configs.get()!!.tracesLimits)
       }.getOrElse {
         hasConfigError = true
-        logger.error("Traces limits file {} is incomplete. {}", tracesLimitsFile, it.message)
+        logger.error("Traces limits file {} is incomplete. {}", tracesLimitsV2File, it.message)
       }
     }
 
@@ -223,7 +229,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
     return if (hasConfigError) {
       null
     } else {
-      configs.get()?.let { config: CoordinatorConfig ->
+      configs.get()?.let { config: CoordinatorConfigTomlDto ->
         config.copy(
           conflation = config.conflation.copy(
             _tracesLimitsV1 = tracesLimitsV1Configs?.get()?.tracesLimits?.let { TracesCountersV1(it) },
@@ -235,7 +241,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
               timeOfDayMultipliers = gasPriceCapTimeOfDayMultipliers.get()?.gasPriceCapTimeOfDayMultipliers
             )
           )
-        )
+        ).reified()
       }
     }
   }

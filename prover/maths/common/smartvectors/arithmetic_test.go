@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -85,7 +85,7 @@ func TestFuzzProductWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -112,7 +112,7 @@ func TestFuzzProductWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -142,7 +142,7 @@ func TestFuzzLinCombWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -159,7 +159,6 @@ func TestFuzzLinCombWithPool(t *testing.T) {
 			t.FailNow()
 		}
 	}
-
 }
 
 func TestFuzzLinCombWithPoolCompare(t *testing.T) {
@@ -169,7 +168,7 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -237,8 +236,8 @@ func TestOpBasicEdgeCases(t *testing.T) {
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			t.Logf("test-case details: %v", testCase.explainer)
-			res := testCase.fn(testCase.inputs...)
-			require.Equal(t, testCase.expectedRes, res, "expectedRes=%v\nres=%v", testCase.expectedRes.Pretty(), res.Pretty())
+			res := testCase.fn(testCase.inputs...).(*Pooled)
+			require.Equal(t, testCase.expectedRes, res.Regular, "expectedRes=%v\nres=%v", testCase.expectedRes.Pretty(), res.Pretty())
 		})
 	}
 }
@@ -290,7 +289,7 @@ func TestFuzzPolyEvalWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
 			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
@@ -315,7 +314,7 @@ func TestFuzzPolyEvalWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempool.Create(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
 			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)

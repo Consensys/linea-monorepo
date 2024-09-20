@@ -6,6 +6,7 @@ dependencies {
   api(project(":coordinator:core"))
   api project(':coordinator:clients:prover-client:serialization')
   implementation(project(":coordinator:persistence:db"))
+  implementation(project(":coordinator:persistence:batch"))
 
   testImplementation(project(":coordinator:persistence:batch"))
   testImplementation(project(":coordinator:persistence:blob"))

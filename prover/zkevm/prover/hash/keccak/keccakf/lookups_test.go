@@ -5,8 +5,8 @@ package keccakf
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,13 +14,13 @@ func TestLookupsBaseAToBaseB(t *testing.T) {
 
 	baseADirty, baseBClean := valBaseXToBaseY(BaseA, BaseB, 0)
 
-	for i := uint64(0); i < BaseAPow4; i++ {
+	for i := 0; i < BaseAPow4; i++ {
 		// baseADirty is equal to i
-		dirtyA := baseADirty.Get(int(i))
+		dirtyA := baseADirty.Get(i)
 		assert.Equal(t, i, dirtyA.Uint64(), baseADirty, "base A dirty")
 
 		// cleanB is consistent with the declaration that dirty
-		cleanB := baseBClean.Get(int(i))
+		cleanB := baseBClean.Get(i)
 		assert.Equal(t, BaseXToU64(dirtyA, &BaseAFr), BaseXToU64(cleanB, &BaseBFr), "base B clean")
 
 		if t.Failed() {
@@ -33,13 +33,13 @@ func TestLookupsBaseBToBaseA(t *testing.T) {
 
 	baseBDirty, baseAClean := valBaseXToBaseY(BaseB, BaseA, 1)
 
-	for i := uint64(0); i < BaseBPow4; i++ {
+	for i := 0; i < BaseBPow4; i++ {
 		// baseBDirty is equal to i
-		dirtyB := baseBDirty.Get(int(i))
+		dirtyB := baseBDirty.Get(i)
 		assert.Equal(t, i, dirtyB.Uint64(), "base B dirty")
 
 		// cleanA is consistent with the declaration that dirty
-		cleanA := baseAClean.Get(int(i))
+		cleanA := baseAClean.Get(i)
 		assert.Equal(
 			t,
 			BaseXToU64(dirtyB, &BaseBFr, 1),

@@ -5,14 +5,17 @@ package aggregation
 import (
 	"errors"
 	"fmt"
+	"slices"
+
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/native/sw_bls12377"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"slices"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 )
 
 // shorthand for the emulated types as this can get verbose very quickly with
@@ -54,13 +57,18 @@ func (c *Circuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	internal.AssertSliceEquals(api, api.ToBinary(c.PublicInput, emFr{}.Modulus().BitLen()), field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
+
+	// match general PI input with that of the interconnection circuit
+	piBits := api.ToBinary(c.PublicInput, emFr{}.Modulus().BitLen())
+
+	assertSlicesEqualZEXT(api, piBits[:16*8], field.ToBitsCanonical(&c.PublicInputWitness.Public[1]))
+	assertSlicesEqualZEXT(api, piBits[16*8:], field.ToBitsCanonical(&c.PublicInputWitness.Public[0]))
 
 	vks := append(slices.Clone(c.verifyingKeys), c.publicInputVerifyingKey)
 	piVkIndex := len(vks) - 1
 
 	for i := range c.ProofClaims {
-		api.AssertIsLessOrEqual(c.ProofClaims[i].CircuitID, len(c.verifyingKeys)-1) // make sure the prover can't sneak in an extra PI circuit
+		api.AssertIsDifferent(c.ProofClaims[i].CircuitID, piVkIndex) // TODO @Tabaie is this necessary? can't think of an attack if this is removed
 	}
 
 	// create a lookup table of actual public inputs
@@ -78,13 +86,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	if len(c.PublicInputWitnessClaimIndexes)+1 != len(c.PublicInputWitness.Public) {
+	if len(c.PublicInputWitnessClaimIndexes)+2 != len(c.PublicInputWitness.Public) {
 		return errors.New("expected the number of public inputs to match the number of public input witness claim indexes")
 	}
 
 	// verify that every valid input to the PI circuit is accounted for
 	for i, actualI := range c.PublicInputWitnessClaimIndexes {
-		hubPI := &c.PublicInputWitness.Public[i+1]
+		hubPI := &c.PublicInputWitness.Public[i+2]
 		isNonZero := api.Sub(1, field.IsZero(hubPI)) // if a PI is zero, due to preimage resistance we can infer that the PI circuit is not using it
 		for j := range actualPI {
 			internal.AssertEqualIf(api, isNonZero, actualPI[j].Lookup(actualI)[0], hubPI.Limbs[j])
@@ -102,13 +110,13 @@ func (c *Circuit) Define(api frontend.API) error {
 		return fmt.Errorf("processing execution proofs: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // Instantiate a new Circuit from a list of verification keys and
 // a maximal number of proofs. The function should only be called with the
 // purpose of running `frontend.Compile` over it.
-func AllocateCircuit(nbProofs int, allowedInputs []string, key plonk.VerifyingKey, verifyingKeys []plonk.VerifyingKey) (*Circuit, error) {
+func AllocateCircuit(nbProofs int, pi circuits.Setup, verifyingKeys []plonk.VerifyingKey) (*Circuit, error) {
 
 	var (
 		err           error
@@ -128,9 +136,18 @@ func AllocateCircuit(nbProofs int, allowedInputs []string, key plonk.VerifyingKe
 		proofClaims[i] = allocatableClaimPlaceHolder(csPlaceHolder)
 	}
 
+	piVkEm, err := emPlonk.ValueOfVerifyingKey[emFr, emG1, emG2](pi.VerifyingKey)
+	if err != nil {
+		return nil, fmt.Errorf("while converting the PI interconnection verifying key into its emulated gnark version: %w", err)
+	}
+
 	return &Circuit{
-		verifyingKeys: emVKeys,
-		ProofClaims:   proofClaims,
+		ProofClaims:                    proofClaims,
+		verifyingKeys:                  emVKeys,
+		publicInputVerifyingKey:        piVkEm,
+		PublicInputProof:               emPlonk.PlaceholderProof[emFr, emG1, emG2](pi.Circuit),
+		PublicInputWitness:             emPlonk.PlaceholderWitness[emFr](pi.Circuit),
+		PublicInputWitnessClaimIndexes: make([]frontend.Variable, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
 	}, nil
 
 }
@@ -159,9 +176,33 @@ func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error
 		witnesses[i] = claims[i].PublicInput
 	}
 
-	err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
+	lastProofI := len(proofs) - 1
+
+	//err = verifier.AssertDifferentProofs(bvk, cvks, switches, proofs, witnesses, emPlonk.WithCompleteArithmetic())
+	err = verifier.AssertDifferentProofs(bvk, cvks[:len(cvks)-1], switches[:lastProofI], proofs[:lastProofI], witnesses[:lastProofI], emPlonk.WithCompleteArithmetic())
 	if err != nil {
 		return fmt.Errorf("AssertDifferentProofs returned an error: %w", err)
 	}
+
+	// TODO-Perf @Tabaie add to batch above
+	// TODO @Tabaie make sure the WithCompleteArithmetic option is not necessary here
+	if err = verifier.AssertProof(vks[len(vks)-1], proofs[lastProofI], witnesses[lastProofI]); err != nil {
+		return fmt.Errorf("AssertProof returned an error: %w", err)
+	}
+
 	return nil
+}
+
+// assertSlicesEqualZEXT asserts two slices are equal, extending the shorter slice by zeros so the lengths match
+func assertSlicesEqualZEXT(api frontend.API, a, b []frontend.Variable) {
+	// let a be the shorter one
+	if len(b) < len(a) {
+		a, b = b, a
+	}
+	for i := range a {
+		api.AssertIsEqual(a[i], b[i])
+	}
+	for i := len(a); i < len(b); i++ {
+		api.AssertIsEqual(b[i], 0)
+	}
 }

@@ -3,12 +3,12 @@ package univariates_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/univariates"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +36,7 @@ func TestMPTS(t *testing.T) {
 
 	hLProver := func(assi *wizard.ProverRuntime) {
 		p1 := smartvectors.Rand(PolSize)
-		p2 := smartvectors.Rand(PolSize)
+		p2 := smartvectors.NewConstant(field.NewElement(42), PolSize)
 
 		assi.AssignColumn(P1, p1)
 		assi.AssignColumn(P2, p2)

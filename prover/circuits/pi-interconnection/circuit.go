@@ -3,14 +3,15 @@ package pi_interconnection
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"slices"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
-	"math/big"
-	"slices"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/config"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -18,19 +19,19 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	decompression "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type Circuit struct {
-	AggregationPublicInput   frontend.Variable   `gnark:",public"` // the public input of the aggregation circuit
-	ExecutionPublicInput     []frontend.Variable `gnark:",public"`
-	DecompressionPublicInput []frontend.Variable `gnark:",public"`
+	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
+	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
 
 	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
@@ -43,8 +44,9 @@ type Circuit struct {
 	L2MessageMerkleDepth int
 	L2MessageMaxNbMerkle int
 
-	MaxNbCircuits int // possibly useless TODO consider removing
-	UseGkrMimc    bool
+	MaxNbCircuits    int // possibly useless TODO consider removing
+	UseGkrMimc       bool
+	MockKeccakWizard bool // for testing purposes, bypass expensive keccak verification
 }
 
 func (c *Circuit) Define(api frontend.API) error {
@@ -86,6 +88,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	finalStateRootHashes := logderivlookup.New(api)
+	finalStateRootHashes.Insert(c.InitialStateRootHash)
 	for _, pi := range c.ExecutionFPIQ {
 		finalStateRootHashes.Insert(pi.FinalStateRootHash)
 	}
@@ -98,7 +101,7 @@ func (c *Circuit) Define(api frontend.API) error {
 
 		shnarfParams[i] = ShnarfIteration{ // prepare shnarf verification data
 			BlobDataSnarkHash:    utils.ToBytes(api, piq.SnarkHash),
-			NewStateRootHash:     utils.ToBytes(api, finalStateRootHashes.Lookup(api.Sub(nbBatchesSums[i], 1))[0]),
+			NewStateRootHash:     utils.ToBytes(api, finalStateRootHashes.Lookup(nbBatchesSums[i])[0]),
 			EvaluationPointBytes: piq.X,
 			EvaluationClaimBytes: fr377EncodedFr381ToBytes(api, piq.Y),
 		}
@@ -187,9 +190,15 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
-	api.AssertIsEqual(c.AggregationPublicInput, compress.ReadNum(api, aggregationPIBytes[:], big.NewInt(256)))
+	twoPow8 := big.NewInt(256)
+	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
+	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
 
-	return hshK.Finalize()
+	if c.MockKeccakWizard {
+		return nil
+	} else {
+		return hshK.Finalize()
+	}
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
@@ -238,16 +247,26 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 	}, nil
 }
 
-func (c *Compiled) getConfig() config.PublicInput {
+func (c *Compiled) getConfig() (config.PublicInput, error) {
+	executionNbMsg := 0
+	execs := c.Circuit.ExecutionFPIQ
+	if len(c.Circuit.ExecutionFPIQ) != 0 {
+		executionNbMsg = len(execs[0].L2MessageHashes.Values)
+		for i := range execs {
+			if len(execs[i].L2MessageHashes.Values) != executionNbMsg {
+				return config.PublicInput{}, errors.New("inconsistent max number of L2 message hashes")
+			}
+		}
+	}
 	return config.PublicInput{
 		MaxNbDecompression: len(c.Circuit.DecompressionFPIQ),
 		MaxNbExecution:     len(c.Circuit.ExecutionFPIQ),
 		MaxNbKeccakF:       c.Keccak.MaxNbKeccakF(),
-		ExecutionMaxNbMsg:  len(c.Circuit.ExecutionFPIQ[0].L2MessageHashes.Values),
+		ExecutionMaxNbMsg:  executionNbMsg,
 		L2MsgMerkleDepth:   c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:   c.Circuit.L2MessageMaxNbMerkle,
 		MaxNbCircuits:      c.Circuit.MaxNbCircuits,
-	}
+	}, nil
 }
 
 func allocateCircuit(c config.PublicInput) Circuit {
@@ -259,6 +278,8 @@ func allocateCircuit(c config.PublicInput) Circuit {
 		L2MessageMerkleDepth:     c.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:     c.L2MsgMaxNbMerkle,
 		MaxNbCircuits:            c.MaxNbCircuits,
+		MockKeccakWizard:         c.MockKeccakWizard,
+		UseGkrMimc:               true,
 	}
 }
 
@@ -306,5 +327,25 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	panic("implement me")
+	panic("implement me") // TODO @alexandre.belling
+}
+
+// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// TODO replace with something cleaner, using the config
+func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
+	return cs.GetNbPublicVariables() - 2
+}
+
+type InnerCircuitType uint8
+
+const (
+	Execution     InnerCircuitType = 0
+	Decompression InnerCircuitType = 1
+)
+
+func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
+	return utils.RightPad(
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
+
 }

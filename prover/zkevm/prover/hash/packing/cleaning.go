@@ -3,13 +3,13 @@ package packing
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // cleaningInputs collects the inputs of [NewClean] function.
@@ -110,7 +110,7 @@ func (ctx *cleaningCtx) assignCleanLimbs(run *wizard.ProverRuntime) {
 	for pos := 0; pos < len(limbs); pos++ {
 		// Extract the limb, which is left aligned to the 16-th byte
 		limbSerialized = limbs[pos].Bytes()
-		nbyte := int(nByte[pos].Uint64())
+		nbyte := field.ToInt(&nByte[pos])
 		res := limbSerialized[LEFT_ALIGNMENT : LEFT_ALIGNMENT+nbyte]
 		cleanLimbs.PushField(*(f.SetBytes(res)))
 	}

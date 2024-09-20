@@ -6,12 +6,12 @@ import (
 	"math/big"
 	"math/rand"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -67,12 +67,12 @@ func (g *RandGen) TxRlp(numTxs int) ([]string, []uint16) {
 		rlpTxs[i] = g.AnyTypeTxRlp()
 	}
 
-	receptionPos := []uint16{}
+	var receptionPos []uint16
 
 	// overwrite one of the tx with a receipt confirmation one
 	txPos := g.Intn(numTxs)
 	rlpTxs[txPos] = g.MsgReceiptConfirmationTx()
-	receptionPos = append(receptionPos, uint16(txPos))
+	receptionPos = append(receptionPos, utils.ToUint16(txPos))
 
 	return rlpTxs, receptionPos
 }

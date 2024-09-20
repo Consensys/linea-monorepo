@@ -1,13 +1,13 @@
 package keccakf
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // LookupTables instantiates all the tables used by the keccakf wizard.
@@ -76,7 +76,7 @@ func valBaseXToBaseY(
 	realSize := IntExp(uint64(baseX), numChunkBaseX)
 	bxDirty := make([]field.Element, realSize)
 	byClean := make([]field.Element, realSize)
-	colSize := utils.NextPowerOfTwo(int(realSize))
+	colSize := utils.NextPowerOfTwo(realSize)
 
 	// Runtime assertion to protect the structure of the tables
 	if numChunkBaseX != 4 {
@@ -86,17 +86,17 @@ func valBaseXToBaseY(
 	}
 
 	for l3 := 0; l3 < baseX; l3++ {
-		d3 := l3 * int(IntExp(uint64(baseX), 3))
-		c3 := ((l3 >> cleanBit) & 1) * int(IntExp(uint64(baseY), 3))
+		d3 := l3 * utils.ToInt(IntExp(utils.ToUint64(baseX), 3))
+		c3 := ((l3 >> cleanBit) & 1) * utils.ToInt(IntExp(uint64(baseY), 3))
 		for l2 := 0; l2 < baseX; l2++ {
-			d2 := l2 * int(IntExp(uint64(baseX), 2))
-			c2 := ((l2 >> cleanBit) & 1) * int(IntExp(uint64(baseY), 2))
+			d2 := l2 * utils.ToInt(IntExp(uint64(baseX), 2))
+			c2 := ((l2 >> cleanBit) & 1) * utils.ToInt(IntExp(uint64(baseY), 2))
 			for l1 := 0; l1 < baseX; l1++ {
 				d1 := l1 * baseX
 				c1 := ((l1 >> cleanBit) & 1) * baseY
 				for l0 := 0; l0 < baseX; l0++ {
 					d0 := l0
-					c0 := ((l0 >> cleanBit) & 1)
+					c0 := (l0 >> cleanBit) & 1
 					// Coincidentally, dirty1 ranges from 0 to realSize in
 					// increasing order.
 					dirtyx := d3 + d2 + d1 + d0
@@ -110,8 +110,8 @@ func valBaseXToBaseY(
 
 	// Since, Wizard requires powers-of-two vector length we zero-pad them. Note that
 	// (0, 0) does constitute a valid entry in the mapping already.
-	return smartvectors.RightZeroPadded(bxDirty, colSize),
-		smartvectors.RightZeroPadded(byClean, colSize)
+	return smartvectors.RightZeroPadded(bxDirty, utils.ToInt(colSize)),
+		smartvectors.RightZeroPadded(byClean, utils.ToInt(colSize))
 }
 
 // Returns a lookup table for the round constant of keccak given a maximal

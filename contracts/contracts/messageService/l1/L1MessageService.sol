@@ -8,6 +8,7 @@ import { IL1MessageService } from "../../interfaces/l1/IL1MessageService.sol";
 import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { SparseMerkleTreeVerifier } from "../lib/SparseMerkleTreeVerifier.sol";
 import { TransientStorageHelpers } from "../lib/TransientStorageHelpers.sol";
+import { MessageHashing } from "../lib/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
@@ -22,6 +23,7 @@ abstract contract L1MessageService is
   IGenericErrors
 {
   using SparseMerkleTreeVerifier for *;
+  using MessageHashing for *;
   using TransientStorageHelpers for *;
 
   /// @dev This is currently not in use, but is reserved for future upgrades.
@@ -70,7 +72,7 @@ abstract contract L1MessageService is
     uint256 messageNumber = nextMessageNumber++;
     uint256 valueSent = msg.value - _fee;
 
-    bytes32 messageHash = keccak256(abi.encode(msg.sender, _to, _fee, valueSent, messageNumber, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(msg.sender, _to, _fee, valueSent, messageNumber, _calldata);
 
     _addRollingHash(messageNumber, messageHash);
 
@@ -102,10 +104,14 @@ abstract contract L1MessageService is
 
     _addUsedAmount(_params.fee + _params.value);
 
-    bytes32 messageLeafHash = keccak256(
-      abi.encode(_params.from, _params.to, _params.fee, _params.value, _params.messageNumber, _params.data)
+    bytes32 messageLeafHash = MessageHashing._hashMessage(
+      _params.from,
+      _params.to,
+      _params.fee,
+      _params.value,
+      _params.messageNumber,
+      _params.data
     );
-
     if (
       !SparseMerkleTreeVerifier._verifyMerkleProof(
         messageLeafHash,

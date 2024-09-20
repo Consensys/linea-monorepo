@@ -15,6 +15,9 @@ import { Utils } from "./lib/Utils.sol";
 contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
   using Utils for *;
 
+  /// @dev This is the ABI version and not the reinitialize version.
+  string public constant CONTRACT_VERSION = "6.0";
+
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
   bytes32 public constant FINALIZE_WITHOUT_PROOF_ROLE = keccak256("FINALIZE_WITHOUT_PROOF_ROLE");

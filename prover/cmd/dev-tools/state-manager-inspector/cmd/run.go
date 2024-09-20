@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"runtime"
 	"sync/atomic"
 	"time"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
@@ -66,7 +67,10 @@ func fetchAndInspect(cmd *cobra.Command, args []string) error {
 		for {
 			<-time.Tick(tickTime)
 			processedRangeCount := atomic.LoadUint64(&processedRangeCount)
-			processedBlockCount := blockRange * int(processedRangeCount)
+			if blockRange < 0 || processedRangeCount > uint64(math.MaxInt/blockRange) { // #nosec G115 -- Checked for overflow
+				panic("overflow")
+			}
+			processedBlockCount := blockRange * int(processedRangeCount) // #nosec G115 -- Checked for overflow
 			totalBlockToProcess := numRangeArgs * blockRange
 
 			logrus.Infof("processed %v blocks of %v to process", processedBlockCount, totalBlockToProcess)

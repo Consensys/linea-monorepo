@@ -5,12 +5,30 @@ duplicated-logs-debounce-time="PT15S"
 eip4844-switch-l2-block-number=0
 
 [prover]
-fs-requests-directory="/data/prover-execution/v2/requests"
-fs-responses-directory="/data/prover-execution/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT1S"
-fs-polling-timeout="PT10M"
+fs-inprogress-request-writing-suffix = ".inprogress_coordinator_writing"
+fs-inprogress-proving-suffix-pattern = ".*\\.inprogress\\.prover.*"
+fs-polling-interval = "PT1S"
+fs-polling-timeout = "PT10M"
+[prover.execution]
+fs-requests-directory = "/data/prover/v2/execution/requests"
+fs-responses-directory = "/data/prover/v2/execution/responses"
+[prover.blob-compression]
+fs-requests-directory = "/data/prover/v2/compression/requests"
+fs-responses-directory = "/data/prover/v2/compression/responses"
+[prover.proof-aggregation]
+fs-requests-directory = "/data/prover/v2/aggregation/requests"
+fs-responses-directory = "/data/prover/v2/aggregation/responses"
+#[prover.new]
+#switch-block-number-inclusive=1000
+#[prover.new.execution]
+#fs-requests-directory = "/data/prover/v3/execution/requests"
+#fs-responses-directory = "/data/prover/v3/execution/responses"
+#[prover.new.blob-compression]
+#fs-requests-directory = "/data/prover/v3/compression/requests"
+#fs-responses-directory = "/data/prover/v3/compression/responses"
+#[prover.new.proof-aggregation]
+#fs-requests-directory = "/data/prover/v3/aggregation/requests"
+#fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [blob-compression]
 blob-size-limit=102400 # 100KB
@@ -18,13 +36,6 @@ handler-polling-interval="PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit=1
-[blob-compression.prover]
-fs-requests-directory="/data/prover-compression/v2/requests"
-fs-responses-directory="/data/prover-compression/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT1S"
-fs-polling-timeout="PT10M"
 
 [zk-traces]
 eth-api="http://traces-node:8545"
@@ -150,14 +161,6 @@ aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
 target-end-blocks=[]
 
-[proof-aggregation.prover]
-fs-requests-directory="/data/prover-aggregation/v2/requests"
-fs-responses-directory="/data/prover-aggregation/v2/responses"
-fs-inprogress-request-writing-suffix=".inprogress_coordinator_writing"
-fs-inprogress-proving-suffix-pattern=".*\\.inprogress\\.prover.*"
-fs-polling-interval="PT20S"
-fs-polling-timeout="PT20M"
-
 [finalization-signer]
 # Web3j/Web3signer
 type="Web3j"
@@ -203,39 +206,47 @@ disabled=false
 polling-interval="PT10S"
 max-messages-to-anchor=100
 
-[dynamic-gas-price-service]
-disabled=false
-price-update-interval="PT12S"
-fee-history-block-count=50
-fee-history-reward-percentile=15
-base-fee-coefficient=0.1
-priority-fee-coefficient=1.0
-base-fee-blob-coefficient=0.1
-expected-blob-gas = 131072.0 # 2^17
+[l2-network-gas-pricing]
+disabled = false
+price-update-interval = "PT12S"
+
+fee-history-block-count = 50
+fee-history-reward-percentile = 15
+
 blob-submission-expected-execution-gas = 213000.0 # Lower to 120k as we improve efficiency
-gas-price-upper-bound=10000000000 # 10 GWEI
-gas-price-lower-bound=90000000 # 0.09 GWEI
-gas-price-fixed-cost=3000000
-geth-gas-price-update-recipients=[
+# Defaults to expected-blob-gas
+#bytes-per-data-submission=131072.0 # 2^17
+l1-blob-gas = 131072 # 2^17
+
+[l2-network-gas-pricing.request-retry]
+max-retries = 3
+timeout = "PT6S"
+backoff-delay = "PT1S"
+failures-warning-threshold = 2
+
+[l2-network-gas-pricing.variable-cost-pricing]
+gas-price-fixed-cost = 3000000
+legacy-fees-multiplier = 1.2
+margin = 4.0
+variable-cost-upper-bound = 10000000001 # ~10 GWEI
+variable-cost-lower-bound = 90000001  # ~0.09 GWEI
+
+[l2-network-gas-pricing.extra-data-pricing-propagation]
+extra-data-update-recipient = "http://sequencer:8545/"
+
+[l2-network-gas-pricing.legacy]
+type="SampleTransaction"
+gas-price-upper-bound = 10000000000 # 10 GWEI
+gas-price-lower-bound = 90000000 # 0.09 GWEI
+
+[l2-network-gas-pricing.json-rpc-pricing-propagation]
+geth-gas-price-update-recipients = [
   "http://traces-node:8545/",
   "http://l2-node:8545/"
 ]
-besu-gas-price-update-recipients=[
+besu-gas-price-update-recipients = [
   "http://sequencer:8545/"
 ]
-request-retry.max-retries=3
-request-retry.timeout="PT6S"
-request-retry.backoff-delay="PT1S"
-request-retry.failures-warning-threshold=2
-extra-data-enabled=true
-min-mineable-fees-enabled=true
-legacy-fees-multiplier=1.2
-margin=4.0
-extra-data-update-recipient="http://sequencer:8545/"
-variable-cost-upper-bound=10000000001 # ~10 GWEI
-variable-cost-lower-bound=90000001  # ~0.09 GWEI
-# Defaults to expected-blob-gas
-#bytes-per-data-submission=131072.0 # 2^17
 
 [l1-dynamic-gas-price-cap-service]
 disabled=false

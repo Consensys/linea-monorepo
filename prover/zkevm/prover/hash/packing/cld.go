@@ -3,17 +3,17 @@ package packing
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	iszero "github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	iszero "github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 // It stores the inputs for [newDecomposition] function.
@@ -252,11 +252,11 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		// i-th row of DecomposedLen
 		var lenRow []int
 		for j := 0; j < decomposed.nbSlices; j++ {
-			lenRow = append(lenRow, int(decomposedLen[j][i].Uint64()))
+			lenRow = append(lenRow, utils.ToInt(decomposedLen[j][i].Uint64()))
 		}
 
 		// populate DecomposedLimb
-		decomposedLimb := decomposeByLength(cleanLimbs[i], int(nByte[i].Uint64()), lenRow)
+		decomposedLimb := decomposeByLength(cleanLimbs[i], field.ToInt(&nByte[i]), lenRow)
 
 		for j := 0; j < decomposed.nbSlices; j++ {
 			decomposedLimbs[j][i] = decomposedLimb[j]
@@ -307,11 +307,11 @@ func cutUpToMax(nByte []field.Element, nbChunk, max int) (b [][]field.Element) {
 		}
 		s := 0
 		for j := 0; j < nbChunk; j++ {
-			s = s + int(a[j].Uint64())
+			s += field.ToInt(&a[j])
 			b[j] = append(b[j], a[j])
 		}
 
-		if s != int(nByte[i].Uint64()) {
+		if s != field.ToInt(&nByte[i]) {
 			utils.Panic("decomposition of nByte is not correct; nByte %v, s %v", nByte[i].Uint64(), s)
 		}
 

@@ -3,8 +3,8 @@ package mock
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // OperationType specifies the part of an account that is touched by a state
@@ -301,7 +301,7 @@ func (b *StateLogBuilder) InitEoa() *StateLogBuilder {
 	return b.InitContract(
 		0,
 		types.AsFullBytes32(statemanager.LEGACY_KECCAK_EMPTY_CODEHASH),
-		statemanager.MIMC_EMPTY_STORAGE,
+		statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG),
 	)
 }
 

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Trace that allows checking a read zero operation: e.g. proof of non-membership
@@ -105,7 +106,7 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	return nil
 }
 
-// DeferMerkleChecks implements the [DeferableCheck] interface.
+// DeferMerkleChecks implements the [Trace] interface.
 func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,
@@ -119,4 +120,12 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 
 	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.ProofMinus, Root: trace.SubRoot, Leaf: leafMinus})
 	return append(appendTo, smt.ProvedClaim{Proof: trace.ProofPlus, Root: trace.SubRoot, Leaf: leafPlus})
+}
+
+func (trace ReadZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+	return hash(cfg, trace.Key)
+}
+
+func (trace ReadZeroTrace[K, V]) RWInt() int {
+	return 0
 }

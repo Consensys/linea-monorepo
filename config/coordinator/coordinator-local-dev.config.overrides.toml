@@ -11,17 +11,15 @@ endpoint="http://127.0.0.1:9000"
 endpoint="http://127.0.0.1:9000"
 
 [prover]
-fs-requests-directory="tmp/local/prover-execution/v2/requests"
-fs-responses-directory="tmp/local/prover-execution/v2/responses"
-
-[blob-compression]
-[blob-compression.prover]
-fs-requests-directory="tmp/local/prover-compression/v2/requests"
-fs-responses-directory="tmp/local/prover-compression/v2/responses"
-
-[proof-aggregation.prover]
-fs-requests-directory="tmp/local/prover-aggregation/v2/requests"
-fs-responses-directory="tmp/local/prover-aggregation/v2/responses"
+[prover.execution]
+fs-requests-directory = "tmp/local/prover/v2/execution/requests"
+fs-responses-directory = "tmp/local/prover/v2/execution/responses"
+[prover.blob-compression]
+fs-requests-directory = "tmp/local/prover/v2/compression/requests"
+fs-responses-directory = "tmp/local/prover/v2/compression/responses"
+[prover.proof-aggregation]
+fs-requests-directory = "tmp/local/prover/v2/aggregation/requests"
+fs-responses-directory = "tmp/local/prover/v2/aggregation/responses"
 
 [zk-traces]
 eth-api="http://127.0.0.1:8645"

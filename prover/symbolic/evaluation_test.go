@@ -3,9 +3,9 @@ package symbolic
 import (
 	"testing"
 
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,12 +15,12 @@ func TestSimpleAddition(t *testing.T) {
 
 	SIZE := 2048
 
-	{
+	t.Run("x+y", func(t *testing.T) {
 		// Simple case : x + y
 		expr := x.Add(y)
 		b := expr.Board()
 
-		{
+		t.Run("const-const", func(t *testing.T) {
 			// 2 + 3 = 5
 			res := b.Evaluate([]sv.SmartVector{
 				sv.NewConstant(field.NewElement(2), 1),
@@ -28,9 +28,9 @@ func TestSimpleAddition(t *testing.T) {
 			}).(*sv.Constant).Val()
 
 			require.Equal(t, res.String(), "5")
-		}
+		})
 
-		{
+		t.Run("const-vec", func(t *testing.T) {
 			// 2 + 1 = 3
 			// 2 + 5 = 7
 			res := b.Evaluate([]sv.SmartVector{
@@ -40,9 +40,9 @@ func TestSimpleAddition(t *testing.T) {
 
 			require.Equal(t, (*res)[0].String(), "3")
 			require.Equal(t, (*res)[1].String(), "7")
-		}
+		})
 
-		{
+		t.Run("vec-vec", func(t *testing.T) {
 			// For large vectors
 			res := b.Evaluate([]sv.SmartVector{
 				sv.NewRegular(vector.Repeat(field.NewElement(2), SIZE)),
@@ -52,9 +52,8 @@ func TestSimpleAddition(t *testing.T) {
 			for i := range *res {
 				require.Equal(t, (*res)[i].String(), "5", "at position %v", i)
 			}
-		}
-
-	}
+		})
+	})
 
 }
 

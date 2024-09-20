@@ -2,19 +2,23 @@ package aggregation
 
 import (
 	"fmt"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
 	"math"
 	"path/filepath"
 
+	frBls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark/backend/witness"
+	"github.com/consensys/gnark/frontend"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/emulation"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 
@@ -45,12 +49,12 @@ func makeProof(
 		return makeDummyProof(cfg, publicInput, circuits.MockCircuitIDEmulation), nil
 	}
 
-	piProof, err := makePiProof(cfg, cf)
+	piProof, piPublicWitness, err := makePiProof(cfg, cf)
 	if err != nil {
 		return "", fmt.Errorf("could not create the public input proof: %w", err)
 	}
 
-	proofBW6, circuitID, err := makeBw6Proof(cfg, cf, piProof, publicInput)
+	proofBW6, circuitID, err := makeBw6Proof(cfg, cf, piProof, piPublicWitness, publicInput)
 	if err != nil {
 		return "", fmt.Errorf("error when running the BW6 proof: %w", err)
 	}
@@ -63,11 +67,11 @@ func makeProof(
 	return circuits.SerializeProofSolidityBn254(proofBn254), nil
 }
 
-func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, error) {
+func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.Witness, error) {
 
 	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
 	if err != nil {
-		return nil, fmt.Errorf("could not create the public-input circuit: %w", err)
+		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
 	}
 
 	assignment, err := c.Assign(pi_interconnection.Request{
@@ -86,18 +90,26 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, error) {
 			LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 			L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
 			L2MsgRootHashes:                         cf.L2MsgRootHashes,
-			L2MsgMerkleTreeDepth:                    int(cf.L2MsgTreeDepth),
+			L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("could not assign the public input circuit: %w", err)
+		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}
 
 	setup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
 	if err != nil {
-		return nil, fmt.Errorf("could not load the setup: %w", err)
+		return nil, nil, fmt.Errorf("could not load the setup: %w", err)
 	}
-	return circuits.ProveCheck(&setup, &assignment)
+
+	w, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField(), frontend.PublicOnly()) // TODO @Tabaie make ProveCheck return witness instead of extracting this twice
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not extract interconnection circuit public witness: %w", err)
+	}
+
+	proof, err := circuits.ProveCheck(&setup, &assignment)
+
+	return proof, w, err
 }
 
 // Generates a fake proof. The public input is given in hex string format.
@@ -131,6 +143,7 @@ func makeBw6Proof(
 	cfg *config.Config,
 	cf *CollectedFields,
 	piProof plonk.Proof,
+	piPublicWitness witness.Witness,
 	publicInput string,
 ) (proof plonk.Proof, circuitID int, err error) {
 
@@ -204,14 +217,26 @@ func makeBw6Proof(
 	// the BW6 field is larger. This allows us to represent the public input as a
 	// single field element.
 
-	var piBW6 frBW6.Element
-	_, err = piBW6.SetString(publicInput)
-	if err != nil {
+	var (
+		piBW6      frBW6.Element
+		piBls12377 frBls12377.Element
+	)
+	if _, err = piBW6.SetString(publicInput); err != nil {
+		return nil, 0, fmt.Errorf("could not parse the public input: %w", err)
+	}
+	if _, err = piBls12377.SetString(publicInput); err != nil {
 		return nil, 0, fmt.Errorf("could not parse the public input: %w", err)
 	}
 
+	// set pi proof info
+	piInfo := aggregation.PiInfo{
+		Proof:         piProof,
+		PublicWitness: piPublicWitness,
+		ActualIndexes: pi_interconnection.InnerCircuitTypesToIndexes(&cfg.PublicInputInterconnection, cf.InnerCircuitTypes),
+	}
+
 	logrus.Infof("running the BW6 prover")
-	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piProof, piBW6)
+	proofBW6, err := aggregation.MakeProof(&setup, bestSize, cf.ProofClaims, piInfo, piBW6)
 	if err != nil {
 		return nil, 0, fmt.Errorf("could not create BW6 proof: %w", err)
 	}

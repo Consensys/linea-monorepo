@@ -4,7 +4,6 @@ sealed interface TracingModule {
   val name: String
 }
 
-/** More info: https://github.com/ConsenSys/zkevm-monorepo/issues/525 */
 enum class TracingModuleV1 : TracingModule {
   // EMV Module limits
   ADD,
