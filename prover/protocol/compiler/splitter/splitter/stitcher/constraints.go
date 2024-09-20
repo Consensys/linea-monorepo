@@ -1,6 +1,8 @@
 package stitcher
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -46,6 +48,11 @@ func (ctx stitchingContext) LocalOpening() {
 
 		if !isColEligible(ctx.Stitchings, q.Pol) {
 			continue
+		}
+
+		switch m := q.Pol.(type) {
+		case verifiercol.VerifierCol:
+			utils.Panic("unsupported, received a localOpening over the verifier column %v", m.GetColID())
 		}
 		// mark the query as ignored
 		ctx.comp.QueriesParams.MarkAsIgnored(qName)
@@ -143,31 +150,62 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 // Takes a sub column and returns the stitching column.
 // the stitching column is shifted such that the first row agrees with the first row of the sub column.
 // more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
+// the col should only be either verifiercol or eligible col.
 func getStitchingCol(ctx stitchingContext, col ifaces.Column) ifaces.Column {
 
 	switch m := col.(type) {
+	case column.Shifted:
+		switch n := m.Parent.(type) {
+		case verifiercol.VerifierCol:
+			fmt.Printf("verifCol (even if it is shifted) %v\n", col.GetColID())
+			scaling := ctx.MaxSize / col.Size()
+			return verifiercol.ExpandedVerifCol{
+				Verifiercol: n,
+				Offset:      m.Offset,
+				Expansion:   scaling,
+			}
+		default:
+			// Extract the assumedly single col
+			fmt.Printf("shifted col, but not verif col %v\n", col.GetColID())
+			natural := column.RootParents(col)[0]
+			round := col.Round()
+			subColInfo := ctx.Stitchings[round].BySubCol[natural.GetColID()]
+			stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
+
+			// Shift the stitching column by the right position
+			position := column.StackOffsets(col)
+
+			scaling := stitchingCol.Size() / natural.Size()
+			newPosition := scaling*position + subColInfo.PosInBigCol
+
+			return column.Shift(stitchingCol, newPosition)
+		}
 	case verifiercol.VerifierCol:
+		fmt.Printf("verifCol (even if it is shifted) %v\n", col.GetColID())
 		scaling := ctx.MaxSize / col.Size()
 		return verifiercol.ExpandedVerifCol{
 			Verifiercol: m,
+			Offset:      0,
 			Expansion:   scaling,
 		}
+
+	default:
+		// Extract the assumedly single col
+		fmt.Printf("natural column) %v\n", col.GetColID())
+		natural := column.RootParents(col)[0]
+		round := col.Round()
+		subColInfo := ctx.Stitchings[round].BySubCol[natural.GetColID()]
+		stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
+
+		// Shift the stitching column by the right position
+		position := column.StackOffsets(col)
+
+		scaling := stitchingCol.Size() / natural.Size()
+		newPosition := scaling*position + subColInfo.PosInBigCol
+
+		return column.Shift(stitchingCol, newPosition)
 	}
 
-	// Extract the assumedly single col
-	natural := column.RootParents(col)[0]
-
-	round := col.Round()
-	subColInfo := ctx.Stitchings[round].BySubCol[natural.GetColID()]
-	stitchingCol := ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
-
-	// Shift the stitching column by the right position
-	position := column.StackOffsets(col)
-
-	scaling := stitchingCol.Size() / natural.Size()
-	newPosition := scaling*position + subColInfo.PosInBigCol
-
-	return column.Shift(stitchingCol, newPosition)
 }
 
 func queryName(oldQ ifaces.QueryID) ifaces.QueryID {
