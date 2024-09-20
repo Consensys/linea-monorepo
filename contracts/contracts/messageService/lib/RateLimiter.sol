@@ -13,6 +13,7 @@ import { IRateLimiter } from "../../interfaces/IRateLimiter.sol";
  */
 contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
   bytes32 public constant RATE_LIMIT_SETTER_ROLE = keccak256("RATE_LIMIT_SETTER_ROLE");
+  bytes32 public constant USED_RATE_LIMIT_RESETTER_ROLE = keccak256("USED_RATE_LIMIT_RESETTER_ROLE");
 
   uint256 public periodInSeconds; // how much time before limit resets.
   uint256 public limitInWei; // max ether to withdraw per period.
@@ -110,10 +111,10 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
 
   /**
    * @notice Resets the amount used to zero.
-   * @dev Only the RATE_LIMIT_SETTER_ROLE is allowed to execute this function.
+   * @dev Only the USED_RATE_LIMIT_RESETTER_ROLE is allowed to execute this function.
    * @dev Emits the AmountUsedInPeriodReset event.
    */
-  function resetAmountUsedInPeriod() external onlyRole(RATE_LIMIT_SETTER_ROLE) {
+  function resetAmountUsedInPeriod() external onlyRole(USED_RATE_LIMIT_RESETTER_ROLE) {
     currentPeriodAmountInWei = 0;
 
     emit AmountUsedInPeriodReset(_msgSender());
