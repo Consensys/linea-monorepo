@@ -2,11 +2,9 @@
 
 compile:
 	pnpm run build
-	npx hardhat run scripts/hardhat/postCompile.ts
 
 force-compile:
 	npx hardhat compile --force
-	npx hardhat run scripts/hardhat/postCompile.ts
 
 clean:
 	rm -rf coverage/
