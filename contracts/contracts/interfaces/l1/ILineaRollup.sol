@@ -103,6 +103,13 @@ interface ILineaRollup {
   }
 
   /**
+   * @notice Emitted when the gateway operator role is granted.
+   * @param caller The address that granted the role.
+   * @param gatewayOperatorAddress The address that received the gateway operator role.
+   */
+  event GatewayOperatorRoleGranted(address indexed caller, address indexed gatewayOperatorAddress);
+
+  /**
    * @notice Emitted when a verifier is set for a particular proof type.
    * @param verifierAddress The indexed new verifier address being set.
    * @param proofType The indexed proof type/index that the verifier is mapped to.
@@ -140,6 +147,11 @@ interface ILineaRollup {
     bytes32 indexed finalRootHash,
     bool withProof
   );
+
+  /**
+   * @dev Thrown when the last finalization time has not lapsed.
+   */
+  error LastFinalizationTimeNotLapsed();
 
   /**
    * @dev Thrown when the point evaluation precompile call return data field(s) are wrong.

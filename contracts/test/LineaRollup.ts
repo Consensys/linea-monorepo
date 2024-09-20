@@ -67,6 +67,7 @@ describe("Linea Rollup contract", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
+  let gatewayOperator: SignerWithAddress;
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentDataHash, parentStateRootHash } =
     firstCompressedDataContent;
@@ -97,6 +98,9 @@ describe("Linea Rollup contract", () => {
       },
     )) as unknown as TestLineaRollup;
 
+    // Initialize the last operator action timestamp and set the gateway operator
+    await lineaRollup.initializeLastOperatorActionTimestamp(gatewayOperator.address);
+
     return lineaRollup;
   }
 
@@ -107,7 +111,7 @@ describe("Linea Rollup contract", () => {
   };
 
   before(async () => {
-    [admin, securityCouncil, operator, nonAuthorizedAccount] = await ethers.getSigners();
+    [admin, securityCouncil, operator, nonAuthorizedAccount, gatewayOperator] = await ethers.getSigners();
   });
 
   beforeEach(async () => {
@@ -224,49 +228,6 @@ describe("Linea Rollup contract", () => {
       );
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
-    });
-  });
-
-  describe("Upgrading, calculating and setting the data submission shnarfs", () => {
-    it("Should upgrade and set the shnarfs correctly", async () => {
-      const shnarfs = [generateRandomBytes(32), generateRandomBytes(32)];
-      const finalBlockNumbers = [46n, 81n];
-
-      await lineaRollup.initializeParentShnarfsAndFinalizedState(shnarfs, finalBlockNumbers);
-
-      for (let i = 0; i < shnarfs.length; i++) {
-        const finalblockNumber = await lineaRollup.shnarfFinalBlockNumbers(shnarfs[i]);
-        expect(finalblockNumber).to.equal(finalBlockNumbers[i]);
-      }
-    });
-
-    it("Should fail if the two array lengths are mismatched", async () => {
-      const shnarfs = [generateRandomBytes(32), generateRandomBytes(32), generateRandomBytes(32)];
-      const finalBlockNumbers = [46n, 81n];
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.initializeParentShnarfsAndFinalizedState(shnarfs, finalBlockNumbers),
-        "ShnarfAndFinalBlockNumberLengthsMismatched",
-        [shnarfs.length, finalBlockNumbers.length],
-      );
-    });
-
-    it("Should fail trying to call initializeParentShnarfsAndFinalizedState twice", async () => {
-      const shnarfs = [generateRandomBytes(32), generateRandomBytes(32)];
-      const finalBlockNumbers = [46n, 81n];
-
-      await lineaRollup.initializeParentShnarfsAndFinalizedState(shnarfs, finalBlockNumbers);
-
-      for (let i = 0; i < shnarfs.length; i++) {
-        const finalblockNumber = await lineaRollup.shnarfFinalBlockNumbers(shnarfs[i]);
-        expect(finalblockNumber).to.equal(finalBlockNumbers[i]);
-      }
-
-      expectRevertWithReason(
-        lineaRollup.initializeParentShnarfsAndFinalizedState(shnarfs, finalBlockNumbers),
-        INITIALIZED_ALREADY_MESSAGE,
-      );
     });
   });
 
@@ -2008,4 +1969,24 @@ describe("Linea Rollup contract", () => {
       ),
     );
   }
+
+  describe("Gateway Operator Role", () => {
+    it("Should revert if trying to set gateway operator role before six months have passed", async () => {
+      await expect(lineaRollup.setGatewayOperator()).to.be.revertedWithCustomError(
+        lineaRollup,
+        "LastFinalizationTimeNotLapsed",
+      );
+    });
+
+    it("Should set the gateway operator role after six months have passed", async () => {
+      // Fast forward time by six months
+      await networkTime.increase(15768000); // 6 months in seconds
+
+      await expect(lineaRollup.setGatewayOperator())
+        .to.emit(lineaRollup, "GatewayOperatorRoleGranted")
+        .withArgs(admin.address, gatewayOperator.address);
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, gatewayOperator.address)).to.be.true;
+    });
+  });
 });
