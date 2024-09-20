@@ -28,9 +28,6 @@ jobs:
       develop_tag: ${{ steps.step2.outputs.DEVELOP_TAG }}
       untested_tag_suffix: ${{ steps.step2.outputs.UNTESTED_TAG_SUFFIX }}
     steps:
-      - name: Print group
-        run: |
-          echo ${{ github.workflow }}-${{ github.ref }}
       - name: Checkout
         uses: actions/checkout@v3
       - name: Get common ancestor commit

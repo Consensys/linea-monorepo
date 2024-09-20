@@ -4,17 +4,10 @@ on:
   push:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  print-group:
-    runs-on: besu-arm64
-    steps:
-      - name: Print group
-        run: |
-          echo ${{ github.workflow }}-${{ github.ref }}
-
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
