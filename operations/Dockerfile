@@ -16,7 +16,7 @@ COPY . .
 
 RUN rm -rf src/synctx && pnpm run -F operations build
 
-FROM node:18-slim as builder-synctx
+FROM node:18-slim AS builder-synctx
 
 ARG TARGETPLATFORM
 
@@ -35,9 +35,9 @@ RUN apt-get update \
   && oclif pack tarballs --targets="${OCLIF_TARGET}" \
   && tar -xvf dist/synctx-*.tar.gz
 
-FROM node:18-slim as release
+FROM node:18-slim AS release
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 ENV PATH="${PATH}:/opt/synctx/bin"
 
 WORKDIR /usr/src/app
