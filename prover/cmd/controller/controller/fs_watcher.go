@@ -9,8 +9,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/cmd/controller/controller/metrics"
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/cmd/controller/controller/metrics"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 )

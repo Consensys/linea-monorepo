@@ -7,22 +7,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
-	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -204,7 +204,8 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		stopTimer = profiling.LogTimer("Computing the coeffs %v pols of size %v", len(ctx.AllInvolvedColumns), ctx.DomainSize)
 		lock      = sync.Mutex{}
 		lockRun   = sync.Mutex{}
-		pool      = mempool.Create(symbolic.MaxChunkSize).Prewarm(runtime.NumCPU() * ctx.MaxNbExprNode)
+		pool      = mempool.CreateFromSyncPool(symbolic.MaxChunkSize).Prewarm(runtime.NumCPU() * ctx.MaxNbExprNode)
+		largePool = mempool.CreateFromSyncPool(ctx.DomainSize).Prewarm(len(ctx.AllInvolvedColumns))
 	)
 
 	if ctx.DomainSize >= GC_DOMAIN_SIZE {
@@ -236,7 +237,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				if !isNatural {
 					witness = pol.GetColAssignment(run)
 				}
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
+				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
 
 				lock.Lock()
 				coeffs[name] = witness
@@ -261,7 +262,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 				// normal case for interleaved or repeated columns
 				witness := pol.GetColAssignment(run)
-				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0)
+				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
 				name := pol.GetColID()
 				lock.Lock()
 				coeffs[name] = witness
@@ -356,8 +357,12 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 			stopTimer := profiling.LogTimer("ReEvaluate %v pols of size %v on coset %v/%v", len(handles), ctx.DomainSize, share, ratio)
 
-			parallel.ExecuteChunky(len(roots), func(start, stop int) {
-				for k := start; k < stop; k++ {
+			parallel.ExecuteFromChan(len(roots), func(wg *sync.WaitGroup, indexChan chan int) {
+
+				localPool := mempool.WrapsWithMemCache(largePool)
+				defer localPool.TearDown()
+
+				for k := range indexChan {
 					root := roots[k]
 					name := root.GetColID()
 
@@ -365,18 +370,25 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 					if found {
 						// it was already computed in a previous iteration of `j`
+						wg.Done()
 						continue
 					}
 
 					// else it's the first value of j that sees it. so we compute the
 					// coset reevaluation.
-					reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share)
+					reevaledRoot := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
 					computedReeval.Store(name, reevaledRoot)
+
+					wg.Done()
 				}
 			})
 
-			parallel.ExecuteChunky(len(handles), func(start, stop int) {
-				for k := start; k < stop; k++ {
+			parallel.ExecuteFromChan(len(handles), func(wg *sync.WaitGroup, indexChan chan int) {
+
+				localPool := mempool.WrapsWithMemCache(largePool)
+				defer localPool.TearDown()
+
+				for k := range indexChan {
 
 					pol := handles[k]
 					// short-path, the column is a purely Shifted(Natural) or a Natural
@@ -397,6 +409,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 						// Now, we can reuse a soft-rotation of the smart-vector to save memory
 						if !pol.IsComposite() {
 							// in this case, the right vector was the root so we are done
+							wg.Done()
 							continue
 						}
 
@@ -404,6 +417,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 							polName := pol.GetColID()
 							res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
 							computedReeval.Store(polName, res)
+							wg.Done()
 							continue
 						}
 
@@ -412,14 +426,18 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					name := pol.GetColID()
 					_, ok := computedReeval.Load(name)
 					if ok {
+						wg.Done()
 						continue
 					}
 
 					if _, ok := coeffs[name]; !ok {
 						utils.Panic("handle %v not found in the coeffs\n", name)
 					}
-					res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share)
+
+					res := sv.FFT(coeffs[name], fft.DIT, false, ratio, share, localPool)
 					computedReeval.Store(name, res)
+
+					wg.Done()
 				}
 			})
 
@@ -477,6 +495,11 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 
 		// Forcefuly clean the memory for the computed reevals
 		computedReeval.Range(func(k, v interface{}) bool {
+
+			if pooled, ok := v.(*sv.Pooled); ok {
+				pooled.Free(largePool)
+			}
+
 			computedReeval.Delete(k)
 			return true
 		})

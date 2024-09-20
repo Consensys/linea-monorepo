@@ -13,8 +13,8 @@ import net.consensys.zkevm.domain.filterOutWithEndBlockNumberBefore
 import net.consensys.zkevm.domain.toBlockIntervals
 import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

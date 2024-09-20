@@ -3,7 +3,7 @@ package aggregation
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 

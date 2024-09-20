@@ -1,6 +1,6 @@
 package accumulator
 
-import "github.com/consensys/zkevm-monorepo/prover/utils"
+import "github.com/consensys/linea-monorepo/prover/utils"
 
 // Settings collects all input parameters to dimension an [Module] during
 // its construction.

@@ -1,8 +1,6 @@
 import { WaitForTransactionReceiptReturnType } from "@wagmi/core";
 import { Address, Chain, Log } from "viem";
-
 import { NetworkType, TokenInfo } from "@/config";
-
 import { MessageWithStatus } from "@/hooks";
 
 export interface TransactionHistory {

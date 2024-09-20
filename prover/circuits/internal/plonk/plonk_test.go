@@ -4,15 +4,16 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"reflect"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	"reflect"
-	"testing"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestCustomConstraint(t *testing.T) {
@@ -65,8 +66,8 @@ func TestCustomConstraint(t *testing.T) {
 		circuit.oVal[i] = sum
 	}
 
-	assignment.A = internal.ToVariableSlice(circuit.aVal)
-	assignment.B = internal.ToVariableSlice(circuit.bVal)
+	assignment.A = utils.ToVariableSlice(circuit.aVal)
+	assignment.B = utils.ToVariableSlice(circuit.bVal)
 
 	test.NewAssert(t).CheckCircuit(&circuit, test.WithValidAssignment(&assignment), test.WithBackends(backend.PLONK), test.WithCurves(ecc.BLS12_377))
 }

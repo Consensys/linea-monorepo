@@ -2,16 +2,16 @@ import { Metadata } from "next";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { cookieToInitialState } from "wagmi";
-import { Inter } from "next/font/google";
 import { wagmiConfig } from "@/config";
 import usabillaBeScript from "@/scripts/usabilla";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
 import { Providers } from "@/components/layouts/Providers";
 import { Layout } from "@/components/layouts/Layout";
+import { cn } from "@/utils/cn";
+import atypFont from "@/assets/fonts/atyp";
+import atypTextFont from "@/assets/fonts/atypText";
 import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 const metadata: Metadata = {
   title: "Linea Bridge",
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <title>{metadata.title?.toString()}</title>
       <meta name="description" content={metadata.description?.toString()} key="desc" />
 
-      <body className={inter.className}>
+      <body className={cn(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
         <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
 
         <Providers initialState={initialState}>

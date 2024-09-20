@@ -301,7 +301,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
     val expectedRows = batchesContentQuery().execute().get().filter {
       it.getLong("end_block_number") < 6L
-    }
+    }.sortedBy { it.getLong("start_block_number") }.toList()
 
     assertThat(
       batchesDao
@@ -312,8 +312,11 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
     )
       .isEqualTo(2)
 
-    val dbContent = batchesContentQuery().execute().get()
-    assertThat(dbContent.size()).isEqualTo(expectedRows.size)
+    val dbContent = batchesContentQuery().execute().get().sortedBy { it.getLong("start_block_number") }.toList()
+    assertThat(dbContent.size).isEqualTo(expectedRows.size)
+    dbContent.forEachIndexed { index, row ->
+      assertThat(row.toJson()).isEqualTo(expectedRows[index].toJson())
+    }
   }
 
   @Test

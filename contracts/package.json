@@ -5,7 +5,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "build": "npx hardhat compile --concurrency 4",
+    "build": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
     "test": "npm run autoupdate && npx hardhat test",
     "test:reportgas": "REPORT_GAS=true npx hardhat test",
     "coverage": "npm run autoupdate && npx hardhat coverage --solcoverjs ./.solcover.js",
@@ -32,7 +32,7 @@
     "@openzeppelin/hardhat-upgrades": "2.5.1",
     "@safe-global/protocol-kit": "3.0.2",
     "@safe-global/safe-core-sdk-types": "4.0.2",
-    "@typechain/hardhat": "9.0.0",
+    "@typechain/hardhat": "9.1.0",
     "@types/diff": "5.2.0",
     "@types/yargs": "17.0.32",
     "c-kzg": "2.1.2",
@@ -42,7 +42,7 @@
     "dotenv": "16.4.5",
     "edit-json-file": "1.8.0",
     "ethers": "6.12.0",
-    "hardhat": "2.22.6",
+    "hardhat": "2.22.10",
     "hardhat-deploy": "0.12.4",
     "hardhat-storage-layout": "0.1.7",
     "hardhat-tracer": "2.8.2",

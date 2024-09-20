@@ -9,9 +9,9 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/config"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
@@ -19,13 +19,13 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/cmp"
-	decompression "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type Circuit struct {
@@ -331,6 +331,21 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
+// TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
+}
+
+type InnerCircuitType uint8
+
+const (
+	Execution     InnerCircuitType = 0
+	Decompression InnerCircuitType = 1
+)
+
+func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
+	return utils.RightPad(
+		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDecompression)
+
 }

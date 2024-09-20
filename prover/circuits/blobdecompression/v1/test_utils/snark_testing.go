@@ -2,8 +2,9 @@ package test_utils
 
 import (
 	"crypto/rand"
+
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // TODO Delete most of the following
@@ -16,5 +17,5 @@ func PadBytes(b []byte, targetLen int) []frontend.Variable {
 	if _, err := rand.Read(padded[len(b):]); err != nil {
 		panic(err)
 	}
-	return internal.ToVariableSlice(padded)
+	return utils.ToVariableSlice(padded)
 }

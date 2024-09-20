@@ -3,8 +3,9 @@ package internal_test
 import (
 	"bytes"
 	"crypto/rand"
-	cInternal "github.com/consensys/zkevm-monorepo/prover/circuits/internal"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -12,9 +13,9 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/math/bits"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress/lzss"
 	"github.com/icza/bitio"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,9 +51,9 @@ func TestRecombineBytes(t *testing.T) {
 	}
 
 	assignment := recombineBytesCircuit{
-		Bytes:      cInternal.ToVariableSlice(_bytes),
-		Bits:       cInternal.ToVariableSlice(bits),
-		Recombined: cInternal.ToVariableSlice(recombined),
+		Bytes:      utils.ToVariableSlice(_bytes),
+		Bits:       utils.ToVariableSlice(bits),
+		Recombined: utils.ToVariableSlice(recombined),
 	}
 
 	lzss.RegisterHints()

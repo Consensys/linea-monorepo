@@ -12,8 +12,8 @@ import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

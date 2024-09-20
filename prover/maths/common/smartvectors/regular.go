@@ -3,10 +3,10 @@ package smartvectors
 import (
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // It's normal vector in a nutshell
@@ -77,18 +77,13 @@ func (r *Regular) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
 }
 
-func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*mempool.Pool) (result *Regular, numMatches int) {
+func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
 
 	length := svecs[0].Len()
 
 	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
-	var resvec []field.Element
-	if hasPool {
-		resvec = *pool.Alloc()
-	} else {
-		resvec = make([]field.Element, length)
-	}
+	var resvec *Pooled
 
 	isFirst := true
 	numMatches = 0
@@ -102,30 +97,36 @@ func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...*me
 			svec = rotatedAsRegular(rot)
 		}
 
+		if pooled, ok := svec.(*Pooled); ok {
+			svec = &pooled.Regular
+		}
+
 		if reg, ok := svec.(*Regular); ok {
 			numMatches++
 			// For the first one, we can save by just copying the result
 			// Importantly, we do not need to assume that regRes is originally
 			// zero.
 			if isFirst {
+				if hasPool {
+					resvec = AllocFromPool(pool)
+				} else {
+					resvec = &Pooled{Regular: make([]field.Element, length)}
+				}
+
 				isFirst = false
-				op.vecIntoTerm(resvec, *reg, coeffs[i])
+				op.vecIntoTerm(resvec.Regular, *reg, coeffs[i])
 				continue
 			}
-			op.vecIntoVec(resvec, *reg, coeffs[i])
+
+			op.vecIntoVec(resvec.Regular, *reg, coeffs[i])
 		}
 	}
 
 	if numMatches == 0 {
-		if hasPool {
-			// we did not need it, so we can give it back directly
-			pool.Free(&resvec)
-		}
 		return nil, 0
 	}
 
-	res := Regular(resvec)
-	return &res, numMatches
+	return resvec, numMatches
 }
 
 func (r *Regular) DeepCopy() SmartVector {
@@ -136,4 +137,25 @@ func (r *Regular) DeepCopy() SmartVector {
 // then number of copies.
 func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
 	return (*r)[:]
+}
+
+type Pooled struct {
+	Regular
+	poolPtr *[]field.Element
+}
+
+func AllocFromPool(pool mempool.MemPool) *Pooled {
+	poolPtr := pool.Alloc()
+	return &Pooled{
+		Regular: *poolPtr,
+		poolPtr: poolPtr,
+	}
+}
+
+func (p *Pooled) Free(pool mempool.MemPool) {
+	if p.poolPtr != nil {
+		pool.Free(p.poolPtr)
+	}
+	p.poolPtr = nil
+	p.Regular = nil
 }

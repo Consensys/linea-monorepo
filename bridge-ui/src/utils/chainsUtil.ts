@@ -14,6 +14,19 @@ export const getChainNetworkLayer = (chain: Chain) => {
   return;
 };
 
+export const getChainNetworkLayerByChainId = (chainId: number) => {
+  switch (chainId) {
+    case linea.id:
+    case lineaSepolia.id:
+      return NetworkLayer.L2;
+    case mainnet.id:
+    case sepolia.id:
+      return NetworkLayer.L1;
+  }
+
+  return;
+};
+
 export const getChainNetworkType = (chain: Chain) => {
   switch (chain.id) {
     case linea.id:
@@ -25,4 +38,18 @@ export const getChainNetworkType = (chain: Chain) => {
   }
 
   return;
+};
+
+export const getChainLogoPath = (chainId: number) => {
+  switch (chainId) {
+    case linea.id:
+      return "/images/logo/linea-mainnet.svg";
+    case lineaSepolia.id:
+      return "/images/logo/linea-sepolia.svg";
+    case mainnet.id:
+    case sepolia.id:
+      return "/images/logo/ethereum-rounded.svg";
+    default:
+      return "";
+  }
 };
