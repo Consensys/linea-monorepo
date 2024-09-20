@@ -3,15 +3,15 @@ package wizard
 import (
 	"sync"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
@@ -102,8 +102,8 @@ type ProverRuntime struct {
 	// take care of deleting the entry to free memory when he knows that the
 	// field will not be accessed again while proving.
 	//
-	// The State is used internally by the [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex] and the
-	// [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/selfrecursion] compilers as a communication channel.
+	// The State is used internally by the [github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex] and the
+	// [github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion] compilers as a communication channel.
 	State collection.Mapping[string, interface{}]
 
 	// currRound indicates the current round the prover is processing and it is incremented
@@ -236,7 +236,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 // method instead which will work for any type of column. The user should use
 // the latter as a go-to way to access an assigned column. The reason this
 // function is exported is to make it accessible to the other functions of the
-// [github.com/consensys/zkevm-monorepo/prover/protocol/column] package.
+// [github.com/consensys/linea-monorepo/prover/protocol/column] package.
 //
 // Namely, the function will panic if:
 //   - `name` relates to a column that does not exists or to a column that is
@@ -338,7 +338,7 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - an empty column name is provided
 //   - the column is not explictly registered in the CompiledIOP (e.g. if it is
 //     a derive column or the underlying type is found in
-//     [github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol] for instance).
+//     [github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol] for instance).
 //   - the assignment does not have the correct size
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
@@ -478,46 +478,49 @@ func (run *ProverRuntime) goNextRound() {
 	initialTranscriptSize := run.FS.TranscriptSize
 	initialNumCoinsGenerated := run.FS.NumCoinGenerated
 
-	/*
-		Make sure that all messages have been written and use them
-		to update the FS state.  Note that we do not need to update
-		FS using the last round of the prover because he is always
-		the last one to "talk" in the protocol.
-	*/
-	start := run.FS.TranscriptSize
-	msgsToFS := run.Spec.Columns.AllKeysProofAt(run.currRound)
-	for _, msgName := range msgsToFS {
-		instance := run.GetMessage(msgName)
-		run.FS.UpdateSV(instance)
-	}
-	logrus.Debugf("Fiat-shamir round %v - %v proof elements in the transcript", run.currRound, run.FS.TranscriptSize-start)
+	if !run.Spec.DummyCompiled {
 
-	/*
-		Make sure that all messages have been written and use them
-		to update the FS state.  Note that we do not need to update
-		FS using the last round of the prover because he is always
-		the last one to "talk" in the protocol.
-	*/
-	start = run.FS.TranscriptSize
-	msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
-	for _, msgName := range msgsToFS {
-		instance := run.GetMessage(msgName)
-		run.FS.UpdateSV(instance)
-	}
-	logrus.Debugf("Fiat-shamir round %v - %v public inputs in the transcript", run.currRound, run.FS.TranscriptSize-start)
+		/*
+			Make sure that all messages have been written and use them
+			to update the FS state.  Note that we do not need to update
+			FS using the last round of the prover because he is always
+			the last one to "talk" in the protocol.
+		*/
+		start := run.FS.TranscriptSize
+		msgsToFS := run.Spec.Columns.AllKeysProofAt(run.currRound)
+		for _, msgName := range msgsToFS {
+			instance := run.GetMessage(msgName)
+			run.FS.UpdateSV(instance)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v proof elements in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
-	/*
-		Also include the prover's allegations for all evaluations
-	*/
-	start = run.FS.TranscriptSize
-	paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
-	for _, qName := range paramsToFS {
-		// Implicitly, this will panic whenever we start supporting
-		// a new type of query params
-		params := run.QueriesParams.MustGet(qName)
-		params.UpdateFS(run.FS)
+		/*
+			Make sure that all messages have been written and use them
+			to update the FS state.  Note that we do not need to update
+			FS using the last round of the prover because he is always
+			the last one to "talk" in the protocol.
+		*/
+		start = run.FS.TranscriptSize
+		msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
+		for _, msgName := range msgsToFS {
+			instance := run.GetMessage(msgName)
+			run.FS.UpdateSV(instance)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v public inputs in the transcript", run.currRound, run.FS.TranscriptSize-start)
+
+		/*
+			Also include the prover's allegations for all evaluations
+		*/
+		start = run.FS.TranscriptSize
+		paramsToFS := run.Spec.QueriesParams.AllKeysAt(run.currRound)
+		for _, qName := range paramsToFS {
+			// Implicitly, this will panic whenever we start supporting
+			// a new type of query params
+			params := run.QueriesParams.MustGet(qName)
+			params.UpdateFS(run.FS)
+		}
+		logrus.Debugf("Fiat-shamir round %v - %v query params in the transcript", run.currRound, run.FS.TranscriptSize-start)
 	}
-	logrus.Debugf("Fiat-shamir round %v - %v query params in the transcript", run.currRound, run.FS.TranscriptSize-start)
 
 	// Increment the number of rounds
 	run.currRound++

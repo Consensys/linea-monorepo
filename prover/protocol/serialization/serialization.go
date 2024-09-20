@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"unicode"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/iancoleman/strcase"
 )
 
@@ -25,13 +27,19 @@ const (
 const (
 	DeclarationMode mode = iota
 	ReferenceMode
+	// pureExprMode is meant to serialize symbolic expression. All references to
+	// a compiled IOP are stripped out from the serialized expression. It allows
+	// deserializing without the complexity of the underlying CompiledIOP if
+	// there is one. It is used for generating/reading test-case expressions.
+	pureExprMode
 )
 
 // Types that necessitate special handling by the de/serializer
 var (
-	columnType  = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	queryType   = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	naturalType = reflect.TypeOf(column.Natural{})
+	columnType   = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
+	queryType    = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	naturalType  = reflect.TypeOf(column.Natural{})
+	metadataType = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
 )
 
 // SerializeValue recursively serializes `v` into JSON. This function is
@@ -68,9 +76,21 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[i] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Interface:
+
+		if mode == pureExprMode && v.Type() == metadataType {
+
+			var (
+				m              = v.Interface().(symbolic.Metadata)
+				mString        = m.String()
+				stringVar      = symbolic.StringVar(mString)
+				stringVarValue = reflect.ValueOf(stringVar)
+			)
+
+			return SerializeValue(stringVarValue, mode)
+		}
 
 		if mode == DeclarationMode && v.Type() == columnType {
 			// Only natural columns can be expected in this case.
@@ -93,7 +113,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			"value": rawValue,
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Map:
 
@@ -112,7 +132,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[keyString] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 
 	case reflect.Pointer:
 
@@ -132,7 +152,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// is enough.
 		if mode == ReferenceMode && typeOfV == naturalType {
 			colID := v.Interface().(column.Natural).ID
-			return serializeAnyWithJSONPkg(colID), nil
+			return serializeAnyWithCborPkg(colID), nil
 		}
 
 		// Note that this is the same handling as in the interface-level
@@ -152,7 +172,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// to include it in the serialized object. The ID is enough.
 		if mode == ReferenceMode && typeOfV.Implements(queryType) {
 			queryID := v.Interface().(ifaces.Query).Name()
-			return serializeAnyWithJSONPkg(queryID), nil
+			return serializeAnyWithCborPkg(queryID), nil
 		}
 
 		// If 'v' implements query or column, it may be the case that its
@@ -169,6 +189,10 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 				fieldValue   = v.Field(i)
 			)
 
+			if unicode.IsLower(rune(fieldName[0])) {
+				utils.Panic("unexported field: struct=%v name=%v type=%v", typeOfV.String(), fieldName, fieldValue.Type().String())
+			}
+
 			r, err := SerializeValue(fieldValue, mode)
 			if err != nil {
 				return nil, fmt.Errorf("could not serialize struct field (%v).%v: %w", typeOfV.String(), rawFieldName, err)
@@ -176,7 +200,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[rawFieldName] = r
 		}
 
-		return serializeAnyWithJSONPkg(raw), nil
+		return serializeAnyWithCborPkg(raw), nil
 	}
 
 	panic(fmt.Sprintf("unreachable: v=%++v", v))
@@ -224,7 +248,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			subType = t.Elem()
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize to a `%v` value: %w", t.Name(), err)
 		}
 
@@ -267,7 +291,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			return reflect.Value{}, fmt.Errorf("cannot deserialize a map whose keys are not string-like: `%v`", t.Name())
 		}
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize to a `%v` value: %w", t.Name(), err)
 		}
 
@@ -293,6 +317,11 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// Value actually bears the requested interface type and not the
 		// concrete type.
 		ifaceValue := reflect.New(t).Elem()
+
+		if mode == pureExprMode && t == metadataType {
+			var stringVar symbolic.StringVar
+			return DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+		}
 
 		if mode == DeclarationMode && t == columnType {
 			// Only natural columns can be expected in this case.
@@ -323,7 +352,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			}{}
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize interface `%v`: %w", t.Name(), err)
 		}
 
@@ -358,7 +387,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// deserialized before we deserialize the references to these columns.
 		if mode == ReferenceMode && t == naturalType {
 			var colID ifaces.ColID
-			if err := deserializeAnyWithJSONPkg(data, &colID); err != nil {
+			if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
 				return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
 			}
 
@@ -373,7 +402,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		// to include it in the serialized object. The ID is enough.
 		if mode == ReferenceMode && t.Implements(queryType) {
 			var queryID ifaces.QueryID
-			if err := deserializeAnyWithJSONPkg(data, &queryID); err != nil {
+			if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
 				return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
 			}
 
@@ -430,7 +459,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 			v         = reflect.New(t).Elem()
 		)
 
-		if err := deserializeAnyWithJSONPkg(data, &raw); err != nil {
+		if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 			return reflect.Value{}, fmt.Errorf("could note deserialize struct type `%v` : %w", t.Name(), err)
 		}
 

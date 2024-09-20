@@ -5,14 +5,14 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
 
@@ -42,6 +42,9 @@ Interleaving:
 	I(X) = 1/2*P(X)(X^n - 1) - 1/2*P(-X)(X^n + 1)
 */
 func Naturalize(comp *wizard.CompiledIOP) {
+
+	logrus.Trace("started naturalization compiler")
+	defer logrus.Trace("finished naturalization compiler")
 
 	// The compilation process is applied separately for each query
 	for roundID := 0; roundID < comp.NumRounds(); roundID++ {

@@ -3,10 +3,10 @@ package packing
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,6 +38,7 @@ func makeTestCasePackingModule(uc generic.HashingUsecase) (
 			MaxNumBlocks: maxNumBlock,
 			PackingParam: uc,
 			Imported:     imported,
+			Name:         "TESTING",
 		}
 
 		pck = NewPack(comp, inp)

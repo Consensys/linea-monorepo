@@ -9,9 +9,7 @@ FROM base AS builder
 
 WORKDIR /usr/src/app
 
-ARG GITHUB_API_ACCESS_TOKEN
 ARG NATIVE_LIBS_RELEASE_TAG
-ENV GITHUB_API_ACCESS_TOKEN=${GITHUB_API_ACCESS_TOKEN}
 ENV NATIVE_LIBS_RELEASE_TAG=${NATIVE_LIBS_RELEASE_TAG}
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./

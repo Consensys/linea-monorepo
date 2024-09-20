@@ -2,16 +2,17 @@ package dedicated
 
 import (
 	"slices"
+	"strconv"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
 // LcInputs stores the inputs for [LengthConsistency] function.
@@ -43,10 +44,11 @@ type lengthConsistency struct {
 func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistency {
 
 	var (
+		name      = strconv.Itoa(len(comp.ListCommitments()))
 		numCol    = len(inp.Table)
 		size      = inp.Table[0].Size()
 		numBytes  = inp.MaxLen
-		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY", size)
+		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY_"+name, size)
 	)
 
 	res := &lengthConsistency{
@@ -82,7 +84,7 @@ func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistenc
 			// bytesLen is binary
 			commonconstraints.MustBeBinary(comp, res.bytesLen[j][k])
 		}
-		comp.InsertGlobal(0, ifaces.QueryIDf("CLDLen_%v", j), sym.Sub(sum, inp.TableLen[j]))
+		comp.InsertGlobal(0, ifaces.QueryIDf("%v_CLDLen_%v", name, j), sym.Sub(sum, inp.TableLen[j]))
 	}
 	return res
 }
@@ -131,14 +133,15 @@ func (lc *lengthConsistency) Run(run *wizard.ProverRuntime) {
 
 // getZeroOnes receives n  and outputs the pattern  (0,..0,1,..,1) such that there are n elements 1.
 func getZeroOnes(n field.Element, max int) (a []field.Element) {
-	if n.Uint64() > uint64(max) {
-		utils.Panic("%v should be smaller than %v", n.Uint64(), max)
+	_n := field.ToInt(&n)
+	if _n > max {
+		utils.Panic("%v should be smaller than %v", _n, max)
 	}
-	for j := 0; j < max-int(n.Uint64()); j++ {
+	for j := 0; j < max-_n; j++ {
 		a = append(a, field.Zero())
 
 	}
-	for i := max - int(n.Uint64()); i < max; i++ {
+	for i := max - _n; i < max; i++ {
 		a = append(a, field.One())
 
 	}

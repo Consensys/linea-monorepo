@@ -1,9 +1,9 @@
 package ecdsa
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 type EcdsaZkEvm struct {
@@ -28,8 +28,8 @@ func NewEcdsaZkEvm(
 	}
 }
 
-func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter) {
-	e.ant.assign(run, txSig)
+func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter, nbTx int) {
+	e.ant.assign(run, txSig, nbTx)
 }
 
 func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {

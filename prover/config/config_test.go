@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnvironement(t *testing.T) {
+func TestEnvironment(t *testing.T) {
 	assert := require.New(t)
 
 	// parse each config file and ensure environment is well set.

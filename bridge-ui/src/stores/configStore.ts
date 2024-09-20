@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 export type ConfigState = {
   agreeToTerms: boolean;
+  rehydrated: boolean;
 };
 
 export type ConfigActions = {
@@ -14,6 +15,7 @@ export type ConfigStore = ConfigState & ConfigActions;
 
 export const defaultInitState: ConfigState = {
   agreeToTerms: false,
+  rehydrated: false,
 };
 
 export const useConfigStore = create<ConfigStore>()(
@@ -28,6 +30,11 @@ export const useConfigStore = create<ConfigStore>()(
       storage: createJSONStorage(() => localStorage),
       migrate: () => {
         return defaultInitState;
+      },
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.rehydrated = true;
+        }
       },
     },
   ),

@@ -1,13 +1,14 @@
 package gnarkutil
 
 import (
+	"encoding/binary"
 	"errors"
 	hashinterface "hash"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // ins: nbBatches, [end byte positions], payload...
@@ -20,7 +21,7 @@ func PartialChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
 			return errors.New("expected exactly maxNbBatches outputs")
 		}
 
-		nbBatches := int(ins[0].Uint64())
+		nbBatches := ins[0].Int64()
 		ends := utils.BigsToInts(ins[1 : 1+maxNbBatches])
 		in := append(utils.BigsToBytes(ins[1+maxNbBatches:]), make([]byte, 31)...) // pad with 31 bytes to avoid out of range panic TODO try removing this
 
@@ -66,4 +67,19 @@ func partialChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Has
 // if b consists of only one "element", the result is not hashed
 func ChecksumLooselyPackedBytes(b []byte, buf []byte, h hashinterface.Hash) {
 	partialChecksumLooselyPackedBytes(b, buf, h)
+
+	// hash the length along with the partial sum
+	var numBuf [8]byte
+	binary.BigEndian.PutUint64(numBuf[:], uint64(len(b)))
+	h.Reset()
+	h.Write(numBuf[:])
+	h.Write(buf)
+
+	res := h.Sum(nil)
+
+	for i := 0; i < len(buf)-len(res); i++ { // one final "packing"
+		buf[i] = 0
+	}
+
+	copy(buf[len(buf)-len(res):], res)
 }

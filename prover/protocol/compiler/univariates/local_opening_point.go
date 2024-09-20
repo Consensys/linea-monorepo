@@ -5,15 +5,18 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
 
 func CompileLocalOpening(comp *wizard.CompiledIOP) {
+
+	logrus.Trace("started local opening compiler")
+	defer logrus.Trace("finished local opening compiler")
 
 	// The main idea is that we want to group the fixed point queries
 	// that are on the same points. That way, we maintain the invariant

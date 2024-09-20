@@ -3,10 +3,10 @@ package accumulator
 import (
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	//lint:ignore ST1001 -- the package contains a list of standard types
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // Generic hashing for object satisfying the io.WriterTo interface
@@ -17,10 +17,15 @@ func hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
 	return AsBytes32(Bytes32)
 }
 
-// DeferableCheck is an interface shared by all the "traces" types. Used to
+// Trace is an interface shared by all the "traces" types. Used to
 // collect MerkleProof verifications claims.
-type DeferableCheck interface {
+type Trace interface {
 	// DeferMerkleChecks appends all the merkle-proofs checks happening in a trace
 	// verification into a slice of smt.ProvedClaim
 	DeferMerkleChecks(config *smt.Config, appendTo []smt.ProvedClaim) []smt.ProvedClaim
+	// HKey returns the HKey of the trace
+	HKey(cfg *smt.Config) Bytes32
+	// RWInt returns 0 is the trace is a read-only operation and 1 if it is a
+	// read-write operation.
+	RWInt() int
 }

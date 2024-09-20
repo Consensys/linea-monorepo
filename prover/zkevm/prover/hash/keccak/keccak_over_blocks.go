@@ -1,15 +1,15 @@
 package keccak
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/base_conversion.go"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/keccakf"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 type LaneInfo struct {
@@ -85,7 +85,7 @@ func NewKeccakOverBlocks(comp *wizard.CompiledIOP, inp KeccakOverBlockInputs) *K
 	// thus, we need to check that the blocks in keccakf matches the one from base conversion.
 	// blocks in keccakf are the spaghetti form of LaneX.
 	inpSpaghetti := spaghettifier.SpaghettificationInput{
-		Name:          "KECCAK",
+		Name:          "KECCAK_OVER_BLOCKS",
 		ContentMatrix: [][]ifaces.Column{keccakf.Blocks[:]},
 		Filter:        isBlock(keccakf.IO.IsBlock),
 		SpaghettiSize: bcForBlock.LaneX.Size(),

@@ -5,27 +5,28 @@ import (
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/gnark/profile"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 type builder struct {
-	comp      *wizard.CompiledIOP
-	extractor *publicInput.FunctionalInputExtractor
+	zkevm *zkevm.ZkEvm
 }
 
 func NewBuilder(z *zkevm.ZkEvm) *builder {
-	return &builder{comp: z.WizardIOP, extractor: &z.PublicInput.Extractor}
+	return &builder{zkevm: z}
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.comp, b.extractor), nil
+	return makeCS(b.zkevm), nil
 }
 
 // builds the circuit
-func makeCS(comp *wizard.CompiledIOP, ext *publicInput.FunctionalInputExtractor) constraint.ConstraintSystem {
-	circuit := Allocate(comp, ext)
+func makeCS(z *zkevm.ZkEvm) constraint.ConstraintSystem {
+	circuit := Allocate(z)
+
+	pro := profile.Start(profile.WithPath("./profiling-execution.pprof"))
+	defer pro.Stop()
 
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<24))
 	if err != nil {

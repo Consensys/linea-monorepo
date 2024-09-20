@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Converts a U64 to a given base, the base should be given in field element
@@ -142,7 +142,7 @@ func DecomposeFr(f field.Element, base int, nb int) (res []field.Element) {
 // internal testing only.
 func BaseXToU64(x field.Element, base *field.Element, optBitP0s ...int) (res uint64) {
 	res = 0
-	decomposedF := DecomposeFr(x, int(base.Uint64()), 64)
+	decomposedF := DecomposeFr(x, field.ToInt(base), 64)
 
 	bitPos := 0
 	if len(optBitP0s) > 0 {

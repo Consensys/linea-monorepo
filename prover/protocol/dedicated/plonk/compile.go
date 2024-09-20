@@ -6,17 +6,18 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/iop"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/expr_handle"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 )
 
 // PlonkCheck adds a PLONK circuit in the wizard. Namely, the function takes a
@@ -47,6 +48,8 @@ func PlonkCheck(
 	// function to call to get an assignment
 	options ...Option,
 ) compilationCtx {
+
+	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
 
 	// Create the ctx
 	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)

@@ -25,6 +25,7 @@ declare global {
   var OPERATOR_0_PRIVATE_KEY: string;
   var SHOMEI_ENDPOINT: URL | null;
   var SHOMEI_FRONTEND_ENDPOINT: URL | null;
+  var SEQUENCER_ENDPOINT: URL | null;
   var OPERATOR_1_ADDRESS: string;
   var SECURITY_COUNCIL_PRIVATE_KEY: string;
   var CONTRACT_GAS_OPTIMIZATION_SWITCH_BLOCK: number;

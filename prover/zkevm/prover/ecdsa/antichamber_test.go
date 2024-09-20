@@ -9,14 +9,14 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc/secp256k1/ecdsa"
 	fr_secp256k1 "github.com/consensys/gnark-crypto/ecc/secp256k1/fr"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/csvtraces"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic/testdata"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -91,7 +91,7 @@ func TestAntichamber(t *testing.T) {
 			ct.Assign(run,
 				"EC_DATA_CS_ECRECOVER", "EC_DATA_ID", "EC_DATA_LIMB", "EC_DATA_SUCCESS_BIT", "EC_DATA_INDEX", "EC_DATA_IS_DATA", "EC_DATA_IS_RES",
 			)
-			ac.assign(run, dummyTxSignatureGetter)
+			ac.assign(run, dummyTxSignatureGetter, limits.MaxNbTx)
 		})
 
 	if err := wizard.Verify(cmp, proof); err != nil {

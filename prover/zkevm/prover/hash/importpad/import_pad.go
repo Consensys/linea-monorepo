@@ -1,16 +1,16 @@
 package importpad
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	cs "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	cs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 // ImportAndPadInputs collect the inputs of the [ImportAndPad] function.
@@ -198,12 +198,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 func (imp *importation) Run(run *wizard.ProverRuntime) {
 
 	var (
-		srcData = imp.Inputs.Src.Data
-		hashNum = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs   = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nBytes  = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
-		index   = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
-		toHash  = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
+		sha2Count = 0
+		srcData   = imp.Inputs.Src.Data
+		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs     = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
+		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
+		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
 
 		iab = importationAssignmentBuilder{
 			HashNum:        common.NewVectorBuilder(imp.HashNum),
@@ -237,12 +238,16 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 	for i := range hashNum {
 
 		if toHash[i].IsZero() {
-			if i == len(hashNum)-1 {
+			// The condition of sha2Count addresses the case were sha2 is never
+			// called.
+			if sha2Count > 0 && i == len(hashNum)-1 {
 				imp.padder.pushPaddingRows(currByteSize, &iab)
 			}
 
 			continue
 		}
+
+		sha2Count++
 
 		if i > 0 && currHashNum != hashNum[i] && !currHashNum.IsZero() {
 			imp.padder.pushPaddingRows(currByteSize, &iab)
@@ -256,10 +261,8 @@ func (imp *importation) Run(run *wizard.ProverRuntime) {
 			iab.IsNewHash.PushZero()
 		}
 
-		var (
-			indexInt  = int(index[i].Uint64())
-			nBytesInt = int(nBytes[i].Uint64())
-		)
+		indexInt := field.ToInt(&index[i])
+		nBytesInt := field.ToInt(&nBytes[i])
 
 		currByteSize += nBytesInt
 

@@ -3,8 +3,8 @@ package smartvectors
 import (
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // operator represents a mathematical operation that can be performed between

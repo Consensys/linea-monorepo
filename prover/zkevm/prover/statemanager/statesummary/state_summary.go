@@ -1,11 +1,11 @@
 package statesummary
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Module represents the state-summary module. It defines all the columns
@@ -628,7 +628,34 @@ func (ss *Module) csStoragePeek(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			ss.IsStorage,
 			column.Shift(ss.IsStorage, -1),
+			ss.AccumulatorStatement.SameTypeAsBefore, // Note: we observed that shomei was in fact sorting by type and then by storage key
 			sym.Sub(1, ss.Storage.KeyIncreased),
+		),
+	)
+
+	diffRoW := sym.Sub(
+		sym.Add(
+			ss.AccumulatorStatement.IsInsert,
+			ss.AccumulatorStatement.IsUpdate,
+			ss.AccumulatorStatement.IsDelete,
+		),
+		sym.Add(
+			column.Shift(ss.AccumulatorStatement.IsInsert, -1),
+			column.Shift(ss.AccumulatorStatement.IsUpdate, -1),
+			column.Shift(ss.AccumulatorStatement.IsDelete, -1),
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("STATE_SUMMARY_STORAGE_READS_THEN_WRITE"),
+		sym.Mul(
+			column.Shift(ss.IsStorage, -1),
+			ss.IsStorage,
+			sym.Sub(
+				sym.Mul(diffRoW, diffRoW),
+				diffRoW,
+			),
 		),
 	)
 }

@@ -3,16 +3,16 @@ package wizard
 import (
 	// "reflect"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // CompiledIOP carries a static description of the IOP protocol throughout the
@@ -87,15 +87,15 @@ type CompiledIOP struct {
 
 	// CryptographicCompilerCtx stores the compilation context of the last used
 	// cryptographic compiler. Specifically, it is aimed to store the last
-	// Vortex compilation context (see [github.com/consensys/zkevm-monorepo/prover/protocol/compiler]) that was used. And
+	// Vortex compilation context (see [github.com/consensys/linea-monorepo/prover/protocol/compiler]) that was used. And
 	// its purpose is to provide the Vortex context to the self-recursion
-	// compilation context; see [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/selfrecursion]. This allows
+	// compilation context; see [github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion]. This allows
 	// the self-recursion context to learn about the columns to use and the
 	// Vortex parameters.
 	CryptographicCompilerCtx any
 
 	// DummyCompiled that can be set internally by the compilation, when we are
-	// using the [github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy.Compile] compilation step. This steps
+	// using the [github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy.Compile] compilation step. This steps
 	// commands that the verifier of the protocol should not be compiled into a
 	// circuit. This is needed because `dummy.Compile` turns all the columns of
 	// the protocol in columns that are visible to the verifier and all the
@@ -164,6 +164,14 @@ func (c *CompiledIOP) InsertCommit(round int, name ifaces.ColID, size int) iface
 //   - if the size of the column is not a power of 2
 //   - if a column using the same name has already been registered
 func (c *CompiledIOP) InsertColumn(round int, name ifaces.ColID, size int, status column.Status) ifaces.Column {
+
+	// @alex: this has actually caught a few typos. When wrongly setting an
+	// incorrect but very large size here, it will generate a disproportionate
+	// wizard
+	if size > 1<<27 {
+		utils.Panic("column %v has size %v", name, size)
+	}
+
 	c.assertConsistentRound(round)
 
 	if len(name) == 0 {
@@ -485,6 +493,13 @@ func (c *CompiledIOP) InsertVerifier(round int, ver VerifierStep, gnarkVer Gnark
 // - the name is the empty string
 // - a query with the same name has already been registered in the Wizard.
 func (c *CompiledIOP) InsertRange(round int, name ifaces.QueryID, h ifaces.Column, max int) {
+
+	// @alex: this has actually caught a few typos. When wrongly setting an
+	// incorrect but very large value here, the query will tend to always pass
+	// and thus the tests will tend to miss it.
+	if max > 1<<27 {
+		utils.Panic("the range check query %v has an overly large boundary (max=%v)", name, max)
+	}
 
 	// sanity-check the bound should be larger than 0
 	if max == 0 {

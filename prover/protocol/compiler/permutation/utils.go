@@ -1,8 +1,8 @@
 package permutation
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 )
 
 const permutationStr = "PERMUTATION"

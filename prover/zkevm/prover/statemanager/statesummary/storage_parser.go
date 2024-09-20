@@ -1,8 +1,9 @@
 package statesummary
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 /*
@@ -71,7 +72,7 @@ func (sr *ArithmetizationStorageParser) Process() {
 			mapKey := KeysAndBlock{
 				address:    address.Bytes(),
 				storageKey: types.FullBytes32(keyBytes),
-				block:      int(block),
+				block:      utils.ToInt(block),
 			}
 
 			valueHI := sr.scp.ValueHINext.GetColAssignmentAt(sr.run, index)

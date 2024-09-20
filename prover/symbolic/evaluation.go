@@ -2,13 +2,14 @@ package symbolic
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 const (
@@ -35,18 +36,18 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 }
 
 // Evaluate the board for a batch  of inputs in parallel
-func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
 	/*
 		Find the size of the vector
 	*/
 	totalSize := 0
 	for i, inp := range inputs {
-
 		if totalSize > 0 && totalSize != inp.Len() {
 			// Expects that all vector inputs have the same size
 			utils.Panic("Mismatch in the size: len(v) %v, totalsize %v, pos %v", inp.Len(), totalSize, i)
 		}
+
 		if totalSize == 0 {
 			totalSize = inp.Len()
 		}
@@ -58,6 +59,10 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 		utils.Panic("Either there is no input or the inputs all have size 0")
 	}
 
+	if len(p) > 0 && p[0].Size() != MaxChunkSize {
+		utils.Panic("the pool should be a pool of vectors of size=%v but it is %v", MaxChunkSize, p[0].Size())
+	}
+
 	/*
 		The is no vector input iff totalSize is 0
 		Thus the condition below catch the two cases where:
@@ -65,9 +70,18 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 			- The vectors are smaller than the min chunk size
 	*/
 
-	if totalSize <= MaxChunkSize {
-		// never pass the pool here
-		return b.evaluateSingleThread(inputs)
+	if totalSize < MaxChunkSize {
+		// never pass the pool here as the pool assumes that all vectors have a
+		// size of MaxChunkSize. Thus, it would not work here.
+		return b.evaluateSingleThread(inputs).DeepCopy()
+	}
+
+	// This is the code-path that is used for benchmarking when the size of the
+	// vectors is exactly MaxChunkSize. In production, it will rather use the
+	// multi-threaded option. The above condition cannot use the pool because we
+	// assume here that the pool has a vector size of exactly MaxChunkSize.
+	if totalSize == MaxChunkSize {
+		return b.evaluateSingleThread(inputs, p...).DeepCopy()
 	}
 
 	if totalSize%MaxChunkSize != 0 {
@@ -77,12 +91,23 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 	numChunks := totalSize / MaxChunkSize
 	res := make([]field.Element, totalSize)
 
-	parallel.ExecuteChunky(numChunks, func(start, stop int) {
-		for chunkID := start; chunkID < stop; chunkID++ {
+	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, idChan chan int) {
 
-			chunkStart := chunkID * MaxChunkSize
-			chunkStop := (chunkID + 1) * MaxChunkSize
-			chunkInputs := make([]sv.SmartVector, len(inputs))
+		var pool []mempool.MemPool
+		if len(p) > 0 {
+			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
+				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
+			}
+		}
+
+		chunkInputs := make([]sv.SmartVector, len(inputs))
+
+		for chunkID := range idChan {
+
+			var (
+				chunkStart = chunkID * MaxChunkSize
+				chunkStop  = (chunkID + 1) * MaxChunkSize
+			)
 
 			for i, inp := range inputs {
 				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
@@ -94,11 +119,19 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 
 			// We don't parallelize evaluations where the inputs are all scalars
 			// Therefore the cast is safe.
-			chunkRes := b.evaluateSingleThread(chunkInputs, p...)
+			chunkRes := b.evaluateSingleThread(chunkInputs, pool...)
 
 			// No race condition here as each call write to different places
 			// of vec.
 			chunkRes.WriteInSlice(res[chunkStart:chunkStop])
+
+			wg.Done()
+		}
+
+		if len(p) > 0 {
+			if sa, ok := pool[0].(*mempool.SliceArena); ok {
+				sa.TearDown()
+			}
 		}
 	})
 
@@ -107,114 +140,40 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) 
 
 // evaluateSingleThread evaluates a boarded expression. The inputs can be either
 // vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (b *ExpressionBoard) evaluateSingleThread(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
-	length := inputs[0].Len()
-	pool, hasPool := mempool.ExtractCheckOptionalSoft(length, p...)
+	var (
+		length         = inputs[0].Len()
+		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
+		nodeAssignment = b.prepareNodeAssignments(inputs)
+	)
 
-	/*
-		First, build a buffer to store the intermediate results
-	*/
-	intermediateRes := make([][]sv.SmartVector, len(b.Nodes))
-	parentCount := make([][]int, len(b.Nodes))
-	for level := range b.Nodes {
-		intermediateRes[level] = make([]sv.SmartVector, len(b.Nodes[level]))
-		parentCount[level] = make([]int, len(b.Nodes[level]))
-	}
+	// Then computes the levels one by one
+	for level := 1; level < len(nodeAssignment); level++ {
+		for pil := range nodeAssignment[level] {
 
-	/*
-		Then, store the initial values in the level entries of the vector
-	*/
-	inputCursor := 0
-
-	for i := range b.Nodes[0] {
-		switch op := b.Nodes[0][i].Operator.(type) {
-		case Constant:
-			// The constants are identified to constant vectors
-			intermediateRes[0][i] = sv.NewConstant(op.Val, length)
-			parentCount[0][i] = -1 // that way it never reaches zero
-		case Variable:
-			// Sanity-check the input should have the correct length
-			if inputs[inputCursor].Len() != length {
-				utils.Panic("Subvector failed, subvector should have size %v but size is %v", length, inputs[inputCursor].Len())
-			}
-			intermediateRes[0][i] = inputs[inputCursor]
-			// track the number of time the node will be used
-			parentCount[0][i] = len(b.Nodes[0][i].Parents)
-			inputCursor++
-		}
-	}
-
-	/*
-		Then computes the levels one by one
-	*/
-	for level := 1; level < len(b.Nodes); level++ {
-		for pos, node := range b.Nodes[level] {
-			/*
-				Collect the inputs of the current node from the intermediateRes
-			*/
-			nodeInputs := make([]sv.SmartVector, len(node.Children))
-			for i, childID := range node.Children {
-				lvl, pil := childID.level(), childID.posInLevel()
-				nodeInputs[i] = intermediateRes[lvl][pil]
-			}
-
-			/*
-				Run the evaluation
-			*/
-			res := node.Operator.Evaluate(nodeInputs, pool)
-			if res.Len() != length {
-				utils.Panic("Subvector failed, subvector should have size %v but size is %v", length, inputs[inputCursor].Len())
-			}
-
-			// If the pool is used, free the childre
-			for i, childID := range node.Children {
-				lvl, pil := childID.level(), childID.posInLevel()
-
-				// bar the node input to used again. We won't need it.
-				nodeInputs[i] = nil
-
-				// beside, if all its parents have been computed. We can
-				// remove it from the intermediate result (and possibly
-				// pool it).
-				parentCount[lvl][pil]--
-				if parentCount[lvl][pil] == 0 {
-
-					reg, isRegular := intermediateRes[lvl][pil].(*sv.Regular)
-					// remove the pooled slice from the structure to ensure
-					// it is not used anymore.
-					intermediateRes[lvl][pil] = nil
-
-					// And pool it if relevant
-					if hasPool && isRegular && lvl > 0 {
-						v := []field.Element(*reg)
-						pool.Free(&v)
-					}
-				}
-			}
-
-			/*
-				Registers the result in the intermediate results
-			*/
-			intermediateRes[level][pos] = res
-			parentCount[level][pos] = len(node.Parents)
+			node := &nodeAssignment[level][pil]
+			nodeAssignment.eval(node, pool)
 		}
 	}
 
 	// Assertion, the last level contains only one node (the final result)
-	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
+	if len(nodeAssignment[len(nodeAssignment)-1]) > 1 {
 		panic("multiple heads")
 	}
 
-	resBuf := intermediateRes[len(b.Nodes)-1][0]
+	resBuf := nodeAssignment[len(b.Nodes)-1][0].Value
+
+	if resBuf == nil {
+		panic("resbuf is nil")
+	}
 
 	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
 	// that way.
 	if hasPool {
-		if reg, ok := resBuf.(*sv.Regular); ok {
+		if reg, ok := resBuf.(*sv.Pooled); ok {
 			resGC := reg.DeepCopy()
-			v := []field.Element(*reg)
-			pool.Free(&v)
+			reg.Free(pool)
 			resBuf = resGC
 		}
 	}

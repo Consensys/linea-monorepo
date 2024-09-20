@@ -9,9 +9,9 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +52,7 @@ func TestFactory(t *testing.T) {
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness, SolverOpts(scs)...)
+	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 }
 
@@ -73,7 +73,7 @@ func TestFactoryWithPadding(t *testing.T) {
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness, SolverOpts(scs)...)
+	err = scs.IsSolved(witness)
 	require.NoError(t, err)
 }
 
@@ -105,7 +105,7 @@ func TestFactoryManySizes(t *testing.T) {
 			witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 			require.NoError(t, err)
 
-			err = scs.IsSolved(witness, SolverOpts(scs)...)
+			err = scs.IsSolved(witness)
 			require.NoError(t, err)
 		})
 	}

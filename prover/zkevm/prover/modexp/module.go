@@ -1,16 +1,16 @@
 package modexp
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	// nbInstancePerCircuit256 and nbInstancePerCircuit4096 state how many
 	// instance of modexp are taken care of by a single gnark circuit in the
 	// "small" variant (256 bits) or the "large" variant (4096 bits)
-	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 20, 1
+	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 10, 1
 )
 
 // Module implements the wizard part responsible for checking the MODEXP

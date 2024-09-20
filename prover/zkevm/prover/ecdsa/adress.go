@@ -1,19 +1,19 @@
 package ecdsa
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/crypto/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/byte32cmp"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 // Address submodule is responsible for the columns holding the address of the sender,
@@ -105,16 +105,19 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	)
 
 	td.csTxnData(comp)
-	// projection from txn-data to address columns
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
 
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
-		td.isFrom, addr.isAddressFromTxnData,
-	)
+	// Waiting for the resolution of:
+	//
+	// // projection from txn-data to address columns
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
+	// 	[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
+	//
+	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
+	// 	[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
+	// 	td.isFrom, addr.isAddressFromTxnData,
+	// )
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
@@ -218,6 +221,7 @@ func (addr *Addresses) assignAddress(
 			hashNum.PushInt(0)
 		}
 	}
+
 	hashNum.PadAndAssign(run)
 	addr.assignMainColumns(run, nbEcRecover, size, uaGnark)
 	addr.assignHelperColumns(run, ecRec)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

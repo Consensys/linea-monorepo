@@ -6,9 +6,10 @@
 package keccak
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	gen_acc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 )
 
 type KeccakZkEVM struct {
@@ -93,9 +94,9 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModu
 		},
 		Info: generic.GenInfoModule{
 			HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:   comp.Columns.GetHandle("shakira.LIMB"),
-			HashHi:   comp.Columns.GetHandle("shakira.LIMB"),
-			IsHashLo: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_LO"),
+			HashLo:   comp.Columns.GetHandle("shakiradata.LIMB"),
+			HashHi:   comp.Columns.GetHandle("shakiradata.LIMB"),
+			IsHashLo: column.Shift(comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"), -1),
 			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
 		},
 	}

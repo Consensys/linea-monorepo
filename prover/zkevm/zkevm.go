@@ -1,17 +1,18 @@
 package zkevm
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/serialization"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // ZkEvm defines the wizard responsible for proving execution of the zk
@@ -33,9 +34,11 @@ type ZkEvm struct {
 	// modexp is the module responsible for proving the calls to the modexp
 	// precompile
 	modexp *modexp.Module
+	// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+	//
 	// ecadd is the module responsible for proving the calls to the ecadd
 	// precompile
-	ecadd *ecarith.EcAdd
+	// ecadd *ecarith.EcAdd
 	// ecmul is the module responsible for proving the calls to the ecmul
 	// precompile
 	ecmul *ecarith.EcMul
@@ -94,14 +97,16 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		comp         = b.CompiledIOP
 		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
 		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa)
-		stateManager = statemanager.NewStateManager(comp, s.Statemanager)
+		stateManager = statemanager.NewStateManagerNoHub(comp, s.Statemanager)
 		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp)
-		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
-		ecmul        = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
-		ecpair       = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
-		sha2         = sha2.NewSha2ZkEvm(comp, s.Sha2)
-		publicInput  = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
+		ecmul       = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
+		ecpair      = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
+		sha2        = sha2.NewSha2ZkEvm(comp, s.Sha2)
+		publicInput = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
 	)
 
 	return &ZkEvm{
@@ -110,11 +115,13 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		stateManager:    stateManager,
 		keccak:          keccak,
 		modexp:          modexp,
-		ecadd:           ecadd,
-		ecmul:           ecmul,
-		ecpair:          ecpair,
-		sha2:            sha2,
-		PublicInput:     &publicInput,
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// ecadd:           ecadd,
+		ecmul:       ecmul,
+		ecpair:      ecpair,
+		sha2:        sha2,
+		PublicInput: &publicInput,
 	}
 }
 
@@ -126,17 +133,25 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		arithmetization.Assign(run, input.ExecTracesFPath)
+		z.arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
+		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
 		z.stateManager.Assign(run, input.SMTraces)
-		z.ecdsa.Assign(run, input.TxSignatureGetter)
 		z.keccak.Run(run)
 		z.modexp.Assign(run)
-		z.ecadd.Assign(run)
+		// deactivated pending the resolution of: https://github.com/Consensys/linea-tracer/issues/954
+		//
+		// z.ecadd.Assign(run)
 		z.ecmul.Assign(run)
 		z.ecpair.Assign(run)
 		z.sha2.Run(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress)
 	}
+}
+
+// Limits returns the configuration limits used to instantiate the current
+// zk-EVM.
+func (z *ZkEvm) Limits() *config.TracesLimits {
+	return z.arithmetization.Settings.Limits
 }

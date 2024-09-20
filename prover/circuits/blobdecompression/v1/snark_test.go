@@ -6,9 +6,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1/test_utils"
-	cInternal "github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
+	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -16,10 +18,9 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash/mimc"
-	test_vector_utils "github.com/consensys/gnark/std/utils/test_vectors_utils"
 	"github.com/consensys/gnark/test"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	blobtesting "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -155,7 +156,7 @@ func testChecksumBatches(t *testing.T, blob []byte, batchEndss ...[]int) {
 		}
 
 		assignment := testChecksumCircuit{
-			Blob:      test_vector_utils.ToVariableSlice(blob),
+			Blob:      utils.ToVariableSlice(blob),
 			Lengths:   lengths,
 			Sums:      sums,
 			NbBatches: len(batchEnds),
@@ -183,7 +184,7 @@ func (c *testParseHeaderCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(headerLen, c.HeaderLen)
 	api.AssertIsEqual(nbBatches, c.NbBatches)
 
-	cInternal.AssertSliceEquals(api, blocksPerBatch, c.BlocksPerBatch[:])
+	internal.AssertSliceEquals(api, blocksPerBatch, c.BlocksPerBatch[:])
 
 	return nil
 }
@@ -232,8 +233,8 @@ func TestUnpackCircuit(t *testing.T) {
 		}
 
 		assignment := unpackCircuit{
-			PackedBytes: test_vector_utils.ToVariableSlice(packedBuf.Bytes()),
-			Bytes:       test_vector_utils.ToVariableSlice(b),
+			PackedBytes: utils.ToVariableSlice(packedBuf.Bytes()),
+			Bytes:       utils.ToVariableSlice(b),
 			NbUsedBytes: len(b),
 		}
 		assert.NoError(t, test.IsSolved(&circuit, &assignment, ecc.BLS12_377.ScalarField()))
@@ -263,7 +264,7 @@ func (c *unpackCircuit) Define(api frontend.API) error {
 		return errors.New("bytes won't fit in the packed array")
 	}
 
-	crumbs := cInternal.PackedBytesToCrumbs(api, c.PackedBytes, fr381.Bits-1)
+	crumbs := internal.PackedBytesToCrumbs(api, c.PackedBytes, fr381.Bits-1)
 
 	_bytes, nbUsedBytes := crumbStreamToByteStream(api, crumbs)
 
@@ -293,7 +294,7 @@ func TestBlobChecksum(t *testing.T) { // aka "snark hash"
 
 	var dataPadded [maxLenBytesPadded]byte
 	copy(dataPadded[:], data[:minLenBytes])
-	dataVarsPadded := test_vector_utils.ToVariableSlice(dataPadded[:])
+	dataVarsPadded := utils.ToVariableSlice(dataPadded[:])
 	for n := minLenBytes; n <= maxLenBytes; n++ {
 		nPadded := (n + fr381.Bytes - 1) / fr381.Bytes * fr381.Bytes
 
@@ -320,14 +321,14 @@ type testDataChecksumCircuit struct {
 }
 
 func (c *testDataChecksumCircuit) Define(api frontend.API) error {
-	dataCrumbs := cInternal.PackedBytesToCrumbs(api, c.DataBytes, fr381.Bits-1)
+	dataCrumbs := internal.PackedBytesToCrumbs(api, c.DataBytes, fr381.Bits-1)
 
 	hsh, err := mimc.NewMiMC(api)
 	if err != nil {
 		return err
 	}
 
-	blobPacked377 := cInternal.PackFull(api, dataCrumbs, 2) // repack into bls12-377 elements to compute a checksum
+	blobPacked377 := internal.PackFull(api, dataCrumbs, 2) // repack into bls12-377 elements to compute a checksum
 	hsh.Write(blobPacked377...)
 	checksum := hsh.Sum()
 
@@ -346,7 +347,7 @@ func TestDictHash(t *testing.T) {
 		DictBytes: make([]frontend.Variable, len(dict)),
 	}
 	assignment := testDataDictHashCircuit{
-		DictBytes: test_vector_utils.ToVariableSlice(dict),
+		DictBytes: utils.ToVariableSlice(dict),
 		Checksum:  header.DictChecksum[:],
 	}
 

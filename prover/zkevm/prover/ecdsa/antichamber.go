@@ -1,13 +1,13 @@
 package ecdsa
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 const (
@@ -85,7 +85,7 @@ func (l *Settings) sizeAntichamber() int {
 func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *antichamber {
 
 	settings := inputs.settings
-	if settings.MaxNbEcRecover+settings.MaxNbTx != settings.NbInputInstance*settings.NbCircuitInstances {
+	if settings.MaxNbEcRecover+settings.MaxNbTx > settings.NbInputInstance*settings.NbCircuitInstances {
 		utils.Panic("the number of supported instances %v should be %v + %v", settings.NbInputInstance*settings.NbCircuitInstances, settings.MaxNbEcRecover, settings.MaxNbTx)
 	}
 	size := inputs.settings.sizeAntichamber()
@@ -153,13 +153,13 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 //
 // As the initial data is copied from the EC_DATA arithmetization module, then
 // it has to be provided as an input.
-func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter) {
+func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
 	var (
 		ecSrc             = ac.Inputs.ecSource
 		txSource          = ac.Inputs.txSource
 		nbActualEcRecover = ecSrc.nbActualInstances(run)
 	)
-	ac.assignAntichamber(run, nbActualEcRecover)
+	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
 	ac.EcRecover.Assign(run, ecSrc)
 	ac.txSignature.assignTxSignature(run, nbActualEcRecover)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
@@ -175,7 +175,7 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 //   - Source
 //
 // The assignment depends on the number of defined EcRecover and TxSignature instances.
-func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances int) {
+func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances, nbTxInstances int) {
 
 	var (
 		maxNbEcRecover = ac.Inputs.settings.MaxNbEcRecover
@@ -211,7 +211,7 @@ func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 		idxInstance++
 	}
 
-	for i := 0; i < ac.Inputs.settings.MaxNbTx; i++ {
+	for i := 0; i < nbTxInstances; i++ {
 		for j := 0; j < nbRowsPerTxSign; j++ {
 			resIsActive[nbRowsPerEcRec*nbEcRecInstances+i*nbRowsPerTxSign+j] = field.NewElement(1)
 			resID[nbRowsPerEcRec*nbEcRecInstances+i*nbRowsPerTxSign+j] = field.NewElement(idxInstance)

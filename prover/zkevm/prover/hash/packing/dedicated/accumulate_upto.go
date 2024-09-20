@@ -1,16 +1,17 @@
 package dedicated
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
+	"strconv"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // AccumulatorInputs stores the inputs for  [AccumulateUpToMax] function.
@@ -37,7 +38,8 @@ The column IsMax indicate where the accumulator reaches the max,
 type accumulateUpToMax struct {
 	Inputs AccumulatorInputs
 	// It is 1 when the accumulator reaches the max value.
-	IsMax ifaces.Column
+	IsMax    ifaces.Column
+	IsActive ifaces.Column
 	// the  ProverAction for IsZero()
 	pa wizard.ProverAction
 	// It accumulate the elements from ColA.
@@ -46,16 +48,18 @@ type accumulateUpToMax struct {
 	Size int
 }
 
-func AccumulateUpToMax(comp *wizard.CompiledIOP, maxValue int, colA ifaces.Column) *accumulateUpToMax {
+func AccumulateUpToMax(comp *wizard.CompiledIOP, maxValue int, colA, isActive ifaces.Column) *accumulateUpToMax {
 	var (
+		uniqueID  = strconv.Itoa(len(comp.ListCommitments()))
 		size      = colA.Size()
-		createCol = common.CreateColFn(comp, "ACCUMULATE_UP_TO_MAX", size)
+		createCol = common.CreateColFn(comp, "ACCUMULATE_UP_TO_MAX_"+uniqueID, size)
 	)
 
 	acc := &accumulateUpToMax{
 		Inputs: AccumulatorInputs{MaxValue: maxValue,
 			ColA: colA},
 		Accumulator: createCol("Accumulator"),
+		IsActive:    isActive,
 		Size:        size,
 	}
 
@@ -63,19 +67,19 @@ func AccumulateUpToMax(comp *wizard.CompiledIOP, maxValue int, colA ifaces.Colum
 
 	// Constraints over the accumulator
 	// Accumulator[last] =ColA[last]
-	comp.InsertLocal(0, ifaces.QueryIDf("AccCLDLenSpaghetti_Loc"),
-		symbolic.Sub(
+	comp.InsertLocal(0, ifaces.QueryIDf("AccCLDLenSpaghetti_Loc_"+uniqueID),
+		sym.Sub(
 			column.Shift(acc.Accumulator, -1), column.Shift(acc.Inputs.ColA, -1),
 		),
 	)
 
 	// Accumulator[i] = Accumulator[i+1]*(1-acc.IsMax[i+1]) +ColA[i]; i standing for row-index.
-	res := symbolic.Sub(1, column.Shift(acc.IsMax, 1)) // 1-acc.IsMax[i+1]
+	res := sym.Sub(1, column.Shift(acc.IsMax, 1)) // 1-acc.IsMax[i+1]
 
-	comp.InsertGlobal(0, ifaces.QueryIDf("AccCLDLenSpaghetti_Glob"),
-		symbolic.Sub(
-			symbolic.Add(
-				symbolic.Mul(
+	comp.InsertGlobal(0, ifaces.QueryIDf("AccCLDLenSpaghetti_Glob_"+uniqueID),
+		sym.Sub(
+			sym.Add(
+				sym.Mul(
 					column.Shift(acc.Accumulator, 1), res),
 				acc.Inputs.ColA),
 			acc.Accumulator,
@@ -83,8 +87,8 @@ func AccumulateUpToMax(comp *wizard.CompiledIOP, maxValue int, colA ifaces.Colum
 	)
 
 	// IsMax[0] = 1
-	comp.InsertLocal(0, "IS_1_AT_POS_0",
-		sym.Sub(acc.IsMax, 1),
+	comp.InsertLocal(0, ifaces.QueryID("IS_1_AT_POS_0_"+uniqueID),
+		sym.Sub(acc.IsMax, acc.IsActive),
 	)
 
 	return acc

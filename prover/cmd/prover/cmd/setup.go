@@ -4,27 +4,28 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	pi_interconnection "github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	blob_v0 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v0"
-	blob_v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+
+	blob_v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
+	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/aggregation"
-	v0 "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v0"
-	v1 "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/emulation"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
+	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
+	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -50,10 +51,10 @@ var allCircuits = []string{
 	string(circuits.ExecutionLargeCircuitID),
 	string(circuits.BlobDecompressionV0CircuitID),
 	string(circuits.BlobDecompressionV1CircuitID),
+	string(circuits.PublicInputInterconnectionCircuitID),
 	string(circuits.AggregationCircuitID),
 	string(circuits.EmulationCircuitID),
 	string(circuits.EmulationDummyCircuitID), // we want to generate Verifier.sol for this one
-	string(circuits.PublicInputInterconnectionCircuitID),
 }
 
 func init() {
@@ -227,7 +228,7 @@ func cmdSetup(cmd *cobra.Command, args []string) error {
 		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
 		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
 
-		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup.VerifyingKey, allowedVkForAggregation)
+		builder := aggregation.NewBuilder(numProofs, cfg.Aggregation.AllowedInputs, piSetup, allowedVkForAggregation)
 		if err := updateSetup(cmd.Context(), cfg, srsProvider, c, builder, extraFlagsForAggregationCircuit); err != nil {
 			return err
 		}

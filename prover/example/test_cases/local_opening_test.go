@@ -8,12 +8,11 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/splitter"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +48,7 @@ func TestGnarkCompile(t *testing.T) {
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness, gkrmimc.SolverOpts(scs)...)
+	err = scs.IsSolved(witness)
 	if err != nil {
 		// When the error string is too large `require.NoError` does not print
 		// the error.

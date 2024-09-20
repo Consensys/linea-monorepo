@@ -7,7 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/sirupsen/logrus"
 )
 
 // artefactDir is the directory used to store the artefacts. The directory is
@@ -43,25 +44,31 @@ func (a artefactCache) TryLoad(key string, obj Artefact) (found bool, parseErr e
 	)
 
 	if errors.Is(fCheckErr, os.ErrNotExist) {
+		logrus.Infof("attempted to open the cache-key=%v, was missing", fpath)
 		return false, nil
 	}
 
 	if fCheckErr != nil {
 		// This can happen if the directory does not exists
+		logrus.Infof("attempted to open the cache-key=%v err=%v", fpath, fCheckErr.Error())
 		return false, fmt.Errorf("CheckFilePath failed: %w", fCheckErr)
 	}
 
 	f, readErr := os.Open(fpath)
 
 	if readErr != nil {
+		logrus.Infof("attempted to open the cache-key=%v err=read-file-failed:%v", fpath, readErr.Error())
 		return false, fmt.Errorf("ReadFile failed: %w", readErr)
 	}
 
 	_, parseErr = obj.ReadFrom(f)
 
 	if parseErr != nil {
+		logrus.Infof("attempted to open the cache-key=%v err=read-from-failed:%v", fpath, parseErr.Error())
 		return false, fmt.Errorf("ReadFrom failed: %w", parseErr)
 	}
+
+	logrus.Infof("cache-key found cache-key=%v", fpath)
 
 	return true, nil
 }
@@ -73,17 +80,15 @@ func (a artefactCache) Store(key string, obj Artefact) error {
 	var (
 		fpath       = path.Join(artefactDir, key)
 		writingPath = fpath + ".tmp"
-		_, statErr  = os.Stat(fpath)
-		_, wstatErr = os.Stat(writingPath)
+		statErr     = files.CheckFilePath(writingPath)
 	)
 
 	if statErr == nil {
 		return fmt.Errorf("the file %q already exists", fpath)
 	}
 
-	if wstatErr == nil {
-		return fmt.Errorf("the file %q already exists", wstatErr)
-	}
+	logrus.Infof("Started writing the global constraint in the cache")
+	defer logrus.Infof("Done writing the global constraint in the cache")
 
 	f := files.MustOverwrite(writingPath)
 	if _, writeErr := obj.WriteTo(f); writeErr != nil {

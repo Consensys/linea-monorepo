@@ -4,13 +4,12 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -20,29 +19,38 @@ import (
 // CircuitExecution for the outer-proof
 type CircuitExecution struct {
 	// The wizard verifier circuit
-	WizardVerifier wizard.WizardVerifierCircuit
+	WizardVerifier wizard.WizardVerifierCircuit `gnark:",secret"`
 	// The extractor is not part of the circuit per se, but hold informations
 	// that is used to extract the public inputs from the the WizardVerifier.
 	// The extractor only needs to be provided during the definition of the
 	// circuit and is omitted during the assignment of the circuit.
-	extractor publicInput.FunctionalInputExtractor
+	extractor publicInput.FunctionalInputExtractor `gnark:"-"`
 	// The functional public inputs are the "actual" statement made by the
 	// circuit. They are not part of the public input of the circuit for
 	// a number of reasons involving efficiency and simplicity in the aggregation
 	// process. What is the public input is their hash.
-	FuncInputs FunctionalPublicInputSnark
+	FuncInputs FunctionalPublicInputSnark `gnark:",secret"`
 	// The public input of the proof
 	PublicInput frontend.Variable `gnark:",public"`
 }
 
 // Allocates the outer-proof circuit
-func Allocate(comp *wizard.CompiledIOP, piExtractor *publicInput.FunctionalInputExtractor) CircuitExecution {
-	wverifier, err := wizard.AllocateWizardCircuit(comp)
+func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
+	wverifier, err := wizard.AllocateWizardCircuit(zkevm.WizardIOP)
 	if err != nil {
 		panic(err)
 	}
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
+		extractor:      zkevm.PublicInput.Extractor,
+		FuncInputs: FunctionalPublicInputSnark{
+			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+				L2MessageHashes: NewL2MessageHashes(
+					[][32]frontend.Variable{},
+					zkevm.Limits().BlockL2L1Logs,
+				),
+			},
+		},
 	}
 }
 
@@ -52,7 +60,6 @@ func assign(
 	proof wizard.Proof,
 	funcInputs FunctionalPublicInput,
 ) CircuitExecution {
-
 	wizardVerifier := wizard.GetWizardVerifierCircuitAssignment(comp, proof)
 	return CircuitExecution{
 		WizardVerifier: *wizardVerifier,
@@ -94,7 +101,6 @@ func MakeProof(
 		setup.Circuit,
 		setup.ProvingKey,
 		witness,
-		backend.WithSolverOptions(gkrmimc.SolverOpts(setup.Circuit)...),
 		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
 	)
 	if err != nil {

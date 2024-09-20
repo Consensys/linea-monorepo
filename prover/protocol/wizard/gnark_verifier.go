@@ -2,16 +2,16 @@ package wizard
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -390,10 +390,8 @@ func GetWizardVerifierCircuitAssignment(comp *CompiledIOP, proof Proof) *WizardV
 
 		// Perform the conversion to frontend.Variable, element by element
 		assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+		res.columnsIDs.InsertNew(colName, len(res.Columns))
 		res.Columns = append(res.Columns, assignedMsg)
-
-		// Also add the index
-		res.columnsIDs.InsertNew(colName, i)
 	}
 
 	/*

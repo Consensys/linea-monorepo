@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 var _ ifaces.Accessor = &FromUnivXAccessor{}
@@ -36,7 +36,7 @@ func (u *FromUnivXAccessor) Name() string {
 	return fmt.Sprintf("UNIV_X_ACCESSOR_%v", u.Q.QueryID)
 }
 
-// String implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (u *FromUnivXAccessor) String() string {
 	return u.Name()
 }

@@ -1,13 +1,14 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Inclusion describes an inclusion query (a.k.a. a lookup constraint). The
@@ -196,6 +197,8 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 		}
 	}
 
+	var errLU error
+
 	// Effectively run the check on the included table
 	for row := 0; row < r.Included[0].Size(); row++ {
 		if r.IsFilteredOnIncluded() && filterIncluded.Get(row) == field.Zero() {
@@ -207,13 +210,14 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 			notFoundRow := []string{}
 			for c := range included {
 				x := included[c].Get(row)
-				notFoundRow = append(notFoundRow, fmt.Sprintf("%v=%v", r.Included[c].GetColID(), x.String()))
+				notFoundRow = append(notFoundRow, fmt.Sprintf("%v=%v", r.Included[c].GetColID(), x.Text(16)))
 			}
-			return fmt.Errorf("row %v was not found in the `including` table : %v", row, notFoundRow)
+
+			errLU = errors.Join(errLU, fmt.Errorf("row %v was not found in the `including` table : %v", row, notFoundRow))
 		}
 	}
 
-	return nil
+	return errLU
 }
 
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this

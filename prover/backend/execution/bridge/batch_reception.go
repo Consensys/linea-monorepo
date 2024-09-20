@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -20,7 +21,7 @@ func BatchReceptionIndex(logs []types.Log, l2BridgeAddress common.Address) []uin
 		}
 
 		// Push the txIndex
-		res = append(res, uint16(log.TxIndex))
+		res = append(res, utils.ToUint16(log.TxIndex))
 	}
 	return res
 }

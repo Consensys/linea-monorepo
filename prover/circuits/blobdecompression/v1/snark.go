@@ -8,8 +8,8 @@ import (
 	"math/big"
 	"math/bits"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -17,9 +17,9 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
-	public_input "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 const (
@@ -235,9 +235,11 @@ func CheckBatchesSums(api frontend.API, hasher snarkHash.FieldHasher, nbBatches 
 
 	api.AssertIsEqual(batchI, nbBatches) // check that we're actually done
 
-	// Ensure the computed partial sums match
+	// hash along the lengths and compare with expected values
 	for i := range batchEnds {
-		batchesRange.AssertEqualI(i, expectedChecksums[i], partialSums[i])
+		hasher.Reset()
+		hasher.Write(batchLengths[i], partialSums[i])
+		batchesRange.AssertEqualI(i, expectedChecksums[i], hasher.Sum())
 	}
 
 	return nil

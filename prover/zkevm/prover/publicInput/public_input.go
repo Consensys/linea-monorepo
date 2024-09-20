@@ -1,19 +1,19 @@
 package publicInput
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/accessors"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/importpad"
-	pack "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing"
-	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
-	edc "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
-	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/logs"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
+	pack "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	edc "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/execution_data_collector"
+	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -67,6 +67,8 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 		return comp.Columns.GetHandle(ifaces.ColID(s))
 	}
 
+	settings.Name = "PUBLIC_INPUT"
+
 	return newPublicInput(
 		comp,
 		&InputModules{
@@ -91,7 +93,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 			},
 			RlpTxn: &arith.RlpTxn{
 				AbsTxNum:       getCol("rlptxn.ABS_TX_NUM"),
-				AbsTxNumMax:    getCol("rlptxn.ABS_TX_NUM_MAX"),
+				AbsTxNumMax:    getCol("rlptxn.ABS_TX_NUM_INFINY"),
 				ToHashByProver: getCol("rlptxn.TO_HASH_BY_PROVER"),
 				Limb:           getCol("rlptxn.LIMB"),
 				NBytes:         getCol("rlptxn.nBYTES"),
@@ -107,8 +109,8 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				AbsLogNum:    getCol("loginfo.ABS_LOG_NUM"),
 				AbsLogNumMax: getCol("loginfo.ABS_LOG_NUM_MAX"),
 				Ct:           getCol("loginfo.CT"),
-				OutgoingHi:   getCol("loginfo.ADDRESS_HI"),
-				OutgoingLo:   getCol("loginfo.ADDRESS_LO"),
+				OutgoingHi:   getCol("loginfo.ADDR_HI"),
+				OutgoingLo:   getCol("loginfo.ADDR_LO"),
 				TxEmitsLogs:  getCol("loginfo.TXN_EMITS_LOGS"),
 			},
 			StateSummary: ss,
@@ -194,6 +196,7 @@ func newPublicInput(
 			IsNewHash: padding.IsNewHash,
 			IsActive:  padding.IsActive,
 		},
+		Name: "EXECUTION_DATA_MIMC",
 	}
 	packingMod := pack.NewPack(comp, packingInp)
 

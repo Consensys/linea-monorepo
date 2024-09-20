@@ -4,14 +4,14 @@ import (
 	"runtime/debug"
 	"sync"
 
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizardutils"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // proverTaskAtRound implements the [wizard.ProverAction] interface. It gathers
@@ -276,7 +276,7 @@ func (a mAssignmentTask) run(run *wizard.ProverRuntime) {
 			if !ok {
 				tableRow := make([]field.Element, len(a.S[i]))
 				for j := range tableRow {
-					tableRow[i] = a.S[i][j].GetColAssignmentAt(run, k)
+					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
 				}
 				utils.Panic(
 					"entry %v of the table %v is not included in the table. tableRow=%v",

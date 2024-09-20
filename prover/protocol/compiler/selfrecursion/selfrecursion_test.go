@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +45,8 @@ var sisInstances = []ringsis.Params{
 	{LogTwoBound: 4, LogTwoDegree: 2},
 	{LogTwoBound: 8, LogTwoDegree: 3},
 	{LogTwoBound: 8, LogTwoDegree: 6},
+	{LogTwoBound: 8, LogTwoDegree: 5},
+	{LogTwoBound: 16, LogTwoDegree: 6},
 }
 
 // testcase type

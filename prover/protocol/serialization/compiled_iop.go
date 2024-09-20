@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // Note, this is a work in progress : not all fields are represented.
@@ -99,7 +99,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		raw.Coins = append(raw.Coins, rawCoins)
 	}
 
-	return serializeAnyWithJSONPkg(raw), nil
+	return serializeAnyWithCborPkg(raw), nil
 }
 
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns
@@ -110,7 +110,7 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	comp := newEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}
-	if err := deserializeAnyWithJSONPkg(data, raw); err != nil {
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
 		return nil, err
 	}
 
