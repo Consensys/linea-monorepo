@@ -49,7 +49,8 @@ public class RamToLimbOneSource extends MmioInstruction {
     mmioData.valBNew(Bytes16.ZERO);
     mmioData.valCNew(Bytes16.ZERO);
 
-    mmioData.oneToOnePadded(mmioData.valA(), mmioData.sourceByteOffset(), mmioData.size());
+    mmioData.oneToOnePadded(
+        mmioData.valA(), mmioData.sourceByteOffset(), mmioData.targetByteOffset(), mmioData.size());
     return mmioData;
   }
 }

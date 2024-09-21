@@ -15,7 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmio;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
@@ -214,13 +216,21 @@ public class MmioData {
   }
 
   public void oneToOnePadded(
-      final Bytes16 sourceBytes, final short sourceOffsetTrigger, final short size) {
+      final Bytes16 sourceBytes,
+      final short sourceByteOffset,
+      final short targetByteOffset,
+      final short size) {
+
+    checkArgument(0 <= sourceByteOffset && sourceByteOffset <= LLARGEMO);
+    checkArgument(0 < size && size <= LLARGE);
+    checkArgument(sourceByteOffset + size - 1 <= LLARGEMO);
+    checkArgument(0 <= targetByteOffset && targetByteOffset <= LLARGEMO);
+    checkArgument(targetByteOffset + size - 1 <= LLARGEMO);
 
     for (short ct = 0; ct < LLARGE; ct++) {
-
-      bit1.add(ct, plateau(sourceOffsetTrigger, ct));
-      bit2.add(ct, plateau(sourceOffsetTrigger + size, ct));
-      bit3.add(ct, plateau(size, ct));
+      bit1.add(ct, plateau(sourceByteOffset, ct));
+      bit2.add(ct, plateau(sourceByteOffset + size, ct));
+      bit3.add(ct, plateau(targetByteOffset + size, ct));
     }
     acc1 = isolateChunk(sourceBytes, bit1, bit2);
     pow2561 = power(bit3);
@@ -240,14 +250,21 @@ public class MmioData {
   public void twoToOnePadded(
       final Bytes16 sourceBytes1,
       final Bytes16 sourceBytes2,
-      final short sourceOffsetTrigger,
+      final short sourceByteOffset,
+      final short targetByteOffset,
       final short size) {
 
+    checkArgument(0 <= sourceByteOffset && sourceByteOffset <= LLARGEMO);
+    checkArgument(0 < size && size <= LLARGE);
+    checkArgument(sourceByteOffset + size - 1 > LLARGEMO);
+    checkArgument(0 <= targetByteOffset && targetByteOffset <= LLARGEMO);
+    checkArgument(targetByteOffset + size - 1 <= LLARGEMO);
+
     for (short ct = 0; ct < LLARGE; ct++) {
-      bit1.add(ct, plateau(sourceOffsetTrigger, ct));
-      bit2.add(ct, plateau(sourceOffsetTrigger + size - LLARGE, ct));
-      bit3.add(ct, plateau(LLARGE - sourceOffsetTrigger, ct));
-      bit4.add(ct, plateau(size, ct));
+      bit1.add(ct, plateau(sourceByteOffset, ct));
+      bit2.add(ct, plateau(sourceByteOffset + size - LLARGE, ct));
+      bit3.add(ct, plateau(targetByteOffset + LLARGE - sourceByteOffset, ct));
+      bit4.add(ct, plateau(targetByteOffset + size, ct));
     }
     acc1 = isolateSuffix(sourceBytes1, bit1);
     acc2 = isolatePrefix(sourceBytes2, bit2);

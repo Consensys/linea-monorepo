@@ -50,7 +50,11 @@ public class RamToLimbTwoSource extends MmioInstruction {
     mmioData.valCNew(Bytes16.ZERO);
 
     mmioData.twoToOnePadded(
-        mmioData.valA(), mmioData.valB(), mmioData.sourceByteOffset(), mmioData.size());
+        mmioData.valA(),
+        mmioData.valB(),
+        mmioData.sourceByteOffset(),
+        mmioData.targetByteOffset(),
+        mmioData.size());
     return mmioData;
   }
 }
