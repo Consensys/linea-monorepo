@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit
 class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
-    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-aggregations-dao")
