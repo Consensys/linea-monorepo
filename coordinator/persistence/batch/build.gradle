@@ -8,6 +8,7 @@ dependencies {
   implementation(project(":jvm-libs:persistence:db"))
   implementation(project(":jvm-libs:core:metrics"))
 
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:core")))
   testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
   testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))

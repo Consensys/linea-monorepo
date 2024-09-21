@@ -19,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
-    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   fun createFeeHistory(
