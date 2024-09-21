@@ -26,9 +26,8 @@ class DbSchemaUpdatesIntTest {
   private val databaseName = DbHelper.generateUniqueDbName("coordinator-db-migration-tests")
   private val username = "postgres"
   private val password = "postgres"
-  private val migrationLocations = "filesystem:../../../coordinator/app/src/main/resources/db/"
-  private lateinit var dataSource: DataSource
 
+  private lateinit var dataSource: DataSource
   private lateinit var pool: Pool
   private lateinit var sqlClient: SqlClient
 
@@ -76,8 +75,7 @@ class DbSchemaUpdatesIntTest {
     DbHelper.dropAllTables(dataSource)
     Db.applyDbMigrations(
       dataSource = dataSource,
-      target = schemaTarget,
-      migrationLocations = migrationLocations
+      target = schemaTarget
     )
 
     val paramsV1 = listOf(
@@ -113,8 +111,7 @@ class DbSchemaUpdatesIntTest {
     DbHelper.dropAllTables(dataSource)
     Db.applyDbMigrations(
       dataSource = dataSource,
-      target = schemaTarget,
-      migrationLocations = migrationLocations
+      target = schemaTarget
     )
 
     val batchParamsV2 = listOf(

@@ -33,7 +33,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
-    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("records-cleanup-on-finalization")

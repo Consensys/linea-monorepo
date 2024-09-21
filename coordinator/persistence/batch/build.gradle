@@ -11,6 +11,7 @@ dependencies {
     because "ProverResponseIndex is a part of it"
   }
 
+  testImplementation(project(":coordinator:persistence:db-common"))
   testImplementation(testFixtures(project(":coordinator:core")))
   testImplementation(testFixtures(project(":jvm-libs:generic:persistence:db")))
   testImplementation(testFixtures(project(":jvm-libs:generic:extensions:kotlin")))

@@ -25,7 +25,6 @@ import kotlin.time.Duration.Companion.seconds
 class PostgresBatchesRepositoryTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
-    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")

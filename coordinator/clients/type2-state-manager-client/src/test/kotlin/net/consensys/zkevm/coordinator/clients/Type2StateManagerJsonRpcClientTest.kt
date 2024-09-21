@@ -1,4 +1,4 @@
-package net.consensys.zkevm.ethereum.type2statemanagerjsonrpcclient
+package net.consensys.zkevm.coordinator.clients
 
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -17,9 +17,6 @@ import net.consensys.linea.async.get
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
-import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerErrorType
-import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatIllegalArgumentException

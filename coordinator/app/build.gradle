@@ -36,6 +36,7 @@ dependencies {
   implementation project(':coordinator:persistence:aggregation')
   implementation project(':coordinator:persistence:batch')
   implementation project(':coordinator:persistence:feehistory')
+  implementation project(':coordinator:persistence:db-common')
   implementation project(":jvm-libs:linea:teku-execution-client")
   implementation "tech.pegasys.teku.internal:bytes:${libs.versions.teku.get()}"
 

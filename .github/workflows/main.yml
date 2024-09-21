@@ -86,7 +86,6 @@ jobs:
               - 'settings.gradle'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
-              - 'coordinator/persistence/rejectedtransaction/**'
               - 'jvm-libs/**'
               - '.github/workflows/transaction-exclusion-api-*.yml'
               - '.github/workflows/build-and-publish.yml'

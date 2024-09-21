@@ -28,7 +28,6 @@ import kotlin.time.Duration.Companion.seconds
 class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
   init {
     target = "4"
-    migrationLocations = "filesystem:../../app/src/main/resources/db/"
   }
 
   override val databaseName = DbHelper.generateUniqueDbName("coordinator-tests-batches")
