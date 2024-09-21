@@ -154,24 +154,6 @@ public class MmioPatterns {
                 LLARGE - numberOfBytesFromSourceToSecondTarget)));
   }
 
-  public static Bytes16 oneToOnePadded(
-      final Bytes16 source, final short sourceByteoffset, final short size) {
-    return Bytes16.leftPad(source.slice(sourceByteoffset, size));
-  }
-
-  public static Bytes16 twoToOnePadded(
-      final Bytes16 source1,
-      final Bytes16 source2,
-      final short sourceByteOffset,
-      final short size) {
-    final short numberOfBytesFromFirstSource = (short) (LLARGE - sourceByteOffset);
-
-    return Bytes16.leftPad(
-        Bytes.concatenate(
-            source1.slice(sourceByteOffset, numberOfBytesFromFirstSource),
-            source2.slice(0, size - numberOfBytesFromFirstSource)));
-  }
-
   public static Bytes16 twoPartialToOne(
       final Bytes16 source1,
       final Bytes16 source2,
