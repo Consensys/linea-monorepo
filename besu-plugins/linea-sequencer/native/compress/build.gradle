@@ -61,13 +61,13 @@ dependencies {
 
 
 tasks.register('macArmLibCopy', Copy) {
-  from 'build/native/libcompress_jni.dylib'
+  from 'build/native/darwin-arm64/libcompress_jni.dylib'
   into 'build/resources/main/darwin-aarch64'
 }
 processResources.dependsOn macArmLibCopy
 
 tasks.register('macLibCopy', Copy) {
-  from 'build/native/libcompress_jni.dylib'
+  from 'build/native/darwin-x86-64/libcompress_jni.dylib'
   into 'build/resources/main/darwin-x86-64'
 }
 processResources.dependsOn macLibCopy

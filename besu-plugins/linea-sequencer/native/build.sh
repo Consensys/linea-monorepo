@@ -25,6 +25,8 @@ elif [ x"$OSTYPE" = x"GNU/Linux" ]; then
   ARCH_DIR="linux-$ARCHITECTURE"
 elif [ x"$OSTYPE" = x"Darwin" ]; then
   LIBRARY_EXTENSION=dylib
+  ARCHITECTURE="$(uname -m)"
+  ARCH_DIR="darwin-$ARCHITECTURE"
 else
   echo "*** Unknown OS: $OSTYPE"
   exit 1
