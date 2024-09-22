@@ -3,11 +3,13 @@
 import csv
 import argparse
 
+BATCH_SIZE = 5
+
 def process_range(int1, int2):
     ranges = []
     start = int1
     while start <= int2:
-        end = min((start // 10 + 1) * 10 - 1, int2)
+        end = min((start // BATCH_SIZE + 1) * BATCH_SIZE - 1, int2)
         ranges.append(f"{start}-{end}")
         start = end + 1
     ranges.append('###############')
