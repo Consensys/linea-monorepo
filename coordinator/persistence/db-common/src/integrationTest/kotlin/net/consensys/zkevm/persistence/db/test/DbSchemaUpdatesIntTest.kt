@@ -1,4 +1,4 @@
-package net.consensys.zkevm.persistence.db
+package net.consensys.zkevm.persistence.db.test
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
@@ -7,7 +7,8 @@ import io.vertx.sqlclient.SqlClient
 import kotlinx.datetime.Clock
 import net.consensys.encodeHex
 import net.consensys.linea.async.get
-import net.consensys.zkevm.persistence.test.DbQueries
+import net.consensys.zkevm.persistence.db.Db
+import net.consensys.zkevm.persistence.db.DbHelper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach

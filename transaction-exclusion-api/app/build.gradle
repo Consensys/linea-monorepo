@@ -48,7 +48,7 @@ dependencies {
   testImplementation "io.rest-assured:rest-assured:${libs.versions.restassured.get()}"
   testImplementation "io.rest-assured:json-schema-validator:${libs.versions.restassured.get()}"
   testImplementation testFixtures(project(":jvm-libs:kotlin-extensions"))
-  testImplementation testFixtures(project(":transaction-exclusion-api:persistence:rejectedtransaction"))
+  testImplementation testFixtures(project(":transaction-exclusion-api:core"))
 }
 
 application {

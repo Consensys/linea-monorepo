@@ -3,7 +3,6 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id "net.consensys.zkevm.kotlin-library-conventions"
-  id 'java-test-fixtures'
 }
 
 dependencies {
@@ -15,9 +14,9 @@ dependencies {
   implementation "io.vertx:vertx-pg-client"
 
   testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+  testImplementation(testFixtures(project(":transaction-exclusion-api:core")))
   testImplementation("io.vertx:vertx-junit5")
-
-  testFixtures implementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
 }
 
 sourceSets {
