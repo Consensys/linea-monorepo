@@ -1,3 +1,38 @@
 plugins {
   id "net.consensys.zkevm.kotlin-library-conventions"
+  id 'java-test-fixtures'
+}
+
+dependencies {
+  testImplementation(project(":jvm-libs:persistence:db"))
+  testImplementation(project(":jvm-libs:future-extensions"))
+  testImplementation(project(":jvm-libs:kotlin-extensions"))
+  testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
+  testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))
+
+  testFixturesImplementation(project(":coordinator:core"))
+  testFixturesImplementation("io.vertx:vertx-pg-client:${libs.versions.vertx.get()}")
+}
+
+sourceSets {
+  integrationTest {
+    kotlin {
+      compileClasspath += main.output
+      runtimeClasspath += main.output
+    }
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath + sourceSets.test.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath + sourceSets.test.runtimeClasspath
+  }
+}
+
+task integrationTest(type: Test) {
+  test ->
+    description = "Runs integration tests."
+    group = "verification"
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    dependsOn(":localStackComposeUp")
 }
