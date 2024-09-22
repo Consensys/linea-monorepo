@@ -23,7 +23,7 @@ import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
-import net.consensys.zkevm.persistence.test.CleanDbTestSuiteParallel
+import net.consensys.zkevm.persistence.db.test.CleanDbTestSuiteParallel
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.waitAtMost
