@@ -140,6 +140,7 @@ contract TokenBridge is
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
         if (_initializationData.reservedTokens[i] == EMPTY) revert ZeroAddressNotAllowed();
         nativeToBridgedToken[sourceChainId][_initializationData.reservedTokens[i]] = RESERVED_STATUS;
+        emit TokenReserved(_initializationData.reservedTokens[i]);
         ++i;
       }
     }
