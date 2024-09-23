@@ -54,8 +54,6 @@ class TransactionExclusionServiceTest {
 
   @Test
   fun saveRejectedTransaction_return_success_result_with_duplicated_already_saved_status() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
-      .thenReturn(SafeFuture.completedFuture(defaultRejectedTransaction))
     whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
       .thenReturn(SafeFuture.failedFuture(DuplicatedRecordException()))
 
@@ -67,25 +65,6 @@ class TransactionExclusionServiceTest {
 
     Assertions.assertEquals(
       Ok(TransactionExclusionServiceV1.SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE),
-      transactionExclusionService.saveRejectedTransaction(defaultRejectedTransaction).get()
-    )
-  }
-
-  @Test
-  fun saveRejectedTransaction_return_error_result_when_findRejectedTransaction_failed() {
-    whenever(rejectedTransactionsRepositoryMock.findRejectedTransactionByTxHash(any(), any()))
-      .thenReturn(SafeFuture.failedFuture(RuntimeException()))
-    whenever(rejectedTransactionsRepositoryMock.saveNewRejectedTransaction(any()))
-      .thenReturn(SafeFuture.completedFuture(Unit))
-
-    val transactionExclusionService = TransactionExclusionServiceV1Impl(
-      config = config,
-      repository = rejectedTransactionsRepositoryMock,
-      metricsFacade = metricsFacadeMock
-    )
-
-    Assertions.assertEquals(
-      Err(TransactionExclusionError(ErrorType.SERVER_ERROR, "")),
       transactionExclusionService.saveRejectedTransaction(defaultRejectedTransaction).get()
     )
   }
