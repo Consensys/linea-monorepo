@@ -49,11 +49,13 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 }
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
-	return &txnData{
+	td := &txnData{
 		fromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
 		fromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
 		ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
+	td.csTxnData(comp)
+	return td
 }
 
 func getRlpTxnArithmetization(comp *wizard.CompiledIOP) generic.GenDataModule {
