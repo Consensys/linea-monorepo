@@ -2,10 +2,15 @@
 pragma solidity >=0.8.19 <=0.8.24;
 
 import { PauseManager } from "../messageService/lib/PauseManager.sol";
+import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
 
-contract TestPauseManager is PauseManager {
-  function initialize() public initializer {
+contract TestPauseManager is PauseManager, TestSetPauseTypeRoles {
+  function initialize(
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
+  ) public initializer {
     __AccessControl_init();
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
   }
 }

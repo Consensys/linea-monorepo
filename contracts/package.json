@@ -5,8 +5,8 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "build": "npx hardhat compile",
     "build:notypechain": "npx hardhat compile --no-typechain",
+    "build": "TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile",
     "test": "npm run autoupdate && npx hardhat test",
     "test:reportgas": "REPORT_GAS=true npx hardhat test",
     "coverage": "npm run autoupdate && npx hardhat coverage --solcoverjs ./.solcover.js",

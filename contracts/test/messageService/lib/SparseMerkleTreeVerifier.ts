@@ -5,6 +5,7 @@ import { ethers } from "hardhat";
 import { TestSparseMerkleTreeVerifier } from "../../../typechain-types";
 import { MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../utils/constants";
 import { deployFromFactory } from "../../utils/deployment";
+import { expectRevertWithCustomError } from "contracts/test/utils/helpers";
 
 describe("SparseMerkleTreeVerifier", () => {
   let sparseMerkleTreeVerifier: TestSparseMerkleTreeVerifier;
@@ -140,6 +141,44 @@ describe("SparseMerkleTreeVerifier", () => {
 
       expect(await sparseMerkleTreeVerifier.verifyMerkleProof(leafHash, proof, leafIndex, merkleTreeRootHash)).to.be
         .true;
+    });
+
+    // Test will fail if leafIndex > 2 ** 31 as it exceeds the uint32 max value.
+    it("Should revert with LeafIndexOutOfBounds when leaf index is too large", async () => {
+      const messageNumber = 1;
+      const leafHash = await sparseMerkleTreeVerifier.getLeafHash(
+        sender.address,
+        recipient.address,
+        MESSAGE_FEE,
+        MESSAGE_FEE + MESSAGE_VALUE_1ETH,
+        messageNumber,
+        "0x",
+      );
+
+      const merkleTreeRootHash = "0xe2f0c51f5fe51164a1712f5e6f1ee6b08bb2c2f2589c7c44fee8566a5cbbcf76";
+      const proof = [
+        "0xc7fbd6b64ad6e0bf300924171e95bfa232ecd8e0a2253e8ae341f9d9da9e28c7",
+        "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5",
+        "0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30",
+        "0x21ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85",
+        "0xe58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a19344",
+        "0x0eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d",
+        "0x887c22bd8750d34016ac3c66b5ff102dacdd73f6b014e710b51e8022af9a1968",
+        "0xffd70157e48063fc33c97a050f7f640233bf646cc98d9524c6b92bcf3ab56f83",
+        "0x9867cc5f7f196b93bae1e27e6320742445d290f2263827498b54fec539f756af",
+        "0xcefad4e508c098b9a7e1d8feb19955fb02ba9675585078710969d3440f5054e0",
+        "0xf9dc3e7fe016e050eff260334f18a5d4fe391d82092319f5964f2e2eb7c1c3a5",
+      ];
+
+      // Using a leaf index larger than 2 ** proof.length - 1
+      const invalidLeafIndex = 2 ** proof.length;
+
+      await expectRevertWithCustomError(
+        sparseMerkleTreeVerifier,
+        sparseMerkleTreeVerifier.verifyMerkleProof(leafHash, proof, invalidLeafIndex, merkleTreeRootHash),
+        "LeafIndexOutOfBounds",
+        [invalidLeafIndex, 2 ** proof.length - 1],
+      );
     });
   });
 });
