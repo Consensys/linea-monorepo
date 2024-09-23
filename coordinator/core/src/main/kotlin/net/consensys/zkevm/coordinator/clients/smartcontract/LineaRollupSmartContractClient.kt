@@ -1,5 +1,6 @@
 package net.consensys.zkevm.coordinator.clients.smartcontract
 
+import net.consensys.linea.BlockParameter
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCaps

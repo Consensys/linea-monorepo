@@ -1,6 +1,7 @@
 import { useChainStore } from "@/stores/chainStore";
 import { useFormContext } from "react-hook-form";
-import { Stepper } from "./Stepper";
+import { Stepper } from "../ui";
+import { parseUnits } from "viem";
 
 const STEPS = ["Approve", "Bridge"];
 
@@ -14,7 +15,12 @@ export function ERC20Stepper() {
 
   const isETHTransfer = token && token.symbol === "ETH";
   const isApproved =
-    !isETHTransfer && watchAmount && watchAmount > 0 && (watchAllowance || watchAllowance >= watchAmount);
+    !isETHTransfer &&
+    watchAmount &&
+    watchAmount > 0 &&
+    watchAllowance &&
+    token?.decimals &&
+    watchAllowance >= parseUnits(watchAmount, token?.decimals);
 
   return <Stepper steps={STEPS} activeStep={isApproved ? 1 : 0} />;
 }
