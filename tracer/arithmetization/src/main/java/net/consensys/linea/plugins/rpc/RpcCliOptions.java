@@ -12,40 +12,36 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
-package net.consensys.linea.plugins.rpc.tracegeneration;
+package net.consensys.linea.plugins.rpc;
 
 import com.google.common.base.MoreObjects;
 import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
-class TracesEndpointCliOptions implements LineaCliOptions {
+public class RpcCliOptions implements LineaCliOptions {
 
-  static final String CONFIG_KEY = "traces-endpoint-config";
+  public static final String CONFIG_KEY = "rpc-config";
 
-  static final String CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH =
-      "--plugin-linea-conflated-trace-generation-traces-output-path";
-
-  static final String CONFLATED_TRACE_GENERATION_CONCURRENT_REQUESTS_LIMIT =
-      "--plugin-linea-conflated-trace-generation-concurrent-requests-limit";
+  static final String RPC_CONCURRENT_REQUESTS_LIMIT =
+      "--plugin-linea-rpc-concurrent-requests-limit";
 
   @CommandLine.Option(
       required = true,
-      names = {CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH},
+      names = {RPC_CONCURRENT_REQUESTS_LIMIT},
       hidden = true,
-      paramLabel = "<PATH>",
-      description = "Path to where traces will be written")
-  private String tracesOutputPath = null;
+      paramLabel = "<REQUEST_COUNT_LIMIT>",
+      description = "Number of allowed concurrent requests")
+  private int concurrentRequestsLimit = 1;
 
-  private TracesEndpointCliOptions() {}
+  private RpcCliOptions() {}
 
   /**
    * Create Linea cli options.
    *
    * @return the Linea cli options
    */
-  static TracesEndpointCliOptions create() {
-    return new TracesEndpointCliOptions();
+  public static RpcCliOptions create() {
+    return new RpcCliOptions();
   }
 
   /**
@@ -54,9 +50,9 @@ class TracesEndpointCliOptions implements LineaCliOptions {
    * @param config the config
    * @return the Linea cli options
    */
-  static TracesEndpointCliOptions fromConfig(final TracesEndpointConfiguration config) {
-    final TracesEndpointCliOptions options = create();
-    options.tracesOutputPath = config.tracesOutputPath();
+  static RpcCliOptions fromConfig(final RpcConfiguration config) {
+    final RpcCliOptions options = create();
+    options.concurrentRequestsLimit = config.concurrentRequestsLimit();
     return options;
   }
 
@@ -66,14 +62,14 @@ class TracesEndpointCliOptions implements LineaCliOptions {
    * @return the Linea factory configuration
    */
   @Override
-  public TracesEndpointConfiguration toDomainObject() {
-    return TracesEndpointConfiguration.builder().tracesOutputPath(tracesOutputPath).build();
+  public RpcConfiguration toDomainObject() {
+    return RpcConfiguration.builder().concurrentRequestsLimit(concurrentRequestsLimit).build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add(CONFLATED_TRACE_GENERATION_TRACES_OUTPUT_PATH, tracesOutputPath)
+        .add(RPC_CONCURRENT_REQUESTS_LIMIT, concurrentRequestsLimit)
         .toString();
   }
 }

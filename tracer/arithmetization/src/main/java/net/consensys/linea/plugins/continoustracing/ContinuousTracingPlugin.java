@@ -19,6 +19,7 @@ import java.util.Optional;
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.plugins.BesuServiceProvider;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -45,13 +46,7 @@ public class ContinuousTracingPlugin implements BesuPlugin {
 
   @Override
   public void register(final BesuContext context) {
-    final PicoCLIOptions cmdlineOptions =
-        context
-            .getService(PicoCLIOptions.class)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Expecting a PicoCLI options to register CLI options with, but none found."));
+    final PicoCLIOptions cmdlineOptions = BesuServiceProvider.getPicoCLIOptionsService(context);
 
     cmdlineOptions.addPicoCLIOptions(getName().get(), options);
 

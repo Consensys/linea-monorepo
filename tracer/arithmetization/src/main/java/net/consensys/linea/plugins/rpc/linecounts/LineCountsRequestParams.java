@@ -13,14 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.plugins.rpc.counters;
+package net.consensys.linea.plugins.rpc.linecounts;
 
 import java.security.InvalidParameterException;
 
 import net.consensys.linea.zktracer.ZkTracer;
 
 /** Holds needed parameters for sending an execution trace generation request. */
-public record CountersRequestParams(long blockNumber, String expectedTracesEngineVersion) {
+public record LineCountsRequestParams(long blockNumber, String expectedTracesEngineVersion) {
   public void validate() {
     if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
       throw new InvalidParameterException(

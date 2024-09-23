@@ -13,14 +13,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.plugins.rpc.counters;
+package net.consensys.linea.plugins.rpc.linecounts;
 
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** FileTrace represents an execution trace. */
-public record Counters(
+public record LineCounts(
     @JsonProperty("tracesEngineVersion") String tracesEngineVersion,
     @JsonProperty("blockNumber") long blockNumber,
     @JsonProperty("tracesCounters") Map<String, Integer> traceCountersByModule) {}
