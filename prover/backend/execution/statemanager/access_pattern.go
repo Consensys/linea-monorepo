@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 /*
@@ -258,9 +258,11 @@ func isAccRead(traces []DecodedTrace) (ok bool, err error) {
 		return false, err
 	}
 
-	// If the length is more than one. Intervert the first and the last entry of the array
+	// If the length is more than one, place the account-level trace at the end
 	if okFirst && len(traces) > 1 {
-		traces[0], traces[len(traces)-1] = traces[len(traces)-1], traces[0]
+		accTrace := traces[0]
+		copy(traces[:], traces[1:])
+		traces[len(traces)-1] = accTrace
 	}
 
 	if err = checkStorageTraceOrder(traces[:len(traces)-1]); err != nil {
@@ -392,6 +394,7 @@ func checkStorageTraceOrder(traces []DecodedTrace) (err error) {
 				err,
 				fmt.Errorf("storage trace %v has an HKey larger or equal than the next one `%x` >= `%x`", i, currHKey, nextHKey),
 			)
+			panic("boom")
 		}
 	}
 

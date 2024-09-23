@@ -1,18 +1,18 @@
 package zkevm
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/serialization"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/arithmetization"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecarith"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // ZkEvm defines the wizard responsible for proving execution of the zk
@@ -133,7 +133,7 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		arithmetization.Assign(run, input.ExecTracesFPath)
+		z.arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
 		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
@@ -153,5 +153,5 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 // Limits returns the configuration limits used to instantiate the current
 // zk-EVM.
 func (z *ZkEvm) Limits() *config.TracesLimits {
-	return z.arithmetization.Settings.Traces
+	return z.arithmetization.Settings.Limits
 }

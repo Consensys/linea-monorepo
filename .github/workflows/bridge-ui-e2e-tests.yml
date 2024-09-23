@@ -14,7 +14,7 @@ on:
 
 jobs:
   run-e2e-tests:
-    runs-on: ubuntu-22.04-16core
+    runs-on: besu-arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 18.17.0
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
-      
+
       - name: Install Playwright
         run: pnpm dlx playwright@1.45.3 install --with-deps
 
@@ -57,7 +57,7 @@ jobs:
           E2E_TEST_SEED_PHRASE: "test test test test test test test test test test test junk"
           E2E_TEST_WALLET_PASSWORD: "TestPassword!"
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
-      
+
       - name: Archive Playwright report
         uses: actions/upload-artifact@v3
         if: failure()

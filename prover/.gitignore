@@ -82,9 +82,6 @@ test-data
 # Testdata, otherwise that's 400MB of data downloaded
 integration-testing/testdata/prover-requests/
 
-# Artefacts of the compilation with corset
-zkevm/arithmetization/zkevm.bin
-
 # Authorize the kzg srs folder
 prover-assets/**
 !prover-assets/kzgsrs/**

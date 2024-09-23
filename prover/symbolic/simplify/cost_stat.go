@@ -3,7 +3,7 @@ package simplify
 import (
 	"math/bits"
 
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // Returns the cost of evaluating the expression in number of multiplications

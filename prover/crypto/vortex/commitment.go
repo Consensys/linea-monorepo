@@ -4,13 +4,14 @@ import (
 	"hash"
 	"runtime"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -78,13 +79,19 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 		}
 	}
 
+	// The pool will be responsible for holding the coefficients that are
+	// intermediary steps in creating the rs encoded rows.
+	pool := mempool.CreateFromSyncPool(params.NbColumns)
+
 	// The committed matrix is obtained by encoding the input vectors
 	// and laying them in rows.
 	encodedMatrix = make(EncodedMatrix, len(ps))
 	parallel.Execute(len(ps), func(start, stop int) {
+		localPool := mempool.WrapsWithMemCache(pool)
 		for i := start; i < stop; i++ {
-			encodedMatrix[i] = params.rsEncode(ps[i])
+			encodedMatrix[i] = params.rsEncode(ps[i], localPool)
 		}
+		localPool.TearDown()
 	})
 
 	return encodedMatrix

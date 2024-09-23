@@ -2,15 +2,15 @@ package column
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Natural represents a [ifaces.Column] that has been directly declared in the
-// corresponding [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.CompiledIOP] or [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.Builder]
+// corresponding [github.com/consensys/linea-monorepo/prover/protocol/wizard.CompiledIOP] or [github.com/consensys/linea-monorepo/prover/protocol/wizard.Builder]
 // object. The struct should not be constructed directly and should be
-// constructed from the [github.com/consensys/zkevm-monorepo/prover/protocol/wizard.CompiledIOP]
+// constructed from the [github.com/consensys/linea-monorepo/prover/protocol/wizard.CompiledIOP]
 type Natural struct {
 	// The ID of the column
 	ID ifaces.ColID
@@ -82,7 +82,7 @@ func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) front
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]
-// and [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (n Natural) String() string {
 	return string(n.GetColID())
 }

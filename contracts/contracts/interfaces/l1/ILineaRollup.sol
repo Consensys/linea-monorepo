@@ -1,12 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.26;
 
+import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
+
 /**
  * @title LineaRollup interface for current functions, events and errors.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaRollup {
+  /**
+   * @notice Initialization data structure for the LineaRollup contract.
+   * @param initialStateRootHash The initial hash at migration used for proof verification.
+   * @param initialL2BlockNumber The initial block number at migration.
+   * @param genesisTimestamp The L2 genesis timestamp for first finalization.
+   * @param defaultVerifier The default verifier for rollup proofs.
+   * @param rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
+   * @param rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
+   * @param roleAddresses The list of role addresses.
+   * @param pauseTypeRoles The list of pause type roles.
+   * @param unpauseTypeRoles The list of unpause type roles.
+   */
+  struct InitializationData {
+    bytes32 initialStateRootHash;
+    uint256 initialL2BlockNumber;
+    uint256 genesisTimestamp;
+    address defaultVerifier;
+    uint256 rateLimitPeriodInSeconds;
+    uint256 rateLimitAmountInWei;
+    IPermissionsManager.RoleAddress[] roleAddresses;
+    IPauseManager.PauseTypeRole[] pauseTypeRoles;
+    IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+  }
+
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.

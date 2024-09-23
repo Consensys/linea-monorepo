@@ -1,10 +1,10 @@
 package statemanager
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	mimcCodeHash "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	mimcCodeHash "github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 // lookupStateSummaryCodeHash adds the lookup constraints to ensure the MiMC

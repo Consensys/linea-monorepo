@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config"
 )
 
 var (
@@ -33,8 +33,6 @@ func getParamsFromCLI() (cfg *config.Config, traceFPath string, err error) {
 	if cfg, err = config.NewConfigFromFile(configFPathCLI); err != nil {
 		return nil, "", fmt.Errorf("could not parse the config: %w", err)
 	}
-
-	fmt.Printf("the file = %v\n", traceFPath)
 
 	return cfg, traceFPathCLI, nil
 }

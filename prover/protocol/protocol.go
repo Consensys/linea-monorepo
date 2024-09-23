@@ -1,6 +1,6 @@
 package protocol
 
-import "github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
+import "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 
 /*
 Main object responsible for building an IOP protocol

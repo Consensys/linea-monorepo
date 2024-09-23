@@ -3,10 +3,10 @@ package vortex
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +21,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC)
 	vec := smartvectors.Rand(1 << 10)
-	rsEncoded := params.rsEncode(vec)
+	rsEncoded := params.rsEncode(vec, nil)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestReedSolomonConstant(t *testing.T) {
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)
-	rsEncoded := params.rsEncode(vec)
+	rsEncoded := params.rsEncode(vec, nil)
 
 	err := params.isCodeword(rsEncoded)
 	require.NoError(t, err)
