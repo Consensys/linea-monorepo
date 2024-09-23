@@ -33,7 +33,7 @@ jobs:
             ~/.cache/go-build
             ~/Library/Caches/go-build
             %LocalAppData%\go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/**/go.sum') }}
+          key: ${{ runner.os }}-go-${{ hashFiles('prover/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
 
