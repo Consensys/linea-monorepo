@@ -37,30 +37,20 @@ class TransactionExclusionServiceV1Impl(
   ): SafeFuture<
     Result<SaveRejectedTransactionStatus, TransactionExclusionError>
     > {
-    return this.repository.findRejectedTransactionByTxHash(
-      txHash = rejectedTransaction.transactionInfo.hash,
-      notRejectedBefore = clock.now().minus(config.rejectedTimestampWithinDuration)
-    )
-      .thenPeek {
-        if (it == null) {
-          txRejectionCounter.increment()
-        }
-      }
-      .thenCompose {
-        this.repository.saveNewRejectedTransaction(rejectedTransaction)
-      }
+    return this.repository.saveNewRejectedTransaction(rejectedTransaction)
       .handleComposed { _, error ->
         if (error != null) {
-          if (error.cause is DuplicatedRecordException) {
+          if (error is DuplicatedRecordException) {
             SafeFuture.completedFuture(
               Ok(SaveRejectedTransactionStatus.DUPLICATE_ALREADY_SAVED_BEFORE)
             )
           } else {
             SafeFuture.completedFuture(
-              Err(TransactionExclusionError(ErrorType.SERVER_ERROR, error.cause?.message ?: ""))
+              Err(TransactionExclusionError(ErrorType.SERVER_ERROR, error.message ?: ""))
             )
           }
         } else {
+          txRejectionCounter.increment()
           SafeFuture.completedFuture(Ok(SaveRejectedTransactionStatus.SAVED))
         }
       }
