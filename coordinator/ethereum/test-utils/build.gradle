@@ -3,7 +3,6 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  id 'net.consensys.zkevm.linea-contracts-helper'
 }
 
 dependencies {
