@@ -89,6 +89,12 @@ contract RewardsStreamerMPTest is Test {
         rewardToken.transfer(address(streamer), amount);
         streamer.updateGlobalState();
     }
+
+    function _calculateBonusMP(uint256 amount, uint256 lockupTime) public view returns (uint256) {
+        return amount
+            * (lockupTime * streamer.MAX_MULTIPLIER() * streamer.SCALE_FACTOR() / streamer.MAX_LOCKING_PERIOD())
+            / streamer.SCALE_FACTOR();
+    }
 }
 
 contract IntegrationTest is RewardsStreamerMPTest {
@@ -508,6 +514,69 @@ contract StakeTest is RewardsStreamerMPTest {
         );
     }
 
+    function test_StakeOneAccountWithMinLockUp() public {
+        uint256 stakeAmount = 10e18;
+        uint256 lockUpPeriod = streamer.MIN_LOCKING_PERIOD();
+        uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                totalMP: stakeAmount + expectedBonusMP,
+                potentialMP: stakeAmount * streamer.MAX_MULTIPLIER() + expectedBonusMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
+    function test_StakeOneAccountWithMaxLockUp() public {
+        uint256 stakeAmount = 10e18;
+        uint256 lockUpPeriod = streamer.MAX_LOCKING_PERIOD();
+        uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
+
+        _stake(alice, 10e18, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                totalMP: stakeAmount + expectedBonusMP,
+                potentialMP: stakeAmount * streamer.MAX_MULTIPLIER() + expectedBonusMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
+    function test_StakeOneAccountWithRandomLockUp() public {
+        uint256 stakeAmount = 10e18;
+        uint256 lockUpPeriod = streamer.MIN_LOCKING_PERIOD() + 13 days;
+        uint256 expectedBonusMP = _calculateBonusMP(stakeAmount, lockUpPeriod);
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                // 10 + (amount * (lockPeriod * MAX_MULTIPLIER * SCALE_FACTOR / MAX_LOCKING_PERIOD) / SCALE_FACTOR)
+                totalMP: stakeAmount + expectedBonusMP,
+                potentialMP: stakeAmount * streamer.MAX_MULTIPLIER() + expectedBonusMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
     function test_StakeMultipleAccounts() public {
         // Alice stakes 10 tokens
         _stake(alice, 10e18, 0);
@@ -602,6 +671,68 @@ contract StakeTest is RewardsStreamerMPTest {
                 rewardBalance: 1000e18,
                 rewardIndex: 125e17, // (1000 rewards / (40 staked + 40 MP)) = 12,5
                 accountedRewards: 1000e18
+            })
+        );
+    }
+
+    function test_StakeMultipleAccountsWithMinLockUp() public {
+        uint256 aliceStakeAmount = 10e18;
+        uint256 aliceLockUpPeriod = streamer.MIN_LOCKING_PERIOD();
+        uint256 aliceExpectedBonusMP = _calculateBonusMP(aliceStakeAmount, aliceLockUpPeriod);
+
+        uint256 bobStakeAmount = 30e18;
+        uint256 bobLockUpPeriod = 0;
+        uint256 bobExpectedBonusMP = _calculateBonusMP(bobStakeAmount, bobLockUpPeriod);
+
+        // alice stakes with lockup period
+        _stake(alice, aliceStakeAmount, aliceLockUpPeriod);
+
+        // Bob stakes 30 tokens
+        _stake(bob, bobStakeAmount, bobLockUpPeriod);
+
+        uint256 sumOfStakeAmount = aliceStakeAmount + bobStakeAmount;
+        uint256 sumOfExpectedBonusMP = aliceExpectedBonusMP + bobExpectedBonusMP;
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: sumOfStakeAmount,
+                totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
+                potentialMP: sumOfStakeAmount * streamer.MAX_MULTIPLIER() + sumOfExpectedBonusMP,
+                stakingBalance: sumOfStakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
+    function test_StakeMultipleAccountsWithRandomLockUp() public {
+        uint256 aliceStakeAmount = 10e18;
+        uint256 aliceLockUpPeriod = streamer.MAX_LOCKING_PERIOD() - 21 days;
+        uint256 aliceExpectedBonusMP = _calculateBonusMP(aliceStakeAmount, aliceLockUpPeriod);
+
+        uint256 bobStakeAmount = 30e18;
+        uint256 bobLockUpPeriod = streamer.MIN_LOCKING_PERIOD() + 43 days;
+        uint256 bobExpectedBonusMP = _calculateBonusMP(bobStakeAmount, bobLockUpPeriod);
+
+        // alice stakes with lockup period
+        _stake(alice, aliceStakeAmount, aliceLockUpPeriod);
+
+        // Bob stakes 30 tokens
+        _stake(bob, bobStakeAmount, bobLockUpPeriod);
+
+        uint256 sumOfStakeAmount = aliceStakeAmount + bobStakeAmount;
+        uint256 sumOfExpectedBonusMP = aliceExpectedBonusMP + bobExpectedBonusMP;
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: sumOfStakeAmount,
+                totalMP: sumOfStakeAmount + sumOfExpectedBonusMP,
+                potentialMP: sumOfStakeAmount * streamer.MAX_MULTIPLIER() + sumOfExpectedBonusMP,
+                stakingBalance: sumOfStakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
             })
         );
     }

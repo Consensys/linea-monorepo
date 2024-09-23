@@ -15,17 +15,21 @@
 | src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
 |------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                      | Deployment Size |        |        |        |         |
-| 1096353                                              | 4939            |        |        |        |         |
+| 1100217                                              | 4957            |        |        |        |         |
 | Function Name                                        | min             | avg    | median | max    | # calls |
-| accountedRewards                                     | 373             | 595    | 373    | 2373   | 9       |
-| getUserInfo                                          | 1553            | 1553   | 1553   | 1553   | 16      |
-| potentialMP                                          | 330             | 330    | 330    | 330    | 9       |
-| rewardIndex                                          | 373             | 595    | 373    | 2373   | 9       |
-| stake                                                | 167821          | 194716 | 187721 | 228608 | 3       |
-| totalMP                                              | 352             | 352    | 352    | 352    | 9       |
-| totalStaked                                          | 330             | 330    | 330    | 330    | 9       |
-| unstake                                              | 133268          | 133274 | 133274 | 133280 | 2       |
-| updateGlobalState                                    | 30008           | 52396  | 49622  | 80335  | 4       |
+| MAX_LOCKING_PERIOD                                   | 228             | 228    | 228    | 228    | 18      |
+| MAX_MULTIPLIER                                       | 229             | 229    | 229    | 229    | 24      |
+| MIN_LOCKING_PERIOD                                   | 229             | 229    | 229    | 229    | 8       |
+| SCALE_FACTOR                                         | 251             | 251    | 251    | 251    | 28      |
+| accountedRewards                                     | 373             | 1075   | 373    | 2373   | 37      |
+| getUserInfo                                          | 1553            | 1553   | 1553   | 1553   | 32      |
+| potentialMP                                          | 330             | 330    | 330    | 330    | 37      |
+| rewardIndex                                          | 373             | 427    | 373    | 2373   | 37      |
+| stake                                                | 167821          | 217684 | 228608 | 249401 | 31      |
+| totalMP                                              | 352             | 352    | 352    | 352    | 37      |
+| totalStaked                                          | 330             | 330    | 330    | 330    | 37      |
+| unstake                                              | 75267           | 113408 | 133268 | 133945 | 5       |
+| updateGlobalState                                    | 30008           | 67918  | 80335  | 80335  | 9       |
 
 
 | test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
@@ -33,10 +37,10 @@
 | Deployment Cost                             | Deployment Size |       |        |       |         |
 | 639406                                      | 3369            |       |        |       |         |
 | Function Name                               | min             | avg   | median | max   | # calls |
-| approve                                     | 46346           | 46346 | 46346  | 46346 | 10      |
-| balanceOf                                   | 561             | 1143  | 561    | 2561  | 79      |
-| mint                                        | 51284           | 58124 | 51284  | 68384 | 10      |
-| transfer                                    | 34390           | 42940 | 42940  | 51490 | 4       |
+| approve                                     | 46346           | 46346 | 46346  | 46346 | 110     |
+| balanceOf                                   | 561             | 1334  | 561    | 2561  | 168     |
+| mint                                        | 51284           | 58124 | 51284  | 68384 | 110     |
+| transfer                                    | 34390           | 47690 | 51490  | 51490 | 9       |
 
 
 
