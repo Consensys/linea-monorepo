@@ -3,12 +3,13 @@ pragma solidity 0.8.24;
 
 import { L1MessageService } from "../messageService/l1/L1MessageService.sol";
 import { IL1MessageService } from "../interfaces/l1/IL1MessageService.sol";
+import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
 
 interface ITestL1MessageService {
   function claimMessageWithProof(IL1MessageService.ClaimMessageWithProofParams calldata _params) external;
 }
 
-contract TestL1MessageServiceMerkleProof is L1MessageService {
+contract TestL1MessageServiceMerkleProof is L1MessageService, TestSetPauseTypeRoles {
   address public originalSender;
   bool private reentryDone;
 
@@ -18,22 +19,18 @@ contract TestL1MessageServiceMerkleProof is L1MessageService {
   error MessageAlreadyReceived(bytes32 messageHash);
 
   function initialize(
-    address _limitManagerAddress,
-    address _pauserManagerAddress,
     uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
+    uint256 _rateLimitAmount,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
   ) public initializer {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    __MessageService_init(_limitManagerAddress, _pauserManagerAddress, _rateLimitPeriod, _rateLimitAmount);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+    __MessageService_init(_rateLimitPeriod, _rateLimitAmount);
   }
 
-  function tryInitialize(
-    address _limitManagerAddress,
-    address _pauserManagerAddress,
-    uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
-  ) external {
-    __MessageService_init(_limitManagerAddress, _pauserManagerAddress, _rateLimitPeriod, _rateLimitAmount);
+  function tryInitialize(uint256 _rateLimitPeriod, uint256 _rateLimitAmount) external {
+    __MessageService_init(_rateLimitPeriod, _rateLimitAmount);
   }
 
   // @dev - the this. sendMessage is because the function is an "external" call and not wrapped
