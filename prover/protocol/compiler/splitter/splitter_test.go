@@ -6,7 +6,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -43,6 +45,12 @@ func TestSplitterLocalWithPeriodicSample(t *testing.T) {
 	testSplitter(t, 64, localWithPeriodicSample(256, 8, 0))
 	testSplitter(t, 64, localWithPeriodicSample(256, 8, 1))
 	testSplitter(t, 64, localWithPeriodicSample(256, 8, 7))
+}
+
+func TestSplitterGlobalWithVerifColAndPerriodic(t *testing.T) {
+	testSplitter(t, 64, globalWithVerifColAndPeriodic(8, 4, 0))
+	testSplitter(t, 64, globalWithVerifColAndPeriodic(256, 8, 1))
+	testSplitter(t, 64, globalWithVerifColAndPeriodic(256, 8, 7))
 }
 
 func fixedPointOpening() (wizard.DefineFunc, wizard.ProverStep) {
@@ -178,4 +186,44 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 			t.Logf("query %v - with metadata %v", q.ID, metadataNames)
 		}
 	}
+}
+
+func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
+	return func() (wizard.DefineFunc, wizard.ProverStep) {
+
+		builder := func(build *wizard.Builder) {
+			P1 := build.RegisterCommit(P1, size)
+			verifcol1 := verifiercol.NewFromAccessors(genAccessors(0, size), field.Zero(), size)
+			verifcol2 := verifiercol.NewFromAccessors(genAccessors(2, size), field.Zero(), size)
+			_ = build.GlobalConstraint(GLOBAL1,
+				symbolic.Sub(
+
+					symbolic.Mul(symbolic.Sub(1, P1),
+						verifcol2),
+
+					symbolic.Mul(variables.NewPeriodicSample(period, offset),
+						symbolic.Add(2, verifcol1))),
+			)
+		}
+
+		prover := func(run *wizard.ProverRuntime) {
+			v := vector.Repeat(field.One(), size)
+			for i := 0; i < size; i++ {
+				if i%period == offset {
+					v[i].SetZero()
+				}
+			}
+			run.AssignColumn(P1, smartvectors.NewRegular(v))
+		}
+
+		return builder, prover
+	}
+}
+
+func genAccessors(start, size int) (res []ifaces.Accessor) {
+	for i := start; i < size+start; i++ {
+		t := accessors.NewConstant(field.NewElement(uint64(i)))
+		res = append(res, t)
+	}
+	return res
 }
