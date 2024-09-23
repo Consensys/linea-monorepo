@@ -13,8 +13,6 @@ import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
-import net.consensys.zkevm.ethereum.L1AccountManager
-import net.consensys.zkevm.ethereum.L2AccountManager
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -61,8 +59,8 @@ class L2MessageAnchorerIntegrationTest {
     val deploymentResult = ContractsManager.get().deployRollupAndL2MessageService().get()
     testLineaRollupContractAddress = deploymentResult.lineaRollup.contractAddress
     l1ContractDeploymentBlockNumber = deploymentResult.lineaRollup.contractDeploymentBlockNumber
-    l1Web3jClient = L1AccountManager.web3jClient
-    l2Web3jClient = L2AccountManager.web3jClient
+    l1Web3jClient = ConnectionManager.l1Web3jClient()
+    l2Web3jClient = ConnectionManager.l2Web3jClient()
     l2TransactionManager = deploymentResult.l2MessageService.anchorerOperator.txManager
     @Suppress("DEPRECATION")
     l1ContractLegacyClient = deploymentResult.lineaRollup.rollupOperatorClientLegacy
