@@ -17,7 +17,7 @@ contract RewardsStreamerMPTest is Test {
     address charlie = makeAddr("charlie");
     address dave = makeAddr("dave");
 
-    function setUp() public {
+    function setUp() public virtual {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
         streamer = new RewardsStreamerMP(address(stakingToken), address(rewardToken));
@@ -72,6 +72,28 @@ contract RewardsStreamerMPTest is Test {
         assertEq(userInfo.userRewardIndex, p.rewardIndex, "wrong user reward index");
         assertEq(userInfo.userMP, p.userMP, "wrong user MP");
         assertEq(userInfo.userPotentialMP, p.userPotentialMP, "wrong user potential MP");
+    }
+
+    function _stake(address account, uint256 amount, uint256 lockupTime) public {
+        vm.prank(account);
+        streamer.stake(amount, lockupTime);
+    }
+
+    function _unstake(address account, uint256 amount) public {
+        vm.prank(account);
+        streamer.unstake(amount);
+    }
+
+    function _addReward(uint256 amount) public {
+        vm.prank(admin);
+        rewardToken.transfer(address(streamer), amount);
+        streamer.updateGlobalState();
+    }
+}
+
+contract IntegrationTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
     }
 
     function testStake() public {
@@ -407,6 +429,257 @@ contract RewardsStreamerMPTest is Test {
                 rewardIndex: 10e18,
                 userMP: 30e18,
                 userPotentialMP: 120e18
+            })
+        );
+    }
+}
+
+contract StakeTest is RewardsStreamerMPTest {
+    function setUp() public virtual override {
+        super.setUp();
+    }
+
+    function test_StakeOneAccount() public {
+        // Alice stakes 10 tokens
+        _stake(alice, 10e18, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                potentialMP: 40e18,
+                stakingBalance: 10e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
+    }
+
+    function test_StakeOneAccountAndRewards() public {
+        _stake(alice, 10e18, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                potentialMP: 40e18,
+                stakingBalance: 10e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
+
+        // 1000 rewards generated
+        _addReward(1000e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 10e18,
+                totalMP: 10e18,
+                potentialMP: 40e18,
+                stakingBalance: 10e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 50e18, // (1000 rewards / (10 staked + 10 MP)) = 50
+                accountedRewards: 1000e18
+            })
+        );
+    }
+
+    function test_StakeMultipleAccounts() public {
+        // Alice stakes 10 tokens
+        _stake(alice, 10e18, 0);
+
+        // Bob stakes 30 tokens
+        _stake(bob, 30e18, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                potentialMP: 160e18,
+                stakingBalance: 40e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+    }
+
+    function test_StakeMultipleAccountsAndRewards() public {
+        // Alice stakes 10 tokens
+        _stake(alice, 10e18, 0);
+
+        // Bob stakes 30 tokens
+        _stake(bob, 30e18, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                potentialMP: 160e18,
+                stakingBalance: 40e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 10e18,
+                rewardIndex: 0,
+                userMP: 10e18,
+                userPotentialMP: 40e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 30e18,
+                rewardIndex: 0,
+                userMP: 30e18,
+                userPotentialMP: 120e18
+            })
+        );
+        // 1000 rewards generated
+        _addReward(1000e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 40e18,
+                totalMP: 40e18,
+                potentialMP: 160e18,
+                stakingBalance: 40e18,
+                rewardBalance: 1000e18,
+                rewardIndex: 125e17, // (1000 rewards / (40 staked + 40 MP)) = 12,5
+                accountedRewards: 1000e18
+            })
+        );
+    }
+}
+
+contract UnstakeTest is StakeTest {
+    function setUp() public override {
+        super.setUp();
+    }
+
+    function test_UnstakeOneAccount() public {
+        test_StakeOneAccount();
+
+        _unstake(alice, 8e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 2e18,
+                totalMP: 2e18,
+                potentialMP: 8e18,
+                stakingBalance: 2e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 2e18,
+                rewardIndex: 0,
+                userMP: 2e18,
+                userPotentialMP: 8e18
+            })
+        );
+
+        _unstake(alice, 2e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 0,
+                totalMP: 0,
+                potentialMP: 0,
+                stakingBalance: 0,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
+    function test_UnstakeOneAccountAndRewards() public {
+        test_StakeOneAccountAndRewards();
+
+        _unstake(alice, 8e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 2e18,
+                totalMP: 2e18,
+                potentialMP: 8e18,
+                stakingBalance: 2e18,
+                rewardBalance: 0, // rewards are all paid out to alice
+                rewardIndex: 50e18,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 1000e18,
+                stakedBalance: 2e18,
+                rewardIndex: 50e18, // alice reward index has been updated
+                userMP: 2e18,
+                userPotentialMP: 8e18
             })
         );
     }
