@@ -53,6 +53,17 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        version: "0.8.24",
+        settings: {
+          viaIR: useViaIR,
+          optimizer: {
+            enabled: true,
+            runs: 50_000,
+          },
+          evmVersion: "cancun",
+        },
+      },
+      {
         version: "0.8.19",
         settings: {
           viaIR: useViaIR,

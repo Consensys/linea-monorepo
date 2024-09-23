@@ -332,7 +332,7 @@ contract PlonkVerifierForDataAggregation {
       /// Checks if the proof is of the correct size
       /// @param actual_proof_size size of the proof (not the expected size)
       function check_proof_size(actual_proof_size) {
-        let expected_proof_size := add(0x300, mul(VK_NB_CUSTOM_GATES, 0x60))
+        let expected_proof_size := add(FIXED_PROOF_SIZE, mul(VK_NB_CUSTOM_GATES, 0x60))
         if iszero(eq(actual_proof_size, expected_proof_size)) {
           error_proof_size()
         }
@@ -576,14 +576,14 @@ contract PlonkVerifierForDataAggregation {
       /// @param zpnmo ζⁿ-1
       /// @param n_pub number of public inputs (number of Lagranges to compute)
       /// @param mPtr pointer to which the results are stored
-      function batch_compute_lagranges_at_z(z, zpnmo, n, mPtr) {
+      function batch_compute_lagranges_at_z(z, zpnmo, n_pub, mPtr) {
         let zn := mulmod(zpnmo, VK_INV_DOMAIN_SIZE, R_MOD) // 1/n * (ζⁿ - 1)
 
         let _w := 1
         let _mPtr := mPtr
         for {
           let i := 0
-        } lt(i, n) {
+        } lt(i, n_pub) {
           i := add(i, 1)
         } {
           mstore(_mPtr, addmod(z, sub(R_MOD, _w), R_MOD))
@@ -595,7 +595,7 @@ contract PlonkVerifierForDataAggregation {
         _w := 1
         for {
           let i := 0
-        } lt(i, n) {
+        } lt(i, n_pub) {
           i := add(i, 1)
         } {
           mstore(_mPtr, mulmod(mulmod(mload(_mPtr), zn, R_MOD), _w, R_MOD))
@@ -656,7 +656,6 @@ contract PlonkVerifierForDataAggregation {
         h_fr := hash_fr(calldataload(p), calldataload(add(p, 0x20)), mPtr)
         ith_lagrange := compute_ith_lagrange_at_z(z, zpnmo, add(nb_public_inputs, VK_INDEX_COMMIT_API_0), mPtr)
         pi_commit := addmod(pi_commit, mulmod(h_fr, ith_lagrange, R_MOD), R_MOD)
-        p := add(p, 0x40)
       }
 
       /// Computes L_i(zeta) =  ωⁱ/n * (ζⁿ-1)/(ζ-ωⁱ) where:
@@ -822,7 +821,7 @@ contract PlonkVerifierForDataAggregation {
         mstore(add(mPtr, 0xe0), calldataload(add(aproof, PROOF_OPENING_AT_ZETA_OMEGA_Y)))
         mstore(add(mPtr, 0x100), mload(add(state, STATE_ZETA)))
         mstore(add(mPtr, 0x120), mload(add(state, STATE_GAMMA_KZG)))
-        let random := staticcall(gas(), 0x2, mPtr, 0x140, mPtr, 0x20)
+        let random := staticcall(gas(), SHA2, mPtr, 0x140, mPtr, 0x20)
         if iszero(random) {
           error_random_generation()
         }
@@ -872,18 +871,18 @@ contract PlonkVerifierForDataAggregation {
         mstore(folded_quotients_y, sub(P_MOD, mload(folded_quotients_y)))
 
         mstore(mPtr, mload(folded_digests))
-        
-        mstore(add(mPtr, 0x20), mload(add(folded_digests, 0x20))) 
-        mstore(add(mPtr, 0x40), G2_SRS_0_X_0)  // the 4 lines are the canonical G2 point on BN254
-        mstore(add(mPtr, 0x60), G2_SRS_0_X_1) 
-        mstore(add(mPtr, 0x80), G2_SRS_0_Y_0) 
-        mstore(add(mPtr, 0xa0), G2_SRS_0_Y_1) 
-        mstore(add(mPtr, 0xc0), mload(folded_quotients)) 
-        mstore(add(mPtr, 0xe0), mload(add(folded_quotients, 0x20))) 
-        mstore(add(mPtr, 0x100), G2_SRS_1_X_0) 
-        mstore(add(mPtr, 0x120), G2_SRS_1_X_1) 
-        mstore(add(mPtr, 0x140), G2_SRS_1_Y_0) 
-        mstore(add(mPtr, 0x160), G2_SRS_1_Y_1) 
+
+        mstore(add(mPtr, 0x20), mload(add(folded_digests, 0x20)))
+        mstore(add(mPtr, 0x40), G2_SRS_0_X_0) // the 4 lines are the canonical G2 point on BN254
+        mstore(add(mPtr, 0x60), G2_SRS_0_X_1)
+        mstore(add(mPtr, 0x80), G2_SRS_0_Y_0)
+        mstore(add(mPtr, 0xa0), G2_SRS_0_Y_1)
+        mstore(add(mPtr, 0xc0), mload(folded_quotients))
+        mstore(add(mPtr, 0xe0), mload(add(folded_quotients, 0x20)))
+        mstore(add(mPtr, 0x100), G2_SRS_1_X_0)
+        mstore(add(mPtr, 0x120), G2_SRS_1_X_1)
+        mstore(add(mPtr, 0x140), G2_SRS_1_Y_0)
+        mstore(add(mPtr, 0x160), G2_SRS_1_Y_1)
         check_pairing_kzg(mPtr)
       }
 
@@ -1002,11 +1001,11 @@ contract PlonkVerifierForDataAggregation {
         mstore(_mPtr, calldataload(add(aproof, PROOF_GRAND_PRODUCT_AT_ZETA_OMEGA)))
 
         let start_input := 0x1b // 00.."gamma"
-        let size_input := add(0x14, mul(VK_NB_CUSTOM_GATES, 3)) // number of 32bytes elmts = 0x17 (zeta+3*6 for the digests+openings) + 3*VK_NB_CUSTOM_GATES (for the commitments of the selectors) + 1 (opening of Z at ζω)
+        let size_input := add(0x14, mul(VK_NB_CUSTOM_GATES, 3)) // number of 32bytes elmts = 0x14 (zeta+3*6 for the digests+openings) + 3*VK_NB_CUSTOM_GATES (for the commitments of the selectors) + 1 (opening of Z at ζω)
         size_input := add(0x5, mul(size_input, 0x20)) // size in bytes: 15*32 bytes + 5 bytes for gamma
         let check_staticcall := staticcall(
           gas(),
-          0x2,
+          SHA2,
           add(mPtr, start_input),
           size_input,
           add(state, STATE_GAMMA_KZG),
@@ -1162,9 +1161,19 @@ contract PlonkVerifierForDataAggregation {
         let mPtr := add(mload(0x40), STATE_LAST_MEM)
         let zeta_power_n_plus_two := pow(mload(add(state, STATE_ZETA)), n_plus_two, mPtr)
         point_mul_calldata(add(state, STATE_FOLDED_H_X), add(aproof, PROOF_H_2_COM_X), zeta_power_n_plus_two, mPtr)
-        point_add_calldata(add(state, STATE_FOLDED_H_X), add(state, STATE_FOLDED_H_X), add(aproof, PROOF_H_1_COM_X), mPtr)
+        point_add_calldata(
+          add(state, STATE_FOLDED_H_X),
+          add(state, STATE_FOLDED_H_X),
+          add(aproof, PROOF_H_1_COM_X),
+          mPtr
+        )
         point_mul(add(state, STATE_FOLDED_H_X), add(state, STATE_FOLDED_H_X), zeta_power_n_plus_two, mPtr)
-        point_add_calldata(add(state, STATE_FOLDED_H_X), add(state, STATE_FOLDED_H_X), add(aproof, PROOF_H_0_X), mPtr)
+        point_add_calldata(
+          add(state, STATE_FOLDED_H_X),
+          add(state, STATE_FOLDED_H_X),
+          add(aproof, PROOF_H_0_COM_X),
+          mPtr
+        )
         point_mul(
           add(state, STATE_FOLDED_H_X),
           add(state, STATE_FOLDED_H_X),
@@ -1179,7 +1188,7 @@ contract PlonkVerifierForDataAggregation {
       /// @notice check that the opening of the linearised polynomial at zeta is equal to
       /// - [ PI(ζ) - α²*L₁(ζ) + α(l(ζ)+β*s1(ζ)+γ)(r(ζ)+β*s2(ζ)+γ)(o(ζ)+γ)*z(ωζ) ]
       /// @param aproof pointer to the proof
-      function verify_opening_linearised_polynomial(aproof) {
+      function compute_opening_linearised_polynomial(aproof) {
         let state := mload(0x40)
 
         // (l(ζ)+β*s1(ζ)+γ)
@@ -1332,6 +1341,7 @@ contract PlonkVerifierForDataAggregation {
         mstore(add(mPtr, 0xa0), R_MOD)
         let check_staticcall := staticcall(gas(), MOD_EXP, mPtr, 0xc0, mPtr, 0x20)
         if eq(check_staticcall, 0) {
+          error_mod_exp()
         }
         res := mload(mPtr)
       }
