@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.24;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "./messageService/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/l1/ILineaRollup.sol";
+import { PermissionsManager } from "./lib/PermissionsManager.sol";
 
 import { Utils } from "./lib/Utils.sol";
 /**
@@ -12,7 +14,14 @@ import { Utils } from "./lib/Utils.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
+contract LineaRollup is
+  Initializable,
+  AccessControlUpgradeable,
+  ZkEvmV2,
+  L1MessageService,
+  PermissionsManager,
+  ILineaRollup
+{
   using Utils for *;
 
   /// @dev This is the ABI version and not the reinitialize version.
@@ -88,7 +97,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
-    _setPermissions(_initializationData.roleAddresses);
+    __Permissions_init(_initializationData.roleAddresses);
 
     verifiers[0] = _initializationData.defaultVerifier;
 
@@ -113,24 +122,8 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(6) {
-    _setPermissions(_roleAddresses);
+    __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-  }
-
-  /**
-   * @notice Sets permissions for a list of addresses and their roles.
-   * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses and their roles.
-   */
-  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
-    uint256 roleAddressesLength = _roleAddresses.length;
-
-    for (uint256 i; i < roleAddressesLength; i++) {
-      if (_roleAddresses[i].addressWithRole == address(0)) {
-        revert ZeroAddressNotAllowed();
-      }
-      _grantRole(_roleAddresses[i].role, _roleAddresses[i].addressWithRole);
-    }
   }
 
   /**

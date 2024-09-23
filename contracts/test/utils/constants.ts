@@ -42,6 +42,31 @@ export const L1_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L1_ME
 export const L2_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L2_MERKLE_ROOTS_SETTER_ROLE"], true);
 export const FINALIZE_WITHOUT_PROOF_ROLE = generateKeccak256(["string"], ["FINALIZE_WITHOUT_PROOF_ROLE"], true);
 export const BAD_STARTING_HASH = generateKeccak256(["string"], ["BAD_STARTING_HASH"], true);
+export const PAUSE_INITIATE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_INITIATE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const SET_REMOTE_TOKENBRIDGE_ROLE = generateKeccak256(["string"], ["SET_REMOTE_TOKENBRIDGE_ROLE"], true);
+export const SET_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["SET_RESERVED_TOKEN_ROLE"], true);
+export const REMOVE_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["REMOVE_RESERVED_TOKEN_ROLE"], true);
+export const SET_CUSTOM_CONTRACT_ROLE = generateKeccak256(["string"], ["SET_CUSTOM_CONTRACT_ROLE"], true);
+export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESSAGE_SERVICE_ROLE"], true);
 
 export const GENERAL_PAUSE_TYPE = 1;
 export const L1_L2_PAUSE_TYPE = 2;
@@ -49,6 +74,8 @@ export const L2_L1_PAUSE_TYPE = 3;
 export const BLOB_SUBMISSION_PAUSE_TYPE = 4;
 export const CALLDATA_SUBMISSION_PAUSE_TYPE = 5;
 export const FINALIZATION_PAUSE_TYPE = 6;
+export const INITIATE_TOKEN_BRIDGING_PAUSE_TYPE = 7;
+export const COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE = 8;
 
 export const pauseTypeRoles = [
   { pauseType: GENERAL_PAUSE_TYPE, role: PAUSE_ALL_ROLE },
@@ -57,6 +84,8 @@ export const pauseTypeRoles = [
   { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: FINALIZATION_PAUSE_TYPE, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+  { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+  { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
 ];
 
 export const unpauseTypeRoles = [
@@ -66,6 +95,8 @@ export const unpauseTypeRoles = [
   { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: FINALIZATION_PAUSE_TYPE, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+  { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+  { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
 ];
 
 // Message statuses
