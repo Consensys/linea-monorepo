@@ -5,7 +5,7 @@ import {
   waitForEvents,
   getMessageSentEventFromLogs,
   sendMessage,
-  sendTransactionsWithInterval, sendTransactionsToGenerateTrafficWithInterval,
+  sendTransactionsToGenerateTrafficWithInterval,
 } from "./utils/utils";
 import {getAndIncreaseFeeData} from "./utils/helpers";
 import {Wallet, ethers} from "ethers";
@@ -144,17 +144,7 @@ const coordinatorRestartTestSuite = (title: string) => {
 
       console.log("Moving the L2 chain forward to trigger anchoring...");
       // Using 5 messages to give the coordinator time to restart
-      const [maxPriorityFeePerGas, maxFeePerGas] = getAndIncreaseFeeData(await l2Provider.getFeeData());
-      const intervalId = sendTransactionsWithInterval(
-        l2MessageSender,
-        {
-          to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
-          value: ethers.utils.parseEther("0.0001"),
-          maxPriorityFeePerGas,
-          maxFeePerGas,
-        },
-        1_000,
-      )
+      const intervalId = sendTransactionsToGenerateTrafficWithInterval(l2MessageSender);
 
       // Wait for messages to be anchored on L2
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
