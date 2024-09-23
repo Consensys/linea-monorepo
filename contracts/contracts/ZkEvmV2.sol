@@ -35,8 +35,8 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
    * @param _proof The proof to be verified with the proof type verifier contract.
    */
   function _verifyProof(uint256 _publicInputHash, uint256 _proofType, bytes calldata _proof) internal {
-    uint256[] memory input = new uint256[](1);
-    input[0] = _publicInputHash;
+    uint256[] memory publicInput = new uint256[](1);
+    publicInput[0] = _publicInputHash;
 
     address verifierToUse = verifiers[_proofType];
 
