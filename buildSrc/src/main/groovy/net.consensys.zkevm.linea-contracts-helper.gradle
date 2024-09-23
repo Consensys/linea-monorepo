@@ -12,8 +12,7 @@ if (!rootProject.tasks.getNames().contains("compileContracts")) {
   }
 }
 
-
-ext.runRootMakefileCommand = { String command, Map<String, String> env ->
+def runRootMakefileCommand(String command, Map<String, String> env) {
   def randomSuffix = UUID.randomUUID().toString()
   File outputFile = file("${command.replace(" ", "-")}-run-output-${randomSuffix}.txt")
   def deploymentProcessBuilder = new ProcessBuilder("make", "-C", project.rootDir.path, command)
