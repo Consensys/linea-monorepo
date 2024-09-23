@@ -176,7 +176,9 @@ func mustProveAndPass(
 		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces)
 		// this will panic to alert errors, so there is no need to handle or
 		// sanity-check anything.
+		logrus.Infof("Prover starting the prover")
 		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		logrus.Infof("Prover checks passed")
 		return "", ""
 
 	default:

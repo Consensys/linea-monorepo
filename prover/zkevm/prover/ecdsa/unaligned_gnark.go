@@ -54,7 +54,10 @@ type unalignedGnarkDataSource struct {
 	TxHashLo   ifaces.Column
 }
 
-type TxSignatureGetter func(txHash []byte) (r, s, v *big.Int, err error)
+// TxSignatureGetter is a function that is expected a signature for a transaction
+// hash and/or a integer id. In production, the function returns the signature
+// from the transaction id but uses the txHash as a sanity-check.
+type TxSignatureGetter func(i int, txHash []byte) (r, s, v *big.Int, err error)
 
 func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGnarkDataSource) *UnalignedGnarkData {
 	createCol := createColFn(comp, NAME_UNALIGNED_GNARKDATA, size)
@@ -176,7 +179,7 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			txHighBts := txHigh.Bytes()
 			copy(prehashedMsg[:16], txHighBts[16:])
 			copy(prehashedMsg[16:], txLowBts[16:])
-			r, s, v, err = txSigs(prehashedMsg[:])
+			r, s, v, err = txSigs(txCount, prehashedMsg[:])
 			if err != nil {
 				utils.Panic("error getting tx-signature err=%v, txNum=%v", err, txCount)
 			}
