@@ -6,6 +6,7 @@
   },
   "scripts": {
     "build": "npx hardhat compile",
+    "build:notypechain": "npx hardhat compile --no-typechain",
     "test": "npm run autoupdate && npx hardhat test",
     "test:reportgas": "REPORT_GAS=true npx hardhat test",
     "coverage": "npm run autoupdate && npx hardhat coverage --solcoverjs ./.solcover.js",

@@ -6,7 +6,7 @@ tasks.register('compileContracts') {
   inputs.dir("$rootDir/contracts")
   outputs.cacheIf { true }
   doLast {
-    runRootMakefileCommand("compile-contracts", Map.of())
+    runRootMakefileCommand("compile-contracts-no-typechain", Map.of())
   }
 }
 

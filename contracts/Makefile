@@ -4,6 +4,10 @@ compile:
 	pnpm run build
 	npx hardhat run scripts/hardhat/postCompile.ts
 
+compile-without-typechain:
+	pnpm run build:notypechain
+	npx hardhat run scripts/hardhat/postCompile.ts
+
 force-compile:
 	npx hardhat compile --force
 	npx hardhat run scripts/hardhat/postCompile.ts

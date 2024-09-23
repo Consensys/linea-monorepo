@@ -64,6 +64,10 @@ compile-contracts:
 		cd contracts; \
 		make compile
 
+compile-contracts-no-typechain:
+		cd contracts; \
+		make compile-without-typechain
+
 compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
