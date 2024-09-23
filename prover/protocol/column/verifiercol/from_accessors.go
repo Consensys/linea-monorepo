@@ -123,7 +123,7 @@ func (f FromAccessors) IsComposite() bool {
 	return false
 }
 
-// IsComposite implements the [symbolic.Metadata] interface
+// String implements the [symbolic.Metadata] interface
 func (f FromAccessors) String() string {
 	return string(f.GetColID())
 }

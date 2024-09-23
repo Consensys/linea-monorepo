@@ -4,10 +4,16 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestLineaRollup, LineaRollupInit__factory } from "../typechain-types";
 import {
+  DEFAULT_ADMIN_ROLE,
   GENESIS_L2_TIMESTAMP,
   INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
+  LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
+  OPERATOR_ROLE,
+  VERIFIER_SETTER_ROLE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import { expectRevertWithReason, generateRandomBytes } from "./utils/helpers";
@@ -32,23 +38,25 @@ describe("LineaRollup Init contract", () => {
 
     verifier = await plonkVerifier.getAddress();
 
-    const LineaRollup = (await deployUpgradableFromFactory(
-      "TestLineaRollup",
-      [
-        parentStateRootHash,
-        firstBlockNumber - 1,
-        verifier,
-        securityCouncil.address,
-        [operator.address],
-        ONE_DAY_IN_SECONDS,
-        INITIAL_WITHDRAW_LIMIT,
-        GENESIS_L2_TIMESTAMP,
+    const genesisData = {
+      initialStateRootHash: parentStateRootHash,
+      initialL2BlockNumber: firstBlockNumber - 1,
+      genesisTimestamp: GENESIS_L2_TIMESTAMP,
+      defaultVerifier: verifier,
+      rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+      rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+      roleAddresses: [
+        { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+        { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
+        { addressWithRole: operator.address, role: OPERATOR_ROLE },
       ],
-      {
-        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
-        unsafeAllow: ["constructor"],
-      },
-    )) as unknown as TestLineaRollup;
+      pauseTypeRoles: pauseTypeRoles,
+      unpauseTypeRoles: unpauseTypeRoles,
+    };
+
+    const LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [genesisData], {
+      initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+    })) as unknown as TestLineaRollup;
 
     return { LineaRollup };
   }
