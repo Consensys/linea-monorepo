@@ -8,7 +8,7 @@ jobs:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   filter-commit-changes:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}

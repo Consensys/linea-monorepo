@@ -7,7 +7,7 @@ import { TransactionHistory } from "@/models/history";
 import { formatDate, fromUnixTime } from "date-fns";
 import { NoTransactions } from "./NoTransaction";
 import { useFetchHistory } from "@/hooks";
-import Button from "../bridge/Button";
+import { Button } from "../ui";
 
 const groupByDay = (transactions: TransactionHistory[]): Record<string, TransactionHistory[]> => {
   return transactions.reduce(

@@ -19,6 +19,7 @@ const config: Config = {
         success: "#C1FF14",
       },
       fontFamily: {
+        atyp: ["var(--font-atyp)"],
         atypText: ["var(--font-atyp-text)"],
       },
     },
