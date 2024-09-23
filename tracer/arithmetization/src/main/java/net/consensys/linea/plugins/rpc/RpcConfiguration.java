@@ -13,12 +13,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.plugins.rpc.tracegeneration;
+package net.consensys.linea.plugins.rpc;
 
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea tracer configuration private to this repo. */
 @Builder(toBuilder = true)
-public record TracesEndpointConfiguration(String tracesOutputPath)
-    implements LineaOptionsConfiguration {}
+public record RpcConfiguration(int concurrentRequestsLimit) implements LineaOptionsConfiguration {}

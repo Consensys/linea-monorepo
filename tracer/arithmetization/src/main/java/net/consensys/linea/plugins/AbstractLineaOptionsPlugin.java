@@ -42,13 +42,7 @@ public abstract class AbstractLineaOptionsPlugin implements BesuPlugin {
 
   @Override
   public synchronized void register(final BesuContext context) {
-    final PicoCLIOptions cmdlineOptions =
-        context
-            .getService(PicoCLIOptions.class)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Failed to obtain PicoCLI options from the BesuContext"));
+    final PicoCLIOptions cmdlineOptions = BesuServiceProvider.getPicoCLIOptionsService(context);
 
     getLineaPluginConfigMap()
         .forEach(

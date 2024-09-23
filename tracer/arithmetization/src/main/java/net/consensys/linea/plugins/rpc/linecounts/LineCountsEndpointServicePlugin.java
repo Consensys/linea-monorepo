@@ -13,10 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.plugins.rpc.counters;
+package net.consensys.linea.plugins.rpc.linecounts;
 
 import com.google.auto.service.AutoService;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
+import net.consensys.linea.plugins.BesuServiceProvider;
+import net.consensys.linea.plugins.rpc.RequestLimiter;
+import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
 import org.hyperledger.besu.plugin.BesuContext;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -26,10 +29,10 @@ import org.hyperledger.besu.plugin.services.RpcEndpointService;
  *
  * <p>The CountersEndpointServicePlugin registers an RPC endpoint named
  * 'getTracesCountersByBlockNumberV0' under the 'rollup' namespace. When this endpoint is called,
- * returns trace counters based on the provided request parameters. See {@link GenerateCountersV2}
+ * returns trace counters based on the provided request parameters. See {@link GenerateLineCountsV2}
  */
 @AutoService(BesuPlugin.class)
-public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
+public class LineCountsEndpointServicePlugin extends AbstractLineaSharedOptionsPlugin {
   private BesuContext besuContext;
   private RpcEndpointService rpcEndpointService;
 
@@ -42,19 +45,21 @@ public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlu
   public void register(final BesuContext context) {
     super.register(context);
     besuContext = context;
-    rpcEndpointService =
-        context
-            .getService(RpcEndpointService.class)
-            .orElseThrow(
-                () ->
-                    new RuntimeException(
-                        "Failed to obtain RpcEndpointService from the BesuContext."));
+    rpcEndpointService = BesuServiceProvider.getRpcEndpointService(context);
   }
 
   @Override
   public void beforeExternalServices() {
     super.beforeExternalServices();
-    GenerateCountersV2 method = new GenerateCountersV2(besuContext);
+
+    RequestLimiterDispatcher.setLimiterIfMissing(
+        RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY,
+        rpcConfiguration().concurrentRequestsLimit());
+    final RequestLimiter reqLimiter =
+        RequestLimiterDispatcher.getLimiter(
+            RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
+
+    final GenerateLineCountsV2 method = new GenerateLineCountsV2(besuContext, reqLimiter);
     createAndRegister(method, rpcEndpointService);
   }
 
@@ -65,7 +70,7 @@ public class CountersEndpointServicePlugin extends AbstractLineaSharedOptionsPlu
    * @param rpcEndpointService the RpcEndpointService to be registered.
    */
   private void createAndRegister(
-      final GenerateCountersV2 method, final RpcEndpointService rpcEndpointService) {
+      final GenerateLineCountsV2 method, final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
   }

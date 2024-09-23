@@ -13,12 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.plugins.rpc.tracegeneration;
+package net.consensys.linea.plugins.rpc;
 
-import lombok.Builder;
-import net.consensys.linea.plugins.LineaOptionsConfiguration;
+import java.security.InvalidParameterException;
 
-/** The Linea tracer configuration private to this repo. */
-@Builder(toBuilder = true)
-public record TracesEndpointConfiguration(String tracesOutputPath)
-    implements LineaOptionsConfiguration {}
+public class Validator {
+
+  public static void validatePluginRpcRequestParams(final Object[] rawParams) {
+    // params size should be one, because we expect an object containing all the needed request
+    // parameters.
+    if (rawParams.length != 1) {
+      throw new InvalidParameterException(
+          "Expected a single params object in the params array but got %d"
+              .formatted(rawParams.length));
+    }
+  }
+}

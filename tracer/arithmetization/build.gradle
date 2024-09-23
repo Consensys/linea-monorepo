@@ -51,7 +51,8 @@ dependencies {
 
   implementation 'info.picocli:picocli'
 
-  compileOnly 'io.vertx:vertx-core'
+  implementation 'io.vertx:vertx-core'
+  implementation 'io.vertx:vertx-web'
 
   implementation 'com.fasterxml.jackson.core:jackson-databind'
   implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
