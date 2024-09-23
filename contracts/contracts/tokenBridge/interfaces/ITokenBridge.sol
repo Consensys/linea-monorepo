@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 
 /**
  * @title Interface declaring Canonical Token Bridge functions, events and errors.
@@ -26,7 +27,7 @@ interface ITokenBridge {
     uint256 sourceChainId;
     uint256 targetChainId;
     address[] reservedTokens;
-    IPauseManager.RoleAddress[] roleAddresses;
+    IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
   }

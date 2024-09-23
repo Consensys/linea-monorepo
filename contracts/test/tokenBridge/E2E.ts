@@ -520,7 +520,8 @@ describe("E2E tests", function () {
         l1TokenBridge,
         tokens: { L1DAI },
       } = await loadFixture(deployContractsFixture);
-      l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
+
+      await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
 
       await expectRevertWithCustomError(
         l1TokenBridge,

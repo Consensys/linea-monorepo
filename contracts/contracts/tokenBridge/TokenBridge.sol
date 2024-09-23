@@ -19,6 +19,7 @@ import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
 import { PauseManager } from "../lib/PauseManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { StorageFiller39 } from "./lib/StorageFiller39.sol";
+import { PermissionsManager } from "../lib/PermissionsManager.sol";
 
 import { Utils } from "../lib/Utils.sol";
 /**
@@ -34,6 +35,7 @@ contract TokenBridge is
   AccessControlUpgradeable,
   MessageServiceBase,
   PauseManager,
+  PermissionsManager,
   StorageFiller39
 {
   using Utils for *;
@@ -128,11 +130,11 @@ contract TokenBridge is
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
     __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
+    __Permissions_init(_initializationData.roleAddresses);
+
     tokenBeacon = _initializationData.tokenBeacon;
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
-
-    _setPermissions(_initializationData.roleAddresses);
 
     unchecked {
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
@@ -163,24 +165,7 @@ contract TokenBridge is
     }
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-
-    _setPermissions(_roleAddresses);
-  }
-
-  /**
-   * @notice Sets permissions for a list of addresses and their roles.
-   * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses and their roles.
-   */
-  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
-    uint256 roleAddressesLength = _roleAddresses.length;
-
-    for (uint256 i; i < roleAddressesLength; i++) {
-      if (_roleAddresses[i].addressWithRole == address(0)) {
-        revert ZeroAddressNotAllowed();
-      }
-      _grantRole(_roleAddresses[i].role, _roleAddresses[i].addressWithRole);
-    }
+    __Permissions_init(_roleAddresses);
   }
 
   /**

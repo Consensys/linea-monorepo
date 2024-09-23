@@ -19,16 +19,6 @@ interface IPauseManager {
   }
 
   /**
-   * @notice Structure defining a role and its associated address.
-   * @param addressWithRole The address with the role.
-   * @param role The role associated with the address.
-   */
-  struct RoleAddress {
-    address addressWithRole;
-    bytes32 role;
-  }
-
-  /**
    * @notice Emitted when a pause type is paused.
    * @param messageSender The address performing the pause.
    * @param pauseType The indexed pause type that was paused.
