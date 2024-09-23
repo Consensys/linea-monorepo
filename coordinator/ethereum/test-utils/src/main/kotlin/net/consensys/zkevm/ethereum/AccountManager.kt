@@ -73,7 +73,6 @@ fun getTransactionManager(
 private inline val Int.ether get(): BigInteger = BigInteger.valueOf(this.toLong()).multiply(BigInteger.TEN.pow(18))
 
 interface AccountManager {
-  val web3jClient: Web3j
   val chainId: Long
   fun whaleAccount(): Account
   fun generateAccount(initialBalanceWei: BigInteger = 10.ether): Account
@@ -83,7 +82,7 @@ interface AccountManager {
 }
 
 private open class WhaleBasedAccountManager(
-  override val web3jClient: Web3j,
+  val web3jClient: Web3j,
   genesisFile: Path,
   val clock: Clock = Clock.System,
   val testWorkerIdProvider: () -> Long = { ProcessHandle.current().pid() },
