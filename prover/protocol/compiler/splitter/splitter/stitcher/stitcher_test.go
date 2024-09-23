@@ -245,24 +245,27 @@ func TestWithVerifCol(t *testing.T) {
 
 	define := func(builder *wizard.Builder) {
 		// declare columns of different sizes
-		a = builder.RegisterCommit("B", 4)
-		b = builder.RegisterCommit("C", 4)
+		a = builder.RegisterCommit("A", 4)
+		b = builder.RegisterCommit("B", 4)
 		// a new round
 		_ = builder.RegisterRandomCoin("COIN", coin.Field)
-		c = builder.RegisterCommit("D", 4)
+		c = builder.RegisterCommit("C", 4)
 		// verifiercols
 		verifcol1 = verifiercol.NewConstantCol(field.NewElement(3), 4)
 		accessors := genAccessors([]int{1, 7, 5, 3})
 		verifcol := verifiercol.NewFromAccessors(accessors, field.Zero(), 4)
-		// verifcol2 = column.Shift(verifcol, 1)
+		verifcol2 := column.Shift(verifcol, 1)
 
-		expr := symbolic.Sub(symbolic.Mul(a, verifcol1), b)
+		expr := symbolic.Sub(
+			symbolic.Mul(column.Shift(a, 1), verifcol1),
+			column.Shift(b, 1))
+
 		q1 = builder.GlobalConstraint("Q0", expr)
 
 		expr = symbolic.Sub(symbolic.Add(a, verifcol), c)
 		q2 = builder.GlobalConstraint("Q1", expr)
 
-		expr = symbolic.Sub(symbolic.Add(column.Shift(a, 1), column.Shift(verifcol, 1)), column.Shift(c, 1))
+		expr = symbolic.Sub(symbolic.Add(column.Shift(a, 1), verifcol2), column.Shift(c, 1))
 		q3 = builder.LocalConstraint("Q2", expr)
 	}
 
