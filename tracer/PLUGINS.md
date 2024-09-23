@@ -36,8 +36,8 @@ It is applied, with different configuration to:
 ## Sequencer
 ### Transaction Selection - LineaTransactionSelectorPlugin
 
-This plugin extends the standard transaction selection protocols employed by Besu for block creation. 
-It leverages the TransactionSelectionService to manage and customize the process of transaction selection. 
+This plugin extends the standard transaction selection protocols employed by Besu for block creation.
+It leverages the TransactionSelectionService to manage and customize the process of transaction selection.
 This includes setting limits such as `TraceLineLimit`, `maxBlockGas`, and `maxCallData`, and check the profitability
 of a transaction.
 
@@ -72,28 +72,28 @@ that are not allowed to add transactions to the pool.
 ### Linea Estimate Gas
 #### `linea_estimateGas`
 
-This endpoint simulates a transaction and returns the estimated gas used ( as the standard `eth_estimateGas`) plus the estimated gas price to be used when submitting the tx. 
+This endpoint simulates a transaction and returns the estimated gas used ( as the standard `eth_estimateGas`) plus the estimated gas price to be used when submitting the tx.
 
 #### Parameters
 
 same as `eth_estimateGas`
 
 ### Counters - CountersEndpointServicePlugin
-#### `rollup_getTracesCountersByBlockNumberV0` 
+#### `rollup_getTracesCountersByBlockNumberV0`
 
-The CountersEndpointServicePlugin registers an RPC endpoint named `getTracesCountersByBlockNumberV0` 
+The CountersEndpointServicePlugin registers an RPC endpoint named `getTracesCountersByBlockNumberV0`
 under the `rollup` namespace. When this endpoint is called, returns trace counters based on the provided request parameters.
 
 #### Parameters
 
   - `blockNumber`: _string_ - The block number
 
-  - `tracerVersion`: _string_ - The tracer version. It will return an error if the 
-requested version is different from the tracer runtime 
+  - `tracerVersion`: _string_ - The tracer version. It will return an error if the
+requested version is different from the tracer runtime
 
 ### Trace generation - TracesEndpointServicePlugin
 
-This plugin registers an RPC endpoint named `generateConflatedTracesToFileV0` under the `rollup` namespace. 
+This plugin registers an RPC endpoint named `generateConflatedTracesToFileV0` under the `rollup` namespace.
 The endpoint generates conflated file traces.
 
 #### Parameters
@@ -132,3 +132,20 @@ In the success case the trace file will simply be deleted.
 In case of an error the trace file will be renamed to `trace_$BLOCK_NUMBER_$BLOCK_HASH.lt` and moved
 to `$BESU_USER_HOME/invalid-traces`. The output of Corset will be saved in the same directory in a file
 named `corset_output_$BLOCK_NUMBER_$BLOCK_HASH.txt`. After that an error message will be sent to Slack.
+
+## Tracer Readiness
+
+Tracer Readiness is a plugin that enables the existence of the `/tracer-readiness` REST endpoint that
+ensures that the given node is able to accept new requests. Under the hood it performs request limiting via an
+option configuring the number of allowed concurrent requests. Additionally in ensures that the your state is in sync.
+
+The plugin supports the following options in the TOML configuration:
+
+```toml
+# Configures the number of allowed concurrent requests that the node can process.
+plugin-linea-rpc-concurrent-requests-limit=1
+# Configures the host of the Tracer Readiness plugin.
+plugin-linea-tracer-readiness-server-host="0.0.0.0"
+# Configures the port of the Tracer Readiness plugin.
+plugin-linea-tracer-readiness-server-port=8548
+```
