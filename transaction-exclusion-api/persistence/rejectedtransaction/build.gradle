@@ -11,7 +11,7 @@ dependencies {
   implementation project(":jvm-libs:kotlin-extensions")
   implementation project(":jvm-libs:future-extensions")
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
-  implementation "io.vertx:vertx-pg-client"
+  implementation "io.vertx:vertx-pg-client:${libs.versions.vertx.get()}"
 
   testImplementation(testFixtures(project(":jvm-libs:persistence:db")))
   testImplementation(testFixtures(project(":jvm-libs:kotlin-extensions")))

@@ -1,19 +1,22 @@
-FROM openjdk:22-ea-17-slim-bookworm
-
-RUN apt-get update \
-	&& apt-get install unzip -y \
-	&& apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
-
+# BUILDER image
+FROM alpine/java:21-jre AS builder
 WORKDIR /opt/consensys/linea/transaction-exclusion-api
 
+RUN apk add --no-cache unzip
+
 # copy application
-COPY --from=zip ./transaction-exclusion-api.zip /opt/consensys/linea/transaction-exclusion-api/libs/
+COPY --from=zip ./transaction-exclusion-api.zip libs/
 RUN unzip libs/transaction-exclusion-api.zip -d libs/ \
 	&& mv libs/transaction-exclusion-api/lib/** libs/ \
 	&& rm -R libs/transaction-exclusion-api/
 
-RUN mkdir -p /opt/consensys/linea/transaction-exclusion-api/logs
+# FINAL image
+FROM alpine/java:21-jre
+WORKDIR /opt/consensys/linea/transaction-exclusion-api/
+
+RUN mkdir -p /opt/consensys/linea/transaction-exclusion-api/logs/
+
+COPY --from=builder /opt/consensys/linea/transaction-exclusion-api/libs libs/
 
 # Build-time metadata as defined at http://label-schema.org
 ARG BUILD_DATE
@@ -28,7 +31,3 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 	org.label-schema.vendor="ConsenSys" \
 	org.label-schema.version=$VERSION \
 	org.label-schema.schema-version="1.0"
-
-WORKDIR /opt/consensys/linea/transaction-exclusion-api/
-
-
