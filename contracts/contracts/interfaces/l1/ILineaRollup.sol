@@ -124,9 +124,14 @@ interface ILineaRollup {
    * @param startBlock The indexed L2 block number indicating which block the data starts from.
    * @param endBlock The indexed L2 block number indicating which block the data ends on.
    * @param parentShnarf The parent shnarf for the data being submitted.
-   * @param shnarf The shnarf for the data being submitted.
+   * @param shnarf The indexed shnarf for the data being submitted.
    */
-  event DataSubmittedV3(uint256 indexed startBlock, uint256 indexed endBlock, bytes32 parentShnarf, bytes32 shnarf);
+  event DataSubmittedV3(
+    uint256 indexed startBlock,
+    uint256 indexed endBlock,
+    bytes32 parentShnarf,
+    bytes32 indexed shnarf
+  );
 
   /**
    * @notice Emitted when L2 blocks have been finalized on L1.
