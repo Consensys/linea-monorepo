@@ -33,10 +33,6 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
-concurrency:
-  group: testing-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-testing.yml
