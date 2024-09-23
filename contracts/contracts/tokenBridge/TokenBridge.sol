@@ -16,7 +16,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../messageService/MessageServiceBase.sol";
 
-import { PauseManager } from "../messageService/lib/PauseManager.sol";
+import { PauseManager } from "../lib/PauseManager.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { StorageFiller39 } from "./lib/StorageFiller39.sol";
 
@@ -132,7 +132,7 @@ contract TokenBridge is
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
-    _resetPermissions(_initializationData.roleAddresses);
+    _setPermissions(_initializationData.roleAddresses);
 
     unchecked {
       for (uint256 i; i < _initializationData.reservedTokens.length; ) {
@@ -144,9 +144,9 @@ contract TokenBridge is
   }
 
   /**
-   * @notice Resets permissions for a list of addresses and initialises the PauseManager pauseType:role mappings.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    * @param _pauseTypeRoles The list of pause type roles.
    * @param _unpauseTypeRoles The list of unpause type roles.
    */
@@ -164,15 +164,15 @@ contract TokenBridge is
     __ReentrancyGuard_init();
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
 
-    _resetPermissions(_roleAddresses);
+    _setPermissions(_roleAddresses);
   }
 
   /**
-   * @notice Resets permissions for a list of addresses.
+   * @notice Sets permissions for a list of addresses and their roles.
    * @dev This function is a reinitializer and can only be called once per version.
-   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _roleAddresses The list of addresses and their roles.
    */
-  function _resetPermissions(RoleAddress[] calldata _roleAddresses) internal {
+  function _setPermissions(RoleAddress[] calldata _roleAddresses) internal {
     uint256 roleAddressesLength = _roleAddresses.length;
 
     for (uint256 i; i < roleAddressesLength; i++) {
@@ -203,7 +203,6 @@ contract TokenBridge is
    * @param _token The address of the token to be bridged.
    * @param _amount The amount of the token to be bridged.
    * @param _recipient The address that will receive the tokens on the other chain.
-  //  TODO: check if natspec needs to be updated
    */
   function bridgeToken(
     address _token,
@@ -266,7 +265,6 @@ contract TokenBridge is
    * @param _amount The amount of the token to be bridged.
    * @param _recipient The address that will receive the tokens on the other chain.
    * @param _permitData The permit data for the token, if applicable.
-   //  TODO: check if natspec needs to be updated
    */
   function bridgeTokenWithPermit(
     address _token,
@@ -290,7 +288,6 @@ contract TokenBridge is
    * @param _chainId The token's origin layer chaindId
    * @param _tokenMetadata Additional data used to deploy the bridged token if it
    *   doesn't exist already.
-   //  TODO: check if natspec needs to be updated
    */
   function completeBridging(
     address _nativeToken,
