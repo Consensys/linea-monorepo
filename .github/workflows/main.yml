@@ -83,7 +83,7 @@ jobs:
               - 'gradle.properties'
               - 'settings.gradle'
             finalized-tag-updater:
-              - 'jvm-libs/core/long-running/service/**'
+              - 'jvm-libs/core/long-running-service/**'
               - 'jvm-libs/kotlin-extensions/**'
               - 'jvm-libs/future-extensions/**'
               - 'jvm-libs/web3j-extensions/**'
