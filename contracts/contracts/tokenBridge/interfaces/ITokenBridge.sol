@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
+import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
+
 /**
  * @title Interface declaring Canonical Token Bridge functions, events and errors.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface ITokenBridge {
+  /**
+   * @dev Contract will be used as proxy implementation.
+   * @param messageService The address of the MessageService contract.
+   * @param tokenBeacon The address of the tokenBeacon.
+   * @param sourceChainId The source chain id of the current layer.
+   * @param targetChainId The target chaind id of the targeted layer.
+   * @param reservedTokens The list of reserved tokens to be set.
+   * @param roleAddresses The list of role addresses.
+   * @param pauseTypeRoles The list of pause type roles.
+   * @param unpauseTypeRoles The list of unpause type roles.
+   */
+  struct InitializationData {
+    address messageService;
+    address tokenBeacon;
+    uint256 sourceChainId;
+    uint256 targetChainId;
+    address[] reservedTokens;
+    IPermissionsManager.RoleAddress[] roleAddresses;
+    IPauseManager.PauseTypeRole[] pauseTypeRoles;
+    IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+  }
+
   event TokenReserved(address indexed token);
   event ReservationRemoved(address indexed token);
   event CustomContractSet(address indexed nativeToken, address indexed customContract, address indexed setBy);
@@ -120,14 +145,4 @@ interface ITokenBridge {
    * @param _targetContract address of the custom contract.
    */
   function setCustomContract(address _nativeToken, address _targetContract) external;
-
-  /**
-   * @dev Pause the contract, can only be called by the owner.
-   */
-  function pause() external;
-
-  /**
-   * @dev Unpause the contract, can only be called by the owner.
-   */
-  function unpause() external;
 }

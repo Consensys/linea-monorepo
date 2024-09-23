@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 
 /**
  * @title LineaRollup interface for current functions, events and errors.
@@ -28,7 +29,7 @@ interface ILineaRollup {
     address defaultVerifier;
     uint256 rateLimitPeriodInSeconds;
     uint256 rateLimitAmountInWei;
-    IPauseManager.RoleAddress[] roleAddresses;
+    IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
   }

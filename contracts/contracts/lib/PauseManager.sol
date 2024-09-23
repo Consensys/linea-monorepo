@@ -3,7 +3,7 @@ pragma solidity >=0.8.19 <=0.8.24;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPauseManager } from "../interfaces/IPauseManager.sol";
 
 /**
  * @title Contract to manage cross-chain function pausing.

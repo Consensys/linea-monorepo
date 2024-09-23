@@ -3,11 +3,34 @@ import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { deployTokenBridgeWithMockMessaging } from "../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../scripts/tokenBridge/test/deployTokens";
-import { BridgedToken } from "../../typechain-types";
+import { BridgedToken, TestTokenBridge, TokenBridge, ProxyAdmin } from "../../typechain-types";
 import { getPermitData } from "./utils/permitHelper";
 import { Contract } from "ethers";
-import { ADDRESS_ZERO, INITIALIZED_ALREADY_MESSAGE } from "../utils/constants";
-import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../utils/helpers";
+import {
+  ADDRESS_ZERO,
+  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
+  INITIALIZED_ALREADY_MESSAGE,
+  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
+  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  REMOVE_RESERVED_TOKEN_ROLE,
+  SET_CUSTOM_CONTRACT_ROLE,
+  SET_MESSAGE_SERVICE_ROLE,
+  SET_REMOTE_TOKENBRIDGE_ROLE,
+  SET_RESERVED_TOKEN_ROLE,
+  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
+  DEFAULT_ADMIN_ROLE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
+  PAUSE_ALL_ROLE,
+  UNPAUSE_ALL_ROLE,
+  HASH_ZERO,
+} from "../utils/constants";
+import {
+  buildAccessErrorMessage,
+  expectEvent,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+} from "../utils/helpers";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";
@@ -50,30 +73,41 @@ describe("TokenBridge", function () {
     return { owner, user, ...deploymentFixture, tokens, encodedTokenMetadata };
   }
 
-  describe("initialize", function () {
+  describe("initialize", async function () {
     it("Should revert if it has already been intialized", async function () {
       const { user, l1TokenBridge, chainIds } = await loadFixture(deployContractsFixture);
       await expectRevertWithReason(
-        l1TokenBridge
-          .connect(user)
-          .initialize(PLACEHOLDER_ADDRESS, PLACEHOLDER_ADDRESS, PLACEHOLDER_ADDRESS, chainIds[0], chainIds[1], []),
+        l1TokenBridge.connect(user).initialize({
+          messageService: PLACEHOLDER_ADDRESS,
+          tokenBeacon: PLACEHOLDER_ADDRESS,
+          sourceChainId: chainIds[0],
+          targetChainId: chainIds[1],
+          reservedTokens: [],
+          roleAddresses: [],
+          pauseTypeRoles: [],
+          unpauseTypeRoles: [],
+        }),
         INITIALIZED_ALREADY_MESSAGE,
       );
     });
 
     it("Should revert if one of the initializing parameters is address 0", async function () {
-      const { chainIds } = await loadFixture(deployContractsFixture);
+      const { user, owner, chainIds } = await loadFixture(deployContractsFixture);
       const TokenBridge = await ethers.getContractFactory("TokenBridge");
 
       await expectRevertWithCustomError(
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
-          ADDRESS_ZERO,
-          PLACEHOLDER_ADDRESS,
-          PLACEHOLDER_ADDRESS,
-          chainIds[0],
-          chainIds[1],
-          [],
+          {
+            messageService: ADDRESS_ZERO,
+            tokenBeacon: PLACEHOLDER_ADDRESS,
+            sourceChainId: chainIds[0],
+            targetChainId: chainIds[1],
+            reservedTokens: [],
+            roleAddresses: [],
+            pauseTypeRoles: [],
+            unpauseTypeRoles: [],
+          },
         ]),
         "ZeroAddressNotAllowed",
       );
@@ -81,12 +115,16 @@ describe("TokenBridge", function () {
       await expectRevertWithCustomError(
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
-          PLACEHOLDER_ADDRESS,
-          ADDRESS_ZERO,
-          PLACEHOLDER_ADDRESS,
-          chainIds[0],
-          chainIds[1],
-          [],
+          {
+            messageService: PLACEHOLDER_ADDRESS,
+            tokenBeacon: ADDRESS_ZERO,
+            sourceChainId: chainIds[0],
+            targetChainId: chainIds[1],
+            reservedTokens: [],
+            roleAddresses: [],
+            pauseTypeRoles: [],
+            unpauseTypeRoles: [],
+          },
         ]),
         "ZeroAddressNotAllowed",
       );
@@ -94,12 +132,19 @@ describe("TokenBridge", function () {
       await expectRevertWithCustomError(
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
-          PLACEHOLDER_ADDRESS,
-          PLACEHOLDER_ADDRESS,
-          ADDRESS_ZERO,
-          chainIds[0],
-          chainIds[1],
-          [],
+          {
+            messageService: PLACEHOLDER_ADDRESS,
+            tokenBeacon: PLACEHOLDER_ADDRESS,
+            sourceChainId: chainIds[0],
+            targetChainId: chainIds[1],
+            reservedTokens: [PLACEHOLDER_ADDRESS, ADDRESS_ZERO],
+            roleAddresses: [
+              { addressWithRole: user.address, role: SET_RESERVED_TOKEN_ROLE },
+              { addressWithRole: owner.address, role: SET_RESERVED_TOKEN_ROLE },
+            ],
+            pauseTypeRoles: pauseTypeRoles,
+            unpauseTypeRoles: unpauseTypeRoles,
+          },
         ]),
         "ZeroAddressNotAllowed",
       );
@@ -107,15 +152,57 @@ describe("TokenBridge", function () {
       await expectRevertWithCustomError(
         TokenBridge,
         upgrades.deployProxy(TokenBridge, [
-          PLACEHOLDER_ADDRESS,
-          PLACEHOLDER_ADDRESS,
-          PLACEHOLDER_ADDRESS,
-          chainIds[0],
-          chainIds[1],
-          [PLACEHOLDER_ADDRESS, ADDRESS_ZERO],
+          {
+            messageService: PLACEHOLDER_ADDRESS,
+            tokenBeacon: PLACEHOLDER_ADDRESS,
+            sourceChainId: chainIds[0],
+            targetChainId: chainIds[1],
+            reservedTokens: [PLACEHOLDER_ADDRESS],
+            roleAddresses: [
+              { addressWithRole: ADDRESS_ZERO, role: SET_RESERVED_TOKEN_ROLE },
+              { addressWithRole: owner.address, role: SET_RESERVED_TOKEN_ROLE },
+            ],
+            pauseTypeRoles: pauseTypeRoles,
+            unpauseTypeRoles: unpauseTypeRoles,
+          },
         ]),
         "ZeroAddressNotAllowed",
       );
+    });
+    it("Should return 'NOT_VALID_ENCODING' for invalid data in _returnDataToString", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: 5,
+        targetChainId: 51940,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const l1TestTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await l1TestTokenBridge.waitForDeployment();
+
+      // Test case 1: Data length is not 32 and less than 64
+      const invalidData1 = ethers.hexlify(ethers.randomBytes(33)); // 33 bytes
+      expect(await l1TestTokenBridge.testReturnDataToString(invalidData1)).to.equal("NOT_VALID_ENCODING");
+
+      // Test case 2: Data length is 32 but starts with a zero byte
+      const invalidData2 = ethers.concat([
+        ethers.hexlify(new Uint8Array(1)), // One zero byte
+        ethers.hexlify(ethers.randomBytes(31)), // 31 random bytes
+      ]);
+      expect(await l1TestTokenBridge.testReturnDataToString(invalidData2)).to.equal("NOT_VALID_ENCODING");
+
+      // Test case 3: Valid data for comparison
+      const validString = "ValidString";
+      const encodedValidData = ethers.AbiCoder.defaultAbiCoder().encode(["string"], [validString]);
+      expect(await l1TestTokenBridge.testReturnDataToString(encodedValidData)).to.equal(validString);
     });
   });
 
@@ -163,6 +250,38 @@ describe("TokenBridge", function () {
           ]),
         );
       await expectRevertWithCustomError(l1TokenBridge, sendCalldata, "SenderNotAuthorized");
+    });
+
+    describe("setMessageService", function () {
+      it("Should revert if trying to set message service to zero address", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+        await expectRevertWithCustomError(
+          l1TokenBridge,
+          l1TokenBridge.connect(owner).setMessageService(ADDRESS_ZERO),
+          "ZeroAddressNotAllowed",
+        );
+      });
+
+      it("Should revert if called by non-owner", async function () {
+        const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+        await expectRevertWithReason(
+          l1TokenBridge.connect(user).setMessageService(PLACEHOLDER_ADDRESS),
+          buildAccessErrorMessage(user, SET_MESSAGE_SERVICE_ROLE),
+        );
+      });
+
+      it("Should successfully set new message service address", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+        const newMessageServiceAddress = ethers.Wallet.createRandom().address;
+
+        await expect(l1TokenBridge.connect(owner).setMessageService(newMessageServiceAddress))
+          .to.emit(l1TokenBridge, "MessageServiceUpdated")
+          .withArgs(newMessageServiceAddress, await l1TokenBridge.messageService(), owner.address);
+
+        expect(await l1TokenBridge.messageService()).to.equal(newMessageServiceAddress);
+      });
     });
 
     describe("setCustomContract", function () {
@@ -229,13 +348,12 @@ describe("TokenBridge", function () {
         expect(diffL1UserBalance).to.be.equal(bridgeAmount);
         expect(diffL2UserBalance).to.be.equal(bridgeAmount);
       });
-    });
 
-    describe("setCustomContract", function () {
       it("Should revert if setCustomContract is not called by the owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expect(l1TokenBridge.connect(user).setCustomContract(CUSTOM_ADDRESS, CUSTOM_ADDRESS)).to.be.revertedWith(
-          "Ownable: caller is not the owner",
+        await expectRevertWithReason(
+          l1TokenBridge.connect(user).setCustomContract(CUSTOM_ADDRESS, CUSTOM_ADDRESS),
+          buildAccessErrorMessage(user, SET_CUSTOM_CONTRACT_ROLE),
         );
       });
 
@@ -267,24 +385,55 @@ describe("TokenBridge", function () {
           [l2TokenAddress],
         );
       });
+
+      it("Should revert if _nativeToken is zero address", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+        await expectRevertWithCustomError(
+          l1TokenBridge,
+          l1TokenBridge.connect(owner).setCustomContract(ADDRESS_ZERO, CUSTOM_ADDRESS),
+          "ZeroAddressNotAllowed",
+        );
+      });
+
+      it("Should revert if _targetContract is zero address", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+        const validNativeToken = ethers.Wallet.createRandom().address;
+
+        await expectRevertWithCustomError(
+          l1TokenBridge,
+          l1TokenBridge.connect(owner).setCustomContract(validNativeToken, ADDRESS_ZERO),
+          "ZeroAddressNotAllowed",
+        );
+      });
+
+      it("Should successfully set custom contract for valid addresses", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+        const validNativeToken = ethers.Wallet.createRandom().address;
+        const validTargetContract = ethers.Wallet.createRandom().address;
+
+        await expect(l1TokenBridge.connect(owner).setCustomContract(validNativeToken, validTargetContract))
+          .to.emit(l1TokenBridge, "CustomContractSet")
+          .withArgs(validNativeToken, validTargetContract, owner.address);
+      });
     });
 
     describe("Pause / unpause", function () {
-      it("Should pause the contract when pause() is called", async function () {
+      it("Should pause the contract when INITIATE_TOKEN_BRIDGING_PAUSE_TYPE() is called", async function () {
         const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
-        await l1TokenBridge.connect(owner).pause();
-        expect(await l1TokenBridge.paused()).to.equal(true);
+        await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+        expect(await l1TokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(true);
       });
 
       it("Should unpause the contract when unpause() is called", async function () {
         const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
-        await l1TokenBridge.connect(owner).pause();
+        await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        await l1TokenBridge.connect(owner).unpause();
+        await l1TokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        expect(await l1TokenBridge.paused()).to.equal(false);
+        expect(await l1TokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(false);
       });
       it("Should revert bridgeToken if paused", async function () {
         const {
@@ -293,11 +442,13 @@ describe("TokenBridge", function () {
           tokens: { L1DAI },
         } = await loadFixture(deployContractsFixture);
 
-        await l1TokenBridge.connect(owner).pause();
+        await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        await expectRevertWithReason(
+        await expectRevertWithCustomError(
+          l1TokenBridge,
           l1TokenBridge.bridgeToken(await L1DAI.getAddress(), 10, owner.address),
-          "Pausable: paused",
+          "IsPaused",
+          [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
         );
       });
       it("Should allow bridgeToken if unpaused", async function () {
@@ -308,10 +459,28 @@ describe("TokenBridge", function () {
           tokens: { L1DAI },
         } = await loadFixture(deployContractsFixture);
 
-        await l1TokenBridge.connect(owner).pause();
-        await l1TokenBridge.connect(owner).unpause();
+        await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+        await l1TokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
         await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 10, user.address);
       });
+      // TODO: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE tests
+      it("Should pause the contract when pause() is called", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+        await l1TokenBridge.connect(owner).pauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
+        expect(await l1TokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(true);
+      });
+
+      it("Should unpause the contract when unpause() is called", async function () {
+        const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+        await l1TokenBridge.connect(owner).pauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
+
+        await l1TokenBridge.connect(owner).unPauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
+
+        expect(await l1TokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(false);
+      });
+
       it("Should emit BridgingInitiatedV2 when bridging", async function () {
         const {
           user,
@@ -368,22 +537,21 @@ describe("TokenBridge", function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
         await expectRevertWithReason(
           l1TokenBridge.connect(user).setReserved(user.address),
-          "Ownable: caller is not the owner",
+          buildAccessErrorMessage(user, SET_RESERVED_TOKEN_ROLE),
         );
       });
       it("Should revert if pause() is called by a non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(l1TokenBridge.connect(user).pause(), "Ownable: caller is not the owner");
+        await expectRevertWithReason(
+          l1TokenBridge.connect(user).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE),
+          buildAccessErrorMessage(user, PAUSE_INITIATE_TOKEN_BRIDGING_ROLE),
+        );
       });
       it("Should revert if unpause() is called by a non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(l1TokenBridge.connect(user).unpause(), "Ownable: caller is not the owner");
-      });
-      it("Should revert if transferOwnership is called by a non-owner", async function () {
-        const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
         await expectRevertWithReason(
-          l1TokenBridge.connect(user).transferOwnership(user.address),
-          "Ownable: caller is not the owner",
+          l1TokenBridge.connect(user).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE),
+          buildAccessErrorMessage(user, UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE),
         );
       });
       it("Should revert if removeReserved is called by a non-owner", async function () {
@@ -394,7 +562,7 @@ describe("TokenBridge", function () {
         } = await loadFixture(deployContractsFixture);
         await expectRevertWithReason(
           l1TokenBridge.connect(user).removeReserved(await L1DAI.getAddress()),
-          "Ownable: caller is not the owner",
+          buildAccessErrorMessage(user, REMOVE_RESERVED_TOKEN_ROLE),
         );
       });
     });
@@ -474,12 +642,16 @@ describe("TokenBridge", function () {
       const { chainIds } = await loadFixture(deployContractsFixture);
       const TokenBridgeFactory = await ethers.getContractFactory("TokenBridge");
       const l1TokenBridge = await upgrades.deployProxy(TokenBridgeFactory, [
-        PLACEHOLDER_ADDRESS, // owner
-        PLACEHOLDER_ADDRESS, // messageService
-        PLACEHOLDER_ADDRESS, // tokenBeacon
-        chainIds[0],
-        chainIds[1],
-        [CUSTOM_ADDRESS], // reservedTokens
+        {
+          messageService: PLACEHOLDER_ADDRESS,
+          tokenBeacon: PLACEHOLDER_ADDRESS,
+          sourceChainId: chainIds[0],
+          targetChainId: chainIds[1],
+          reservedTokens: [CUSTOM_ADDRESS],
+          roleAddresses: [],
+          pauseTypeRoles: pauseTypeRoles,
+          unpauseTypeRoles: unpauseTypeRoles,
+        },
       ]);
       await l1TokenBridge.waitForDeployment();
       expect(await l1TokenBridge.nativeToBridgedToken(chainIds[0], CUSTOM_ADDRESS)).to.be.equal(RESERVED_STATUS);
@@ -508,6 +680,15 @@ describe("TokenBridge", function () {
         "ZeroAddressNotAllowed",
       );
     });
+    it("Should revert if trying to remove reservation for zero address", async function () {
+      const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+      await expectRevertWithCustomError(
+        l1TokenBridge,
+        l1TokenBridge.connect(owner).removeReserved(ADDRESS_ZERO),
+        "ZeroAddressNotAllowed",
+      );
+    });
   });
 
   describe("bridgeTokenWithPermit", function () {
@@ -517,10 +698,12 @@ describe("TokenBridge", function () {
         tokens: { L1DAI },
         l1TokenBridge,
       } = await loadFixture(deployContractsFixture);
-      await l1TokenBridge.pause();
-      await expectRevertWithReason(
+      await l1TokenBridge.pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.connect(user).bridgeTokenWithPermit(await L1DAI.getAddress(), 1, user.address, EMPTY_PERMIT_DATA),
-        "Pausable: paused",
+        "IsPaused",
+        [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
       );
     });
 
@@ -683,7 +866,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithReason(
         l1TokenBridge.connect(user).setRemoteTokenBridge(await l1TokenBridge.getAddress()),
-        "Ownable: caller is not the owner",
+        buildAccessErrorMessage(user, SET_REMOTE_TOKENBRIDGE_ROLE),
       );
     });
   });
@@ -711,6 +894,124 @@ describe("TokenBridge", function () {
           ),
         "SenderNotAuthorized",
       );
+    });
+  });
+
+  describe("reinitializePauseTypesAndPermissions", function () {
+    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async function () {
+      const { l1TokenBridge } = await loadFixture(deployContractsFixture);
+
+      const roleAddresses = [
+        { addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE },
+        { addressWithRole: ethers.Wallet.createRandom().address, role: SET_RESERVED_TOKEN_ROLE },
+      ];
+
+      await expectRevertWithCustomError(
+        l1TokenBridge,
+        l1TokenBridge.reinitializePauseTypesAndPermissions(roleAddresses, pauseTypeRoles, unpauseTypeRoles),
+        "ZeroAddressNotAllowed",
+      );
+    });
+  });
+
+  describe("TokenBridge Upgradeable Tests", function () {
+    it("Should deploy and manually upgrade the TokenBridge contract", async function () {
+      const { owner, messageService, chainIds } = await loadFixture(deployContractsFixture);
+
+      const TokenBridgeV1 = await ethers.getContractFactory(
+        "contracts/tokenBridge/mocks/TokenBridgeFlatten.sol:TokenBridgeFlatten",
+      );
+      const tokenBridgeV1 = (await upgrades.deployProxy(TokenBridgeV1, [
+        owner.address,
+        await messageService.getAddress(),
+        PLACEHOLDER_ADDRESS,
+        chainIds[0],
+        chainIds[1],
+        [],
+      ])) as unknown as TokenBridge;
+      await tokenBridgeV1.waitForDeployment();
+
+      // Check initial state
+      expect(await tokenBridgeV1.sourceChainId()).to.equal(chainIds[0]);
+      const initialSourceChainId = await tokenBridgeV1.sourceChainId();
+      const initialTargetChainId = await tokenBridgeV1.targetChainId();
+      const initialMessageService = await tokenBridgeV1.messageService();
+      const initialTokenBeacon = await tokenBridgeV1.tokenBeacon();
+
+      // setCustomContract
+      const nativeToken = ethers.Wallet.createRandom().address;
+      const targetContract = ethers.Wallet.createRandom().address;
+      await tokenBridgeV1.connect(owner).setCustomContract(nativeToken, targetContract);
+
+      // Verify the custom contract was set
+      expect(await tokenBridgeV1.nativeToBridgedToken(initialTargetChainId, nativeToken)).to.equal(targetContract);
+      expect(await tokenBridgeV1.bridgedToNativeToken(targetContract)).to.equal(nativeToken);
+
+      const proxyAdminAddress = await upgrades.erc1967.getAdminAddress(await tokenBridgeV1.getAddress());
+      const ProxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+      const proxyAdmin = (await ProxyAdminFactory.attach(proxyAdminAddress)) as ProxyAdmin;
+
+      const TokenBridgeV2 = await ethers.getContractFactory("TokenBridge");
+      const tokenBridgeV2Implementation = await TokenBridgeV2.deploy();
+      await tokenBridgeV2Implementation.waitForDeployment();
+
+      const reinitializeCallData = TokenBridgeV2.interface.encodeFunctionData("reinitializePauseTypesAndPermissions", [
+        [
+          { addressWithRole: owner.address, role: PAUSE_ALL_ROLE },
+          { addressWithRole: owner.address, role: UNPAUSE_ALL_ROLE },
+          { addressWithRole: owner.address, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+          { addressWithRole: owner.address, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+        ],
+        pauseTypeRoles,
+        unpauseTypeRoles,
+      ]);
+
+      expect(await ethers.provider.getStorage(await tokenBridgeV1.getAddress(), 101)).to.equal(
+        ethers.zeroPadValue(owner.address, 32), // _owner
+      );
+      expect(await ethers.provider.getStorage(await tokenBridgeV1.getAddress(), 213)).to.equal(
+        ethers.zeroPadValue("0x01", 32), //_status
+      );
+
+      await proxyAdmin.upgradeAndCall(
+        await tokenBridgeV1.getAddress(),
+        await tokenBridgeV2Implementation.getAddress(),
+        reinitializeCallData,
+      );
+
+      const upgradedTokenBridge = (await TokenBridgeV2.attach(await tokenBridgeV1.getAddress())) as TokenBridge;
+
+      // Verify that the upgrade was successful
+      expect(await upgradedTokenBridge.sourceChainId()).to.equal(initialSourceChainId);
+      expect(await upgradedTokenBridge.targetChainId()).to.equal(initialTargetChainId);
+      expect(await upgradedTokenBridge.messageService()).to.equal(initialMessageService);
+      expect(await upgradedTokenBridge.tokenBeacon()).to.equal(initialTokenBeacon);
+
+      // Verify that the custom contract setting was preserved after upgrade
+      expect(await upgradedTokenBridge.nativeToBridgedToken(initialTargetChainId, nativeToken)).to.equal(
+        targetContract,
+      );
+      expect(await upgradedTokenBridge.bridgedToNativeToken(targetContract)).to.equal(nativeToken);
+
+      // Verify that _owner, _status, _paused, and _pendingOwner storage slots were wiped
+      expect(await ethers.provider.getStorage(await upgradedTokenBridge.getAddress(), 101)).to.equal(HASH_ZERO); // _owner
+      expect(await ethers.provider.getStorage(await upgradedTokenBridge.getAddress(), 213)).to.equal(HASH_ZERO); //_status
+      expect(await ethers.provider.getStorage(await upgradedTokenBridge.getAddress(), 51)).to.equal(HASH_ZERO); //_paused
+      expect(await ethers.provider.getStorage(await upgradedTokenBridge.getAddress(), 151)).to.equal(HASH_ZERO); // _pendingOwner
+
+      expect(await upgradedTokenBridge.hasRole(PAUSE_ALL_ROLE, owner.address)).to.be.true;
+      expect(await upgradedTokenBridge.hasRole(UNPAUSE_ALL_ROLE, owner.address)).to.be.true;
+      expect(await upgradedTokenBridge.hasRole(PAUSE_INITIATE_TOKEN_BRIDGING_ROLE, owner.address)).to.be.true;
+      expect(await upgradedTokenBridge.hasRole(UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE, owner.address)).to.be.true;
+
+      expect(await upgradedTokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.false;
+      expect(await upgradedTokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.be.false;
+
+      await upgradedTokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+      expect(await upgradedTokenBridge.isPaused(7)).to.be.true;
+
+      await upgradedTokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+      expect(await upgradedTokenBridge.isPaused(7)).to.be.false;
     });
   });
 });
