@@ -11,4 +11,9 @@ interface IGenericErrors {
    * @dev Thrown when a parameter is the zero address.
    */
   error ZeroAddressNotAllowed();
+
+  /**
+   * @dev Thrown when array lengths are mismatched.
+   */
+  error ArrayLengthsDoNotMatch();
 }
