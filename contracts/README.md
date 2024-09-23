@@ -64,4 +64,3 @@ npx hardhat run ./scripts/deployment/deployZkEVM.ts --network zkevm_dev
 Token Bridge is a canonical brige between Ethereum and Linea networks.
 
 Documentation: [./docs/linea-token-bridge.md](./docs/linea-token-bridge.md)
-

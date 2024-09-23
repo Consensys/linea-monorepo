@@ -15,15 +15,15 @@ jobs:
     runs-on: besu-arm64
     name: Run smart contracts tests
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.23.x
-
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.x
 
       - uses: actions/cache@v3
         with:
