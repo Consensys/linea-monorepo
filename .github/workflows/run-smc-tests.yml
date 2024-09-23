@@ -7,22 +7,34 @@ on:
       - 'testdata/**'
       - 'prover/**'
 
+env:
+  GOPROXY: "https://proxy.golang.org"
+
 jobs:
   run-contract-tests:
     runs-on: besu-arm64
     name: Run smart contracts tests
     steps:
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.23.x
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
- 
-      - name: Install Go
-        uses: actions/setup-go@v5
+
+      - uses: actions/cache@v3
         with:
-          go-version: 1.22.x
-          cache-dependency-path: |
-            prover/go.sum
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            %LocalAppData%\go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
@@ -40,7 +52,7 @@ jobs:
     runs-on: besu-arm64
     name: Solidity format check
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.head_ref }}
