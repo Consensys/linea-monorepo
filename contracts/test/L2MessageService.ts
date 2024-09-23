@@ -22,8 +22,16 @@ import {
   MINIMUM_FEE,
   MINIMUM_FEE_SETTER_ROLE,
   ONE_DAY_IN_SECONDS,
-  PAUSE_MANAGER_ROLE,
+  PAUSE_ALL_ROLE,
+  UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
+  unpauseTypeRoles,
+  pauseTypeRoles,
+  PAUSE_L1_L2_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  PAUSE_L2_L1_ROLE,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -36,6 +44,7 @@ import {
   expectRevertWithReason,
   generateKeccak256Hash,
 } from "./utils/helpers";
+import { ZeroAddress } from "ethers";
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;
@@ -47,11 +56,26 @@ describe("L2MessageService", () => {
   let postmanAddress: SignerWithAddress;
 
   async function deployL2MessageServiceFixture() {
+    const roleAddresses = [
+      { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+      { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
+      { addressWithRole: securityCouncil.address, role: RATE_LIMIT_SETTER_ROLE },
+      { addressWithRole: securityCouncil.address, role: USED_RATE_LIMIT_RESETTER_ROLE },
+      { addressWithRole: securityCouncil.address, role: PAUSE_ALL_ROLE },
+      { addressWithRole: securityCouncil.address, role: UNPAUSE_ALL_ROLE },
+      { addressWithRole: securityCouncil.address, role: PAUSE_L1_L2_ROLE },
+      { addressWithRole: securityCouncil.address, role: UNPAUSE_L1_L2_ROLE },
+      { addressWithRole: securityCouncil.address, role: PAUSE_L2_L1_ROLE },
+      { addressWithRole: securityCouncil.address, role: UNPAUSE_L2_L1_ROLE },
+      { addressWithRole: l1l2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
+    ];
+
     return deployUpgradableFromFactory("TestL2MessageService", [
-      securityCouncil.address,
-      l1l2MessageSetter.address,
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
+      roleAddresses,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ]) as unknown as Promise<TestL2MessageService>;
   }
 
@@ -77,15 +101,23 @@ describe("L2MessageService", () => {
       expect(await l2MessageService.hasRole(RATE_LIMIT_SETTER_ROLE, securityCouncil.address)).to.be.true;
     });
 
-    it("Security council should have PAUSE_MANAGER_ROLE", async () => {
-      expect(await l2MessageService.hasRole(PAUSE_MANAGER_ROLE, securityCouncil.address)).to.be.true;
+    it("Security council should have USED_RATE_LIMIT_RESETTER_ROLE role", async () => {
+      expect(await l2MessageService.hasRole(USED_RATE_LIMIT_RESETTER_ROLE, securityCouncil.address)).to.be.true;
+    });
+
+    it("Security council should have PAUSE_ALL_ROLE", async () => {
+      expect(await l2MessageService.hasRole(PAUSE_ALL_ROLE, securityCouncil.address)).to.be.true;
+    });
+
+    it("Security council should have UNPAUSE_ALL_ROLE", async () => {
+      expect(await l2MessageService.hasRole(UNPAUSE_ALL_ROLE, securityCouncil.address)).to.be.true;
     });
 
     it("L1->L2 message setter should have L1_L2_MESSAGE_SETTER_ROLE role", async () => {
       expect(await l2MessageService.hasRole(L1_L2_MESSAGE_SETTER_ROLE, l1l2MessageSetter.address)).to.be.true;
     });
 
-    it("Should initialise nextMessageNumber", async () => {
+    it("Should initialize nextMessageNumber", async () => {
       expect(await l2MessageService.nextMessageNumber()).to.be.equal(1);
     });
 
@@ -96,10 +128,11 @@ describe("L2MessageService", () => {
 
     it("Should fail to deploy missing limit amount", async () => {
       const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
-        securityCouncil.address,
-        l1l2MessageSetter.address,
         ONE_DAY_IN_SECONDS,
         0,
+        [{ addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE }],
+        pauseTypeRoles,
+        unpauseTypeRoles,
       ]);
 
       await expectRevertWithCustomError(l2MessageService, deployCall, "LimitIsZero");
@@ -107,43 +140,24 @@ describe("L2MessageService", () => {
 
     it("Should fail to deploy missing period", async () => {
       const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
-        securityCouncil.address,
-        l1l2MessageSetter.address,
         0,
         MESSAGE_VALUE_1ETH + MESSAGE_VALUE_1ETH,
+        [{ addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE }],
+        pauseTypeRoles,
+        unpauseTypeRoles,
       ]);
 
       await expectRevertWithCustomError(l2MessageService, deployCall, "PeriodIsZero");
     });
 
-    it("Should fail with empty securityCouncil address", async () => {
-      const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
-        ADDRESS_ZERO,
-        l1l2MessageSetter.address,
-        ONE_DAY_IN_SECONDS,
-        INITIAL_WITHDRAW_LIMIT,
-      ]);
-
-      await expectRevertWithCustomError(l2MessageService, deployCall, "ZeroAddressNotAllowed");
-    });
-
-    it("Should fail with empty l1l2MessageSetter address", async () => {
-      const deployCall = deployUpgradableFromFactory("TestL2MessageService", [
-        securityCouncil.address,
-        ADDRESS_ZERO,
-        ONE_DAY_IN_SECONDS,
-        INITIAL_WITHDRAW_LIMIT,
-      ]);
-
-      await expectRevertWithCustomError(l2MessageService, deployCall, "ZeroAddressNotAllowed");
-    });
-
     it("Should fail on second initialisation", async () => {
+      const roleAddresses = [{ addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE }];
       const deployCall = l2MessageService.initialize(
-        securityCouncil.address,
-        l1l2MessageSetter.address,
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
+        roleAddresses,
+        pauseTypeRoles,
+        unpauseTypeRoles,
       );
 
       await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
@@ -1340,7 +1354,7 @@ describe("L2MessageService", () => {
 
       await expectRevertWithReason(
         l2MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE),
-        buildAccessErrorMessage(admin, PAUSE_MANAGER_ROLE),
+        buildAccessErrorMessage(admin, PAUSE_ALL_ROLE),
       );
 
       expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
@@ -1389,11 +1403,65 @@ describe("L2MessageService", () => {
 
       await expectRevertWithReason(
         l2MessageService.connect(admin).resetAmountUsedInPeriod(),
-        buildAccessErrorMessage(admin, RATE_LIMIT_SETTER_ROLE),
+        buildAccessErrorMessage(admin, USED_RATE_LIMIT_RESETTER_ROLE),
       );
 
       usedAmount = await l2MessageService.currentPeriodAmountInWei();
       expect(usedAmount).to.be.equal(INITIAL_WITHDRAW_LIMIT);
+    });
+  });
+
+  describe("L2MessageService Upgradeable Tests", () => {
+    async function deployL2MessageServiceFixture() {
+      return deployUpgradableFromFactory(
+        "contracts/test-contracts/L2MessageServiceLineaMainnet.sol:L2MessageServiceLineaMainnet",
+        [securityCouncil.address, l1l2MessageSetter.address, ONE_DAY_IN_SECONDS, INITIAL_WITHDRAW_LIMIT],
+      ) as unknown as Promise<TestL2MessageService>;
+    }
+
+    beforeEach(async () => {
+      [admin, securityCouncil, l1l2MessageSetter, notAuthorizedAccount, postmanAddress] = await ethers.getSigners();
+      l2MessageService = await loadFixture(deployL2MessageServiceFixture);
+    });
+
+    it("Should deploy and upgrade the L2MessageService contract", async () => {
+      expect(await l2MessageService.nextMessageNumber()).to.equal(1);
+
+      // Deploy new implementation
+      const NewL2MessageServiceFactory = await ethers.getContractFactory(
+        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+      );
+      const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, NewL2MessageServiceFactory);
+
+      await newL2MessageService.reinitializePauseTypesAndPermissions(
+        [
+          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+          { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
+        ],
+        pauseTypeRoles,
+        unpauseTypeRoles,
+      );
+
+      expect(await newL2MessageService.nextMessageNumber()).to.equal(1);
+    });
+
+    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async () => {
+      // Deploy new implementation
+      const NewL2MessageServiceFactory = await ethers.getContractFactory(
+        "contracts/messageService/l2/L2MessageService.sol:L2MessageService",
+      );
+      const newL2MessageService = await upgrades.upgradeProxy(l2MessageService, NewL2MessageServiceFactory);
+
+      const roleAddresses = [
+        { addressWithRole: ZeroAddress, role: DEFAULT_ADMIN_ROLE },
+        { addressWithRole: securityCouncil.address, role: MINIMUM_FEE_SETTER_ROLE },
+      ];
+
+      await expectRevertWithCustomError(
+        newL2MessageService,
+        newL2MessageService.reinitializePauseTypesAndPermissions(roleAddresses, pauseTypeRoles, unpauseTypeRoles),
+        "ZeroAddressNotAllowed",
+      );
     });
   });
 });
