@@ -12,7 +12,7 @@ env:
   GOPROXY: "https://proxy.golang.org"
 
 concurrency:
-  group: prover-testing-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: prover-testing-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -28,7 +28,7 @@ on:
         required: true
 
 concurrency:
-  group: prover-build-and-publish-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:

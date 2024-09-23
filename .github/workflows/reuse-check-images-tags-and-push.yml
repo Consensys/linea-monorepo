@@ -45,7 +45,7 @@ on:
         required: true
 
 concurrency:
-  group: check-images-tags-and-push-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

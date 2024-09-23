@@ -14,7 +14,7 @@ on:
         value: ${{ jobs.store_image_name_and_tags.outputs.untested_tag_suffix }}
 
 concurrency:
-  group: store-image-name-and-tags-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: store-image-name-and-tags-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -28,7 +28,7 @@ on:
         required: true
 
 concurrency:
-  group: postman-build-and-publish-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: postman-build-and-publish-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
