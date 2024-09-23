@@ -75,6 +75,8 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		hashNum:              createCol("HASH_NUM"),
 	}
 
+	td.csTxnData(comp)
+
 	// addresses are fetched from two arithmetization modules (ecRecover and txn-data)
 	// IsAddress = IsAdressFromEcRec + IsAdressFromTxnData
 	comp.InsertGlobal(0, ifaces.QueryIDf("Format_IsAddress"),
@@ -102,12 +104,6 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLo_EcRec"),
 		[]ifaces.Column{ecRec.Limb}, []ifaces.Column{addr.addressLo},
 		column.Shift(addr.isAddressHiEcRec, -1), addr.isAddressFromEcRec,
-	)
-
-	// projection from txn-data to address columns
-	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-		td.isFrom, addr.isAddressFromTxnData,
 	)
 
 	// projection from txn-data to address columns

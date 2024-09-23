@@ -54,7 +54,6 @@ func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
 		fromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
 		ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
-	td.csTxnData(comp)
 	return td
 }
 
