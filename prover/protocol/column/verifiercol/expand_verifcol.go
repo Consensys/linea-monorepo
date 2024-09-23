@@ -14,7 +14,6 @@ var _ VerifierCol = ExpandedVerifCol{}
 
 type ExpandedVerifCol struct {
 	Verifiercol VerifierCol
-	Offset      int
 	Expansion   int
 }
 
@@ -42,8 +41,7 @@ func (ex ExpandedVerifCol) Size() int {
 
 // GetColAssignment returns the assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
-	// assi := ex.Verifiercol.GetColAssignment(run)
-	assi := ex.Verifiercol.GetColAssignment(run).RotateRight(-ex.Offset)
+	assi := ex.Verifiercol.GetColAssignment(run)
 	values := make([][]field.Element, ex.Expansion)
 	for j := range values {
 		values[j] = smartvectors.IntoRegVec(assi)
@@ -54,9 +52,6 @@ func (ex ExpandedVerifCol) GetColAssignment(run ifaces.Runtime) ifaces.ColAssign
 
 // GetColAssignment returns a gnark assignment of the current column
 func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	if ex.Offset != 0 {
-		panic("not implemented")
-	}
 	assi := ex.Verifiercol.GetColAssignmentGnark(run)
 	res := make([]frontend.Variable, ex.Size())
 	for i := 0; i < len(assi); i++ {
