@@ -115,8 +115,6 @@ dependencyManagement {
 
     dependency 'io.vertx:vertx-core:4.5.9'
 
-    dependency 'junit:junit:4.13.2'
-
     dependency 'net.java.dev.jna:jna:5.14.0'
 
     dependency 'org.assertj:assertj-core:3.26.3'
