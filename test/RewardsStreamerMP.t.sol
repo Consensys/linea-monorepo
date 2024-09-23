@@ -814,4 +814,125 @@ contract UnstakeTest is StakeTest {
             })
         );
     }
+
+    function test_UnstakeMultipleAccounts() public {
+        test_StakeMultipleAccounts();
+
+        _unstake(alice, 10e18);
+        _unstake(bob, 10e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 20e18,
+                totalMP: 20e18,
+                potentialMP: 80e18,
+                stakingBalance: 20e18,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: 0,
+                rewardIndex: 0,
+                userMP: 0,
+                userPotentialMP: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: 20e18,
+                rewardIndex: 0,
+                userMP: 20e18,
+                userPotentialMP: 80e18
+            })
+        );
+    }
+
+    function test_UnstakeMultipleAccountsAndRewards() public {
+        test_StakeMultipleAccountsAndRewards();
+
+        _unstake(alice, 10e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 30e18,
+                totalMP: 30e18,
+                potentialMP: 120e18,
+                stakingBalance: 30e18,
+                // alice owned a 25% of the pool, so 25% of the rewards are paid out to alice (250)
+                rewardBalance: 750e18,
+                rewardIndex: 125e17, // reward index remains unchanged
+                accountedRewards: 750e18
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 250e18,
+                stakedBalance: 0,
+                rewardIndex: 125e17,
+                userMP: 0,
+                userPotentialMP: 0
+            })
+        );
+
+        _unstake(bob, 10e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 20e18,
+                totalMP: 20e18,
+                potentialMP: 80e18,
+                stakingBalance: 20e18,
+                rewardBalance: 0, // bob should've now gotten the rest of the rewards
+                rewardIndex: 125e17,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 750e18,
+                stakedBalance: 20e18,
+                rewardIndex: 125e17,
+                userMP: 20e18,
+                userPotentialMP: 80e18
+            })
+        );
+
+        _unstake(bob, 20e18);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: 0,
+                totalMP: 0,
+                potentialMP: 0,
+                stakingBalance: 0,
+                rewardBalance: 0,
+                rewardIndex: 125e17,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 750e18,
+                stakedBalance: 0,
+                rewardIndex: 125e17,
+                userMP: 0,
+                userPotentialMP: 0
+            })
+        );
+    }
 }
