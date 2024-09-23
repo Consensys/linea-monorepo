@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0-rc6
+* docs: add TracerReadinessPlugin docs and re-introduce dev setup docs ([#1287](https://github.com/Consensys/linea-tracer/pull/1287))
+* feat(req-limit): implement request limiting for trace generation and line counting ([#1241](https://github.com/Consensys/linea-tracer/pull/1241))
+* chore: reset logging ([#1284](https://github.com/Consensys/linea-tracer/pull/1284))
+* chore: enable working directory for corset command ([#1282](https://github.com/Consensys/linea-tracer/pull/1282))
+* feat: new test (that works out of the box) ([#1275](https://github.com/Consensys/linea-tracer/pull/1275))
+* fix: failing ranges for `SHF` with `0.6.0-rc1` ([#1268](https://github.com/Consensys/linea-tracer/pull/1268))
+* fix: failing ranges for `MOD` with `0.6.0-rc1` ([#1266](https://github.com/Consensys/linea-tracer/pull/1266))
+* fix(mmio): use `TBO` for `ramToLimb` instructions ([#1256](https://github.com/Consensys/linea-tracer/pull/1256))
+* fix(tests): notation ([#1248](https://github.com/Consensys/linea-tracer/pull/1248))
+* fix: add exception if we try to get chainId from a tx wo chainId (v = 27 or 28) ([#1210](https://github.com/Consensys/linea-tracer/pull/1210))
+* perf: optimize stack related `WCP` operations ([#1242](https://github.com/Consensys/linea-tracer/pull/1242))
+
 ## 0.6.0-rc5
 * Test CI using smaller runner (#1251)
 * perf(WCP): split StackedSet per opcode (#1249)
@@ -202,14 +215,14 @@
 * feat: optimise trace generation (except hub) ([#838](https://github.com/Consensys/linea-arithmetization/pull/838))
 
 ## 0.1.5-rc6
-* Migrating of `TRACES_DIR` env var to 
+* Migrating of `TRACES_DIR` env var to
 `plugin-linea-conflated-trace-generation-traces-output-path` CLI option that can be included in the toml config files.
 The path specified in `plugin-linea-conflated-trace-generation-traces-output-path` will be created automatically if it does not exist.
 This time this has nothing to do with the `ContinuousTracingPlugin` [#830](https://github.com/Consensys/linea-arithmetization/pull/830).
 
 ## 0.1.5-rc5
-* Migrating of `TRACES_DIR` env var to `plugin-linea-continuous-tracing-traces-dir` CLI option that can be included in the 
-toml config files. The path specified in `plugin-linea-continuous-tracing-traces-dir` will be created automatically 
+* Migrating of `TRACES_DIR` env var to `plugin-linea-continuous-tracing-traces-dir` CLI option that can be included in the
+toml config files. The path specified in `plugin-linea-continuous-tracing-traces-dir` will be created automatically
   if it does not exist [#825](https://github.com/Consensys/linea-arithmetization/pull/825).
 
 ## 0.1.4-test21
