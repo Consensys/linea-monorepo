@@ -57,13 +57,19 @@ class L2NetworkGasPricingService(
     config.feeHistoryFetcherConfig
   )
 
-  private val variableCostCalculator = VariableFeesCalculator(
-    config.variableFeesCalculatorConfig
-  )
+  private val boundedVariableCostCalculator = run {
+    val variableCostCalculator = VariableFeesCalculator(
+      config.variableFeesCalculatorConfig
+    )
+    BoundableFeeCalculator(
+      config = config.variableFeesCalculatorBounds,
+      feesCalculator = variableCostCalculator
+    )
+  }
 
   private val legacyGasPricingCalculator: FeesCalculator = run {
     val baseCalculator = if (config.legacy.transactionCostCalculatorConfig != null) {
-      TransactionCostCalculator(variableCostCalculator, config.legacy.transactionCostCalculatorConfig)
+      TransactionCostCalculator(boundedVariableCostCalculator, config.legacy.transactionCostCalculatorConfig)
     } else {
       GasUsageRatioWeightedAverageFeesCalculator(
         config.legacy.naiveGasPricingCalculatorConfig!!
@@ -94,10 +100,6 @@ class L2NetworkGasPricingService(
     }
 
   private val extraDataPricerService: ExtraDataV1PricerService? = if (config.extraDataPricingPropagationEnabled) {
-    val boundedVariableCostCalculator = BoundableFeeCalculator(
-      config = config.variableFeesCalculatorBounds,
-      feesCalculator = variableCostCalculator
-    )
     ExtraDataV1PricerService(
       pollingInterval = config.extraDataUpdateInterval,
       vertx = vertx,
