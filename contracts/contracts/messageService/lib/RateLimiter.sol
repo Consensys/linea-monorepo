@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -60,20 +60,17 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
    */
   function _addUsedAmount(uint256 _usedAmount) internal {
     if (_usedAmount != 0) {
-      uint256 currentPeriodAmountTemp;
-
       if (currentPeriodEnd < block.timestamp) {
         currentPeriodEnd = block.timestamp + periodInSeconds;
-        currentPeriodAmountTemp = _usedAmount;
       } else {
-        currentPeriodAmountTemp = currentPeriodAmountInWei + _usedAmount;
+        _usedAmount += currentPeriodAmountInWei;
       }
 
-      if (currentPeriodAmountTemp > limitInWei) {
+      if (_usedAmount > limitInWei) {
         revert RateLimitExceeded();
       }
 
-      currentPeriodAmountInWei = currentPeriodAmountTemp;
+      currentPeriodAmountInWei = _usedAmount;
     }
   }
 

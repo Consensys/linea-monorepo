@@ -57,7 +57,7 @@ describe("Token Minting Rate Limiter", () => {
   beforeEach(async () => {
     xpToken = await loadFixture(deployLineaVoyageXPFixture);
     tokenMintingRateLimiter = await loadFixture(deployTokenMintingRateLimiterFixture);
-    xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
+    await xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
   });
 
   describe("Initialization and roles", () => {
@@ -243,9 +243,9 @@ describe("Token Minting Rate Limiter", () => {
     it("used amount resets changing limit and time expired without changing values", async () => {
       await tokenMintingRateLimiter.connect(minter).batchMint([deployerAddress], mintingLimit);
 
-      expect(await tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintAmount))
+      await expect(tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintAmount))
         .to.emit(tokenMintingRateLimiter, "LimitAmountChanged")
-        .withArgs(minterAddress, mintAmount, true, false);
+        .withArgs(defaultAdmin, mintAmount, true, false);
 
       expect(await tokenMintingRateLimiter.mintedAmountInPeriod()).to.be.equal(mintAmount);
       expect(await tokenMintingRateLimiter.mintingLimit()).to.be.equal(mintAmount);
@@ -254,9 +254,9 @@ describe("Token Minting Rate Limiter", () => {
     it("used amount remains the same when increasing the limit", async () => {
       await tokenMintingRateLimiter.connect(minter).batchMint([deployerAddress], mintingLimit);
 
-      expect(await tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintingLimit * 2n))
+      await expect(tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintingLimit * 2n))
         .to.emit(tokenMintingRateLimiter, "LimitAmountChanged")
-        .withArgs(minterAddress, mintAmount, false, false);
+        .withArgs(defaultAdmin, mintingLimit * 2n, false, false);
 
       expect(await tokenMintingRateLimiter.mintedAmountInPeriod()).to.be.equal(mintingLimit);
       expect(await tokenMintingRateLimiter.mintingLimit()).to.be.equal(mintingLimit * 2n);
@@ -281,9 +281,9 @@ describe("Token Minting Rate Limiter", () => {
       await tokenMintingRateLimiter.connect(minter).batchMint([deployerAddress], mintingLimit);
       await time.increase(ONE_DAY_IN_SECONDS);
 
-      expect(await tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintAmount))
+      await expect(tokenMintingRateLimiter.connect(defaultAdmin).resetRateLimitAmount(mintAmount))
         .to.emit(tokenMintingRateLimiter, "LimitAmountChanged")
-        .withArgs(minterAddress, mintAmount, false, true);
+        .withArgs(defaultAdmin, mintAmount, false, true);
 
       expect(await tokenMintingRateLimiter.mintedAmountInPeriod()).to.be.equal(0);
     });

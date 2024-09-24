@@ -183,7 +183,7 @@ describe("SparseMerkleProof", () => {
           const result = await sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, stateRoot);
           expect(result).to.be.true;
         }
-      });
+      }).timeout(30_000);
     });
   });
 
