@@ -14,23 +14,29 @@
  */
 package net.consensys.linea;
 
-import java.time.LocalDate;
+import static org.junit.jupiter.api.Assumptions.abort;
+
+import java.time.Duration;
 import java.util.List;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import lombok.Synchronized;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
+import org.slf4j.LoggerFactory;
 
 public class ReferenceTestWatcher implements TestWatcher {
 
-  public static final String JSON_OUTPUT_FILENAME =
-      "failedBlockchainReferenceTests-%s.json".formatted(LocalDate.now().toString());
+  private static final int LOGBACK_POLL_ATTEMPTS = 100;
+  private static final Duration LOGBACK_POLL_DELAY = Duration.ofMillis(10);
+
+  public static final String JSON_OUTPUT_FILENAME = "failedBlockchainReferenceTests.json";
   ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
 
   public ReferenceTestWatcher() {
-    Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+    Logger logger = getLogbackLogger();
     listAppender.setContext(logger.getLoggerContext());
     listAppender.start();
     logger.addAppender(listAppender);
@@ -44,5 +50,23 @@ public class ReferenceTestWatcher implements TestWatcher {
 
     MapFailedReferenceTestsTool.mapAndStoreFailedReferenceTest(
         testName, logEventMessages, JSON_OUTPUT_FILENAME);
+  }
+
+  @Synchronized
+  private static Logger getLogbackLogger() {
+    try {
+      org.slf4j.Logger slf4jLogger = null;
+      for (int i = 0; i < LOGBACK_POLL_ATTEMPTS; i++) {
+        slf4jLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        if (slf4jLogger instanceof ch.qos.logback.classic.Logger logbackLogger) {
+          return logbackLogger;
+        }
+        Thread.sleep(LOGBACK_POLL_DELAY);
+      }
+      abort("SLF4J never returned a Logback logger. Last returned = " + slf4jLogger);
+    } catch (InterruptedException ex) {
+      abort("Thread interrupted while polling for Logback logger - " + ex);
+    }
+    throw new Error("unreachable code");
   }
 }
