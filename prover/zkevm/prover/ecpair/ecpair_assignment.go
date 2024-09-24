@@ -10,10 +10,14 @@ import (
 
 // Assign assigns the data to the circuit
 func (ec *ECPair) Assign(run *wizard.ProverRuntime) {
+
 	// assign data to the pairing check part
 	ec.assignPairingData(run)
 	// assign data to the membership check part
 	ec.assignMembershipData(run)
+	// assign the column telling wether the previous and the current row have
+	// the same id.
+	ec.CptPrevEqualCurrID.Run(run)
 
 	// general assignments
 	var (
@@ -22,6 +26,7 @@ func (ec *ECPair) Assign(run *wizard.ProverRuntime) {
 		srcIsPairingPulling  = ec.UnalignedPairingData.IsPulling.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcIsPairingComputed = ec.UnalignedPairingData.IsComputed.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
+
 	if len(srcIsG2Pulling) != len(srcIsG2Computed) || len(srcIsG2Pulling) != len(srcIsPairingPulling) || len(srcIsG2Pulling) != len(srcIsPairingComputed) {
 		utils.Panic("ECPair: input length mismatch")
 	}
@@ -95,10 +100,6 @@ func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
 		// inputs.
 		nbInputs := 1 // we start with 1 because we always have at least one pairing input
 		for {
-			// first we do a sanity check - we should expect to see IsResult but if the input is shorter then panic
-			if currPos+nbInputs*(nbG1Limbs+nbG2Limbs+2) >= len(srcLimbs) {
-				utils.Panic("ECPair: not enough data for pairing at pos %d", currPos)
-			}
 			if srcIsRes[currPos+nbInputs*(nbG1Limbs+nbG2Limbs)].IsOne() {
 				break
 			}

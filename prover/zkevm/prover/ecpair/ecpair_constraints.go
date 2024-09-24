@@ -1,7 +1,10 @@
 package ecpair
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -94,16 +97,27 @@ func (ec *ECPair) csConstantWhenIsComputing(comp *wizard.CompiledIOP) {
 func (ec *ECPair) csInstanceIDChangeWhenNewInstance(comp *wizard.CompiledIOP) {
 	// when we are at the first line of the new instance then the instance ID
 	// should change
+	prevEqualCurrID, cptPrevEqualCurrID := dedicated.IsZero(
+		comp,
+		sym.Sub(
+			ec.UnalignedPairingData.InstanceID,
+			column.Shift(ec.UnalignedPairingData.InstanceID, -1),
+		),
+	)
+
+	ec.CptPrevEqualCurrID = cptPrevEqualCurrID
 
 	// IF IS_ACTIVE AND FIRST_LINE AND INSTANCE_ID != 0 => INSTANCE_ID_{i} = INSTANCE_ID_{i-1} + 1
+	// And the constraint does not apply on the first row.
 	comp.InsertGlobal(
 		roundNr,
 		ifaces.QueryIDf("%v_INSTANCE_ID_CHANGE", nameECPair),
 		sym.Mul(
+			column.Shift(verifiercol.NewConstantCol(field.One(), ec.IsActive.Size()), -1), // this "useless" line helps cancelling the constraint on the first row
 			ec.IsActive,
 			ec.UnalignedPairingData.IsFirstLineOfInstance,
 			ec.UnalignedPairingData.InstanceID,
-			sym.Sub(ec.UnalignedPairingData.InstanceID, column.Shift(ec.UnalignedPairingData.InstanceID, -1), 1),
+			prevEqualCurrID,
 		),
 	)
 }
