@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import { L1MessageService } from "../messageService/l1/L1MessageService.sol";
+import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
 
-contract TestL1MessageService is L1MessageService {
+contract TestL1MessageService is L1MessageService, TestSetPauseTypeRoles {
   /**
    * @dev Thrown when the message has already been received.
    */
@@ -13,22 +14,24 @@ contract TestL1MessageService is L1MessageService {
   bool private reentryDone;
 
   function initialize(
-    address _limitManagerAddress,
-    address _pauserManagerAddress,
     uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
+    uint256 _rateLimitAmount,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
   ) public initializer {
     _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-    __MessageService_init(_limitManagerAddress, _pauserManagerAddress, _rateLimitPeriod, _rateLimitAmount);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+    __MessageService_init(_rateLimitPeriod, _rateLimitAmount);
   }
 
   function tryInitialize(
-    address _limitManagerAddress,
-    address _pauserManagerAddress,
     uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
+    uint256 _rateLimitAmount,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles
   ) external {
-    __MessageService_init(_limitManagerAddress, _pauserManagerAddress, _rateLimitPeriod, _rateLimitAmount);
+    __MessageService_init(_rateLimitPeriod, _rateLimitAmount);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
   }
 
   // @dev - the this. sendMessage is because the function is an "external" call and not wrapped

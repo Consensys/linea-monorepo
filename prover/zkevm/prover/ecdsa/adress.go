@@ -75,6 +75,8 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		hashNum:              createCol("HASH_NUM"),
 	}
 
+	td.csTxnData(comp)
+
 	// addresses are fetched from two arithmetization modules (ecRecover and txn-data)
 	// IsAddress = IsAdressFromEcRec + IsAdressFromTxnData
 	comp.InsertGlobal(0, ifaces.QueryIDf("Format_IsAddress"),
@@ -104,20 +106,16 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		column.Shift(addr.isAddressHiEcRec, -1), addr.isAddressFromEcRec,
 	)
 
-	td.csTxnData(comp)
+	// projection from txn-data to address columns
+	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
+		[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
+		td.isFrom, addr.isAddressFromTxnData,
+	)
 
-	// Waiting for the resolution of:
-	//
-	// // projection from txn-data to address columns
-	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressHi_TxnData"),
-	// 	[]ifaces.Column{td.fromHi}, []ifaces.Column{addr.addressHi},
-	// 	td.isFrom, addr.isAddressFromTxnData,
-	// )
-	//
-	// projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
-	// 	[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
-	// 	td.isFrom, addr.isAddressFromTxnData,
-	// )
+	projection.InsertProjection(comp, ifaces.QueryIDf("Project_AddressLO_TxnData"),
+		[]ifaces.Column{td.fromLo}, []ifaces.Column{addr.addressLo},
+		td.isFrom, addr.isAddressFromTxnData,
+	)
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),

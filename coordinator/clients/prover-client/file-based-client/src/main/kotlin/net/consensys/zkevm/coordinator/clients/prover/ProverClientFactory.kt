@@ -15,7 +15,7 @@ import org.web3j.protocol.Web3j
 class ProverClientFactory(
   private val vertx: Vertx,
   private val config: ProversConfig,
-  private val metricsFacade: MetricsFacade
+  metricsFacade: MetricsFacade
 ) {
   private val executionWaitingResponsesMetric = GaugeAggregator()
   private val blobWaitingResponsesMetric = GaugeAggregator()
