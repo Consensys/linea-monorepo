@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IL2MessageManagerV1 } from "../../../interfaces/l2/IL2MessageManagerV1.sol";
-import { PauseManager } from "../../lib/PauseManager.sol";
+import { PauseManager } from "../../../lib/PauseManager.sol";
 
 /**
  * @title Contract to manage cross-chain message hashes storage and statuses on L2.

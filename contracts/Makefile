@@ -2,11 +2,10 @@
 
 compile:
 	pnpm run build
-	npx hardhat run scripts/hardhat/postCompile.ts
 
+force-compile: export TS_NODE_TRANSPILE_ONLY := 1
 force-compile:
-	npx hardhat compile --concurrency 4 --force
-	npx hardhat run scripts/hardhat/postCompile.ts
+	npx hardhat compile --force
 
 clean:
 	rm -rf coverage/

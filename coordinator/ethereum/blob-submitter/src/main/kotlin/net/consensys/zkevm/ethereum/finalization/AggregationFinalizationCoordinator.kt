@@ -3,6 +3,7 @@ package net.consensys.zkevm.ethereum.finalization
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import net.consensys.linea.async.AsyncFilter
+import net.consensys.trimToMinutePrecision
 import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
@@ -11,8 +12,8 @@ import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.ethereum.gaspricing.GasPriceCapProvider
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.ethereum.submission.logUnhandledError
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -43,7 +44,7 @@ class AggregationFinalizationCoordinator(
     return lineaRollup.updateNonceAndReferenceBlockToLastL1Block()
       .thenComposeCombined(lineaRollup.finalizedL2BlockNumber()) { _, lastFinalizedBlock ->
         log.debug("fetching aggregation proofs for finalization: lastFinalizedBlock={}", lastFinalizedBlock)
-        val endBlockCreatedBefore = clock.now().minus(config.proofSubmissionDelay)
+        val endBlockCreatedBefore = clock.now().minus(config.proofSubmissionDelay).trimToMinutePrecision()
         fetchAggregationData(lastFinalizedBlock)
           .thenCompose { aggregationData ->
             if (aggregationData == null) {
@@ -134,11 +135,11 @@ class AggregationFinalizationCoordinator(
                 parentAggregationProof?.let {
                   SafeFuture.completedFuture(
                     AggregationData(
-                      aggregationProof,
-                      aggregationEndBlob,
-                      aggregationStartBlob.blobCompressionProof!!.prevShnarf,
-                      parentAggregationProof.l1RollingHash,
-                      parentAggregationProof.l1RollingHashMessageNumber
+                      aggregationProof = aggregationProof,
+                      aggregationEndBlob = aggregationEndBlob,
+                      parentShnarf = aggregationStartBlob.blobCompressionProof!!.prevShnarf,
+                      parentL1RollingHash = parentAggregationProof.l1RollingHash,
+                      parentL1RollingHashMessageNumber = parentAggregationProof.l1RollingHashMessageNumber
                     )
                   )
                 } ?: run {

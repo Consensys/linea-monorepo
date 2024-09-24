@@ -1,16 +1,16 @@
 package fetchers_arithmetization
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
-	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 type BlockTxnMetadata struct {
@@ -163,9 +163,9 @@ func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td 
 			// set the absolute IDs, firstAbsTxId and lastAbsTxId for the block
 			firstAbsTxId[counter].SetInt64(ctAbsTxNum)
 			lastAbsTxId[counter].Set(&firstAbsTxId[counter])
-			integerNoOfTxBlock := int64(fetchTotalNoTxnBlock.Uint64())
+			integerNoOfTxBlock := int64(field.ToInt(&fetchTotalNoTxnBlock))
 			lastAbsTxId[counter].SetInt64(ctAbsTxNum + integerNoOfTxBlock - 1)
-			// increas ctAbsTxNum counter
+			// increase ctAbsTxNum counter
 			ctAbsTxNum += integerNoOfTxBlock
 			// set the counter
 			counter++

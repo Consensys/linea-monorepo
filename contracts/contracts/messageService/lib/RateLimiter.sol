@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -13,6 +13,7 @@ import { IRateLimiter } from "../../interfaces/IRateLimiter.sol";
  */
 contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
   bytes32 public constant RATE_LIMIT_SETTER_ROLE = keccak256("RATE_LIMIT_SETTER_ROLE");
+  bytes32 public constant USED_RATE_LIMIT_RESETTER_ROLE = keccak256("USED_RATE_LIMIT_RESETTER_ROLE");
 
   uint256 public periodInSeconds; // how much time before limit resets.
   uint256 public limitInWei; // max ether to withdraw per period.
@@ -53,21 +54,24 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
   /**
    * @notice Increments the amount used in the period.
    * @dev The amount determining logic is external to this (e.g. fees are included when calling here).
+   * @dev Ignores the calculation if _usedAmount is zero.
    * @dev Reverts if the limit is breached.
    * @param _usedAmount The amount used to be added.
    */
   function _addUsedAmount(uint256 _usedAmount) internal {
-    if (currentPeriodEnd < block.timestamp) {
-      currentPeriodEnd = block.timestamp + periodInSeconds;
-    } else {
-      _usedAmount += currentPeriodAmountInWei;
-    }
+    if (_usedAmount != 0) {
+      if (currentPeriodEnd < block.timestamp) {
+        currentPeriodEnd = block.timestamp + periodInSeconds;
+      } else {
+        _usedAmount += currentPeriodAmountInWei;
+      }
 
-    if (_usedAmount > limitInWei) {
-      revert RateLimitExceeded();
-    }
+      if (_usedAmount > limitInWei) {
+        revert RateLimitExceeded();
+      }
 
-    currentPeriodAmountInWei = _usedAmount;
+      currentPeriodAmountInWei = _usedAmount;
+    }
   }
 
   /**
@@ -104,10 +108,10 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
 
   /**
    * @notice Resets the amount used to zero.
-   * @dev Only the RATE_LIMIT_SETTER_ROLE is allowed to execute this function.
+   * @dev Only the USED_RATE_LIMIT_RESETTER_ROLE is allowed to execute this function.
    * @dev Emits the AmountUsedInPeriodReset event.
    */
-  function resetAmountUsedInPeriod() external onlyRole(RATE_LIMIT_SETTER_ROLE) {
+  function resetAmountUsedInPeriod() external onlyRole(USED_RATE_LIMIT_RESETTER_ROLE) {
     currentPeriodAmountInWei = 0;
 
     emit AmountUsedInPeriodReset(_msgSender());

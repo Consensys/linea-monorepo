@@ -40,6 +40,7 @@
 "db246dde" = "IsPaused"
 "b015579f" = "IsNotPaused"
 "3b174434" = "MessageHashesListLengthHigherThanOneHundred"
+"ca389c44" = "InvalidProofOrProofVerificationRanOutOfGas"
 # L2 Message Service
 "6446cc9c" = "MessageHashesListLengthIsZero"
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"

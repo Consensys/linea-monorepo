@@ -3,7 +3,15 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { TestL2MessageService, TestMessageServiceBase } from "../typechain-types";
-import { INITIALIZED_ERROR_MESSAGE, INITIAL_WITHDRAW_LIMIT, ONE_DAY_IN_SECONDS } from "./utils/constants";
+import {
+  DEFAULT_ADMIN_ROLE,
+  INITIALIZED_ERROR_MESSAGE,
+  INITIAL_WITHDRAW_LIMIT,
+  L1_L2_MESSAGE_SETTER_ROLE,
+  ONE_DAY_IN_SECONDS,
+  pauseTypeRoles,
+  unpauseTypeRoles,
+} from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
 
@@ -17,11 +25,17 @@ describe("MessageServiceBase", () => {
   let l1L2MessageSetter: SignerWithAddress;
 
   async function deployMessageServiceBaseFixture() {
+    const roleAddresses = [
+      { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+      { addressWithRole: l1L2MessageSetter.address, role: L1_L2_MESSAGE_SETTER_ROLE },
+    ];
+
     const messageService = (await deployUpgradableFromFactory("TestL2MessageService", [
-      securityCouncil.address,
-      l1L2MessageSetter.address,
       ONE_DAY_IN_SECONDS,
       INITIAL_WITHDRAW_LIMIT,
+      roleAddresses,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ])) as unknown as TestL2MessageService;
 
     const messageServiceBase = (await deployUpgradableFromFactory("TestMessageServiceBase", [

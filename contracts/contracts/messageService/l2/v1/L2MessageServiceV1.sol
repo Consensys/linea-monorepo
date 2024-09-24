@@ -7,6 +7,7 @@ import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L2MessageManagerV1 } from "./L2MessageManagerV1.sol";
+import { MessageHashing } from "../../lib/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L2.
@@ -21,6 +22,8 @@ abstract contract L2MessageServiceV1 is
   IMessageService,
   IGenericErrors
 {
+  using MessageHashing for *;
+
   /**
    * @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
    * NB: Take note that this is at the beginning of the file where other storage gaps,
@@ -32,10 +35,10 @@ abstract contract L2MessageServiceV1 is
 
   address internal _messageSender;
 
-  // @dev initialise to save user cost with existing slot.
+  // @dev initialize to save user cost with existing slot.
   uint256 public nextMessageNumber;
 
-  // @dev initialise minimumFeeInWei variable.
+  // @dev initialize minimumFeeInWei variable.
   uint256 public minimumFeeInWei;
 
   // @dev adding these should not affect storage as they are constants and are stored in bytecode.
@@ -48,44 +51,6 @@ abstract contract L2MessageServiceV1 is
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
-  }
-
-  /**
-   * @notice Initialises underlying message service dependencies.
-   * @param _securityCouncil The address owning the security council role.
-   * @param _l1l2MessageSetter The address owning the add L1L2MessageHashes functionality.
-   * @param _rateLimitPeriod The period to rate limit against.
-   * @param _rateLimitAmount The limit allowed for withdrawing the period.
-   */
-  function initialize(
-    address _securityCouncil,
-    address _l1l2MessageSetter,
-    uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
-  ) external initializer {
-    if (_securityCouncil == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    if (_l1l2MessageSetter == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    __ERC165_init();
-    __Context_init();
-    __AccessControl_init();
-    __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
-    __L2MessageManager_init(_l1l2MessageSetter);
-    __ReentrancyGuard_init();
-
-    nextMessageNumber = 1;
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _securityCouncil);
-    _grantRole(MINIMUM_FEE_SETTER_ROLE, _securityCouncil);
-    _grantRole(RATE_LIMIT_SETTER_ROLE, _securityCouncil);
-    _grantRole(PAUSE_MANAGER_ROLE, _securityCouncil);
-
-    _messageSender = DEFAULT_SENDER_ADDRESS;
   }
 
   /**
@@ -123,7 +88,7 @@ abstract contract L2MessageServiceV1 is
     /// @dev Rate limit and revert is in the rate limiter.
     _addUsedAmount(valueSent + postmanFee);
 
-    bytes32 messageHash = keccak256(abi.encode(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata);
 
     emit MessageSent(msg.sender, _to, postmanFee, valueSent, messageNumber, _calldata, messageHash);
 
@@ -156,7 +121,7 @@ abstract contract L2MessageServiceV1 is
   ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
     _requireTypeAndGeneralNotPaused(L1_L2_PAUSE_TYPE);
 
-    bytes32 messageHash = keccak256(abi.encode(_from, _to, _fee, _value, _nonce, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
     /// @dev Status check and revert is in the message manager.
     _updateL1L2MessageStatusToClaimed(messageHash);

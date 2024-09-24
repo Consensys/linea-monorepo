@@ -1,9 +1,9 @@
 package ecdsa
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
 type EcdsaZkEvm struct {
@@ -49,11 +49,12 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 }
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
-	return &txnData{
+	td := &txnData{
 		fromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
 		fromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
 		ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
+	return td
 }
 
 func getRlpTxnArithmetization(comp *wizard.CompiledIOP) generic.GenDataModule {

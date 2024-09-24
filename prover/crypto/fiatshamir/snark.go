@@ -6,9 +6,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous

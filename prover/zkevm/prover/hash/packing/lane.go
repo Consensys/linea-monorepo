@@ -1,17 +1,17 @@
 package packing
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common"
-	commonconstraints "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/common/common_constraints"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm/prover/hash/packing/dedicated"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 // laneRepackingInputs collects the inputs of the [newLane] function.
@@ -251,7 +251,7 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 	var isFirstBlockOfHash []int
 	isFirstBlockOfHash = append(isFirstBlockOfHash, 1)
 	for pos := 0; pos < len(limbs); pos++ {
-		nbyte := int(nBytes[pos].Uint64())
+		nbyte := field.ToInt(&nBytes[pos])
 		s = s + nbyte
 
 		// Extract the limb, which is left aligned to the 16-th byte

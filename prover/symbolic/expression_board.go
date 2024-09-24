@@ -1,8 +1,8 @@
 package symbolic
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 /*
@@ -74,12 +74,12 @@ func (n *Node) addParent(p nodeID) {
 // posInLevel returns the position in the level from a NodeID
 func (i nodeID) posInLevel() int {
 	res := i & ((1 << 32) - 1)
-	return int(res)
+	return utils.ToInt(res)
 }
 
 // level returns the level from a NodeID
 func (i nodeID) level() int {
-	return int(i >> 32)
+	return utils.ToInt(i >> 32)
 }
 
 // newNodeID returns the node id given its level and its position in a level

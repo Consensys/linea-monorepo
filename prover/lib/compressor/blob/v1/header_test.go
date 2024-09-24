@@ -2,10 +2,11 @@ package v1_test
 
 import (
 	"bytes"
-	v1 "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHeaderByteSize(t *testing.T) {

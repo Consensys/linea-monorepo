@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"path"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/bridge"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
-	"github.com/consensys/zkevm-monorepo/prover/utils/types"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/config"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // Craft prover's functional inputs
@@ -87,7 +87,7 @@ func CraftProverOutput(
 	inspectStateManagerTraces(req, &rsp)
 
 	// Value of the first blocks
-	rsp.FirstBlockNumber = int(blocks[0].NumberU64())
+	rsp.FirstBlockNumber = utils.ToInt(blocks[0].NumberU64())
 
 	// Set the public input as part of the response immediately so that we can
 	// easily debug issues during the proving.
@@ -143,12 +143,13 @@ func inspectStateManagerTraces(
 	resp.ParentStateRootHash = firstParent.Hex()
 }
 
-func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
+func (req *Request) collectSignatures() ([]ethereum.Signature, [][32]byte) {
 
 	var (
-		res    = map[[32]byte]ethereum.Signature{}
-		blocks = req.Blocks()
-		currTx = 0
+		signatures = []ethereum.Signature{}
+		txHashes   = [][32]byte{}
+		blocks     = req.Blocks()
+		currTx     = 0
 	)
 
 	for i := range blocks {
@@ -159,12 +160,14 @@ func (req *Request) collectSignatures() map[[32]byte]ethereum.Signature {
 				txSignature = ethereum.GetJsonSignature(tx)
 			)
 
-			res[txHash] = txSignature
+			signatures = append(signatures, txSignature)
+			txHashes = append(txHashes, txHash)
+
 			currTx++
 		}
 	}
 
-	return res
+	return signatures, txHashes
 }
 
 // FuncInput are all the relevant fields parsed by the prover that
@@ -207,11 +210,13 @@ func (rsp *Response) FuncInput() *execution.FunctionalPublicInput {
 }
 
 func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
+	txSignatures, txHashes := req.collectSignatures()
 	return &Witness{
 		ZkEVM: &zkevm.Witness{
 			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
 			SMTraces:        req.StateManagerTraces(),
-			TxSignatures:    req.collectSignatures(),
+			TxSignatures:    txSignatures,
+			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
 		},

@@ -9,6 +9,8 @@ import {
   HASH_ZERO,
   INITIALIZED_ERROR_MESSAGE,
   L1_L2_MESSAGE_SETTER_ROLE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -33,6 +35,8 @@ describe("L2MessageManager", () => {
     return deployUpgradableFromFactory("TestL2MessageManager", [
       pauser.address,
       l1l2MessageSetter.address,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ]) as unknown as Promise<TestL2MessageManager>;
   }
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // ins: nbBatches, [end byte positions], payload...
@@ -21,7 +21,7 @@ func PartialChecksumBatchesPackedHint(maxNbBatches int) solver.Hint {
 			return errors.New("expected exactly maxNbBatches outputs")
 		}
 
-		nbBatches := int(ins[0].Uint64())
+		nbBatches := ins[0].Int64()
 		ends := utils.BigsToInts(ins[1 : 1+maxNbBatches])
 		in := append(utils.BigsToBytes(ins[1+maxNbBatches:]), make([]byte, 31)...) // pad with 31 bytes to avoid out of range panic TODO try removing this
 

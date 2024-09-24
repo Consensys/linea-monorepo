@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/poly"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 /*
@@ -62,7 +62,7 @@ func (PolyEval) Degree(inputDegrees []int) int {
 /*
 Evaluates a polynomial evaluation
 */
-func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.

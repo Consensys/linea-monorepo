@@ -1440,7 +1440,7 @@ abstract contract ReentrancyGuardUpgradeable is Initializable {
 // File contracts/interfaces/l1/ILineaRollup.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title LineaRollup interface for current functions, events and errors.
@@ -1745,7 +1745,7 @@ interface ILineaRollup {
 // File contracts/interfaces/IGenericErrors.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring generic errors.
@@ -1762,7 +1762,7 @@ interface IGenericErrors {
 // File contracts/interfaces/l1/IL1MessageService.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title L1 Message Service interface for pre-existing functions, events and errors.
@@ -1873,7 +1873,7 @@ library BitMaps {
 // File contracts/interfaces/l1/IL1MessageManager.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title L1 Message manager interface for current functions, events and errors.
@@ -1929,7 +1929,7 @@ interface IL1MessageManager {
 // File contracts/lib/Utils.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 library Utils {
   /**
@@ -1950,7 +1950,7 @@ library Utils {
 // File contracts/interfaces/l1/IL1MessageManagerV1.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title L1 Message manager V1 interface for pre-existing functions, events and errors.
@@ -1991,7 +1991,7 @@ interface IL1MessageManagerV1 {
 // File contracts/messageService/l1/v1/L1MessageManagerV1.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain message hashes storage and status on L1.
@@ -2041,7 +2041,7 @@ abstract contract L1MessageManagerV1 is IL1MessageManagerV1 {
 // File contracts/messageService/l1/L1MessageManager.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain message rolling hash computation and storage on L1.
@@ -2138,7 +2138,7 @@ abstract contract L1MessageManager is L1MessageManagerV1, IL1MessageManager {
 // File contracts/interfaces/IMessageService.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring pre-existing cross-chain messaging functions, events and errors.
@@ -2236,7 +2236,7 @@ interface IMessageService {
 // File contracts/interfaces/IPauseManager.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring pre-existing pausing functions, events and errors.
@@ -2272,7 +2272,7 @@ interface IPauseManager {
 // File contracts/messageService/lib/PauseManager.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Contract to manage cross-chain function pausing.
@@ -2390,7 +2390,7 @@ abstract contract PauseManager is Initializable, IPauseManager, AccessControlUpg
 // File contracts/interfaces/IRateLimiter.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring rate limiting messaging functions, events and errors.
@@ -2458,7 +2458,7 @@ interface IRateLimiter {
 // File contracts/messageService/lib/RateLimiter.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Rate Limiter by period and amount using the block timestamp.
@@ -2575,7 +2575,7 @@ contract RateLimiter is Initializable, IRateLimiter, AccessControlUpgradeable {
 // File contracts/messageService/l1/v1/L1MessageServiceV1.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
@@ -2710,7 +2710,7 @@ abstract contract L1MessageServiceV1 is
 // File contracts/messageService/lib/SparseMerkleTreeVerifier.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Library to verify sparse merkle proofs and to get the leaf hash value
@@ -2760,7 +2760,7 @@ library SparseMerkleTreeVerifier {
 // File contracts/messageService/l1/L1MessageService.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
@@ -2919,7 +2919,7 @@ abstract contract L1MessageService is
 // File contracts/interfaces/l1/IPlonkVerifier.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Interface declaring verifier functions.
@@ -2938,7 +2938,7 @@ interface IPlonkVerifier {
 // File contracts/interfaces/l1/IZkEvmV2.sol
 
 // Original license: SPDX_License_Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title ZkEvm rollup interface for pre-existing functions, events and errors.
@@ -2987,7 +2987,7 @@ interface IZkEvmV2 {
 // File contracts/ZkEvmV2.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain messaging on L1 and rollup proving.
@@ -3049,7 +3049,7 @@ abstract contract ZkEvmV2 is Initializable, AccessControlUpgradeable, L1MessageS
 // File contracts/LineaRollup.sol
 
 // Original license: SPDX_License_Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title Contract to manage cross-chain messaging on L1 and rollup proving.
