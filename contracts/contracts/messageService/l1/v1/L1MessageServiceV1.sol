@@ -2,12 +2,13 @@
 pragma solidity 0.8.24;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { PauseManager } from "../../lib/PauseManager.sol";
+import { PauseManager } from "../../../lib/PauseManager.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L1MessageManagerV1 } from "./L1MessageManagerV1.sol";
 import { TransientStorageReentrancyGuardUpgradeable } from "../TransientStorageReentrancyGuardUpgradeable.sol";
 import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { TransientStorageHelpers } from "../../lib/TransientStorageHelpers.sol";
+import { MessageHashing } from "../../lib/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
@@ -22,6 +23,8 @@ abstract contract L1MessageServiceV1 is
   PauseManager,
   IMessageService
 {
+  using MessageHashing for *;
+
   // @dev This is initialised to save user cost with existing slot.
   uint256 public nextMessageNumber;
 
@@ -119,7 +122,7 @@ abstract contract L1MessageServiceV1 is
     /// @dev This is placed earlier to fix the stack issue by using these two earlier on.
     TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, _from);
 
-    bytes32 messageHash = keccak256(abi.encode(_from, _to, _fee, _value, _nonce, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
     // @dev Status check and revert is in the message manager.
     _updateL2L1MessageStatusToClaimed(messageHash);

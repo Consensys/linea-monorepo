@@ -5,13 +5,13 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // A local constraint is an arithmetic relation between prespecified
@@ -21,7 +21,8 @@ import (
 // and the constraint applied after
 type LocalConstraint struct {
 	*symbolic.Expression
-	ID ifaces.QueryID
+	ID         ifaces.QueryID
+	DomainSize int
 }
 
 // Construct a new local constraint
@@ -62,7 +63,7 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 		utils.Panic("All commitment given had a length of zero")
 	}
 
-	res := LocalConstraint{Expression: expr, ID: id}
+	res := LocalConstraint{Expression: expr, ID: id, DomainSize: domainSize}
 	return res
 }
 

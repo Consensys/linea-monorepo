@@ -1,6 +1,6 @@
 codecov:
   notify:
-	wait_for_ci: false
+  wait_for_ci: false
   require_ci_to_pass: false
 
 comment:
@@ -9,30 +9,30 @@ comment:
   layout: "diff, flags, files"
   require_base: false
   require_changes:
-  - 0
+    - 0
   require_head: true
   show_carryforward_flags: true
 
 coverage:
   precision: 2
   range:
-  - 60.0
-  - 80.0
+    - 60.0
+    - 80.0
   round: down
   status:
-	changes: false
-	default_rules:
-  		flag_coverage_not_uploaded_behavior: include
-	patch: true
-	project: true
+  changes: false
+  default_rules:
+    flag_coverage_not_uploaded_behavior: include
+  patch: true
+  project: true
 
 flags:
   hardhat:
-	paths:
-  	- contracts/
+    paths:
+      - contracts/
   kotlin:
-	paths:
-  	- coordinator/
+    paths:
+      - coordinator/
 
 github_checks:
   annotations: false

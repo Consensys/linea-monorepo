@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/zkevm-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/dlclark/regexp2"
 	"github.com/sirupsen/logrus"
 )

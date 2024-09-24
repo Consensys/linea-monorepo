@@ -4,15 +4,16 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"reflect"
+	"testing"
+
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"reflect"
-	"testing"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 func TestCustomConstraint(t *testing.T) {
