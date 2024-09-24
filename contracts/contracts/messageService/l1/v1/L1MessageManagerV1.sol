@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import { IL1MessageManagerV1 } from "../../../interfaces/l1/IL1MessageManagerV1.sol";
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
