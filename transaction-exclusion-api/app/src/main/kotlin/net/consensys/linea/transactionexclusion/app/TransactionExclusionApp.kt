@@ -38,15 +38,10 @@ data class DbCleanupConfig(
   val storagePeriod: Duration
 )
 
-data class DbQueryableWindowConfig(
-  val rejectedTimestampWithinDuration: Duration
-)
-
 data class DatabaseConfig(
   val read: DbConnectionConfig,
   val write: DbConnectionConfig,
   val cleanup: DbCleanupConfig,
-  val queryableWindow: DbQueryableWindowConfig,
   val persistenceRetry: PersistenceRetryConfig,
   val schema: String = "linea_transaction_exclusion",
   val readPoolSize: Int = 10,
@@ -56,7 +51,8 @@ data class DatabaseConfig(
 
 data class AppConfig(
   val api: ApiConfig,
-  val database: DatabaseConfig
+  val database: DatabaseConfig,
+  val dataQueryableWindowSinceRejectedTimestamp: Duration
 )
 
 data class PersistenceRetryConfig(
@@ -113,7 +109,7 @@ class TransactionExclusionApp(config: AppConfig) {
     )
     this.transactionExclusionService = TransactionExclusionServiceV1Impl(
       config = TransactionExclusionServiceV1Impl.Config(
-        config.database.queryableWindow.rejectedTimestampWithinDuration.toKotlinDuration()
+        config.dataQueryableWindowSinceRejectedTimestamp.toKotlinDuration()
       ),
       repository = this.rejectedTransactionsRepository,
       metricsFacade = this.micrometerMetricsFacade
