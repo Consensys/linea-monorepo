@@ -15,6 +15,8 @@
 
 package net.consensys.linea.testing;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -24,6 +26,7 @@ import java.util.*;
 import com.google.gson.Gson;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.blockcapture.BlockCapturer;
 import net.consensys.linea.blockcapture.snapshots.AccountSnapshot;
 import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
@@ -35,6 +38,7 @@ import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import org.apache.commons.io.FileUtils;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.consensus.clique.CliqueHelpers;
@@ -66,6 +70,12 @@ public class ReplayExecutionEnvironment {
   private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
 
   /**
+   * Determines whether to enable block capturing for conflations executed by this environment. This
+   * is used for primarily for debugging the block capturer.
+   */
+  private static final boolean debugBlockCapturer = false;
+
+  /**
    * Determines whether transaction results should be checked against expected results embedded in
    * replay files. This gives an additional level of assurance that the tests properly reflect
    * mainnet (or e.g. sepolia as appropriate). When this is set to false, replay tests will not fail
@@ -75,14 +85,14 @@ public class ReplayExecutionEnvironment {
    */
   private final boolean txResultChecking;
 
-  private final ZkTracer tracer = new ZkTracer();
+  private final ZkTracer zkTracer = new ZkTracer();
 
   public void checkTracer(String inputFilePath) {
     // Generate the output file path based on the input file path
     Path inputPath = Paths.get(inputFilePath);
     String outputFileName = inputPath.getFileName().toString().replace(".json.gz", ".lt");
     Path outputPath = inputPath.getParent().resolve(outputFileName);
-    this.tracer.writeToFile(outputPath);
+    this.zkTracer.writeToFile(outputPath);
     log.info("trace written to `{}`", outputPath);
     // validation is disabled by default for replayBulk
     // assertThat(CORSET_VALIDATOR.validate(outputPath).isValid()).isTrue();
@@ -104,7 +114,7 @@ public class ReplayExecutionEnvironment {
       return;
     }
     this.executeFrom(chainId, conflation);
-    ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   public void replay(BigInteger chainId, final Reader replayFile, String inputFilePath) {
@@ -122,7 +132,7 @@ public class ReplayExecutionEnvironment {
 
   public void replay(BigInteger chainId, ConflationSnapshot conflation) {
     this.executeFrom(chainId, conflation);
-    ExecutionEnvironment.checkTracer(tracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
   }
 
   /**
@@ -133,11 +143,33 @@ public class ReplayExecutionEnvironment {
    * @param conflation the conflation to replay
    */
   private void executeFrom(final BigInteger chainId, final ConflationSnapshot conflation) {
+    ConflationAwareOperationTracer tracer = this.zkTracer;
+    BlockCapturer capturer = null;
+    // Configure block capturer (if applicable)
+    if (debugBlockCapturer) {
+      // Initialise world state from conflation
+      MutableWorldState world = initWorld(conflation);
+      capturer = new BlockCapturer();
+      capturer.setWorld(world.updater());
+      // Sequence zktracer and capturer
+      tracer = ConflationAwareOperationTracer.sequence(tracer, capturer);
+    }
+    // Execute the conflation
+    executeFrom(chainId, conflation, tracer, this.txResultChecking);
+    //
+    if (debugBlockCapturer) {
+      writeCaptureToFile(conflation, capturer);
+    }
+  }
+
+  private static void executeFrom(
+      final BigInteger chainId,
+      final ConflationSnapshot conflation,
+      final ConflationAwareOperationTracer tracer,
+      final boolean txResultChecking) {
     BlockHashOperation.BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
-    ReferenceTestWorldState world =
-        ReferenceTestWorldState.create(new HashMap<>(), EvmConfiguration.DEFAULT);
     // Initialise world state from conflation
-    initWorld(world.updater(), conflation);
+    MutableWorldState world = initWorld(conflation);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
         ExecutionEnvironment.getProtocolSpec(chainId).getTransactionProcessor();
@@ -163,7 +195,7 @@ public class ReplayExecutionEnvironment {
                 header,
                 tx,
                 CliqueHelpers.getProposerOfBlock(header),
-                buildOperationTracer(tx, txs.getOutcome()),
+                buildOperationTracer(tx, txs.getOutcome(), tracer, txResultChecking),
                 blockHashLookup,
                 false,
                 Wei.ZERO);
@@ -176,36 +208,38 @@ public class ReplayExecutionEnvironment {
   }
 
   public Hub getHub() {
-    return tracer.getHub();
+    return zkTracer.getHub();
   }
 
   /**
-   * Initialise a world updater given a conflation. Observe this can be applied to any WorldUpdater,
-   * such as SimpleWorld.
+   * Initialise a fresh world state from a conflation.
    *
-   * @param world The world to be initialised.
    * @param conflation The conflation from which to initialise.
    */
-  private static void initWorld(WorldUpdater world, final ConflationSnapshot conflation) {
+  private static MutableWorldState initWorld(final ConflationSnapshot conflation) {
+    ReferenceTestWorldState world =
+        ReferenceTestWorldState.create(new HashMap<>(), EvmConfiguration.DEFAULT);
     WorldUpdater updater = world.updater();
     for (AccountSnapshot account : conflation.accounts()) {
       // Construct contract address
       Address addr = Address.fromHexString(account.address());
       // Create account
       MutableAccount acc =
-          world.createAccount(
+          updater.createAccount(
               Words.toAddress(addr), account.nonce(), Wei.fromHexString(account.balance()));
       // Update code
       acc.setCode(Bytes.fromHexString(account.code()));
     }
     // Initialise storage
     for (StorageSnapshot s : conflation.storage()) {
-      world
+      updater
           .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
           .setStorageValue(UInt256.fromHexString(s.key()), UInt256.fromHexString(s.value()));
     }
-    //
-    world.commit();
+    // Commit changes
+    updater.commit();
+    // Done
+    return world;
   }
 
   /**
@@ -216,7 +250,11 @@ public class ReplayExecutionEnvironment {
    * @param txs TransactionResultSnapshot which contains the expected result of this transaction.
    * @return An implementation of OperationTracer which packages up the appropriate behavour.
    */
-  private OperationTracer buildOperationTracer(Transaction tx, TransactionResultSnapshot txs) {
+  private static OperationTracer buildOperationTracer(
+      Transaction tx,
+      TransactionResultSnapshot txs,
+      ConflationAwareOperationTracer tracer,
+      boolean txResultChecking) {
     if (txs == null) {
       String hash = tx.getHash().toHexString();
       log.info("tx `{}` outcome not checked (missing)", hash);
@@ -227,6 +265,32 @@ public class ReplayExecutionEnvironment {
       return tracer;
     } else {
       return ConflationAwareOperationTracer.sequence(txs.check(), tracer);
+    }
+  }
+
+  // Write the captured replay for a given conflation snapshot to a file.  This is used to debug the
+  // BlockCapturer by
+  // making sure, for example, that captured replays still execute correctly.
+  private static void writeCaptureToFile(ConflationSnapshot conflation, BlockCapturer capturer) {
+    // Extract capture name
+    String json = capturer.toJson();
+    // Determine suitable filename
+    long startBlock = Long.MAX_VALUE;
+    long endBlock = Long.MIN_VALUE;
+    //
+    for (BlockSnapshot blk : conflation.blocks()) {
+      startBlock = Math.min(startBlock, blk.header().number());
+      endBlock = Math.max(endBlock, blk.header().number());
+    }
+    //
+    String filename = String.format("capture-%d-%d.json", startBlock, endBlock);
+    try {
+      File file = new File(filename);
+      log.info("Writing capture to " + file.getCanonicalPath());
+      FileUtils.writeStringToFile(file, json);
+    } catch (IOException e) {
+      // Problem writing capture
+      throw new RuntimeException(e);
     }
   }
 }
