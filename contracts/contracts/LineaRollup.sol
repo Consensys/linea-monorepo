@@ -63,7 +63,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   bytes32 public currentFinalizedState;
 
   /// @dev The address of the gateway operator.
-  /// @dev This address is granted the OPERATOR_ROLE after six months of inactivity by the current operators.
+  /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public gatewayOperator;
 
   /// @dev Total contract storage is 11 slots.
@@ -154,7 +154,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
 
   /**
    * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
-   * @dev Reverts if six months have not passed since the last operator action.
+   * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.

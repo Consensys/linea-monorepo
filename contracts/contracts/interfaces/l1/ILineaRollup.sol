@@ -294,7 +294,7 @@ interface ILineaRollup {
 
   /**
    * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
-   * @dev Reverts if six months have not passed since the last operator action.
+   * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
