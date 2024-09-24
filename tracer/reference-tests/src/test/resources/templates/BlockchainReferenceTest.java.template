@@ -18,12 +18,16 @@ package net.consensys.linea.generated.blockchain;
 import static net.consensys.linea.BlockchainReferenceTestTools.executeTest;
 import static net.consensys.linea.BlockchainReferenceTestTools.generateTestParametersForConfig;
 
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 
 import net.consensys.linea.ReferenceTestWatcher;
 import org.hyperledger.besu.ethereum.referencetests.BlockchainReferenceTestCaseSpec;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -33,15 +37,15 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /** The blockchain test operation testing framework entry point. */
 @ExtendWith(ReferenceTestWatcher.class)
 @Tag("BlockchainReferenceTest")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.CONCURRENT)
 public class %%TESTS_NAME%% {
 
   public ReferenceTestWatcher testWatcher = new ReferenceTestWatcher();
 
   private static final String FAILED_MODULE = "%%FAILED_MODULE%%";
   private static final String FAILED_CONSTRAINT = "%%FAILED_CONSTRAINT%%";
-
   private static final String[] TEST_CONFIG_FILE_DIR_PATH = new String[] {%%TESTS_FILE%%};
-  private static final String FAILED_TESTS_FILE_PATH = "%%FAILED_TEST_FILE_PATH%%";
 
   public static Stream<Arguments> getTestParametersForConfig() {
     if (FAILED_MODULE.isEmpty()) {
@@ -49,7 +53,7 @@ public class %%TESTS_NAME%% {
         Arguments.of(params[0], params[1], params[2])
         );
     } else {
-      return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH, FAILED_TESTS_FILE_PATH, FAILED_MODULE, FAILED_CONSTRAINT).stream().map(params ->
+      return generateTestParametersForConfig(TEST_CONFIG_FILE_DIR_PATH, FAILED_MODULE, FAILED_CONSTRAINT).stream().map(params ->
           Arguments.of(params[0], params[1], params[2])
       );
     }

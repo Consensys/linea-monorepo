@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,7 +31,6 @@ import java.util.regex.Pattern;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.json.JsonConverter;
-import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public class MapFailedReferenceTestsTool {
@@ -39,18 +39,26 @@ public class MapFailedReferenceTestsTool {
   public static void mapAndStoreFailedReferenceTest(
       String testName, List<String> logEventMessages, String jsonOutputFilename) {
     Set<String> failedConstraints = getFailedConstraints(logEventMessages);
-    String jsonString = readFailedTestsOutput(jsonOutputFilename);
-    JsonConverter jsonConverter = JsonConverter.builder().build();
+    if (!failedConstraints.isEmpty()) {
+      readFailedTestsOutput(jsonOutputFilename)
+          .thenCompose(
+              jsonString -> {
+                JsonConverter jsonConverter = JsonConverter.builder().build();
 
-    List<ModuleToConstraints> modulesToConstraints =
-        getModulesToConstraints(jsonString, jsonConverter);
+                List<ModuleToConstraints> modulesToConstraints =
+                    getModulesToConstraints(jsonString, jsonConverter);
 
-    mapFailedConstraintsToTestsToModule(modulesToConstraints, failedConstraints, testName);
+                mapFailedConstraintsToTestsToModule(
+                    modulesToConstraints, failedConstraints, testName);
 
-    jsonString = jsonConverter.toJson(modulesToConstraints);
-    writeToJsonFile(jsonString, jsonOutputFilename);
+                jsonString = jsonConverter.toJson(modulesToConstraints);
+                writeToJsonFile(jsonString, jsonOutputFilename);
+                return null;
+              });
+    }
   }
 
+  @Synchronized
   private static void mapFailedConstraintsToTestsToModule(
       List<ModuleToConstraints> modulesToConstraints,
       Set<String> failedConstraints,
@@ -64,12 +72,12 @@ public class MapFailedReferenceTestsTool {
 
       Set<String> failedTests =
           aggregateFailedTestsForModuleConstraintPair(
-              testName, moduleMapping, cleanedConstraintName);
+              testName, Objects.requireNonNull(moduleMapping), cleanedConstraintName);
       moduleMapping.constraints().put(cleanedConstraintName, failedTests);
     }
   }
 
-  private static @NotNull Set<String> aggregateFailedTestsForModuleConstraintPair(
+  private static Set<String> aggregateFailedTestsForModuleConstraintPair(
       String testName, ModuleToConstraints moduleMapping, String cleanedConstraintName) {
     Set<String> failedTests =
         new HashSet<>(
@@ -90,10 +98,14 @@ public class MapFailedReferenceTestsTool {
 
   public static ModuleToConstraints getModule(
       List<ModuleToConstraints> constraintToFailingTests, String moduleName) {
-    return constraintToFailingTests.stream()
-        .filter(mapping -> mapping.equals(moduleName))
-        .toList()
-        .getFirst();
+    List<ModuleToConstraints> modules =
+        constraintToFailingTests.stream().filter(mapping -> mapping.equals(moduleName)).toList();
+
+    if (modules.isEmpty()) {
+      return null;
+    } else {
+      return modules.getFirst();
+    }
   }
 
   private static void addModuleIfAbsent(
@@ -106,6 +118,7 @@ public class MapFailedReferenceTestsTool {
     }
   }
 
+  @Synchronized
   public static List<ModuleToConstraints> getModulesToConstraints(
       String jsonString, JsonConverter jsonConverter) {
     List<ModuleToConstraints> moduleToConstraints = new ArrayList<>();

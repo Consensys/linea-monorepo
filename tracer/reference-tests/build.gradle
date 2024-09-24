@@ -24,6 +24,12 @@ apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
 apply from: rootProject.file("gradle/lint.gradle")
 
+configurations.configureEach {
+  exclude module: 'log4j-api'
+  exclude module: 'log4j-core'
+  exclude module: 'log4j-slf4j2-impl'
+}
+
 tasks.register("generateBlockchainReferenceTests", RefTestGenerationTask) {
   refTestTemplateFilePath = "src/test/resources/templates/BlockchainReferenceTest.java.template"
   refTests = "src/test/resources/ethereum-tests/BlockchainTests"
@@ -31,7 +37,7 @@ tasks.register("generateBlockchainReferenceTests", RefTestGenerationTask) {
   refTestJsonParamsExcludedPath = "BlockchainTests/InvalidBlocks/bcExpectSection" // exclude test for test filling tool
   refTestNamePrefix = "BlockchainReferenceTest"
   generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/blockchain"
-  failedTestsFilePath = System.getenv('FAILED_TESTS_FILE_PATH') ?: "failedBlockchainReferenceTests.json"
+  failedTestsFilePath = System.getenv('FAILED_TEST_JSON_DIRECTORY') ?: "../tmp/local/"
   failedModule = System.getenv('FAILED_MODULE') ?: ""
   failedConstraint = System.getenv('FAILED_CONSTRAINT') ?: ""
 }
@@ -43,7 +49,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
   refTestJsonParamsExcludedPath = ""
   refTestNamePrefix = "GeneralStateReferenceTest"
   generatedRefTestsOutput = "src/test/java/net/consensys/linea/generated/generalstate"
-  failedTestsFilePath = System.getenv('FAILED_TESTS_FILE_PATH') ?: ""
+  failedTestsFilePath = System.getenv('FAILED_TEST_JSON_DIRECTORY') ?: "../tmp/local/"
   failedModule = System.getenv('FAILED_MODULE') ?: ""
   failedConstraint = System.getenv('FAILED_CONSTRAINT') ?: ""
 }
@@ -51,6 +57,10 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 tasks.register('referenceBlockchainTests', Test) {
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
+
+  boolean isCiServer = System.getenv().containsKey("CI")
+  minHeapSize = isCiServer ? "8g" :"4g"
+  maxHeapSize = isCiServer ? "50g" : "8g"
 
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
@@ -64,6 +74,10 @@ tasks.register('referenceGeneralStateTests', Test) {
   useJUnitPlatform {
     includeTags("GeneralStateReferenceTest")
   }
+
+  boolean isCiServer = System.getenv().containsKey("CI")
+  minHeapSize = "4g"
+  maxHeapSize = isCiServer ? "32g" : "8g"
 }
 
 [
@@ -81,10 +95,6 @@ tasks.register('referenceGeneralStateTests', Test) {
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
       System.getenv().getOrDefault("REFERENCE_TESTS_PARALLELISM", "1").toInteger())
-
-    boolean isCiServer = System.getenv().containsKey("CI")
-    minHeapSize = "4g"
-    maxHeapSize = isCiServer ? "32g" : "8g"
   }
 }
 

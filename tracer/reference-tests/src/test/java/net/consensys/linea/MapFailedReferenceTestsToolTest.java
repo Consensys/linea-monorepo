@@ -59,13 +59,17 @@ public class MapFailedReferenceTestsToolTest {
 
     mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    String jsonString = readFailedTestsOutput(TEST_OUTPUT_JSON);
-    List<ModuleToConstraints> modulesToConstraints =
-        getModulesToConstraints(jsonString, jsonConverter);
+    readFailedTestsOutput(TEST_OUTPUT_JSON)
+        .thenApply(
+            jsonString -> {
+              List<ModuleToConstraints> modulesToConstraints =
+                  getModulesToConstraints(jsonString, jsonConverter);
 
-    assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
-    assertThat(modulesToConstraints.get(0).moduleName()).isEqualTo(module1);
-    assertThat(modulesToConstraints.get(1).moduleName()).isEqualTo(module2);
+              assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
+              assertThat(modulesToConstraints.get(0).moduleName()).isEqualTo(module1);
+              assertThat(modulesToConstraints.get(1).moduleName()).isEqualTo(module2);
+              return null;
+            });
   }
 
   @Test
@@ -83,16 +87,21 @@ public class MapFailedReferenceTestsToolTest {
 
     mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    String jsonString = readFailedTestsOutput(TEST_OUTPUT_JSON);
-    List<ModuleToConstraints> modulesToConstraints =
-        getModulesToConstraints(jsonString, jsonConverter);
+    readFailedTestsOutput(TEST_OUTPUT_JSON)
+        .thenCompose(
+            jsonString -> {
+              List<ModuleToConstraints> modulesToConstraints =
+                  getModulesToConstraints(jsonString, jsonConverter);
 
-    assertThat(modulesToConstraints.size()).isEqualTo(1);
+              assertThat(modulesToConstraints.size()).isEqualTo(1);
 
-    Map<String, Set<String>> failedConstraints = modulesToConstraints.getFirst().constraints();
-    assertThat(failedConstraints.size()).isEqualTo(constraints.size());
-    assertThat(failedConstraints.get("value-constraints")).isEqualTo(Set.of("test1"));
-    assertThat(failedConstraints.get("horizontal-byte-dec")).isEqualTo(Set.of("test1"));
+              Map<String, Set<String>> failedConstraints =
+                  modulesToConstraints.getFirst().constraints();
+              assertThat(failedConstraints.size()).isEqualTo(constraints.size());
+              assertThat(failedConstraints.get("value-constraints")).isEqualTo(Set.of("test1"));
+              assertThat(failedConstraints.get("horizontal-byte-dec")).isEqualTo(Set.of("test1"));
+              return null;
+            });
   }
 
   @Test
@@ -116,14 +125,18 @@ public class MapFailedReferenceTestsToolTest {
     mapAndStoreFailedReferenceTest(testName3, List.of(dummyEvent), TEST_OUTPUT_JSON);
     mapAndStoreFailedReferenceTest(testName3, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    String jsonString = readFailedTestsOutput(TEST_OUTPUT_JSON);
-    List<ModuleToConstraints> modulesToConstraints =
-        getModulesToConstraints(jsonString, jsonConverter);
+    readFailedTestsOutput(TEST_OUTPUT_JSON)
+        .thenCompose(
+            jsonString -> {
+              List<ModuleToConstraints> modulesToConstraints =
+                  getModulesToConstraints(jsonString, jsonConverter);
 
-    assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
-    Set<String> failedTests =
-        modulesToConstraints.getFirst().constraints().get("value-constraints");
-    assertThat(failedTests.size()).isEqualTo(tests.size());
+              assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
+              Set<String> failedTests =
+                  modulesToConstraints.getFirst().constraints().get("value-constraints");
+              assertThat(failedTests.size()).isEqualTo(tests.size());
+              return null;
+            });
   }
 
   private String createDummyLogEventMessage(List<String> failedConstraints) {
