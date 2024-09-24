@@ -102,7 +102,7 @@ bin/compression-aggregation-sample:
 ##
 ##	corset-checker
 ##
-bin/checker: zkevm/arithmetization/zkevm.bin
+bin/checker:
 	mkdir -p bin
 	rm -f $@
 	go build -o $@ ./cmd/dev-tools/corset-checker
@@ -140,7 +140,7 @@ test:
 ##
 ## Run the CI linting
 ##
-ci-lint: zkevm/arithmetization/zkevm.bin
+ci-lint:
 	golangci-lint run --timeout 5m
 
 ##
