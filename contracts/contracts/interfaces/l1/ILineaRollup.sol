@@ -285,11 +285,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when parent stateRootHash does not match.
-   */
-  error ParentStateRootHashInvalid(bytes32 expected, bytes32 actual);
-
-  /**
    * @dev Thrown when the block being finalized until does not match that of the shnarf data.
    */
   error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);

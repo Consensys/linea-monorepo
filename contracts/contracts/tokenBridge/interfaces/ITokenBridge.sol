@@ -111,6 +111,13 @@ interface ITokenBridge {
   ) external;
 
   /**
+   * @dev Change the status to DEPLOYED to the tokens passed in parameter
+   *    Will call the method setDeployed on the other chain using the message Service
+   * @param _tokens Array of bridged tokens that have been deployed.
+   */
+  function confirmDeployment(address[] memory _tokens) external payable;
+
+  /**
    * @dev Change the address of the Message Service.
    * @param _messageService The address of the new Message Service.
    */
@@ -124,6 +131,15 @@ interface ITokenBridge {
    * @param _nativeTokens The addresses of the native tokens.
    */
   function setDeployed(address[] memory _nativeTokens) external;
+
+  /**
+   * @dev Linea can reserve tokens. In this case, the token cannot be bridged.
+   *   Linea can only reserve tokens that have not been bridged before.
+   * @notice Make sure that _token is native to the current chain
+   *   where you are calling this function from
+   * @param _token The address of the token to be set as reserved.
+   */
+  function setReserved(address _token) external;
 
   /**
    * @dev Sets the address of the remote token bridge. Can only be called once.
