@@ -57,7 +57,7 @@ describe("Token Minting Rate Limiter", () => {
   beforeEach(async () => {
     xpToken = await loadFixture(deployLineaVoyageXPFixture);
     tokenMintingRateLimiter = await loadFixture(deployTokenMintingRateLimiterFixture);
-    xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
+    await xpToken.connect(minter).grantRole(MINTER_ROLE, await tokenMintingRateLimiter.getAddress());
   });
 
   describe("Initialization and roles", () => {

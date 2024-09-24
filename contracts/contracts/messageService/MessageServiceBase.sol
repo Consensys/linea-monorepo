@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { IMessageService } from "../interfaces/IMessageService.sol";
@@ -17,6 +17,13 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
   /// @dev Total contract storage is 12 slots with the gap below.
   /// @dev Keep 10 free storage slots for future implementation updates to avoid storage collision.
   uint256[10] private __base_gap;
+
+  /**
+   * @dev Event emitted when the remote sender is set.
+   * @param remoteSender The address of the new remote sender.
+   * @param setter The address of the account that set the remote sender.
+   */
+  event RemoteSenderSet(address indexed remoteSender, address indexed setter);
 
   /**
    * @dev Thrown when the caller address is not the message service address
@@ -71,6 +78,7 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
 
   /**
    * @notice Sets the remote sender
+   * @dev This function sets the remote sender address and emits the RemoteSenderSet event.
    * @param _remoteSender The authorized remote sender address, cannot be empty.
    */
   function _setRemoteSender(address _remoteSender) internal {
@@ -79,5 +87,6 @@ abstract contract MessageServiceBase is Initializable, IGenericErrors {
     }
 
     remoteSender = _remoteSender;
+    emit RemoteSenderSet(_remoteSender, msg.sender);
   }
 }
