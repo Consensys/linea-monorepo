@@ -347,13 +347,6 @@ interface ILineaRollup {
   ) external;
 
   /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev DEFAULT_ADMIN_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(FinalizationDataV2 calldata _finalizationData) external;
-
-  /**
    * @notice Finalize compressed blocks with proof.
    * @dev OPERATOR_ROLE is required to execute.
    * @param _aggregatedProof The aggregated proof.
