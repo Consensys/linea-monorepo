@@ -495,17 +495,6 @@ contract LineaRollup is
   }
 
   /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev FINALIZE_WITHOUT_PROOF_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(
-    FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(FINALIZE_WITHOUT_PROOF_ROLE) {
-    _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
-  }
-
-  /**
    * @notice Internal function to finalize compressed blocks.
    * @param _finalizationData The full finalization data.
    * @param _lastFinalizedBlock The last finalized block.

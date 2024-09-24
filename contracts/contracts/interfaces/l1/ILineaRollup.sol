@@ -299,11 +299,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when parent stateRootHash does not match.
-   */
-  error ParentStateRootHashInvalid(bytes32 expected, bytes32 actual);
-
-  /**
    * @dev Thrown when the block being finalized until does not match that of the shnarf data.
    */
   error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
@@ -368,13 +363,6 @@ interface ILineaRollup {
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
   ) external;
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev DEFAULT_ADMIN_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(FinalizationDataV2 calldata _finalizationData) external;
 
   /**
    * @notice Finalize compressed blocks with proof.
