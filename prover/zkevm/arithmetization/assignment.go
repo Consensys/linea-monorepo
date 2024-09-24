@@ -47,6 +47,7 @@ func AssignFromLtTraces(run *wizard.ProverRuntime, schema *air.Schema, expTraces
 	}
 
 	if err77 != nil {
+		logrus.Errorf("Error code 77: \n%v", err77)
 		os.Exit(TraceOverflowExitCode)
 	}
 
