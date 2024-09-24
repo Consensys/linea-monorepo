@@ -40,6 +40,10 @@ abstract contract L2MessageManager is AccessControlUpgradeable, IL2MessageManage
   ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(L1_L2_MESSAGE_SETTER_ROLE) {
     uint256 messageHashesLength = _messageHashes.length;
 
+    if (messageHashesLength == 0) {
+      revert MessageHashesListLengthIsZero();
+    }
+
     if (messageHashesLength > 100) {
       revert MessageHashesListLengthHigherThanOneHundred(messageHashesLength);
     }

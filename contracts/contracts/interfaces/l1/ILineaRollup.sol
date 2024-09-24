@@ -194,9 +194,14 @@ interface ILineaRollup {
   error EmptyBlobDataAtIndex(uint256 index);
 
   /**
-   * @dev Thrown when the data for multiple blobs' submission has length zero.
+   * @dev Thrown when the data for multiple blobs submission has length zero.
    */
   error BlobSubmissionDataIsMissing();
+
+  /**
+   * @dev Thrown when a blob has been submitted but there is no data for it.
+   */
+  error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 
   /**
    * @dev Thrown when the starting block in the data item is out of sequence with the last block number.
