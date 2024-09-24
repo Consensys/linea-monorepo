@@ -247,7 +247,6 @@ class CoordinatorConfigTest {
         ),
         requestLimitPerEndpoint = 20U,
         requestRetry = RequestRetryConfigTomlFriendly(
-          maxRetries = 4,
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
@@ -258,7 +257,6 @@ class CoordinatorConfigTest {
         ),
         requestLimitPerEndpoint = 2U,
         requestRetry = RequestRetryConfigTomlFriendly(
-          maxRetries = 4,
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
@@ -276,7 +274,6 @@ class CoordinatorConfigTest {
     private val type2StateProofProviderConfig = Type2StateProofProviderConfig(
       endpoints = listOf(URI("http://shomei-frontend:8888/").toURL()),
       requestRetry = RequestRetryConfigTomlFriendly(
-        maxRetries = 3,
         backoffDelay = Duration.parse("PT1S"),
         failuresWarningThreshold = 2
       )
@@ -288,7 +285,6 @@ class CoordinatorConfigTest {
       ),
       requestLimitPerEndpoint = 3U,
       requestRetry = RequestRetryConfigTomlFriendly(
-        maxRetries = 5,
         backoffDelay = Duration.parse("PT2S"),
         failuresWarningThreshold = 2
       )
@@ -325,8 +321,7 @@ class CoordinatorConfigTest {
 
     private val persistenceRetryConfig = PersistenceRetryConfig(
       maxRetries = null,
-      backoffDelay = Duration.parse("PT1S"),
-      timeout = Duration.parse("PT60S")
+      backoffDelay = Duration.parse("PT1S")
     )
 
     private val l1Config = L1Config(
