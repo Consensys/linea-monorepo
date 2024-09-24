@@ -3,7 +3,7 @@ package serialization
 import (
 	"reflect"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 var _registryBkp = collection.NewMapping[string, reflect.Type]()

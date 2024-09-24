@@ -5,8 +5,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
+
+	"github.com/consensys/gnark/frontend"
+	"golang.org/x/exp/constraints"
 )
 
 /*
@@ -67,9 +71,9 @@ Taken from :
 https://github.com/protolambda/zrnt/blob/v0.13.2/eth2/util/math/math_util.go#L58
 The function panics if the input is more than  2**62 as this causes overflow
 */
-func NextPowerOfTwo[T ~int](in T) T {
-	if in > 1<<62 {
-		panic("Input is too large")
+func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
+	if in < 0 || uint64(in) > 1<<62 {
+		panic("input out of range")
 	}
 	v := in
 	v--
@@ -156,15 +160,26 @@ func Digest(src io.Reader) (string, error) {
 	return "0x" + hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// RightPad copies `s` and returns a vector padded up the length `n` using
+// RightPadWith copies `s` and returns a vector padded up to length `n` using
 // `padWith` as a filling value. The function panics if len(s) < n and returns
 // a copy of s if len(s) == n.
-func RightPad[T any](s []T, n int, padWith T) []T {
+func RightPadWith[T any](s []T, n int, padWith T) []T {
+	if len(s) > n {
+		panic("input slice longer than desired padded length")
+	}
 	res := append(make([]T, 0, n), s...)
 	for len(res) < n {
 		res = append(res, padWith)
 	}
 	return res
+}
+
+// RightPad copies `s` and returns a vector padded up to length `n`.
+// The padding value is T's default.
+// The padding value. The function panics if len(s) > n and returns a copy of s if len(s) == n.
+func RightPad[T any](s []T, n int) []T {
+	var padWith T
+	return RightPadWith(s, n, padWith)
 }
 
 // RepeatSlice returns the concatenation of `s` with itself `n` times
@@ -187,7 +202,92 @@ func BigsToBytes(ins []*big.Int) []byte {
 func BigsToInts(ints []*big.Int) []int {
 	res := make([]int, len(ints))
 	for i := range ints {
-		res[i] = int(ints[i].Uint64())
+		u := ints[i].Uint64()
+		res[i] = int(u) // #nosec G115 - check below
+		if !ints[i].IsUint64() || uint64(res[i]) != u {
+			panic("overflow")
+		}
 	}
 	return res
+}
+
+// ToInt converts a uint, uint64 or int64 to an int, panicking on overflow.
+// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
+func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
+	if i > math.MaxInt {
+		panic("overflow")
+	}
+	return int(i) // #nosec G115 -- Checked for overflow
+}
+
+// ToUint64 converts a signed integer into a uint64, panicking on negative values.
+// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
+func ToUint64[T constraints.Signed](i T) uint64 {
+	if i < 0 {
+		panic("negative")
+	}
+	return uint64(i)
+}
+
+func ToUint16[T ~int | ~uint](i T) uint16 {
+	if i < 0 || i > math.MaxUint16 {
+		panic("out of range")
+	}
+	return uint16(i) // #nosec G115 -- Checked for overflow
+}
+
+func ToVariableSlice[X any](s []X) []frontend.Variable {
+	res := make([]frontend.Variable, len(s))
+	Copy(res, s)
+	return res
+}
+
+func countInts[I constraints.Integer](s []I) []I {
+	counts := make([]I, Max(s...)+1)
+	for _, x := range s {
+		counts[x]++
+	}
+	return counts
+}
+
+func Partition[T any, I constraints.Integer](s []T, index []I) [][]T {
+	if len(s) != len(index) {
+		panic("s and index must have the same length")
+	}
+	if len(s) == 0 {
+		return nil
+	}
+	partitions := make([][]T, Max(index...)+1)
+	counts := countInts(index)
+	for i := range partitions {
+		partitions[i] = make([]T, 0, counts[i])
+	}
+	for i := range s {
+		partitions[index[i]] = append(partitions[index[i]], s[i])
+	}
+	return partitions
+}
+
+func Ite[T any](cond bool, ifSo, ifNot T) T {
+	if cond {
+		return ifSo
+	}
+	return ifNot
+}
+
+func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
+	if len(startingPoints) == 0 {
+		startingPoints = []T{0}
+	}
+	res := make([]T, length*len(startingPoints))
+	for i := range startingPoints {
+		FillRange(res[i*length:(i+1)*length], startingPoints[i])
+	}
+	return res
+}
+
+func FillRange[T constraints.Integer](dst []T, start T) {
+	for l := range dst {
+		dst[l] = T(l) + start
+	}
 }

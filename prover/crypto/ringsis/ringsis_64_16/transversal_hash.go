@@ -6,11 +6,11 @@ import (
 	"runtime"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 func TransversalHash(
@@ -81,6 +81,14 @@ func TransversalHash(
 					if pIsReg {
 						chunksFull[j] = (*pReg)[startFromCol:stopAtCol]
 						mask |= (1 << j)
+						continue
+					}
+
+					pPool, pIsPool := pols[row+j].(*smartvectors.Pooled)
+					if pIsPool {
+						chunksFull[j] = pPool.Regular[startFromCol:stopAtCol]
+						mask |= (1 << j)
+						continue
 					}
 				}
 

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
-	. "github.com/consensys/zkevm-monorepo/prover/utils/types"
+
+	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/pkg/errors"
 )
 
@@ -89,7 +90,7 @@ func (v *VerifierState[K, V]) ReadNonZeroVerify(trace ReadNonZeroTrace[K, V]) er
 	return nil
 }
 
-// DeferMerkleChecks implements [DeferableCheck]
+// DeferMerkleChecks implements [Trace]
 func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	config *smt.Config,
 	appendTo []smt.ProvedClaim,
@@ -103,4 +104,12 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 	leaf, _ := tuple.CheckAndLeaf(config)
 	appendTo = append(appendTo, smt.ProvedClaim{Proof: trace.Proof, Root: trace.SubRoot, Leaf: leaf})
 	return appendTo
+}
+
+func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+	return hash(cfg, trace.Key)
+}
+
+func (trace ReadNonZeroTrace[K, V]) RWInt() int {
+	return 0
 }

@@ -7,6 +7,10 @@ import net.consensys.linea.contract.L2MessageService
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.zkevm.LongRunningService
+import net.consensys.zkevm.coordinator.app.config.L1Config
+import net.consensys.zkevm.coordinator.app.config.L2Config
+import net.consensys.zkevm.coordinator.app.config.MessageAnchoringServiceConfig
+import net.consensys.zkevm.coordinator.app.config.SignerConfig
 import net.consensys.zkevm.ethereum.coordination.messageanchoring.L1EventQuerier
 import net.consensys.zkevm.ethereum.coordination.messageanchoring.L1EventQuerierImpl
 import net.consensys.zkevm.ethereum.coordination.messageanchoring.L2MessageAnchorer

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/zkevm-monorepo/prover/backend/ethereum"
-	"github.com/consensys/zkevm-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -16,20 +17,32 @@ type Witness struct {
 	// proof trace generation.
 	ExecTracesFPath string
 	// StateManager traces
-	SMTraces        [][]statemanager.DecodedTrace
-	TxSignatures    map[[32]byte]ethereum.Signature
+	SMTraces [][]statemanager.DecodedTrace
+	// TxSignatures lists the signatures of the transaction as found
+	// chronologically in the block.
+	TxSignatures []ethereum.Signature
+	// TxHashes lists the hash of the transactions in the order found in the
+	// block.
+	TxHashes        [][32]byte
 	L2BridgeAddress common.Address
 	ChainID         uint
 }
 
-func (w Witness) TxSignatureGetter(txHash []byte) (r, s, v *big.Int, err error) {
-	var (
-		sig, found = w.TxSignatures[[32]byte(txHash)]
-	)
+// TxSignatureGetter implements the ecdsa.TxSignatureGetter interface
+func (w Witness) TxSignatureGetter(i int, txHash []byte) (r, s, v *big.Int, err error) {
 
-	if !found {
-		return nil, nil, nil, fmt.Errorf("could not find signature for tx hash = 0x%x", txHash)
+	if i > len(w.TxHashes) {
+		return nil, nil, nil, fmt.Errorf("requested txID outgoes the total number of transactions we found in the conflation")
 	}
+
+	if utils.HexEncodeToString(txHash) != utils.HexEncodeToString(w.TxHashes[i][:]) {
+		return nil, nil, nil, fmt.Errorf(
+			"requested txID=%v while txnrlp expects it to have it for txhash=%v but the blocks transaction has hash=%v",
+			i, utils.HexEncodeToString(w.TxHashes[i][:]), utils.HexEncodeToString(txHash),
+		)
+	}
+
+	sig := w.TxSignatures[i]
 
 	r, _ = new(big.Int).SetString(sig.R, 0)
 	s, _ = new(big.Int).SetString(sig.S, 0)

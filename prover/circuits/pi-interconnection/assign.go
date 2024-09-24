@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
-	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/zkevm-monorepo/prover/backend/blobsubmission"
-	decompression "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/v1"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob"
-	public_input "github.com/consensys/zkevm-monorepo/prover/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"golang.org/x/crypto/sha3"
 	"hash"
+
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	decompression "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 type Request struct {
@@ -31,7 +32,10 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	// TODO there is data duplication in the request. Check consistency
 
 	// infer config
-	config := c.getConfig()
+	config, err := c.getConfig()
+	if err != nil {
+		return
+	}
 	a = allocateCircuit(config)
 
 	if len(r.Decompressions) > config.MaxNbDecompression {
@@ -128,11 +132,17 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	var zero [32]byte
 	for i := len(r.Decompressions); i < len(a.DecompressionFPIQ); i++ {
 		shnarf := blobsubmission.Shnarf{
-			OldShnarf:        prevShnarf,
-			SnarkHash:        zero[:],
-			NewStateRootHash: r.Executions[len(execDataChecksums)-1].FinalStateRootHash[:],
-			X:                zero[:],
-			Hash:             &hshK,
+			OldShnarf: prevShnarf,
+			SnarkHash: zero[:],
+			X:         zero[:],
+			Hash:      &hshK,
+		}
+		if len(r.Executions) == 0 { // edge case for integration testing
+			if shnarf.NewStateRootHash, err = utils.HexDecodeString(r.Aggregation.ParentStateRootHash); err != nil {
+				return
+			}
+		} else {
+			shnarf.NewStateRootHash = r.Executions[len(execDataChecksums)-1].FinalStateRootHash[:]
 		}
 		prevShnarf = shnarf.Compute()
 		shnarfs[i] = prevShnarf
@@ -158,7 +168,7 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 	if err != nil {
 		return
 	}
-	if !bytes.Equal(shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf[:]) {
+	if len(r.Decompressions) != 0 && !bytes.Equal(shnarfs[len(r.Decompressions)-1], aggregationFPI.FinalShnarf[:]) { // first condition is an edge case for tests
 		err = errors.New("mismatch between decompression/aggregation-supplied shnarfs")
 		return
 	}
@@ -261,7 +271,9 @@ func (c *Compiled) Assign(r Request) (a Circuit, err error) {
 
 		aggrPi := r.Aggregation
 		aggrPi.L2MsgRootHashes = roots
-		a.AggregationPublicInput = aggrPi.Sum(&hshK)
+		aggregationPI := aggrPi.Sum(&hshK)
+		a.AggregationPublicInput[0] = aggregationPI[:16]
+		a.AggregationPublicInput[1] = aggregationPI[16:]
 	}
 
 	a.Keccak, err = hshK.Assign()

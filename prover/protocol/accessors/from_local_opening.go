@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/query"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // FromLocalOpeningYAccessor implements [ifaces.Accessor] and accesses the result of
@@ -31,7 +31,7 @@ func (l *FromLocalOpeningYAccessor) Name() string {
 	return fmt.Sprintf("LOCAL_OPENING_ACCESSOR_%v", l.Q.ID)
 }
 
-// String implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (l *FromLocalOpeningYAccessor) String() string {
 	return l.Name()
 }

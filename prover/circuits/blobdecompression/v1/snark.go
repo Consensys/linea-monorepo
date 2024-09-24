@@ -8,8 +8,8 @@ import (
 	"math/big"
 	"math/bits"
 
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
@@ -17,9 +17,9 @@ import (
 	"github.com/consensys/gnark/std/compress/lzss"
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/rangecheck"
-	public_input "github.com/consensys/zkevm-monorepo/prover/circuits/blobdecompression/public-input"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal/plonk"
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	public_input "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/public-input"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 const (

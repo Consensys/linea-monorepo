@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/coin"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 var _ ifaces.Accessor = &FromCoinAccessor{}
 
 // FromCoinAccessor implements [ifaces.Accessor] and represents the value of a
 // [coin.Info] of type [coin.Field]. It is sometime used to supply a coin to
-// a function requiring an accessor explcitly. For [github.com/consensys/zkevm-monorepo/prover/symbolic.Expression]
-// this should not be necessary as [coin.Info] already implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata].
+// a function requiring an accessor explcitly. For [github.com/consensys/linea-monorepo/prover/symbolic.Expression]
+// this should not be necessary as [coin.Info] already implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata].
 type FromCoinAccessor struct {
 	// Info represents the underlying [coin.Info] being wrapped by the accessor.
 	Info coin.Info
@@ -39,7 +39,7 @@ func (c *FromCoinAccessor) Name() string {
 	return fmt.Sprintf("COIN_AS_ACCESSOR_%v", c.Info.Name)
 }
 
-// String implements [github.com/consensys/zkevm-monorepo/prover/symbolic.Metadata]
+// String implements [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 func (c *FromCoinAccessor) String() string {
 	return c.Name()
 }

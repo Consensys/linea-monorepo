@@ -1,17 +1,17 @@
 package execution_data_collector
 
 import (
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/column"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/dedicated/projection"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	sym "github.com/consensys/zkevm-monorepo/prover/symbolic"
-	arith "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/arith_struct"
-	fetch "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
-	util "github.com/consensys/zkevm-monorepo/prover/zkevm/prover/publicInput/utilities"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
+	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 /*
@@ -734,7 +734,7 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 			edc.IsBlockHashHi,
 			sym.Sub(
 				edc.NoBytes,
-				noBytesBlockHash, // 6 bytes when loading a blockhashHi
+				noBytesBlockHash, // 16 bytes when loading a blockhashHi
 			),
 		),
 	)
@@ -745,7 +745,7 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 			edc.IsBlockHashLo,
 			sym.Sub(
 				edc.NoBytes,
-				noBytesBlockHash, // 6 bytes when loading a blockhashLo
+				noBytesBlockHash, // 16 bytes when loading a blockhashLo
 			),
 		),
 	)
@@ -895,7 +895,7 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	edcRlpDataTable := []ifaces.Column{
 		edc.AbsTxID,         // Check correctness of the AbsTxID.
 		edc.AbsTxIDMax,      // The fact that it is constant is enforced in DefineConstantConstraints.
-		edc.UnalignedLimb,   // Check correctness of the limbs.
+		edc.Limb,            // Check correctness of the limbs.
 		edc.NoBytes,         // Check correctness of the number of bytes.
 		edc.EndOfRlpSegment, // This constrains EndOfRlpSegment on edc.IsTx.RLP = 1, but we still need to constrain it elsewhere
 		// EndOfRlpSegment is also constrained in DefineSelectorConstraints, which requires that EndOfRlpSegment=0 when AbsTxID is constant.
@@ -908,6 +908,36 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 		rlpDataTable,
 		edc.IsTxRLP, // filter on IsTxRLP=1
 		rlp.FilterFetched,
+	)
+}
+
+// LookupQueries computes lookup queries to the BlockTxnMetadata arithmetization fetcher:
+func LookupQueries(comp *wizard.CompiledIOP,
+	edc *ExecutionDataCollector,
+	name string,
+	metadata fetch.BlockTxnMetadata,
+) {
+
+	metadataTable := []ifaces.Column{
+		metadata.BlockID,
+		metadata.TotalNoTxnBlock,
+		metadata.FirstAbsTxId,
+		metadata.LastAbsTxId,
+	}
+	// compute the ExecutionDataCollector table.
+	edcMetadataTable := []ifaces.Column{
+		edc.BlockID,
+		edc.TotalNoTxBlock,
+		edc.FirstAbsTxIDBlock,
+		edc.LastAbsTxIDBlock,
+	}
+
+	comp.InsertInclusionDoubleConditional(0,
+		ifaces.QueryIDf("%s_BLOCK_METADATA_PROJECTION", name),
+		metadataTable,    // including table
+		edcMetadataTable, // included table
+		metadata.FilterFetched,
+		edc.IsTxRLP,
 	)
 }
 
@@ -1123,6 +1153,20 @@ func DefineLimbAlignmentConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 	)
 }
 
+// DefineLimbConsistencyConstraints makes sure that limb values are correct for the total number of transactions.
+func DefineLimbConsistencyConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_UNALIGNED_LIMB_AND_TOTAL_NO_TX", name),
+		sym.Mul(
+			edc.IsNoTx,
+			sym.Sub(
+				edc.UnalignedLimb,
+				edc.TotalNoTxBlock,
+			),
+		),
+	)
+}
+
 // DefineIsActiveConstraints requires that IsActive has the proper shape, never transitioning from 0 to 1.
 // the fact that IsActive is binary is enforced in DefineIndicatorsMustBeBinary.
 func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataCollector, name string) {
@@ -1168,6 +1212,7 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	DefineAlignmentPowers(comp, edc, name)
 	DefineLimbAlignmentConstraints(comp, edc, name)
 	DefineNumberOfBytesConstraints(comp, edc, name)
+	DefineLimbConsistencyConstraints(comp, edc, name)
 
 	// zeroization constraints when the isActive filter is set to 0
 	DefineZeroizationConstraints(comp, edc, name)
@@ -1184,6 +1229,8 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 
 	// Enforce data consistency with the arithmetization fetchers using projection queries
 	ProjectionQueries(comp, edc, name, timestamps, metadata, txnData, rlp)
+	// Enforce additional data consistency with the arithmetization fetchers using lookup queries
+	LookupQueries(comp, edc, name, metadata)
 }
 
 // AssignExecutionDataCollector assigns the data in the ExecutionDataCollector, using
@@ -1200,7 +1247,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 	vect := NewExecutionDataCollectorVectors(size)
 
 	fetchedAbsTxIdMax := rlp.AbsTxNumMax.GetColAssignmentAt(run, 0)
-	absTxIdMax := int(fetchedAbsTxIdMax.Uint64())
+	absTxIdMax := field.ToInt(&fetchedAbsTxIdMax)
 
 	absTxCt := 1
 	rlpCt := 0
@@ -1256,7 +1303,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// iterate through transactions
-			for txIdInBlock := 1; txIdInBlock <= int(totalTxBlock); txIdInBlock++ {
+			for txIdInBlock := uint64(1); txIdInBlock <= totalTxBlock; txIdInBlock++ {
 
 				// load the sender address Hi
 				fetchedAddrHi := txnData.FromHi.GetColAssignmentAt(run, absTxCt-1)

@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import classNames from "classnames";
 import { useConfigStore } from "@/stores/configStore";
+import { cn } from "@/utils/cn";
+import { Button } from "../ui";
 
 export default function TermsModal() {
   const termsModalRef = useRef<HTMLDivElement>(null);
-  const { agreeToTerms, setAgreeToTerms } = useConfigStore((state) => ({
+
+  const { agreeToTerms, rehydrated, setAgreeToTerms } = useConfigStore((state) => ({
     agreeToTerms: state.agreeToTerms,
+    rehydrated: state.rehydrated,
     setAgreeToTerms: state.setAgreeToTerms,
   }));
 
@@ -24,20 +27,24 @@ export default function TermsModal() {
   };
 
   useEffect(() => {
-    if (window && isFirstTime()) {
+    if (rehydrated && window && isFirstTime()) {
       setTimeout(() => {
         setOpen(true);
         setVideoEnabled(true);
       }, 1000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [rehydrated]);
+
+  if (!rehydrated) {
+    return null;
+  }
 
   return (
     <div
       ref={termsModalRef}
       id="terms_modal"
-      className={classNames(
+      className={cn(
         "p-4 fixed right-2 left-2 md:left-auto md:right-5 md:max-w-[20rem] bg-white rounded text-black z-50 transition-all duration-500",
         !open ? "invisible -bottom-full" : "visible bottom-2 md:bottom-16",
       )}
@@ -69,14 +76,16 @@ export default function TermsModal() {
           (Terms of Service | Linea )
         </Link>{" "}
       </div>
-      <button
+      <Button
         id="agree-terms-btn"
         onClick={handleAgreeToTerms}
         type="button"
-        className="btn btn-primary btn-sm mt-3 w-full rounded-full font-medium uppercase"
+        variant="primary"
+        size="sm"
+        className="mt-3 w-full font-medium"
       >
         Got It
-      </button>
+      </Button>
     </div>
   );
 }

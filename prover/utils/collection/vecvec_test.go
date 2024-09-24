@@ -3,7 +3,7 @@ package collection_test
 import (
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/stretchr/testify/require"
 )
 

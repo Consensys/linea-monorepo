@@ -2,7 +2,7 @@ package net.consensys.zkevm.ethereum.coordination.blob
 
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlockIntervals
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -10,6 +10,7 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.reset
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -24,7 +25,7 @@ class RollingBlobShnarfCalculatorTest {
   private lateinit var mockBlobsRepository: BlobsRepository
   private lateinit var firstBlob: BlobRecord
   private val firstBlobEndBlockNumber = 100UL
-  private val fakeBlobShnarfCalculator = FakeBlobShnarfCalculator()
+  private val mockBlobShnarfCalculator = mock<BlobShnarfCalculator>()
 
   @BeforeEach
   fun beforeEach() {
@@ -44,8 +45,21 @@ class RollingBlobShnarfCalculatorTest {
         }
       }
 
+    whenever(mockBlobShnarfCalculator.calculateShnarf(any(), any(), any(), any(), any())).thenReturn(
+      ShnarfResult(
+        dataHash = Random.nextBytes(32),
+        snarkHash = Random.nextBytes(32),
+        expectedX = Random.nextBytes(32),
+        expectedY = Random.nextBytes(32),
+        expectedShnarf = Random.nextBytes(32),
+        commitment = Random.nextBytes(48),
+        kzgProofContract = Random.nextBytes(48),
+        kzgProofSideCar = Random.nextBytes(48)
+      )
+    )
+
     rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
-      blobShnarfCalculator = fakeBlobShnarfCalculator,
+      blobShnarfCalculator = mockBlobShnarfCalculator,
       blobsRepository = mockBlobsRepository,
       genesisShnarf = ByteArray(32)
     )
@@ -124,5 +138,30 @@ class RollingBlobShnarfCalculatorTest {
         "Blob block range start block number=$thirdBlobStartBlockNumber " +
           "is not equal to parent blob end block number=$secondBlobEndBlockNumber + 1"
       )
+  }
+
+  @Test
+  fun `returns failed future when shnarf calculator throws exception`() {
+    reset(mockBlobShnarfCalculator)
+    whenever(mockBlobShnarfCalculator.calculateShnarf(any(), any(), any(), any(), any()))
+      .thenThrow(RuntimeException("Error while calculating Shnarf"))
+    val secondBlobStartBlockNumber = firstBlobEndBlockNumber + 1UL
+    val secondBlobEndBlockNumber = firstBlobEndBlockNumber + 100UL
+
+    val exception = assertThrows<ExecutionException> {
+      rollingBlobShnarfCalculator.calculateShnarf(
+        compressedData = Random.nextBytes(100),
+        parentStateRootHash = Random.nextBytes(32),
+        finalStateRootHash = Random.nextBytes(32),
+        conflationOrder = BlockIntervals(secondBlobStartBlockNumber, listOf(secondBlobEndBlockNumber))
+      ).get()
+    }
+
+    assertThat(exception).isNotNull()
+    assertThat(exception).hasCauseInstanceOf(RuntimeException::class.java)
+    assertThat(exception.cause).hasMessage("Error while calculating Shnarf")
+
+    verify(mockBlobsRepository, times(1)).findBlobByEndBlockNumber(any())
+    verify(mockBlobsRepository, times(1)).findBlobByEndBlockNumber(eq(firstBlobEndBlockNumber.toLong()))
   }
 }

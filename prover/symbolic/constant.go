@@ -6,9 +6,9 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Constant is an implementation of [Operator] which represents a constant value
@@ -22,7 +22,7 @@ func (Constant) Degree([]int) int {
 }
 
 // Evaluates implements the [Operator] interface
-func (c Constant) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
+func (c Constant) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for a constant")
 }
 

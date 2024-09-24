@@ -9,7 +9,7 @@ $(shell \
 )
 endef
 
-npm-install:
+pnpm-install:
 		pnpm install
 
 docker-pull-develop:
@@ -52,11 +52,9 @@ start-whole-environment-with-finalized-tag-updater:
 		docker compose -f docker/compose.yml -f docker/compose-local-dev.overrides.yml -f docker/compose-local-dev-finalized-tag-updater.overrides.yml --profile l1 --profile l2 up -d
 
 start-whole-environment-traces-v2:
-		mkdir -p tmp/local/traces/v2/conflated
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml --profile l1 --profile l2 up -d
 
 start-whole-environment-traces-v2-with-finalized-tag-updater:
-		mkdir -p tmp/local/traces/v2/conflated
 		docker compose -f docker/compose.yml -f docker/compose-local-dev-traces-v2.overrides.yml -f docker/compose-local-dev-finalized-tag-updater.overrides.yml --profile l1 --profile l2 up -d
 
 pull-all-images:

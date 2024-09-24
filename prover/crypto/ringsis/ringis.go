@@ -4,20 +4,21 @@ import (
 	"bytes"
 	"encoding/binary"
 	"io"
+	"math"
 	"runtime"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_32_8"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_64_16"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/ringsis/ringsis_64_8"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_8"
 )
 
 const (
@@ -120,7 +121,10 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 
 	// unmarshal the result
 	var rlen [4]byte
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes))
+	if len(sum) > math.MaxUint32*fr.Bytes {
+		panic("slice too long")
+	}
+	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
 	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
 	var result fr.Vector
 	_, err := result.ReadFrom(reader)

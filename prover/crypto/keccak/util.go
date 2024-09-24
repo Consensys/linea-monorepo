@@ -4,11 +4,11 @@ import (
 	"math/bits"
 	"unsafe"
 
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // bytesAsBlockPtrUnsafe unsafely cast a slice into an array. The caller is
-// responsible for checking the length of the slice is at least as large as a
+// responsible for checking the length of the slice is at least as large as
 // a block.
 func bytesAsBlockPtrUnsafe(s []byte) *Block {
 	return (*Block)(unsafe.Pointer(&s[0]))
@@ -17,7 +17,7 @@ func bytesAsBlockPtrUnsafe(s []byte) *Block {
 // castDigest casts a 4-uplets of uint64 into a Keccak digest
 func castDigest(a0, a1, a2, a3 uint64) Digest {
 	resU64 := [4]uint64{a0, a1, a2, a3}
-	return *(*Digest)(unsafe.Pointer(&resU64[0]))
+	return *(*Digest)(unsafe.Pointer(&resU64[0])) // #nosec G115 -- TODO look into this. Seems impossible to overflow here
 }
 
 // cycShf is an alias for [bits.RotateLeft64]. The function performs a bit

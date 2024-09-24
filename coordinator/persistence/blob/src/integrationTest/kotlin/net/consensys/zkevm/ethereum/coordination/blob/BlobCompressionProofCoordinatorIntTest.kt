@@ -10,7 +10,8 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
-import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClient
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProofRequest
+import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.GetZkEVMStateMerkleProofResponse
 import net.consensys.zkevm.coordinator.clients.Type2StateManagerClient
 import net.consensys.zkevm.domain.Blob
@@ -18,7 +19,7 @@ import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.createBlobRecord
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import net.consensys.zkevm.persistence.dao.blob.BlobsPostgresDao
 import net.consensys.zkevm.persistence.dao.blob.BlobsRepositoryImpl
 import net.consensys.zkevm.persistence.db.DbHelper
@@ -70,7 +71,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
   private var expectedBlobCompressionProofResponse: BlobCompressionProof? = null
 
   private val zkStateClientMock = mock<Type2StateManagerClient>()
-  private val blobCompressionProverClientMock = mock<BlobCompressionProverClient>()
+  private val blobCompressionProverClientMock = mock<BlobCompressionProverClientV2>()
   private val blobZkStateProvider = mock<BlobZkStateProvider>()
   private lateinit var mockShnarfCalculator: BlobShnarfCalculator
   private lateinit var blobsRepositorySpy: BlobsRepository
@@ -112,37 +113,32 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
           )
         )
       )
-    whenever(
-      blobCompressionProverClientMock
-        .requestBlobCompressionProof(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-    )
-      .thenAnswer { i ->
+    whenever(blobCompressionProverClientMock.requestProof(any()))
+      .thenAnswer { invocationMock ->
+        val proofReq = invocationMock.arguments[0] as BlobCompressionProofRequest
         expectedBlobCompressionProofResponse = BlobCompressionProof(
-          compressedData = i.getArgument(0),
+          compressedData = proofReq.compressedData,
           conflationOrder = BlockIntervals(
-            startingBlockNumber =
-            i.getArgument<List<ConflationCalculationResult>>(1).first().startBlockNumber,
-            upperBoundaries =
-            i.getArgument<List<ConflationCalculationResult>>(1).map { it.endBlockNumber }
+            startingBlockNumber = proofReq.startBlockNumber,
+            upperBoundaries = proofReq.conflations.map { it.endBlockNumber }
           ),
-          prevShnarf = i.getArgument(5),
-          parentStateRootHash = i.getArgument(2),
-          finalStateRootHash = i.getArgument(3),
-          parentDataHash = i.getArgument(4),
-          dataHash = i.getArgument<ShnarfResult>(6).dataHash,
-          snarkHash = i.getArgument<ShnarfResult>(6).snarkHash,
-          expectedX = i.getArgument<ShnarfResult>(6).expectedX,
-          expectedY = i.getArgument<ShnarfResult>(6).expectedY,
-          expectedShnarf = i.getArgument<ShnarfResult>(6).expectedShnarf,
+          prevShnarf = proofReq.prevShnarf,
+          parentStateRootHash = proofReq.parentStateRootHash,
+          finalStateRootHash = proofReq.finalStateRootHash,
+          parentDataHash = proofReq.parentDataHash,
+          dataHash = proofReq.expectedShnarfResult.dataHash,
+          snarkHash = proofReq.expectedShnarfResult.snarkHash,
+          expectedX = proofReq.expectedShnarfResult.expectedX,
+          expectedY = proofReq.expectedShnarfResult.expectedY,
+          expectedShnarf = proofReq.expectedShnarfResult.expectedShnarf,
           decompressionProof = Random.nextBytes(512),
           proverVersion = "mock-0.0.0",
           verifierID = 6789,
           commitment = Random.nextBytes(48),
           kzgProofContract = Random.nextBytes(48),
           kzgProofSidecar = Random.nextBytes(48)
-
         )
-        SafeFuture.completedFuture(Ok(expectedBlobCompressionProofResponse))
+        SafeFuture.completedFuture(expectedBlobCompressionProofResponse)
       }
 
     mockShnarfCalculator = spy(FakeBlobShnarfCalculator())
@@ -265,12 +261,8 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
         assertThat(actualBlobs[1].blobHash).isEqualTo(blobCompressionProof?.dataHash)
         assertThat(blobCompressionProof?.parentDataHash).isEqualTo(prevBlobRecord.blobHash)
         assertThat(blobCompressionProof?.prevShnarf).isEqualTo(prevBlobRecord.expectedShnarf)
-        verify(mockShnarfCalculator)
-          .calculateShnarf(any(), any(), any(), any(), any())
-        verify(blobCompressionProverClientMock)
-          .requestBlobCompressionProof(
-            any(), any(), any(), any(), any(), any(), any(), any(), any(), any()
-          )
+        verify(mockShnarfCalculator).calculateShnarf(any(), any(), any(), any(), any())
+        verify(blobCompressionProverClientMock).requestProof(any())
       }
     testContext.completeNow()
   }
@@ -337,6 +329,75 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
     ).get()
 
     waitAtMost(10.seconds.toJavaDuration())
+      .pollInterval(200.milliseconds.toJavaDuration())
+      .untilAsserted {
+        val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
+          expectedStartBlock,
+          blobs.last().endBlockTime.plus(1.seconds)
+        ).get()
+
+        assertThat(actualBlobs).size().isEqualTo(blobs.size + 1)
+        verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(any())
+        verify(blobsRepositorySpy, times(1)).findBlobByEndBlockNumber(eq(expectedEndBlock.toLong()))
+
+        var previousBlob = actualBlobs.first()
+        actualBlobs.drop(1).forEach { blobRecord ->
+          val blobCompressionProof = blobRecord.blobCompressionProof!!
+          testContext.verify {
+            assertThat(blobCompressionProof.parentDataHash).isEqualTo(previousBlob.blobHash)
+            assertThat(blobCompressionProof.prevShnarf).isEqualTo(previousBlob.expectedShnarf)
+          }
+          previousBlob = blobRecord
+        }
+      }
+    testContext.completeNow()
+  }
+
+  @Test
+  fun `test blob handle failures re-queue's the blob`(
+    testContext: VertxTestContext
+  ) {
+    val prevBlobRecord = createBlobRecord(
+      startBlockNumber = expectedStartBlock,
+      endBlockNumber = expectedEndBlock,
+      startBlockTime = expectedStartBlockTime
+    )
+    timeToReturn = Clock.System.now()
+    blobsPostgresDao.saveNewBlob(prevBlobRecord).get()
+
+    val blobs = createConsecutiveBlobs(
+      numberOfBlobs = maxBlobsToReturn.toInt() - 1,
+      startBlockNumber = expectedEndBlock + 1UL,
+      startBlockTime = prevBlobRecord.endBlockTime.plus(12.seconds)
+    )
+    val maxMockedBlobZkStateFailures = 10
+    var blobZkStateFailures = 0
+    var blobZkStateCount = 0
+
+    Mockito.reset(blobZkStateProvider)
+    whenever(blobZkStateProvider.getBlobZKState(any())).thenAnswer {
+      blobZkStateCount += 1
+      if (blobZkStateFailures <= maxMockedBlobZkStateFailures && blobZkStateCount % 2 == 0) {
+        blobZkStateFailures += 1
+        SafeFuture.failedFuture(RuntimeException("Forced mock blobZkStateProvider failure"))
+      } else {
+        SafeFuture.completedFuture(
+          BlobZkState(
+            parentStateRootHash = Bytes32.random().toArray(),
+            finalStateRootHash = Bytes32.random().toArray()
+          )
+        )
+      }
+    }
+
+    timeToReturn = Clock.System.now()
+    SafeFuture.allOf(
+      blobs.map {
+        blobCompressionProofCoordinator.handleBlob(it)
+      }.stream()
+    ).get()
+
+    waitAtMost(100.seconds.toJavaDuration())
       .pollInterval(200.milliseconds.toJavaDuration())
       .untilAsserted {
         val actualBlobs = blobsPostgresDao.getConsecutiveBlobsFromBlockNumber(
