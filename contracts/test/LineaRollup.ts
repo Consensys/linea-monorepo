@@ -1332,33 +1332,23 @@ describe("Linea Rollup contract", () => {
     });
 
     describe("With and without submission data", () => {
-      it("Should revert if caller does not the role 'FINALIZE_WITHOUT_PROOF_ROLE'", async () => {
-        const finalizationData = await generateFinalizationData();
-
-        const finalizeCall = lineaRollup.connect(operator).finalizeBlocksWithoutProof(finalizationData);
-
-        await expectRevertWithReason(finalizeCall, buildAccessErrorMessage(operator, FINALIZE_WITHOUT_PROOF_ROLE));
-      });
-
-      it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-        const finalizationData = await generateFinalizationData();
-
-        await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
-
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
-
-        await expectRevertWithCustomError(lineaRollup, finalizeCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
-      });
-
       it("Should revert if _finalizationData.finalBlockNumber is less than or equal to currentL2BlockNumber", async () => {
         await lineaRollup.setLastFinalizedBlock(10_000_000);
 
         const finalizationData = await generateFinalizationData();
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = HASH_ZERO;
+        const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
+        const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
+        finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
+        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
+        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
+
+        const proof = calldataAggregatedProof1To155.aggregatedProof;
+
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(
           lineaRollup,
@@ -1371,12 +1361,21 @@ describe("Linea Rollup contract", () => {
       it("Should revert if l1 message number == 0 and l1 rolling hash is not empty", async () => {
         const finalizationData = await generateFinalizationData({
           l1RollingHashMessageNumber: 0n,
+          l1RollingHash: generateRandomBytes(32),
         });
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = firstCompressedDataContent.parentStateRootHash;
+        const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
+        const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
+        finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
+        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
+        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
+
+        const proof = calldataAggregatedProof1To155.aggregatedProof;
+
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "MissingMessageNumberForRollingHash", [
           finalizationData.l1RollingHash,
@@ -1384,12 +1383,23 @@ describe("Linea Rollup contract", () => {
       });
 
       it("Should revert if l1 message number != 0 and l1 rolling hash is empty", async () => {
-        const finalizationData = await generateFinalizationData({ l1RollingHash: HASH_ZERO });
+        const finalizationData = await generateFinalizationData({
+          l1RollingHashMessageNumber: 1n,
+          l1RollingHash: HASH_ZERO,
+        });
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = HASH_ZERO;
+        const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
+        const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
+        finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
+        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
+        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
+
+        const proof = calldataAggregatedProof1To155.aggregatedProof;
+
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "MissingRollingHashForMessageNumber", [
           finalizationData.l1RollingHashMessageNumber,
@@ -1397,12 +1407,23 @@ describe("Linea Rollup contract", () => {
       });
 
       it("Should revert if l1RollingHash does not exist on L1", async () => {
-        const finalizationData = await generateFinalizationData();
+        const finalizationData = await generateFinalizationData({
+          l1RollingHashMessageNumber: 1n,
+          l1RollingHash: generateRandomBytes(32),
+        });
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = HASH_ZERO;
+        const lastFinalizedBlockNumber = await lineaRollup.currentL2BlockNumber();
+        const parentStateRootHash = await lineaRollup.stateRootHashes(lastFinalizedBlockNumber);
+        finalizationData.parentStateRootHash = parentStateRootHash;
 
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
+        const currentFinalizedShnarf = await lineaRollup.currentFinalizedShnarf();
+        finalizationData.lastFinalizedShnarf = currentFinalizedShnarf;
+
+        const proof = calldataAggregatedProof1To155.aggregatedProof;
+
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(proof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "L1RollingHashDoesNotExistOnL1", [
           finalizationData.l1RollingHashMessageNumber,
@@ -1411,13 +1432,41 @@ describe("Linea Rollup contract", () => {
       });
 
       it("Should revert if timestamps are not in sequence", async () => {
+        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
+        let index = 0;
+        for (const data of submissionDataBeforeFinalization) {
+          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
+          await lineaRollup
+            .connect(operator)
+            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+              gasLimit: 30_000_000,
+            });
+          index++;
+        }
+
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
+          lastFinalizedTimestamp: 1683325137n,
+          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
+          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateParentShnarfData(index),
         });
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = HASH_ZERO;
+        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
+
+        await lineaRollup.setRollingHash(
+          calldataAggregatedProof1To155.l1RollingHashMessageNumber,
+          calldataAggregatedProof1To155.l1RollingHash,
+        );
+
+        finalizationData.lastFinalizedTimestamp = finalizationData.finalTimestamp + 1n;
+
         const expectedHashValue = generateKeccak256(
           ["uint256", "bytes32", "uint256"],
           [
@@ -1436,8 +1485,13 @@ describe("Linea Rollup contract", () => {
         );
 
         const finalizeCompressedCall = lineaRollup
-          .connect(securityCouncil)
-          .finalizeBlocksWithoutProof(finalizationData);
+          .connect(operator)
+          .finalizeBlocksWithProof(
+            calldataAggregatedProof1To155.aggregatedProof,
+            TEST_PUBLIC_VERIFIER_INDEX,
+            finalizationData,
+          );
+
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationStateIncorrect", [
           expectedHashValue,
           actualHashValue,
@@ -1445,19 +1499,47 @@ describe("Linea Rollup contract", () => {
       });
 
       it("Should revert if finalizationData.finalTimestamp is greater than the block.timestamp", async () => {
+        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
+        let index = 0;
+        for (const data of submissionDataBeforeFinalization) {
+          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
+          await lineaRollup
+            .connect(operator)
+            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+              gasLimit: 30_000_000,
+            });
+          index++;
+        }
+
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: 1683325137n,
-          finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()),
+          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
+          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateParentShnarfData(index),
         });
 
-        // finalization block is set to 0 and the hash is zero - the test is to perform other validations
-        finalizationData.parentStateRootHash = HASH_ZERO;
+        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
+
+        await lineaRollup.setRollingHash(
+          calldataAggregatedProof1To155.l1RollingHashMessageNumber,
+          calldataAggregatedProof1To155.l1RollingHash,
+        );
 
         const finalizeCompressedCall = lineaRollup
-          .connect(securityCouncil)
-          .finalizeBlocksWithoutProof(finalizationData);
+          .connect(operator)
+          .finalizeBlocksWithProof(
+            calldataAggregatedProof1To155.aggregatedProof,
+            TEST_PUBLIC_VERIFIER_INDEX,
+            finalizationData,
+          );
+
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationInTheFuture", [
           finalizationData.finalTimestamp,
           (await networkTime.latest()) + 1,
@@ -1465,238 +1547,109 @@ describe("Linea Rollup contract", () => {
       });
 
       it("Should revert if the parent datahash's fingerprint does not match", async () => {
-        const [submissionDataBeforeFinalization] = generateCallDataSubmission(0, 1);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization, prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        const finalSubmissionData = generateParentSubmissionDataForIndex(1);
+        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
+        let index = 0;
+        for (const data of submissionDataBeforeFinalization) {
+          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
+          await lineaRollup
+            .connect(operator)
+            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+              gasLimit: 30_000_000,
+            });
+          index++;
+        }
 
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: 1683325137n,
-          finalBlockInData: BigInt(100n),
-          shnarfData: generateParentShnarfData(0),
+          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
+          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateParentShnarfData(index),
         });
 
-        finalSubmissionData.shnarf = generateRandomBytes(32);
+        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
+
+        await lineaRollup.setRollingHash(
+          calldataAggregatedProof1To155.l1RollingHashMessageNumber,
+          calldataAggregatedProof1To155.l1RollingHash,
+        );
+
+        // Modify the shnarfData to create a mismatch
+        finalizationData.shnarfData.parentShnarf = generateRandomBytes(32);
 
         const finalizeCompressedCall = lineaRollup
-          .connect(securityCouncil)
-          .finalizeBlocksWithoutProof(finalizationData);
+          .connect(operator)
+          .finalizeBlocksWithProof(
+            calldataAggregatedProof1To155.aggregatedProof,
+            TEST_PUBLIC_VERIFIER_INDEX,
+            finalizationData,
+          );
+
         await expectRevertWithCustomError(
           lineaRollup,
           finalizeCompressedCall,
           "FinalBlockDoesNotMatchShnarfFinalBlock",
-          [finalizationData.finalBlockInData, await lineaRollup.dataShnarfHashes(finalSubmissionData.shnarf)],
+          [
+            finalizationData.finalBlockInData,
+            await lineaRollup.shnarfFinalBlockNumbers(finalizationData.shnarfData.parentShnarf),
+          ],
         );
       });
     });
 
     describe("Without submission data", () => {
-      it("Should revert with if the final block state equals the zero hash", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 2);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[0], prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[1], expectedShnarf, secondExpectedShnarf, {
-            gasLimit: 30_000_000,
-          });
+      it("Should revert if the final block state equals the zero hash", async () => {
+        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
+        let index = 0;
+        for (const data of submissionDataBeforeFinalization) {
+          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
+          await lineaRollup
+            .connect(operator)
+            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
+              gasLimit: 30_000_000,
+            });
+          index++;
+        }
 
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: 1683325137n,
+          finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
+          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
+          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
+          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
+          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
+          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
+          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
+          shnarfData: generateParentShnarfData(index),
         });
 
+        finalizationData.lastFinalizedShnarf = generateParentSubmissionDataForIndex(0).shnarf;
+
+        await lineaRollup.setRollingHash(
+          calldataAggregatedProof1To155.l1RollingHashMessageNumber,
+          calldataAggregatedProof1To155.l1RollingHash,
+        );
+
+        // Set the final state root hash to zero
         finalizationData.shnarfData.finalStateRootHash = HASH_ZERO;
 
-        const finalizeCall = lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocksWithProof(
+            calldataAggregatedProof1To155.aggregatedProof,
+            TEST_PUBLIC_VERIFIER_INDEX,
+            finalizationData,
+          );
 
         await expectRevertWithCustomError(lineaRollup, finalizeCall, "FinalBlockStateEqualsZeroHash");
-      });
-
-      it("Should successfully finalize blocks and emit DataFinalized event", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 2);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[0], prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[1], expectedShnarf, secondExpectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        const finalizationData = await generateFinalizationData({
-          l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
-          l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
-          finalBlockInData: BigInt(submissionDataBeforeFinalization[1].finalBlockInData),
-          parentStateRootHash: parentStateRootHash,
-          shnarfData: generateParentShnarfData(2),
-        });
-
-        const finalizeCompressedCall = lineaRollup
-          .connect(securityCouncil)
-          .finalizeBlocksWithoutProof(finalizationData);
-        const eventArgs = [
-          finalizationData.finalBlockInData,
-          finalizationData.parentStateRootHash,
-          finalizationData.shnarfData.finalStateRootHash,
-          false,
-        ];
-
-        await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalized", eventArgs);
-      });
-
-      it("Should successfully finalize blocks and store the last state root hash, the final timestamp, the final block number", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 2);
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[0], prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[1], expectedShnarf, secondExpectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        const finalizationData = await generateFinalizationData({
-          l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
-          l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
-          finalBlockInData: submissionDataBeforeFinalization[1].finalBlockInData,
-          parentStateRootHash: parentStateRootHash,
-          shnarfData: generateParentShnarfData(2),
-        });
-
-        expect(await lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData)).to.not.be
-          .reverted;
-
-        const [finalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-          lineaRollup.stateRootHashes(finalizationData.finalBlockInData),
-          lineaRollup.currentL2BlockNumber(),
-          lineaRollup.currentFinalizedState(),
-        ]);
-
-        expect(finalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-        expect(lastFinalizedBlockNumber).to.equal(finalizationData.finalBlockInData);
-        expect(lastFinalizedState).to.equal(
-          generateKeccak256(
-            ["uint256", "bytes32", "uint256"],
-            [
-              finalizationData.l1RollingHashMessageNumber,
-              finalizationData.l1RollingHash,
-              finalizationData.finalTimestamp,
-            ],
-          ),
-        );
-      });
-
-      it("Should successfully finalize blocks and anchor L2 merkle root, emit an event for each L2 block containing L2->L1 messages", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 2);
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[0], prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[1], expectedShnarf, secondExpectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        const finalizationData = await generateFinalizationData({
-          l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
-          l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
-          finalBlockInData: submissionDataBeforeFinalization[1].finalBlockInData,
-          parentStateRootHash: parentStateRootHash,
-          shnarfData: generateParentShnarfData(2),
-        });
-
-        const currentL2BlockNumber = await lineaRollup.currentL2BlockNumber();
-
-        const tx = await lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData);
-        await tx.wait();
-
-        const events = await lineaRollup.queryFilter(lineaRollup.filters.L2MessagingBlockAnchored());
-
-        expect(events.length).to.equal(1);
-
-        for (let i = 0; i < events.length; i++) {
-          expect(events[i].args?.l2Block).to.deep.equal(
-            currentL2BlockNumber + BigInt(`0x${finalizationData.l2MessagingBlocksOffsets.slice(i * 4 + 2, i * 4 + 6)}`),
-          );
-        }
-
-        for (let i = 0; i < finalizationData.l2MerkleRoots.length; i++) {
-          const l2MerkleRootTreeDepth = await lineaRollup.l2MerkleRootsDepths(finalizationData.l2MerkleRoots[i]);
-          expect(l2MerkleRootTreeDepth).to.equal(finalizationData.l2MerkleTreesDepth);
-        }
-      });
-
-      it("Should successfully finalize blocks when we submit data1 and data2 but only finalizing data1", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 2);
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[0], prevShnarf, expectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionDataBeforeFinalization[1], expectedShnarf, secondExpectedShnarf, {
-            gasLimit: 30_000_000,
-          });
-
-        const finalizationData = await generateFinalizationData({
-          l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
-          l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
-          finalBlockInData: submissionDataBeforeFinalization[0].finalBlockInData,
-          parentStateRootHash: parentStateRootHash,
-          shnarfData: generateParentShnarfData(1),
-        });
-
-        expect(await lineaRollup.connect(securityCouncil).finalizeBlocksWithoutProof(finalizationData)).to.not.be
-          .reverted;
-
-        const [finalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-          lineaRollup.stateRootHashes(finalizationData.finalBlockInData),
-          lineaRollup.currentL2BlockNumber(),
-          lineaRollup.currentFinalizedState(),
-        ]);
-
-        expect(finalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-        expect(lastFinalizedBlockNumber).to.equal(finalizationData.finalBlockInData);
-        expect(lastFinalizedState).to.equal(
-          generateKeccak256(
-            ["uint256", "bytes32", "uint256"],
-            [
-              finalizationData.l1RollingHashMessageNumber,
-              finalizationData.l1RollingHash,
-              finalizationData.finalTimestamp,
-            ],
-          ),
-        );
       });
     });
   });
