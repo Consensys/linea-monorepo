@@ -23,6 +23,11 @@ interface IL2MessageManager {
   event ServiceVersionMigrated(uint256 indexed version);
 
   /**
+   * @dev Reverts when the message hashes array length is zero.
+   */
+  error MessageHashesListLengthIsZero();
+
+  /**
    * @dev Reverts when message number synchronization is mismatched.
    */
   error L1MessageNumberSynchronizationWrong(uint256 expected, uint256 found);

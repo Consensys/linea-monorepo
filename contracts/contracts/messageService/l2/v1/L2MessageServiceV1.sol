@@ -154,7 +154,7 @@ abstract contract L2MessageServiceV1 is
     uint256 previousMinimumFee = minimumFeeInWei;
     minimumFeeInWei = _feeInWei;
 
-    emit MinimumFeeChanged(previousMinimumFee, minimumFeeInWei, msg.sender);
+    emit MinimumFeeChanged(previousMinimumFee, _feeInWei, msg.sender);
   }
 
   /**

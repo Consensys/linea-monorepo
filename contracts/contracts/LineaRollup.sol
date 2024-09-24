@@ -172,6 +172,10 @@ contract LineaRollup is
       revert BlobSubmissionDataIsMissing();
     }
 
+    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(blobSubmissionLength);
+    }
+
     bytes32 currentDataEvaluationPoint;
     bytes32 currentDataHash;
     uint256 lastFinalizedBlockNumber = currentL2BlockNumber;
@@ -454,17 +458,6 @@ contract LineaRollup is
       _finalizationData.finalBlockInData,
       _finalizationData.shnarfData.finalStateRootHash
     );
-  }
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev FINALIZE_WITHOUT_PROOF_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(
-    FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(FINALIZE_WITHOUT_PROOF_ROLE) {
-    _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
   }
 
   /**
