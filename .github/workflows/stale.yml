@@ -11,14 +11,14 @@ permissions:
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     steps:
       - uses: actions/stale@v8
         with:
           # Issues
           days-before-issue-stale: -1 # Deactivate stale issues
           days-before-issue-close: -1 # Deactivate stale issues
-          
+
           # PR
           days-before-pr-stale: 30
           days-before-pr-close: 7
