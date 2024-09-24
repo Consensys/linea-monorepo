@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageServiceV1 } from "./v1/L1MessageServiceV1.sol";
@@ -8,6 +8,7 @@ import { IL1MessageService } from "../../interfaces/l1/IL1MessageService.sol";
 import { IGenericErrors } from "../../interfaces/IGenericErrors.sol";
 import { SparseMerkleTreeVerifier } from "../lib/SparseMerkleTreeVerifier.sol";
 import { TransientStorageHelpers } from "../lib/TransientStorageHelpers.sol";
+import { MessageHashing } from "../lib/MessageHashing.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1.
@@ -22,6 +23,7 @@ abstract contract L1MessageService is
   IGenericErrors
 {
   using SparseMerkleTreeVerifier for *;
+  using MessageHashing for *;
   using TransientStorageHelpers for *;
 
   /// @dev This is currently not in use, but is reserved for future upgrades.
@@ -34,32 +36,14 @@ abstract contract L1MessageService is
   /**
    * @notice Initialises underlying message service dependencies.
    * @dev _messageSender is initialised to a non-zero value for gas efficiency on claiming.
-   * @param _limitManagerAddress The address owning the rate limiting management role.
-   * @param _pauseManagerAddress The address owning the pause management role.
    * @param _rateLimitPeriod The period to rate limit against.
    * @param _rateLimitAmount The limit allowed for withdrawing the period.
    */
-  function __MessageService_init(
-    address _limitManagerAddress,
-    address _pauseManagerAddress,
-    uint256 _rateLimitPeriod,
-    uint256 _rateLimitAmount
-  ) internal onlyInitializing {
-    if (_limitManagerAddress == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    if (_pauseManagerAddress == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
+  function __MessageService_init(uint256 _rateLimitPeriod, uint256 _rateLimitAmount) internal onlyInitializing {
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
-
-    _grantRole(RATE_LIMIT_SETTER_ROLE, _limitManagerAddress);
-    _grantRole(PAUSE_MANAGER_ROLE, _pauseManagerAddress);
 
     nextMessageNumber = 1;
   }
@@ -88,7 +72,7 @@ abstract contract L1MessageService is
     uint256 messageNumber = nextMessageNumber++;
     uint256 valueSent = msg.value - _fee;
 
-    bytes32 messageHash = keccak256(abi.encode(msg.sender, _to, _fee, valueSent, messageNumber, _calldata));
+    bytes32 messageHash = MessageHashing._hashMessage(msg.sender, _to, _fee, valueSent, messageNumber, _calldata);
 
     _addRollingHash(messageNumber, messageHash);
 
@@ -120,10 +104,14 @@ abstract contract L1MessageService is
 
     _addUsedAmount(_params.fee + _params.value);
 
-    bytes32 messageLeafHash = keccak256(
-      abi.encode(_params.from, _params.to, _params.fee, _params.value, _params.messageNumber, _params.data)
+    bytes32 messageLeafHash = MessageHashing._hashMessage(
+      _params.from,
+      _params.to,
+      _params.fee,
+      _params.value,
+      _params.messageNumber,
+      _params.data
     );
-
     if (
       !SparseMerkleTreeVerifier._verifyMerkleProof(
         messageLeafHash,

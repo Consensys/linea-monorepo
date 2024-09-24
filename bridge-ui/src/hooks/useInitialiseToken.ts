@@ -17,20 +17,28 @@ export async function getConfig(): Promise<NetworkTokens> {
 
   updatedTokensConfig.MAINNET = [
     ...defaultTokensConfig.MAINNET,
-    ...mainnetTokens.map((token: Token): TokenInfo => {
-      const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
-      return {
-        name: token.name,
-        symbol: token.symbol,
-        decimals: token.decimals,
-        type: tokenType,
-        L1: token?.extension?.rootAddress ?? null,
-        L2: token.address,
-        UNKNOWN: null,
-        image: token.logoURI,
-        isDefault: true,
-      };
-    }),
+    ...(await Promise.all(
+      mainnetTokens.map(async (token: Token): Promise<TokenInfo> => {
+        const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
+        try {
+          await fetch(token.logoURI);
+        } catch (error) {
+          token.logoURI = "/images/logo/noTokenLogo.svg";
+        }
+
+        return {
+          name: token.name,
+          symbol: token.symbol,
+          decimals: token.decimals,
+          type: tokenType,
+          L1: token?.extension?.rootAddress ?? null,
+          L2: token.address,
+          UNKNOWN: null,
+          image: token.logoURI,
+          isDefault: true,
+        };
+      }),
+    )),
   ];
 
   updatedTokensConfig.SEPOLIA = [

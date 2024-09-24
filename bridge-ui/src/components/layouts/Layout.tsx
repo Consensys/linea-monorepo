@@ -1,22 +1,24 @@
 "use client";
 
 import { ToastContainer } from "react-toastify";
-import atypTextFont from "@/app/font/atypText";
-import atypFont from "@/app/font/atyp";
-import Header from "./header/Header";
-import SwitchNetwork from "../widgets/SwitchNetwork";
-import useInitialiseChain from "@/hooks/useInitialiseChain";
-import useInitialiseToken from "@/hooks/useInitialiseToken";
+import { Header } from "./header";
+import { useInitialiseChain, useInitialiseToken } from "@/hooks";
 import Sidebar from "./Sidebar";
+import { useAccount } from "wagmi";
+import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
+import WrongNetwork from "./WrongNetwork";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   useInitialiseChain();
   useInitialiseToken();
 
-  return (
-    <div
-      className={`${atypFont.variable} ${atypTextFont.variable} ${atypFont.className} flex min-h-screen flex-col bg-cover bg-no-repeat`}
-    >
+  const { chainId } = useAccount();
+
+  return chainId &&
+    ![mainnet.id, sepolia.id, linea.id, lineaSepolia.id].includes(chainId as 1 | 11155111 | 59144 | 59141) ? (
+    <WrongNetwork />
+  ) : (
+    <div className="flex min-h-screen flex-col bg-cover bg-no-repeat">
       <ToastContainer
         position="top-center"
         autoClose={2000}
@@ -28,10 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="md:ml-64">
         <Header />
       </div>
-      <main className="m-0 flex-1 p-10 md:ml-64">
-        {children}
-        <SwitchNetwork />
-      </main>
+      <main className="m-0 flex-1 p-3 md:ml-64 md:p-10">{children}</main>
     </div>
   );
 }

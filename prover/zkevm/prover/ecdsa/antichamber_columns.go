@@ -1,6 +1,6 @@
 package ecdsa
 
-import "github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
+import "github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
 func (ac *antichamber) cols(withActive bool) []ifaces.Column {
 	res := []ifaces.Column{

@@ -17,12 +17,12 @@ import (
 	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/internal"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/mimc/gkrmimc"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
-	blob "github.com/consensys/zkevm-monorepo/prover/lib/compressor/blob/v1"
+	blob "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
 
 // TODO make as many things package private as possible

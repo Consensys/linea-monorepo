@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Element aliases [fr.Element] and represents a field element in the scalar

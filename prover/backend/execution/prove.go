@@ -2,13 +2,13 @@ package execution
 
 import (
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/zkevm-monorepo/prover/circuits"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/circuits/execution"
-	"github.com/consensys/zkevm-monorepo/prover/config"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/profiling"
-	"github.com/consensys/zkevm-monorepo/prover/zkevm"
+	"github.com/consensys/linea-monorepo/prover/circuits"
+	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -176,7 +176,9 @@ func mustProveAndPass(
 		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces)
 		// this will panic to alert errors, so there is no need to handle or
 		// sanity-check anything.
+		logrus.Infof("Prover starting the prover")
 		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		logrus.Infof("Prover checks passed")
 		return "", ""
 
 	default:
