@@ -1,3 +1,5 @@
+data-queryable-window-since-rejected-timestamp="P7D"
+
 [database]
 schema="linea_transaction_exclusion"
 read_pool_size=10
@@ -16,8 +18,6 @@ password="postgres"
 [database.cleanup]
 polling-interval="PT60S"
 storage-period="P7D"
-[database.queryable-window]
-rejected-timestamp-within-duration="PT24H"
 [database.persistence-retry]
 #max-retries = 10 commented as can be null
 backoff-delay = "PT5S"
