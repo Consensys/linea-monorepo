@@ -134,7 +134,7 @@ interface ILineaRollup {
   /**
    * @notice Emitted when the gateway operator role is granted.
    * @param caller The address that granted the role.
-   * @param gatewayOperatorAddress The address that received the gateway operator role.
+   * @param gatewayOperatorAddress The gateway operator address that received the operator role.
    */
   event GatewayOperatorRoleGranted(address indexed caller, address indexed gatewayOperatorAddress);
 
@@ -178,7 +178,7 @@ interface ILineaRollup {
   );
 
   /**
-   * @dev Thrown when the last finalization time has not lapsed.
+   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the gateway operator address.
    */
   error LastFinalizationTimeNotLapsed();
 
