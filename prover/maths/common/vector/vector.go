@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // DeepCopy deep-copies the input vector
@@ -20,13 +21,13 @@ func DeepCopy(pol []field.Element) []field.Element {
 // The result should be preallocated or it is going to panic.
 // res = vec is a valid parameter assignment.
 func ScalarMul(res, vec []field.Element, scalar field.Element) {
-	if len(res) != len(vec) {
-		utils.Panic("The inputs should have the same length %v %v", len(res), len(vec))
+
+	if len(res)+len(vec) == 0 {
+		return
 	}
 
-	for i := range vec {
-		res[i].Mul(&vec[i], &scalar)
-	}
+	r := fr.Vector(res)
+	r.ScalarMul(fr.Vector(vec), &scalar)
 }
 
 // ScalarProd returns the scalar (inner) product of a and b. The function panics
@@ -121,21 +122,15 @@ func ForTest(xs ...int) []field.Element {
 // res == a or res == b or both is valid assignment.
 func Add(res, a, b []field.Element, extras ...[]field.Element) {
 
-	if len(res) != len(a) || len(b) != len(a) {
-		utils.Panic("The inputs should have the same length %v %v %v", len(res), len(a), len(b))
+	if len(res)+len(a)+len(b) == 0 {
+		return
 	}
 
-	for j := range extras {
-		if len(res) != len(extras[j]) {
-			utils.Panic("The inputs should have the same length %v %v %v", len(res), len(a), len(extras[j]))
-		}
-	}
+	r := fr.Vector(res)
+	r.Add(a, b)
 
-	for i := range res {
-		res[i].Add(&a[i], &b[i])
-		for j := range extras {
-			res[i].Add(&res[i], &extras[j][i])
-		}
+	for _, x := range extras {
+		r.Add(r, fr.Vector(x))
 	}
 }
 
@@ -145,13 +140,12 @@ func Add(res, a, b []field.Element, extras ...[]field.Element) {
 // res == a or res == b or both is valid assignment.
 func Sub(res, a, b []field.Element) {
 
-	if len(res) != len(a) || len(b) != len(a) {
-		utils.Panic("The inputs should have the same length %v %v %v", len(res), len(a), len(b))
+	if len(res)+len(a)+len(b) == 0 {
+		return
 	}
 
-	for i := range res {
-		res[i].Sub(&a[i], &b[i])
-	}
+	r := fr.Vector(res)
+	r.Sub(fr.Vector(a), fr.Vector(b))
 }
 
 // ZeroPad pads a vector to a given length.

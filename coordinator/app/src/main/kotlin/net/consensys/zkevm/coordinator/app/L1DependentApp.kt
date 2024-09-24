@@ -89,14 +89,16 @@ import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCalc
 import net.consensys.zkevm.ethereum.coordination.conflation.TracesConflationCoordinatorImpl
 import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCoordinatorImpl
 import net.consensys.zkevm.ethereum.finalization.AggregationFinalizationCoordinator
+import net.consensys.zkevm.ethereum.finalization.FinalizationHandler
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitor
 import net.consensys.zkevm.ethereum.finalization.FinalizationMonitorImpl
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
-import net.consensys.zkevm.persistence.aggregation.AggregationsRepository
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.AggregationsRepository
+import net.consensys.zkevm.persistence.BatchesRepository
+import net.consensys.zkevm.persistence.BlobsRepository
+import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizationHandler
 import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerImpl
-import net.consensys.zkevm.persistence.dao.batch.persistence.BatchesRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
@@ -125,7 +127,7 @@ class L1DependentApp(
     if (configs.messageAnchoringService.disabled) {
       log.warn("Message anchoring service is disabled")
     }
-    if (configs.dynamicGasPriceService.disabled) {
+    if (configs.l2NetworkGasPricingService == null) {
       log.warn("Dynamic gas price service is disabled")
     }
   }
@@ -905,14 +907,14 @@ class L1DependentApp(
       null
     }
 
-  private val gasPriceUpdaterApp: GasPriceUpdaterApp? =
-    if (configs.dynamicGasPriceService.enabled) {
-      GasPriceUpdaterApp(
+  private val l2NetworkGasPricingService: L2NetworkGasPricingService? =
+    if (configs.l2NetworkGasPricingService != null) {
+      L2NetworkGasPricingService(
         vertx = vertx,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
         l1Web3jClient = l1Web3jClient,
         l1Web3jService = l1Web3jService,
-        config = configs.dynamicGasPriceService
+        config = configs.l2NetworkGasPricingService
       )
     } else {
       null
@@ -966,25 +968,17 @@ class L1DependentApp(
     }
 
   private val blockFinalizationHandlerMap = mapOf(
-    "finalized records cleanup" to { update: FinalizationMonitor.FinalizationUpdate ->
-      val batchesCleanup = batchesRepository.deleteBatchesUpToEndBlockNumber(update.blockNumber.toLong())
-      // Subtract 1 from block number because we do not want to delete the last blob as BlobCompressionProofCoordinator
-      // needs the shnarf from the previous blob
-      val blobsCleanup = blobsRepository.deleteBlobsUpToEndBlockNumber(
-        endBlockNumberInclusive = update.blockNumber - 2u
-      )
-      // Subtract 1 from block number because we do not want to delete the last aggregation
-      val aggregationsCleanup = aggregationsRepository
-        .deleteAggregationsUpToEndBlockNumber(endBlockNumberInclusive = update.blockNumber.toLong() - 2L)
-
-      SafeFuture.allOf(batchesCleanup, blobsCleanup, aggregationsCleanup)
-    },
-    "type 2 state proof provider finalization updates" to {
+    "finalized records cleanup" to RecordsCleanupFinalizationHandler(
+      batchesRepository = batchesRepository,
+      blobsRepository = blobsRepository,
+      aggregationsRepository = aggregationsRepository
+    ),
+    "type 2 state proof provider finalization updates" to FinalizationHandler {
       finalizedBlockNotifier.updateFinalizedBlock(
         BlockNumberAndHash(it.blockNumber, it.blockHash)
       )
     },
-    "last_proven_block_provider" to { update: FinalizationMonitor.FinalizationUpdate ->
+    "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
       lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
     }
   )
@@ -995,22 +989,19 @@ class L1DependentApp(
     }
   }
 
-  private fun cleanupDbDataAfterConflationResumeFromBlock(resumeConflationFrom: ULong): SafeFuture<*> {
-    val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(resumeConflationFrom.toLong())
-    val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(resumeConflationFrom)
-    val cleanupAggregations = aggregationsRepository.deleteAggregationsAfterBlockNumber(resumeConflationFrom.toLong())
-
-    return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
-  }
-
   override fun start(): CompletableFuture<Unit> {
-    return cleanupDbDataAfterConflationResumeFromBlock(lastProcessedBlockNumber + 1U)
+    return cleanupDbDataAfterLastProcessedBlock(
+      lastProcessedBlockNumber = lastProcessedBlockNumber,
+      batchesRepository = batchesRepository,
+      blobsRepository = blobsRepository,
+      aggregationsRepository = aggregationsRepository
+    )
       .thenCompose { l1FinalizationMonitor.start() }
       .thenCompose { blobSubmissionCoordinator.start() }
       .thenCompose { aggregationFinalizationCoordinator.start() }
       .thenCompose { proofAggregationCoordinatorService.start() }
       .thenCompose { messageAnchoringApp?.start() ?: SafeFuture.completedFuture(Unit) }
-      .thenCompose { gasPriceUpdaterApp?.start() ?: SafeFuture.completedFuture(Unit) }
+      .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { l1FeeHistoryCachingService.start() }
       .thenCompose { deadlineConflationCalculatorRunnerOld.start() }
       .thenCompose { deadlineConflationCalculatorRunnerNew.start() }
@@ -1028,7 +1019,7 @@ class L1DependentApp(
       aggregationFinalizationCoordinator.stop(),
       proofAggregationCoordinatorService.stop(),
       messageAnchoringApp?.stop() ?: SafeFuture.completedFuture(Unit),
-      gasPriceUpdaterApp?.stop() ?: SafeFuture.completedFuture(Unit),
+      l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
       l1FeeHistoryCachingService.stop(),
       blockCreationMonitor.stop(),
       deadlineConflationCalculatorRunnerOld.stop(),
@@ -1040,6 +1031,26 @@ class L1DependentApp(
   }
 
   companion object {
+
+    fun cleanupDbDataAfterLastProcessedBlock(
+      lastProcessedBlockNumber: ULong,
+      batchesRepository: BatchesRepository,
+      blobsRepository: BlobsRepository,
+      aggregationsRepository: AggregationsRepository
+    ): SafeFuture<*> {
+      val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
+      val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
+      val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(blockNumberInclusiveToDeleteFrom)
+      val cleanupAggregations = aggregationsRepository
+        .deleteAggregationsAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
+
+      return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
+    }
+
+    /**
+     * Returns the last block number inclusive upto which we have consecutive proven blobs or the last finalized block
+     * number inclusive
+     */
     fun resumeConflationFrom(
       aggregationsRepository: AggregationsRepository,
       lastFinalizedBlock: ULong

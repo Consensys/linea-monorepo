@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring pre-existing pausing functions, events and errors.
@@ -7,6 +7,17 @@ pragma solidity >=0.8.19 <=0.8.24;
  * @custom:security-contact security-report@linea.build
  */
 interface IPauseManager {
+  /**
+   * @notice Structure defining a pause type and its associated role.
+   * @dev This struct is used for both the pauseTypeRoles and unPauseTypeRoles mappings.
+   * @param pauseType The type of pause.
+   * @param role The role associated with the pause type.
+   */
+  struct PauseTypeRole {
+    uint8 pauseType;
+    bytes32 role;
+  }
+
   /**
    * @notice Emitted when a pause type is paused.
    * @param messageSender The address performing the pause.
@@ -33,14 +44,14 @@ interface IPauseManager {
 
   /**
    * @notice Pauses functionality by specific type.
-   * @dev Requires PAUSE_MANAGER_ROLE.
+   * @dev Requires the role mapped in pauseTypeRoles for the pauseType.
    * @param _pauseType The pause type value.
    */
   function pauseByType(uint8 _pauseType) external;
 
   /**
    * @notice Unpauses functionality by specific type.
-   * @dev Requires PAUSE_MANAGER_ROLE.
+   * @dev Requires the role mapped in unPauseTypeRoles for the pauseType.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(uint8 _pauseType) external;

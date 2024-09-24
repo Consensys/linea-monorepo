@@ -5,9 +5,9 @@ import (
 	"math/rand"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/vector"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // SmartVector is an abstraction over vectors of field elements that can be
@@ -151,7 +151,9 @@ func Density(v SmartVector) int {
 	case *Regular:
 		return len(*w)
 	case *Rotated:
-		return len(w.v)
+		return len(w.v.Regular)
+	case *Pooled:
+		return len(w.Regular)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}

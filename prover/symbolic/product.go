@@ -7,11 +7,11 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
-	"github.com/consensys/zkevm-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 var (
@@ -124,7 +124,7 @@ func (prod Product) Degree(inputDegrees []int) int {
 }
 
 // Evaluate implements the [Operator] interface.
-func (prod Product) Evaluate(inputs []sv.SmartVector, p ...*mempool.Pool) sv.SmartVector {
+func (prod Product) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.Product(prod.Exponents, inputs, p...)
 }
 

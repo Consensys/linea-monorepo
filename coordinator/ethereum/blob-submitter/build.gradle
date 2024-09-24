@@ -3,7 +3,6 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
   id 'net.consensys.zkevm.kotlin-library-conventions'
-  id 'net.consensys.zkevm.linea-contracts-helper'
 }
 
 dependencies {
@@ -62,7 +61,7 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     dependsOn(":localStackComposeUp")
-    dependsOn(compileContracts)
+    dependsOn(rootProject.tasks.compileContracts)
 
     testLogging {
       events TestLogEvent.FAILED,

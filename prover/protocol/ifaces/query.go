@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 )
 
 // QueryID denotes an unique identifier ID. It uniquely
@@ -48,14 +48,14 @@ func (n *QueryID) UnmarshalJSON(b []byte) error {
 
 // Query symbolically represents a logical predicate over the runtime of the
 // protocol involving a column or a set of [Column], [coin.Info], [Accessor] or
-// [QueryParams]. The package [github.com/consensys/zkevm-monorepo/prover/protocol/query] provides a handful of
-// implementations of Query. A common example is the [github.com/consensys/zkevm-monorepo/protocol/query.GlobalConstraint] which
+// [QueryParams]. The package [github.com/consensys/linea-monorepo/prover/protocol/query] provides a handful of
+// implementations of Query. A common example is the [github.com/consensys/linea-monorepo/protocol/query.GlobalConstraint] which
 // requires that an arithmetic expression involving columns of the same size,
 // and potentially coins or accessors vanishes over the domain of the involved
 // column.
 //
 // A query can potentially require runtime parameters to be assigned by the
-// prover. For instance, [github.com/consensys/zkevm-monorepo/protocol/query.UnivariateEval] requires that some alleged
+// prover. For instance, [github.com/consensys/linea-monorepo/protocol/query.UnivariateEval] requires that some alleged
 // Lagrange interpolation of a [Column] is done correctly, but the declaration of
 // the predicate does not specify the evaluation point nor the alleged value (
 // because they are only defined at runtime and not during the definition of
@@ -72,7 +72,7 @@ type Query interface {
 // QueryParams represents the runtime parameters of a query. As explained in
 // [Query], certain type of queries can require the prover to provide runtime
 // parameters in order to make the predicate verifiable. This is the case for
-// [github.com/consensys/zkevm-monorepo/protocol/query.UnivariateEval] which requires the user to provide an evaluation
+// [github.com/consensys/linea-monorepo/protocol/query.UnivariateEval] which requires the user to provide an evaluation
 // point (X) and one or more alleged evaluation points (Ys) (depending on whether
 // the query is applied over one or more columns for the same X).
 //

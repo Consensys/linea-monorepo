@@ -1,59 +1,17 @@
-import groovy.json.JsonSlurper
-
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 import java.time.Instant
 
-static def downloadAndParseJson(
-  String url,
-  Map<String, String> headers = [:]
-) {
-  HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection()
-  connection.requestMethod = 'GET'
-  connection.setRequestProperty('Accept', 'application/json')
-  headers.each { key, value ->
-    connection.setRequestProperty(key, value)
-  }
-  connection.connect()
-  if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-    def jsonResponse = connection.inputStream.text
-    def jsonSlurper = new JsonSlurper()
-    return jsonSlurper.parseText(jsonResponse)
-  } else {
-    throw new GradleException("Failed load JSON from $url HTTP error code: ${connection.responseCode}")
-  }
-}
-
-
-static def getReleaseAsset(
-  String releaseTagName,
-  String githubAccessToken
-) {
-  def urlStr = 'https://api.github.com/repos/ConsenSys/zkevm-monorepo/releases'
-  def json = downloadAndParseJson(urlStr, ['Authorization': "token ${githubAccessToken}"])
-  def release = json.find { it.tag_name == releaseTagName }
-  if (release == null) {
-    def releases = json.collect { it.tag_name }
-    throw new GradleException("Release ${releaseTagName} not found! releases: ${releases}")
-  }
-  if (release.assets.size() == 0) {
-    throw new GradleException("Release ${releaseTagName} has no assets!")
-  }
-  def asset = release.assets.find { it.name.contains(releaseTagName) }
-  //println(JsonOutput.prettyPrint(JsonOutput.toJson(asset)))
-  asset
-}
-
 void downloadFileUsingWget(
   String url,
-  String githubAccessToken,
   String outputFilePath
 ) {
-  println("Downloading ${url.replace(githubAccessToken, "*****")} into ${outputFilePath}")
-  def command = "curl -L -H 'Accept:application/octet-stream' -u ${githubAccessToken}: -o ${outputFilePath} ${url}"
-//  println("# " + command)
+  println("Downloading ${url} into ${outputFilePath}")
+
+  String command = "curl -L -H 'Accept:application/octet-stream' -o ${outputFilePath} ${url}"
+  //  println("# " + command)
 
   def execResult = exec {
     commandLine 'bash', '-c', command
@@ -72,12 +30,11 @@ ext.architectureResourceDirMapping = [
   "linux_x86_64" : "linux-x86-64"
 ]
 
-private String downloadReleaseAsset(
+private String downloadAssetIfNotPresent(
+  String libsZipUrl,
   String releaseTag,
-  String outputDir,
-  String githubAccessToken
+  String outputDir
 ) {
-  def releaseAssetJsonInfo = getReleaseAsset(releaseTag.toString(), githubAccessToken)
   def fileName = releaseTag + ".zip"
   def outputFilePath = Path.of(outputDir).resolve(fileName)
 
@@ -92,7 +49,7 @@ private String downloadReleaseAsset(
     }
   }
 
-  downloadFileUsingWget(releaseAssetJsonInfo.url.toString(), githubAccessToken, outputFilePath.toString())
+  downloadFileUsingWget(libsZipUrl, outputFilePath.toString())
 
   return outputFilePath.toString()
 }
@@ -156,16 +113,12 @@ def lazyUnzipWithRetry(
   }
 }
 
-def downloadReleaseAndExtractToResources(
-  String releaseTag,
-  String libName,
-  String outputDir,
-  String githubAccessToken
+def extractLibToResources(
+  Path zipFile,
+  Path outputUnzipDir,
+  String libName
 ) {
-  def outputUnzipDir = Path.of(outputDir).resolve(releaseTag)
-  def outputFile = downloadReleaseAsset(releaseTag, outputDir, githubAccessToken)
-  lazyUnzipWithRetry(Path.of(outputFile), outputUnzipDir, Duration.ofSeconds(60))
-
+  lazyUnzipWithRetry(zipFile, outputUnzipDir, Duration.ofSeconds(60))
   fileTree(outputUnzipDir.toFile())
     .filter { it.name.contains(libName) && (it.name.endsWith(".so") || it.name.endsWith(".dylib")) }
     .each { File file ->
@@ -190,14 +143,22 @@ def downloadReleaseAndExtractToResources(
     }
 }
 
-ext.fetchLib = {
+def downloadZipReleaseAndExtractToResources(
+  String libsZipUrl,
   String releaseTag,
   String libName,
-  String outputDir,
-  String githubAccessToken = System.getenv("GITHUB_TOKEN")
+  String outputDir
+) {
+  def zipFile = downloadAssetIfNotPresent(libsZipUrl, releaseTag, outputDir)
+  def outputUnzipDir = Path.of(outputDir).resolve(releaseTag)
+  extractLibToResources(Path.of(zipFile), outputUnzipDir, libName)
+}
+
+ext.fetchLibFromZip = {
+  String libsZipUrl,
+  String libName,
+  String outputDir
     ->
-    if (githubAccessToken == null) {
-      throw new GradleException("GITHUB_TOKEN is required")
-    }
-    downloadReleaseAndExtractToResources(releaseTag, libName, outputDir, githubAccessToken)
+    def releaseTag = libsZipUrl.split("/").last().replace(".zip", "")
+    downloadZipReleaseAndExtractToResources(libsZipUrl, releaseTag, libName, outputDir)
 }

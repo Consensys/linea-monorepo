@@ -5,10 +5,10 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/mempool"
-	sv "github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -34,7 +34,7 @@ func (Variable) Degree([]int) int {
 }
 
 // Evaluate implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) Evaluate([]sv.SmartVector, ...*mempool.Pool) sv.SmartVector {
+func (v Variable) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for variables")
 }
 

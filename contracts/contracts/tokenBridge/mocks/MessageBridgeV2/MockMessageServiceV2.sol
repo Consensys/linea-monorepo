@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 import { IMessageService } from "../../../interfaces/IMessageService.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
-import { PauseManager } from "../../../messageService/lib/PauseManager.sol";
+import { PauseManager } from "../../../lib/PauseManager.sol";
 import { L1MessageManager } from "../../../messageService/l1/L1MessageManager.sol";
 
 contract MockMessageServiceV2 is L1MessageManager, IMessageService, PauseManager, IGenericErrors {

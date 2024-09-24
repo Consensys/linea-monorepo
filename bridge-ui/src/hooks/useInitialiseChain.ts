@@ -50,7 +50,7 @@ const useInitialiseChain = () => {
   }));
 
   useEffect(() => {
-    watchAccount(wagmiConfig, {
+    const unwatch = watchAccount(wagmiConfig, {
       onChange(account) {
         let networkType = NetworkType.UNKNOWN;
         let networkLayer = NetworkLayer.UNKNOWN;
@@ -118,6 +118,10 @@ const useInitialiseChain = () => {
         setToChain(toChain);
       },
     });
+
+    return () => {
+      unwatch();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, token?.type]);
 

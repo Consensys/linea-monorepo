@@ -16,7 +16,7 @@ import net.consensys.zkevm.domain.BlockIntervals
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.toBlockIntervalsString
 import net.consensys.zkevm.ethereum.coordination.conflation.BlobCreationHandler
-import net.consensys.zkevm.persistence.blob.BlobsRepository
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture

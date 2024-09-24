@@ -5,7 +5,17 @@ import { ethers } from "hardhat";
 import { deployTokenBridgeWithMockMessaging } from "../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../typechain-types";
-import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../utils/helpers";
+import {
+  buildAccessErrorMessage,
+  expectEvent,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+} from "../utils/helpers";
+import {
+  COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
+  INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
+  SET_MESSAGE_SERVICE_ROLE,
+} from "../utils/constants";
 
 const initialUserBalance = BigInt(10 ** 9);
 const RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");
@@ -72,6 +82,43 @@ describe("E2E tests", function () {
 
       expect(await l2Token.balanceOf(user.address)).to.be.equal(bridgeAmount);
       expect(await l2Token.totalSupply()).to.be.equal(bridgeAmount);
+    });
+
+    it("Should not allow to initiate bridging if paused", async function () {
+      const {
+        user,
+        deployer,
+        l2TokenBridge,
+        tokens: { L1DAI },
+      } = await loadFixture(deployContractsFixture);
+      const bridgeAmount = 100;
+
+      await l2TokenBridge.connect(deployer).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
+      await expectRevertWithCustomError(
+        l2TokenBridge,
+        l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+        "IsPaused",
+        [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
+      );
+    });
+
+    it("Should not allow complete bridging if paused", async function () {
+      const {
+        user,
+        deployer,
+        l1TokenBridge,
+        l2TokenBridge,
+        tokens: { L1DAI },
+      } = await loadFixture(deployContractsFixture);
+      const bridgeAmount = 100;
+
+      await l2TokenBridge.connect(deployer).pauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
+      await expectRevertWithCustomError(
+        l2TokenBridge, // used to get the error type
+        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+        "IsPaused",
+        [COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE],
+      );
     });
 
     it("Should have the correct balance and totalSupply on both chains after back and forth bridging", async function () {
@@ -473,7 +520,8 @@ describe("E2E tests", function () {
         l1TokenBridge,
         tokens: { L1DAI },
       } = await loadFixture(deployContractsFixture);
-      l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
+
+      await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
 
       await expectRevertWithCustomError(
         l1TokenBridge,
@@ -527,7 +575,7 @@ describe("E2E tests", function () {
 
       await expectRevertWithReason(
         l1TokenBridge.connect(user).setMessageService(await messageService.getAddress()),
-        "Ownable: caller is not the owner",
+        buildAccessErrorMessage(user, SET_MESSAGE_SERVICE_ROLE),
       );
     });
 

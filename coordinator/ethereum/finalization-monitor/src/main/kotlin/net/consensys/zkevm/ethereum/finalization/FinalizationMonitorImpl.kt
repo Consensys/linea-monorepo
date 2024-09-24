@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.finalization
 
 import io.vertx.core.Vertx
+import net.consensys.linea.BlockParameter
 import net.consensys.toBigInteger
 import net.consensys.zkevm.PeriodicPollingService
-import net.consensys.zkevm.coordinator.clients.smartcontract.BlockParameter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -33,7 +33,7 @@ class FinalizationMonitorImpl(
   )
 
   private val finalizationHandlers:
-    MutableMap<String, (FinalizationMonitor.FinalizationUpdate) -> SafeFuture<*>> =
+    MutableMap<String, FinalizationHandler> =
       Collections.synchronizedMap(LinkedHashMap())
   private val lastFinalizationUpdate = AtomicReference<FinalizationMonitor.FinalizationUpdate>(null)
 
@@ -98,7 +98,7 @@ class FinalizationMonitorImpl(
           finalizationUpdate.blockNumber
         )
         try {
-          finalizationHandler(finalizationUpdate)
+          finalizationHandler.handleUpdate(finalizationUpdate)
             .thenApply { }
         } catch (th: Throwable) {
           log.error("Finalization handler={} failed. errorMessage={}", handlerName, th.message, th)
@@ -114,7 +114,7 @@ class FinalizationMonitorImpl(
 
   override fun addFinalizationHandler(
     handlerName: String,
-    handler: (FinalizationMonitor.FinalizationUpdate) -> SafeFuture<*>
+    handler: FinalizationHandler
   ) {
     synchronized(finalizationHandlers) {
       finalizationHandlers[handlerName] = handler

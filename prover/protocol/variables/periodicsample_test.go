@@ -4,14 +4,14 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/zkevm-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/zkevm-monorepo/prover/maths/fft"
-	"github.com/consensys/zkevm-monorepo/prover/maths/field"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/variables"
-	"github.com/consensys/zkevm-monorepo/prover/protocol/wizard"
-	"github.com/consensys/zkevm-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -156,8 +156,8 @@ func TestPeriodicSampleCoset(t *testing.T) {
 					for cosetID := 0; cosetID < ratio; cosetID++ {
 
 						testEval := sampling.EvalCoset(domain, cosetID, ratio, true)
-						testEval = smartvectors.FFTInverse(testEval, fft.DIF, true, ratio, cosetID)
-						testEval = smartvectors.FFT(testEval, fft.DIT, true, 0, 0)
+						testEval = smartvectors.FFTInverse(testEval, fft.DIF, true, ratio, cosetID, nil)
+						testEval = smartvectors.FFT(testEval, fft.DIT, true, 0, 0, nil)
 
 						require.Equal(t, vanillaEval.Pretty(), testEval.Pretty(),
 							"domain %v, period %v, offset %v, ratio %v, cosetID %v",
