@@ -13,7 +13,7 @@ import {
   unpauseTypeRoles,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
-import { expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
+import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./utils/helpers";
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;
@@ -82,6 +82,18 @@ describe("MessageServiceBase", () => {
 
     it("Should set the value of messageService variable in storage", async () => {
       expect(await messageServiceBase.messageService()).to.equal(await messageService.getAddress());
+    });
+  });
+
+  describe("RemoteSenderSet event", () => {
+    it("Should emit RemoteSenderSet event when testSetRemoteSender is called", async () => {
+      const newRemoteSender = ethers.Wallet.createRandom().address;
+      await expectEvent(
+        messageServiceBase,
+        messageServiceBase.testSetRemoteSender(newRemoteSender),
+        "RemoteSenderSet",
+        [newRemoteSender, admin.address],
+      );
     });
   });
 

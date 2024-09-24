@@ -2,9 +2,11 @@
 pragma solidity 0.8.26;
 
 import { SparseMerkleTreeVerifier } from "../messageService/lib/SparseMerkleTreeVerifier.sol";
+import { Utils } from "../lib/Utils.sol";
 
 contract TestSparseMerkleTreeVerifier {
   using SparseMerkleTreeVerifier for *;
+  using Utils for *;
 
   function verifyMerkleProof(
     bytes32 _leafHash,
@@ -16,7 +18,7 @@ contract TestSparseMerkleTreeVerifier {
   }
 
   function efficientKeccak(bytes32 _left, bytes32 _right) external pure returns (bytes32 value) {
-    return SparseMerkleTreeVerifier._efficientKeccak(_left, _right);
+    return Utils._efficientKeccak(_left, _right);
   }
 
   function getLeafHash(

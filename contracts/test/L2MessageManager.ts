@@ -77,6 +77,16 @@ describe("L2MessageManager", () => {
       );
     });
 
+    it("Should revert if message hashes array length is zero", async () => {
+      const messageHashes: [] = [];
+
+      const anchorCall = l2MessageManager
+        .connect(l1l2MessageSetter)
+        .anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO);
+
+      await expectRevertWithCustomError(l2MessageManager, anchorCall, "MessageHashesListLengthIsZero");
+    });
+
     it("Should update rolling hash and messages emitting events", async () => {
       const messageHashes = generateNKeccak256Hashes("message", 100);
       const expectedRollingHash = calculateRollingHashFromCollection(ethers.ZeroHash, messageHashes.slice(0, 100));

@@ -42,6 +42,7 @@
 "3b174434" = "MessageHashesListLengthHigherThanOneHundred"
 "ca389c44" = "InvalidProofOrProofVerificationRanOutOfGas"
 # L2 Message Service
+"6446cc9c" = "MessageHashesListLengthIsZero"
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"
 "7557a60a" = "L1RollingHashSynchronizationWrong"
 "36a4bb94" = "FinalRollingHashIsZero"
