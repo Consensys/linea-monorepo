@@ -1,5 +1,5 @@
 # BUILDER image
-FROM alpine/java:21-jre AS builder
+FROM eclipse-temurin:21-jre-alpine AS builder
 WORKDIR /opt/consensys/linea/transaction-exclusion-api
 
 RUN apk add --no-cache unzip
@@ -11,7 +11,7 @@ RUN unzip libs/transaction-exclusion-api.zip -d libs/ \
 	&& rm -R libs/transaction-exclusion-api/
 
 # FINAL image
-FROM alpine/java:21-jre
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /opt/consensys/linea/transaction-exclusion-api/
 
 RUN mkdir -p /opt/consensys/linea/transaction-exclusion-api/logs/
