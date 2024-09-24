@@ -49,25 +49,25 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class ModexpSubsection extends PrecompileSubsection {
 
-  private final ModexpMetadata modExpMetadata;
+  private final ModexpMetadata modexpMetaData;
   private ModexpPricingOobCall sixthOobCall;
   private ImcFragment seventhImcFragment;
 
   public ModexpSubsection(final Hub hub, final CallSection callSection) {
     super(hub, callSection);
 
-    modExpMetadata = new ModexpMetadata(hub, callData);
-    if (modExpMetadata
+    modexpMetaData = new ModexpMetadata(hub, callData);
+    if (modexpMetaData
                 .bbs()
                 .toUnsignedBigInteger()
                 .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
             >= 0
-        || modExpMetadata
+        || modexpMetaData
                 .mbs()
                 .toUnsignedBigInteger()
                 .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
             >= 0
-        || modExpMetadata
+        || modexpMetaData
                 .ebs()
                 .toUnsignedBigInteger()
                 .compareTo(BigInteger.valueOf(PROVER_MAX_INPUT_BYTE_SIZE))
@@ -81,8 +81,8 @@ public class ModexpSubsection extends PrecompileSubsection {
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
     fragments().add(secondImcFragment);
-    if (modExpMetadata.extractBbs()) {
-      final MmuCall mmuCall = forModexpExtractBbs(hub, this, modExpMetadata);
+    if (modexpMetaData.extractBbs()) {
+      final MmuCall mmuCall = forModexpExtractBbs(hub, this, modexpMetaData);
       secondImcFragment.callMmu(mmuCall);
     }
     final ModexpXbsOobCall secondOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_BBS);
@@ -90,8 +90,8 @@ public class ModexpSubsection extends PrecompileSubsection {
 
     final ImcFragment thirdImcFragment = ImcFragment.empty(hub);
     fragments().add(thirdImcFragment);
-    if (modExpMetadata.extractEbs()) {
-      final MmuCall mmuCall = forModexpExtractEbs(hub, this, modExpMetadata);
+    if (modexpMetaData.extractEbs()) {
+      final MmuCall mmuCall = forModexpExtractEbs(hub, this, modexpMetaData);
       thirdImcFragment.callMmu(mmuCall);
     }
     final ModexpXbsOobCall thirdOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_EBS);
@@ -99,8 +99,8 @@ public class ModexpSubsection extends PrecompileSubsection {
 
     final ImcFragment fourthImcFragment = ImcFragment.empty(hub);
     fragments().add(fourthImcFragment);
-    if (modExpMetadata.extractMbs()) {
-      final MmuCall mmuCall = forModexpExtractMbs(hub, this, modExpMetadata);
+    if (modexpMetaData.extractMbs()) {
+      final MmuCall mmuCall = forModexpExtractMbs(hub, this, modexpMetaData);
       fourthImcFragment.callMmu(mmuCall);
     }
     final ModexpXbsOobCall fourthOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_MBS);
@@ -110,10 +110,10 @@ public class ModexpSubsection extends PrecompileSubsection {
     fragments().add(fifthImcFragment);
     final ModexpLeadOobCall fifthOobCall = new ModexpLeadOobCall();
     fifthImcFragment.callOob(fifthOobCall);
-    if (modExpMetadata.loadRawLeadingWord()) {
-      final MmuCall mmuCall = forModexpLoadLead(hub, this, modExpMetadata);
+    if (modexpMetaData.loadRawLeadingWord()) {
+      final MmuCall mmuCall = forModexpLoadLead(hub, this, modexpMetaData);
       fifthImcFragment.callMmu(mmuCall);
-      final ExpCall modexpLogCallToExp = new ModexpLogExpCall(modExpMetadata);
+      final ExpCall modexpLogCallToExp = new ModexpLogExpCall(modexpMetaData);
       fifthImcFragment.callExp(modexpLogCallToExp);
     }
 
@@ -143,40 +143,40 @@ public class ModexpSubsection extends PrecompileSubsection {
       return;
     }
 
-    modExpMetadata.rawResult(returnData);
-    hub.blakeModexpData().callModexp(modExpMetadata, this.exoModuleOperationId());
+    modexpMetaData.rawResult(returnData);
+    hub.blakeModexpData().callModexp(modexpMetaData, this.exoModuleOperationId());
 
     fragments().add(seventhImcFragment);
-    if (modExpMetadata.extractModulus()) {
-      final MmuCall mmuCall = forModexpExtractBase(hub, this, modExpMetadata);
+    if (modexpMetaData.extractModulus()) {
+      final MmuCall mmuCall = forModexpExtractBase(hub, this, modexpMetaData);
       seventhImcFragment.callMmu(mmuCall);
     }
 
     final ImcFragment eighthImcFragment = ImcFragment.empty(hub);
     fragments().add(eighthImcFragment);
-    if (modExpMetadata.extractModulus()) {
-      final MmuCall mmuCall = forModexpExtractExponent(hub, this, modExpMetadata);
+    if (modexpMetaData.extractModulus()) {
+      final MmuCall mmuCall = forModexpExtractExponent(hub, this, modexpMetaData);
       eighthImcFragment.callMmu(mmuCall);
     }
 
     final ImcFragment ninthImcFragment = ImcFragment.empty(hub);
     fragments().add(ninthImcFragment);
-    if (modExpMetadata.extractModulus()) {
-      final MmuCall mmuCall = forModexpExtractModulus(hub, this, modExpMetadata);
+    if (modexpMetaData.extractModulus()) {
+      final MmuCall mmuCall = forModexpExtractModulus(hub, this, modexpMetaData);
       ninthImcFragment.callMmu(mmuCall);
     }
 
     final ImcFragment tenthImcFragment = ImcFragment.empty(hub);
     fragments().add(tenthImcFragment);
-    if (modExpMetadata.extractModulus()) {
-      final MmuCall mmuCall = forModexpFullResultCopy(hub, this, modExpMetadata);
+    if (modexpMetaData.extractModulus()) {
+      final MmuCall mmuCall = forModexpFullResultCopy(hub, this, modexpMetaData);
       tenthImcFragment.callMmu(mmuCall);
     }
 
     final ImcFragment eleventhImcFragment = ImcFragment.empty(hub);
     fragments().add(eleventhImcFragment);
-    if (modExpMetadata.mbsNonZero() && !parentReturnDataTarget.isEmpty()) {
-      final MmuCall mmuCall = forModexpPartialResultCopy(hub, this, modExpMetadata);
+    if (modexpMetaData.mbsNonZero() && !parentReturnDataTarget.isEmpty()) {
+      final MmuCall mmuCall = forModexpPartialResultCopy(hub, this, modexpMetaData);
       eleventhImcFragment.callMmu(mmuCall);
     }
   }

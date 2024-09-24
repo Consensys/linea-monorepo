@@ -135,17 +135,19 @@ public class ModexpMetadata {
 
   public Bytes base() {
     Bytes unpadded = Bytes.EMPTY;
-    if (callData.size() >= BASE_MIN_OFFSET) {
-      final int sizeToExtract = Math.min(bbsInt(), callData.size() - MBS_MIN_OFFSET);
-      unpadded = callData.slice(MBS_MIN_OFFSET, sizeToExtract);
+    final int firstOffset = BASE_MIN_OFFSET;
+    if (callData.size() > firstOffset) {
+      final int sizeToExtract = Math.min(bbsInt(), callData.size() - firstOffset);
+      unpadded = callData.slice(BASE_MIN_OFFSET, sizeToExtract);
     }
     return rightPadTo(unpadded, bbsInt());
   }
 
   public Bytes exp() {
     Bytes unpadded = Bytes.EMPTY;
-    if (callData.size() >= BASE_MIN_OFFSET + bbsInt()) {
-      final int sizeToExtract = Math.min(ebsInt(), callData.size() - BASE_MIN_OFFSET - bbsInt());
+    final int firstOffset = BASE_MIN_OFFSET + bbsInt();
+    if (callData.size() > firstOffset) {
+      final int sizeToExtract = Math.min(ebsInt(), callData.size() - firstOffset);
       unpadded = callData.slice(BASE_MIN_OFFSET + bbsInt(), sizeToExtract);
     }
     return rightPadTo(unpadded, ebsInt());
@@ -154,7 +156,7 @@ public class ModexpMetadata {
   public Bytes mod() {
     Bytes unpadded = Bytes.EMPTY;
     final int firstOffset = BASE_MIN_OFFSET + bbsInt() + ebsInt();
-    if (callData.size() >= firstOffset) {
+    if (callData.size() > firstOffset) {
       final int sizeToExtract = Math.min(mbsInt(), callData.size() - firstOffset);
       unpadded = callData.slice(firstOffset, sizeToExtract);
     }
