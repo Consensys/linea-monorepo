@@ -16,6 +16,11 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
   /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap_L2MessageService;
 
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
+
   /**
    * @notice Initializes underlying message service dependencies.
    * @param _rateLimitPeriod The period to rate limit against.

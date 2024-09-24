@@ -83,6 +83,8 @@ describe("Linea Rollup contract", () => {
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
 
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentDataHash, parentStateRootHash } =
     firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
@@ -125,6 +127,7 @@ describe("Linea Rollup contract", () => {
       roleAddresses: roleAddresses,
       pauseTypeRoles: pauseTypeRoles,
       unpauseTypeRoles: unpauseTypeRoles,
+      gatewayOperator: multiCallAddress,
     };
 
     const lineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -178,6 +181,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        gatewayOperator: multiCallAddress,
       };
 
       const deployCall = deployUpgradableFromFactory("contracts/LineaRollup.sol:LineaRollup", [initializationData], {
@@ -203,6 +207,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        gatewayOperator: multiCallAddress,
       };
 
       const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
@@ -247,6 +252,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        gatewayOperator: multiCallAddress,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -276,6 +282,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        gatewayOperator: multiCallAddress,
       };
 
       const lineaRollup = await deployUpgradableFromFactory(
@@ -306,6 +313,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles: pauseTypeRoles,
         unpauseTypeRoles: unpauseTypeRoles,
+        gatewayOperator: multiCallAddress,
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
@@ -2243,6 +2251,7 @@ describe("Linea Rollup contract", () => {
         ],
         pauseTypeRoles,
         unpauseTypeRoles,
+        multiCallAddress,
       );
 
       expect(await newLineaRollup.currentL2BlockNumber()).to.equal(0);
@@ -2261,7 +2270,12 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         newLineaRollup,
-        newLineaRollup.reinitializePauseTypesAndPermissions(roleAddresses, pauseTypeRoles, unpauseTypeRoles),
+        newLineaRollup.reinitializePauseTypesAndPermissions(
+          roleAddresses,
+          pauseTypeRoles,
+          unpauseTypeRoles,
+          multiCallAddress,
+        ),
         "ZeroAddressNotAllowed",
       );
     });
