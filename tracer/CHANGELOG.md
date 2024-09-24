@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0-rc7
+* feat: added test (which, again, works out of the box ...) ([#1290](https://github.com/Consensys/linea-tracer/pull/1290))
+* fix: fix daily blockchain workflow ([#1152](https://github.com/Consensys/linea-tracer/pull/1152))
+* fix: the base was indeed incorrectly extracted for MODEXP ([#1299](https://github.com/Consensys/linea-tracer/pull/1299))
+* clean: some cleaning in signals and module triggering ([#1293](https://github.com/Consensys/linea-tracer/pull/1293))
+* fix: BlockCapturer for Created Accounts ([#1291](https://github.com/Consensys/linea-tracer/pull/1291))
+
 ## 0.6.0-rc6
 * docs: add TracerReadinessPlugin docs and re-introduce dev setup docs ([#1287](https://github.com/Consensys/linea-tracer/pull/1287))
 * feat(req-limit): implement request limiting for trace generation and line counting ([#1241](https://github.com/Consensys/linea-tracer/pull/1241))
