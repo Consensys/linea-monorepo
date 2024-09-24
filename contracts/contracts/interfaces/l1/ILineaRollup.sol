@@ -21,6 +21,7 @@ interface ILineaRollup {
    * @param roleAddresses The list of role addresses.
    * @param pauseTypeRoles The list of pause type roles.
    * @param unpauseTypeRoles The list of unpause type roles.
+   * @param gatewayOperator The account to be given OPERATOR_ROLE when.
    */
   struct InitializationData {
     bytes32 initialStateRootHash;
@@ -32,6 +33,7 @@ interface ILineaRollup {
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
     IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    address gatewayOperator;
   }
 
   /**
