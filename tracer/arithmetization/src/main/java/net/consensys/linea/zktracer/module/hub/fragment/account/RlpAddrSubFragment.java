@@ -37,6 +37,7 @@ public class RlpAddrSubFragment implements TraceSubFragment {
   private final Bytes32 salt;
   private final Bytes32 keccak;
 
+  // TODO: creating the RLPAddr sub fragment should trigger RLP_ADDR
   public static RlpAddrSubFragment makeFragment(Hub hub, Address deploymentAddress) {
     final OpCode currentOpCode = hub.opCode();
     switch (currentOpCode) {

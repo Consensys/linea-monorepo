@@ -93,6 +93,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
     }
   }
 
+  // TODO : this should die, make sure we trigger it in the right place
   @Override
   public void tracePreOpcode(MessageFrame frame) {
     final OpCode opcode = hub.opCode();

@@ -33,7 +33,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
-import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** Implementation of a {@link Module} for out of bounds. */
 @RequiredArgsConstructor
@@ -61,44 +60,9 @@ public class Oob implements OperationListModule<OobOperation> {
     operations.add(oobOperation);
   }
 
-  // TODO: to delete @Lorenzo ?
-  @Override
-  public void tracePreOpcode(MessageFrame frame) { // TODO: maybe move in the hub
-    /*
-    oobOperation = new OobOperation(frame, add, mod, wcp, hub, false, 0, 0);
-    this.oobOperations.add(oobOperation);
-    OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
-
-    if (opCode.isCall()) {
-      Address target = Words.toAddress(frame.getStackItem(1));
-
-      if (PRECOMPILES_HANDLED_BY_OOB.contains(target)) {
-        if (target.equals(Address.BLAKE2B_F_COMPRESSION)) {
-          oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 1, 0);
-          this.oobOperations.add(oobOperation);
-          boolean validCds = oobOperation.getOutgoingResLo()[0].equals(BigInteger.ONE);
-          if (validCds) {
-            oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 2, 0);
-            this.oobOperations.add(oobOperation);
-          }
-        } else if (target.equals(Address.MODEXP)) {
-          for (int i = 1; i <= 7; i++) {
-            oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 0, i);
-            this.oobOperations.add(oobOperation);
-          }
-        } else {
-          // Other precompiles case
-          oobOperation = new OobOperation(frame, add, mod, wcp, hub, true, 0, 0);
-          this.oobOperations.add(oobOperation);
-        }
-      }
-    }
-    */
-  }
-
-  final void traceChunk(final OobOperation oobOperation, int stamp, Trace trace) {
-    int nRows = oobOperation.nRows();
-    OobInstruction oobInstruction = oobOperation.oobCall.oobInstruction;
+  final void traceOperation(final OobOperation oobOperation, int stamp, Trace trace) {
+    final int nRows = oobOperation.nRows();
+    final OobInstruction oobInstruction = oobOperation.oobCall.oobInstruction;
 
     for (int ct = 0; ct < nRows; ct++) {
       trace = oobOperation.getOobCall().trace(trace);
@@ -151,7 +115,7 @@ public class Oob implements OperationListModule<OobOperation> {
     Trace trace = new Trace(buffers);
     int stamp = 0;
     for (OobOperation op : operations.getAll()) {
-      traceChunk(op, ++stamp, trace);
+      traceOperation(op, ++stamp, trace);
     }
   }
 

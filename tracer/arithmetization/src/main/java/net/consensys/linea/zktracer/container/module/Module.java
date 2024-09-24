@@ -48,8 +48,6 @@ public interface Module {
 
   default void tracePreOpcode(MessageFrame frame) {}
 
-  default void tracePostOpcode(MessageFrame frame) {}
-
   /**
    * Called at the eve of a new transaction; intended to create a new modification context for the
    * stacked state of the module.

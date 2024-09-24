@@ -48,13 +48,16 @@ public class ShakiraDataOperation extends ModuleOperation {
   @Getter private final int inputSize;
   @Getter private final short lastNBytes;
   private final int indexMaxData;
-  private Bytes32 result;
+  @Getter private Bytes32 result;
 
-  public ShakiraDataOperation(
-      final int hubStamp, final HashFunction hashFunction, final Bytes input) {
+  /**
+   * This constructor is used ONLY when we want to KECCAK the input, and it's not trivial to get the
+   * result from Besu. Prefer the other constructor when we give the hash result
+   */
+  public ShakiraDataOperation(final int hubStamp, final Bytes input) {
     final Bytes32 hash = keccak256(input);
 
-    hashType = hashFunction;
+    hashType = KECCAK;
     ID = newIdentifierFromStamp(hubStamp);
     hashInput = input;
     inputSize = input.size();
