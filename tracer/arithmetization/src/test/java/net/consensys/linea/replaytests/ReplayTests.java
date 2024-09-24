@@ -188,4 +188,9 @@ public class ReplayTests {
   void legacyTxWithoutChainID() {
     replay(LINEA_SEPOLIA, "254251.sepolia.json.gz");
   }
+
+  @Test
+  void incorrectCreationCapture() {
+    replay(LINEA_MAINNET, "4323985.json.gz");
+  }
 }

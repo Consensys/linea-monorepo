@@ -19,17 +19,36 @@ import java.util.Optional;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public record StorageSnapshot(String address, String key, String value) {
   public static Optional<StorageSnapshot> from(
       Address address, UInt256 key, final WorldView world) {
-    return Optional.ofNullable(world.get(address))
-        .map(
-            account ->
-                new StorageSnapshot(
-                    address.toHexString(),
-                    key.toHexString(),
-                    account.getStorageValue(key).toHexString()));
+    // Lookup account that was touched
+    Account account = world.get(address);
+    // Check account *really* exists from a storage perspective.  This is important to distinguish
+    // for accounts which are created *during* the conflation.  Such accounts may have technically
+    // existed before the conflation (e.g. they had a non-zero balance) but could still have been
+    // "created" during the conflation.  In such case, this snapshot would be simply assigning 0x0
+    // to the given storage locations.  However, we don't want to create a storage snapshot in such
+    // cases, as this then leads to a CREATE[2] failure when executing the conflation.
+    if (accountExists(account)) {
+      // Accounts exists, so create snapshot.
+      return Optional.of(
+          new StorageSnapshot(
+              address.toHexString(),
+              key.toHexString(),
+              account.getStorageValue(key).toHexString()));
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  private static boolean accountExists(final Account account) {
+    // The account exists if it has sent a transaction
+    // or already has its code initialized.
+    return account != null
+        && (account.getNonce() != 0 || !account.getCode().isEmpty() || !account.isStorageEmpty());
   }
 }
