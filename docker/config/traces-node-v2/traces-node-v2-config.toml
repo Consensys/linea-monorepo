@@ -37,6 +37,9 @@ data-storage-format="BONSAI"
 
 # plugins
 plugin-linea-conflated-trace-generation-traces-output-path="/data/traces/v2/conflated"
+plugin-linea-rpc-concurrent-requests-limit=1
+plugin-linea-tracer-readiness-server-host="0.0.0.0"
+plugin-linea-tracer-readiness-server-port=8548
 
 Xbonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
