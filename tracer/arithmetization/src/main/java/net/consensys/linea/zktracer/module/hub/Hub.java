@@ -203,7 +203,7 @@ public class Hub implements Module {
 
   private final Add add = new Add();
   private final Bin bin = new Bin();
-  private final Blockhash blockhash = new Blockhash(wcp);
+  private final Blockhash blockhash = new Blockhash(this, wcp);
   private final Euc euc = new Euc(wcp);
   @Getter private final Ext ext = new Ext(this);
   private final Gas gas = new Gas();
@@ -829,35 +829,6 @@ public class Hub implements Module {
     if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
       this.unlatchStack(frame);
     }
-
-    switch (this.opCodeData().instructionFamily()) {
-      case ADD -> {}
-      case MOD -> {}
-      case MUL -> {}
-      case EXT -> {}
-      case WCP -> {}
-      case BIN -> {}
-      case SHF -> {}
-      case KEC -> {}
-      case CONTEXT -> {}
-      case ACCOUNT -> {}
-      case COPY -> {}
-      case TRANSACTION -> {}
-      case BATCH -> blockhash.tracePostOpcode(frame);
-      case STACK_RAM -> {}
-      case STORAGE -> {}
-      case JUMP -> {}
-      case MACHINE_STATE -> {}
-      case PUSH_POP -> {}
-      case DUP -> {}
-      case SWAP -> {}
-      case LOG -> {}
-      case CREATE -> romLex.tracePostOpcode(frame);
-      case CALL -> {}
-      case HALT -> {}
-      case INVALID -> {}
-      default -> {}
-    }
   }
 
   public int getCfiByMetaData(
@@ -880,21 +851,17 @@ public class Hub implements Module {
   }
 
   public CallFrame currentFrame() {
-    if (this.callStack().isEmpty()) {
-      return CallFrame.EMPTY;
-    }
-    return callStack.currentCallFrame();
+    return callStack().isEmpty() ? CallFrame.EMPTY : callStack.currentCallFrame();
   }
 
   public final MessageFrame messageFrame() {
-    final MessageFrame frame = callStack.currentCallFrame().frame();
-    return frame;
+    return callStack.currentCallFrame().frame();
   }
 
   private void handleStack(MessageFrame frame) {
     this.currentFrame()
         .stack()
-        .processInstruction(this, frame, MULTIPLIER___STACK_HEIGHT * state.stamps().hub());
+        .processInstruction(this, frame, MULTIPLIER___STACK_HEIGHT * stamp());
   }
 
   void triggerModules(MessageFrame frame) {
@@ -921,24 +888,6 @@ public class Hub implements Module {
     }
     if (pch.signals().shf()) {
       shf.tracePreOpcode(frame);
-    }
-    if (pch.signals().mxp()) {
-      mxp.tracePreOpcode(frame);
-    }
-    if (pch.signals().oob()) {
-      oob.tracePreOpcode(frame);
-    }
-    if (pch.signals().stp()) {
-      stp.tracePreOpcode(frame);
-    }
-    if (pch.signals().exp()) {
-      exp.tracePreOpcode(frame);
-    }
-    if (pch.signals().trm()) {
-      trm.tracePreOpcode(frame);
-    }
-    if (pch.signals().hashInfo()) {
-      // TODO: this.hashInfo.tracePreOpcode(frame);
     }
     if (pch.signals().blockhash()) {
       blockhash.tracePreOpcode(frame);
@@ -1008,10 +957,8 @@ public class Hub implements Module {
     if (currentFrame().stack().isOk()) {
       this.traceOpcode(frame);
     } else {
-
       this.squashCurrentFrameOutputData();
       this.squashParentFrameReturnData();
-
       new EarlyExceptionSection(this);
     }
 

@@ -26,7 +26,6 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateSc
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_FAILURE_WONT_REVERT;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WILL_REVERT;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.CREATE_NON_EMPTY_INIT_CODE_SUCCESS_WONT_REVERT;
-import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
 import static net.consensys.linea.zktracer.opcode.OpCode.CREATE;
 import static net.consensys.linea.zktracer.opcode.OpCode.CREATE2;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
@@ -187,8 +186,10 @@ public class CreateSection extends TraceSection
       final long size = Words.clampedToLong(hub.messageFrame().getStackItem(2));
       final Bytes create2InitCode = messageFrame.shadowReadMemory(offset, size);
       final ShakiraDataOperation shakiraDataOperation =
-          new ShakiraDataOperation(hub.stamp(), KECCAK, create2InitCode);
+          new ShakiraDataOperation(hub.stamp(), create2InitCode);
       hub.shakiraData().call(shakiraDataOperation);
+
+      triggerHashInfo(shakiraDataOperation.result());
     }
 
     if (failedCreate || emptyInitCode) {
@@ -223,7 +224,7 @@ public class CreateSection extends TraceSection
       imcFragment.callMmu(mmuCall);
     }
 
-    this.finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
+    finalContextFragment = ContextFragment.initializeNewExecutionContext(hub);
   }
 
   @Override

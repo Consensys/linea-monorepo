@@ -80,7 +80,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.CodeCopy;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.Create;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.Create2;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ExtCodeCopy;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeployment;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeploymentMmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.EllipticCurvePrecompileSubsection;
@@ -269,8 +269,8 @@ public class MmuCall implements TraceSubFragment, PostTransactionDefer {
     return new Create(hub);
   }
 
-  public static MmuCall returnFromDeployment(final Hub hub) {
-    return new ReturnFromDeployment(hub);
+  public static ReturnFromDeploymentMmuCall returnFromDeployment(final Hub hub) {
+    return new ReturnFromDeploymentMmuCall(hub);
   }
 
   public static MmuCall returnFromMessageCall(final Hub hub) {

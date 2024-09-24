@@ -28,7 +28,6 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 public class PlatformController {
   private final Hub hub;
 
-  // TODO: clean up extraneous signals (OOB, MXP, EXP, ...)
   /** What other modules should be triggered for the current operation */
   @Getter private final Signals signals;
 

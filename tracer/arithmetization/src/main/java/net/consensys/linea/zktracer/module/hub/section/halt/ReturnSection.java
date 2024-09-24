@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.ReturnFromDeploymentMmuCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.DeploymentOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.XCallOobCall;
@@ -236,8 +237,11 @@ public class ReturnSection extends TraceSection
       final ImcFragment secondImcFragment = ImcFragment.empty(hub);
       this.addFragment(secondImcFragment);
 
-      final MmuCall nonemptyDeploymentMmuCall = MmuCall.returnFromDeployment(hub);
+      final ReturnFromDeploymentMmuCall nonemptyDeploymentMmuCall =
+          MmuCall.returnFromDeployment(hub);
       secondImcFragment.callMmu(nonemptyDeploymentMmuCall);
+
+      triggerHashInfo(nonemptyDeploymentMmuCall.hashResult());
     }
   }
 

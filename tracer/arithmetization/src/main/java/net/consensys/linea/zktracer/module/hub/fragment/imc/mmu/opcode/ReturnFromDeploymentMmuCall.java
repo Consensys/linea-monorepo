@@ -16,15 +16,17 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode;
 
 import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
 
 import java.util.Optional;
 
+import lombok.Getter;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
 import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.internal.Words;
 
@@ -32,11 +34,13 @@ import org.hyperledger.besu.evm.internal.Words;
  * A specialization of {@link MmuCall} that addresses the fact that the MMU requires access to the
  * sorted Code Fragment Index of the deployed bytecode, which is only available post-conflation.
  */
-public class ReturnFromDeployment extends MmuCall {
+@Accessors(fluent = true)
+public class ReturnFromDeploymentMmuCall extends MmuCall {
   private final Hub hub;
   private final ContractMetadata contract;
+  @Getter private final Bytes32 hashResult;
 
-  public ReturnFromDeployment(final Hub hub) {
+  public ReturnFromDeploymentMmuCall(final Hub hub) {
     super(hub, MMU_INST_RAM_TO_EXO_WITH_PADDING);
 
     this.hub = hub;
@@ -46,9 +50,10 @@ public class ReturnFromDeployment extends MmuCall {
     contract = ContractMetadata.underDeployment(contractAddress, depNumber);
 
     final ShakiraDataOperation shakiraDataOperation =
-        new ShakiraDataOperation(hub.stamp(), KECCAK, hub.romLex().getCodeByMetadata(contract));
-
+        new ShakiraDataOperation(hub.stamp(), hub.romLex().getCodeByMetadata(contract));
     hub.shakiraData().call(shakiraDataOperation);
+
+    hashResult = shakiraDataOperation.result();
 
     this.sourceId(hub.currentFrame().contextNumber())
         .sourceRamBytes(

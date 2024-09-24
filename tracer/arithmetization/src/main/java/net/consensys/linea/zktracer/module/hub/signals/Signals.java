@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import java.util.Optional;
 import java.util.Set;
 
 import lombok.Getter;
@@ -24,10 +23,7 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.internal.Words;
 
 /**
  * Encodes the signals triggering other components.
@@ -38,7 +34,7 @@ import org.hyperledger.besu.evm.internal.Words;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public class Signals {
-  private final Set<InstructionFamily> AUTOMATIC_GAS_MODULE_TRIGGER =
+  private static final Set<InstructionFamily> AUTOMATIC_GAS_MODULE_TRIGGER =
       Set.of(
           InstructionFamily.CREATE,
           InstructionFamily.CALL,
@@ -54,35 +50,23 @@ public class Signals {
   @Getter private boolean wcp;
   @Getter private boolean shf;
 
-  @Getter private boolean gas;
-  @Getter private boolean mxp;
-  @Getter private boolean oob;
-  @Getter private boolean stp;
-  @Getter private boolean exp;
-  @Getter private boolean trm;
-  @Getter private boolean hashInfo;
-  @Getter private boolean rlpAddr;
+  @Getter private boolean gas; // TODO: should die
+  @Getter private boolean rlpAddr; // TODO: should die
 
   private final PlatformController platformController;
 
   public void reset() {
-    this.add = false;
-    this.blockhash = false;
-    this.bin = false;
-    this.mul = false;
-    this.ext = false;
-    this.mod = false;
-    this.wcp = false;
-    this.shf = false;
+    add = false;
+    blockhash = false;
+    bin = false;
+    mul = false;
+    ext = false;
+    mod = false;
+    wcp = false;
+    shf = false;
 
-    this.gas = false;
-    this.mxp = false;
-    this.oob = false;
-    this.stp = false;
-    this.exp = false;
-    this.trm = false;
-    this.hashInfo = false;
-    this.rlpAddr = false;
+    gas = false;
+    rlpAddr = false;
   }
 
   public Signals snapshot() {
@@ -97,12 +81,6 @@ public class Signals {
     r.shf = this.shf;
 
     r.gas = this.gas;
-    r.mxp = this.mxp;
-    r.oob = this.oob;
-    r.stp = this.stp;
-    r.exp = this.exp;
-    r.trm = this.trm;
-    r.hashInfo = this.hashInfo;
     r.rlpAddr = this.rlpAddr;
 
     return r;
@@ -123,64 +101,20 @@ public class Signals {
     // this.gas coincides with CONTEXT_MAY_CHANGE
     this.gas =
         Exceptions.any(ex)
-            || this.AUTOMATIC_GAS_MODULE_TRIGGER.contains(hub.opCodeData().instructionFamily());
+            || AUTOMATIC_GAS_MODULE_TRIGGER.contains(hub.opCodeData().instructionFamily());
 
     if (Exceptions.stackException(ex)) {
       return;
     }
 
     switch (opCode) {
-      case CALL, DELEGATECALL, STATICCALL, CALLCODE -> {
-        this.mxp = !Exceptions.staticFault(ex);
-        this.stp = Exceptions.outOfGasException(ex) || Exceptions.none(ex);
-        this.oob = opCode.equals(OpCode.CALL) && Exceptions.staticFault(ex) || Exceptions.none(ex);
-        this.trm = Exceptions.outOfGasException(ex) || Exceptions.none(ex);
-
-        final boolean triggersAbortingCondition =
-            Exceptions.none(ex) && this.platformController.abortingConditions().any();
-
-        final Address target = Words.toAddress(frame.getStackItem(1));
-        final boolean targetAddressHasNonEmptyCode =
-            Optional.ofNullable(frame.getWorldUpdater().get(target))
-                .map(AccountState::hasCode)
-                .orElse(false);
-
-        this.exp =
-            Exceptions.none(ex)
-                && this.platformController.abortingConditions().none()
-                && target.equals(Address.MODEXP);
-      }
-
-      case REVERT -> this.mxp =
-          Exceptions.memoryExpansionException(ex)
-              || Exceptions.outOfGasException(ex)
-              || Exceptions.none(ex);
-
-      case EXP -> {
-        this.exp = true; // TODO: use expCall instead
-        this.mul = !Exceptions.outOfGasException(ex);
-      }
-
-        // other opcodes
+      case EXP, MUL -> this.mul = !Exceptions.outOfGasException(ex);
       case ADD, SUB -> this.add = !Exceptions.outOfGasException(ex);
-      case MUL -> this.mul = !Exceptions.outOfGasException(ex);
       case DIV, SDIV, MOD, SMOD -> this.mod = !Exceptions.outOfGasException(ex);
       case ADDMOD, MULMOD -> this.ext = !Exceptions.outOfGasException(ex);
       case LT, GT, SLT, SGT, EQ, ISZERO -> this.wcp = !Exceptions.outOfGasException(ex);
       case AND, OR, XOR, NOT, SIGNEXTEND, BYTE -> this.bin = !Exceptions.outOfGasException(ex);
       case SHL, SHR, SAR -> this.shf = !Exceptions.outOfGasException(ex);
-      case SHA3 -> {
-        this.mxp = true;
-        this.hashInfo = Exceptions.none(ex) && !frame.getStackItem(1).isZero();
-      }
-      case BALANCE, EXTCODESIZE, EXTCODEHASH, SELFDESTRUCT -> this.trm = true;
-      case MLOAD, MSTORE, MSTORE8 -> {
-        this.mxp = true;
-      }
-      case CALLDATALOAD -> this.oob = true;
-      case SLOAD -> {}
-      case SSTORE, JUMP, JUMPI -> this.oob = true;
-      case MSIZE -> this.mxp = Exceptions.none(ex);
       case BLOCKHASH -> this.blockhash = Exceptions.none(ex);
     }
   }
