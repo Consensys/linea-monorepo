@@ -17,6 +17,11 @@ interface IL2MessageManager {
   event RollingHashUpdated(uint256 indexed messageNumber, bytes32 indexed rollingHash);
 
   /**
+   * @dev Reverts when the message hashes array length is zero.
+   */
+  error MessageHashesListLengthIsZero();
+
+  /**
    * @dev Reverts when message number synchronization is mismatched.
    */
   error L1MessageNumberSynchronizationWrong(uint256 expected, uint256 found);

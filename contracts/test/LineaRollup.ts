@@ -1114,6 +1114,50 @@ describe("Linea Rollup contract", () => {
       );
     });
 
+    it("Should revert if there is less data than blobs", async () => {
+      const operatorHDSigner = getWalletForIndex(2);
+      const lineaRollupAddress = await lineaRollup.getAddress();
+
+      const {
+        blobDataSubmission: blobSubmission,
+        compressedBlobs: compressedBlobs,
+        parentShnarf: parentShnarf,
+        finalShnarf: finalShnarf,
+      } = generateBlobDataSubmission(0, 2, true);
+
+      const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
+        [blobSubmission[0]],
+        parentShnarf,
+        finalShnarf,
+      ]);
+
+      const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
+      const nonce = await operatorHDSigner.getNonce();
+
+      const transaction = Transaction.from({
+        data: encodedCall,
+        maxPriorityFeePerGas: maxPriorityFeePerGas!,
+        maxFeePerGas: maxFeePerGas!,
+        to: lineaRollupAddress,
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        type: 3,
+        nonce: nonce,
+        value: 0,
+        gasLimit: 5_000_000,
+        kzg,
+        maxFeePerBlobGas: 1n,
+        blobs: compressedBlobs,
+      });
+
+      const signedTx = await operatorHDSigner.signTransaction(transaction);
+      await expectRevertWithCustomError(
+        lineaRollup,
+        ethers.provider.broadcastTransaction(signedTx),
+        "BlobSubmissionDataEmpty",
+        [1],
+      );
+    });
+
     it("Should fail to finalize with not enough gas for the rollup (pre-verifier)", async () => {
       // Submit 2 blobs
       await sendBlobTransaction(0, 2);
