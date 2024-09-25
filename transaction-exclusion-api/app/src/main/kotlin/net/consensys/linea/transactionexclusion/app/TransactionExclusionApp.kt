@@ -85,7 +85,8 @@ class TransactionExclusionApp(config: AppConfig) {
       connectionConfig = config.database.read,
       schema = config.database.schema,
       transactionalPoolSize = config.database.transactionalPoolSize,
-      readPipeliningLimit = config.database.readPipeliningLimit
+      readPipeliningLimit = config.database.readPipeliningLimit,
+      skipMigration = true
     )
     this.sqlWriteClient = initDb(
       connectionConfig = config.database.write,
@@ -153,17 +154,20 @@ class TransactionExclusionApp(config: AppConfig) {
     connectionConfig: DbConnectionConfig,
     schema: String,
     transactionalPoolSize: Int,
-    readPipeliningLimit: Int
+    readPipeliningLimit: Int,
+    skipMigration: Boolean = false
   ): SqlClient {
     val dbVersion = "1"
-    Db.applyDbMigrations(
-      host = connectionConfig.host,
-      port = connectionConfig.port,
-      database = schema,
-      target = dbVersion,
-      username = connectionConfig.username,
-      password = connectionConfig.password.value
-    )
+    if (!skipMigration) {
+      Db.applyDbMigrations(
+        host = connectionConfig.host,
+        port = connectionConfig.port,
+        database = schema,
+        target = dbVersion,
+        username = connectionConfig.username,
+        password = connectionConfig.password.value
+      )
+    }
     return Db.vertxSqlClient(
       vertx = vertx,
       host = connectionConfig.host,
