@@ -496,3 +496,15 @@ export async function expectEvent(contract: any, asyncCall: Promise<any>, eventN
     .to.emit(contract, eventName)
     .withArgs(...eventArgs);
 }
+
+export function convertStringTo8HexBytes(strVal: string): string {
+  if (strVal.length > 8) {
+    throw "Length is longer than 8 characters";
+  }
+
+  const strBytes = ethers.toUtf8Bytes(strVal);
+  const bytes8 = ethers.zeroPadBytes(strBytes, 8);
+  const bytes8Hex = ethers.hexlify(bytes8);
+
+  return bytes8Hex;
+}

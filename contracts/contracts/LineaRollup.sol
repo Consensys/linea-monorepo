@@ -24,7 +24,8 @@ contract LineaRollup is
 {
   using Utils for *;
 
-  /// @dev This is the ABI version and not the reinitialize version.
+  /// @dev These are the ABI versions and not the reinitialize version.
+  string public constant PREVIOUS_CONTRACT_VERSION = "5.0";
   string public constant CONTRACT_VERSION = "6.0";
 
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
@@ -125,7 +126,7 @@ contract LineaRollup is
    * @param _unpauseTypeRoles The list of unpause type roles.
    * @param _gatewayOperator The address of the gateway operator.
    */
-  function reinitializePauseTypesAndPermissions(
+  function reinitializeLineaRollupV6(
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles,
@@ -134,6 +135,9 @@ contract LineaRollup is
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     gatewayOperator = _gatewayOperator;
+
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
   }
 
   /**
