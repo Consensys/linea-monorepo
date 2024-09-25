@@ -1937,7 +1937,7 @@ describe("Linea Rollup contract", () => {
         calldataAggregatedProof1To155.l1RollingHash,
       );
 
-      //     aggregatedProof1To81.aggregatedProof, // wrong proof on purpose
+      // aggregatedProof1To81.aggregatedProof, wrong proof on purpose
       const finalizeCall = lineaRollup
         .connect(operator)
         .finalizeBlocksWithProof(aggregatedProof1To81.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
