@@ -24,8 +24,7 @@ contract LineaRollup is
 {
   using Utils for *;
 
-  /// @dev These are the ABI versions and not the reinitialize version.
-  string public constant PREVIOUS_CONTRACT_VERSION = "5.0";
+  /// @dev This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "6.0";
 
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
