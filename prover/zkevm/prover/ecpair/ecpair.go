@@ -50,6 +50,8 @@ type ECPair struct {
 	*UnalignedPairingData
 	*UnalignedG2MembershipData
 
+	CptPrevEqualCurrID wizard.ProverAction
+
 	AlignedG2MembershipData  *plonk.Alignment
 	AlignedMillerLoopCircuit *plonk.Alignment
 	AlignedFinalExpCircuit   *plonk.Alignment

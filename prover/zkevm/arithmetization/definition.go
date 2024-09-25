@@ -160,7 +160,7 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		wExpr = wExpr.ReconstructBottomUp(
 			func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
 
-				v, isV := e.Operator.(*symbolic.Variable)
+				v, isV := e.Operator.(symbolic.Variable)
 				if !isV {
 					return e.SameWithNewChildren(children)
 				}

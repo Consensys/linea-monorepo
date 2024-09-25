@@ -17,7 +17,9 @@ import (
 
 type cfg struct {
 	// The number of rows in the trace
-	nbRows int
+	nbRows             int
+	skipPrePaddingZero bool
+	filterOn           ifaces.Column
 }
 
 type Option func(*cfg) error
@@ -26,6 +28,21 @@ type Option func(*cfg) error
 func WithNbRows(nbRows int) Option {
 	return func(c *cfg) error {
 		c.nbRows = nbRows
+		return nil
+	}
+}
+
+// SkipPrepaddingZero skips the zeroes at the beginning of the file
+func SkipPrepaddingZero(c *cfg) error {
+	c.skipPrePaddingZero = true
+	return nil
+}
+
+// FilterOn sets the CSV printer to ignore rows where the provided filter
+// column is zero.
+func FilterOn(col ifaces.Column) Option {
+	return func(c *cfg) error {
+		c.filterOn = col
 		return nil
 	}
 }
@@ -54,12 +71,19 @@ func MustOpenCsvFile(fName string) *CsvTrace {
 
 // FmtCsv is a utility function that can be used in order to print a set of column
 // in a csv format so that debugging and testcase generation are simpler.
-func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column) error {
+func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column, options []Option) error {
 
 	var (
-		header     = []string{}
-		assignment = [][]field.Element{}
+		header       = []string{}
+		assignment   = [][]field.Element{}
+		cfg          = cfg{}
+		foundNonZero = false
+		filterCol    []field.Element
 	)
+
+	for _, op := range options {
+		op(&cfg)
+	}
 
 	for i := range cols {
 		header = append(header, string(cols[i].GetColID()))
@@ -68,11 +92,23 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column) error 
 
 	fmt.Fprintf(w, "%v\n", strings.Join(header, ","))
 
+	if cfg.filterOn != nil {
+		filterCol = cfg.filterOn.GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
 	for r := range assignment[0] {
 
-		fmtVals := []string{}
+		var (
+			fmtVals   = []string{}
+			allZeroes = true
+		)
 
 		for c := range assignment {
+
+			if !assignment[c][r].IsZero() {
+				allZeroes = false
+			}
+
 			if assignment[c][r].IsUint64() {
 				fmtVals = append(fmtVals, assignment[c][r].String())
 				continue
@@ -81,7 +117,17 @@ func FmtCsv(w io.Writer, run *wizard.ProverRuntime, cols []ifaces.Column) error 
 			fmtVals = append(fmtVals, "0x"+assignment[c][r].Text(16))
 		}
 
-		fmt.Fprintf(w, "%v\n", strings.Join(fmtVals, ","))
+		if !allZeroes {
+			foundNonZero = true
+		}
+
+		if filterCol != nil && filterCol[r].IsZero() {
+			continue
+		}
+
+		if !cfg.skipPrePaddingZero || !allZeroes || foundNonZero {
+			fmt.Fprintf(w, "%v\n", strings.Join(fmtVals, ","))
+		}
 	}
 
 	return nil

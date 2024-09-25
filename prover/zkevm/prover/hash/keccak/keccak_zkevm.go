@@ -105,14 +105,14 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModu
 func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
 	return generic.GenericByteModule{
 		Data: generic.GenDataModule{
-			HashNum: comp.Columns.GetHandle("rlpaddr.COUNTER"),
+			HashNum: comp.Columns.GetHandle("rlpaddr.STAMP"),
 			Index:   comp.Columns.GetHandle("rlpaddr.INDEX"),
 			Limb:    comp.Columns.GetHandle("rlpaddr.LIMB"),
 			NBytes:  comp.Columns.GetHandle("rlpaddr.nBYTES"),
 			ToHash:  comp.Columns.GetHandle("rlpaddr.LC"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum:  comp.Columns.GetHandle("rlpaddr.COUNTER"),
+			HashNum:  comp.Columns.GetHandle("rlpaddr.STAMP"),
 			HashLo:   comp.Columns.GetHandle("rlpaddr.DEP_ADDR_LO"),
 			HashHi:   comp.Columns.GetHandle("rlpaddr.RAW_ADDR_HI"),
 			IsHashLo: comp.Columns.GetHandle("rlpaddr.SELECTOR_KECCAK_RES"),

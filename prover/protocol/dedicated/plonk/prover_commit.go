@@ -179,7 +179,7 @@ func (ctx compilationCtx) runGnarkPlonkProver(
 	)
 
 	if err != nil {
-		utils.Panic("Error in the solver: %v", err)
+		utils.Panic("Error in the solver: circ=%v err=%v", ctx.name, err)
 	}
 
 	// Once the solver has finished, return the solution

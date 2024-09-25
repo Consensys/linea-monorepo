@@ -64,6 +64,8 @@ type TracesLimits struct {
 	BlockL1Size       int `mapstructure:"BLOCK_L1_SIZE"`
 	BlockL2L1Logs     int `mapstructure:"BLOCK_L2_L1_LOGS"`
 	BlockTransactions int `mapstructure:"BLOCK_TRANSACTIONS"`
+
+	ShomeiMerkleProofs int `mapstructure:"SHOMEI_MERKLE_PROOFS"`
 }
 
 func (tl *TracesLimits) Checksum() string {
