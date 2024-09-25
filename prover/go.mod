@@ -1,6 +1,6 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.22.1
+go 1.22.7
 
 toolchain go1.23.0
 
@@ -9,7 +9,7 @@ require (
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.11.1-0.20240910135928-e8cb61d0be1d
 	github.com/consensys/gnark-crypto v0.14.1-0.20240909204211-78a6dc12799c
-	github.com/consensys/go-corset v0.0.0-20240905174341-c6d9a8f65e0d
+	github.com/consensys/go-corset v0.0.0-20240920085445-2d0aad43bfbd
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/fxamacker/cbor/v2 v2.7.0
@@ -34,7 +34,7 @@ require (
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.14.2 // indirect
+	github.com/bits-and-blooms/bitset v1.14.3 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -111,6 +111,6 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
-	golang.org/x/sys v0.24.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
