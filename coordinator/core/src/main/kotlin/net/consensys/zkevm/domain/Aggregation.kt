@@ -132,3 +132,43 @@ data class Aggregation(
     Proving
   }
 }
+
+data class FinalizationSubmittedEvent(
+  val aggregationProof: ProofToFinalize,
+  val parentShnarf: ByteArray,
+  val parentL1RollingHash: ByteArray,
+  val parentL1RollingHashMessageNumber: Long,
+  val submissionTimestamp: Instant,
+  val transactionHash: String
+) : BlockInterval by aggregationProof {
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as FinalizationSubmittedEvent
+
+    if (aggregationProof != other.aggregationProof) return false
+    if (!parentShnarf.contentEquals(other.parentShnarf)) return false
+    if (!parentL1RollingHash.contentEquals(other.parentL1RollingHash)) return false
+    if (parentL1RollingHashMessageNumber != other.parentL1RollingHashMessageNumber) return false
+    if (submissionTimestamp != other.submissionTimestamp) return false
+    if (transactionHash != other.transactionHash) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = aggregationProof.hashCode()
+    result = 31 * result + parentShnarf.contentHashCode()
+    result = 31 * result + parentL1RollingHash.contentHashCode()
+    result = 31 * result + parentL1RollingHashMessageNumber.hashCode()
+    result = 31 * result + submissionTimestamp.hashCode()
+    result = 31 * result + transactionHash.hashCode()
+    return result
+  }
+
+  fun getSubmissionDelay(): Long {
+    return submissionTimestamp.minus(aggregationProof.finalTimestamp).inWholeSeconds
+  }
+}

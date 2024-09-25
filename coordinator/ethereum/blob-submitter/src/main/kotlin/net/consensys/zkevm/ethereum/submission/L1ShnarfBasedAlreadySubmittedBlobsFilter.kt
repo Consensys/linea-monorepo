@@ -4,9 +4,11 @@ import net.consensys.linea.async.AsyncFilter
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.function.Consumer
 
 class L1ShnarfBasedAlreadySubmittedBlobsFilter(
-  private val lineaRollup: LineaRollupSmartContractClient
+  private val lineaRollup: LineaRollupSmartContractClient,
+  private val acceptedBlobEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
 ) : AsyncFilter<BlobRecord> {
 
   /**
@@ -30,7 +32,7 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilter(
           .maxOfOrNull { it }
       }
       .thenApply { highestBlobEndBlockNumberFoundInL1 ->
-        highestBlobEndBlockNumberFoundInL1
+        highestBlobEndBlockNumberFoundInL1?.also(acceptedBlobEndBlockNumberConsumer::accept)
           ?.let { blockNumber -> blobRecords.filter { it.startBlockNumber > blockNumber } }
           ?: blobRecords
       }

@@ -55,12 +55,17 @@ import net.consensys.zkevm.coordinator.clients.Type2StateManagerJsonRpcClient
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClientReadOnly
+import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.BlocksConflation
+import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.encoding.ExecutionPayloadV1RLPEncoderByBesuImplementation
-import net.consensys.zkevm.ethereum.coordination.HighestAggregationTracker
+import net.consensys.zkevm.ethereum.coordination.BlobSubmittedEventTracker
+import net.consensys.zkevm.ethereum.coordination.EventDispatcher
+import net.consensys.zkevm.ethereum.coordination.FinalizationSubmittedEventTracker
 import net.consensys.zkevm.ethereum.coordination.HighestConflationTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBatchTracker
 import net.consensys.zkevm.ethereum.coordination.HighestProvenBlobTracker
+import net.consensys.zkevm.ethereum.coordination.HighestULongTracker
 import net.consensys.zkevm.ethereum.coordination.HighestUnprovenBlobTracker
 import net.consensys.zkevm.ethereum.coordination.SimpleCompositeSafeFutureHandler
 import net.consensys.zkevm.ethereum.coordination.aggregation.ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker
@@ -106,6 +111,7 @@ import org.web3j.protocol.http.HttpService
 import org.web3j.utils.Async
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
+import java.util.function.Consumer
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
@@ -522,10 +528,46 @@ class L1DependentApp(
     blobCompressionProofCoordinator
   }
 
-  private val alreadySubmittedBlobsFilter =
-    L1ShnarfBasedAlreadySubmittedBlobsFilter(lineaSmartContractClientForDataSubmission)
+  private val highestAcceptedBlobTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BLOB,
+      name = "highest.accepted.block.number",
+      description = "Highest accepted blob end block number",
+      measurementSupplier = it
+    )
+  }
 
+  private val alreadySubmittedBlobsFilter =
+    L1ShnarfBasedAlreadySubmittedBlobsFilter(
+      lineaRollup = lineaSmartContractClientForDataSubmission,
+      acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker }
+    )
+
+  private val submittedBlobTracker = BlobSubmittedEventTracker()
   private val blobSubmissionCoordinator = run {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.BLOB,
+      name = "highest.submitted.on.l1",
+      description = "Highest submitted blob end block number on l1",
+      measurementSupplier = { submittedBlobTracker.getEndBlockNumber().toLong() }
+    )
+
+    val blobSubmissionDelayHistogram = metricsFacade.createHistogram(
+      category = LineaMetricsCategory.BLOB,
+      name = "submission.delay",
+      description = "Delay between blob submission and end block timestamps",
+      baseUnit = "seconds"
+    )
+
+    val blobSubmittedEventConsumers: Map<Consumer<BlobSubmittedEvent>, String> = mapOf(
+      Consumer<BlobSubmittedEvent> { blobSubmission ->
+        submittedBlobTracker(blobSubmission)
+      } to "Submitted Blob Tracker Consumer",
+      Consumer<BlobSubmittedEvent> { blobSubmission ->
+        blobSubmissionDelayHistogram.record(blobSubmission.getSubmissionDelay().toDouble())
+      } to "Blob Submission Delay Consumer"
+    )
+
     BlobSubmissionCoordinator.create(
       config = BlobSubmissionCoordinator.Config(
         configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
@@ -537,6 +579,7 @@ class L1DependentApp(
       lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
       gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
       alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
+      blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
       vertx = vertx,
       clock = Clock.System
     )
@@ -569,7 +612,7 @@ class L1DependentApp(
       measurementSupplier = maxBlobEndBlockNumberTracker
     )
 
-    val highestAggregationTracker = HighestAggregationTracker(lastProcessedBlockNumber)
+    val highestAggregationTracker = HighestULongTracker(lastProcessedBlockNumber)
     metricsFacade.createGauge(
       category = LineaMetricsCategory.AGGREGATION,
       name = "proven.highest.block.number",
@@ -634,6 +677,31 @@ class L1DependentApp(
         web3jClient = l1Web3jClient,
         smartContractErrors = smartContractErrors
       )
+
+      val finalizationSubmittedEventTracker = FinalizationSubmittedEventTracker()
+      metricsFacade.createGauge(
+        category = LineaMetricsCategory.AGGREGATION,
+        name = "highest.submitted.on.l1",
+        description = "Highest submitted finalization end block number on l1",
+        measurementSupplier = { finalizationSubmittedEventTracker.getEndBlockNumber().toLong() }
+      )
+
+      val finalizationSubmissionDelayHistogram = metricsFacade.createHistogram(
+        category = LineaMetricsCategory.AGGREGATION,
+        name = "submission.delay",
+        description = "Delay between finalization submission and end block timestamps",
+        baseUnit = "seconds"
+      )
+
+      val submittedFinalizationConsumers: Map<Consumer<FinalizationSubmittedEvent>, String> = mapOf(
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmission ->
+          finalizationSubmittedEventTracker(finalizationSubmission)
+        } to "Finalization Submission Consumer",
+        Consumer<FinalizationSubmittedEvent> { finalizationSubmission ->
+          finalizationSubmissionDelayHistogram.record(finalizationSubmission.getSubmissionDelay().toDouble())
+        } to "Finalization Submission Delay Consumer"
+      )
+
       AggregationFinalizationCoordinator.create(
         config = AggregationFinalizationCoordinator.Config(
           configs.aggregationFinalization.dbPollingInterval.toKotlinDuration(),
@@ -644,6 +712,7 @@ class L1DependentApp(
         lineaRollup = lineaSmartContractClientForFinalization,
         gasPriceCapProvider = gasPriceCapProviderForFinalization,
         alreadySubmittedBlobFilter = alreadySubmittedBlobsFilter,
+        aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         vertx = vertx,
         clock = Clock.System
       )
@@ -967,6 +1036,15 @@ class L1DependentApp(
       DisabledLongRunningService
     }
 
+  val highestAcceptedFinalizationTracker = HighestULongTracker(lastProcessedBlockNumber).also {
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.AGGREGATION,
+      name = "highest.accepted.block.number",
+      description = "Highest finalized accepted end block number",
+      measurementSupplier = it
+    )
+  }
+
   private val blockFinalizationHandlerMap = mapOf(
     "finalized records cleanup" to RecordsCleanupFinalizationHandler(
       batchesRepository = batchesRepository,
@@ -980,6 +1058,9 @@ class L1DependentApp(
     },
     "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
       lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
+    },
+    "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
+      highestAcceptedFinalizationTracker(update.blockNumber)
     }
   )
 

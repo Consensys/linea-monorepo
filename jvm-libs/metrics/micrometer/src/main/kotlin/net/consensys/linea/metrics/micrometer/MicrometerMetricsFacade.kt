@@ -1,8 +1,10 @@
 package net.consensys.linea.metrics.micrometer
 
+import io.micrometer.core.instrument.DistributionSummary
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import net.consensys.linea.metrics.Counter
+import net.consensys.linea.metrics.Histogram
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
@@ -15,6 +17,14 @@ class MicrometerMetricsFacade(private val registry: MeterRegistry, private val m
       require(name.lowercase().trim() == name && name.all { it.isLetterOrDigit() || it == '.' }) {
         "$name must adhere to Micrometer naming convention!"
       }
+    }
+    fun requireValidBaseUnit(baseUnit: String) {
+      val validBaseUnits = listOf(
+        "seconds",
+        "minutes",
+        "hours"
+      )
+      require(validBaseUnits.contains(baseUnit))
     }
   }
 
@@ -61,6 +71,28 @@ class MicrometerMetricsFacade(private val registry: MeterRegistry, private val m
     }
     builder.description(description)
     return MicrometerCounterAdapter(builder.register(registry))
+  }
+
+  override fun createHistogram(
+    category: LineaMetricsCategory,
+    name: String,
+    description: String,
+    tags: List<Tag>,
+    baseUnit: String
+  ): Histogram {
+    requireValidMicrometerName(category.toString())
+    requireValidMicrometerName(name)
+    requireValidBaseUnit(baseUnit)
+    val builder = DistributionSummary.builder(metricHandle(category, name))
+    if (tags.isNotEmpty()) {
+      val flatTags = tags.flatMap {
+        requireValidMicrometerName(it.key)
+        listOf(it.key, it.value)
+      }
+      builder.tags(*flatTags.toTypedArray())
+    }
+    builder.description(description)
+    return MicrometerHistogramAdapter(builder.register(registry))
   }
 
   private fun metricHandle(category: LineaMetricsCategory, metricName: String): String {
