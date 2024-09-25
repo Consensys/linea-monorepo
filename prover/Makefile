@@ -29,6 +29,7 @@ CORSET := PATH="${CORSET_ROOT}/target/release":$$PATH
 	lib/compressor-and-shnarf-calculator-local \
 	docker \
 	bin/prover \
+	bin/checker \
 	corset \
 	testdata \
 
