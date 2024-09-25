@@ -12,6 +12,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: coordinator-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cache-docker-images:
     uses: ./.github/workflows/cache-docker-images.yml

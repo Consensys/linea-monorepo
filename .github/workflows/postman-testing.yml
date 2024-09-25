@@ -8,6 +8,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: postman-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-tests:
     runs-on: ubuntu-22.04
