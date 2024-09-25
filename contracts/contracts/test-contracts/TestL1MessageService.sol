@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import { L1MessageService } from "../messageService/l1/L1MessageService.sol";
 import { TestSetPauseTypeRoles } from "./TestSetPauseTypeRoles.sol";
