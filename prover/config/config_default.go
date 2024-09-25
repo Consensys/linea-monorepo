@@ -95,7 +95,11 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits.SHF_REFERENCE_TABLE", 4096)
 	viper.SetDefault("traces_limits.INSTRUCTION_DECODER", 512)
 
+	// Shomei limits
+	viper.SetDefault("traces_limits.SHOMEI_MERKLE_PROOFS", 16384)
+
 	// Large Limits
+
 	// Arithmetization modules
 	viper.SetDefault("traces_limits_large.ADD", 1048576)
 	viper.SetDefault("traces_limits_large.BIN", 524288)
@@ -151,5 +155,8 @@ func setDefaultTracesLimit() {
 	viper.SetDefault("traces_limits_large.BIN_REFERENCE_TABLE", 262144)
 	viper.SetDefault("traces_limits_large.SHF_REFERENCE_TABLE", 4096)
 	viper.SetDefault("traces_limits_large.INSTRUCTION_DECODER", 512)
+
+	// Shomei limits
+	viper.SetDefault("traces_limits_large.SHOMEI_MERKLE_PROOFS", 32768)
 
 }

@@ -6,7 +6,7 @@ export const ADDRESS_ZERO = ethers.ZeroAddress;
 export const HASH_WITHOUT_ZERO_FIRST_BYTE = "0xf887bbc07b0e849fb625aafadf4cb6b65b98e492fbb689705312bf1db98ead7f";
 
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
-  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[]))";
+  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address))";
 
 // Linea XP Token roles
 export const MINTER_ROLE = generateKeccak256(["string"], ["MINTER_ROLE"], true);
