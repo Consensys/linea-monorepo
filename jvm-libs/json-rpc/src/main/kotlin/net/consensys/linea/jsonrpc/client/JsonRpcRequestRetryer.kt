@@ -28,7 +28,6 @@ data class RequestRetryConfig(
   val failuresWarningThreshold: UInt = 0u
 ) {
   init {
-    require(maxRetries != null || timeout != null) { "maxRetries or timeout must be specified" }
     maxRetries?.also {
       require(maxRetries > 0u) { "maxRetries must be greater than zero. value=$maxRetries" }
       require(maxRetries > failuresWarningThreshold) {
@@ -56,7 +55,7 @@ class JsonRpcRequestRetryer(
     val requestRetry: RequestRetryConfig
   )
 
-  val retryer: AsyncRetryer<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> = AsyncRetryer.retryer(
+  private val retryer: AsyncRetryer<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> = AsyncRetryer.retryer(
     vertx = this.vertx,
     backoffDelay = config.requestRetry.backoffDelay,
     maxRetries = config.requestRetry.maxRetries?.toInt(),

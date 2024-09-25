@@ -98,7 +98,6 @@ data class RequestRetryConfigTomlFriendly(
   val failuresWarningThreshold: Int = 0
 ) : RetryConfig {
   init {
-    require(maxRetries != null || timeout != null) { "maxRetries or timeout must be specified" }
     maxRetries?.also {
       require(maxRetries > 0) { "maxRetries must be greater than zero. value=$maxRetries" }
     }
