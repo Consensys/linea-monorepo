@@ -143,14 +143,13 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
     vertx: Vertx,
     testContext: VertxTestContext
   ) {
-    testSubmission(vertx, testContext, LineaContractVersion.V5, testDataDir)
+    testSubmission(vertx, testContext, LineaContractVersion.V5)
   }
 
   private fun testSubmission(
     vertx: Vertx,
     testContext: VertxTestContext,
-    smartContractVersion: LineaContractVersion,
-    overridingTestDataDir: String? = null
+    smartContractVersion: LineaContractVersion
   ) {
     setupTest(vertx, smartContractVersion)
 
