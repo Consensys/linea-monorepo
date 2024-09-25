@@ -14,8 +14,8 @@
  */
 package net.consensys.linea;
 
-import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
-import static net.consensys.linea.FailedTestJson.writeToJsonFile;
+import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
+import static net.consensys.linea.BlockchainReferenceTestJson.writeToJsonFile;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,29 +33,56 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.json.JsonConverter;
 
 @Slf4j
-public class MapFailedReferenceTestsTool {
+public class ReferenceTestOutcomeRecorderTool {
+
+  static JsonConverter jsonConverter = JsonConverter.builder().build();
 
   @Synchronized
   public static void mapAndStoreFailedReferenceTest(
       String testName, List<String> logEventMessages, String jsonOutputFilename) {
     Set<String> failedConstraints = getFailedConstraints(logEventMessages);
     if (!failedConstraints.isEmpty()) {
-      readFailedTestsOutput(jsonOutputFilename)
+      readBlockchainReferenceTestsOutput(jsonOutputFilename)
           .thenCompose(
               jsonString -> {
                 JsonConverter jsonConverter = JsonConverter.builder().build();
 
-                List<ModuleToConstraints> modulesToConstraints =
-                    getModulesToConstraints(jsonString, jsonConverter);
+                BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
+                    getBlockchainReferenceTestOutcome(jsonString);
 
                 mapFailedConstraintsToTestsToModule(
-                    modulesToConstraints, failedConstraints, testName);
+                    blockchainReferenceTestOutcome.modulesToConstraints(),
+                    failedConstraints,
+                    testName);
 
-                jsonString = jsonConverter.toJson(modulesToConstraints);
+                BlockchainReferenceTestOutcome finalBlockchainReferenceTestOutcome =
+                    new BlockchainReferenceTestOutcome(
+                        blockchainReferenceTestOutcome.failedCounter() + 1,
+                        blockchainReferenceTestOutcome.successCounter(),
+                        blockchainReferenceTestOutcome.modulesToConstraints());
+                jsonString = jsonConverter.toJson(finalBlockchainReferenceTestOutcome);
                 writeToJsonFile(jsonString, jsonOutputFilename);
                 return null;
               });
     }
+  }
+
+  @Synchronized
+  public static void incrementSuccessRate(String jsonOutputFilename) {
+    readBlockchainReferenceTestsOutput(jsonOutputFilename)
+        .thenAccept(
+            jsonString -> {
+              BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
+                  getBlockchainReferenceTestOutcome(jsonString);
+
+              BlockchainReferenceTestOutcome finalBlockchainReferenceTestOutcome =
+                  new BlockchainReferenceTestOutcome(
+                      blockchainReferenceTestOutcome.failedCounter(),
+                      blockchainReferenceTestOutcome.successCounter() + 1,
+                      blockchainReferenceTestOutcome.modulesToConstraints());
+              jsonString = jsonConverter.toJson(finalBlockchainReferenceTestOutcome);
+              writeToJsonFile(jsonString, jsonOutputFilename);
+            });
   }
 
   @Synchronized
@@ -119,15 +146,16 @@ public class MapFailedReferenceTestsTool {
   }
 
   @Synchronized
-  public static List<ModuleToConstraints> getModulesToConstraints(
-      String jsonString, JsonConverter jsonConverter) {
-    List<ModuleToConstraints> moduleToConstraints = new ArrayList<>();
+  public static BlockchainReferenceTestOutcome getBlockchainReferenceTestOutcome(
+      String jsonString) {
+    BlockchainReferenceTestOutcome blockchainReferenceTestOutcome = null;
     if (!jsonString.isEmpty()) {
-      moduleToConstraints =
-          new ArrayList<>(
-              Arrays.asList(jsonConverter.fromJson(jsonString, ModuleToConstraints[].class)));
+      blockchainReferenceTestOutcome =
+          jsonConverter.fromJson(jsonString, BlockchainReferenceTestOutcome.class);
+    } else {
+      blockchainReferenceTestOutcome = new BlockchainReferenceTestOutcome(0, 0, new ArrayList<>());
     }
-    return moduleToConstraints;
+    return blockchainReferenceTestOutcome;
   }
 
   private static Set<String> getFailedConstraints(List<String> logEventMessages) {

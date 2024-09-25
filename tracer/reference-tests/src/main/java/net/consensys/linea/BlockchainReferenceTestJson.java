@@ -26,11 +26,11 @@ import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FailedTestJson {
+public class BlockchainReferenceTestJson {
   static String fileDirectory = setFileDirectory();
 
   @Synchronized
-  public static CompletableFuture<String> readFailedTestsOutput(String fileName) {
+  public static CompletableFuture<String> readBlockchainReferenceTestsOutput(String fileName) {
     return CompletableFuture.supplyAsync(
         () -> {
           Path directoryPath = Paths.get(fileDirectory);

@@ -21,16 +21,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record ModuleToConstraints(String moduleName, Map<String, Set<String>> constraints) {
-
-  public ModuleToConstraints(
-      @JsonProperty("moduleName") String moduleName,
-      @JsonProperty("constraints") Map<String, Set<String>> constraints) {
-    this.moduleName = moduleName;
-    this.constraints = constraints;
-  }
 
   @Override
   public boolean equals(Object o) {
