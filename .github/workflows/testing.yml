@@ -45,7 +45,7 @@ jobs:
     uses: ./.github/workflows/prover-testing.yml
     if: ${{ always() && inputs.prover_changed == 'true' }}
     secrets: inherit
-      
+
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}

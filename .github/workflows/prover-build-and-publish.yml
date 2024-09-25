@@ -27,6 +27,10 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GOPROXY: "https://proxy.golang.org"
 
