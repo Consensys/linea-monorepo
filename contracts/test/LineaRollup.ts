@@ -65,6 +65,7 @@ import {
   generateBlobParentShnarfData,
   ShnarfDataGenerator,
   expectEventDirectFromReceiptData,
+  convertStringToPaddedHexBytes,
 } from "./utils/helpers";
 import { CalldataSubmissionData } from "./utils/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
@@ -2274,7 +2275,7 @@ describe("Linea Rollup contract", () => {
       const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
 
-      await newLineaRollup.reinitializePauseTypesAndPermissions(
+      const upgradeCall = newLineaRollup.reinitializeLineaRollupV6(
         [
           { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
           { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
@@ -2284,10 +2285,18 @@ describe("Linea Rollup contract", () => {
         multiCallAddress,
       );
 
+      const expectedVersion5Bytes8 = convertStringToPaddedHexBytes("5.0", 8);
+      const expectedVersion6Bytes8 = convertStringToPaddedHexBytes("6.0", 8);
+
+      await expectEvent(newLineaRollup, upgradeCall, "LineaRollupVersionChanged", [
+        expectedVersion5Bytes8,
+        expectedVersion6Bytes8,
+      ]);
+
       expect(await newLineaRollup.currentL2BlockNumber()).to.equal(0);
     });
 
-    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializePauseTypesAndPermissions", async () => {
+    it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
       const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
       const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
@@ -2300,12 +2309,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         newLineaRollup,
-        newLineaRollup.reinitializePauseTypesAndPermissions(
-          roleAddresses,
-          pauseTypeRoles,
-          unpauseTypeRoles,
-          multiCallAddress,
-        ),
+        newLineaRollup.reinitializeLineaRollupV6(roleAddresses, pauseTypeRoles, unpauseTypeRoles, multiCallAddress),
         "ZeroAddressNotAllowed",
       );
     });

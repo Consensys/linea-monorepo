@@ -125,7 +125,7 @@ contract LineaRollup is
    * @param _unpauseTypeRoles The list of unpause type roles.
    * @param _gatewayOperator The address of the gateway operator.
    */
-  function reinitializePauseTypesAndPermissions(
+  function reinitializeLineaRollupV6(
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles,
@@ -134,6 +134,9 @@ contract LineaRollup is
     __Permissions_init(_roleAddresses);
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     gatewayOperator = _gatewayOperator;
+
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
   }
 
   /**
