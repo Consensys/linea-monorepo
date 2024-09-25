@@ -269,8 +269,8 @@ public class OobOperation extends ModuleOperation {
         final Address deploymentAddress = getDeploymentAddress(frame);
         final Account deployedAccount = frame.getWorldUpdater().get(deploymentAddress);
 
-        long nonce = (deployedAccount != null) ? deployedAccount.getNonce() : 0;
-        boolean hasCode = deployedAccount != null && deployedAccount.hasCode();
+        final long nonce = (deployedAccount != null) ? deployedAccount.getNonce() : 0;
+        final boolean hasCode = deployedAccount != null && deployedAccount.hasCode();
 
         final CreateOobCall createOobCall = (CreateOobCall) oobCall;
         createOobCall.setValue(EWord.of(frame.getStackItem(0)));
@@ -278,7 +278,7 @@ public class OobOperation extends ModuleOperation {
         createOobCall.setNonce(BigInteger.valueOf(nonce));
         createOobCall.setHasCode(hasCode);
         createOobCall.setCallStackDepth(BigInteger.valueOf(frame.getDepth()));
-        createOobCall.setCreatorNonce(BigInteger.valueOf(creatorAccount.getNonce()));
+        createOobCall.setCreatorNonce(longToUnsignedBigInteger(creatorAccount.getNonce()));
         setCreate(createOobCall);
       }
       case OOB_INST_SSTORE -> {

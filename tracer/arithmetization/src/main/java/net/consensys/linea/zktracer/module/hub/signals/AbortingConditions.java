@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP2681_MAX_NONCE;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -90,7 +88,8 @@ public final class AbortingConditions {
             final Address myAddress = hub.currentFrame().accountAddress();
             final long creatorNonce =
                 hub.messageFrame().getWorldUpdater().get(myAddress).getNonce();
-            yield Long.compareUnsigned(EIP2681_MAX_NONCE, creatorNonce) < 0;
+            // The nonce is a (signed) long for BESU so EIP2681_MAX_NONCE == -1
+            yield creatorNonce == -1;
           }
 
           default -> false;

@@ -712,67 +712,6 @@ public class Hub implements Module {
     this.unlatchStack(frame, this.currentFrame().childSpanningSection());
   }
 
-  /**
-   * If the current execution context is a deployment context the present method "exits" that
-   * deployment in the sense that it updates the relevant deployment information.
-   */
-  private void exitDeploymentFromDeploymentInfoPov(MessageFrame frame) {
-
-    // sanity check
-    Address bytecodeAddress = this.currentFrame().byteCodeAddress();
-    checkArgument(bytecodeAddress.equals(frame.getContractAddress()));
-    checkArgument(bytecodeAddress.equals(this.bytecodeAddress()));
-
-    /**
-     * Explanation: if the current address isn't under deployment there is nothing to do.
-     *
-     * <p>If the transaction is of TX_SKIP type then it is a deployment it has empty code and is
-     * immediately set to the deployed state
-     */
-    if (state.processingPhase == TX_SKIP) {
-      checkArgument(!deploymentStatusOfBytecodeAddress());
-      return;
-    }
-    /**
-     * We can't say anything if the current frame is a message call: we might have attempted a call
-     * to an address that is undergoing deployment (or a normal one.)
-     */
-    if (frame.getType() == MESSAGE_CALL) {
-      return;
-    }
-
-    // from here on out:
-    // - state.processingPhase != TX_SKIP
-    // - messageFrame.type == CONTRACT_CREATION
-
-    /**
-     * Note: we can't a priori know the deployment status of an address where a CREATE(2) raised the
-     * Failure Condition F. We also do not want to modify its deployment status. Deployment might
-     * still be underway, e.g.
-     *
-     * <p>bytecode A executes CREATE2; bytecode B is the init code; bytecode B executes a CALL to
-     * address A; bytecode A executes exactly the same CREATE2 raising the Failure Condition F for
-     * address B;
-     */
-    if (failureConditionForCreates) {
-      return;
-    }
-    // from here on out: no failure condition
-    // we must still distinguish between 'empty' deployments and 'nonempty' ones
-
-    final boolean emptyDeployment = messageFrame().getCode().getBytes().isEmpty();
-
-    // empty deployments are immediately considered as 'deployed' i.e.
-    // deploymentStatus = false
-    checkArgument(deploymentStatusOfBytecodeAddress() == !emptyDeployment);
-
-    if (emptyDeployment) return;
-    // from here on out nonempty deployments
-
-    // we transition 'nonempty deployments' from 'underDeployment' to 'deployed'
-    transients.conflation().deploymentInfo().markAsNotUnderDeployment(bytecodeAddress);
-  }
-
   public void tracePreExecution(final MessageFrame frame) {
     checkArgument(
         this.state().processingPhase == TX_EXEC,
@@ -829,6 +768,67 @@ public class Hub implements Module {
     if (!this.currentFrame().opCode().isCall() && !this.currentFrame().opCode().isCreate()) {
       this.unlatchStack(frame);
     }
+  }
+
+  /**
+   * If the current execution context is a deployment context the present method "exits" that
+   * deployment in the sense that it updates the relevant deployment information.
+   */
+  private void exitDeploymentFromDeploymentInfoPov(MessageFrame frame) {
+
+    // sanity check
+    final Address bytecodeAddress = this.currentFrame().byteCodeAddress();
+    checkArgument(bytecodeAddress.equals(frame.getContractAddress()));
+    checkArgument(bytecodeAddress.equals(this.bytecodeAddress()));
+
+    /**
+     * Explanation: if the current address isn't under deployment there is nothing to do.
+     *
+     * <p>If the transaction is of TX_SKIP type then it is a deployment it has empty code and is
+     * immediately set to the deployed state
+     */
+    if (state.processingPhase == TX_SKIP) {
+      checkArgument(!deploymentStatusOfBytecodeAddress());
+      return;
+    }
+    /**
+     * We can't say anything if the current frame is a message call: we might have attempted a call
+     * to an address that is undergoing deployment (or a normal one.)
+     */
+    if (frame.getType() == MESSAGE_CALL) {
+      return;
+    }
+
+    // from here on out:
+    // - state.processingPhase != TX_SKIP
+    // - messageFrame.type == CONTRACT_CREATION
+
+    /**
+     * Note: we can't a priori know the deployment status of an address where a CREATE(2) raised the
+     * Failure Condition F. We also do not want to modify its deployment status. Deployment might
+     * still be underway, e.g.
+     *
+     * <p>bytecode A executes CREATE2; bytecode B is the init code; bytecode B executes a CALL to
+     * address A; bytecode A executes exactly the same CREATE2 raising the Failure Condition F for
+     * address B;
+     */
+    if (failureConditionForCreates) {
+      return;
+    }
+    // from here on out: no failure condition
+    // we must still distinguish between 'empty' deployments and 'nonempty' ones
+
+    final boolean emptyDeployment = messageFrame().getCode().getBytes().isEmpty();
+
+    // empty deployments are immediately considered as 'deployed' i.e.
+    // deploymentStatus = false
+    checkArgument(deploymentStatusOfBytecodeAddress() == !emptyDeployment);
+
+    if (emptyDeployment) return;
+    // from here on out nonempty deployments
+
+    // we transition 'nonempty deployments' from 'underDeployment' to 'deployed'
+    transients.conflation().deploymentInfo().markAsNotUnderDeployment(bytecodeAddress);
   }
 
   public int getCfiByMetaData(

@@ -23,8 +23,8 @@ import org.apache.tuweni.bytes.Bytes;
 @RequiredArgsConstructor
 public abstract class OobCall implements TraceSubFragment {
   // TODO: move these constants somewhere else
-  public Bytes ZERO = Bytes.EMPTY;
-  public Bytes ONE = Bytes.of(1);
+  public static final Bytes ZERO = Bytes.EMPTY;
+  public static final Bytes ONE = Bytes.of(1);
 
   public final OobInstruction oobInstruction;
 
