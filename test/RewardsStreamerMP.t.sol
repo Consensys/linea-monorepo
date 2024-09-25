@@ -95,6 +95,13 @@ contract RewardsStreamerMPTest is Test {
             * (lockupTime * streamer.MAX_MULTIPLIER() * streamer.SCALE_FACTOR() / streamer.MAX_LOCKING_PERIOD())
             / streamer.SCALE_FACTOR();
     }
+
+    function _calculateTimeToMPLimit(uint256 amount) public view returns (uint256) {
+        uint256 maxMP = amount * streamer.MAX_MULTIPLIER();
+        uint256 mpPerYear = (amount * streamer.MP_RATE_PER_YEAR()) / streamer.SCALE_FACTOR();
+        uint256 timeInSeconds = (maxMP * 365 days) / mpPerYear;
+        return timeInSeconds;
+    }
 }
 
 contract IntegrationTest is RewardsStreamerMPTest {
@@ -577,6 +584,172 @@ contract StakeTest is RewardsStreamerMPTest {
         );
     }
 
+    function test_StakeOneAccountMPIncreasesPotentialMPDecreases() public {
+        uint256 stakeAmount = 15e18;
+        uint256 potentialMP = stakeAmount * streamer.MAX_MULTIPLIER();
+        uint256 totalMP = stakeAmount;
+
+        _stake(alice, stakeAmount, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: stakeAmount,
+                potentialMP: potentialMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (365 days));
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+
+        uint256 expectedMPIncrease = stakeAmount; // 1 year passed, 1 MP accrued per token staked
+        totalMP = totalMP + expectedMPIncrease;
+        potentialMP = potentialMP - expectedMPIncrease; // we expect a decrease in potential MP as some MP have already
+            // been minted
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: totalMP,
+                potentialMP: potentialMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                userMP: totalMP, // userMP == totalMP because only one user is staking
+                userPotentialMP: potentialMP
+            })
+        );
+
+        currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (365 days / 2));
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+
+        expectedMPIncrease = stakeAmount / 2; // 1/2 year passed, 1/2 MP accrued per token staked
+        totalMP = totalMP + expectedMPIncrease;
+        potentialMP = potentialMP - expectedMPIncrease;
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: totalMP,
+                potentialMP: potentialMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                userMP: totalMP, // userMP == totalMP because only one user is staking
+                userPotentialMP: potentialMP
+            })
+        );
+    }
+
+    function test_StakeOneAccountReachingMPLimit() public {
+        uint256 stakeAmount = 15e18;
+        uint256 potentialMP = stakeAmount * streamer.MAX_MULTIPLIER();
+        uint256 totalMP = stakeAmount;
+
+        _stake(alice, stakeAmount, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: stakeAmount,
+                potentialMP: potentialMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                userMP: totalMP, // userMP == totalMP because only one user is staking
+                userPotentialMP: potentialMP
+            })
+        );
+
+        uint256 currentTime = vm.getBlockTimestamp();
+        uint256 timeToMaxMP = _calculateTimeToMPLimit(stakeAmount);
+        vm.warp(currentTime + timeToMaxMP);
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: potentialMP + stakeAmount,
+                potentialMP: 0,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                rewardIndex: 0,
+                userMP: potentialMP + stakeAmount, // userMP == totalMP because only one user is staking
+                userPotentialMP: 0
+            })
+        );
+
+        // move forward in time to check we're not producing more MP
+        vm.warp(currentTime + 1);
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMP: potentialMP + stakeAmount,
+                potentialMP: 0,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+    }
+
     function test_StakeMultipleAccounts() public {
         // Alice stakes 10 tokens
         _stake(alice, 10e18, 0);
@@ -733,6 +906,160 @@ contract StakeTest is RewardsStreamerMPTest {
                 rewardBalance: 0,
                 rewardIndex: 0,
                 accountedRewards: 0
+            })
+        );
+    }
+
+    function test_StakeMultipleAccountsMPIncreasesPotentialMPDecreases() public {
+        uint256 aliceStakeAmount = 15e18;
+        uint256 aliceMP = aliceStakeAmount;
+        uint256 alicePotentialMP = aliceStakeAmount * streamer.MAX_MULTIPLIER();
+
+        uint256 bobStakeAmount = 5e18;
+        uint256 bobMP = bobStakeAmount;
+        uint256 bobPotentialMP = bobStakeAmount * streamer.MAX_MULTIPLIER();
+
+        uint256 totalMP = aliceStakeAmount + bobStakeAmount;
+        uint256 totalStaked = aliceStakeAmount + bobStakeAmount;
+        uint256 potentialMP = alicePotentialMP + bobPotentialMP;
+
+        _stake(alice, aliceStakeAmount, 0);
+        _stake(bob, bobStakeAmount, 0);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: totalStaked,
+                totalMP: totalMP,
+                potentialMP: potentialMP,
+                stakingBalance: totalStaked,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: aliceStakeAmount,
+                rewardIndex: 0,
+                userMP: aliceMP,
+                userPotentialMP: alicePotentialMP
+            })
+        );
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: bobStakeAmount,
+                rewardIndex: 0,
+                userMP: bobMP,
+                userPotentialMP: bobPotentialMP
+            })
+        );
+
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (365 days));
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+        streamer.updateUserMP(bob);
+
+        uint256 aliceExpectedMPIncrease = aliceStakeAmount; // 1 year passed, 1 MP accrued per token staked
+        uint256 bobExpectedMPIncrease = bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
+        uint256 totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
+
+        aliceMP = aliceMP + aliceExpectedMPIncrease;
+        bobMP = bobMP + bobExpectedMPIncrease;
+        totalMP = totalMP + totalExpectedMPIncrease;
+
+        alicePotentialMP = alicePotentialMP - aliceExpectedMPIncrease;
+        bobPotentialMP = bobPotentialMP - bobExpectedMPIncrease;
+        potentialMP = potentialMP - totalExpectedMPIncrease;
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: totalStaked,
+                totalMP: totalMP,
+                potentialMP: potentialMP,
+                stakingBalance: totalStaked,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: aliceStakeAmount,
+                rewardIndex: 0,
+                userMP: aliceMP,
+                userPotentialMP: alicePotentialMP
+            })
+        );
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: bobStakeAmount,
+                rewardIndex: 0,
+                userMP: bobMP,
+                userPotentialMP: bobPotentialMP
+            })
+        );
+
+        currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (365 days / 2));
+
+        streamer.updateGlobalState();
+        streamer.updateUserMP(alice);
+        streamer.updateUserMP(bob);
+
+        aliceExpectedMPIncrease = aliceStakeAmount / 2;
+        bobExpectedMPIncrease = bobStakeAmount / 2;
+        totalExpectedMPIncrease = aliceExpectedMPIncrease + bobExpectedMPIncrease;
+
+        aliceMP = aliceMP + aliceExpectedMPIncrease;
+        bobMP = bobMP + bobExpectedMPIncrease;
+        totalMP = totalMP + totalExpectedMPIncrease;
+
+        alicePotentialMP = alicePotentialMP - aliceExpectedMPIncrease;
+        bobPotentialMP = bobPotentialMP - bobExpectedMPIncrease;
+        potentialMP = potentialMP - totalExpectedMPIncrease;
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: totalStaked,
+                totalMP: totalMP,
+                potentialMP: potentialMP,
+                stakingBalance: totalStaked,
+                rewardBalance: 0,
+                rewardIndex: 0,
+                accountedRewards: 0
+            })
+        );
+
+        checkUser(
+            CheckUserParams({
+                user: alice,
+                rewardBalance: 0,
+                stakedBalance: aliceStakeAmount,
+                rewardIndex: 0,
+                userMP: aliceMP,
+                userPotentialMP: alicePotentialMP
+            })
+        );
+        checkUser(
+            CheckUserParams({
+                user: bob,
+                rewardBalance: 0,
+                stakedBalance: bobStakeAmount,
+                rewardIndex: 0,
+                userMP: bobMP,
+                userPotentialMP: bobPotentialMP
             })
         );
     }

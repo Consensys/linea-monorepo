@@ -57,7 +57,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
 
         _updateGlobalState();
-        updateUserMP(msg.sender);
+        _updateUserMP(msg.sender);
 
         UserInfo storage user = users[msg.sender];
         if (user.lockUntil != 0 && user.lockUntil > block.timestamp) {
@@ -110,7 +110,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
 
         _updateGlobalState();
-        updateUserMP(msg.sender);
+        _updateUserMP(msg.sender);
 
         uint256 userRewards = calculateUserRewards(msg.sender);
         if (userRewards > 0) {
@@ -192,7 +192,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         }
     }
 
-    function updateUserMP(address userAddress) internal {
+    function _updateUserMP(address userAddress) internal {
         UserInfo storage user = users[userAddress];
 
         if (user.userPotentialMP == 0 || user.stakedBalance == 0) {
@@ -215,6 +215,10 @@ contract RewardsStreamerMP is ReentrancyGuard {
         user.userMP += accruedMP;
 
         user.lastMPUpdateTime = block.timestamp;
+    }
+
+    function updateUserMP(address userAddress) external {
+        _updateUserMP(userAddress);
     }
 
     function calculateUserRewards(address userAddress) public view returns (uint256) {
