@@ -10,6 +10,17 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "emptyBlobIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "BlobSubmissionDataEmpty",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "BlobSubmissionDataIsMissing",
     "type": "error"
@@ -297,6 +308,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "LastFinalizationTimeNotLapsed",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -386,22 +402,6 @@
       }
     ],
     "name": "MissingRollingHashForMessageNumber",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "expected",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "actual",
-        "type": "bytes32"
-      }
-    ],
-    "name": "ParentStateRootHashInvalid",
     "type": "error"
   },
   {
@@ -532,31 +532,6 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "blockNumber",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "stateRootHash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "internalType": "bool",
-        "name": "finalizedWithProof",
-        "type": "bool"
-      }
-    ],
-    "name": "BlockFinalized",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
         "name": "lastBlockFinalized",
         "type": "uint256"
       },
@@ -646,8 +621,21 @@
   },
   {
     "anonymous": false,
-    "inputs": [],
-    "name": "FinalizationOccuredWithoutProof",
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "gatewayOperatorAddress",
+        "type": "address"
+      }
+    ],
+    "name": "GatewayOperatorRoleGranted",
     "type": "event"
   },
   {
@@ -661,32 +649,6 @@
       }
     ],
     "name": "Initialized",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bytes32[]",
-        "name": "messageHashes",
-        "type": "bytes32[]"
-      }
-    ],
-    "name": "L1L2MessagesReceivedOnL2",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "messageHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "L2L1MessageHashAddedToInbox",
     "type": "event"
   },
   {
@@ -750,6 +712,25 @@
       }
     ],
     "name": "LimitAmountChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes8",
+        "name": "previousVersion",
+        "type": "bytes8"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes8",
+        "name": "newVersion",
+        "type": "bytes8"
+      }
+    ],
+    "name": "LineaRollupVersionChanged",
     "type": "event"
   },
   {
@@ -956,19 +937,6 @@
       }
     ],
     "name": "RollingHashUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "systemMigrationBlock",
-        "type": "uint256"
-      }
-    ],
-    "name": "SystemMigrationBlockInitialized",
     "type": "event"
   },
   {
@@ -1862,110 +1830,16 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "gatewayOperator",
+    "outputs": [
       {
-        "components": [
-          {
-            "internalType": "bytes32",
-            "name": "parentStateRootHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "lastFinalizedShnarf",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "finalBlockInData",
-            "type": "uint256"
-          },
-          {
-            "components": [
-              {
-                "internalType": "bytes32",
-                "name": "parentShnarf",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "snarkHash",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "finalStateRootHash",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "dataEvaluationPoint",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "bytes32",
-                "name": "dataEvaluationClaim",
-                "type": "bytes32"
-              }
-            ],
-            "internalType": "struct ILineaRollup.ShnarfData",
-            "name": "shnarfData",
-            "type": "tuple"
-          },
-          {
-            "internalType": "uint256",
-            "name": "lastFinalizedTimestamp",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "finalTimestamp",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "lastFinalizedL1RollingHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "l1RollingHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "uint256",
-            "name": "lastFinalizedL1RollingHashMessageNumber",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "l1RollingHashMessageNumber",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "l2MerkleTreesDepth",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes32[]",
-            "name": "l2MerkleRoots",
-            "type": "bytes32[]"
-          },
-          {
-            "internalType": "bytes",
-            "name": "l2MessagingBlocksOffsets",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct ILineaRollup.FinalizationDataV2",
-        "name": "_finalizationData",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
-    "name": "finalizeBlocksWithoutProof",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -2095,7 +1969,7 @@
                 "type": "bytes32"
               }
             ],
-            "internalType": "struct IPauseManager.RoleAddress[]",
+            "internalType": "struct IPermissionsManager.RoleAddress[]",
             "name": "roleAddresses",
             "type": "tuple[]"
           },
@@ -2132,6 +2006,11 @@
             "internalType": "struct IPauseManager.PauseTypeRole[]",
             "name": "unpauseTypeRoles",
             "type": "tuple[]"
+          },
+          {
+            "internalType": "address",
+            "name": "gatewayOperator",
+            "type": "address"
           }
         ],
         "internalType": "struct ILineaRollup.InitializationData",
@@ -2306,7 +2185,7 @@
             "type": "bytes32"
           }
         ],
-        "internalType": "struct IPauseManager.RoleAddress[]",
+        "internalType": "struct IPermissionsManager.RoleAddress[]",
         "name": "_roleAddresses",
         "type": "tuple[]"
       },
@@ -2343,9 +2222,14 @@
         "internalType": "struct IPauseManager.PauseTypeRole[]",
         "name": "_unpauseTypeRoles",
         "type": "tuple[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_gatewayOperator",
+        "type": "address"
       }
     ],
-    "name": "reinitializePauseTypesAndPermissions",
+    "name": "reinitializeLineaRollupV6",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -2459,6 +2343,29 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_messageNumber",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_rollingHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_lastFinalizedTimestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "setGatewayOperator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
