@@ -5,9 +5,9 @@ import org.apache.logging.log4j.Logger
 import java.util.function.Consumer
 
 class EventDispatcher<T>(
-  private val consumers: Map<Consumer<T>, String>
+  private val consumers: Map<Consumer<T>, String>,
+  private val log: Logger = LogManager.getLogger(EventDispatcher::class.java)
 ) : Consumer<T> {
-  private val log: Logger = LogManager.getLogger(this::class.java)
 
   override fun accept(event: T) {
     consumers.forEach { (consumer, name) ->

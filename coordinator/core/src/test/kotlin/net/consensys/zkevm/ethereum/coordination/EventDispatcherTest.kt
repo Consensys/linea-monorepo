@@ -1,22 +1,18 @@
 package net.consensys.zkevm.ethereum.coordination
 
 import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
-import org.apache.logging.log4j.core.test.appender.ListAppender
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.BeforeEach
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Consumer
 
 class EventDispatcherTest {
-
-  private lateinit var logger: Logger
-
-  @BeforeEach
-  fun setup() {
-    logger = LogManager.getLogger(EventDispatcher::class.java)
-  }
 
   @Test
   fun dispatcherContinuesAfterFailedAttempt() {
@@ -48,32 +44,30 @@ class EventDispatcherTest {
 
   @Test
   fun dispatcherErrorPrintsCorrectly() {
-    val listAppender = ListAppender("ListAppender").apply {
-      start()
-    }
-    (logger as org.apache.logging.log4j.core.Logger).addAppender(listAppender)
-
     val consumerName = "Mock Consumer"
     val exceptionMessage = "Test error"
-    val consumerError: Consumer<Any> = Consumer {
-      throw RuntimeException(exceptionMessage)
-    }
 
     val mappedConsumers: Map<Consumer<Any>, String> = mapOf(
-      consumerError to consumerName
+      Consumer<Any> {
+        throw RuntimeException(exceptionMessage)
+      } to consumerName
     )
 
-    val eventDispatcher = EventDispatcher(mappedConsumers)
+    val log = Mockito.spy(LogManager.getLogger(EventDispatcher::class.java))
+    val eventDispatcher = EventDispatcher(mappedConsumers, log)
 
     val event = { }
     eventDispatcher.accept(event)
 
-    val logEvents = listAppender.events
-    assertThat(logEvents).hasSize(1)
-    val logEvent = logEvents[0]
-    assertThat(logEvent.message.formattedMessage).contains("Failed to consume event")
-    assertThat(logEvent.message.formattedMessage).contains(consumerName)
-    assertThat(logEvent.message.formattedMessage).contains(event.toString())
-    assertThat(logEvent.message.formattedMessage).contains(exceptionMessage)
+    await()
+      .untilAsserted {
+        verify(log, times(1)).warn(
+          eq("Failed to consume event: consumer={} event={} errorMessage={}"),
+          eq(consumerName),
+          eq(event),
+          eq(exceptionMessage),
+          any()
+        )
+      }
   }
 }
