@@ -64,7 +64,7 @@ import {
   generateBlobDataSubmission,
   generateBlobParentShnarfData,
   ShnarfDataGenerator,
-  convertStringTo8HexBytes,
+  convertStringToPaddedHexBytes,
 } from "./utils/helpers";
 import { CalldataSubmissionData } from "./utils/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
@@ -2255,8 +2255,8 @@ describe("Linea Rollup contract", () => {
         multiCallAddress,
       );
 
-      const expectedVersion5Bytes8 = convertStringTo8HexBytes("5.0");
-      const expectedVersion6Bytes8 = convertStringTo8HexBytes("6.0");
+      const expectedVersion5Bytes8 = convertStringToPaddedHexBytes("5.0", 8);
+      const expectedVersion6Bytes8 = convertStringToPaddedHexBytes("6.0", 8);
 
       await expectEvent(newLineaRollup, upgradeCall, "LineaRollupVersionChanged", [
         expectedVersion5Bytes8,

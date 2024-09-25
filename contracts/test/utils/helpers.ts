@@ -497,14 +497,14 @@ export async function expectEvent(contract: any, asyncCall: Promise<any>, eventN
     .withArgs(...eventArgs);
 }
 
-export function convertStringTo8HexBytes(strVal: string): string {
-  if (strVal.length > 8) {
-    throw "Length is longer than 8 characters";
+export function convertStringToPaddedHexBytes(strVal: string, paddedSize: number): string {
+  if (strVal.length > paddedSize) {
+    throw "Length is longer than padded size!";
   }
 
   const strBytes = ethers.toUtf8Bytes(strVal);
-  const bytes8 = ethers.zeroPadBytes(strBytes, 8);
-  const bytes8Hex = ethers.hexlify(bytes8);
+  const bytes = ethers.zeroPadBytes(strBytes, paddedSize);
+  const bytes8Hex = ethers.hexlify(bytes);
 
   return bytes8Hex;
 }
