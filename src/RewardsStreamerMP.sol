@@ -13,8 +13,8 @@ contract RewardsStreamerMP is ReentrancyGuard {
     error StakingManager__CannotRestakeWithLockedFunds();
     error StakingManager__TokensAreLocked();
 
-    IERC20 public immutable stakingToken;
-    IERC20 public immutable rewardToken;
+    IERC20 public immutable STAKING_TOKEN;
+    IERC20 public immutable REWARD_TOKEN;
 
     uint256 public constant SCALE_FACTOR = 1e18;
     uint256 public constant MP_RATE_PER_YEAR = 1e18;
@@ -39,11 +39,11 @@ contract RewardsStreamerMP is ReentrancyGuard {
         uint256 lockUntil;
     }
 
-    mapping(address => UserInfo) public users;
+    mapping(address account => UserInfo data) public users;
 
     constructor(address _stakingToken, address _rewardToken) {
-        stakingToken = IERC20(_stakingToken);
-        rewardToken = IERC20(_rewardToken);
+        STAKING_TOKEN = IERC20(_stakingToken);
+        REWARD_TOKEN = IERC20(_rewardToken);
         lastMPUpdatedTime = block.timestamp;
     }
 
@@ -69,7 +69,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             distributeRewards(msg.sender, userRewards);
         }
 
-        bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
+        bool success = STAKING_TOKEN.transferFrom(msg.sender, address(this), amount);
         if (!success) {
             revert StakingManager__TransferFailed();
         }
@@ -131,7 +131,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
         totalMP -= mpToReduce;
         potentialMP -= potentialMPToReduce;
 
-        bool success = stakingToken.transfer(msg.sender, amount);
+        bool success = STAKING_TOKEN.transfer(msg.sender, amount);
         if (!success) {
             revert StakingManager__TransferFailed();
         }
@@ -184,7 +184,7 @@ contract RewardsStreamerMP is ReentrancyGuard {
             return;
         }
 
-        uint256 rewardBalance = rewardToken.balanceOf(address(this));
+        uint256 rewardBalance = REWARD_TOKEN.balanceOf(address(this));
         uint256 newRewards = rewardBalance > accountedRewards ? rewardBalance - accountedRewards : 0;
 
         if (newRewards > 0) {
@@ -226,18 +226,18 @@ contract RewardsStreamerMP is ReentrancyGuard {
     }
 
     function distributeRewards(address to, uint256 amount) internal {
-        uint256 rewardBalance = rewardToken.balanceOf(address(this));
+        uint256 rewardBalance = REWARD_TOKEN.balanceOf(address(this));
         // If amount is higher than the contract's balance (for rounding error), transfer the balance.
         if (amount > rewardBalance) {
             amount = rewardBalance;
         }
 
-        bool success = rewardToken.transfer(to, amount);
+        accountedRewards -= amount;
+
+        bool success = REWARD_TOKEN.transfer(to, amount);
         if (!success) {
             revert StakingManager__TransferFailed();
         }
-
-        accountedRewards -= amount;
     }
 
     function getStakedBalance(address userAddress) external view returns (uint256) {

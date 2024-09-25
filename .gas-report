@@ -1,0 +1,43 @@
+| src/RewardsStreamer.sol:RewardsStreamer contract |                 |        |        |        |         |
+|--------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                  | Deployment Size |        |        |        |         |
+| 690902                                           | 3154            |        |        |        |         |
+| Function Name                                    | min             | avg    | median | max    | # calls |
+| accountedRewards                                 | 351             | 601    | 351    | 2351   | 8       |
+| getUserInfo                                      | 793             | 793    | 793    | 793    | 12      |
+| rewardIndex                                      | 350             | 600    | 350    | 2350   | 8       |
+| stake                                            | 85235           | 100736 | 105135 | 111838 | 3       |
+| totalStaked                                      | 351             | 351    | 351    | 351    | 8       |
+| unstake                                          | 110100          | 110106 | 110106 | 110112 | 2       |
+| updateRewardIndex                                | 23374           | 45581  | 39585  | 73785  | 3       |
+
+
+| src/RewardsStreamerMP.sol:RewardsStreamerMP contract |                 |        |        |        |         |
+|------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                      | Deployment Size |        |        |        |         |
+| 1096353                                              | 4939            |        |        |        |         |
+| Function Name                                        | min             | avg    | median | max    | # calls |
+| accountedRewards                                     | 373             | 595    | 373    | 2373   | 9       |
+| getUserInfo                                          | 1553            | 1553   | 1553   | 1553   | 16      |
+| potentialMP                                          | 330             | 330    | 330    | 330    | 9       |
+| rewardIndex                                          | 373             | 595    | 373    | 2373   | 9       |
+| stake                                                | 167821          | 194716 | 187721 | 228608 | 3       |
+| totalMP                                              | 352             | 352    | 352    | 352    | 9       |
+| totalStaked                                          | 330             | 330    | 330    | 330    | 9       |
+| unstake                                              | 133268          | 133274 | 133274 | 133280 | 2       |
+| updateGlobalState                                    | 30008           | 52396  | 49622  | 80335  | 4       |
+
+
+| test/mocks/MockToken.sol:MockToken contract |                 |       |        |       |         |
+|---------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                             | Deployment Size |       |        |       |         |
+| 639406                                      | 3369            |       |        |       |         |
+| Function Name                               | min             | avg   | median | max   | # calls |
+| approve                                     | 46346           | 46346 | 46346  | 46346 | 10      |
+| balanceOf                                   | 561             | 1143  | 561    | 2561  | 79      |
+| mint                                        | 51284           | 58124 | 51284  | 68384 | 10      |
+| transfer                                    | 34390           | 42940 | 42940  | 51490 | 4       |
+
+
+
+
