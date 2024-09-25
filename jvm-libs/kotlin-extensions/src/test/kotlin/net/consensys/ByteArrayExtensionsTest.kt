@@ -70,10 +70,21 @@ class ByteArrayExtensionsTest {
       assertThat(it).hasSize(10)
       assertThat(it).isEqualTo(bytes.sliceArray(20..29))
     }
+    bytes.sliceOf(sliceSize = 1, sliceNumber = 63, allowIncompleteLastSlice = false).also {
+      assertThat(it).hasSize(1)
+      assertThat(it).isEqualTo(bytes.sliceArray(63..63))
+    }
+    assertThatThrownBy {
+      bytes.sliceOf(sliceSize = 1, sliceNumber = 64, allowIncompleteLastSlice = false)
+    }
+      .isInstanceOf(AssertionError::class.java)
+      .hasMessage("slice 64..64 is out of array size=64")
+
     bytes.sliceOf(sliceSize = 10, sliceNumber = 6, allowIncompleteLastSlice = true).also {
       assertThat(it).hasSize(4)
       assertThat(it).isEqualTo(bytes.sliceArray(60..63))
     }
+
     assertThatThrownBy {
       bytes.sliceOf(sliceSize = 10, sliceNumber = 6, allowIncompleteLastSlice = false)
     }

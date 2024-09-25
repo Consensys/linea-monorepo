@@ -35,7 +35,7 @@ fun ByteArray.sliceOf(
       }
     }
 
-  assert(startIndex <= this.size && endIndex <= this.size) {
+  assert(startIndex <= this.size && endIndex < this.size) {
     "slice $startIndex..$endIndex is out of array size=${this.size}"
   }
 
