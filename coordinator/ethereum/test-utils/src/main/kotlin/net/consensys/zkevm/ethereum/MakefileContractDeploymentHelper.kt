@@ -20,7 +20,7 @@ data class CommandResult(
 fun executeCommand(
   command: String,
   envVars: Map<String, String> = emptyMap(),
-  executionDir: File = getPathTo("Makefile")!!.parent.toFile()
+  executionDir: File = getPathTo("Makefile").parent.toFile()
 ): SafeFuture<CommandResult> {
   val log = LogManager.getLogger("net.consensys.zkevm.ethereum.CommandExecutor")
   val processBuilder = ProcessBuilder("/bin/sh", "-c", command)
