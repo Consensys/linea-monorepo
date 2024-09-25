@@ -1,6 +1,11 @@
 [
   {
     "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
     "name": "ArrayLengthsDoNotMatch",
     "type": "error"
   },
@@ -104,6 +109,11 @@
       }
     ],
     "name": "MessageHashesListLengthHigherThanOneHundred",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MessageHashesListLengthIsZero",
     "type": "error"
   },
   {
@@ -498,6 +508,19 @@
         "internalType": "uint8",
         "name": "",
         "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "CONTRACT_VERSION",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -1004,7 +1027,7 @@
             "type": "bytes32"
           }
         ],
-        "internalType": "struct IPauseManager.RoleAddress[]",
+        "internalType": "struct IPermissionsManager.RoleAddress[]",
         "name": "_roleAddresses",
         "type": "tuple[]"
       },
@@ -1198,7 +1221,7 @@
             "type": "bytes32"
           }
         ],
-        "internalType": "struct IPauseManager.RoleAddress[]",
+        "internalType": "struct IPermissionsManager.RoleAddress[]",
         "name": "_roleAddresses",
         "type": "tuple[]"
       },
