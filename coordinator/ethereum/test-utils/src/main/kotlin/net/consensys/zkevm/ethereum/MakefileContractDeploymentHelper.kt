@@ -1,28 +1,15 @@
 package net.consensys.zkevm.ethereum
 
 import net.consensys.linea.async.toSafeFuture
+import net.consensys.linea.testing.filesystem.getPathTo
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-
-fun findFile(target: String): Path {
-  var current = Paths.get("").toAbsolutePath()
-  while (current != Paths.get("/")) {
-    val targetFile = current.resolve(target).toFile()
-    if (targetFile.exists()) {
-      return targetFile.toPath()
-    }
-    current = current.parent
-  }
-  throw IllegalStateException("Couldn't find file $target")
-}
 
 data class CommandResult(
   val exitCode: Int,
@@ -33,7 +20,7 @@ data class CommandResult(
 fun executeCommand(
   command: String,
   envVars: Map<String, String> = emptyMap(),
-  executionDir: File = findFile("Makefile").parent.toFile()
+  executionDir: File = getPathTo("Makefile")!!.parent.toFile()
 ): SafeFuture<CommandResult> {
   val log = LogManager.getLogger("net.consensys.zkevm.ethereum.CommandExecutor")
   val processBuilder = ProcessBuilder("/bin/sh", "-c", command)
