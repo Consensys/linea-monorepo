@@ -58,10 +58,10 @@ public final class AddOperation extends ModuleOperation {
     return false;
   }
 
-  public AddOperation(OpCode opCode, Bytes arg1, Bytes arg2) {
+  public AddOperation(OpCode opCode, Bytes32 arg1, Bytes32 arg2) {
     this.opCode = opCode;
-    this.arg1 = Bytes32.leftPad(arg1);
-    this.arg2 = Bytes32.leftPad(arg2);
+    this.arg1 = arg1;
+    this.arg2 = arg2;
   }
 
   private int computeCtMax() {
