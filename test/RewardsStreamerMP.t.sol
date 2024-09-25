@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Test, console} from "forge-std/Test.sol";
-import {RewardsStreamerMP} from "../src/RewardsStreamerMP.sol";
-import {MockToken} from "./mocks/MockToken.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
+import { MockToken } from "./mocks/MockToken.sol";
 import "forge-std/console.sol";
 
 contract RewardsStreamerMPTest is Test {
@@ -222,7 +222,8 @@ contract RewardsStreamerMPTest is Test {
             CheckStreamerParams({
                 totalStaked: 30e18,
                 totalMP: 45e18, // 60 - 15 from Alice (10 + 6 months = 5)
-                potentialMP: 105e18, // Alice's initial potential MP: 40. 5 already accrued in 6 months. new potentialMP = 140 - 35 = 105
+                potentialMP: 105e18, // Alice's initial potential MP: 40. 5 already accrued in 6 months. new potentialMP
+                    // = 140 - 35 = 105
                 stakingBalance: 30e18,
                 rewardBalance: 750e18,
                 rewardIndex: 10e18,
@@ -313,7 +314,7 @@ contract RewardsStreamerMPTest is Test {
                 potentialMP: 225e18,
                 stakingBalance: 60e18,
                 rewardBalance: 1750e18,
-                rewardIndex: 17407407407407407407,
+                rewardIndex: 17_407_407_407_407_407_407,
                 accountedRewards: 1750e18
             })
         );
@@ -363,9 +364,9 @@ contract RewardsStreamerMPTest is Test {
                 potentialMP: 120e18,
                 stakingBalance: 30e18,
                 // 1750 - (750 + 555.55) = 444.44
-                rewardBalance: 444444444444444444475,
-                rewardIndex: 17407407407407407407,
-                accountedRewards: 444444444444444444475
+                rewardBalance: 444_444_444_444_444_444_475,
+                rewardIndex: 17_407_407_407_407_407_407,
+                accountedRewards: 444_444_444_444_444_444_475
             })
         );
 
@@ -390,9 +391,9 @@ contract RewardsStreamerMPTest is Test {
                 // total weight = 135
                 // bobs rewards = 1000 * 75 / 135 = 555.555555555555555555
                 // bobs total rewards = 555.55 + 750 of the first bucket = 1305.55
-                rewardBalance: 1305555555555555555525,
+                rewardBalance: 1_305_555_555_555_555_555_525,
                 stakedBalance: 0e18,
-                rewardIndex: 17407407407407407407,
+                rewardIndex: 17_407_407_407_407_407_407,
                 userMP: 0,
                 userPotentialMP: 0
             })

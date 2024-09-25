@@ -1,0 +1,34 @@
+{
+  "name": "@vacp2p/staking-rewards-streamer",
+  "description": "",
+  "version": "0.1.0",
+  "author": {
+    "url": "https://github.com/vacp2p"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "solhint-community": "^3.6.0",
+    "commit-and-tag-version": "^12.2.0"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "forge",
+    "foundry",
+    "smart-contracts",
+    "solidity",
+    "template"
+  ],
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf cache out",
+    "lint": "pnpm lint:sol && pnpm prettier:check",
+    "verify": "certoraRun certora/certora.conf",
+    "lint:sol": "forge fmt --check && pnpm solhint {script,src,test,certora}/**/*.sol",
+    "prettier:check": "prettier --check **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "prettier:write": "prettier --write **/*.{json,md,yml} --ignore-path=.prettierignore",
+    "gas-report": "forge snapshot --gas-report 2>&1 | (tee /dev/tty | awk '/Suite result:/ {found=1; buffer=\"\"; next} found && !/Ran/ {buffer=buffer $0 ORS} /Ran/ {found=0} END {printf \"%s\", buffer}' > .gas-report)",
+    "release": "commit-and-tag-version",
+    "adorno": "pnpm prettier:write && forge fmt && pnpm gas-report"
+  }
+}

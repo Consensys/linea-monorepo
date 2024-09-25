@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import {Test, console} from "forge-std/Test.sol";
-import {RewardsStreamer} from "../src/RewardsStreamer.sol";
-import {MockToken} from "./mocks/MockToken.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { RewardsStreamer } from "../src/RewardsStreamer.sol";
+import { MockToken } from "./mocks/MockToken.sol";
 
 contract RewardsStreamerTest is Test {
     MockToken rewardToken;
@@ -122,8 +122,8 @@ contract RewardsStreamerTest is Test {
             })
         );
 
-        checkUser(CheckUserParams({user: alice, rewardBalance: 0, stakedBalance: 10e18, rewardIndex: 0}));
-        checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
+        checkUser(CheckUserParams({ user: alice, rewardBalance: 0, stakedBalance: 10e18, rewardIndex: 0 }));
+        checkUser(CheckUserParams({ user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0 }));
 
         // T4
         vm.prank(alice);
@@ -139,8 +139,8 @@ contract RewardsStreamerTest is Test {
             })
         );
 
-        checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18}));
-        checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
+        checkUser(CheckUserParams({ user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18 }));
+        checkUser(CheckUserParams({ user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0 }));
 
         // T5
         vm.prank(charlie);
@@ -156,9 +156,9 @@ contract RewardsStreamerTest is Test {
             })
         );
 
-        checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18}));
-        checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
-        checkUser(CheckUserParams({user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18}));
+        checkUser(CheckUserParams({ user: alice, rewardBalance: 250e18, stakedBalance: 0e18, rewardIndex: 25e18 }));
+        checkUser(CheckUserParams({ user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0 }));
+        checkUser(CheckUserParams({ user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18 }));
 
         // T6
         vm.prank(admin);
@@ -170,14 +170,14 @@ contract RewardsStreamerTest is Test {
                 totalStaked: 60e18,
                 stakingBalance: 60e18,
                 rewardBalance: 1750e18,
-                rewardIndex: 41666666666666666666,
+                rewardIndex: 41_666_666_666_666_666_666,
                 accountedRewards: 1750e18
             })
         );
 
-        checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18}));
-        checkUser(CheckUserParams({user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0}));
-        checkUser(CheckUserParams({user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18}));
+        checkUser(CheckUserParams({ user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18 }));
+        checkUser(CheckUserParams({ user: bob, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 0 }));
+        checkUser(CheckUserParams({ user: charlie, rewardBalance: 0, stakedBalance: 30e18, rewardIndex: 25e18 }));
 
         //T7
         vm.prank(bob);
@@ -188,18 +188,18 @@ contract RewardsStreamerTest is Test {
                 totalStaked: 30e18,
                 stakingBalance: 30e18,
                 rewardBalance: 500e18 + 20, // 500e18 (with rounding error of 20 wei)
-                rewardIndex: 41666666666666666666,
+                rewardIndex: 41_666_666_666_666_666_666,
                 accountedRewards: 500e18 + 20
             })
         );
 
-        checkUser(CheckUserParams({user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18}));
+        checkUser(CheckUserParams({ user: alice, rewardBalance: 250e18, stakedBalance: 0, rewardIndex: 25e18 }));
         checkUser(
             CheckUserParams({
                 user: bob,
-                rewardBalance: 1249999999999999999980, // 750e18 + 500e18 (with rounding error)
+                rewardBalance: 1_249_999_999_999_999_999_980, // 750e18 + 500e18 (with rounding error)
                 stakedBalance: 0,
-                rewardIndex: 41666666666666666666
+                rewardIndex: 41_666_666_666_666_666_666
             })
         );
     }

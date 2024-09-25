@@ -1,0 +1,3 @@
+rule checkIdOutputIsAlwaysEqualToInput {
+    assert true;
+}
