@@ -18,7 +18,7 @@ dependencies {
   implementation project(":jvm-libs:teku-execution-client")
   implementation "io.vertx:vertx-core"
   // jackson shall never be used in the core module
-  // however, it is used already :( but was as transitive throught Teku Execution Client
+  // however, it is used already :( but was as transitive through Teku Execution Client
   // necessary atm because of Type2StateManagerClient interface
   implementation "com.fasterxml.jackson.core:jackson-databind:${libs.versions.jackson.get()}"
   // jackson shall never be used in the core module

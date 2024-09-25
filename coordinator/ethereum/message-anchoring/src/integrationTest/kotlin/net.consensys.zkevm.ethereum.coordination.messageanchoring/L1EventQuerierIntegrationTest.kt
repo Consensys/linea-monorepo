@@ -9,7 +9,7 @@ import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.toBigInteger
 import net.consensys.toULong
 import net.consensys.zkevm.ethereum.ContractsManager
-import net.consensys.zkevm.ethereum.L1AccountManager
+import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
@@ -37,7 +37,7 @@ class L1EventQuerierIntegrationTest {
   fun beforeEach() {
     val deploymentResult = ContractsManager.get().deployLineaRollup().get()
     testLineaRollupContractAddress = deploymentResult.contractAddress
-    web3Client = L1AccountManager.web3jClient
+    web3Client = Web3jClientManager.l1Client
     @Suppress("DEPRECATION")
     contract = deploymentResult.rollupOperatorClientLegacy
     l1ContractDeploymentBlockNumber = deploymentResult.contractDeploymentBlockNumber.toULong()

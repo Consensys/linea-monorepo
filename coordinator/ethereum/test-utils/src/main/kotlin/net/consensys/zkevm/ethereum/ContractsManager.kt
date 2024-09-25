@@ -80,7 +80,7 @@ interface ContractsManager {
 
   fun connectL2MessageService(
     contractAddress: String,
-    web3jClient: Web3j = L2AccountManager.web3jClient,
+    web3jClient: Web3j = Web3jClientManager.l2Client,
     transactionManager: AsyncFriendlyTransactionManager,
     gasProvider: EIP1559GasProvider = EIP1559GasProvider(
       web3jClient,
@@ -193,7 +193,7 @@ object MakeFileDelegatedContractsManager : ContractsManager {
   ): LineaRollupAsyncFriendly {
     return LineaRollupAsyncFriendly.load(
       contractAddress,
-      L1AccountManager.web3jClient,
+      Web3jClientManager.l1Client,
       transactionManager,
       gasProvider,
       emptyMap()
@@ -207,7 +207,7 @@ object MakeFileDelegatedContractsManager : ContractsManager {
   ): LineaRollupSmartContractClient {
     return Web3JLineaRollupSmartContractClient.load(
       contractAddress,
-      L1AccountManager.web3jClient,
+      Web3jClientManager.l1Client,
       transactionManager,
       gasProvider,
       emptyMap()
