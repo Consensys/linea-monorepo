@@ -9,7 +9,7 @@ import java.nio.file.Paths
  * very useful for tests where this path changes dynamically when running in different
  * environments (e.g IntellIJ vs Gradle) we just want to hit play and have it work.
  */
-fun findPathFileOrDir(
+fun findPathTo(
   targetFileOrDir: String,
   lookupDir: Path = Paths.get("").toAbsolutePath(),
   lookupParentDir: Boolean = true
@@ -31,4 +31,13 @@ fun findPathFileOrDir(
   } while (keepSearching)
 
   return null
+}
+
+fun getPathTo(
+  targetFileOrDir: String,
+  lookupDir: Path = Paths.get("").toAbsolutePath(),
+  lookupParentDir: Boolean = true
+): Path {
+  return findPathTo(targetFileOrDir, lookupDir, lookupParentDir)
+    ?: throw IllegalArgumentException("Could not find file or directory in path: $lookupDir or its parent directories")
 }
