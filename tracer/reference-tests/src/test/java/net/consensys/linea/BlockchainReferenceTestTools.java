@@ -15,9 +15,8 @@
 
 package net.consensys.linea;
 
-import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
-import static net.consensys.linea.MapFailedReferenceTestsTool.getModule;
-import static net.consensys.linea.MapFailedReferenceTestsTool.getModulesToConstraints;
+import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
+import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.getModule;
 import static net.consensys.linea.ReferenceTestWatcher.JSON_INPUT_FILENAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -36,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.testing.ExecutionEnvironment;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.ethereum.MainnetBlockValidator;
 import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.MutableBlockchain;
@@ -107,14 +105,15 @@ public class BlockchainReferenceTestTools {
     if (failedModule.isEmpty()) {
       return CompletableFuture.completedFuture(failedTests);
     }
-    JsonConverter jsonConverter = JsonConverter.builder().build();
-    CompletableFuture<List<ModuleToConstraints>> modulesToConstraintsFutures =
-        readFailedTestsOutput(JSON_INPUT_FILENAME)
-            .thenApply(jsonString -> getModulesToConstraints(jsonString, jsonConverter));
+
+    CompletableFuture<BlockchainReferenceTestOutcome> modulesToConstraintsFutures =
+        readBlockchainReferenceTestsOutput(JSON_INPUT_FILENAME)
+            .thenApply(ReferenceTestOutcomeRecorderTool::getBlockchainReferenceTestOutcome);
 
     return modulesToConstraintsFutures.thenApply(
-        modulesToConstraints -> {
-          ModuleToConstraints filteredFailedTests = getModule(modulesToConstraints, failedModule);
+        blockchainReferenceTestOutcome -> {
+          ModuleToConstraints filteredFailedTests =
+              getModule(blockchainReferenceTestOutcome.modulesToConstraints(), failedModule);
           if (filteredFailedTests == null) {
             return failedTests;
           }

@@ -14,9 +14,9 @@
  */
 package net.consensys.linea;
 
-import static net.consensys.linea.FailedTestJson.readFailedTestsOutput;
-import static net.consensys.linea.MapFailedReferenceTestsTool.getModulesToConstraints;
-import static net.consensys.linea.MapFailedReferenceTestsTool.mapAndStoreFailedReferenceTest;
+import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainReferenceTestsOutput;
+import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.getBlockchainReferenceTestOutcome;
+import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.mapAndStoreFailedReferenceTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
@@ -25,14 +25,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import net.consensys.linea.zktracer.json.JsonConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class MapFailedReferenceTestsToolTest {
+public class ReferenceTestOutcomeRecorderToolTest {
 
   public static final String TEST_OUTPUT_JSON = "MapFailedReferenceTestsToolTest.json";
-  JsonConverter jsonConverter = JsonConverter.builder().build();
 
   @BeforeEach
   void setup() {
@@ -59,11 +57,14 @@ public class MapFailedReferenceTestsToolTest {
 
     mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    readFailedTestsOutput(TEST_OUTPUT_JSON)
+    readBlockchainReferenceTestsOutput(TEST_OUTPUT_JSON)
         .thenApply(
             jsonString -> {
+              BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
+                  getBlockchainReferenceTestOutcome(jsonString);
+
               List<ModuleToConstraints> modulesToConstraints =
-                  getModulesToConstraints(jsonString, jsonConverter);
+                  blockchainReferenceTestOutcome.modulesToConstraints();
 
               assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
               assertThat(modulesToConstraints.get(0).moduleName()).isEqualTo(module1);
@@ -87,11 +88,14 @@ public class MapFailedReferenceTestsToolTest {
 
     mapAndStoreFailedReferenceTest(testName, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    readFailedTestsOutput(TEST_OUTPUT_JSON)
+    readBlockchainReferenceTestsOutput(TEST_OUTPUT_JSON)
         .thenCompose(
             jsonString -> {
+              BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
+                  getBlockchainReferenceTestOutcome(jsonString);
+
               List<ModuleToConstraints> modulesToConstraints =
-                  getModulesToConstraints(jsonString, jsonConverter);
+                  blockchainReferenceTestOutcome.modulesToConstraints();
 
               assertThat(modulesToConstraints.size()).isEqualTo(1);
 
@@ -125,11 +129,14 @@ public class MapFailedReferenceTestsToolTest {
     mapAndStoreFailedReferenceTest(testName3, List.of(dummyEvent), TEST_OUTPUT_JSON);
     mapAndStoreFailedReferenceTest(testName3, List.of(dummyEvent), TEST_OUTPUT_JSON);
 
-    readFailedTestsOutput(TEST_OUTPUT_JSON)
+    readBlockchainReferenceTestsOutput(TEST_OUTPUT_JSON)
         .thenCompose(
             jsonString -> {
+              BlockchainReferenceTestOutcome blockchainReferenceTestOutcome =
+                  getBlockchainReferenceTestOutcome(jsonString);
+
               List<ModuleToConstraints> modulesToConstraints =
-                  getModulesToConstraints(jsonString, jsonConverter);
+                  blockchainReferenceTestOutcome.modulesToConstraints();
 
               assertThat(modulesToConstraints.size()).isEqualTo(modules.size());
               Set<String> failedTests =
