@@ -21,6 +21,7 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.add.AddOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -29,14 +30,14 @@ public class StackedSetTests {
   private static final AddOperation ONE_PLUS_ONE =
       new AddOperation(
           OpCode.ADD,
-          Bytes.wrap(BigInteger.ONE.toByteArray()),
-          Bytes.wrap(BigInteger.ONE.toByteArray()));
+          Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
+          Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())));
 
   private static final AddOperation ONE_PLUS_TWO =
       new AddOperation(
           OpCode.ADD,
-          Bytes.wrap(BigInteger.ONE.toByteArray()),
-          Bytes.wrap(BigInteger.TWO.toByteArray()));
+          Bytes32.leftPad(Bytes.wrap(BigInteger.ONE.toByteArray())),
+          Bytes32.leftPad(Bytes.wrap(BigInteger.TWO.toByteArray())));
 
   @Test
   public void push() {

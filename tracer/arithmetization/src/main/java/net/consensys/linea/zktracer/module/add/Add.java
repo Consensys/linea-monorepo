@@ -49,8 +49,8 @@ public class Add implements OperationSetModule<AddOperation> {
     operations.add(
         new AddOperation(
             OpCode.of(frame.getCurrentOperation().getOpcode()),
-            frame.getStackItem(0),
-            frame.getStackItem(1)));
+            Bytes32.leftPad(frame.getStackItem(0)),
+            Bytes32.leftPad(frame.getStackItem(1))));
   }
 
   @Override

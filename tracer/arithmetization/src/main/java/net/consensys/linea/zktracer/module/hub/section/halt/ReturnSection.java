@@ -67,13 +67,11 @@ public class ReturnSection extends TraceSection
   boolean successfulMessageCallExpected; // for sanity check
   boolean successfulDeploymentExpected; // for sanity check
 
-  // TODO: trigger SHAKIRA
-
   public ReturnSection(Hub hub) {
     super(hub, maxNumberOfRows(hub));
 
     final CallFrame callFrame = hub.currentFrame();
-    final MessageFrame messageFrame = hub.messageFrame();
+    final MessageFrame messageFrame = callFrame.frame();
 
     returnFromMessageCall = callFrame.isMessageCall();
     returnFromDeployment = callFrame.isDeployment();
@@ -257,7 +255,7 @@ public class ReturnSection extends TraceSection
 
     // TODO: optional sanity check that may be removed
     if (returnFromDeployment) {
-      Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
+      final Bytes topOfTheStack = hub.messageFrame().getStackItem(0);
       boolean deploymentWasSuccess = !topOfTheStack.isZero();
       checkArgument(deploymentWasSuccess == successfulDeploymentExpected);
     }
@@ -272,9 +270,6 @@ public class ReturnSection extends TraceSection
                 DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
 
     if (nonemptyByteCode) {
-      // TODO: we require the
-      //  - triggerHashInfo stuff on the first stack row (automatic AFAICT)
-      //  - triggerROMLEX on the deploymentAccountFragment row (see below)
       deploymentAccountFragment.requiresRomlex(true);
     }
 
