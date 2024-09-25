@@ -115,13 +115,13 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	projection.InsertProjection(comp, "SHA2_RES_HI",
 		[]ifaces.Column{cSha2.HashHi},
 		[]ifaces.Column{inp.Provider.Info.HashHi},
-		cSha2.IsActive,
+		cSha2.IsEffFirstLaneOfNewHash,
 		inp.Provider.Info.IsHashHi,
 	)
 	projection.InsertProjection(comp, "SHA2_RES_LO",
 		[]ifaces.Column{cSha2.HashLo},
 		[]ifaces.Column{inp.Provider.Info.HashLo},
-		cSha2.IsActive,
+		cSha2.IsEffFirstLaneOfNewHash,
 		inp.Provider.Info.IsHashLo,
 	)
 

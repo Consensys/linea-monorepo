@@ -77,23 +77,14 @@ func mustProveAndPass(
 	switch cfg.Execution.ProverMode {
 	case config.ProverModeDev, config.ProverModePartial:
 		if cfg.Execution.ProverMode == config.ProverModePartial {
-			logrus.Info("Running the CHECKER before the PARTIAL prover")
-			// If in partial-mode, we still want to make sure that the trace
-			// was correctly generated even though we do not prove it.
-			// Run the checker with all the options
-			checker := zkevm.CheckerZkEvm(traces)
-			proof := checker.ProveInner(w.ZkEVM)
-			if err := checker.VerifyInner(proof); err != nil {
-				utils.Panic("(PARTIAL-MODE ONLY) The checker did not pass: %v", err)
-			}
 
 			logrus.Info("Running the PARTIAL prover")
 
 			// And run the partial-prover with only the main steps. The generated
 			// proof is sanity-checked to ensure that the prover never outputs
 			// invalid proofs.
-			partial := zkevm.PartialZkEvm(traces)
-			proof = partial.ProveInner(w.ZkEVM)
+			partial := zkevm.FullZkEVMCheckOnly(traces)
+			proof := partial.ProveInner(w.ZkEVM)
 			if err := partial.VerifyInner(proof); err != nil {
 				utils.Panic("The prover did not pass: %v", err)
 			}
@@ -176,7 +167,9 @@ func mustProveAndPass(
 		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces)
 		// this will panic to alert errors, so there is no need to handle or
 		// sanity-check anything.
+		logrus.Infof("Prover starting the prover")
 		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		logrus.Infof("Prover checks passed")
 		return "", ""
 
 	default:

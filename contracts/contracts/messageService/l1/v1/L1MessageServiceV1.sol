@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { PauseManager } from "../../lib/PauseManager.sol";
+import { PauseManager } from "../../../lib/PauseManager.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L1MessageManagerV1 } from "./L1MessageManagerV1.sol";
 import { TransientStorageReentrancyGuardUpgradeable } from "../TransientStorageReentrancyGuardUpgradeable.sol";
