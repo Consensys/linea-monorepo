@@ -65,7 +65,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer, encodingOptions 
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
-			ethereum.GetFrom(tx),
+			cfg.GetAddress(tx),
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
@@ -79,7 +79,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer, encodingOptions 
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
-			ethereum.GetFrom(tx),
+			cfg.GetAddress(tx),
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
@@ -93,7 +93,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer, encodingOptions 
 			tx.Nonce(),
 			tx.GasPrice(),
 			tx.Gas(),
-			ethereum.GetFrom(tx),
+			cfg.GetAddress(tx),
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
@@ -149,9 +149,6 @@ func DecodeBlockFromUncompressed(r *bytes.Reader) (encode.DecodedBlockData, erro
 }
 
 func DecodeTxFromUncompressed(r *bytes.Reader, from *common.Address) (types.TxData, error) {
-	if _, err := r.Read(from[:]); err != nil {
-		return nil, fmt.Errorf("could not read from address: %w", err)
-	}
 
 	firstByte, err := r.ReadByte()
 	if err != nil {
