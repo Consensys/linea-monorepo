@@ -29,6 +29,4 @@ dependencies {
   testImplementation "io.vertx:vertx-junit5"
   testImplementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}"
   testImplementation "tech.pegasys.teku.internal:spec:${libs.versions.teku.get()}:test-fixtures"
-
-  testFixturesImplementation(testFixtures(project(":coordinator:persistence:db")))
 }
