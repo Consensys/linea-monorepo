@@ -26,7 +26,7 @@ request-limit-per-endpoint=2
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
 
-[dynamic-gas-price-service]
+[l2-network-gas-pricing.json-rpc-pricing-propagation]
 geth-gas-price-update-recipients=[
   "http://l2-node:8545/"
 ]
