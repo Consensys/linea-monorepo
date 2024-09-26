@@ -26,7 +26,7 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
       {isConnected && (
         <>
           <span className="text-2xl font-semibold text-white">
-            {formatBalance(receivedAmount) || 0} {token?.symbol}
+            {(parseFloat(receivedAmount || "0") > 0 && formatBalance(receivedAmount)) || 0} {token?.symbol}
           </span>
           {networkType === NetworkType.MAINNET && (
             <span className="label-text flex items-center">
