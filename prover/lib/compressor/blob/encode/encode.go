@@ -275,6 +275,13 @@ func (d *DecodedBlockData) ToStd() *types.Block {
 	return types.NewBlock(&header, &body, nil, emptyTrieHasher{})
 }
 
+func GetAddressFromR(tx *types.Transaction) typesLinea.EthAddress {
+	_, r, _ := tx.RawSignatureValues()
+	var res typesLinea.EthAddress
+	r.FillBytes(res[:])
+	return res
+}
+
 // TODO delete if unused
 type fixedTrieHasher common.Hash
 
