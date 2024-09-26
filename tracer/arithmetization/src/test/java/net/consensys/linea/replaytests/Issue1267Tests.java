@@ -104,7 +104,7 @@ public class Issue1267Tests {
   // the only test that fails for me ... and only if I set resultChecking to true
   @Test
   void issue_4065365_4065369() {
-    replay(LINEA_MAINNET, "4065365-4065369.json.gz", false);
+    replay(LINEA_MAINNET, "4065365-4065369.json.gz");
   }
 
   @Test

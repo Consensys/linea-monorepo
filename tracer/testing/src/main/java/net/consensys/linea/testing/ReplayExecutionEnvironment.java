@@ -232,9 +232,18 @@ public class ReplayExecutionEnvironment {
     }
     // Initialise storage
     for (StorageSnapshot s : conflation.storage()) {
-      updater
-          .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
-          .setStorageValue(UInt256.fromHexString(s.key()), UInt256.fromHexString(s.value()));
+      UInt256 key = UInt256.fromHexString(s.key());
+      UInt256 value = UInt256.fromHexString(s.value());
+      // The following check is only necessary because of older replay files which captured storage
+      // for accounts created in the conflation itself (see #1289).  Such assignments are always
+      // zero values, but this confuses BESU into thinking their storage is not empty (leading to a
+      // creation failure).  This fix simply prevents zero values from being assigned at all.
+      // If/when all older replay files are recaptured, then this check should be redundant.
+      if (!value.isZero()) {
+        updater
+            .getAccount(Words.toAddress(Bytes.fromHexString(s.address())))
+            .setStorageValue(key, value);
+      }
     }
     // Commit changes
     updater.commit();
@@ -269,8 +278,7 @@ public class ReplayExecutionEnvironment {
   }
 
   // Write the captured replay for a given conflation snapshot to a file.  This is used to debug the
-  // BlockCapturer by
-  // making sure, for example, that captured replays still execute correctly.
+  // BlockCapturer by making sure, for example, that captured replays still execute correctly.
   private static void writeCaptureToFile(ConflationSnapshot conflation, BlockCapturer capturer) {
     // Extract capture name
     String json = capturer.toJson();

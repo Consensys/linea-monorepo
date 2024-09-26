@@ -50,7 +50,7 @@ public class Issue1126Tests {
 
   @Test
   void test_3432730_3432768() {
-    replay(LINEA_MAINNET, "3432730-3432768.json.gz", false);
+    replay(LINEA_MAINNET, "3432730-3432768.json.gz");
   }
 
   @Test
