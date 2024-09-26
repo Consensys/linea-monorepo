@@ -6,17 +6,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 	v0 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blobv1testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetVersion(t *testing.T) {
-	_blob := test_utils.GenTestBlob(t, 1)
+	_blob := blobv1testing.GenTestBlob(t, 1)
 	assert.Equal(t, uint32(0x10000), uint32(0xffff)+uint32(blob.GetVersion(_blob)), "version should match the current one")
 }
 
@@ -34,7 +36,12 @@ func TestBlobRoundTripV0(t *testing.T) {
 	require.NoError(t, err)
 	for i := 0; i < header.NbBatches(); i++ {
 		for j := 0; j < header.NbBlocksInBatch(i); j++ {
-			ok, err := bm.Write(blocksSerialized[0], false, encode.WithTxAddressGetter(encode.GetAddressFromR))
+			dbd, err := v0.DecodeBlockFromUncompressed(bytes.NewReader(blocksSerialized[0]))
+			assert.NoError(t, err)
+
+			stdBlockRlp, err := rlp.EncodeToBytes(dbd.ToStd())
+
+			ok, err := bm.Write(stdBlockRlp, false, encode.WithTxAddressGetter(encode.GetAddressFromR))
 			assert.NoError(t, err)
 			assert.True(t, ok)
 			blocksSerialized = blocksSerialized[1:]
@@ -42,7 +49,7 @@ func TestBlobRoundTripV0(t *testing.T) {
 		bm.StartNewBatch()
 	}
 	assert.Empty(t, blocksSerialized)
-	assert.True(t, bytes.Equal(bm.Bytes(), blobData))
+	test_utils.AssertBytesEqual(t, bm.Bytes(), blobData)
 }
 
 func readHexFile(t *testing.T, filename string) []byte {
