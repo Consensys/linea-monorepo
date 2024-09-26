@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.datetime.Clock
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
+import net.consensys.linea.testing.filesystem.getPathTo
 import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -221,12 +222,12 @@ private open class WhaleBasedAccountManager(
 
 object L1AccountManager : AccountManager by WhaleBasedAccountManager(
   web3jClient = Web3jClientManager.l1Client,
-  genesisFile = findFile(System.getProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")),
+  genesisFile = getPathTo(System.getProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")),
   log = LogManager.getLogger(L1AccountManager::class.java)
 )
 
 object L2AccountManager : AccountManager by WhaleBasedAccountManager(
   web3jClient = Web3jClientManager.l2Client,
-  genesisFile = findFile(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")),
+  genesisFile = getPathTo(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")),
   log = LogManager.getLogger(L2AccountManager::class.java)
 )

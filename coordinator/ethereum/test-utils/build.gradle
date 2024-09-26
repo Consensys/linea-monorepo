@@ -10,6 +10,7 @@ dependencies {
   implementation(project(":coordinator:clients:smart-contract-client"))
   implementation(project(":jvm-libs:web3j-extensions"))
   implementation(project(":coordinator:ethereum:common"))
+  implementation(project(":jvm-libs:testing:file-system"))
   implementation("org.web3j:core:${libs.versions.web3j.get()}") {
     exclude group: 'org.slf4j', module: 'slf4j-nop'
   }
