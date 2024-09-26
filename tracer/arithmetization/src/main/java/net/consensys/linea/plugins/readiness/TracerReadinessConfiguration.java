@@ -20,5 +20,5 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
 /** The Linea tracer configuration private to this repo. */
 @Builder(toBuilder = true)
-public record TracerReadinessConfiguration(String serverHost, int serverPort)
+public record TracerReadinessConfiguration(String serverHost, int serverPort, int maxBlocksBehind)
     implements LineaOptionsConfiguration {}

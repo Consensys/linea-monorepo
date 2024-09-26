@@ -19,6 +19,7 @@ import static java.util.Collections.singletonMap;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.auto.service.AutoService;
 import io.vertx.core.Vertx;
@@ -40,9 +41,13 @@ import org.hyperledger.besu.plugin.services.sync.SynchronizationService;
 @AutoService(BesuPlugin.class)
 public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
   private static final String TRACER_READINESS_ENDPOINT_NAME = "/tracer-readiness";
+
+  private final AtomicBoolean isInSync = new AtomicBoolean(false);
+
   private SynchronizationService synchronizationService;
   private HttpServer server;
   private BesuContext besuContext;
+  private TracerReadinessConfiguration configuration;
 
   /**
    * Register the needed Besu services.
@@ -63,7 +68,32 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
   }
 
   @Override
+  public void beforeExternalServices() {
+    super.beforeExternalServices();
+
+    this.configuration =
+        (TracerReadinessConfiguration)
+            getConfigurationByKey(TracerReadinessCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  @Override
   public void start() {
+    super.start();
+
+    BesuServiceProvider.getBesuEventsService(this.besuContext)
+        .addSyncStatusListener(
+            syncStatus ->
+                syncStatus.ifPresent(
+                    status -> {
+                      boolean isInMaxBlockBehindRange =
+                          status.getHighestBlock() - status.getCurrentBlock()
+                              <= configuration.maxBlocksBehind();
+
+                      //                      log.info("SYNC STATUS: {}", isInMaxBlockBehindRange);
+
+                      isInSync.set(isInMaxBlockBehindRange);
+                    }));
+
     // Initialize Vertx
     final Vertx vertx = Vertx.vertx();
 
@@ -80,10 +110,6 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
                 routingContext.response().setStatusCode(503).end(statusResponse("DOWN"));
               }
             });
-
-    TracerReadinessConfiguration configuration =
-        (TracerReadinessConfiguration)
-            getConfigurationByKey(TracerReadinessCliOptions.CONFIG_KEY).optionsConfig();
 
     // Start the Vertx HTTP server
     server =
@@ -117,6 +143,7 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
   }
 
   private boolean isTracerReady() {
+    // This service cannot be initialized in register method.
     this.synchronizationService =
         Optional.ofNullable(synchronizationService)
             .orElse(BesuServiceProvider.getSynchronizationService(besuContext));
@@ -125,7 +152,9 @@ public class TracerReadinessPlugin extends AbstractLineaOptionsPlugin {
         RequestLimiterDispatcher.getLimiter(
             RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
 
-    return !requestLimiter.isNodeAtMaxCapacity() && synchronizationService.isInitialSyncPhaseDone();
+    return synchronizationService.isInitialSyncPhaseDone()
+        && isInSync.get()
+        && !requestLimiter.isNodeAtMaxCapacity();
   }
 
   @Override
