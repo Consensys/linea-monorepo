@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IMessageService } from "../../../interfaces/IMessageService.sol";
+import { IL2MessageServiceV1 } from "../../../interfaces/l2/IL2MessageServiceV1.sol";
 import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 import { RateLimiter } from "../../lib/RateLimiter.sol";
 import { L2MessageManagerV1 } from "./L2MessageManagerV1.sol";
@@ -20,6 +21,7 @@ abstract contract L2MessageServiceV1 is
   L2MessageManagerV1,
   ReentrancyGuardUpgradeable,
   IMessageService,
+  IL2MessageServiceV1,
   IGenericErrors
 {
   using MessageHashing for *;
@@ -152,7 +154,7 @@ abstract contract L2MessageServiceV1 is
     uint256 previousMinimumFee = minimumFeeInWei;
     minimumFeeInWei = _feeInWei;
 
-    emit MinimumFeeChanged(previousMinimumFee, minimumFeeInWei, msg.sender);
+    emit MinimumFeeChanged(previousMinimumFee, _feeInWei, msg.sender);
   }
 
   /**

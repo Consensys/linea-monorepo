@@ -11,6 +11,10 @@ on:
 env:
   GOPROXY: "https://proxy.golang.org"
 
+concurrency:
+  group: prover-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   staticcheck:
     runs-on: ubuntu-latest
