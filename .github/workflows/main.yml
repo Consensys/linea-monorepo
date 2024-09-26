@@ -10,6 +10,10 @@ jobs:
   cleanup-deployments:
     runs-on: besu-arm64
     steps:
+      - name: Print names
+        run: |
+          echo ${{ github.head_ref }}
+          echo ${{ github.ref_name }}
       - uses: strumwolf/delete-deployment-environment@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
