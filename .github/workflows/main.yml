@@ -7,20 +7,6 @@ jobs:
   store-image-name-and-tags:
     uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
-  cleanup-deployments:
-    runs-on: besu-arm64
-    steps:
-      - name: Print names
-        run: |
-          echo ${{ github.head_ref }}
-          echo ${{ github.ref_name }}
-      - uses: strumwolf/delete-deployment-environment@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: docker-build-and-e2e
-          ref: manual-workflows
-          onlyRemoveDeployments: true
-
   filter-commit-changes:
     runs-on: besu-arm64
     name: Filter commit changes
@@ -201,3 +187,13 @@ jobs:
       untested_tag_suffix: ${{ needs.store-image-name-and-tags.outputs.untested_tag_suffix }}
       image_names: '["consensys/linea-coordinator", "consensys/linea-postman", "consensys/linea-prover", "consensys/linea-traces-api-facade"]'
     secrets: inherit
+
+  cleanup-deployments:
+    runs-on: besu-arm64
+    steps:
+      - uses: strumwolf/delete-deployment-environment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: docker-build-and-e2e
+          ref: ${{ github.ref_name }}
+          onlyRemoveDeployments: true
