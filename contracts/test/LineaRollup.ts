@@ -43,6 +43,8 @@ import {
   PAUSE_FINALIZE_WITHPROOF_ROLE,
   UNPAUSE_FINALIZE_WITHPROOF_ROLE,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  DEFAULT_LAST_FINALIZED_TIMESTAMP,
+  SIX_MONTHS_IN_SECONDS,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -104,24 +106,25 @@ describe("Linea Rollup contract", () => {
 
     verifier = await plonkVerifier.getAddress();
 
+    const securityCouncilAddress = securityCouncil.address;
     const roleAddresses = [
-      { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
-      { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: VERIFIER_UNSETTER_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_ALL_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
-      { addressWithRole: securityCouncil.address, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
-      { addressWithRole: securityCouncil.address, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
-      { addressWithRole: securityCouncil.address, role: FINALIZE_WITHOUT_PROOF_ROLE },
+      { addressWithRole: securityCouncilAddress, role: DEFAULT_ADMIN_ROLE },
+      { addressWithRole: securityCouncilAddress, role: VERIFIER_SETTER_ROLE },
+      { addressWithRole: securityCouncilAddress, role: VERIFIER_UNSETTER_ROLE },
+      { addressWithRole: securityCouncilAddress, role: PAUSE_ALL_ROLE },
+      { addressWithRole: securityCouncilAddress, role: UNPAUSE_ALL_ROLE },
+      { addressWithRole: securityCouncilAddress, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
+      { addressWithRole: securityCouncilAddress, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
+      { addressWithRole: securityCouncilAddress, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+      { addressWithRole: securityCouncilAddress, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+      { addressWithRole: securityCouncilAddress, role: FINALIZE_WITHOUT_PROOF_ROLE },
       { addressWithRole: operator.address, role: OPERATOR_ROLE },
     ];
 
     const initializationData = {
       initialStateRootHash: parentStateRootHash,
       initialL2BlockNumber: 0,
-      genesisTimestamp: 1683325137n,
+      genesisTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
       defaultVerifier: verifier,
       rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
       rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
@@ -1456,7 +1459,7 @@ describe("Linea Rollup contract", () => {
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
+          lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
           finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
@@ -1489,7 +1492,7 @@ describe("Linea Rollup contract", () => {
           [
             finalizationData.lastFinalizedL1RollingHashMessageNumber,
             finalizationData.lastFinalizedL1RollingHash,
-            1683325137n,
+            DEFAULT_LAST_FINALIZED_TIMESTAMP,
           ],
         );
 
@@ -1523,7 +1526,7 @@ describe("Linea Rollup contract", () => {
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
+          lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
           finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
@@ -1571,7 +1574,7 @@ describe("Linea Rollup contract", () => {
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
+          lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
           finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
@@ -1629,7 +1632,7 @@ describe("Linea Rollup contract", () => {
         const finalizationData = await generateFinalizationData({
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
-          lastFinalizedTimestamp: 1683325137n,
+          lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
           finalBlockInData: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
           parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
@@ -1728,7 +1731,7 @@ describe("Linea Rollup contract", () => {
       }
 
       const finalizationData = await generateFinalizationData({
-        lastFinalizedTimestamp: 1683325137n,
+        lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
         parentStateRootHash: generateRandomBytes(32),
         aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
       });
@@ -2113,6 +2116,51 @@ describe("Linea Rollup contract", () => {
     });
   });
 
+  describe("Gateway Operator Role", () => {
+    it("Should revert if trying to set gateway operator role before six months have passed", async () => {
+      const initialBlock = await ethers.provider.getBlock("latest");
+
+      await expect(
+        lineaRollup.setGatewayOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
+      ).to.be.revertedWithCustomError(lineaRollup, "LastFinalizationTimeNotLapsed");
+    });
+
+    it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+
+      await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, 123456789n)).to.be.revertedWithCustomError(
+        lineaRollup,
+        "FinalizationStateIncorrect",
+      );
+    });
+
+    it("Should revert if the time has passed and the last finalized L1 message number does not match", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+
+      await expect(
+        lineaRollup.setGatewayOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+      ).to.be.revertedWithCustomError(lineaRollup, "FinalizationStateIncorrect");
+    });
+
+    it("Should revert if the time has passed and the last finalized L1 rolling hash does not match", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+
+      await expect(
+        lineaRollup.setGatewayOperator(0n, generateRandomBytes(32), DEFAULT_LAST_FINALIZED_TIMESTAMP),
+      ).to.be.revertedWithCustomError(lineaRollup, "FinalizationStateIncorrect");
+    });
+
+    it("Should set the gateway operator role after six months have passed", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+
+      await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP))
+        .to.emit(lineaRollup, "GatewayOperatorRoleGranted")
+        .withArgs(admin.address, multiCallAddress);
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, multiCallAddress)).to.be.true;
+    });
+  });
+
   async function sendBlobTransaction(startIndex: number, finalIndex: number, isMultiple: boolean = false) {
     const operatorHDSigner = getWalletForIndex(2);
     const lineaRollupAddress = await lineaRollup.getAddress();
@@ -2223,7 +2271,7 @@ describe("Linea Rollup contract", () => {
           [operator.address],
           ONE_DAY_IN_SECONDS,
           INITIAL_WITHDRAW_LIMIT,
-          1683325137n,
+          DEFAULT_LAST_FINALIZED_TIMESTAMP,
         ],
         {
           initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
@@ -2265,6 +2313,34 @@ describe("Linea Rollup contract", () => {
 
       expect(await newLineaRollup.currentL2BlockNumber()).to.equal(0);
     });
+
+    it("Should not be able to call reinitializeLineaRollupV6 when not initializing.", async () => {
+      expect(await lineaRollup.currentL2BlockNumber()).to.equal(0);
+
+      // Deploy new implementation
+      const NewLineaRollupFactory = await ethers.getContractFactory("contracts/LineaRollup.sol:LineaRollup");
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, NewLineaRollupFactory);
+
+      const upgradeCall = newLineaRollup.reinitializeLineaRollupV6(
+        [
+          { addressWithRole: securityCouncil.address, role: DEFAULT_ADMIN_ROLE },
+          { addressWithRole: securityCouncil.address, role: VERIFIER_SETTER_ROLE },
+        ],
+        pauseTypeRoles,
+        unpauseTypeRoles,
+        multiCallAddress,
+      );
+
+      const expectedVersion5Bytes8 = convertStringToPaddedHexBytes("5.0", 8);
+      const expectedVersion6Bytes8 = convertStringToPaddedHexBytes("6.0", 8);
+
+      await expectEvent(newLineaRollup, upgradeCall, "LineaRollupVersionChanged", [
+        expectedVersion5Bytes8,
+        expectedVersion6Bytes8,
+      ]);
+
+      expect(await newLineaRollup.currentL2BlockNumber()).to.equal(0);
+    });    
 
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
