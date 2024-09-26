@@ -46,7 +46,7 @@ on:
 
 concurrency:
   group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: {{ github.ref != main }}
+  cancel-in-progress: {{ github.ref != 'main' }}
 
 jobs:
   check_image_tags_exist:

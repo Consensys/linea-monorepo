@@ -29,7 +29,7 @@ on:
 
 concurrency:
   group: traces-api-facade-build-and-publish-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: {{ github.ref != main }}
+  cancel-in-progress: {{ github.ref != 'main' }}
 
 jobs:
   build-and-publish:
