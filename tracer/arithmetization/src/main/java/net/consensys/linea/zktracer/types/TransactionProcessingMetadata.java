@@ -276,8 +276,7 @@ public class TransactionProcessingMetadata implements PostTransactionDefer {
 
   public long feeRateForCoinbase() {
     return switch (besuTransaction.getType()) {
-      case FRONTIER, ACCESS_LIST -> effectiveGasPrice;
-      case EIP1559 -> effectiveGasPrice - baseFee;
+      case FRONTIER, ACCESS_LIST, EIP1559 -> effectiveGasPrice - baseFee;
       default -> throw new IllegalStateException(
           "Transaction Type not supported: " + besuTransaction.getType());
     };
