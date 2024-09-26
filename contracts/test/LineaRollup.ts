@@ -67,6 +67,7 @@ import {
   generateBlobParentShnarfData,
   ShnarfDataGenerator,
   convertStringToPaddedHexBytes,
+  calculateLastFinalizedState,
 } from "./utils/helpers";
 import { CalldataSubmissionData } from "./utils/types";
 import aggregatedProof1To81 from "./testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
@@ -2116,38 +2117,54 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("Gateway Operator Role", () => {
+  describe.only("Gateway Operator Role", () => {
+    const expectedLastFinalizedState = calculateLastFinalizedState(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+
     it("Should revert if trying to set gateway operator role before six months have passed", async () => {
       const initialBlock = await ethers.provider.getBlock("latest");
 
-      await expect(
+      await expectRevertWithCustomError(
+        lineaRollup,
         lineaRollup.setGatewayOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
-      ).to.be.revertedWithCustomError(lineaRollup, "LastFinalizationTimeNotLapsed");
+        "LastFinalizationTimeNotLapsed",
+      );
     });
 
     it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 123456789n);
 
-      await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, 123456789n)).to.be.revertedWithCustomError(
+      await expectRevertWithCustomError(
         lineaRollup,
+        lineaRollup.setGatewayOperator(0n, HASH_ZERO, 123456789n),
         "FinalizationStateIncorrect",
+        [expectedLastFinalizedState, actualSentState],
       );
     });
 
     it("Should revert if the time has passed and the last finalized L1 message number does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+      const actualSentState = calculateLastFinalizedState(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
-      await expect(
+      await expectRevertWithCustomError(
+        lineaRollup,
         lineaRollup.setGatewayOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
-      ).to.be.revertedWithCustomError(lineaRollup, "FinalizationStateIncorrect");
+        "FinalizationStateIncorrect",
+        [expectedLastFinalizedState, actualSentState],
+      );
     });
 
     it("Should revert if the time has passed and the last finalized L1 rolling hash does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+      const random32Bytes = generateRandomBytes(32);
+      const actualSentState = calculateLastFinalizedState(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
-      await expect(
-        lineaRollup.setGatewayOperator(0n, generateRandomBytes(32), DEFAULT_LAST_FINALIZED_TIMESTAMP),
-      ).to.be.revertedWithCustomError(lineaRollup, "FinalizationStateIncorrect");
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup.setGatewayOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "FinalizationStateIncorrect",
+        [expectedLastFinalizedState, actualSentState],
+      );
     });
 
     it("Should set the gateway operator role after six months have passed", async () => {
