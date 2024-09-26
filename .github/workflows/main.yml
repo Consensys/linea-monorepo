@@ -154,7 +154,7 @@ jobs:
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: {{ github.ref != 'main' }}
+      cancel-in-progress: ${{ github.ref != 'main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
@@ -168,7 +168,7 @@ jobs:
     if: ${{ always() && needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: {{ github.ref != 'main' }}
+      cancel-in-progress: ${{ github.ref != 'main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}

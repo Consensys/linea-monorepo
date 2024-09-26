@@ -29,7 +29,7 @@ on:
 
 concurrency:
   group: prover-build-and-publish-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: {{ github.ref != 'main' }}
+  cancel-in-progress: ${{ github.ref != 'main' }}
 
 env:
   GOPROXY: "https://proxy.golang.org"
