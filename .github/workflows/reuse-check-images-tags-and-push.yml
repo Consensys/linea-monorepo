@@ -44,9 +44,13 @@ on:
       DOCKERHUB_TOKEN:
         required: true
 
+concurrency:
+  group: check-images-tags-and-push-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check_image_tags_exist:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Check image tags exist
     outputs:
       last_commit_tag_exists_coordinator: ${{ steps.check_image_tags_exist_coordinator.outputs.last_commit_tag_exists }}
@@ -59,8 +63,8 @@ jobs:
       common_ancestor_commit_tag_exists_traces_api_facade: ${{ steps.check_image_tags_exist_traces_api_facade.outputs.common_ancestor_commit_tag_exists }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 
-      
+        uses: actions/checkout@v4
+
       - name: Check image tags exist for coordinator
         uses: ./.github/actions/check-image-tags-exist
         if: ${{ inputs.coordinator_changed == 'false' }}
@@ -71,7 +75,7 @@ jobs:
           image_name: consensys/linea-coordinator
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Check image tags exist for postman
         uses: ./.github/actions/check-image-tags-exist
         if: ${{ inputs.postman_changed == 'false' }}
@@ -82,7 +86,7 @@ jobs:
           image_name: consensys/linea-postman
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Check image tags exist for prover
         uses: ./.github/actions/check-image-tags-exist
         if: ${{ inputs.prover_changed == 'false' }}
@@ -93,7 +97,7 @@ jobs:
           image_name: consensys/linea-prover
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Check image tags exist for traces-api-facade
         uses: ./.github/actions/check-image-tags-exist
         if: ${{ inputs.traces_api_facade_changed == 'false' }}
@@ -106,7 +110,7 @@ jobs:
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
 
   image_tag_push:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Tag and push images
     needs: [ check_image_tags_exist ]
     outputs:
@@ -117,7 +121,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Tag and push coordinator image
         id: image_tag_push_coordinator
         uses: ./.github/actions/image-tag-and-push
@@ -133,7 +137,7 @@ jobs:
           common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_coordinator }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Tag and push postman image
         id: image_tag_push_postman
         uses: ./.github/actions/image-tag-and-push
@@ -149,7 +153,7 @@ jobs:
           common_ancestor_commit_tag_exists: ${{ needs.check_image_tags_exist.outputs.common_ancestor_commit_tag_exists_postman }}
           docker_username: ${{ secrets.DOCKERHUB_USERNAME }}
           docker_password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Tag and push prover image
         id: image_tag_push_prover
         uses: ./.github/actions/image-tag-and-push

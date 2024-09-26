@@ -15,9 +15,13 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: traces-api-facade-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     name: Traces api facade tests
     steps:
       - name: Checkout

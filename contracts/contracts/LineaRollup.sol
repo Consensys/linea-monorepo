@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "./messageService/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/l1/ILineaRollup.sol";
+import { PermissionsManager } from "./lib/PermissionsManager.sol";
 
 import { Utils } from "./lib/Utils.sol";
 /**
@@ -12,10 +14,22 @@ import { Utils } from "./lib/Utils.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILineaRollup {
+contract LineaRollup is
+  Initializable,
+  AccessControlUpgradeable,
+  ZkEvmV2,
+  L1MessageService,
+  PermissionsManager,
+  ILineaRollup
+{
   using Utils for *;
 
+  /// @dev This is the ABI version and not the reinitialize version.
+  string public constant CONTRACT_VERSION = "6.0";
+
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
+  bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
+  bytes32 public constant FINALIZE_WITHOUT_PROOF_ROLE = keccak256("FINALIZE_WITHOUT_PROOF_ROLE");
   bytes32 public constant GENESIS_SHNARF =
     keccak256(
       abi.encode(
@@ -33,6 +47,8 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   address internal constant POINT_EVALUATION_PRECOMPILE_ADDRESS = address(0x0a);
   uint256 internal constant POINT_EVALUATION_RETURN_DATA_LENGTH = 64;
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
+
+  uint256 internal constant SIX_MONTHS_IN_SECONDS = 15768000; // 365 / 2 * 86400
 
   /// @dev DEPRECATED in favor of the single shnarfFinalBlockNumbers mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) public dataFinalStateRootHashes;
@@ -60,7 +76,11 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   /// @dev Hash of the L2 computed L1 message number, rolling hash and finalized timestamp.
   bytes32 public currentFinalizedState;
 
-  /// @dev Total contract storage is 10 slots.
+  /// @dev The address of the gateway operator.
+  /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
+  address public gatewayOperator;
+
+  /// @dev Total contract storage is 11 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -72,77 +92,51 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
    * @dev DEFAULT_ADMIN_ROLE is set for the security council.
    * @dev OPERATOR_ROLE is set for operators.
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
-   * @param _initialStateRootHash The initial hash at migration used for proof verification.
-   * @param _initialL2BlockNumber The initial block number at migration.
-   * @param _defaultVerifier The default verifier for rollup proofs.
-   * @param _securityCouncil The address for the security council performing admin operations.
-   * @param _operators The allowed rollup operators at initialization.
-   * @param _rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
-   * @param _rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
-   * @param _genesisTimestamp The L2 genesis timestamp for first finalization.
+   * @param _initializationData The initial data used for proof verification.
    */
-  function initialize(
-    bytes32 _initialStateRootHash,
-    uint256 _initialL2BlockNumber,
-    address _defaultVerifier,
-    address _securityCouncil,
-    address[] calldata _operators,
-    uint256 _rateLimitPeriodInSeconds,
-    uint256 _rateLimitAmountInWei,
-    uint256 _genesisTimestamp
-  ) external initializer {
-    if (_defaultVerifier == address(0)) {
+  function initialize(InitializationData calldata _initializationData) external initializer {
+    if (_initializationData.defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
     }
 
-    for (uint256 i; i < _operators.length; ++i) {
-      if (_operators[i] == address(0)) {
-        revert ZeroAddressNotAllowed();
-      }
-      _grantRole(OPERATOR_ROLE, _operators[i]);
-    }
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
-    _grantRole(DEFAULT_ADMIN_ROLE, _securityCouncil);
-    _grantRole(VERIFIER_SETTER_ROLE, _securityCouncil);
+    __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
 
-    __MessageService_init(_securityCouncil, _securityCouncil, _rateLimitPeriodInSeconds, _rateLimitAmountInWei);
+    __Permissions_init(_initializationData.roleAddresses);
 
-    verifiers[0] = _defaultVerifier;
+    verifiers[0] = _initializationData.defaultVerifier;
 
-    currentL2BlockNumber = _initialL2BlockNumber;
-    stateRootHashes[_initialL2BlockNumber] = _initialStateRootHash;
+    gatewayOperator = _initializationData.gatewayOperator;
+    currentL2BlockNumber = _initializationData.initialL2BlockNumber;
+    stateRootHashes[_initializationData.initialL2BlockNumber] = _initializationData.initialStateRootHash;
 
-    shnarfFinalBlockNumbers[GENESIS_SHNARF] = _initialL2BlockNumber;
+    shnarfFinalBlockNumbers[GENESIS_SHNARF] = _initializationData.initialL2BlockNumber;
 
     currentFinalizedShnarf = GENESIS_SHNARF;
-    currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _genesisTimestamp);
+    currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
 
   /**
-   * @notice Initializes LineaRollup, sets the expected shnarfFinalBlockNumbers final block number(s) and sets finalization state.
-   * @dev The initialization will only do the last finalized shnarf and the unfinalized shnarfs of unfinalized data submissions.
-   * @dev Data submission and finalization will be paused temporarily to avoid missing submissions.
-   * @dev currentFinalizedState will also be initialized with existing storage values.
-   * @param _shnarfs The shnarfs to reset.
-   * @param _finalBlockNumbers The final blocks number to reset 1:1 with the shnarfs.
+   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and gateway operator.
+   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
+   * @param _roleAddresses The list of addresses and their roles.
+   * @param _pauseTypeRoles The list of pause type roles.
+   * @param _unpauseTypeRoles The list of unpause type roles.
+   * @param _gatewayOperator The address of the gateway operator.
    */
-  function initializeParentShnarfsAndFinalizedState(
-    bytes32[] calldata _shnarfs,
-    uint256[] calldata _finalBlockNumbers
-  ) external reinitializer(5) {
-    if (_shnarfs.length != _finalBlockNumbers.length) {
-      revert ShnarfAndFinalBlockNumberLengthsMismatched(_shnarfs.length, _finalBlockNumbers.length);
-    }
+  function reinitializeLineaRollupV6(
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoles,
+    PauseTypeRole[] calldata _unpauseTypeRoles,
+    address _gatewayOperator
+  ) external reinitializer(6) {
+    __Permissions_init(_roleAddresses);
+    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
+    gatewayOperator = _gatewayOperator;
 
-    for (uint256 i; i < _shnarfs.length; i++) {
-      shnarfFinalBlockNumbers[_shnarfs[i]] = _finalBlockNumbers[i];
-    }
-
-    currentFinalizedState = _computeLastFinalizedState(
-      currentL2StoredL1MessageNumber,
-      currentL2StoredL1RollingHash,
-      currentTimestamp
-    );
+    /// @dev using the constants requires string memory and more complex code.
+    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
   }
 
   /**
@@ -162,11 +156,35 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
   }
 
   /**
+   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
+   * @dev Reverts if six months have not passed since the last finalization.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   */
+  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
+    if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
+      revert LastFinalizationTimeNotLapsed();
+    }
+    if (currentFinalizedState != _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)) {
+      revert FinalizationStateIncorrect(
+        currentFinalizedState,
+        _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)
+      );
+    }
+
+    address gatewayOperatorAddress = gatewayOperator;
+
+    _grantRole(OPERATOR_ROLE, gatewayOperatorAddress);
+    emit GatewayOperatorRoleGranted(msg.sender, gatewayOperatorAddress);
+  }
+
+  /**
    * @notice Unset the verifier contract address for a proof type.
-   * @dev VERIFIER_SETTER_ROLE is required to execute.
+   * @dev VERIFIER_UNSETTER_ROLE is required to execute.
    * @param _proofType The proof type being set/updated.
    */
-  function unsetVerifierAddress(uint256 _proofType) external onlyRole(VERIFIER_SETTER_ROLE) {
+  function unsetVerifierAddress(uint256 _proofType) external onlyRole(VERIFIER_UNSETTER_ROLE) {
     emit VerifierAddressChanged(address(0), _proofType, msg.sender, verifiers[_proofType]);
 
     delete verifiers[_proofType];
@@ -184,11 +202,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     BlobSubmissionData[] calldata _blobSubmissionData,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
-  ) external whenTypeAndGeneralNotPaused(PROVING_SYSTEM_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(BLOB_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
     uint256 blobSubmissionLength = _blobSubmissionData.length;
 
     if (blobSubmissionLength == 0) {
       revert BlobSubmissionDataIsMissing();
+    }
+
+    if (blobhash(blobSubmissionLength) != EMPTY_HASH) {
+      revert BlobSubmissionDataEmpty(blobSubmissionLength);
     }
 
     bytes32 currentDataEvaluationPoint;
@@ -264,7 +286,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     SubmissionDataV2 calldata _submissionData,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
-  ) external whenTypeAndGeneralNotPaused(PROVING_SYSTEM_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(CALLDATA_SUBMISSION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
     if (_submissionData.compressedData.length == 0) {
       revert EmptySubmissionData();
     }
@@ -439,7 +461,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeAndGeneralNotPaused(PROVING_SYSTEM_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
+  ) external whenTypeAndGeneralNotPaused(FINALIZATION_PAUSE_TYPE) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
     }
@@ -473,17 +495,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, ILi
       _finalizationData.finalBlockInData,
       _finalizationData.shnarfData.finalStateRootHash
     );
-  }
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev DEFAULT_ADMIN_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(
-    FinalizationDataV2 calldata _finalizationData
-  ) external whenTypeNotPaused(GENERAL_PAUSE_TYPE) onlyRole(DEFAULT_ADMIN_ROLE) {
-    _finalizeBlocks(_finalizationData, currentL2BlockNumber, false);
   }
 
   /**

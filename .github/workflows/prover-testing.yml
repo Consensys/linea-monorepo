@@ -11,6 +11,10 @@ on:
 env:
   GOPROXY: "https://proxy.golang.org"
 
+concurrency:
+  group: prover-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   staticcheck:
     runs-on: ubuntu-latest
@@ -19,7 +23,7 @@ jobs:
     - name: install Go
       uses: actions/setup-go@v4
       with:
-        go-version: 1.22.x
+        go-version: 1.23.x
     - name: checkout code
       uses: actions/checkout@v3
       with:
@@ -53,7 +57,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.22.x]
+        go-version: [1.23.x]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     name: Prover testing
@@ -96,7 +100,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     steps:
       - name: Notify slack -- workflow failed
         id: slack
@@ -119,7 +123,7 @@ jobs:
     needs:
       - staticcheck
       - test
-    runs-on: ubuntu-latest
+    runs-on: besu-arm64
     steps:
       - name: Notify slack -- workflow succeeded
         id: slack

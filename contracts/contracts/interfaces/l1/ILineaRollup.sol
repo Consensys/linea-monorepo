@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
+
+import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
 
 /**
  * @title LineaRollup interface for current functions, events and errors.
@@ -7,6 +10,32 @@ pragma solidity 0.8.24;
  * @custom:security-contact security-report@linea.build
  */
 interface ILineaRollup {
+  /**
+   * @notice Initialization data structure for the LineaRollup contract.
+   * @param initialStateRootHash The initial hash at migration used for proof verification.
+   * @param initialL2BlockNumber The initial block number at migration.
+   * @param genesisTimestamp The L2 genesis timestamp for first finalization.
+   * @param defaultVerifier The default verifier for rollup proofs.
+   * @param rateLimitPeriodInSeconds The period in which withdrawal amounts and fees will be accumulated.
+   * @param rateLimitAmountInWei The limit allowed for withdrawing in the rate limit period.
+   * @param roleAddresses The list of role addresses.
+   * @param pauseTypeRoles The list of pause type roles.
+   * @param unpauseTypeRoles The list of unpause type roles.
+   * @param gatewayOperator The account to be given OPERATOR_ROLE when.
+   */
+  struct InitializationData {
+    bytes32 initialStateRootHash;
+    uint256 initialL2BlockNumber;
+    uint256 genesisTimestamp;
+    address defaultVerifier;
+    uint256 rateLimitPeriodInSeconds;
+    uint256 rateLimitAmountInWei;
+    IPermissionsManager.RoleAddress[] roleAddresses;
+    IPauseManager.PauseTypeRole[] pauseTypeRoles;
+    IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+    address gatewayOperator;
+  }
+
   /**
    * @notice Supporting data for compressed calldata submission including compressed data.
    * @dev finalStateRootHash is used to set state root at the end of the data.
@@ -103,6 +132,21 @@ interface ILineaRollup {
   }
 
   /**
+   * @notice Emitted when the LineaRollup contract version has changed.
+   * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0";
+   * @param previousVersion The previous version.
+   * @param newVersion The new version.
+   */
+  event LineaRollupVersionChanged(bytes8 indexed previousVersion, bytes8 indexed newVersion);
+
+  /**
+   * @notice Emitted when the gateway operator role is granted.
+   * @param caller The address that granted the role.
+   * @param gatewayOperatorAddress The gateway operator address that received the operator role.
+   */
+  event GatewayOperatorRoleGranted(address indexed caller, address indexed gatewayOperatorAddress);
+
+  /**
    * @notice Emitted when a verifier is set for a particular proof type.
    * @param verifierAddress The indexed new verifier address being set.
    * @param proofType The indexed proof type/index that the verifier is mapped to.
@@ -142,6 +186,11 @@ interface ILineaRollup {
   );
 
   /**
+   * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the gateway operator address.
+   */
+  error LastFinalizationTimeNotLapsed();
+
+  /**
    * @dev Thrown when the point evaluation precompile call return data field(s) are wrong.
    */
   error PointEvaluationResponseInvalid(uint256 fieldElements, uint256 blsCurveModulus);
@@ -167,9 +216,14 @@ interface ILineaRollup {
   error EmptyBlobDataAtIndex(uint256 index);
 
   /**
-   * @dev Thrown when the data for multiple blobs' submission has length zero.
+   * @dev Thrown when the data for multiple blobs submission has length zero.
    */
   error BlobSubmissionDataIsMissing();
+
+  /**
+   * @dev Thrown when a blob has been submitted but there is no data for it.
+   */
+  error BlobSubmissionDataEmpty(uint256 emptyBlobIndex);
 
   /**
    * @dev Thrown when the starting block in the data item is out of sequence with the last block number.
@@ -253,11 +307,6 @@ interface ILineaRollup {
   error SnarkHashIsZeroHash();
 
   /**
-   * @dev Thrown when parent stateRootHash does not match.
-   */
-  error ParentStateRootHashInvalid(bytes32 expected, bytes32 actual);
-
-  /**
    * @dev Thrown when the block being finalized until does not match that of the shnarf data.
    */
   error FinalBlockDoesNotMatchShnarfFinalBlock(uint256 expected, uint256 actual);
@@ -279,6 +328,15 @@ interface ILineaRollup {
    * @param _proofType The proof type being set/updated.
    */
   function setVerifierAddress(address _newVerifierAddress, uint256 _proofType) external;
+
+  /**
+   * @notice Sets the gateway operator role to the specified address if six months have passed since the last finalization.
+   * @dev Reverts if six months have not passed since the last finalization.
+   * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
+   * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
+   */
+  function setGatewayOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external;
 
   /**
    * @notice Unset the verifier contract address for a proof type.
@@ -313,13 +371,6 @@ interface ILineaRollup {
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
   ) external;
-
-  /**
-   * @notice Finalize compressed blocks without proof.
-   * @dev DEFAULT_ADMIN_ROLE is required to execute.
-   * @param _finalizationData The full finalization data.
-   */
-  function finalizeBlocksWithoutProof(FinalizationDataV2 calldata _finalizationData) external;
 
   /**
    * @notice Finalize compressed blocks with proof.

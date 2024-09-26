@@ -9,6 +9,8 @@ import {
   HASH_ZERO,
   INITIALIZED_ERROR_MESSAGE,
   L1_L2_MESSAGE_SETTER_ROLE,
+  pauseTypeRoles,
+  unpauseTypeRoles,
 } from "./utils/constants";
 import { deployUpgradableFromFactory } from "./utils/deployment";
 import {
@@ -33,6 +35,8 @@ describe("L2MessageManager", () => {
     return deployUpgradableFromFactory("TestL2MessageManager", [
       pauser.address,
       l1l2MessageSetter.address,
+      pauseTypeRoles,
+      unpauseTypeRoles,
     ]) as unknown as Promise<TestL2MessageManager>;
   }
 
@@ -71,6 +75,16 @@ describe("L2MessageManager", () => {
         l2MessageManager.connect(notAuthorizedAccount).anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO),
         buildAccessErrorMessage(notAuthorizedAccount, L1_L2_MESSAGE_SETTER_ROLE),
       );
+    });
+
+    it("Should revert if message hashes array length is zero", async () => {
+      const messageHashes: [] = [];
+
+      const anchorCall = l2MessageManager
+        .connect(l1l2MessageSetter)
+        .anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO);
+
+      await expectRevertWithCustomError(l2MessageManager, anchorCall, "MessageHashesListLengthIsZero");
     });
 
     it("Should update rolling hash and messages emitting events", async () => {

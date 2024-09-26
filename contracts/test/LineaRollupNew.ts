@@ -53,6 +53,8 @@ describe("Linea Rollup  contract", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
 
+  const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
+
   async function deployLineaRollupFixture() {
     const PlonkVerifierFactory = await ethers.getContractFactory("TestPlonkVerifierForDataAggregation");
     const plonkVerifier = await PlonkVerifierFactory.deploy();
@@ -71,9 +73,10 @@ describe("Linea Rollup  contract", () => {
         ONE_DAY_IN_SECONDS,
         INITIAL_WITHDRAW_LIMIT,
         GENESIS_L2_TIMESTAMP,
+        multiCallAddress,
       ],
       {
-        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256)",
+        initializer: "initialize(bytes32,uint256,address,address,address[],uint256,uint256,uint256,address)",
         unsafeAllow: ["constructor"],
       },
     )) as unknown as TestLineaRollup;

@@ -6,13 +6,13 @@
 # G O + R U S T   B U I L D E R
 #
 ###############################
-FROM golang:1.22.2-alpine as go-builder
+FROM golang:1.22.7-alpine AS go-builder
 
 RUN apk add --no-cache rust cargo bash make
 WORKDIR /usr/src/
 COPY --from=corset . ./corset
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL sparse
-ENV CARGO_HOME /usr/local/cargo
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV CARGO_HOME=/usr/local/cargo
 
 WORKDIR /usr/src/corset/
 
@@ -55,8 +55,8 @@ COPY --from=go-builder /usr/src/prover/bin/controller /opt/linea/prover/controll
 RUN mkdir -p /opt/linea/prover/config
 
 # Useful ENV variables that you may want to pass at runtime
-ENV GOMEMLIMIT 340GiB
-ENV CONFIG_FILE "/opt/linea/prover/config/config.toml"
+ENV GOMEMLIMIT=340GiB
+ENV CONFIG_FILE="/opt/linea/prover/config/config.toml"
 
 ENV PATH="${PATH}:/opt/linea/prover/"
 

@@ -9,8 +9,8 @@ const MAX_UNCHANGED_PART_LEN = 100;
 
 const EXPOSED_CONTRACTS = ["L2MessageService", "LineaRollup", "TimeLock"];
 const CONTRACT_OUPUT_ABIS: { [contractName: string]: string } = {
-  L2MessageService: "L2MessageService.abi",
-  LineaRollup: "LineaRollupAlphaV4.abi",
+  L2MessageService: "L2MessageServiceV1.0.abi",
+  LineaRollup: "LineaRollupV6.0.abi", // next version
   TimeLock: "TimeLock.abi",
 };
 
