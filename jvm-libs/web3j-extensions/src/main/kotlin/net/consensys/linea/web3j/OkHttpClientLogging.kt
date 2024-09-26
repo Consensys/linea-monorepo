@@ -7,6 +7,7 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
 import okio.Buffer
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.http.HttpService
@@ -52,17 +53,19 @@ class OkHttpMinimalJsonRpcLoggerInterceptor(
 }
 
 fun okHttpClientBuilder(
-  logger: Logger = LogManager.getLogger(HttpService::class.java) // use same class to keep backward compatibility
+  logger: Logger = LogManager.getLogger(HttpService::class.java), // use same class to keep backward compatibility
+  // we make a lot of eth_call request that fail by design, having DEBUG/WARN level is too noisy
+  // ideally we should manage methods individually, but don't have time for that now
+  requestResponseLogLevel: Level = Level.TRACE,
+  failuresLogLevel: Level = Level.DEBUG
 ): OkHttpClient.Builder {
   val httpClientBuilder = OkHttpClient.Builder()
   httpClientBuilder.addInterceptor(
     OkHttpMinimalJsonRpcLoggerInterceptor(
       MinimalInLineJsonRpcLogger(
         logger,
-        // we make a lot of eth_call request that fail by design, having DEBUG/WARN level is too noisy
-        // ideally we should manage methods individually, but don't have time for that now
-        requestResponseLogLevel = org.apache.logging.log4j.Level.TRACE,
-        failuresLogLevel = org.apache.logging.log4j.Level.DEBUG,
+        requestResponseLogLevel = requestResponseLogLevel,
+        failuresLogLevel = failuresLogLevel,
         maskEndpoint = ::maskEndpointPath
       )
     )

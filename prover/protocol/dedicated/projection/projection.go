@@ -289,8 +289,24 @@ func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 			cntB++
 		}
 
-		for i := range rowsA {
-			fmt.Printf("row=%v %v %v\n", i, strings.Join(rowsA[i], " "), strings.Join(rowsB[i], " "))
+		larger := max(len(rowsA), len(rowsB))
+
+		for i := 0; i < larger; i++ {
+
+			var (
+				fa = "* * * * * *"
+				fb = "* * * * * *"
+			)
+
+			if i < len(rowsA) {
+				fa = strings.Join(rowsA[i], " ")
+			}
+
+			if i < len(rowsB) {
+				fb = strings.Join(rowsB[i], " ")
+			}
+
+			fmt.Printf("row=%v %v %v\n", i, fa, fb)
 		}
 
 		logrus.Errorf("projection query %v failed", pa.Name)

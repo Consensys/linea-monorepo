@@ -132,6 +132,14 @@ interface ILineaRollup {
   }
 
   /**
+   * @notice Emitted when the LineaRollup contract version has changed.
+   * @dev All bytes8 values are string based SemVer in the format M.m - e.g. "6.0";
+   * @param previousVersion The previous version.
+   * @param newVersion The new version.
+   */
+  event LineaRollupVersionChanged(bytes8 indexed previousVersion, bytes8 indexed newVersion);
+
+  /**
    * @notice Emitted when the gateway operator role is granted.
    * @param caller The address that granted the role.
    * @param gatewayOperatorAddress The gateway operator address that received the operator role.
