@@ -63,7 +63,7 @@ public record TxnDataComparisonRecord(
         .build();
   }
 
-  public static TxnDataComparisonRecord callToIsZero(final Bytes arg1, final boolean result) {
+  public static TxnDataComparisonRecord callToIszero(final Bytes arg1, final boolean result) {
     return TxnDataComparisonRecord.builder()
         .wcpFlag(true)
         .eucFlag(false)

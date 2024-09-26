@@ -39,6 +39,8 @@ import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
+import static org.hyperledger.besu.datatypes.TransactionType.*;
+import static org.web3j.crypto.transaction.type.TransactionType.EIP1559;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -61,10 +63,11 @@ public class TxndataOperation extends ModuleOperation {
   private static final Bytes EIP_2681_MAX_NONCE = Bytes.minimalBytes(EIP2681_MAX_NONCE);
   private static final int N_ROWS_TX_MAX =
       Math.max(Math.max(NB_ROWS_TYPE_0, NB_ROWS_TYPE_1), NB_ROWS_TYPE_2);
-  private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST = 6;
+  private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST = 7;
   private final List<TxnDataComparisonRecord> callsToEucAndWcp = new ArrayList<>(N_ROWS_TX_MAX);
   private final ArrayList<RlptxnOutgoing> valuesToRlptxn = new ArrayList<>(N_ROWS_TX_MAX);
   private final ArrayList<RlptxrcptOutgoing> valuesToRlpTxrcpt = new ArrayList<>(N_ROWS_TX_MAX);
+  private static final Bytes BYTES_MAX_REFUND_QUOTIENT = Bytes.of(MAX_REFUND_QUOTIENT);
 
   public TxndataOperation(Wcp wcp, Euc euc, TransactionProcessingMetadata tx) {
     this.wcp = wcp;
@@ -75,47 +78,60 @@ public class TxndataOperation extends ModuleOperation {
   }
 
   private void setCallsToEucAndWcp() {
-    // i + nonce_row_offset
+
+    // row 0: nonce VS. EIP-2681 max nonce
     final Bytes nonce = Bytes.minimalBytes(tx.getBesuTransaction().getNonce());
     wcp.callLT(nonce, EIP_2681_MAX_NONCE);
     callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(nonce, EIP_2681_MAX_NONCE, true));
 
-    // i + initial_balance_row_offset
-    final Bytes initBalance = bigIntegerToBytes(tx.getInitialBalance());
+    // row 1: initial balance covers the upfront wei cost
+    final Bytes initialBalance = bigIntegerToBytes(tx.getInitialBalance());
     final BigInteger value = tx.getBesuTransaction().getValue().getAsBigInteger();
-    final Bytes row0arg2 =
+    final Bytes upfrontWeiCost =
         bigIntegerToBytes(
             value.add(
                 outgoingLowRow6()
                     .multiply(BigInteger.valueOf(tx.getBesuTransaction().getGasLimit()))));
-    wcp.callLT(initBalance, row0arg2);
-    callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(initBalance, row0arg2, false));
+    wcp.callLEQ(upfrontWeiCost, initialBalance);
+    callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(upfrontWeiCost, initialBalance, true));
 
-    // i + sufficient_gas_row_offset
-    final Bytes row1arg1 = Bytes.minimalBytes(tx.getBesuTransaction().getGasLimit());
-    final Bytes row1arg2 = Bytes.minimalBytes(tx.getUpfrontGasCost());
-    wcp.callLT(row1arg1, row1arg2);
-    callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(row1arg1, row1arg2, false));
+    // row 2: gasLimit covers the upfront gas cost
+    final Bytes gasLimit = Bytes.minimalBytes(tx.getBesuTransaction().getGasLimit());
+    final Bytes upfrontGasCost = Bytes.minimalBytes(tx.getUpfrontGasCost());
+    wcp.callLEQ(upfrontGasCost, gasLimit);
+    callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(upfrontGasCost, gasLimit, true));
 
-    // i + upper_limit_refunds_row_offset
-    final Bytes row2arg1 =
+    // row 3: computing upper limit for refunds
+    final Bytes gasConsumedByTransactionExecution =
         Bytes.minimalBytes(tx.getBesuTransaction().getGasLimit() - tx.getLeftoverGas());
-    final Bytes row2arg2 = Bytes.of(MAX_REFUND_QUOTIENT);
-    final Bytes refundLimit = euc.callEUC(row2arg1, row2arg2).quotient();
-    callsToEucAndWcp.add(TxnDataComparisonRecord.callToEuc(row2arg1, row2arg2, refundLimit));
-
-    // i + effective_refund_row_offset
-    final Bytes refundCounterMax = Bytes.minimalBytes(tx.getRefundCounterMax());
-    final boolean getFullRefund = wcp.callLT(refundCounterMax, refundLimit);
+    final Bytes refundLimit =
+        euc.callEUC(gasConsumedByTransactionExecution, BYTES_MAX_REFUND_QUOTIENT).quotient();
     callsToEucAndWcp.add(
-        TxnDataComparisonRecord.callToLt(refundCounterMax, refundLimit, getFullRefund));
+        TxnDataComparisonRecord.callToEuc(
+            gasConsumedByTransactionExecution, BYTES_MAX_REFUND_QUOTIENT, refundLimit));
 
-    // i + detecting_empty_call_data_row_offset
-    final Bytes row4arg1 = Bytes.minimalBytes(tx.getBesuTransaction().getPayload().size());
-    final boolean nonZeroDataSize = wcp.callISZERO(row4arg1);
-    callsToEucAndWcp.add(TxnDataComparisonRecord.callToIsZero(row4arg1, nonZeroDataSize));
+    // row 4: comparing accrued refunds to the upper limit of refunds
+    final Bytes accruedRefunds = Bytes.minimalBytes(tx.getRefundCounterMax());
+    final boolean getFullRefund = wcp.callLT(accruedRefunds, refundLimit);
+    callsToEucAndWcp.add(
+        TxnDataComparisonRecord.callToLt(accruedRefunds, refundLimit, getFullRefund));
 
-    switch (tx.getBesuTransaction().getType()) {
+    // row 5: detecting empty payload
+    final Bytes payloadSize = Bytes.minimalBytes(tx.getBesuTransaction().getPayload().size());
+    final boolean payloadIsEmpty = wcp.callISZERO(payloadSize);
+    callsToEucAndWcp.add(TxnDataComparisonRecord.callToIszero(payloadSize, payloadIsEmpty));
+
+    // row 6: comparing the maximal gas price against the base fee
+    final TransactionType type = tx.getBesuTransaction().getType();
+    final Bytes baseFee = Bytes.minimalBytes(tx.getBaseFee());
+    if (type == FRONTIER || type == ACCESS_LIST) {
+      final Bytes gasPriceBytes =
+          bigIntegerToBytes(tx.getBesuTransaction().getGasPrice().get().getAsBigInteger());
+      wcp.callLEQ(baseFee, gasPriceBytes);
+      callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(baseFee, gasPriceBytes, true));
+    }
+
+    switch (type) {
       case FRONTIER -> {
         for (int i = NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST; i < NB_ROWS_TYPE_0; i++) {
           callsToEucAndWcp.add(TxnDataComparisonRecord.empty());
@@ -127,30 +143,28 @@ public class TxndataOperation extends ModuleOperation {
         }
       }
       case EIP1559 -> {
-        // i + max_fee_and_basefee_row_offset
-        final Bytes maxFee =
+
+        // row 6: comparing the maximal gas price against the base fee
+        final Bytes maxFeePerGas =
             bigIntegerToBytes(tx.getBesuTransaction().getMaxFeePerGas().get().getAsBigInteger());
-        final Bytes row5arg2 = Bytes.minimalBytes(tx.getBaseFee());
-        wcp.callLT(maxFee, row5arg2);
-        callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row5arg2, false));
+        wcp.callLEQ(baseFee, maxFeePerGas);
+        callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(baseFee, maxFeePerGas, true));
 
-        // i + maxfee_and_max_priority_fee_row_offset
-        final Bytes row6arg2 =
-            bigIntegerToBytes(
-                tx.getBesuTransaction().getMaxPriorityFeePerGas().get().getAsBigInteger());
-        wcp.callLT(maxFee, row6arg2);
-        callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row6arg2, false));
+        // row 7: comparing max fee to the max priority fee
+        final BigInteger maxPriorityFeePerGas =
+            tx.getBesuTransaction().getMaxPriorityFeePerGas().get().getAsBigInteger();
+        wcp.callLEQ(bigIntegerToBytes(maxPriorityFeePerGas), maxFeePerGas);
+        callsToEucAndWcp.add(
+            TxnDataComparisonRecord.callToLeq(
+                bigIntegerToBytes(maxPriorityFeePerGas), maxFeePerGas, true));
 
-        // i + computing_effective_gas_price_row_offset
-        final Bytes row7arg2 =
-            bigIntegerToBytes(
-                tx.getBesuTransaction()
-                    .getMaxPriorityFeePerGas()
-                    .get()
-                    .getAsBigInteger()
-                    .add(BigInteger.valueOf(tx.getBaseFee())));
-        final boolean result = wcp.callLT(maxFee, row7arg2);
-        callsToEucAndWcp.add(TxnDataComparisonRecord.callToLt(maxFee, row7arg2, result));
+        // row 8: computing the effective gas price
+        final Bytes maxPriorityFeePerGasPlusBaseFee =
+            bigIntegerToBytes(maxPriorityFeePerGas.add(BigInteger.valueOf(tx.getBaseFee())));
+        final boolean getFullTip = wcp.callLEQ(maxPriorityFeePerGasPlusBaseFee, maxFeePerGas);
+        callsToEucAndWcp.add(
+            TxnDataComparisonRecord.callToLeq(
+                maxPriorityFeePerGasPlusBaseFee, maxFeePerGas, getFullTip));
       }
     }
   }
@@ -360,8 +374,8 @@ public class TxndataOperation extends ModuleOperation {
           .blockGasLimit(block.getBlockGasLimit())
           .callDataSize(callDataSize)
           .initCodeSize(initCodeSize)
-          .type0(tx.getBesuTransaction().getType() == TransactionType.FRONTIER)
-          .type1(tx.getBesuTransaction().getType() == TransactionType.ACCESS_LIST)
+          .type0(tx.getBesuTransaction().getType() == FRONTIER)
+          .type1(tx.getBesuTransaction().getType() == ACCESS_LIST)
           .type2(tx.getBesuTransaction().getType() == TransactionType.EIP1559)
           .requiresEvmExecution(tx.requiresEvmExecution())
           .copyTxcd(tx.copyTransactionCallData())
