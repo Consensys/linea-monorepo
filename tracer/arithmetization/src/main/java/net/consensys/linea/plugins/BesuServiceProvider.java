@@ -16,6 +16,7 @@
 package net.consensys.linea.plugins;
 
 import org.hyperledger.besu.plugin.BesuContext;
+import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BesuService;
 import org.hyperledger.besu.plugin.services.PicoCLIOptions;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
@@ -54,5 +55,9 @@ public class BesuServiceProvider {
 
   public static SynchronizationService getSynchronizationService(final BesuContext context) {
     return getBesuService(context, SynchronizationService.class);
+  }
+
+  public static BesuEvents getBesuEventsService(final BesuContext context) {
+    return getBesuService(context, BesuEvents.class);
   }
 }
