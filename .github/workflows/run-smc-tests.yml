@@ -49,6 +49,17 @@ jobs:
       - name: Run smart contracts tests and generate coverage report
         run: pnpm -F contracts run coverage
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          files: ./contracts/coverage/coverage-final.json
+          flags: hardhat
+          os: linux-arm64
+          name: codecov-contracts
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   solidity-format-check:
     runs-on: besu-arm64
     name: Solidity format check
