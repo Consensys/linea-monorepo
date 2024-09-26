@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
+	typesLinea "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/icza/bitio"
@@ -273,6 +275,7 @@ func (d *DecodedBlockData) ToStd() *types.Block {
 	return types.NewBlock(&header, &body, nil, emptyTrieHasher{})
 }
 
+// TODO delete if unused
 type fixedTrieHasher common.Hash
 
 func (e fixedTrieHasher) Reset() {
@@ -297,4 +300,24 @@ func (h emptyTrieHasher) Update(_, _ []byte) error {
 
 func (h emptyTrieHasher) Hash() common.Hash {
 	return common.Hash{}
+}
+
+type TxAddressGetter func(*types.Transaction) typesLinea.EthAddress
+
+type Config struct {
+	GetAddress TxAddressGetter
+}
+
+func NewConfig() Config {
+	return Config{
+		GetAddress: ethereum.GetFrom,
+	}
+}
+
+type Option func(*Config)
+
+func WithTxAddressGetter(g TxAddressGetter) Option {
+	return func(cfg *Config) {
+		cfg.GetAddress = g
+	}
 }

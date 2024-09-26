@@ -16,12 +16,12 @@ import (
 )
 
 // EncodeBlockForCompression encodes a block for compression.
-func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
+func EncodeBlockForCompression(block *types.Block, w io.Writer, encodingOptions ...encode.Option) error {
 	if err := binary.Write(w, binary.LittleEndian, block.Time()); err != nil {
 		return err
 	}
 	for _, tx := range block.Transactions() {
-		if err := EncodeTxForCompression(tx, w); err != nil {
+		if err := EncodeTxForCompression(tx, w, encodingOptions...); err != nil {
 			return err
 		}
 	}
@@ -30,7 +30,11 @@ func EncodeBlockForCompression(block *types.Block, w io.Writer) error {
 
 // EncodeTxForCompression encodes a transaction for compression.
 // this code is from zk-evm-monorepo/prover/... but doesn't include the chainID
-func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
+func EncodeTxForCompression(tx *types.Transaction, w io.Writer, encodingOptions ...encode.Option) error {
+	cfg := encode.NewConfig()
+	for _, o := range encodingOptions {
+		o(&cfg)
+	}
 	switch {
 	// LONDON with dynamic fees
 	case tx.Type() == types.DynamicFeeTxType:
@@ -43,7 +47,7 @@ func EncodeTxForCompression(tx *types.Transaction, w io.Writer) error {
 			tx.GasTipCap(),
 			tx.GasFeeCap(),
 			tx.Gas(),
-			ethereum.GetFrom(tx),
+			cfg.GetAddress(tx),
 			tx.To(),
 			tx.Value(),
 			tx.Data(),
