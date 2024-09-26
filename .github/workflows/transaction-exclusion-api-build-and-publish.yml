@@ -29,7 +29,7 @@ on:
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Transaction exclusion api build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
