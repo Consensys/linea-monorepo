@@ -2126,7 +2126,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, 123456789n)).to.be.revertedWithCustomError(
         lineaRollup,
@@ -2135,7 +2135,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the time has passed and the last finalized L1 message number does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expect(
         lineaRollup.setGatewayOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
@@ -2143,7 +2143,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should revert if the time has passed and the last finalized L1 rolling hash does not match", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expect(
         lineaRollup.setGatewayOperator(0n, generateRandomBytes(32), DEFAULT_LAST_FINALIZED_TIMESTAMP),
@@ -2151,7 +2151,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should set the gateway operator role after six months have passed", async () => {
-      await networkTime.increase(SIX_MONTHS_IN_SECONDS); // 6 months in seconds
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
       await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP))
         .to.emit(lineaRollup, "GatewayOperatorRoleGranted")
@@ -2340,7 +2340,7 @@ describe("Linea Rollup contract", () => {
       ]);
 
       expect(await newLineaRollup.currentL2BlockNumber()).to.equal(0);
-    });    
+    });
 
     it("Should revert with ZeroAddressNotAllowed when addressWithRole is zero address in reinitializeLineaRollupV6", async () => {
       // Deploy new implementation
