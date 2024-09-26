@@ -73,16 +73,3 @@ fun <T : Comparable<T>> ClosedRange<T>.toIntervalString(): String {
   }
   return "[${this.start}..${this.endInclusive}]${size.toInt()}"
 }
-
-fun ByteArray.assertSize(expectedSize: UInt, fieldName: String = ""): ByteArray = apply {
-  require(size == expectedSize.toInt()) { "$fieldName expected to have $expectedSize bytes, but got $size" }
-}
-
-fun ByteArray.assertIs32Bytes(fieldName: String = ""): ByteArray = assertSize(32u, fieldName)
-
-fun ByteArray.assertIs20Bytes(fieldName: String = ""): ByteArray = assertSize(20u, fieldName)
-
-fun ByteArray.setFirstByteToZero(): ByteArray {
-  this[0] = 0
-  return this
-}
