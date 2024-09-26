@@ -2117,7 +2117,7 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe.only("Gateway Operator Role", () => {
+  describe("Gateway Operator Role", () => {
     const expectedLastFinalizedState = calculateLastFinalizedState(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
     it("Should revert if trying to set gateway operator role before six months have passed", async () => {
@@ -2170,9 +2170,12 @@ describe("Linea Rollup contract", () => {
     it("Should set the gateway operator role after six months have passed", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
 
-      await expect(lineaRollup.setGatewayOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP))
-        .to.emit(lineaRollup, "GatewayOperatorRoleGranted")
-        .withArgs(admin.address, multiCallAddress);
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.setGatewayOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "GatewayOperatorRoleGranted",
+        [admin.address, multiCallAddress],
+      );
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, multiCallAddress)).to.be.true;
     });
