@@ -10,7 +10,7 @@ on:
 
 concurrency:
   group: postman-testing-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: {{ github.ref != main }}
 
 jobs:
   run-tests:
