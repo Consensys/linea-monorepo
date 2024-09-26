@@ -41,6 +41,9 @@ contract TokenBridge is
   using Utils for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
+  /// @dev This is the ABI version and not the reinitialize version.
+  string public constant CONTRACT_VERSION = "1.0";
+
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
   bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");

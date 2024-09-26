@@ -17,4 +17,8 @@ contract TestMessageServiceBase is MessageServiceBase {
     __MessageServiceBase_init(_messageService);
     _setRemoteSender(_remoteSender);
   }
+
+  function testSetRemoteSender(address _remoteSender) external {
+    _setRemoteSender(_remoteSender);
+  }
 }

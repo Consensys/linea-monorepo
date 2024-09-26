@@ -12,9 +12,17 @@ import { PermissionsManager } from "../../lib/PermissionsManager.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2MessageManager, PermissionsManager {
+  /// @dev This is the ABI version and not the reinitialize version.
+  string public constant CONTRACT_VERSION = "1.0";
+
   /// @dev Total contract storage is 50 slots with the gap below.
   /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
   uint256[50] private __gap_L2MessageService;
+
+  /// @custom:oz-upgrades-unsafe-allow constructor
+  constructor() {
+    _disableInitializers();
+  }
 
   /**
    * @notice Initializes underlying message service dependencies.

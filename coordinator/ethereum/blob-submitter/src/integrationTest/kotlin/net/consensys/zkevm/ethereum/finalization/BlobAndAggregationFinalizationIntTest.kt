@@ -6,22 +6,17 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import net.consensys.FakeFixedClock
 import net.consensys.linea.ethereum.gaspricing.FakeGasPriceCapProvider
-import net.consensys.zkevm.coordinator.clients.prover.serialization.BlobCompressionProofJsonResponse
-import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
+import net.consensys.linea.testing.submission.loadBlobsAndAggregations
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaContractVersion
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobSubmittedEvent
-import net.consensys.zkevm.domain.Constants.LINEA_BLOCK_INTERVAL
 import net.consensys.zkevm.domain.FinalizationSubmittedEvent
-import net.consensys.zkevm.domain.createAggregation
-import net.consensys.zkevm.domain.createBlobRecords
 import net.consensys.zkevm.ethereum.Account
 import net.consensys.zkevm.ethereum.ContractsManager
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
-import net.consensys.zkevm.ethereum.findFile
 import net.consensys.zkevm.ethereum.submission.BlobSubmissionCoordinator
 import net.consensys.zkevm.ethereum.submission.L1ShnarfBasedAlreadySubmittedBlobsFilter
 import net.consensys.zkevm.persistence.AggregationsRepository
@@ -37,7 +32,6 @@ import org.awaitility.Awaitility.waitAtMost
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import kotlin.time.Duration.Companion.minutes
@@ -54,7 +48,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private lateinit var blobsRepository: BlobsRepository
   private lateinit var blobSubmissionCoordinator: BlobSubmissionCoordinator
   private lateinit var aggregationFinalizationCoordinator: AggregationFinalizationCoordinator
-  private val testDataDir = "coordinator/ethereum/blob-submitter/src/integrationTest/test-data"
+  private val testDataDir = "testdata/coordinator/prover/v2/"
   private lateinit var blobSubmittedEvent: BlobSubmittedEvent
   private var blobSubmissionDelay = 0L
   private lateinit var finalizationSubmittedEvent: FinalizationSubmittedEvent
@@ -70,13 +64,19 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
   private fun setupTest(
     vertx: Vertx,
-    smartContractVersion: LineaContractVersion,
-    overridingTestDataDir: String? = null
+    smartContractVersion: LineaContractVersion
   ) {
+    if (smartContractVersion != LineaContractVersion.V5) {
+      // V6 with prover V3 is soon comming, so we will need to update/extend this test setup
+      throw IllegalArgumentException("Only V5 contract version is supported")
+    }
     val rollupDeploymentFuture = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V5)
     // load files from FS while smc deploy
-    loadBlobsAndAggregations(smartContractVersion, overridingTestDataDir)
+    loadBlobsAndAggregations(
+      blobsResponsesDir = "$testDataDir/compression/responses",
+      aggregationsResponsesDir = "$testDataDir/aggregation/responses"
+    )
       .let { (blobs, aggregations) ->
         this.blobs = blobs
         this.aggregations = aggregations
@@ -176,10 +176,9 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private fun testSubmission(
     vertx: Vertx,
     testContext: VertxTestContext,
-    smartContractVersion: LineaContractVersion,
-    overridingTestDataDir: String? = null
+    smartContractVersion: LineaContractVersion
   ) {
-    setupTest(vertx, smartContractVersion, overridingTestDataDir)
+    setupTest(vertx, smartContractVersion)
 
     SafeFuture.allOf(
       SafeFuture.collectAll(blobs.map { blobsRepository.saveNewBlob(it) }.stream()),
@@ -210,59 +209,5 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           }
         testContext.completeNow()
       }.whenException(testContext::failNow)
-  }
-
-  private fun proverResponsesFromDir(dir: String): List<File> {
-    return findFile(dir)
-      .toFile()
-      .listFiles()
-      ?.filter { it.name.endsWith(".json") }
-      ?: emptyList()
-  }
-
-  private fun <T> loadProverResponses(responsesDir: String, mapper: (String) -> T): List<T> {
-    return proverResponsesFromDir(responsesDir)
-      .map { mapper.invoke(it.readText()) }
-  }
-
-  private fun loadAggregations(aggregationsDir: String): List<Aggregation> {
-    return loadProverResponses(aggregationsDir) {
-      createAggregation(aggregationProof = ProofToFinalizeJsonResponse.fromJsonString(it).toDomainObject())
-    }.sortedBy { it.startBlockNumber }
-  }
-
-  private fun loadBlobs(blobsDir: String, aggregations: List<Aggregation>): List<BlobRecord> {
-    return loadProverResponses(blobsDir) {
-      BlobCompressionProofJsonResponse.fromJsonString(it).toDomainObject()
-    }
-      .let { compressionProofs ->
-        val firstAggregationBlockTime = aggregations.first().let { agg ->
-          agg.aggregationProof!!.finalTimestamp
-            .minus(LINEA_BLOCK_INTERVAL.times((agg.endBlockNumber - agg.startBlockNumber).toInt()))
-        }
-        createBlobRecords(
-          compressionProofs = compressionProofs,
-          firstBlockStartBlockTime = firstAggregationBlockTime
-        )
-      }
-      .sortedBy { it.startBlockNumber }
-  }
-
-  private fun loadBlobsAndAggregations(
-    smartContractVersion: LineaContractVersion,
-    overridingTestDataDir: String? = null
-  ): Pair<List<BlobRecord>, List<Aggregation>> {
-    val testCaseDataDir = overridingTestDataDir
-      ?: (
-        testDataDir + if (smartContractVersion == LineaContractVersion.V5) {
-          "/start-at-v5"
-        } else {
-          throw IllegalArgumentException("Unsupported contract version: $smartContractVersion")
-        }
-        )
-
-    val aggregations = loadAggregations("$testCaseDataDir/prover-aggregation/responses")
-    val blobs = loadBlobs("$testCaseDataDir/prover-compression/responses", aggregations)
-    return blobs to aggregations
   }
 }

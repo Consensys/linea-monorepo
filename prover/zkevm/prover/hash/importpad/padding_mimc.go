@@ -49,6 +49,10 @@ func (sp mimcPadder) pushPaddingRows(byteStringSize int, ipad *importationAssign
 		accPaddedBytes = 0
 	)
 
+	if remainToPad == blocksize {
+		remainToPad = 0
+	}
+
 	for remainToPad > 0 {
 		currNbBytes := utils.Min(remainToPad, 16)
 		accPaddedBytes += currNbBytes
