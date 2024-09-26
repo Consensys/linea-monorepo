@@ -77,3 +77,17 @@ func Decompress(blob *C.char, blobLength C.int, out *C.char, outMaxLength C.int)
 
 	return C.int(len(blocks))
 }
+
+// Error returns the last encountered error.
+// If no error was encountered, returns nil.
+//
+//export Error
+func Error() *C.char {
+	lock.Lock()
+	defer lock.Unlock()
+	if lastError != nil {
+		// this leaks memory, but since this represents a fatal error, it's probably ok.
+		return C.CString(lastError.Error())
+	}
+	return nil
+}
