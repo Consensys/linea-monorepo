@@ -557,40 +557,40 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "startBlockNumber",
+        "name": "lastBlockFinalized",
         "type": "uint256"
       },
       {
         "indexed": true,
-        "internalType": "uint256",
-        "name": "endBlockNumber",
-        "type": "uint256"
+        "internalType": "bytes32",
+        "name": "startingRootHash",
+        "type": "bytes32"
       },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "finalRootHash",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "withProof",
+        "type": "bool"
+      }
+    ],
+    "name": "DataFinalized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
       {
         "indexed": true,
         "internalType": "bytes32",
         "name": "shnarf",
         "type": "bytes32"
       },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "parentStateRootHash",
-        "type": "bytes32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "finalRootHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "DataFinalizedV3",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
       {
         "indexed": true,
         "internalType": "uint256",
@@ -602,21 +602,9 @@
         "internalType": "uint256",
         "name": "endBlock",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "parentShnarf",
-        "type": "bytes32"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes32",
-        "name": "shnarf",
-        "type": "bytes32"
       }
     ],
-    "name": "DataSubmittedV3",
+    "name": "DataSubmittedV2",
     "type": "event"
   },
   {
@@ -712,25 +700,6 @@
       }
     ],
     "name": "LimitAmountChanged",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "bytes8",
-        "name": "previousVersion",
-        "type": "bytes8"
-      },
-      {
-        "indexed": true,
-        "internalType": "bytes8",
-        "name": "newVersion",
-        "type": "bytes8"
-      }
-    ],
-    "name": "LineaRollupVersionChanged",
     "type": "event"
   },
   {
@@ -2229,7 +2198,7 @@
         "type": "address"
       }
     ],
-    "name": "reinitializeLineaRollupV6",
+    "name": "reinitializePauseTypesAndPermissions",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
