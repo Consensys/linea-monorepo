@@ -23,7 +23,7 @@ import picocli.CommandLine;
 
 /** The Linea RPC CLI options. */
 public class LineaRpcCliOptions implements LineaCliOptions {
-  public static final String CONFIG_KEY = "rpc-config";
+  public static final String CONFIG_KEY = "rpc-config-sequencer";
 
   private static final String ESTIMATE_GAS_COMPATIBILITY_MODE_ENABLED =
       "--plugin-linea-estimate-gas-compatibility-mode-enabled";

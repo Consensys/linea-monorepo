@@ -41,6 +41,7 @@ public class TestCommandLineOptionsBuilder {
         "--plugin-linea-l1l2-bridge-contract=", "0x00000000000000000000000000000000DEADBEEF");
     cliOptions.setProperty("--plugin-linea-l1l2-bridge-topic=", "0x123456");
     cliOptions.setProperty("--plugin-linea-conflated-trace-generation-traces-output-path=", ".");
+    cliOptions.setProperty("--plugin-linea-rpc-concurrent-requests-limit=", "1");
   }
 
   public TestCommandLineOptionsBuilder set(String option, String value) {
