@@ -12,8 +12,7 @@ import net.consensys.toBigInteger
 import net.consensys.toULong
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.ContractsManager
-import net.consensys.zkevm.ethereum.L1AccountManager
-import net.consensys.zkevm.ethereum.L2AccountManager
+import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -33,8 +32,8 @@ class MessageServiceIntegrationTest {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   private val l2RecipientAddress = "0x03dfa322A95039BB679771346Ee2dBfEa0e2B773"
-  private val l1Web3Client = L1AccountManager.web3jClient
-  private val l2Web3jClient = L2AccountManager.web3jClient
+  private val l1Web3Client = Web3jClientManager.l1Client
+  private val l2Web3jClient = Web3jClientManager.l2Client
   private lateinit var l2TransactionManager: AsyncFriendlyTransactionManager
 
   private val messagePollingInterval = 200.milliseconds

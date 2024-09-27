@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity >=0.8.19 <=0.8.24;
+pragma solidity >=0.8.19 <=0.8.26;
 
 /**
  * @title Interface declaring pre-existing pausing functions, events and errors.
@@ -15,16 +15,6 @@ interface IPauseManager {
    */
   struct PauseTypeRole {
     uint8 pauseType;
-    bytes32 role;
-  }
-
-  /**
-   * @notice Structure defining a role and its associated address.
-   * @param addressWithRole The address with the role.
-   * @param role The role associated with the address.
-   */
-  struct RoleAddress {
-    address addressWithRole;
     bytes32 role;
   }
 

@@ -13,6 +13,10 @@ on:
       untested_tag_suffix:
         value: ${{ jobs.store_image_name_and_tags.outputs.untested_tag_suffix }}
 
+concurrency:
+  group: store-image-name-and-tags-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
 jobs:
   store_image_name_and_tags:
     runs-on: besu-arm64

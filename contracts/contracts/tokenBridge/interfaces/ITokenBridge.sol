@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
+import { IPauseManager } from "../../interfaces/IPauseManager.sol";
+import { IPermissionsManager } from "../../interfaces/IPermissionsManager.sol";
+
 /**
  * @title Interface declaring Canonical Token Bridge functions, events and errors.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
 interface ITokenBridge {
+  /**
+   * @dev Contract will be used as proxy implementation.
+   * @param messageService The address of the MessageService contract.
+   * @param tokenBeacon The address of the tokenBeacon.
+   * @param sourceChainId The source chain id of the current layer.
+   * @param targetChainId The target chaind id of the targeted layer.
+   * @param reservedTokens The list of reserved tokens to be set.
+   * @param roleAddresses The list of role addresses.
+   * @param pauseTypeRoles The list of pause type roles.
+   * @param unpauseTypeRoles The list of unpause type roles.
+   */
+  struct InitializationData {
+    address messageService;
+    address tokenBeacon;
+    uint256 sourceChainId;
+    uint256 targetChainId;
+    address[] reservedTokens;
+    IPermissionsManager.RoleAddress[] roleAddresses;
+    IPauseManager.PauseTypeRole[] pauseTypeRoles;
+    IPauseManager.PauseTypeRole[] unpauseTypeRoles;
+  }
+
   event TokenReserved(address indexed token);
   event ReservationRemoved(address indexed token);
   event CustomContractSet(address indexed nativeToken, address indexed customContract, address indexed setBy);
@@ -86,6 +111,13 @@ interface ITokenBridge {
   ) external;
 
   /**
+   * @dev Change the status to DEPLOYED to the tokens passed in parameter
+   *    Will call the method setDeployed on the other chain using the message Service
+   * @param _tokens Array of bridged tokens that have been deployed.
+   */
+  function confirmDeployment(address[] memory _tokens) external payable;
+
+  /**
    * @dev Change the address of the Message Service.
    * @param _messageService The address of the new Message Service.
    */
@@ -99,6 +131,15 @@ interface ITokenBridge {
    * @param _nativeTokens The addresses of the native tokens.
    */
   function setDeployed(address[] memory _nativeTokens) external;
+
+  /**
+   * @dev Linea can reserve tokens. In this case, the token cannot be bridged.
+   *   Linea can only reserve tokens that have not been bridged before.
+   * @notice Make sure that _token is native to the current chain
+   *   where you are calling this function from
+   * @param _token The address of the token to be set as reserved.
+   */
+  function setReserved(address _token) external;
 
   /**
    * @dev Sets the address of the remote token bridge. Can only be called once.
@@ -120,14 +161,4 @@ interface ITokenBridge {
    * @param _targetContract address of the custom contract.
    */
   function setCustomContract(address _nativeToken, address _targetContract) external;
-
-  /**
-   * @dev Pause the contract, can only be called by the owner.
-   */
-  function pause() external;
-
-  /**
-   * @dev Unpause the contract, can only be called by the owner.
-   */
-  function unpause() external;
 }

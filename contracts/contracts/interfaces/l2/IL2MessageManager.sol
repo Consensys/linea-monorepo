@@ -17,6 +17,17 @@ interface IL2MessageManager {
   event RollingHashUpdated(uint256 indexed messageNumber, bytes32 indexed rollingHash);
 
   /**
+   * @dev Emitted when the service switches over to a new version.
+   * @dev This is currently not in use, but left for future migrations and for existing consumers.
+   */
+  event ServiceVersionMigrated(uint256 indexed version);
+
+  /**
+   * @dev Reverts when the message hashes array length is zero.
+   */
+  error MessageHashesListLengthIsZero();
+
+  /**
    * @dev Reverts when message number synchronization is mismatched.
    */
   error L1MessageNumberSynchronizationWrong(uint256 expected, uint256 found);
@@ -30,12 +41,6 @@ interface IL2MessageManager {
    * @dev Reverts when final rolling hash is zero hash.
    */
   error FinalRollingHashIsZero();
-
-  /**
-   * @dev Emitted when the service switches over to a new version.
-   * @dev This is currently not in use, but left for future migrations and for existing consumers.
-   */
-  event ServiceVersionMigrated(uint256 indexed version);
 
   /**
    * @notice Anchor L1-> L2 message hashes with expected message number and rolling hash.

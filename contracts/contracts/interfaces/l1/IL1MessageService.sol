@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 /**
  * @title L1 Message Service interface for pre-existing functions, events and errors.
@@ -34,10 +34,6 @@ interface IL1MessageService {
   }
 
   /**
-   * @notice Emitted when initializing Linea Rollup contract with a system migration block.
-   */
-  event SystemMigrationBlockInitialized(uint256 systemMigrationBlock);
-  /**
    * @dev Thrown when L2 merkle root does not exist.
    */
   error L2MerkleRootDoesNotExist();
@@ -51,4 +47,12 @@ interface IL1MessageService {
    * @dev Thrown when merkle depth doesn't match proof length.
    */
   error ProofLengthDifferentThanMerkleDepth(uint256 actual, uint256 expected);
+
+  /**
+   * @notice Claims and delivers a cross-chain message using merkle proof.
+   * @dev if merkle depth is empty, it will revert with L2MerkleRootDoesNotExist.
+   * @dev if merkle depth is different than proof size, it will revert with ProofLengthDifferentThanMerkleDepth.
+   * @param _params Collection of claim data with proof and supporting data.
+   */
+  function claimMessageWithProof(ClaimMessageWithProofParams calldata _params) external;
 }

@@ -6,7 +6,7 @@ export const ADDRESS_ZERO = ethers.ZeroAddress;
 export const HASH_WITHOUT_ZERO_FIRST_BYTE = "0xf887bbc07b0e849fb625aafadf4cb6b65b98e492fbb689705312bf1db98ead7f";
 
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
-  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[]))";
+  "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address))";
 
 // Linea XP Token roles
 export const MINTER_ROLE = generateKeccak256(["string"], ["MINTER_ROLE"], true);
@@ -42,6 +42,31 @@ export const L1_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L1_ME
 export const L2_MERKLE_ROOTS_SETTER_ROLE = generateKeccak256(["string"], ["L2_MERKLE_ROOTS_SETTER_ROLE"], true);
 export const FINALIZE_WITHOUT_PROOF_ROLE = generateKeccak256(["string"], ["FINALIZE_WITHOUT_PROOF_ROLE"], true);
 export const BAD_STARTING_HASH = generateKeccak256(["string"], ["BAD_STARTING_HASH"], true);
+export const PAUSE_INITIATE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_INITIATE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE = generateKeccak256(
+  ["string"],
+  ["UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE"],
+  true,
+);
+export const SET_REMOTE_TOKENBRIDGE_ROLE = generateKeccak256(["string"], ["SET_REMOTE_TOKENBRIDGE_ROLE"], true);
+export const SET_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["SET_RESERVED_TOKEN_ROLE"], true);
+export const REMOVE_RESERVED_TOKEN_ROLE = generateKeccak256(["string"], ["REMOVE_RESERVED_TOKEN_ROLE"], true);
+export const SET_CUSTOM_CONTRACT_ROLE = generateKeccak256(["string"], ["SET_CUSTOM_CONTRACT_ROLE"], true);
+export const SET_MESSAGE_SERVICE_ROLE = generateKeccak256(["string"], ["SET_MESSAGE_SERVICE_ROLE"], true);
 
 export const GENERAL_PAUSE_TYPE = 1;
 export const L1_L2_PAUSE_TYPE = 2;
@@ -49,6 +74,8 @@ export const L2_L1_PAUSE_TYPE = 3;
 export const BLOB_SUBMISSION_PAUSE_TYPE = 4;
 export const CALLDATA_SUBMISSION_PAUSE_TYPE = 5;
 export const FINALIZATION_PAUSE_TYPE = 6;
+export const INITIATE_TOKEN_BRIDGING_PAUSE_TYPE = 7;
+export const COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE = 8;
 
 export const pauseTypeRoles = [
   { pauseType: GENERAL_PAUSE_TYPE, role: PAUSE_ALL_ROLE },
@@ -57,6 +84,8 @@ export const pauseTypeRoles = [
   { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: FINALIZATION_PAUSE_TYPE, role: PAUSE_FINALIZE_WITHPROOF_ROLE },
+  { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+  { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
 ];
 
 export const unpauseTypeRoles = [
@@ -66,6 +95,8 @@ export const unpauseTypeRoles = [
   { pauseType: BLOB_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: CALLDATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_L2_BLOB_SUBMISSION_ROLE },
   { pauseType: FINALIZATION_PAUSE_TYPE, role: UNPAUSE_FINALIZE_WITHPROOF_ROLE },
+  { pauseType: INITIATE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE },
+  { pauseType: COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE, role: UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE },
 ];
 
 // Message statuses
@@ -81,6 +112,8 @@ export const INITIAL_MIGRATION_BLOCK = 0;
 export const ONE_DAY_IN_SECONDS = 86_400;
 export const INITIAL_WITHDRAW_LIMIT = ethers.parseEther("5");
 export const GENESIS_L2_TIMESTAMP = 0;
+export const DEFAULT_LAST_FINALIZED_TIMESTAMP = 1683325137n;
+export const SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 export const TEST_PUBLIC_VERIFIER_INDEX = 0;
 
 export const MESSAGE_VALUE_1ETH = ethers.parseEther("1");

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.datetime.Clock
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
+import net.consensys.linea.testing.filesystem.getPathTo
 import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -12,9 +13,7 @@ import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Response
-import org.web3j.protocol.http.HttpService
 import org.web3j.tx.response.PollingTransactionReceiptProcessor
-import org.web3j.utils.Async
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.io.File
 import java.math.BigInteger
@@ -75,7 +74,6 @@ fun getTransactionManager(
 private inline val Int.ether get(): BigInteger = BigInteger.valueOf(this.toLong()).multiply(BigInteger.TEN.pow(18))
 
 interface AccountManager {
-  val web3jClient: Web3j
   val chainId: Long
   fun whaleAccount(): Account
   fun generateAccount(initialBalanceWei: BigInteger = 10.ether): Account
@@ -85,13 +83,12 @@ interface AccountManager {
 }
 
 private open class WhaleBasedAccountManager(
-  rpcUrl: String,
+  val web3jClient: Web3j,
   genesisFile: Path,
   val clock: Clock = Clock.System,
   val testWorkerIdProvider: () -> Long = { ProcessHandle.current().pid() },
   val log: Logger = LogManager.getLogger(WhaleBasedAccountManager::class.java)
 ) : AccountManager {
-  override val web3jClient: Web3j = Web3j.build(HttpService(rpcUrl), 500, Async.defaultExecutorService())
   private val whaleAccounts: List<Account>
   final override val chainId: Long
 
@@ -224,13 +221,13 @@ private open class WhaleBasedAccountManager(
 }
 
 object L1AccountManager : AccountManager by WhaleBasedAccountManager(
-  rpcUrl = System.getProperty("L1_RPC", "http://localhost:8445"),
-  genesisFile = findFile(System.getProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")),
+  web3jClient = Web3jClientManager.l1Client,
+  genesisFile = getPathTo(System.getProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")),
   log = LogManager.getLogger(L1AccountManager::class.java)
 )
 
 object L2AccountManager : AccountManager by WhaleBasedAccountManager(
-  rpcUrl = System.getProperty("L2_RPC", "http://localhost:8545"),
-  genesisFile = findFile(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")),
+  web3jClient = Web3jClientManager.l2Client,
+  genesisFile = getPathTo(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis.json")),
   log = LogManager.getLogger(L2AccountManager::class.java)
 )
