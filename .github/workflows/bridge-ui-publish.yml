@@ -35,10 +35,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - # Setting up Docker Buildx with docker-container driver is required
-        # at the moment to be able to use a subdirectory with Git context
-        name: Set up Docker Buildx
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
       - name: Docker Image Build and Publish
@@ -49,6 +50,7 @@ jobs:
           file: ./bridge-ui/Dockerfile
           push: true
           tags: consensys/linea-bridge-ui:${{ env.DOCKER_TAG }}
+          platforms: linux/amd64,linux/arm64
           # Env file dedicated for dev
           build-args: |
             ENV_FILE=./bridge-ui/.env.production
