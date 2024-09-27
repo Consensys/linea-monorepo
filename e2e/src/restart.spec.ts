@@ -75,7 +75,7 @@ const coordinatorRestartTestSuite = (title: string) => {
 
     it("When the coordinator restarts it should resume anchoring", async () => {
       const l1MessageSender = new Wallet(L1_ACCOUNT_0_PRIVATE_KEY, l1Provider);
-      const l2MessageSender = new Wallet(L2_ACCOUNT_0_PRIVATE_KEY, l2Provider);
+      const l2AccountForLiveness = new Wallet(L2_ACCOUNT_1_PRIVATE_KEY, l2Provider);
 
       // Send Messages L1 -> L2
       const messageFee = ethers.utils.parseEther("0.0001");
@@ -144,7 +144,7 @@ const coordinatorRestartTestSuite = (title: string) => {
 
       console.log("Moving the L2 chain forward to trigger anchoring...");
       // Using 5 messages to give the coordinator time to restart
-      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2MessageSender);
+      const intervalId = await sendTransactionsToGenerateTrafficWithInterval(l2AccountForLiveness);
 
       // Wait for messages to be anchored on L2
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
