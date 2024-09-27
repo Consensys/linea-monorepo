@@ -14,7 +14,7 @@ on:
 
 jobs:
   publish:
-    runs-on: besu-arm64
+    runs-on: ubuntu-22.04
     if: github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
     steps:
       - name: Checkout
