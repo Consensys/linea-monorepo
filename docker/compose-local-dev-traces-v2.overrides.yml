@@ -9,7 +9,7 @@ services:
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
 
   linea-besu-sequencer-plugin-downloader:
-    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.6.0-rc6.1/linea-sequencer-v0.6.0-rc6.1.jar",  "/linea-besu-sequencer" ]
+    command: [ "sh", "/file-downloader.sh", "https://github.com/Consensys/linea-sequencer/releases/download/v0.6.0-rc8.1/linea-sequencer-v0.6.0-rc8.1.jar",  "/linea-besu-sequencer" ]
 
   traces-node:
     command: ['echo', 'forced exit as replaced by traces-node-v2']
